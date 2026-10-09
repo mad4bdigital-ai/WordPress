@@ -570,33 +570,54 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             ! isset( $input['operation_key'] ) || ! isset( $op['operation_key'] ) ||
             ! hash_equals( $op['operation_key'], (string) $input['operation_key'] ) ||
             ! in_array( $op['state'], array( 'step_inflight', 'needs_reconcile' ), true ) ||
+            ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+            (int) ( $op['profile_revision'] ?? -1 ) !== (int) $binding['profile']['revision'] ||
+            ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] ||
             ! isset( $op['inflight_step'] ) )
             return self::err( 'mad4b_sync_recover_state_not_exact', 'Unknown-write reconciliation requires an exact in-flight journal checksum.' );
-        $i = (int) $op['inflight_step'];
-        if ( ! isset( $op['steps'][ $i ] ) || $i !== (int) $op['next_step'] )
-            return self::err( 'mad4b_sync_recover_step_missing', 'Recorded in-flight step is inconsistent.' );
-        $step = $op['steps'][ $i ];
-        $observed = self::observe( $binding );
-        if ( is_wp_error( $observed ) ) return $observed;
-        if ( ! isset( $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ],
-            $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ] ) )
-            return self::err( 'mad4b_sync_recover_field_missing', 'No verified postwrite fields available.' );
-        $current = $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ];
-        $owner = $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ];
-        $hash = static function ( $v ) { return self::digest( array( 'type' => gettype( $v ), 'value' => $v ) ); };
-        if ( ! hash_equals( $step['value_sha256'], $hash( $current ) ) ||
-            ! hash_equals( $step['value_sha256'], $hash( $owner ) ) )
-            return self::err( 'mad4b_sync_recover_requires_review', 'Uncertain provider result differs from exact approved write. Do not replay.' );
-        $op['next_step'] = $i + 1; unset( $op['inflight_step'] );
-        $op['state'] = 'running'; $op['recovered_at'] = gmdate( 'c' );
-        update_option( $key, $op, false );
-        delete_option( self::key( $binding, 'lease' ) );
-        return array( 'contract' => self::CONTRACT, 'state' => 'running',
-            'next_step' => $op['next_step'], 'recovered_by_exact_readback' => true,
-            'provider_replayed' => false, 'mutation_performed' => true );
-    }
+        if ( 'step_inflight' === $op['state'] &&
+            false !== get_option( self::key( $binding, 'lease' ), false ) )
+            return self::err( 'mad4b_sync_recover_inflight_worker_not_quiesced', 'In-flight provider request may still be active; recovery needs independent worker quiescence.' );
+        $recovery_mutex = self::key( $binding, 'recovery_lease' );
+        $recovery_token = self::digest( array( $op['operation_key'], $expected ) );
+        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+            return self::err( 'mad4b_sync_recovery_busy', 'Another reconciliation worker owns this operation.' );
+        try {
+            $fresh_op = get_option( $key, false );
+            if ( ! is_array( $fresh_op ) || ! hash_equals( $expected, self::digest( $fresh_op ) ) )
+                return self::err( 'mad4b_sync_recovery_journal_changed', 'Journal changed during recovery lock acquisition.' );
+            $i = (int) $op['inflight_step'];
+            if ( ! isset( $op['steps'][ $i ] ) || $i !== (int) $op['next_step'] )
+                return self::err( 'mad4b_sync_recover_step_missing', 'Recorded in-flight step is inconsistent.' );
+            $step = $op['steps'][ $i ];
+            $observed = self::observe( $binding );
+            if ( is_wp_error( $observed ) ) return $observed;
+            if ( ! isset( $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ],
+                $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ] ) )
+                return self::err( 'mad4b_sync_recover_field_missing', 'No verified postwrite fields available.' );
+            $current = $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ];
+            $owner = $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ];
+            $hash = static function ( $v ) { return self::digest( array( 'type' => gettype( $v ), 'value' => $v ) ); };
+            if ( ! hash_equals( $step['value_sha256'], $hash( $current ) ) ||
+                ! hash_equals( $step['value_sha256'], $hash( $owner ) ) )
+                return self::err( 'mad4b_sync_recover_requires_review', 'Uncertain provider result differs from exact approved write. Do not replay.' );
+            $op['next_step'] = $i + 1; unset( $op['inflight_step'] );
+            $op['state'] = 'running'; $op['recovered_at'] = gmdate( 'c' );
+            $persisted = self::persist_operation( $key, $op, 'mad4b_sync_recovery_journal_unverified' );
+            if ( is_wp_error( $persisted ) ) return $persisted;
+            if ( false !== get_option( self::key( $binding, 'lease' ), false ) ) {
+                $released = self::release_operation_lease( $binding, $op['operation_key'] );
+                if ( is_wp_error( $released ) ) return $released;
+            }
+            return array( 'contract' => self::CONTRACT, 'state' => 'running',
+                'next_step' => $op['next_step'], 'recovered_by_exact_readback' => true,
+                'provider_replayed' => false, 'mutation_performed' => true );
 
-    /** Finalize a partial saga only after independent provider readbacks converge. */
+        } finally {
+            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
+                delete_option( $recovery_mutex );
+        }
+    }
     public static function finalize_reconciled( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
             return self::err( 'mad4b_sync_reconcile_denied', 'Exact administrator reconciliation confirmation required.' );
@@ -607,53 +628,71 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
         if ( ! is_array( $op ) || ! isset( $op['state'] ) || 'needs_reconcile' !== $op['state'] ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
-            ! hash_equals( self::digest( $op ), $expected ) )
+            ! hash_equals( self::digest( $op ), $expected ) ||
+            ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+            (int) ( $op['profile_revision'] ?? -1 ) !== (int) $binding['profile']['revision'] ||
+            ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] )
             return self::err( 'mad4b_sync_reconcile_journal_not_exact', 'Require unchanged partial saga journal digest.' );
-        $observed = self::observe( $binding );
-        if ( is_wp_error( $observed ) ) return $observed;
-        $hashes = self::hashes( $observed['observations'] );
-        foreach ( $op['steps'] as $step ) {
-            if ( ! isset( $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) ||
-                ! hash_equals( $step['value_sha256'],
-                    $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) )
-                return self::err( 'mad4b_sync_reconcile_owner_changed', 'Canonical owner no longer matches the approved step.' );
-        }
-        foreach ( $binding['contract']['attribute_meta_keys'] as $field ) {
-            $values = array();
-            foreach ( $binding['sources'] as $id => $source ) {
-                if ( in_array( $field, $source['field_keys'], true ) )
-                    $values[] = $hashes[ $id ]['field_hashes'][ $field ];
+        $recovery_mutex = self::key( $binding, 'recovery_lease' );
+        $recovery_token = self::digest( array( $op['operation_key'], $expected ) );
+        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+            return self::err( 'mad4b_sync_recovery_busy', 'Another reconciliation worker owns this operation.' );
+        try {
+            $fresh_op = get_option( $key, false );
+            if ( ! is_array( $fresh_op ) || ! hash_equals( $expected, self::digest( $fresh_op ) ) )
+                return self::err( 'mad4b_sync_recovery_journal_changed', 'Journal changed during recovery lock acquisition.' );
+            $observed = self::observe( $binding );
+            if ( is_wp_error( $observed ) ) return $observed;
+            $hashes = self::hashes( $observed['observations'] );
+            foreach ( $op['steps'] as $step ) {
+                if ( ! isset( $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) ||
+                    ! hash_equals( $step['value_sha256'],
+                        $hashes[ $step['source'] ]['field_hashes'][ $step['field'] ] ) )
+                    return self::err( 'mad4b_sync_reconcile_owner_changed', 'Canonical owner no longer matches the approved step.' );
             }
-            if ( count( array_unique( $values ) ) !== 1 )
-                return self::err( 'mad4b_sync_reconcile_still_divergent', 'Provider data still differ; preserve old checkpoint.' );
-        }
-        $old = get_option( self::key( $binding, 'checkpoint' ), false );
-        if ( ! empty( $op['bootstrap_arbitration'] ) ) {
-            if ( false !== $old )
-                return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Unexpected checkpoint exists during bootstrap.' );
-        } elseif ( ! is_array( $old ) || ! isset( $op['initial_checkpoint_sha256'] ) ||
-            ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $old ) ) )
-            return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Checkpoint changed while partially applying writes.' );
-        $new = array( 'site_uuid' => $binding['site_uuid'],
-            'profile_revision' => (int) $binding['profile']['revision'],
-            'authority_sha256' => $binding['profile']['authority_sha256'],
-            'sources' => $hashes );
-        $saved = ! empty( $op['bootstrap_arbitration'] )
-            ? add_option( self::key( $binding, 'checkpoint' ), $new, '', false )
-            : update_option( self::key( $binding, 'checkpoint' ), $new, false );
-        $back = get_option( self::key( $binding, 'checkpoint' ), false );
-        if ( ( !$saved && self::digest( $back ) !== self::digest( $new ) ) ||
-            ! is_array( $back ) || ! hash_equals( self::digest( $new ), self::digest( $back ) ) )
-            return self::err( 'mad4b_sync_reconcile_checkpoint_failed', 'Final checkpoint readback was not verified.' );
-        $op['state'] = 'complete'; $op['reconciled_at'] = gmdate( 'c' );
-        update_option( $key, $op, false );
-        delete_option( self::key( $binding, 'lease' ) );
-        return array( 'contract' => self::CONTRACT, 'state' => 'complete',
-            'checkpoint_sha256' => self::digest( $back ),
-            'provider_readbacks_verified' => true, 'mutation_performed' => true );
-    }
+            foreach ( $binding['contract']['attribute_meta_keys'] as $field ) {
+                $values = array();
+                foreach ( $binding['sources'] as $id => $source ) {
+                    if ( in_array( $field, $source['field_keys'], true ) )
+                        $values[] = $hashes[ $id ]['field_hashes'][ $field ];
+                }
+                if ( count( array_unique( $values ) ) !== 1 )
+                    return self::err( 'mad4b_sync_reconcile_still_divergent', 'Provider data still differ; preserve old checkpoint.' );
+            }
+            $old = get_option( self::key( $binding, 'checkpoint' ), false );
+            if ( ! empty( $op['bootstrap_arbitration'] ) ) {
+                if ( false !== $old )
+                    return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Unexpected checkpoint exists during bootstrap.' );
+            } elseif ( ! is_array( $old ) || ! isset( $op['initial_checkpoint_sha256'] ) ||
+                ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $old ) ) )
+                return self::err( 'mad4b_sync_reconcile_checkpoint_raced', 'Checkpoint changed while partially applying writes.' );
+            $new = array( 'site_uuid' => $binding['site_uuid'],
+                'profile_revision' => (int) $binding['profile']['revision'],
+                'authority_sha256' => $binding['profile']['authority_sha256'],
+                'sources' => $hashes );
+            $saved = ! empty( $op['bootstrap_arbitration'] )
+                ? add_option( self::key( $binding, 'checkpoint' ), $new, '', false )
+                : update_option( self::key( $binding, 'checkpoint' ), $new, false );
+            $back = get_option( self::key( $binding, 'checkpoint' ), false );
+            if ( ( !$saved && self::digest( $back ) !== self::digest( $new ) ) ||
+                ! is_array( $back ) || ! hash_equals( self::digest( $new ), self::digest( $back ) ) )
+                return self::err( 'mad4b_sync_reconcile_checkpoint_failed', 'Final checkpoint readback was not verified.' );
+            $op['state'] = 'complete'; $op['reconciled_at'] = gmdate( 'c' );
+            $persisted = self::persist_operation( $key, $op, 'mad4b_sync_reconcile_journal_unverified' );
+            if ( is_wp_error( $persisted ) ) return $persisted;
+            if ( false !== get_option( self::key( $binding, 'lease' ), false ) ) {
+                $released = self::release_operation_lease( $binding, $op['operation_key'] );
+                if ( is_wp_error( $released ) ) return $released;
+            }
+            return array( 'contract' => self::CONTRACT, 'state' => 'complete',
+                'checkpoint_sha256' => self::digest( $back ),
+                'provider_readbacks_verified' => true, 'mutation_performed' => true );
 
-    /** Cancel only operations with a confirmed zero-write boundary. */
+        } finally {
+            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
+                delete_option( $recovery_mutex );
+        }
+    }
     public static function cancel( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
             return self::err( 'mad4b_sync_cancel_denied', 'Administrator confirmation required.' );
