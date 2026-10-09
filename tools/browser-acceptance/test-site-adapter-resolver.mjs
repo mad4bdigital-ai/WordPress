@@ -111,6 +111,24 @@ assert.equal(resolve(mixed,{...mixedOptions,requestedProfile:"tours"}).siteProvi
   "etg-dfsb");
 assert.throws(()=>resolve(mixed,{...mixedOptions,requestedProfile:"unrelated"}),
   /site_browser_site_adapter_profile_unmatched/);
+// Generic capability observation also works when the site has no plugin
+// mapped to it: recognition is native WordPress post_type=page, not a driver
+// for the site's brand or a guessed extension.
+const postTypeOnly=example("royal");
+postTypeOnly.providers=[provider("mad4b-native-public",generic,"not-installed","public-canonical")];
+postTypeOnly.providers[0].descriptor.selection_role="supplemental";
+postTypeOnly.providers[0].descriptor.recognition={
+  source_post_types:["page"],source_plugins:[],source_taxonomies:[]
+};
+postTypeOnly.provider_count=1;
+postTypeOnly.site_discovery.provider_matches=[{
+  provider_id:"mad4b-native-public",source_plugins:[],
+  source_post_types:["page"],source_taxonomies:[],
+  matched_plugins:0,matched_post_types:1,matched_taxonomies:0,
+  recognized:true,certified:false,authorizing:false
+}];
+postTypeOnly.site_discovery.unmapped_plugins=postTypeOnly.site_discovery.plugins.slice();
+assert.equal(resolve(postTypeOnly,{approvedDrivers:[generic]}).siteProviderId,"mad4b-native-public");
 const cpt = example("royal");
 cpt.providers[0].descriptor.recognition = {
   source_plugins:[],source_post_types:["tour"],source_taxonomies:["tour_type"]
