@@ -347,6 +347,25 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 		if(!$target_ready) $blockers[]=array('code'=>'post_target_not_ready','post_type'=>$post_type,'post_id'=>$post_id,'reason'=>$target_reason);
 		if($live_state_requested) $blockers[]=array('code'=>'separate_publication_required','post_type'=>$post_type,'post_status'=>$status,'required_next_ability'=>'mad4b/content-update-post');
 		if($live_target) $blockers[]=array('code'=>'live_target_requires_draft_workflow','post_type'=>$post_type,'post_id'=>$post_id,'post_status'=>(string)$target->post_status);
+		// Read-only operator handoff for the separate approved publication phase.
+		// The existing direct-publication fence remains authoritative.
+		$publication_handoff=array(
+			'contract'=>'mad4b.dynamic-content-publication-handoff.v1',
+			'publication_requested'=>$live_state_requested,
+			'requested_post_status'=>$status,
+			'plan_blocked_on_live_status'=>$live_state_requested,
+			'draft_replan_required'=>$live_state_requested,
+			'draft_replan_override'=>$live_state_requested?array('post'=>array('post_status'=>'draft')):array(),
+			'context_preflight_step'=>array('ability'=>'mad4b/skill-context-preflight','required_before_mutation'=>true,'policy_bypass_allowed'=>false),
+			'draft_step'=>array('ability'=>self::APPLY,'requires_exact_draft_plan'=>true,'requires_signed_context_receipt'=>true,'requires_exact_mutation_approval'=>true),
+			'acceptance_step'=>array('ability'=>self::READBACK,'requires_verified_post_id'=>true,'requires_current_acceptance_receipt'=>true),
+			'publication_step'=>array('ability'=>'mad4b/content-update-post','post_status'=>$live_state_requested?$status:'publish','requires_separate_exact_mutation_approval'=>true,'requires_acceptance_receipt_verification'=>true),
+			'verification_step'=>array('ability'=>'mad4b/publication-verification','independent_readback_required'=>true),
+			'production_mutation_authorized'=>false,
+			'authorizing'=>false,
+			'read_only'=>true,
+			'mutation_performed'=>false,
+		);
 		$taxonomy_readiness=array();
 		$taxonomies=isset($input['taxonomies'])&&is_array($input['taxonomies'])?$input['taxonomies']:array();
 		ksort($taxonomies,SORT_STRING);
@@ -518,6 +537,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'resolved_terms'=>$resolved,
 			'missing_terms'=>$missing,
 			'blockers'=>$blockers,
+			'publication_handoff'=>$publication_handoff,
 			'taxonomy_readiness'=>$taxonomy_readiness,
 			'steps'=>$steps,
 			'pipeline_settings_sha256'=>$pipeline_settings_sha256,
@@ -533,6 +553,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'dependency_count'=>count($missing),
 			'blocker_count'=>count($blockers),
 			'blockers'=>$blockers,
+			'publication_handoff'=>$publication_handoff,
 			'taxonomy_readiness'=>$taxonomy_readiness,
 			'mode'=>$mode,
 			'post_type'=>$post_type,
