@@ -28,7 +28,8 @@ const result = {
   verdict:"PASS",plan_digest:plan.plan_digest,
   evidence_digest:canonicalSha256(evidence),receipt_signature:"d".repeat(64),
   verification:{browser_runtime_parity_verified:true},
-  read_only:true,authorizing:false,receipt_authorizing:false
+  read_only:true,authorizing:false,receipt_authorizing:false,
+  release_ready:false,globally_unique_consumption_proven:false
 };
 const args = {plan,evidence,result,ledgerDir:base,authorityMode:"single-host-posix-v1",now:start};
 const passes = ()=>consumeLocalBrowserPlanOnce(args);
@@ -44,6 +45,11 @@ try {
     /invalid_or_stale_proof/);
   assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
     now:start+301}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    result:{...result,release_ready:true}}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    result:{...result,globally_unique_consumption_proven:true}}),
+    /invalid_or_stale_proof/);
   const claimed=passes();
   assert.equal(claimed.scope,"single_host_posix_filesystem");
   assert.equal(claimed.globally_unique_consumption_proven,false);
