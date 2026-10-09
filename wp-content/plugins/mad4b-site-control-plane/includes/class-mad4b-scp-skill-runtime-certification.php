@@ -255,6 +255,9 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		$build_fingerprint = isset( $build_identity['build_fingerprint'] ) ? strtolower( (string) $build_identity['build_fingerprint'] ) : '';
 		$package_manifest_digest = isset( $build_identity['package_manifest_digest'] ) ? strtolower( (string) $build_identity['package_manifest_digest'] ) : '';
 		$artifact_identity = isset( $build_identity['artifact_identity'] ) ? trim( (string) $build_identity['artifact_identity'] ) : '';
+		// Cheap persisted same-build drift marker for Runtime Convergence. The
+		// bootstrap already hashed the provenance file once for this request.
+		$boot_provenance_sha256 = defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) ? strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ) : '';
 		$checks['build_provenance_identity_ready'] = ! empty( $build_identity['identity_ready'] )
 			&& 1 === preg_match( '/^[a-f0-9]{40}$/', $source_commit_sha )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/', $build_fingerprint )
@@ -277,6 +280,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'build_fingerprint' => $build_fingerprint,
 			'package_manifest_digest' => $package_manifest_digest,
 			'artifact_identity' => $artifact_identity,
+			'boot_provenance_sha256' => $boot_provenance_sha256,
 		);
 		$digest = hash( 'sha256', wp_json_encode( $evidence, JSON_UNESCAPED_SLASHES ) );
 
@@ -299,6 +303,7 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			'build_fingerprint' => $build_fingerprint,
 			'package_manifest_digest' => $package_manifest_digest,
 			'artifact_identity' => $artifact_identity,
+			'boot_provenance_sha256' => $boot_provenance_sha256,
 			'app_mapping_source' => isset( $autoconfig['app_mapping_source'] ) ? $autoconfig['app_mapping_source'] : '',
 			'evidence_digest' => $digest,
 			'observed_at' => gmdate( 'c' ),
