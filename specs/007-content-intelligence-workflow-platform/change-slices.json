@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 559,
+  "changed_file_count": 564,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1099,8 +1099,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-multisource-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-source-reconciliation-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-msr02-activity-saga-cas-runtime-20261010",
+      "semantic_unit": "MSR02 durable, version and field-authority-bound multi-provider WordPress/Drive sync: admin reviewed first-time source arbitration, WordPress row CAS, conditional Google Docs OAuth adapter, immutable checkpoints, readback-only recovery and archival.",
+      "revert_boundary": "Revert MSR02 saga runtime, optional Docs adapter, tests and acceptance spec; preserve MSR01 source reconciliation, canonical Content Experience Profiles, and existing WordPress content.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/activity-sync-runtime-execution-and-recovery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-google-docs-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-sync-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "0abd3ffebc5ed216bb24640995b35358efccdcbee9ab1cf790e8bc3f84812b67",
+  "changed_paths_sha256": "1b8bb992f5a8325c3b87dd9697b9d35c6c4cce255636324cfb6d5d03ecb5be20",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
