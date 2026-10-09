@@ -43,6 +43,11 @@ verify_guide( 'browser' === $model['next_step'], 'invalid browser settings get e
 $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false, 2 ), guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'providers' )['state'], 'provider pending distinct' );
 verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'write' )['state'], 'write current authority gets dedicated diagnostic' );
+$enrolled = guide_site(); $enrolled['deployment_binding_configured'] = false;
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), $enrolled, guide_skills( true, true ), $browser );
+verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'deployment' )['state'], 'independent missing deployment binding assigned to host operator' );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false ), guide_site(), guide_skills( true, true ), $browser );
+verify_guide( 'NOT_CHECKED' === guide_step( $model, 'approvals' )['state'], 'write blocker must not fabricate pending approval' );
 $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array( 'developer_lane_not_ready' ) ), guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'host' )['state'], 'host sandbox is external' );
 verify_guide( 'OBSERVED_READY' === guide_step( $model, 'skills' )['state'], 'local Skills only observed ready' );
@@ -52,4 +57,4 @@ verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'] && empty( $model['steps']
 $untrusted = guide_operator(); $untrusted['contract'] = 'forged';
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'], 'unknown contract cannot drive navigation' );
-fwrite( STDOUT, "PASS guided operator native behavior: 15 assertions\n" );
+fwrite( STDOUT, "PASS guided operator native behavior: 17 assertions\n" );
