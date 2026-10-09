@@ -21,6 +21,9 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         $artifact = isset( $input['artifact_id'] ) ? (string) $input['artifact_id'] : '';
         $plan = isset( $input['expected_plan_sha256'] ) ? (string) $input['expected_plan_sha256'] : '';
         $source = isset( $input['source_id'] ) ? (string) $input['source_id'] : '';
+        // An already created artifact has a unique identity regardless of
+        // caller-selected source/plan: neither field may reset its budget.
+        if ( 'brand_draft_create' !== $lane ) { $source = ''; $plan = ''; $category = ''; }
         if ( 'brand_draft_create' === $lane ) {
             if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) || ! preg_match( '/^[a-f0-9]{64}$/', $plan ) )
                 return self::error( 'mad4b_retry_binding_missing', 'Draft retry requires exact category and source plan fingerprint.' );
