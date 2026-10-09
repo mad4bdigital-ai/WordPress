@@ -27,7 +27,7 @@ for k in ("site_uuid","profile_revision","authority_sha256","initial_checkpoint_
  "mad4b_sync_wp_row_cas_failed", "mad4b_sync_inflight_journal_unverified",
  "mad4b_sync_postwrite_journal_unverified", "mad4b_sync_recovery_busy",
  "mad4b_sync_cancel_worker_active", "mad4b_sync_recover_inflight_worker_not_quiesced",
- "persist_operation", "release_operation_lease"):
+ "persist_operation", "release_operation_lease", "prewrite_failure"):
  ck(k in runtime,"Missing durable authority/cas/recovery guard "+k)
 for k in ("requiredRevisionId","MAD4B_SCP_Google_Drive_Context::activity_docs_request",
  "connection_status","mad4b_drive_docs_cas_changed","textRun","utf16_length",
