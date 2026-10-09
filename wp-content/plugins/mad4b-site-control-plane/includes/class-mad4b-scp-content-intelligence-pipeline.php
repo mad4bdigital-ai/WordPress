@@ -284,6 +284,21 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'editorial_qa' => array( 'stage' => 'EDITORIAL_QA', 'contract' => 'mad4b.editorial-qa.v1', 'input' => 'editorial_qa' ),
 			'seo_qa' => array( 'stage' => 'SEO', 'contract' => 'mad4b.seo-qa.v1', 'input' => 'seo_qa' ),
 		);
+		// Validate the full QA bundle before the first immutable Artifact
+		// append. Invalid second/third components must not leave a partial
+		// first-component write in the ContentJob journal.
+		foreach ( $definitions as $def ) {
+			$row = $input[ $def['input'] ] ?? null;
+			if ( ! is_array( $row ) )
+				return new WP_Error( 'mad4b_qa_component_required', 'QA component is required: ' . $def['input'] );
+			if ( count( $row ) > 128 || ( isset( $row['hard_blockers'] ) && ! is_array( $row['hard_blockers'] ) )
+				|| count( $row['hard_blockers'] ?? array() ) > 64 )
+				return new WP_Error( 'mad4b_qa_component_shape_invalid', 'QA component shape or blockers exceed budget.' );
+			foreach ( $row['hard_blockers'] ?? array() as $blocker ) {
+				if ( ! is_string( $blocker ) || ! preg_match( '/^[a-z0-9_.-]{1,120}$/D', $blocker ) )
+					return new WP_Error( 'mad4b_qa_blocker_invalid', 'QA blockers must be bounded typed reason codes.' );
+			}
+		}
 		$created = array();
 		$hard_blockers = array();
 		foreach ( $definitions as $type => $def ) {
