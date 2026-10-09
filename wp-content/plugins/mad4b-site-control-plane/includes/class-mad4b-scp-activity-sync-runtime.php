@@ -118,10 +118,11 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 : (string) $value;
             if ( ! is_string( $clean ) || $clean !== (string) $value )
                 return self::err( 'mad4b_sync_wp_value_transformation_required', 'Registered WordPress sanitization would change the approved field value.' );
-            $updated = $wpdb->update( $wpdb->postmeta,
-                array( 'meta_value' => maybe_serialize( $clean ) ),
-                array( 'meta_id' => (int) $rows[0]['meta_id'], 'meta_value' => $stored ),
-                array( '%s' ), array( '%d', '%s' ) );
+            // Use byte-sensitive CAS: typical WP database collations are
+            // case-insensitive and plain WHERE meta_value=%s is insufficient.
+            $updated = $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->postmeta} SET meta_value = %s WHERE meta_id = %d AND BINARY meta_value = BINARY %s LIMIT 1",
+                maybe_serialize( $clean ), (int) $rows[0]['meta_id'], $stored ) );
             if ( 1 !== $updated )
                 return self::err( 'mad4b_sync_wp_row_cas_failed', 'Atomic WordPress Meta row compare-and-set failed.' );
             wp_cache_delete( (int) $binding['entity_id'], 'post_meta' );
