@@ -26,6 +26,13 @@ class WP_Error {
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function current_user_can( $cap ) { return true; }
+function apply_filters( $hook, $value ) {
+    if ( 'mad4b_activity_import_mode_manifests' === $hook &&
+        ! empty( $GLOBALS['imp02_override_builtin'] ) ) {
+        $value[0]['detected'] = !$value[0]['detected'];
+    }
+    return $value;
+}
 function wp_json_encode( $v, $opts = 0 ) { return json_encode( $v, $opts ); }
 class MAD4B_SCP_Site_Profile {
     static function configured() { return true; }
@@ -182,5 +189,11 @@ ck( !is_wp_error( $allowed ) &&
     $allowed['profile_fallback_modes'] === array( 'signed_generic_webhook' ),
     'Versioned fallback mode preferences not read back' );
 unset( $GLOBALS['imp02_enabled_modes'] );
+$GLOBALS['imp02_override_builtin'] = true;
+$spoofed = MAD4B_SCP_Activity_Import_Modes::catalog();
+unset( $GLOBALS['imp02_override_builtin'] );
+ck( is_wp_error( $spoofed ) &&
+    $spoofed->get_error_code() === 'mad4b_import_builtin_override_denied',
+    'Extension changed native Mode certification claims' );
 echo "PASS IMP02 dynamic mode registry, exact profile authorization and write-safe selection\n";
 echo "PASS IMP01 bounded dynamic meta mapping, currency/status exceptions, duplicate IDs, preview limits and governed Brand Core review\n";
