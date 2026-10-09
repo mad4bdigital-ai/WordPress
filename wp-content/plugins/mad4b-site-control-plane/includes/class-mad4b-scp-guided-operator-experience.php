@@ -98,12 +98,19 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 
 	public static function render( $snapshot ) {
 		if ( ! current_user_can( 'manage_options' ) ) return;
-		$site = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
-		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
-			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
-		$browser = class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', false )
-			? MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection() : array();
-		$model = self::model( $snapshot, $site, $skills, $browser );
+		// A broken optional status provider must never crash Action Center or
+		// turn a failed read into a success/authority claim.
+		$model = array( 'state' => 'EVIDENCE_UNTRUSTED', 'steps' => array(), 'next_step' => null );
+		try {
+			$site = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
+			$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+				? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+			$browser = class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', false )
+				? MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection() : array();
+			$model = self::model( $snapshot, $site, $skills, $browser );
+		} catch ( Throwable $error ) {
+			$model = array( 'state' => 'EVIDENCE_UNTRUSTED', 'steps' => array(), 'next_step' => null );
+		}
 		echo '<section class="mad4b-scp-panel mad4b-guided-journey" aria-labelledby="mad4b-guided-title">';
 		echo '<h2 id="mad4b-guided-title">' . esc_html__( 'Your next safe steps', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'This checklist adapts to the current site and existing observations. It does not grant access, perform repairs, or claim release acceptance.', 'mad4b-site-control-plane' ) . '</p>';
