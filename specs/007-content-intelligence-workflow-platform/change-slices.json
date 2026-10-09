@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 459,
+  "changed_file_count": 461,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -639,12 +639,14 @@
     },
     {
       "id": "browser-site-aware-staging-certification-20261008",
-      "semantic_unit": "Remove ETG-only fixed Staging browser target; bind registered site provider and exact profile to verified signed-result parity with guarded compatibility fixture",
-      "revert_boundary": "Revert dynamic Staging browser selector and fail-closed signed-plan test together; external browser execution remains independent",
+      "semantic_unit": "Site-aware Staging certification, universal non-authorizing remediation DAG, opt-in independent Live acceptance, exact source replay verifier and native/browser/spec fixtures",
+      "revert_boundary": "Revert read-only Staging certification source and related native/browser/spec contract fixtures as one source unit; external executor and owner authority remain independent",
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-certification.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-browser-site-selection-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-certification-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-convergence-coverage-runtime.php"
       ]
     },
     {
@@ -865,6 +867,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "4b85d39d07a11a8e0fbbc0bffe5f5d49f9357a8884351195c53f7c62dc8cebbf",
+  "changed_paths_sha256": "ee0b41753b63b4383878ebbd0d84356e129ad4f5f17d935d7141ef5a93154fdb",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
