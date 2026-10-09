@@ -479,6 +479,34 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'provider_replayed' => false, 'mutation_performed' => true );
     }
 
+    /** Cancel only operations with a confirmed zero-write boundary. */
+    public static function cancel( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
+            return self::err( 'mad4b_sync_cancel_denied', 'Administrator confirmation required.' );
+        $binding = self::bind( $input );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $key = self::key( $binding, 'operation' );
+        $op = get_option( $key, false );
+        $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
+        if ( ! is_array( $op ) || ! in_array( $op['state'], array( 'queued', 'needs_reconcile' ), true ) ||
+            ! isset( $op['next_step'] ) || (int) $op['next_step'] !== 0 ||
+            isset( $op['inflight_step'] ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
+            ! hash_equals( self::digest( $op ), $expected ) )
+            return self::err( 'mad4b_sync_cancel_write_may_exist',
+                'Cannot cancel an uncertain, in-flight or partially applied provider write.' );
+        $op['state'] = 'cancelled_without_provider_write';
+        $op['cancelled_at'] = gmdate( 'c' );
+        $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
+        if ( ! add_option( $archive_key, $op, '', false ) ||
+            ! hash_equals( self::digest( $op ), self::digest( get_option( $archive_key, false ) ) ) )
+            return self::err( 'mad4b_sync_cancel_archive_failed', 'Exact cancelled-operation archive could not be verified.' );
+        delete_option( $key );
+        delete_option( self::key( $binding, 'lease' ) );
+        return array( 'contract' => self::CONTRACT, 'state' => $op['state'],
+            'archived' => true, 'provider_writes_executed' => 0,
+            'mutation_performed' => true );
+    }
+
     /** Archive only completed operations. A failed journal is never erased. */
     public static function archive( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
