@@ -98,6 +98,13 @@ $arg = array( 'ability_name' => $target,
     'expected_descriptor_sha256' => $form['descriptor_sha256'],
     'values' => array( 'query' => 'hello', 'limit' => 2, 'confirmed' => false ) );
 $ok = MAD4B_SCP_CSO01_Read_Foundation::form_validate( $arg );
+$arg['values']['query'] = 'رحلة';
+$arabic = MAD4B_SCP_CSO01_Read_Foundation::form_validate( $arg );
+mad4b_test( ! is_wp_error( $arabic ) && true === $arabic['valid'], 'Arabic Unicode text rejected' );
+$arg['values']['query'] = str_repeat( 'ر', 21 );
+$long = MAD4B_SCP_CSO01_Read_Foundation::form_validate( $arg );
+mad4b_test( ! is_wp_error( $long ) && false === $long['valid'], 'Unicode overflow accepted' );
+$arg['values']['query'] = 'hello';
 mad4b_test( ! is_wp_error( $ok ) && true === $ok['valid'] && false === $ok['saved'], 'stateless validation failed' );
 $arg['values']['unexpected'] = 'DO_NOT_ECHO';
 $invalid = MAD4B_SCP_CSO01_Read_Foundation::form_validate( $arg );
@@ -127,12 +134,40 @@ $schema = $input_schema; $schema['properties']['nested'] = array( 'type' => 'obj
 mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::compile_schema( $schema ) ), 'nested arbitrary write form allowed' );
 $schema = $input_schema; $schema['properties']['query']['default'] = 'DO_NOT_ECHO';
 mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::compile_schema( $schema ) ), 'potentially sensitive default exposed' );
+$schema = $input_schema;
+$schema['properties']['query']['pattern'] = '^[A-Z]+
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::form_schema( array( 'ability_name' => $target ) ) ), 'write lane accepted' );
+unset( $GLOBALS['lane'] );
+$GLOBALS['can_read'] = false;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unauthorized discovery accepted' );
+$GLOBALS['can_read'] = true;
+$GLOBALS['actor_enrolled'] = false;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unenrolled actor accepted' );
+$GLOBALS['actor_enrolled'] = true;
+$GLOBALS['enrolled'] = false;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unenrolled site accepted' );
+$GLOBALS['enrolled'] = true;
+$GLOBALS['blog_ok'] = false;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'blog switch accepted' );
+$GLOBALS['blog_ok'] = true;
+$GLOBALS['abilities']['evil/arbitrary-write'] = $GLOBALS['abilities'][ $target ];
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::form_schema( array( 'ability_name' => 'evil/arbitrary-write' ) ) ),
+    'untrusted registered plugin ability auto-certified' );
+echo "mad4b.cso01.read-foundation.runtime.v1: PASS\n";
+;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::compile_schema( $schema ) ), 'ignored pattern accepted' );
+$schema = $input_schema;
+$schema['properties']['limit']['minimum'] = 2;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::compile_schema( $schema ) ), 'ignored minimum accepted' );
 $GLOBALS['lane'] = 'write';
 mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::form_schema( array( 'ability_name' => $target ) ) ), 'write lane accepted' );
 unset( $GLOBALS['lane'] );
 $GLOBALS['can_read'] = false;
 mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unauthorized discovery accepted' );
 $GLOBALS['can_read'] = true;
+$GLOBALS['actor_enrolled'] = false;
+mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unenrolled actor accepted' );
+$GLOBALS['actor_enrolled'] = true;
 $GLOBALS['enrolled'] = false;
 mad4b_test( is_wp_error( MAD4B_SCP_CSO01_Read_Foundation::discover() ), 'unenrolled site accepted' );
 $GLOBALS['enrolled'] = true;
