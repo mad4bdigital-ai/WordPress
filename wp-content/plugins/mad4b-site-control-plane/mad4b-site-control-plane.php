@@ -434,6 +434,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-closure-matrix.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operational-remediation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-recovery-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
@@ -524,6 +525,7 @@ $mad4b_diagnostic_catalog_target = class_exists( 'MAD4B_SCP_MCP_Request_Scope', 
 // make the request non-passive and grants no lifecycle or mutation authority.
 if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Staging_Certification::boot();
+	MAD4B_SCP_Operational_Remediation::boot();
 	MAD4B_SCP_Acceptance_Core::boot_early();
 	MAD4B_SCP_Connection_Ability::boot();
 	MAD4B_SCP_Read_Consistency::boot();
