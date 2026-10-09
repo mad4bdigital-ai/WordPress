@@ -6,6 +6,7 @@ if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __
 if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-source-reconciliation.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Sync_Runtime' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-sync-runtime.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Google_Docs_Adapter' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-google-docs-adapter.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -580,6 +581,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-sync-plan', 'mad4b/business-activity-reconcile-plan',
             'mad4b/business-activity-context-impact-plan',
             'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
+            'mad4b/business-activity-import-capabilities',
+            'mad4b/business-activity-import-plan', 'mad4b/business-activity-import-review',
+            'mad4b/brand-core-acceptance-plan',
         );
         $content = array(
             self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
@@ -689,6 +693,47 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	public static function ability_definitions() {
 		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
 		$definitions = array(
+            array(
+                'name' => 'mad4b/business-activity-import-capabilities',
+                'label' => 'Discover Governed Spreadsheet Import Engines and Options',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'capabilities' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array() ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-plan',
+                'label' => 'Preview Profile-Bound Excel CSV or Google Sheets Import and Conflicts',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'identity_field' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 120 ),
+                    'headers' => array( 'type' => 'array', 'minItems' => 1, 'maxItems' => 80, 'items' => array( 'type' => 'string' ) ),
+                    'rows' => array( 'type' => 'array', 'maxItems' => 500, 'items' => array( 'type' => 'object', 'additionalProperties' => true ) ),
+                    'field_mapping' => array( 'type' => 'object', 'maxProperties' => 80, 'additionalProperties' => array( 'type' => 'string' ) ),
+                    'allowed_currencies' => array( 'type' => 'array', 'maxItems' => 20, 'items' => array( 'type' => 'string' ) ),
+                ), array( 'profile_slug', 'identity_field', 'headers', 'rows' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-review',
+                'label' => 'Review Signed Apps Script Import Inbox Conflicts',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'review' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                ), array( 'profile_slug' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/brand-core-acceptance-plan',
+                'label' => 'Inspect Brand Core Coverage Conflicts and Governing Review Queue',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'brand_core_plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array() ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
 			array( 'name' => 'mad4b/content-experience-discover', 'label' => 'Discover Content Experience Profiles', 'callback' => array( __CLASS__, 'discover' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array(
 				'name' => self::BOOTSTRAP_PLAN_ABILITY, 'label' => 'Plan Content Experience Bootstrap', 'callback' => array( __CLASS__, 'bootstrap_plan' ), 'permission' => $read,
