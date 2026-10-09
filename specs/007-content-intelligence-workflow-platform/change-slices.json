@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 536,
+  "changed_file_count": 541,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1036,8 +1036,21 @@
         "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py",
         "specs/007-content-intelligence-workflow-platform/spec.md"
       ]
+    },
+    {
+      "id": "feature007-br01-brand-core-reconstruction-20261009",
+      "semantic_unit": "BR01 bounded Brand Context reconstruction state machine, certified assistants with human fallback, missing-files/provider/drift/conflict recovery and third-party source rights diagnostics.",
+      "revert_boundary": "Revert new reconstruction planner, source-reference gates, Context authority heuristic hardening, native/static negative tests and BR01 recovery spec; keep independently governed Write, Context Review and Production restrictions intact.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/brand-core-reconstruction-state-machine.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-reconstruction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-state-machine-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "c8f47e75f92682f94b307d9c364381b7bccee81fa73398359364d75046665fd0",
+  "changed_paths_sha256": "91f66c29ac3e5571fe6cbfbef8ea662b2a6afd9257b0e7be8b31bc65dacc34f3",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
