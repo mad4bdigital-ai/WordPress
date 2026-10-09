@@ -106,7 +106,18 @@ export function consumeLocalBrowserPlanOnce({
       globally_unique_consumption_proven: false,
       release_ready: false
     };
-    fs.writeSync(fd, JSON.stringify(record) + "\n");
+    // POSIX write() can return a short write without throwing. Treat a
+    // zero-byte write as failure, and never acknowledge a partial ledger
+    // record as durable. On any failure the exclusive file remains burned.
+    const bytes = Buffer.from(JSON.stringify(record) + "\n", "utf8");
+    let written = 0;
+    while (written < bytes.length) {
+      const n = fs.writeSync(fd, bytes, written, bytes.length - written, written);
+      if (!Number.isSafeInteger(n) || n <= 0) {
+        deny("persistence_short_write");
+      }
+      written += n;
+    }
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fd = undefined;
