@@ -124,7 +124,8 @@ final class MAD4B_SCP_Activity_Import_Modes {
             ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
             return self::err( 'mad4b_import_modes_denied', 'Enrolled site administrator required.' );
         $modes = self::builtins();
-        $builtin_ids = array_fill_keys( array_column( $modes, 'id' ), true );
+        $builtin_ids = array();
+        foreach ( $modes as $entry ) $builtin_ids[ $entry['id'] ] = $entry;
         $filtered = function_exists( 'apply_filters' )
             ? apply_filters( 'mad4b_activity_import_mode_manifests', $modes ) : $modes;
         if ( ! is_array( $filtered ) || count( $filtered ) > 60 )
@@ -141,6 +142,23 @@ final class MAD4B_SCP_Activity_Import_Modes {
                 count( $entry['requirements'] ) > 20 ||
                 empty( $entry['no_implicit_production_writes'] ) )
                 return self::err( 'mad4b_import_mode_registry_entry_invalid', 'Invalid/duplicate unsafe import mode manifest.' );
+            foreach ( array( 'family', 'source', 'transport', 'destination',
+                'support', 'state' ) as $text_key ) {
+                if ( ! is_string( $entry[ $text_key ] ) ||
+                    ! preg_match( '/^[a-z][a-z0-9_]{1,120}$/D', $entry[ $text_key ] ) )
+                    return self::err( 'mad4b_import_mode_text_invalid',
+                        'Manifest labels require safe bounded identifiers.' );
+            }
+            foreach ( $entry['requirements'] as $requirement ) {
+                if ( ! is_string( $requirement ) ||
+                    ! preg_match( '/^[a-z][a-z0-9_]{1,120}$/D', $requirement ) )
+                    return self::err( 'mad4b_import_mode_requirement_invalid',
+                        'Mode prerequistes must be safe bounded identifiers.' );
+            }
+            if ( isset( $builtin_ids[ $entry['id'] ] ) &&
+                self::digest( $builtin_ids[ $entry['id'] ] ) !== self::digest( $entry ) )
+                return self::err( 'mad4b_import_builtin_override_denied',
+                    'Trusted extensions cannot change built-in certification claims.' );
             $clean = array();
             foreach ( $required as $key ) $clean[ $key ] = $entry[ $key ];
             // A manifest may describe an installed provider but cannot certify
