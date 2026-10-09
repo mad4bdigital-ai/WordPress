@@ -909,9 +909,12 @@ final class MAD4B_SCP_Staging_Certification {
 
 	/** Developer credentials do not prove host process/network isolation. */
 	public static function developer_host_execution_gate( array $host ) {
-		$ready = ! empty( $host['normal_no_network_execution_ready'] );
+		$ready_flag = ! empty( $host['normal_no_network_execution_ready'] );
 		$blockers = is_array( $host['normal_no_network_execution_blockers'] ?? null )
 			? array_values( array_slice( $host['normal_no_network_execution_blockers'], 0, 20 ) ) : array();
+		// Contradictory host attestations fail closed, never prefer a true
+		// summary field over an explicit resource/network isolation blocker.
+		$ready = $ready_flag && empty( $blockers );
 		if ( ! $ready && ! $blockers ) $blockers[] = 'developer_host_isolation_not_verified';
 		return array(
 			'ready' => $ready,
