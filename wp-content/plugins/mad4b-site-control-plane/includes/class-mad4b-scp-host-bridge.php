@@ -309,6 +309,8 @@ final class MAD4B_SCP_Host_Bridge {
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['runner_source_sha256'] ?? '' ) )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['plan_sha256'] ?? '' ) )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['authority_ref'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['target_fingerprint'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $details['before_sha256'] ?? '' ) )
 			&& '' !== (string) ( $receipt['approval_ref'] ?? '' );
 		// The Bridge spool is WordPress-writeable; even a structurally valid
 		// receipt is untrusted until an independently pinned Host public key
@@ -323,11 +325,14 @@ final class MAD4B_SCP_Host_Bridge {
 			'operation_id' => $receipt['operation_id'] ?? null,
 			'plan_sha256' => $receipt['plan_sha256'] ?? null,
 			'authority_ref' => $receipt['authority_ref'] ?? null,
+			'approval_ref' => $receipt['approval_ref'] ?? null,
+			'target_fingerprint' => $receipt['target_fingerprint'] ?? null,
 			'runner_source_sha256' => $receipt['runner_source_sha256'] ?? null,
 			'completed_at' => $receipt['completed_at'] ?? null,
 			'readback_verdict' => $receipt['readback_verdict'] ?? null,
 			'mutation_performed' => $receipt['mutation_performed'] ?? null,
 			'result' => array(
+				'before_sha256' => $details['before_sha256'] ?? null,
 				'after_sha256' => $details['after_sha256'] ?? null,
 				'expected_site_profile_digest' => $details['expected_site_profile_digest'] ?? null,
 				'expected_site_profile_revision' => $details['expected_site_profile_revision'] ?? null,
