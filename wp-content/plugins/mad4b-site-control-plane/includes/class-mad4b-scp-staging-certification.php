@@ -322,6 +322,17 @@ final class MAD4B_SCP_Staging_Certification {
 		$input = is_array( $input ) ? $input : array();
 		$status = self::status( array( 'compact' => false ) );
 		$plan_gates = is_array( $status['gates'] ?? null ) ? $status['gates'] : array();
+		// Source SHA alone is shared by every site using the same plugin ZIP.
+		// Bind read-only convergence to this exact enrolled nonproduction site,
+		// its configured origin, and the current Site Profile revision.
+		$site_profile = self::convergence_site_identity();
+		$plan_gates['deployment_site_identity'] = array(
+			'ready' => $site_profile['ready'],
+			'state' => $site_profile['ready'] ? 'ready' : 'site_identity_not_eligible',
+			'source' => 'mad4b.site-profile.v2',
+			'remediation_owner' => 'site_owner',
+			'blockers' => $site_profile['blockers'],
+		);
 		$live_overlay = array( 'included' => false, 'ready' => null, 'gate_count' => 0, 'blockers' => array() );
 		// Explicit opt-in: the independent Live Acceptance registry is more
 		// expensive and may itself call external evidentiary reducers. Never
@@ -508,8 +519,11 @@ final class MAD4B_SCP_Staging_Certification {
 			'source_commit_sha' => (string) ( $build_evidence['source_commit_sha'] ?? '' ),
 			'build_fingerprint' => (string) ( $build_evidence['build_fingerprint'] ?? '' ),
 			'package_manifest_digest' => (string) ( $build_evidence['package_manifest_digest'] ?? '' ),
-			'site_uuid' => (string) ( $authority_evidence['site_uuid'] ?? '' ),
-			'site_profile_digest' => (string) ( $authority_evidence['site_profile_digest'] ?? '' ),
+			'site_uuid' => $site_profile['site_uuid'],
+			'site_profile_digest' => $site_profile['site_profile_digest'],
+			'site_origin' => $site_profile['site_origin'],
+			'environment' => $site_profile['environment'],
+			'nonproduction_site_ready' => $site_profile['ready'],
 			'candidate_binding_match' => ! empty( $authority_evidence['candidate_binding_match'] ),
 			'revalidate_before_any_effect' => true,
 			'never_grants_authority' => true,
@@ -540,6 +554,35 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Purely observational, per-request site identity. This is deliberately
+	 * unrelated to any single tenant, CPT, domain, or named host provider.
+	 */
+	public static function convergence_site_identity() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return array(
+			'ready' => false, 'site_uuid' => '', 'site_profile_digest' => '',
+			'site_origin' => '', 'environment' => '', 'blockers' => array( 'site_profile_provider_missing' ),
+		);
+		$uuid = (string) MAD4B_SCP_Site_Profile::site_uuid();
+		$digest = (string) MAD4B_SCP_Site_Profile::profile_digest();
+		$origin = (string) MAD4B_SCP_Site_Profile::site_origin();
+		$environment = (string) MAD4B_SCP_Site_Profile::current_environment();
+		$bound = MAD4B_SCP_Site_Profile::nonproduction_governed()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$valid = (bool) preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D', $uuid )
+			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', $digest )
+			&& '' !== $origin && '' !== $environment && 'production' !== $environment;
+		$ready = $bound && $valid;
+		return array(
+			'ready' => $ready,
+			'site_uuid' => $uuid,
+			'site_profile_digest' => $digest,
+			'site_origin' => $origin,
+			'environment' => $environment,
+			'blockers' => $ready ? array() : array( 'nonproduction_site_identity_or_origin_unverified' ),
+		);
 	}
 
 	/**
