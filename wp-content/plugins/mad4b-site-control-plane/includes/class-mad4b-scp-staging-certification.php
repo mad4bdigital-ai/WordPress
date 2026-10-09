@@ -744,6 +744,11 @@ final class MAD4B_SCP_Staging_Certification {
 			$row['read_only_plan'] = true;
 			$row['authorizing'] = false;
 			$row['mutation_performed'] = false;
+			// No item in this read-only diagnostic can be launched by a
+			// downstream automation engine, even if its legacy kind was
+			// "read_only_followup" or an unrecognized provider-defined kind.
+			$row['automatic_execution_allowed'] = false;
+			$row['external_execution_authority_granted'] = false;
 			if ( in_array( $row['kind'] ?? '', array(
 				'governed_mutation', 'hybrid_creation', 'external_oauth_reauthorization',
 				'external_executor_job',
@@ -785,6 +790,12 @@ final class MAD4B_SCP_Staging_Certification {
 		foreach ( $blocked as $gate_id => $gate ) {
 			if ( ! empty( $coverage[ $gate_id ] ) ) continue;
 			$id = 'review_gate_' . $gate_id;
+			if ( isset( $by_id[ $id ] ) ) {
+				// Never silently overwrite a provider-supplied action with
+				// a generated review action or vice versa.
+				$issues[] = 'generated_action_identity_collision:' . $id;
+				continue;
+			}
 			$by_id[ $id ] = array(
 				'action_id' => $id,
 				'kind' => 'read_only_blocker',
@@ -808,6 +819,7 @@ final class MAD4B_SCP_Staging_Certification {
 			);
 			$coverage[ $gate_id ][] = $id;
 		}
+		if ( count( $by_id ) > 256 ) $issues[] = 'expanded_action_registry_limit_exceeded';
 		// A strictly bounded topological ordering. Unknown dependency IDs
 		// stay blocked rather than being removed from the operation contract.
 		$ordered = array();
