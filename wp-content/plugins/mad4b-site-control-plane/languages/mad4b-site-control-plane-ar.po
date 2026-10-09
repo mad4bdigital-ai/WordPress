@@ -759,3 +759,12 @@ msgstr "مراجعة هوية النشر المستقلة"
 
 msgid "Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants."
 msgstr "تعريف الموقع معتمد، لكن حماية نسخ الموقع على العنوان نفسه غير مفعلة. إعداد الخادم مستقل عن صلاحيات القراءة والكتابة الحالية."
+
+msgid "Managed Skills editor is disabled"
+msgstr "محرر المهارات المُدارة غير مفعل"
+
+msgid "An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified."
+msgstr "يجب أن يراجع مسؤول الخادم المخوّل إعداد MAD4B_SKILLS_EDITOR_ENABLED في wp-config.php أو إعداد الخادم المُدار لبيئة الاختبار. لا تفعل تحرير الإنتاج ولا تعِد محاولة التسوية قبل التحقق من هذا الشرط وهوية الإصدار."
+
+msgid "Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry."
+msgstr "تخزين المهارات المُدارة غير قابل للكتابة. راجع صلاحيات مجلد التخزين الخاص بالموقع دون تجاوز سجل المهارات المحكوم."

@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 475,
+  "changed_file_count": 477,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -903,8 +903,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/guided-operator-experience-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/guided-operator-experience-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-all-royal-skills-enrollment-preflight-20261009",
+      "semantic_unit": "Bounded read-only Skills enrollment/Host prerequisite preflight, operator diagnosis, native and source offline tests.",
+      "revert_boundary": "Revert the two new Skills enrollment tests along with their connector/Skills admin UX wiring; do not revert pre-existing governed enrollment or access policies.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-skills-preflight-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-skills-preflight-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "99f6e9a2e46d71b762ec265ab30bab054af9d28001b2f3ebc4e5d4f0b68e8414",
+  "changed_paths_sha256": "a212bd3820a6a41b5e35111a860faff938c2e61b228bebc56d42fd91e72d834e",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

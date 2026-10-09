@@ -174,6 +174,85 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		return array( 'row' => $row, 'ability' => $ability );
 	}
 
+	/**
+	 * Read-only, bounded preflight. Structural catalog eligibility is NOT
+	 * equivalent to permission, current-build or Host/editor readiness.
+	 * Does not invoke the target Ability or emit OAuth credentials.
+	 */
+	public static function managed_skills_preflight_from_signals( $signals ) {
+		$signals = is_array( $signals ) ? $signals : array();
+		$blockers = array();
+		$ready_map = array(
+			'staging_profile_ready' => 'site_profile_not_authoritative_staging',
+			'skills_enabled' => 'skills_disabled_for_site',
+			'editor_enabled' => 'managed_skills_editor_disabled',
+			'registry_available' => 'skill_registry_unavailable',
+			'remote_services_available' => 'skill_services_unavailable',
+			'no_active_lock' => 'managed_skills_operation_in_progress',
+			'current_build_identity_ready' => 'exact_build_identity_unverified',
+		);
+		foreach ( $ready_map as $key => $reason ) {
+			if ( true !== ( isset( $signals[ $key ] ) ? $signals[ $key ] : null ) ) $blockers[] = $reason;
+		}
+		$next = 'confirm_exact_plan_then_verify_target_permission';
+		if ( in_array( 'site_profile_not_authoritative_staging', $blockers, true ) ) $next = 'review_exact_staging_site_profile';
+		elseif ( in_array( 'managed_skills_editor_disabled', $blockers, true ) ) $next = 'authorize_host_to_enable_staging_skills_editor';
+		elseif ( in_array( 'managed_skills_operation_in_progress', $blockers, true ) ) $next = 'read_existing_operation_checkpoint_no_retry';
+		elseif ( in_array( 'exact_build_identity_unverified', $blockers, true ) ) $next = 'repair_exact_build_provenance_not_bypass';
+		elseif ( ! empty( $blockers ) ) $next = 'resolve_structural_skills_prerequisites';
+		return array(
+			'contract' => 'mad4b.enrollment-skills-preflight.v1',
+			'operation_id' => 'managed_skills_reconciliation',
+			'next_safe_action' => $next,
+			'state' => empty( $blockers ) ? 'structurally_ready' : 'blocked',
+			'structurally_ready' => empty( $blockers ),
+			'blockers' => $blockers,
+			'authorization_performed' => false,
+			'permission_evaluated' => false,
+			'execution_performed' => false,
+			'mutation_performed' => false,
+			'production_mutation_allowed' => false,
+			'per_request_oauth_step_up_unverified' => true,
+			'operator_instruction' => empty( $blockers )
+				? 'Check exact OAuth step-up and target permission in the invoking request, then perform one fenced operation and verify its checkpoint.'
+				: 'Resolve the stated site, editor, build or operation-lock prerequisite before obtaining fresh exact-operation receipts. Do not blindly retry.',
+		);
+	}
+
+	private static function live_managed_skills_preflight() {
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			? MAD4B_SCP_Site_Profile::status() : array();
+		$profile = is_array( $profile ) ? $profile : array();
+		$skills_available = class_exists( 'MAD4B_SCP_Skill_Registry', false );
+		$runtime = array();
+		try {
+			$runtime = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+				? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		} catch ( Throwable $error ) {
+			// A failed read may block a plan; it must not crash discovery.
+			$runtime = array();
+		}
+		$runtime = is_array( $runtime ) ? $runtime : array();
+		// Inspect only the bounded persisted lease, never file scanning,
+		// recursive provider discovery, or a write on tools/list.
+		$lock = get_option( 'mad4b_scp_remote_skills_reconciliation_lock_v1', array() );
+		$lock = is_array( $lock ) ? $lock : array();
+		$lock_active = ! empty( $lock['owner'] )
+			&& (int) ( isset( $lock['expires_at_epoch'] ) ? $lock['expires_at_epoch'] : 0 ) > time();
+		return self::managed_skills_preflight_from_signals( array(
+			'staging_profile_ready' => ! empty( $profile['authority_ready'] )
+				&& 'staging' === ( isset( $profile['environment'] ) ? (string) $profile['environment'] : '' ),
+			'skills_enabled' => ! empty( $profile['skills_enabled'] ),
+			'editor_enabled' => $skills_available && MAD4B_SCP_Skill_Registry::editor_enabled(),
+			'registry_available' => $skills_available,
+			'remote_services_available' => class_exists( 'MAD4B_SCP_Skill_Seeder', false )
+				&& class_exists( 'MAD4B_SCP_Skill_Provider_Discovery', false )
+				&& class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ),
+			'no_active_lock' => ! $lock_active,
+			'current_build_identity_ready' => ! empty( $runtime['identity_ready'] ),
+		) );
+	}
+
 	private static function eligible_operations() {
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) return array();
 		$eligible = array();
@@ -212,6 +291,9 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			) ) );
 			if ( ! self::query_matches( $query, $haystack ) ) continue;
+			if ( 'managed_skills_reconciliation' === $operation_id ) {
+				$row['execution_preflight'] = self::live_managed_skills_preflight();
+			}
 			$items[ $operation_id ] = $row;
 			if ( count( $items ) >= $limit ) break;
 		}
@@ -243,6 +325,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'input_schema_sha256' => $row['input_schema_sha256'],
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'operation' => $row,
+			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
+				? self::live_managed_skills_preflight() : null,
 			'step_up_scope_required' => MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
 			'human_decision_required' => false,
 			'production_mutation_allowed' => false,
