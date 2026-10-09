@@ -23,7 +23,7 @@ final class MAD4B_All_Royal_Tourism_Profiles {
         $host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
         return is_string( $host ) && in_array( strtolower( $host ), self::DOMAINS, true );
     }
-    private static function can_write() {
+    public static function can_write() {
         return self::site_matches() && current_user_can( 'create_users' ) && current_user_can( 'edit_users' )
             && current_user_can( 'edit_posts' )
             && function_exists( 'wp_get_environment_type' )
