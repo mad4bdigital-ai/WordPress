@@ -13,6 +13,8 @@
 
 `activity_contract.sync_targets` is configured inside the **canonical** Content Experience Profile record (not a second plugin or parallel profile store). Every target has a stable source ID, provider, purpose, `resource_kind`, exact provider resource reference, direction, field allowlist and conflict policy. A Drive folder is **not** automatically a single business-record snapshot; files under it require individual independently bound and paginated identity/observations.
 
+A source's optional `field_bindings` maps canonical profile fields to typed provider selectors (e.g. a WordPress Meta Key or Drive Sheet cell/range), with a null policy; executable expressions and arbitrary transformations are rejected. **This mapping is configuration only:** a certified provider adapter must convert and validate sheet/document values before they can be compared or written. A one-way source remains available for `update/improve/reconcile` *comparison* without gaining an unconfigured reverse transfer direction.
+
 The existing `Google Drive` document **All Royal Egypt – Editorial Guidelines** was observed on 10 October 2026 and is explicitly labeled a candidate awaiting governed Brand Context review. It must be a context source, **not** a confirmed authoritative fact database; its private provider ID is intentionally not committed into public sample config.
 
 ## 2. Per-field ownership, not whole-file precedence
@@ -26,6 +28,7 @@ Example: WordPress owns active status, availability and taxonomy terms; a Drive 
 - Entity identity comes from the configured `sync_identity_key`: `post_id` or a verified external stable ID; never name, slug, email or fuzzy text alone.
 - One observation is bound to `site_uuid + profile_slug + entity_id + source_id + resource_id + provider revision + observed_at`. The observation records `present/missing/deleted` explicitly. Absence is not a delete.
 - For each observed source, persist *independent* source revision, file/document ID, field-specific digest, and the last independently confirmed WordPress write. In the current read-only planner, the caller supplies a baseline; the planner deliberately marks this **untrusted and not authoritative**. A later execution service must load a durable provider-certified checkpoint, rather than trusting its client-supplied shape.
+- A provider-supplied `verified=true` input flag is never a substitute for server-verified provenance, and field-level snapshots must include the complete configured field set. 
 - Different providers have incompatible version semantics. Google Docs revisions, Sheets metadata/version and raw-file ETags must be normalized by the provider adapter. Never treat timestamps or provider revision strings as comparable ordering numbers across providers.
 - Source-bound scopes and immutable per-source resource IDs prevent replacing one Drive document with a similarly named file, or listing the same file under multiple target aliases.
 
