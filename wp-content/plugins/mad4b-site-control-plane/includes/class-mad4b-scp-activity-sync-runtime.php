@@ -85,12 +85,39 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             return self::err( 'mad4b_sync_wp_write_unbounded', 'Write field too large.' );
         $before = get_post_meta( (int) $binding['entity_id'], $selector, true );
         if ( (string) $before !== (string) $value ) {
-            $ok = update_post_meta( (int) $binding['entity_id'], $selector,
-                sanitize_text_field( (string) $value ), $before );
-            if ( false === $ok ) return self::err( 'mad4b_sync_wp_write_failed', 'Compare-and-set metadata write failed.' );
+            // WP update_post_meta(..., $prev_value) does NOT constrain writes
+            // when previous value is empty. Use an exact SQL row-level CAS
+            // even for blank metadata, rejecting missing/duplicate rows.
+            global $wpdb;
+            if ( ! isset( $wpdb->postmeta ) )
+                return self::err( 'mad4b_sync_wp_atomic_store_unavailable', 'WordPress atomic metadata storage is unavailable.' );
+            $rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT meta_id, meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = %s",
+                (int) $binding['entity_id'], $selector ), ARRAY_A );
+            if ( ! is_array( $rows ) || count( $rows ) !== 1 )
+                return self::err( 'mad4b_sync_wp_meta_row_ambiguous', 'Target Meta key is missing or has duplicate rows; reconcile before mutation.' );
+            $stored = (string) $rows[0]['meta_value'];
+            if ( ! hash_equals( $stored, maybe_serialize( $before ) ) )
+                return self::err( 'mad4b_sync_wp_row_cas_changed', 'Metadata changed since the last WordPress read.' );
+            $clean = function_exists( 'sanitize_meta' )
+                ? sanitize_meta( $selector, (string) $value, 'post', $binding['profile']['post_type'] )
+                : (string) $value;
+            if ( ! is_string( $clean ) || $clean !== (string) $value )
+                return self::err( 'mad4b_sync_wp_value_transformation_required', 'Registered WordPress sanitization would change the approved field value.' );
+            $updated = $wpdb->update( $wpdb->postmeta,
+                array( 'meta_value' => maybe_serialize( $clean ) ),
+                array( 'meta_id' => (int) $rows[0]['meta_id'], 'meta_value' => $stored ),
+                array( '%s' ), array( '%d', '%s' ) );
+            if ( 1 !== $updated )
+                return self::err( 'mad4b_sync_wp_row_cas_failed', 'Atomic WordPress Meta row compare-and-set failed.' );
+            wp_cache_delete( (int) $binding['entity_id'], 'post_meta' );
+            do_action( 'updated_post_meta', (int) $rows[0]['meta_id'],
+                (int) $binding['entity_id'], $selector, $clean );
+            do_action( 'updated_postmeta', (int) $rows[0]['meta_id'],
+                (int) $binding['entity_id'], $selector, $clean );
         }
         $after = self::read_wordpress( $source, $fields, $binding );
-        if ( is_wp_error( $after ) || (string) $after['fields'][ $field ] !== sanitize_text_field( (string) $value ) )
+        if ( is_wp_error( $after ) || (string) $after['fields'][ $field ] !== (string) $value )
             return self::err( 'mad4b_sync_wp_readback_failed', 'WordPress metadata readback failed.' );
         return $after;
     }
