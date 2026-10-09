@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 457,
+  "changed_file_count": 459,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -853,8 +853,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php"
       ]
+    },
+    {
+      "id": "feature007-enrollment-target-error-readback-20261009",
+      "semantic_unit": "Expose bounded source-coded managed Skills target errors with unknown-effect reconciliation and redacted sensitive details",
+      "revert_boundary": "Revert error envelope and regression fixture together, without changing enrollment authority",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "0df9c873acfa4edb8211929039a680ca889c430642f457238c555eae8a64c929",
+  "changed_paths_sha256": "4b85d39d07a11a8e0fbbc0bffe5f5d49f9357a8884351195c53f7c62dc8cebbf",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
