@@ -65,3 +65,11 @@ The governed read route `mad4b/aci01-opportunity-preview` now resolves current s
 The route validates the returned ContentJob ID against the original requested UUID, rereads runtime generation/restore epoch **after** scoped recipe resolution, and checks the actor's existing read grant once more before compiling. It never dispatches `mad4b/blueprint-build`, writes an artifact, spends budget or upgrades publication authority.
 
 Added adversarial PHP fixture cases for job substitution, policy revocation during a profile read, restore epoch drift, deterministic offline pure replay while the profile registry changes, injected reason codes, forged recipe revisions and direct ready-state forgery. **Executed native PHP status: NOT_RUN until an exact-head PHP checkout is available.** Presence of assertions in a fixture is not a PASS certificate.
+
+## G6/G7 — QA verdict transparency and admission before effects
+
+The reused Feature 007 Content Intelligence Pipeline may calculate `pass` when an internally submitted hard-blocker list is empty; this **does not** independently certify facts, rights, editorial review or publication. Blueprint QA, draft payload, each fact/editorial/SEO QA component, final QA artifact, and aggregate response now state a non-authorizing `NEEDS_INDEPENDENT_REVIEW` status and override caller-provided `independent_review_certified=true` / `publication_authorized=true` flags. The draft remains `draft_only=true`; `can_write=true` means a provisional *Artifact append*, not WordPress publication.
+
+Before appending any QA Artifact, all three components are validated as a bounded complete set. Missing second/third components, malformed blocker arrays and non-typed reason codes are rejected before the first immutable append. This does not replace transactional persistence, compensation or independent evaluator identity; a database failure or link failure after a valid append can still require journaled reconciliation.
+
+The existing PHP contract fixture now checks that caller-forged approvals are overridden, no QA component promotes quality into publication, and malformed component bundles leave no first-component Artifact behind. Actual native PHP 7.4/8.3, DB failure-injection and Staging receipts remain **NOT_RUN**. No G6/G7 task is certified `DONE` solely from this source change.
