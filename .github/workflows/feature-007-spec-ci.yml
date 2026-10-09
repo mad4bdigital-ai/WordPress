@@ -747,6 +747,8 @@ jobs:
           set -euo pipefail
           python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
           python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/validate_dynamic_acceptance.py --profile baseline
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/test_dynamic_acceptance.py
           python3 - <<'PY'
           from pathlib import Path
           p=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php').read_text()

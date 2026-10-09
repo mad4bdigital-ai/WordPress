@@ -58,3 +58,9 @@
 - **Owner evidence**: signed receipts and independent same-source deployment/Browser/Host acceptance required for live gate exits. Run on disposable site with explicit owner signoff, never in Production by default.
 
 No acceptance gate may be green from a checklist, source existence, mock implementation or simulation alone.
+
+## Seven dynamically composable supplementary acceptance suites
+
+The canonical machine-readable checks, dependencies and evidence types live in [acceptance/registry.json](acceptance/registry.json). `CSO-A01` schema resilience; `CSO-A02` discovery at scale; `CSO-A03` provider lifecycle; `CSO-A04` actor/site/Host authority; `CSO-A05` real client accessibility; `CSO-A06` independently observed Staging read-only registration; and `CSO-A07` second-site/multisite generalization. They are **required additional evidence suites**, not replacements for CSO-G0–G10.
+
+Versioned [profiles](acceptance/profiles.json) inherit baseline tests and may **tighten** catalog/search budgets and extend optional adversarial checks. A [site overlay](acceptance/site-overlay.example.json) binds scope and cannot disable suites, loosen budget, authorize execution, or close gates. Site profile JSON does not prove Host origin or clone isolation. Every check starts unaccepted; exact source/artifact/site evidence must be independently verified and signed before any real gate closure. See [acceptance/README.md](acceptance/README.md) for the extend/verify contract.

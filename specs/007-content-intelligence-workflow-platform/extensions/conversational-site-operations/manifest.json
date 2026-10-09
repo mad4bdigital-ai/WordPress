@@ -29,6 +29,12 @@
     "README.md",
     "abilities.json",
     "acceptance.md",
+    "acceptance/README.md",
+    "acceptance/profiles.json",
+    "acceptance/registry.json",
+    "acceptance/site-overlay.example.json",
+    "acceptance/test_dynamic_acceptance.py",
+    "acceptance/validate_dynamic_acceptance.py",
     "architecture.md",
     "constitution.md",
     "contracts/adapter-certification.md",
@@ -61,5 +67,8 @@
     "use-cases.json",
     "use-cases.md",
     "validate.py"
-  ]
+  ],
+  "dynamic_acceptance_suite_count": 7,
+  "dynamic_acceptance_status": "SPEC_ONLY_OPEN",
+  "dynamic_acceptance_profile_contract": "mad4b.cso01.dynamic-acceptance.profiles.v1"
 }

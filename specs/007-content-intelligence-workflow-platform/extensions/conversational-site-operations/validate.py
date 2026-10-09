@@ -208,6 +208,12 @@ def validate(root=ROOT):
     except OSError:
         faults.append("traceability_document_missing")
 
+    # Supplementary configurable suites never change the frozen parent denominator.
+    try:
+        from acceptance.validate_dynamic_acceptance import validate_bundle_from_path
+        faults.extend(validate_bundle_from_path(root))
+    except Exception as exc:
+        faults.append("dynamic_acceptance_validator_unavailable:" + type(exc).__name__)
     return sorted(set(faults))
 
 if __name__=="__main__":
