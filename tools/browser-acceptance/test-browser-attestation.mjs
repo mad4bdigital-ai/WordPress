@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { canonicalEvidenceBytes, signDeclarativeEvidence, assertSigningConfigured } from "./browser-attestation.mjs";
+import { canonicalEvidenceBytes, signDeclarativeEvidence, assertSigningConfigured, signerKeyId } from "./browser-attestation.mjs";
 const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
 const pem=privateKey.export({type:"pkcs8",format:"pem"});
 const env={MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64:Buffer.from(pem).toString("base64")};
@@ -12,6 +12,7 @@ const evidence={
 };
 const signed=signDeclarativeEvidence(evidence,env);
 assert.equal(signed.attestation.algorithm,"rsa-sha256");
+assert.equal(signerKeyId(env), signed.attestation.key_id);
 assert.equal(signed.attestation.key_id,"rsa-spki-sha256:" +
   crypto.createHash("sha256").update(publicKey.export({format:"der",type:"spki"})).digest("hex"));
 assert(crypto.verify("sha256",canonicalEvidenceBytes(evidence),publicKey,
