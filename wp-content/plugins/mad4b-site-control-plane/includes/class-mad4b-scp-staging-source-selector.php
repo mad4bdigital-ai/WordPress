@@ -64,7 +64,7 @@ final class MAD4B_SCP_Staging_Source_Selector {
 	public static function resolve( $input ) {
 		$source = self::normalize( $input );
 		if ( is_wp_error( $source ) ) return $source;
-		if ( ! function_exists( 'wp_remote_get' ) || ! function_exists( 'wp_remote_retrieve_response_code' ) ||
+		if ( ! function_exists( 'wp_safe_remote_get' ) || ! function_exists( 'wp_remote_retrieve_response_code' ) ||
 			! function_exists( 'wp_remote_retrieve_body' ) ) {
 			return self::reject( 'transport_unavailable', 'Bounded WordPress HTTPS client is unavailable.' );
 		}
@@ -80,7 +80,7 @@ final class MAD4B_SCP_Staging_Source_Selector {
 			$path = '/commits/' . $reference;
 		}
 		$url = 'https://api.github.com/repos/' . $repo . $path;
-		$response = wp_remote_get( $url, array(
+		$response = wp_safe_remote_get( $url, array(
 			'timeout' => 8,
 			'redirection' => 0,
 			'limit_response_size' => 262144,
