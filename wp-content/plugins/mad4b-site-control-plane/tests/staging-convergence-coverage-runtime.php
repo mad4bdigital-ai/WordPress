@@ -4,6 +4,17 @@
  * reducer. No DB, network, host process, WordPress writes or release claims.
  */
 define( 'ABSPATH', __DIR__ );
+final class MAD4B_SCP_Site_Profile {
+	public static $environment = 'staging';
+	public static $origin = 'https://staging.example.test';
+	public static $enrolled = true;
+	public static function site_uuid() { return '123e4567-e89b-42d3-a456-426614174000'; }
+	public static function profile_digest() { return str_repeat( 'f', 64 ); }
+	public static function site_origin() { return self::$origin; }
+	public static function current_environment() { return self::$environment; }
+	public static function nonproduction_governed() { return self::$enrolled; }
+	public static function site_urls_match_enrollment() { return self::$enrolled; }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-certification.php';
 
 $checks = 0;
@@ -301,4 +312,43 @@ $check( $registered[0]['execution_provider_missing'] === true
 	'catalog metadata never grants host execution' );
 $check( $registered[0]['registration_is_not_execution_permission'] === true,
 	'even observed registration would not grant runtime write authority' );
+
+// Exact tenant-generic Site Profile read is an authority boundary, not a
+// hostname heuristic. Simulate Staging, Production and revoked enrollment.
+$site = MAD4B_SCP_Staging_Certification::convergence_site_identity();
+$check( $site['ready'] === true && $site['environment'] === 'staging',
+	'configured nonproduction identity is observable' );
+MAD4B_SCP_Site_Profile::$environment = 'production';
+$denied_production = MAD4B_SCP_Staging_Certification::convergence_site_identity();
+$check( $denied_production['ready'] === false,
+	'Staging planner refuses Production runtime masquerade' );
+MAD4B_SCP_Site_Profile::$environment = 'staging';
+MAD4B_SCP_Site_Profile::$enrolled = false;
+$denied_enrollment = MAD4B_SCP_Staging_Certification::convergence_site_identity();
+$check( $denied_enrollment['ready'] === false,
+	'Revoked site enrollment cannot inherit old write authority' );
+MAD4B_SCP_Site_Profile::$enrolled = true;
+$check( MAD4B_SCP_Staging_Certification::convergence_site_identity()['ready'] === true,
+	'Restored valid fixture status remains observable but grants nothing' );
+
+// A manifest file change in the same PHP process must not be concealed by
+// a cached provenance parser; the real plugin uses this for a late fence.
+$manifest_dir = sys_get_temp_dir() . '/mad4b-aci01-' . getmypid() . '-' . mt_rand( 10000, 99999 ) . '/';
+if ( ! mkdir( $manifest_dir, 0700 ) ) {
+	fwrite( STDERR, 'Failed to create isolated manifest fixture dir' . PHP_EOL );
+	exit( 1 );
+}
+define( 'MAD4B_SCP_DIR', $manifest_dir );
+$manifest_path = $manifest_dir . 'MAD4B-BUILD-PROVENANCE.json';
+file_put_contents( $manifest_path, '{"test":"version-a"}' );
+$manifest_a = MAD4B_SCP_Staging_Certification::convergence_manifest_file_sha256();
+file_put_contents( $manifest_path, '{"test":"version-b"}' );
+$manifest_b = MAD4B_SCP_Staging_Certification::convergence_manifest_file_sha256();
+$check( strlen( $manifest_a ) === 64 && strlen( $manifest_b ) === 64 &&
+	! hash_equals( $manifest_a, $manifest_b ),
+	'Manifest replacement within request changes uncached identity SHA' );
+unlink( $manifest_path );
+rmdir( $manifest_dir );
+$check( MAD4B_SCP_Staging_Certification::convergence_manifest_file_sha256() === '',
+	'Missing manifest never supplies a valid build fingerprint' );
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;
