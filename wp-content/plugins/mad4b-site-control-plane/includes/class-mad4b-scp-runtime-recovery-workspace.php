@@ -78,11 +78,23 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 
 	public static function render() {
 		if ( ! current_user_can( 'manage_options' ) ) return;
+		echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-recovery-title">';
+		echo '<h2 id="mad4b-recovery-title">' . esc_html__( 'WordPress recovery plan', 'mad4b-site-control-plane' ) . '</h2>';
+		// Deep provider/Skills/authority inventory must never become an
+		// incidental Action Center GET cost. Run only when the admin explicitly
+		// opens this diagnostic, without triggering an apply action.
+		$show = class_exists( 'MAD4B_SCP_Admin_Experience', false )
+			&& 'show' === MAD4B_SCP_Admin_Experience::query_string( 'recovery', '', 8 );
+		if ( ! $show ) {
+			$url = MAD4B_SCP_Admin_Workspace::link( 'mad4b-operator-control-center', array( 'recovery' => 'show' ) );
+			echo '<p>' . esc_html__( 'Inspect the current Site Profile, Skills, Write, Providers and Host prerequisites only when you need a detailed recovery plan.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( $url ) echo '<a class="button button-secondary" href="' . esc_url( $url ) . '">' . esc_html__( 'Inspect current recovery plan', 'mad4b-site-control-plane' ) . '</a>';
+			echo '</section>';
+			return;
+		}
 		$plan = class_exists( 'MAD4B_SCP_Staging_Certification', false )
 			? MAD4B_SCP_Staging_Certification::convergence_plan() : array();
 		$model = self::model( $plan );
-		echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-recovery-title">';
-		echo '<h2 id="mad4b-recovery-title">' . esc_html__( 'WordPress recovery plan', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'These are live, site-scoped observations. Opening a workspace does not approve, execute or certify a repair.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><strong>' . esc_html__( 'State:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $model['state'] ) . '</code> · ';
 		echo esc_html( sprintf( __( '%d planned actions', 'mad4b-site-control-plane' ), $model['action_count'] ) ) . '</p>';
