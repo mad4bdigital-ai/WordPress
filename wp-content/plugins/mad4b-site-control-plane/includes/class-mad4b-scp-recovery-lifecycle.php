@@ -22,6 +22,9 @@ final class MAD4B_SCP_Recovery_Lifecycle {
 		if ( empty( $runtime['identity_ready'] ) ) $runtime = array();
 		$env = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::environment_resolution() : array();
+		$profile = is_array( $profile ) ? $profile : array();
+		$runtime = is_array( $runtime ) ? $runtime : array();
+		$env = is_array( $env ) ? $env : array();
 		// Cheap event-generation read detects a plugin/provider update racing
 		// the plan, even when MAD4B's own Source HEAD did not change.
 		$provider_event = get_option( 'mad4b_scp_adaptive_runtime_event_v1', array() );
