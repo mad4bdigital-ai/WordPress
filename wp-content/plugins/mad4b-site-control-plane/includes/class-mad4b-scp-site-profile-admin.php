@@ -33,6 +33,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		self::require_save_request();
 		$input = array(
 			'environment' => isset( $_POST['environment'] ) ? wp_unslash( $_POST['environment'] ) : '',
+			'environment_sync_mode' => isset( $_POST['environment_sync_mode'] ) ? wp_unslash( $_POST['environment_sync_mode'] ) : '',
 			'display_name' => isset( $_POST['display_name'] ) ? wp_unslash( $_POST['display_name'] ) : '',
 			'chatgpt_app_id' => isset( $_POST['chatgpt_app_id'] ) ? wp_unslash( $_POST['chatgpt_app_id'] ) : '',
 			'oauth_user_ids' => isset( $_POST['oauth_user_ids'] ) ? wp_unslash( $_POST['oauth_user_ids'] ) : '',
@@ -78,6 +79,8 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					'revision' => (int) $status['revision'],
 					'environment' => (string) $status['configured_environment'],
 					'effective_environment' => (string) $status['environment'],
+					'environment_sync_mode' => (string) $status['environment_sync_mode'],
+					'environment_sync_state' => (string) $status['environment_sync_state'],
 					'site_uuid' => (string) $status['site_uuid'],
 					'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
 					'display_name' => MAD4B_SCP_Site_Profile::display_name(),
@@ -112,6 +115,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 
 	private static function requested_intent_matches_profile( array $input, array $profile ) {
 		$environment = isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '';
+		if ( array_key_exists( 'environment_sync_mode', $input )
+			&& ( ! is_string( $input['environment_sync_mode'] )
+				|| sanitize_key( $input['environment_sync_mode'] ) !== (string) ( $profile['environment_sync_mode'] ?? MAD4B_SCP_Site_Profile::ENV_SYNC_PROFILE_ONLY ) ) ) return false;
 		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
 		foreach ( array(
 			'oauth' => 'oauth_enabled',
@@ -228,6 +234,13 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$users = MAD4B_SCP_Site_Profile::oauth_user_ids();
 		$wordpress_default_production = 'production' === (string) $resolution['wordpress_environment'] && empty( $resolution['wordpress_environment_explicit'] );
 		$override_already_confirmed = ! empty( $profile['implicit_production_override_confirmed'] );
+		$sync_mode = (string) ( $status['environment_sync_mode'] ?? MAD4B_SCP_Site_Profile::ENV_SYNC_PROFILE_ONLY );
+		$sync_state = (string) ( $status['environment_sync_state'] ?? 'profile_only' );
+		$host_directive = 'awaiting_host_bootstrap' === $sync_state
+			&& ! empty( $status['authority_ready'] )
+			&& in_array( $selected_environment, array( 'local', 'development', 'staging' ), true )
+			? "define( 'WP_ENVIRONMENT_TYPE', '" . $selected_environment . "' );" : '';
+
 		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_site_profile' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
 		<div class="wrap" id="mad4b-site-profile-workspace">
@@ -236,6 +249,10 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<?php if ( '' !== $state ) : ?><div class="notice notice-info"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
 			<table class="widefat striped" style="max-width:1000px;margin:1em 0">
 				<tbody>
+				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> · <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. Host-Managed Sync is an explicit, restart-verified host configuration workflow; saving the profile never edits wp-config.php or grants host write authority.', 'mad4b-site-control-plane' ); ?></p>
+				<?php if ( 'blocked_missing_deployment_binding' === $sync_state ) : ?><div class="notice notice-warning inline"><p><?php esc_html_e( 'Configure a unique MAD4B_SCP_DEPLOYMENT_BINDING secret at this host and save the exact Site Profile again before planning Host-Managed Sync. Do not use a shared secret between Production and Staging.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
+				<?php if ( 'blocked_explicit_host_conflict' === $sync_state ) : ?><div class="notice notice-error inline"><p><?php esc_html_e( 'Host declares another environment explicitly. Site Profile cannot override it; reconcile at the Host after checking its identity.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
+				<?php if ( '' !== $host_directive ) : ?><p><?php esc_html_e( 'Host bootstrap action (requires an authorized Host provider; insert before wp-settings.php, then reload and verify):', 'mad4b-site-control-plane' ); ?></p><pre><code><?php echo esc_html( $host_directive ); ?></code></pre><?php endif; ?></td></tr>
 				<tr><th><?php esc_html_e( 'WordPress environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $resolution['wordpress_environment'] ); ?></code> <small>(<?php echo ! empty( $resolution['wordpress_environment_explicit'] ) ? esc_html__( 'explicit', 'mad4b-site-control-plane' ) : esc_html__( 'default', 'mad4b-site-control-plane' ); ?>)</small></td></tr>
 				<tr><th><?php esc_html_e( 'MAD4B effective environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['environment'] ); ?></code> <small>(<?php echo esc_html( (string) $resolution['effective_source'] ); ?>)</small></td></tr>
 				<tr><th><?php esc_html_e( 'Suggested enrollment environment', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( $suggested_environment ); ?></code><br /><span class="description"><?php esc_html_e( 'Hostname classification is advisory only. It never grants OAuth, Write, Skills, or Breakglass authority.', 'mad4b-site-control-plane' ); ?></span></td></tr>
@@ -260,7 +277,14 @@ final class MAD4B_SCP_Site_Profile_Admin {
 							<option value="<?php echo esc_attr( $environment_option ); ?>" <?php echo $selected_environment === $environment_option ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $environment_option ) ); ?></option>
 						<?php endforeach; ?>
 						</select>
-						<p class="description"><?php esc_html_e( 'No wp-config.php edit is required when WordPress is using its implicit Production default. Saving binds the selected environment to this exact origin; an explicitly configured WordPress environment always wins, and copied profiles remain quarantined.', 'mad4b-site-control-plane' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Profile Only can use the confirmed implicit WordPress Production default without editing wp-config.php. Host-Managed Sync requires an independent Host change before WordPress boots, plus exact readback. Explicit WordPress settings always win.', 'mad4b-site-control-plane' ); ?></p>
+					</td></tr>
+					<tr><th><label for="mad4b-environment-sync-mode"><?php esc_html_e( 'WordPress environment synchronization', 'mad4b-site-control-plane' ); ?></label></th><td>
+						<select id="mad4b-environment-sync-mode" name="environment_sync_mode">
+							<option value="profile_only" <?php selected( $sync_mode, 'profile_only' ); ?>><?php esc_html_e( 'Profile Only (MAD4B governance)', 'mad4b-site-control-plane' ); ?></option>
+							<option value="host_managed" <?php selected( $sync_mode, 'host_managed' ); ?>><?php esc_html_e( 'Host-Managed Sync (non-Production; Host applies, WordPress verifies)', 'mad4b-site-control-plane' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'Host-Managed Sync records the requested mode only. It does not modify WordPress bootstrap in this request. A separate authorized host deployment must set WP_ENVIRONMENT_TYPE and the unique deployment binding; a fresh boot must read them back.', 'mad4b-site-control-plane' ); ?></p>
 					</td></tr>
 					<tr><th><label for="mad4b-display-name"><?php esc_html_e( 'Display name', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-display-name" name="display_name" value="<?php echo esc_attr( isset( $profile['display_name'] ) ? $profile['display_name'] : get_bloginfo( 'name' ) ); ?>" /></td></tr>
 					<tr><th><label for="mad4b-app-id"><?php esc_html_e( 'ChatGPT App ID', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-app-id" name="chatgpt_app_id" value="<?php echo esc_attr( MAD4B_SCP_Site_Profile::chatgpt_app_id() ); ?>" placeholder="plugin_asdk_app_..." /></td></tr>

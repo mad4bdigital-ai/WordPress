@@ -52,6 +52,27 @@ register_shutdown_function( function () use ( $root ) { journey_remove( $root );
 mkdir( WP_PLUGIN_DIR . '/mcp-adapter', 0700, true ); mkdir( WPMU_PLUGIN_DIR, 0700, true );
 $destination=WPMU_PLUGIN_DIR . '/000-mad4b-mcp-adapter-bootstrap.php';
 $GLOBALS['assertions']=0; $journeys=0;
+// Host sync is a profile preference plus a separately verified host operation.
+// Neither explicit Production nor a missing deployment secret can be overridden.
+$sync_cases = array(
+ array('profile_only','staging','production',false,true,false,'profile_only'),
+ array('profile_only','production','production',true,true,false,'profile_only'),
+ array('host_managed','staging','production',false,false,false,'blocked_profile_identity'),
+ array('host_managed','staging','production',false,true,false,'blocked_missing_deployment_binding'),
+ array('host_managed','staging','production',false,true,true,'awaiting_host_bootstrap'),
+ array('host_managed','staging','staging',true,true,true,'host_aligned'),
+ array('host_managed','staging','production',true,true,true,'blocked_explicit_host_conflict'),
+ array('host_managed','production','production',true,true,true,'blocked_production_or_invalid_target'),
+ array('host_managed','invalid','production',false,true,true,'blocked_production_or_invalid_target'),
+ array('invented','staging','staging',true,true,true,'blocked_invalid_mode'),
+ array('host_managed','development','development',true,true,true,'host_aligned'),
+ array('host_managed','local','production',false,true,true,'awaiting_host_bootstrap')
+);
+foreach($sync_cases as $case) {
+ $actual = MAD4B_SCP_Site_Profile::host_environment_sync_assessment($case[0],$case[1],$case[2],$case[3],$case[4],$case[5]);
+ journey_check($actual === $case[6], 'host-managed synchronization did not fail closed: ' . implode(':',$case));
+}
+
 putenv( 'WP_ENVIRONMENT_TYPE' );
 $_SERVER['REQUEST_METHOD']='POST'; $_POST=array( 'action'=>'mad4b_repair_mcp_runtime', 'nonce'=>'valid', 'build'=>'journey-build' );
 $environments=array( 'local', 'development', 'staging', 'production' );
@@ -63,7 +84,8 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  if ( file_exists( $destination ) ) unlink( $destination ); MAD4B_SCP_Site_Profile::reset_cache();
  journey_check( ! MAD4B_SCP_Site_Profile::configured() && ! MAD4B_SCP_Site_Profile::oauth_enabled() && ! MAD4B_SCP_Site_Profile::write_enabled() && ! MAD4B_SCP_Site_Profile::skills_enabled(), 'fresh install granted authority' );
  MAD4B_SCP_MCP_Runtime_Recovery::schedule(); journey_check( empty( $scheduled ), 'fresh install scheduled repair' );
- $input=array( 'environment'=>$selected, 'expected_revision'=>0, 'oauth_user_ids'=>array(7), 'oauth_enabled'=>true, 'skills_enabled'=>true, 'managed_runtime_enabled'=>true, 'write_enabled'=>false );
+ $sync_requested = $explicit && $wordpress === $selected && 'production' !== $selected ? 'host_managed' : 'profile_only';
+ $input=array( 'environment'=>$selected, 'environment_sync_mode'=>$sync_requested, 'expected_revision'=>0, 'oauth_user_ids'=>array(7), 'oauth_enabled'=>true, 'skills_enabled'=>true, 'managed_runtime_enabled'=>true, 'write_enabled'=>false );
  if(!$explicit && 'production'===$wordpress && 'production'!==$selected){$input['nonproduction_override_confirmed']=true;$input['nonproduction_override_confirmation']=MAD4B_SCP_Site_Profile::NONPRODUCTION_OVERRIDE_CONFIRMATION;}
  $result=MAD4B_SCP_Site_Profile::save_current_site( $input );
  // Without a WP declaration, only the implicit Production default can be overridden.
@@ -73,12 +95,23 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
   journey_check( false===get_option( MAD4B_SCP_Site_Profile::OPTION ) && 0===$saved_hooks && empty($scheduled), 'denied enrollment persisted/scheduled' ); continue;
  }
  journey_check( ! is_wp_error( $result ), 'valid enrollment failed' );
+ $enrolled_sync = MAD4B_SCP_Site_Profile::status();
+ journey_check( $enrolled_sync['environment_sync_mode'] === $sync_requested, 'synchronization mode was not persisted with exact Site Profile identity' );
+ journey_check( $sync_requested !== 'host_managed' || $enrolled_sync['environment_sync_state'] === 'blocked_missing_deployment_binding', 'host-managed mode claimed synchronization without host binding' );
  $effective=$wordpress===$selected || 'production'===$wordpress ? $selected : $wordpress;
  $enrolled=$effective===$selected;
  journey_check( $effective===MAD4B_SCP_Site_Profile::current_environment() && $enrolled===MAD4B_SCP_Site_Profile::origin_enrolled(), 'effective environment mismatch' );
  $eligible=$enrolled && 'production'!==$selected;
  journey_check( $eligible===MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'] && $eligible===isset($scheduled[MAD4B_SCP_MCP_Runtime_Recovery::HOOK]), 'regular/MU/scheduled eligibility diverged' );
  $uuid=MAD4B_SCP_Site_Profile::site_uuid(); $before=get_option(MAD4B_SCP_Site_Profile::OPTION); $hook_count=$saved_hooks;
+ $invalid_mode_input=$input; $invalid_mode_input['expected_revision']=1; $invalid_mode_input['environment_sync_mode']='unexpected';
+ $invalid_mode=MAD4B_SCP_Site_Profile::save_current_site($invalid_mode_input);
+ journey_check(is_wp_error($invalid_mode) && 'mad4b_site_profile_environment_sync_mode_invalid'===$invalid_mode->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION), 'invalid environment sync mode changed exact profile');
+ if ('production'===$selected) {
+  $unsafe_sync_input=$input; $unsafe_sync_input['expected_revision']=1; $unsafe_sync_input['environment_sync_mode']='host_managed';
+  $unsafe_sync=MAD4B_SCP_Site_Profile::save_current_site($unsafe_sync_input);
+  journey_check(is_wp_error($unsafe_sync) && 'mad4b_site_profile_host_sync_production_denied'===$unsafe_sync->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION), 'host-managed Production downgrade was accepted');
+ }
  $stale=MAD4B_SCP_Site_Profile::save_current_site($input);
  journey_check( is_wp_error($stale) && 'mad4b_site_profile_stale'===$stale->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION) && $hook_count===$saved_hooks, 'stale browser form mutated enrollment' );
  $input['expected_revision']=1; $input['write_enabled']=true;
