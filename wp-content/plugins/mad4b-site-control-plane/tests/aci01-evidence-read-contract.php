@@ -159,6 +159,17 @@ check($duplicate['provenance_observation']['distinct_request_observations']===1 
 check($duplicate['provenance_observation']['excluded_duplicate_artifact_ids']===array(
     '44444444-4444-4444-8444-444444444444'),
     'excluded immutable duplicate points to second artifact');
+check($duplicate['evidence_coverage_handoff']['target_artifact_type']==='evidence_coverage_matrix' &&
+    $duplicate['evidence_coverage_handoff']['existing_append_ability']==='mad4b/artifact-append',
+    'coverage proposal reuses existing immutable Artifact Registry');
+check($duplicate['evidence_coverage_handoff']['observed_research_artifact_ids']===array($art) &&
+    $duplicate['evidence_coverage_handoff']['excluded_duplicate_artifact_ids']===array(
+        '44444444-4444-4444-8444-444444444444'),
+    'only canonical research artifacts appear in handoff proposal');
+check($duplicate['evidence_coverage_handoff']['dispatch_allowed']===false &&
+    $duplicate['evidence_coverage_handoff']['artifact_created']===false &&
+    $duplicate['evidence_coverage_handoff']['source_rights_verified']===false,
+    'coverage proposal never creates artifacts or independently certifies rights');
 check(in_array('duplicate_research_request_observed',$duplicate['reason_codes'],true),
     'duplicate fact not counted as fresh independent evidence');
 $reversed=$service::project($job,$jobRow,$ctx,array($b,$a),604800,$scope,
