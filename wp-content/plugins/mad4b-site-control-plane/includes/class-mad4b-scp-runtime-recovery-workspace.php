@@ -122,6 +122,18 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		echo '<p>' . esc_html__( 'These are live, site-scoped observations. Opening a workspace does not approve, execute or certify a repair.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><strong>' . esc_html__( 'State:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $model['state'] ) . '</code> · ';
 		echo esc_html( sprintf( __( '%d planned actions', 'mad4b-site-control-plane' ), $model['action_count'] ) ) . '</p>';
+		if ( ! empty( $lifecycle['identity_bound'] ) && isset( $plan['readiness_domains'] ) && is_array( $plan['readiness_domains'] ) ) {
+			echo '<p><strong>' . esc_html__( 'Readiness by domain:', 'mad4b-site-control-plane' ) . '</strong></p>';
+			echo '<ul class="ul-disc">';
+			foreach ( $plan['readiness_domains'] as $domain => $domain_state ) {
+				if ( ! is_array( $domain_state ) ) continue;
+				$name = is_string( $domain ) ? sanitize_key( $domain ) : 'unknown';
+				echo '<li><code>' . esc_html( $name ) . '</code>: ';
+				echo esc_html( ! empty( $domain_state['ready'] ) ? 'OBSERVED_READY' : 'PENDING_OR_BLOCKED' );
+				echo '</li>';
+			}
+			echo '</ul>';
+		}
 		if ( $model['blocking_gates'] ) {
 			echo '<p><strong>' . esc_html__( 'Pending gates:', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html( implode( ', ', $model['blocking_gates'] ) ) . '</p>';
