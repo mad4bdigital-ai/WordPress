@@ -58,6 +58,12 @@ final class MAD4B_SCP_Content_Experience_Governance {
 		if ( ! empty( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ) {
 			$payload['media_meta_fields'] = $profile['media_meta_fields'];
 		}
+		// Bind all new ACI01 recipe obligations into the same profile authority
+		// digest and native descriptor generation. Historical profiles without
+		// this optional key keep their original hash until governed re-apply.
+		// Do not normalize corrupt stored arrays here: their digest must drift.
+		if ( array_key_exists( 'aci01_recipe_variants', $profile ) )
+			$payload['aci01_recipe_variants'] = $profile['aci01_recipe_variants'];
 		return $payload;
 	}
 

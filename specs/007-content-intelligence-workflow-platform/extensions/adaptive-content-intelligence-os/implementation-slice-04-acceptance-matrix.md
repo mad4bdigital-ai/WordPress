@@ -42,3 +42,17 @@ python wp-content/plugins/mad4b-site-control-plane/tests/feature007-manual-prefl
 ```
 
 Only actual executed commands may be recorded as PASS, pinned to one Git Blob / exact commit.
+
+## Follow-on source slice — Exact-scope Content Recipe resolution (P0-B)
+
+Source path: `MAD4B_SCP_Content_Experience_Profiles` persists bounded `aci01_recipe_variants` inside its existing governed, revisioned `profile-plan` / `profile-apply` path, rather than creating a new option, schema, direct write route or parallel authority registry.
+
+Each variant explicitly declares `site_uuid`, `brand_id`, `locale`, `market`, and 1–40 typed requirement identifiers. There is **no default**, wildcard, cross-site, cross-brand, cross-market or fallback locale. A profile supports at most 24 variants; duplicate scopes, duplicate requirements, malformed facts and foreign site IDs are rejected by the existing profile planning operation.
+
+**Critical governance guard:** `MAD4B_SCP_Content_Experience_Governance::authority_payload()` now includes the optional `aci01_recipe_variants` in the existing profile authority digest and descriptor generation. Historical profiles without the key retain their historical hash until explicitly revised. Tampering with stored variant requirements without corresponding authority revision causes the existing `current_guard` to fail. The `ACI01_Recipe_Gap::resolve_current()` reader additionally checks profile authority, revision, post type, canonical site and exact per-market dimensions and rechecks profile status to deny a changing snapshot.
+
+The Opportunity candidate uses `resolve_current` rather than passing a permanent `null` recipe to `evaluate`. An exact-scoped declaration contributes specific missing fact keys; missing configuration still presents `reviewed_domain_recipe` without inventing a generic recipe; invalid authority denies the candidate. The existing `mad4b/blueprint-build` handoff is unchanged and **never auto-dispatched**.
+
+**Limits:** a governed profile declaration is **not** a standalone editorial acceptance, rights license, verified field owner, independent source receipt, AI quality certificate, or write grant. `Recipe_Gap::evaluate` continues returning `NEEDS_EVIDENCE` and `source_receipts_independently_certified=false`. Runtime and release gates must still enforce live approval, fresh scope and downstream factual attestations. No site-specific recipe rows are seeded automatically.
+
+**Adversarial PHP fixtures added, execution NOT_RUN until an exact-source PHP environment is available:** brand/locale/market mismatch, duplicate scoped variant, duplicate fact, unknown key, oversized variant registry and requirement list, foreign site, wildcard language, stale profile revision, revoked authority and changed profile status during resolution. Legacy authority hash compatibility and stored recipe tamper rejection are separately covered. Source presence and hypothetical fixture expectations must not be reported as executed PHP PASS.

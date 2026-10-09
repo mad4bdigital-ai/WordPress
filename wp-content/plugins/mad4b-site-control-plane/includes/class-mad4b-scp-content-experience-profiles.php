@@ -199,6 +199,61 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return hash( 'sha256', wp_json_encode( self::helper_catalog(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
+	/**
+	 * ACI01 content requirements are operator-declared data under the existing
+	 * governed Content Experience Profile plan/apply/revision. No second store,
+	 * wildcard locale, cross-site fallback or self-certified factual receipt.
+	 */
+	private static function normalize_aci01_recipe_variants( $rows ) {
+		if ( ! is_array( $rows ) || count( $rows ) > 24 )
+			return new WP_Error( 'mad4b_aci01_recipe_registry_invalid', 'Content recipe variants must be a bounded array.' );
+		if ( empty( $rows ) ) return array();
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_aci01_recipe_site_unavailable', 'Recipe scope needs the enrolled site identity.' );
+		$site_uuid = strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() );
+		if ( ! preg_match( '/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/D', $site_uuid ) )
+			return new WP_Error( 'mad4b_aci01_recipe_site_invalid', 'Current site identity is not bound.' );
+		$out = array();
+		$seen = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) || array_diff( array_keys( $row ), array(
+					'site_uuid', 'brand_id', 'locale', 'market', 'requirements' ) ) )
+				return new WP_Error( 'mad4b_aci01_recipe_fields_invalid', 'Recipe contains unrecognized or malformed fields.' );
+			foreach ( array( 'site_uuid', 'brand_id', 'locale', 'market' ) as $key )
+				if ( ! isset( $row[$key] ) || ! is_string( $row[$key] ) )
+					return new WP_Error( 'mad4b_aci01_recipe_scope_invalid', 'Exact recipe dimensions are required.' );
+			$uuid = strtolower( $row['site_uuid'] );
+			$brand = $row['brand_id'];
+			$locale = $row['locale'];
+			$market = strtoupper( $row['market'] );
+			if ( $uuid !== $site_uuid ||
+				! preg_match( '/^[A-Za-z0-9_.:-]{1,80}$/D', $brand ) ||
+				! preg_match( '/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/D', $locale ) ||
+				! preg_match( '/^[A-Z]{2}$/D', $market ) ||
+				! isset( $row['requirements'] ) || ! is_array( $row['requirements'] ) ||
+				count( $row['requirements'] ) < 1 || count( $row['requirements'] ) > 40 )
+				return new WP_Error( 'mad4b_aci01_recipe_scope_invalid', 'Recipe scope or bounded requirements invalid.' );
+			$key = $uuid . '|' . $brand . '|' . $locale . '|' . $market;
+			if ( isset( $seen[$key] ) )
+				return new WP_Error( 'mad4b_aci01_recipe_duplicate_scope', 'Only one recipe is permitted for an exact site, brand, locale and market.' );
+			$seen[$key] = true;
+			$req = array();
+			foreach ( $row['requirements'] as $requirement ) {
+				if ( ! is_string( $requirement ) ||
+					! preg_match( '/^[a-z][a-z0-9_.-]{1,79}$/D', $requirement ) ||
+					isset( $req[$requirement] ) )
+					return new WP_Error( 'mad4b_aci01_recipe_requirement_invalid', 'Requirements must be distinct bounded identifiers.' );
+				$req[$requirement] = true;
+			}
+			$keys = array_keys( $req );
+			sort( $keys, SORT_STRING );
+			$out[$key] = array( 'site_uuid' => $uuid, 'brand_id' => $brand,
+				'locale' => $locale, 'market' => $market, 'requirements' => $keys );
+		}
+		ksort( $out, SORT_STRING );
+		return array_values( $out );
+	}
+
 	private static function normalize_profile( array $raw, $next_revision ) {
 		$slug = self::route_slug( isset( $raw['slug'] ) ? $raw['slug'] : '' );
 		if ( is_wp_error( $slug ) ) return $slug;
@@ -274,6 +329,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			return new WP_Error( 'mad4b_content_experience_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
 		}
 
+		$aci01_recipe_variants = self::normalize_aci01_recipe_variants(
+			isset( $raw['aci01_recipe_variants'] ) ? $raw['aci01_recipe_variants'] : array() );
+		if ( is_wp_error( $aci01_recipe_variants ) ) return $aci01_recipe_variants;
+
 		$profile = array(
 			'contract' => self::CONTRACT,
 			'slug' => $slug,
@@ -294,6 +353,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'enabled_helpers' => $enabled_helpers,
 			'helper_bindings' => $helper_bindings,
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
+			'aci01_recipe_variants' => $aci01_recipe_variants,
 			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
 		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
