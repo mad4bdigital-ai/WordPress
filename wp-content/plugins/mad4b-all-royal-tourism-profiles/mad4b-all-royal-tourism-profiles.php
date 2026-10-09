@@ -5,6 +5,7 @@
  * Version: 0.1.0
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
+require_once __DIR__ . '/includes/class-allroyal-dmc-exchange.php';
 
 final class MAD4B_All_Royal_Tourism_Profiles {
     const CONTRACT = 'allroyal.tourism-profiles.v1';
@@ -23,6 +24,7 @@ final class MAD4B_All_Royal_Tourism_Profiles {
         $host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
         return is_string( $host ) && in_array( strtolower( $host ), self::DOMAINS, true );
     }
+    public static function can_read() { return self::site_matches() && current_user_can( 'list_users' ); }
     public static function can_write() {
         return self::site_matches() && current_user_can( 'create_users' ) && current_user_can( 'edit_users' )
             && current_user_can( 'edit_posts' )
@@ -173,12 +175,21 @@ final class MAD4B_All_Royal_Tourism_Profiles {
             'relation_confirmed' => true, 'profile_status' => 'draft',
             'mutation_performed' => true, 'production_mutation' => false );
     }
+    public static function dmc_plan( $input = array() ) { return MAD4B_All_Royal_DMC_Exchange::plan( $input ); }
+    public static function dmc_import_prepare( $input = array() ) { return MAD4B_All_Royal_DMC_Exchange::import_prepare( $input ); }
+    public static function dmc_export_preview( $input = array() ) { return MAD4B_All_Royal_DMC_Exchange::export_preview( $input ); }
+    public static function dmc_configure( $input = array() ) { return MAD4B_All_Royal_DMC_Exchange::configure( $input ); }
+
     public static function register() {
         if ( ! self::site_matches() || ! function_exists( 'wp_register_ability' ) ) return;
         foreach ( array(
             'allroyal/profile-model' => array( 'model', 'read' ),
             'allroyal/profile-plan' => array( 'plan', 'read' ),
             'allroyal/profile-apply' => array( 'apply', 'write' ),
+            'allroyal/dmc-exchange-plan' => array( 'dmc_plan', 'read' ),
+            'allroyal/dmc-import-prepare' => array( 'dmc_import_prepare', 'read' ),
+            'allroyal/dmc-export-preview' => array( 'dmc_export_preview', 'read' ),
+            'allroyal/dmc-exchange-configure' => array( 'dmc_configure', 'write' ),
         ) as $name => $def ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
             wp_register_ability( $name, array(
@@ -186,8 +197,8 @@ final class MAD4B_All_Royal_Tourism_Profiles {
                 'description' => 'All Royal site-specific WordPress users and tourism CPT relations.',
                 'category' => 'mad4b-' . $def[1],
                 'execute_callback' => array( __CLASS__, $def[0] ),
-                'permission_callback' => 'apply' === $def[0]
-                    ? array( __CLASS__, 'can_write' ) : function () { return current_user_can( 'list_users' ); },
+                'permission_callback' => 'write' === $def[1]
+                    ? array( __CLASS__, 'can_write' ) : array( __CLASS__, 'can_read' ),
                 'input_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
             ) );
