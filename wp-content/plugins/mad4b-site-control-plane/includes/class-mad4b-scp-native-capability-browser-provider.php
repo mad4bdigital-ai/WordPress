@@ -89,6 +89,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             'provider_contract' => self::CONTRACT, 'provider_id' => self::ID,
             'profile_id' => self::PROFILE, 'suite' => 'browser_runtime',
             'read_only' => true, 'authorizing' => false,
+            'release_ready' => false, 'globally_unique_consumption_proven' => false,
             'blocking_reasons' => array_values( array_unique( (array) $reasons ) ),
         );
         if ( 'plan' === $kind ) return $base + array(
@@ -347,6 +348,11 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             'provider_id' => self::ID, 'profile_id' => self::PROFILE,
             'suite' => 'browser_runtime', 'plan_digest' => $plan['plan_digest'],
             'read_only' => true, 'authorizing' => false, 'receipt_authorizing' => false,
+            // Observation parity is deliberately not an anti-replay or release
+            // certificate. Consumption is a distinct governed write authority.
+            'release_ready' => false,
+            'globally_unique_consumption_proven' => false,
+            'consumption_authority' => 'separate_governed_authority_required',
             'evidence_digest' => $evidence_digest, 'receipt_signature' => $receipt_signature,
             'verdict' => $verdict, 'classification' => $match ? 'NO_CONFIRMED_DEFECT' : 'PRODUCT_DEFECT',
             'verification' => array(
