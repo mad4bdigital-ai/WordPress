@@ -21,6 +21,10 @@ for text in (
     "'requires_signed_context_receipt'=>true",
     "'requires_exact_mutation_approval'=>true",
     "'requires_acceptance_receipt_verification'=>true",
+    "'mad4b/publication-verification-evaluate'",
+    "'origin_and_edge_observations_required'=>true",
+    "'required_inputs'=>array('required_dimensions','origin','public_edge'",
+
     "'requires_separate_exact_mutation_approval'=>true",
     "'independent_readback_required'=>true",
     "'policy_bypass_allowed'=>false",
