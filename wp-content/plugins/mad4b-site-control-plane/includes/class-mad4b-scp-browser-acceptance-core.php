@@ -446,14 +446,17 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'probe_type' => $string160,
 				'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
 				'observed' => array(
-					'type' => 'object', 'maxProperties' => 4,
+					// Site-neutral observation DATA is bounded by size/depth/nodes.
+					// No site-supplied scripts/selectors are executable by Core.
+					// Provider reducers validate their own strict semantic keys.
+					'type' => 'object', 'maxProperties' => 12,
 					'properties' => array(
 						'path' => $string2048,
 						'title_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
 						'marker_key' => $string160,
 						'count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
 					),
-					'additionalProperties' => false,
+					'additionalProperties' => true,
 				),
 				'matches_expected' => array( 'type' => 'boolean' ),
 				'certification_issued' => array( 'type' => 'boolean' ),
@@ -495,7 +498,10 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'evidence' => array(
 					'type' => 'object', 'maxProperties' => 9,
 					'properties' => array(
-						'contract' => array( 'type' => 'string', 'enum' => array( 'etg.dfsb.browser-acceptance-evidence.v1', 'mad4b.capability-browser-evidence.v1' ) ),
+						// The Core validates a bounded envelope; the selected registered
+						// provider validates the exact versioned Evidence contract.
+						// Never hard-code ETG or a particular site's contract here.
+						'contract' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 160, 'pattern' => '^[a-z][a-z0-9._-]{2,159}$' ),
 						'plan_digest' => $hex64,
 						'plan_signature' => $hex64,
 						'origin' => $string2048,
