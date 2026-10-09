@@ -24,8 +24,19 @@ final class MAD4B_SCP_ACI01_Recipe_Gap {
         foreach ( array( 'site_uuid', 'brand_id', 'locale', 'market' ) as $field )
             if ( ! isset( $scope[$field] ) || ! is_string( $scope[$field] ) || $scope[$field] === '' )
                 return self::resolved_denied( 'recipe_scope_missing' );
-        foreach ( array( 'profile_slug', 'profile_revision', 'profile_authority_sha256' ) as $field )
-            if ( ! isset( $mapping[$field] ) ) return self::resolved_denied( 'recipe_profile_identity_missing' );
+        if ( ( $semantic['contract'] ?? null ) !== 'mad4b.aci01.semantic-recipe.v1'
+            || ( $semantic['status'] ?? null ) !== 'NEEDS_EVIDENCE'
+            || ! empty( $semantic['authorizing'] )
+            || ! is_string( $semantic['semantic_fingerprint_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $semantic['semantic_fingerprint_sha256'] )
+            || ! is_string( $mapping['profile_slug'] ?? null )
+            || ! preg_match( '/^[a-z0-9-]{2,48}$/D', $mapping['profile_slug'] )
+            || ! is_int( $mapping['profile_revision'] ?? null )
+            || $mapping['profile_revision'] < 1
+            || ! is_string( $mapping['profile_authority_sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $mapping['profile_authority_sha256'] )
+            || ! is_string( $mapping['post_type'] ?? null ) )
+            return self::resolved_denied( 'recipe_profile_identity_missing' );
         $status = MAD4B_SCP_Content_Experience_Profiles::profile_status( array() );
         if ( ! is_array( $status ) || ( $status['contract'] ?? '' ) !== 'mad4b.content-experience-profiles.v1'
             || ! is_array( $status['profiles'] ?? null ) )
