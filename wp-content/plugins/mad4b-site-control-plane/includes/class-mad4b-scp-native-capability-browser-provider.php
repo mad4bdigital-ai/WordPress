@@ -284,7 +284,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ) ) ||
             ! is_array( $evidence['observer'] ?? null ) ||
             array_diff( array_keys( $evidence['observer'] ), array(
-                'contract', 'javascript_runtime', 'browser_engine',
+                'contract', 'javascript_runtime', 'runner_javascript_runtime',
+                'page_javascript_enabled', 'browser_engine',
                 'execution_mode', 'plan_issued_at'
             ) ) ) {
             return self::blocked( 'result', array( 'browser_evidence_unknown_fields' ) );
@@ -294,6 +295,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ( $evidence['build_identity'] ?? null ) !== $plan['build_identity'] ||
             ( $evidence['observer']['contract'] ?? '' ) !== 'mad4b.capability-browser-observer.v1' ||
             ( $evidence['observer']['javascript_runtime'] ?? null ) !== true ||
+            ( $evidence['observer']['runner_javascript_runtime'] ?? null ) !== true ||
+            ( $evidence['observer']['page_javascript_enabled'] ?? null ) !== false ||
             ( $evidence['observer']['execution_mode'] ?? '' ) !== 'managed_browser_agent' ||
             ! is_string( $evidence['observer']['browser_engine'] ?? null ) ||
             ! preg_match( '/^[\\x20-\\x7e]{1,160}$/D', $evidence['observer']['browser_engine'] ) ) {
@@ -389,7 +392,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
 
     private static function canonicalize( $value ) {
         if ( ! is_array( $value ) ) return $value;
-        $list = array_keys( $value ) === range( 0, count( $value ) - 1 );
+        // PHP range(0, -1) is not empty; [] must stay a JSON list.
+        $list = 0 === count( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
         if ( $list ) return array_map( array( __CLASS__, 'canonicalize' ), $value );
         ksort( $value, SORT_STRING );
         foreach ( $value as $k => $v ) $value[ $k ] = self::canonicalize( $v );
