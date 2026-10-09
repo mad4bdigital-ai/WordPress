@@ -264,6 +264,41 @@ foreach($forged['qa_artifact_ids'] as $id){
         'QA component must override caller-forged approval flags');
 }
 
+// All three QA components must pass shape/typed-blocker admission
+// *before* the first Artifact is appended.
+$rows_before=count(MAD4B_SCP_Artifacts::$rows);
+$links_before=count(MAD4B_SCP_Artifacts::$links);
+$missing_second=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
+    'job_id'=>$job,'draft_artifact_id'=>$draft_id,
+    'fact_ledger'=>array('claims'=>array(),'hard_blockers'=>array()),
+    'seo_qa'=>array('findings'=>array(),'hard_blockers'=>array()),
+));
+$check(is_wp_error($missing_second)
+    &&'mad4b_qa_component_required'===$missing_second->get_error_code()
+    &&count(MAD4B_SCP_Artifacts::$rows)===$rows_before
+    &&count(MAD4B_SCP_Artifacts::$links)===$links_before,
+    'Missing QA component left partial immutable Artifact side effects');
+$bad_blocker=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
+    'job_id'=>$job,'draft_artifact_id'=>$draft_id,
+    'fact_ledger'=>array('claims'=>array(),'hard_blockers'=>array()),
+    'editorial_qa'=>array('hard_blockers'=>array('../unsafe_instruction')),
+    'seo_qa'=>array('hard_blockers'=>array()),
+));
+$check(is_wp_error($bad_blocker)
+    &&'mad4b_qa_blocker_invalid'===$bad_blocker->get_error_code()
+    &&count(MAD4B_SCP_Artifacts::$rows)===$rows_before,
+    'Injected QA reason code wrote a partial Artifact');
+$bad_shape=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
+    'job_id'=>$job,'draft_artifact_id'=>$draft_id,
+    'fact_ledger'=>array('hard_blockers'=>array()),
+    'editorial_qa'=>array('hard_blockers'=>array()),
+    'seo_qa'=>array('hard_blockers'=>'not-an-array'),
+));
+$check(is_wp_error($bad_shape)
+    &&'mad4b_qa_component_shape_invalid'===$bad_shape->get_error_code()
+    &&count(MAD4B_SCP_Artifacts::$rows)===$rows_before,
+    'Malformed final QA component wrote a partial Artifact');
+
 // Changing the ContentJob WriterProfile after Context/Draft creation must fail closed.
 MAD4B_SCP_Content_Jobs::$writer_profile_version='4';
 $writer_drift=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
