@@ -27,8 +27,7 @@ final class MAD4B_SCP_Staging_Source_Selector {
 	}
 
 	public static function normalize( $input ) {
-		if ( ! is_array( $input ) || array_keys( $input ) !== array_values( array_intersect( array( 'repository', 'type', 'reference' ), array_keys( $input ) ) )
-			&& array_diff( array_keys( $input ), array( 'repository', 'type', 'reference' ) ) ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'repository', 'type', 'reference' ) ) ) {
 			return self::reject( 'schema_invalid', 'Staging source must contain only repository, type, and reference.' );
 		}
 		if ( ! isset( $input['repository'], $input['type'], $input['reference'] )
@@ -81,7 +80,7 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		$response = wp_remote_get( $url, array(
 			'timeout' => 8,
 			'redirection' => 0,
-			'limit_response_size' => 16384,
+			'limit_response_size' => 262144,
 			'sslverify' => true,
 			'headers' => array(
 				'Accept' => 'application/vnd.github+json',
@@ -92,7 +91,7 @@ final class MAD4B_SCP_Staging_Source_Selector {
 			return self::reject( 'lookup_failed', 'Repository source reference cannot be verified against GitHub.' );
 		}
 		$raw = wp_remote_retrieve_body( $response );
-		if ( ! is_string( $raw ) || strlen( $raw ) > 16384 ) return self::reject( 'response_invalid', 'Source resolution response is invalid.' );
+		if ( ! is_string( $raw ) || strlen( $raw ) > 262144 ) return self::reject( 'response_invalid', 'Source resolution response is invalid.' );
 		$data = json_decode( $raw, true );
 		if ( ! is_array( $data ) ) return self::reject( 'response_invalid', 'Source resolution did not return a JSON object.' );
 		if ( 'pull_request' === $type ) {
