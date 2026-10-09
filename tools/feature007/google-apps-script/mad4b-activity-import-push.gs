@@ -6,7 +6,7 @@
  * Script Properties required:
  * MAD4B_SPREADSHEET_ID, MAD4B_SHEET_NAME, MAD4B_PROFILE_SLUG,
  * MAD4B_SITE_UUID, MAD4B_WEBHOOK_URL, MAD4B_WEBHOOK_SECRET, MAD4B_WEBHOOK_KEY_ID,
- * MAD4B_IDENTITY_FIELD, MAD4B_CURRENCY_ALLOWLIST_JSON
+ * MAD4B_IDENTITY_FIELD (local input check only; site policy is authoritative)
  *
  * Convert XLSX to native Google Sheets first; SpreadsheetApp.openById()
  * does not itself make an XLSX file into a native spreadsheet.
@@ -24,8 +24,6 @@ function mad4bImportSettings_() {
   }
   const secret = get('MAD4B_WEBHOOK_SECRET');
   if (secret.length < 32) throw new Error('Site-scoped webhook secret must be >=32 bytes');
-  const currencies = JSON.parse(get('MAD4B_CURRENCY_ALLOWLIST_JSON'));
-  if (!Array.isArray(currencies) || currencies.length > 20) throw new Error('Currency allowlist invalid');
   return {
     spreadsheet: get('MAD4B_SPREADSHEET_ID'),
     tab: get('MAD4B_SHEET_NAME'),
@@ -34,9 +32,7 @@ function mad4bImportSettings_() {
     url: url,
     secret: secret,
     keyId: get('MAD4B_WEBHOOK_KEY_ID'),
-    currencies: currencies,
-    pricePolicy: props.getProperty('MAD4B_PRICE_POLICY') || 'none',
-    reviewPastIntervals: props.getProperty('MAD4B_REVIEW_PAST_INTERVALS') === 'true'
+    idKey: get('MAD4B_IDENTITY_FIELD')
   };
 }
 function mad4bHex_(signedBytes) {
@@ -70,7 +66,8 @@ function mad4bPushRatesForReview() {
       throw new Error('Headers must be unique safe identifiers and contain unique-ID field');
     const rows = data.slice(1).filter(row => row.some(v => v !== '' && v !== null))
       .map(row => Object.fromEntries(headers.map((h, i) => [h, mad4bCell_(row[i])])));
-    const fieldMapping = {}; // Bind approved meta keys in the governed site profile separately.
+    // The source transports rows only; source-side policy values are ignored
+    // and cannot widen the administrator-owned import contract.
     const input = {
       profile_slug: cfg.profile,
       headers: headers, rows: rows
