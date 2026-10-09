@@ -627,8 +627,8 @@ The administration screen never directly applies grants, packages or executable
 remediation; existing governed native/external owners are still responsible for
 authorization, execution, independently verified readback and compensation.
 
-The planner distinguishes **Core Runtime**, **Governed Write**, **Managed Skills**,
-**Feature Integrations** and **Release Acceptance**. These are separately observed
+The planner distinguishes **Package/MCP observation**, **Governed Write**, **local Managed Skills runtime**,
+**Optional Integrations** and **external Release Acceptance**. Package/MCP observation does not certify all WordPress Core phases. These are separately observed
 domains: an unrelated optional integration must not be reported as a Core failure.
 Provider closure builds bounded capability-specific review steps with exact
 `provider_id`/capability/ability inputs. Unresolved mappings remain review-only;
