@@ -47,6 +47,9 @@ assert.equal(a.mad4b_evidence_digest, evidenceDigest);
 assert.equal(a.mad4b_receipt_signature, "d".repeat(64));
 assert.equal(a.integrity_model, "content_addressed_receipt_anchored_by_mad4b_reducer_signature");
 assert.equal(a.independently_signed_by_browser_runner, false);
+assert.equal(a.local_replay_claim, null);
+assert.equal(a.globally_unique_consumption_proven, false);
+assert.equal(a.release_ready, false);
 assert.match(a.receipt_sha256, /^[a-f0-9]{64}$/);
 assert.equal(a.plan_signature_sha256, canonicalSha256(plan.plan_signature));
 assert.notEqual(a.plan_signature_sha256, plan.plan_signature);
@@ -58,4 +61,16 @@ const changed = buildBrowserExecutionReceipt({
 });
 assert.notEqual(a.receipt_sha256, changed.receipt_sha256);
 
+const guarded=buildBrowserExecutionReceipt({
+  plan, attempts, evidence, result,
+  consumption:{
+    contract:"mad4b.browser-consumption-local.v1",
+    claim_key:"e".repeat(64),scope:"single_host_posix_filesystem",
+    consumed_at:1760000000
+  },sourceHead:"deadbeef",generatedAt:"2026-09-22T00:00:00.000Z"
+});
+assert.equal(guarded.local_replay_claim.scope,"single_host_posix_filesystem");
+assert.equal(guarded.release_ready,false);
+assert.equal(guarded.globally_unique_consumption_proven,false);
+assert.notEqual(a.receipt_sha256,guarded.receipt_sha256);
 console.log("MAD4B browser execution receipt PASS");
