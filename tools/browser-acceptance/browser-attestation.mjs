@@ -41,7 +41,9 @@ export function signDeclarativeEvidence(evidence, env = process.env) {
     ...evidence,
     attestation: {
       algorithm: "rsa-sha256",
-      key_id: "mad4b-browser-v1",
+      key_id: "rsa-spki-sha256:" + crypto.createHash("sha256")
+        .update(crypto.createPublicKey(key).export({ format: "der", type: "spki" }))
+        .digest("hex"),
       signature
     }
   };
