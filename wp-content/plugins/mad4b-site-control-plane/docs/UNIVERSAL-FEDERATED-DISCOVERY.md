@@ -67,3 +67,23 @@ Native Node fixture: `node tools/solution-discovery/test-federation.mjs` (includ
 The WordPress Solution Discovery reducer now projects the **existing** governed Plugin Discovery signals by exact plugin main-file/version: risk, functional state, side-channel blocking, adapter runtime availability, available read abilities, certification status and reversible contract count. This information is advice only; **every candidate keeps `qualification_verified=false` and `execution_allowed=false`**, even if a provider declares `functional_ready`. Missing/stale plugin evidence is `EVIDENCE_INCOMPLETE`, not safe. Extraordinary risk and blocked side channels require dedicated review.
 
 `inventory_incomplete` describes source coverage, while `qualification_incomplete` describes provider effect/risk evidence; neither is silently promoted to runtime-ready. G3 remains the sole owner of independent effects certification.
+
+## October 9 exact-branch objection closure: trust boundaries
+
+The universal in-process Federation **never treats a self-proclaimed `complete=true` catalog as independent coverage evidence**. The host must supply an already-authorized `verifyCatalog({site,expected_source_ids,claimed_complete,contract})` callback. An unverifiable, absent, or throwing verifier leaves `catalog_authority_verified=false` and `coverage_complete=false`. This callback is a **host trust boundary**; passing `()=>true` from untrusted site metadata is not verification, and even a verified catalog does not grant operations.
+
+Returned results are immutable and tracked in a process-local provenance registry. `toWordPressRouterInput` and `planRemediation` reject reconstructed or reserialized objects: the process-local marker is **not a portable signature**. A different process must re-enumerate or use separately signed, host-verifiable evidence. Hints are emitted only for *fresh*, *catalog-attested* candidates declaring an effect of `read` and risk `low` or `medium`. Unknown risk/effect, expired or partially specified timestamps, and mutating/elevated-risk capabilities remain **visible as unqualified possibilities**, never handed off automatically.
+
+The WordPress Plugin Discovery candidate matrix independently enforces a strict risk gate. `excluded_high_risk`, any explicit `high/exceptional` risk, and unclassified risk cannot inherit reader/writer support levels from adapter health, certification flags, or reversible contracts. The risk and functionality descriptors are propagated through Solution Discovery *as non-authorizing review evidence*, with qualification completeness separate from inventory completeness.
+
+These safeguards address evidence-to-decision confusion, not transport authentication. Remaining runtime acceptance: genuine host verification implementation, durable signed provenance/consumption, permissioned external catalog enrollment, independent OS/network/provider proof, native PHP7.4/8.3 + Node fixtures on an exact built package, and deployed Staging proof. Without them, any `PASS` label would be false.
+
+Run exact source fixtures in a clean checkout:
+```bash
+node --check tools/solution-discovery/federation.mjs
+node tools/solution-discovery/test-federation.mjs
+php wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php
+php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
+```
+
+The plugin adapter discovery smoke requires **disposable WordPress test runtime** and must not be run against Production, since its fixture creates and cleans temporary plugins. Its risk escalation assertions are exercised only within that isolation.

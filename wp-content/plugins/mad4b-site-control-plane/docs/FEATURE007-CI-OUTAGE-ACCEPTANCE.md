@@ -113,3 +113,11 @@ Keep PR #258 Draft and fail closed. Do not merge to master or deploy to Producti
 The isolated test fixture `tools/browser-acceptance/test-site-provider-configuration.mjs` targets the pure ETG operator/driver contract. Run it on a clean **exact-HEAD** repository checkout using `node tools/browser-acceptance/test-site-provider-configuration.mjs`; run the WordPress source fixtures with PHP 7.4 and PHP 8.3 independently, including `tests/browser-acceptance-admin-setup-contract.php` and `tests/staging-browser-site-selection-contract.php` relative to the plugin root. Execute the native PHP/SQL matrix described above when matching engines and Docker are available.
 
 A hermetic JavaScript/V8 replay tests source contract behavior but does **not** certify Node module resolution, native PHP, real WordPress provider registration, external browser sessions, GitHub Actions, or Staging runtime. Require recorded SHA and actual process exit statuses. Any missing native environment or queued CI is **BLOCKED**, not PASS. Always re-evaluate if PR #258 HEAD advances.
+
+## Portable federation and risk-tier regression
+
+The two Feature 007 workflows now trigger on `tools/solution-discovery/**`. The Spec Quality job executes the pure native Node federation fixture. The Pre-Staging job runs native Node and the existing isolated PHP discovery/router fixtures, using its configured PHP 7.4 setup. PHP 8.3 remains a separate exact-head offline matrix requirement. A cancelled/queued GitHub workflow never counts as a green test.
+
+The high-risk provider-candidate regression is included in `tests/runtime-plugin-adapter-discovery-smoke.php`; it requires a disposable WP environment because it manipulates temporary plugin fixtures. In particular, `excluded_high_risk`/high/exceptional risk must remain `L0_inventory` regardless of other favorable adapter signals. A healthy registered adapter is not permission to bypass dedicated security review.
+
+The offline runner is still non-authorizing and never substitutes for subject-effective Staging write/Skills convergence, real host configuration, exact package readback, browser signing/replay/network acceptance, or Production promotion.
