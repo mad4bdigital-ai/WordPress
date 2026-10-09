@@ -119,9 +119,17 @@ async function observePage(page, plan, item) {
 export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
   const validated = validateDeclarativePlan(plan);
   if (!browser || typeof browser.newContext !== "function") deny("browser_unavailable");
-  const context = await browser.newContext({ serviceWorkers: "block" });
+  const context = await browser.newContext({
+    serviceWorkers: "block",
+    javaScriptEnabled: false,
+    acceptDownloads: false,
+    permissions: []
+  });
   try {
-    await installContextNetworkBoundary(context, validated.origin, process.env, { passiveOnly: true });
+    await installContextNetworkBoundary(context, validated.origin, process.env, {
+      passiveOnly: true,
+      allowedDocumentPaths: validated.cases.map(item => new URL(item.page_path, validated.origin).pathname)
+    });
     const page = await context.newPage();
     const cases = [];
     for (const item of validated.cases) cases.push(await observePage(page, validated, item));
