@@ -92,15 +92,44 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			echo '</section>';
 			return;
 		}
+		// Fence the complete deep plan, including provider enumeration, between
+		// two exact site/runtime identity captures. A racing update disables the
+		// entire projection; a stale plan never offers next-step navigation.
+		$start_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
 		$plan = class_exists( 'MAD4B_SCP_Staging_Certification', false )
 			? MAD4B_SCP_Staging_Certification::convergence_plan() : array();
+		$end_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
+		$lifecycle = MAD4B_SCP_Recovery_Lifecycle::compile( $plan, $start_identity, $end_identity );
 		$model = self::model( $plan );
+		if ( empty( $lifecycle['identity_bound'] ) ) {
+			$model['state'] = $lifecycle['state'];
+			$model['actions'] = array();
+			$model['action_count'] = 0;
+		} else {
+			$model['state'] = $lifecycle['state'];
+			$mapped = array();
+			foreach ( $model['actions'] as $row ) $mapped[ $row['id'] ] = $row;
+			$ordered = array();
+			foreach ( $lifecycle['ordered_actions'] as $action ) {
+				if ( ! isset( $mapped[ $action['id'] ] ) ) continue;
+				$row = $mapped[ $action['id'] ];
+				$row['lifecycle_stage'] = $action['stage'];
+				$ordered[] = $row;
+			}
+			$model['actions'] = $ordered;
+			$model['action_count'] = count( $ordered );
+		}
 		echo '<p>' . esc_html__( 'These are live, site-scoped observations. Opening a workspace does not approve, execute or certify a repair.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><strong>' . esc_html__( 'State:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $model['state'] ) . '</code> · ';
 		echo esc_html( sprintf( __( '%d planned actions', 'mad4b-site-control-plane' ), $model['action_count'] ) ) . '</p>';
 		if ( $model['blocking_gates'] ) {
 			echo '<p><strong>' . esc_html__( 'Pending gates:', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html( implode( ', ', $model['blocking_gates'] ) ) . '</p>';
+		}
+		if ( empty( $lifecycle['identity_bound'] ) ) {
+			echo '<p>' . esc_html__( 'Recovery plan refused: source, site, identity or dependency graph changed or could not be validated. No execution is available.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><code>' . esc_html( implode( ', ', $lifecycle['reasons'] ) ) . '</code></p></section>';
+			return;
 		}
 		if ( 'UNAVAILABLE' === $model['state'] ) {
 			echo '<p>' . esc_html__( 'The exact recovery plan is unavailable. No actions are authorized.', 'mad4b-site-control-plane' ) . '</p></section>';
@@ -116,7 +145,7 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		echo '</tr></thead><tbody>';
 		foreach ( $model['actions'] as $row ) {
 			echo '<tr><th scope="row"><code>' . esc_html( $row['id'] ) . '</code></th>';
-			echo '<td>' . esc_html( $row['classification'] ) . '</td>';
+			echo '<td>' . esc_html( $row['classification'] ) . ' <small>(' . esc_html( isset( $row['lifecycle_stage'] ) ? $row['lifecycle_stage'] : 'REVIEW_REQUIRED' ) . ')</small></td>';
 			echo '<td><code>' . esc_html( $row['owner'] ) . '</code></td>';
 			echo '<td>' . esc_html( $row['depends_on'] ? implode( ', ', $row['depends_on'] ) : '—' ) . '</td>';
 			echo '<td><code>' . esc_html( $row['readback'] ? $row['readback'] : 'not_specified' ) . '</code></td>';
