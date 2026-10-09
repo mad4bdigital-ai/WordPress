@@ -252,7 +252,7 @@ final class MAD4B_SCP_Skill_Abilities {
 		if ( '' === $url || strlen( $url ) > 2048 || ! function_exists( 'wp_parse_url' ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'A valid, bounded absolute source URL is required.' );
 		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
 		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
-		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || false !== wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || '' !== (string) wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
 		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
 		if ( $id && ( ! get_post( $id ) || ! current_user_can( 'read_post', $id ) ) ) return new WP_Error( 'mad4b_external_source_post_denied', 'Post is not readable.' );
 		$site_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
