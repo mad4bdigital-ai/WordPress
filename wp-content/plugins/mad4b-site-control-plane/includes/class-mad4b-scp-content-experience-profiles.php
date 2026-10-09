@@ -703,6 +703,13 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			array( 'name' => 'mad4b/business-activity-link-plan', 'label' => 'Plan User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'plan' ), 'permission' => $read,
 				'schema' => self::business_activity_link_schema( false ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-context-impact-plan', 'label' => 'Review Changed Drive Policies and Context Rules Before Regenerating Draft', 'callback' => array( 'MAD4B_SCP_Activity_Source_Reconciliation', 'context_impact_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'current_revisions' => array( 'type' => 'object', 'maxProperties' => 12, 'additionalProperties' => true ),
+					'used_revisions' => array( 'type' => 'object', 'maxProperties' => 12, 'additionalProperties' => true ),
+				), array( 'profile_slug', 'current_revisions', 'used_revisions' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array( 'name' => 'mad4b/business-activity-reconcile-plan', 'label' => 'Compare Multi-Source Profile Field Revisions and Conflicts', 'callback' => array( 'MAD4B_SCP_Activity_Source_Reconciliation', 'plan' ), 'permission' => $read,
 				'schema' => self::schema( array(
 					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
