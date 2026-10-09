@@ -338,8 +338,17 @@ final class MAD4B_SCP_Staging_Certification {
 
 	public static function convergence_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
+		$manifest_at_start = self::convergence_manifest_file_sha256();
 		$status = self::status( array( 'compact' => false ) );
 		$plan_gates = is_array( $status['gates'] ?? null ) ? $status['gates'] : array();
+		$site_profile = self::convergence_site_identity();
+		$plan_gates['deployment_site_identity'] = array(
+			'ready' => $site_profile['ready'],
+			'state' => $site_profile['ready'] ? 'ready' : 'site_identity_not_eligible',
+			'source' => 'mad4b.site-profile.v2',
+			'remediation_owner' => 'site_owner',
+			'blockers' => $site_profile['blockers'],
+		);
 		$live_overlay = array( 'included' => false, 'ready' => null, 'gate_count' => 0, 'blockers' => array() );
 		// Explicit opt-in: the independent Live Acceptance registry is more
 		// expensive and may itself call external evidentiary reducers. Never
@@ -607,7 +616,10 @@ final class MAD4B_SCP_Staging_Certification {
 				) );
 			}
 			$brand_plan = class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) && method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'convergence_plan' )
-				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( $input )
+				? MAD4B_SCP_Brand_Context_Builder::convergence_plan( array(
+					'include_authoritative_content' => false,
+					'include_rendered_frontend' => false,
+				) )
 				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
 			$depends_on = array();
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
@@ -755,11 +767,49 @@ final class MAD4B_SCP_Staging_Certification {
 				'authorizing' => false,
 			);
 		}
+		// Cheap late identity reread closes the window between Staging,
+		// optional independent acceptance and final plan issuance. Full file
+		// hashing was already performed by the exact_build gate earlier.
+		$late_site = self::convergence_site_identity();
+		$manifest_at_end = self::convergence_manifest_file_sha256();
+		$late_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		$early_build = $status['gates']['exact_build']['evidence'] ?? array();
+		$site_same = ! empty( $site_profile['ready'] ) && ! empty( $late_site['ready'] );
+		foreach ( array( 'site_uuid', 'site_profile_digest', 'site_origin', 'environment' ) as $field ) {
+			if ( ! is_string( $late_site[ $field ] ?? null )
+				|| ! hash_equals( (string) ( $site_profile[ $field ] ?? '' ), $late_site[ $field ] ) )
+				$site_same = false;
+		}
+		$build_same = ! empty( $late_identity['identity_ready'] )
+			&& ! empty( $early_build['runtime_manifest_match'] )
+			&& '' !== $manifest_at_start
+			&& '' !== $manifest_at_end
+			&& hash_equals( $manifest_at_start, $manifest_at_end );
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( ! is_string( $late_identity[ $field ] ?? null )
+				|| ! hash_equals( (string) ( $early_build[ $field ] ?? '' ), $late_identity[ $field ] ) )
+				$build_same = false;
+		}
+		if ( ! $site_same || ! $build_same ) {
+			$plan_gates['runtime_identity_changed_during_plan'] = array(
+				'ready' => false,
+				'state' => 'runtime_identity_drift',
+				'source' => 'mad4b.build-provenance+site-profile',
+				'remediation_owner' => 'release_operator',
+				'blockers' => array( $site_same ? 'build_changed_during_plan' : 'site_changed_during_plan' ),
+			);
+		}
+		$blocking = array();
+		foreach ( $plan_gates as $gate_id => $gate ) {
+			if ( is_array( $gate ) && empty( $gate['ready'] ) ) $blocking[] = $gate_id;
+		}
 		// Complete the dynamic gate-to-action map after all native planners
 		// have spoken. No missing gate, dangling dependency or unverified
 		// external executor may silently become an executable operation.
 		$coverage = self::complete_convergence_coverage( $plan_gates, $actions );
-		$actions = $coverage['actions'];
+		$actions = self::observe_convergence_ability_registration( $coverage['actions'] );
 		// Every action must be checked against *current* site, profile and
 		// package authority again by its own governed executor. This binding
 		// is evidence for planning, not an approval or time-independent grant.
@@ -770,8 +820,11 @@ final class MAD4B_SCP_Staging_Certification {
 			'source_commit_sha' => (string) ( $build_evidence['source_commit_sha'] ?? '' ),
 			'build_fingerprint' => (string) ( $build_evidence['build_fingerprint'] ?? '' ),
 			'package_manifest_digest' => (string) ( $build_evidence['package_manifest_digest'] ?? '' ),
-			'site_uuid' => (string) ( $authority_evidence['site_uuid'] ?? '' ),
-			'site_profile_digest' => (string) ( $authority_evidence['site_profile_digest'] ?? '' ),
+			'site_uuid' => $site_profile['site_uuid'],
+			'site_profile_digest' => $site_profile['site_profile_digest'],
+			'site_origin' => $site_profile['site_origin'],
+			'environment' => $site_profile['environment'],
+			'nonproduction_site_ready' => $site_profile['ready'],
 			'candidate_binding_match' => ! empty( $authority_evidence['candidate_binding_match'] ),
 			'revalidate_before_any_effect' => true,
 			'never_grants_authority' => true,
@@ -783,6 +836,9 @@ final class MAD4B_SCP_Staging_Certification {
 			'covered_gate_count' => $coverage['covered_gate_count'],
 			'blocked_gate_count' => $coverage['blocked_gate_count'],
 			'dispatch_allowed' => false,
+			'authoritative_context_content_included' => false,
+			'authoritative_context_detail_ability' => 'context/brand-core-convergence-plan',
+			'unregistered_executor_writes_denied' => true,
 			'verification_ability' => 'mad4b/staging-convergence-verify',
 			'verification_requires_exact_source_and_plan' => true,
 			'live_acceptance_overlay' => $live_overlay,
