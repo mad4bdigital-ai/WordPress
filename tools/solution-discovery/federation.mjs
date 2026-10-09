@@ -122,7 +122,8 @@ export async function discoverFederated({target,query,enumerate,inspect,
       catalogAuthorityVerified=(await verifyCatalog({
         site, expected_source_ids:envelope.sources
           .map(x=>x?.id).filter(x=>typeof x==="string").sort(),
-        claimed_complete:envelope.complete===true, contract:envelope.contract
+        claimed_complete:envelope.complete===true, contract:envelope.contract,
+        catalog:envelope
       }))===true;
     } catch (_) { catalogAuthorityVerified=false; }
   }
