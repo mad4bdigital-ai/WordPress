@@ -167,6 +167,12 @@ final class MAD4B_SCP_Activity_Import_Modes {
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             empty( $profile['activity_contract']['enabled'] ) )
             return self::err( 'mad4b_import_mode_profile_not_ready', 'Business Activity facet must be enabled.' );
+        $policy = isset( $profile['activity_contract']['import_modes'] ) ?
+            $profile['activity_contract']['import_modes'] : array();
+        if ( ! empty( $policy['enabled_modes'] ) &&
+            ! in_array( $id, $policy['enabled_modes'], true ) )
+            return self::err( 'mad4b_import_mode_disabled_for_profile',
+                'This transport is not enabled by the governed site Activity Profile.' );
         foreach ( $catalog['modes'] as $mode ) {
             if ( $mode['id'] !== $id ) continue;
             $staging = method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
@@ -184,6 +190,8 @@ final class MAD4B_SCP_Activity_Import_Modes {
                     $mode['detected'] && $mode['review_intake_implemented'],
                 'site_staging_verified' => $staging,
                 'required_setup' => $mode['requirements'],
+                'profile_preferred_mode' => isset( $policy['preferred_mode'] ) ? $policy['preferred_mode'] : '',
+                'profile_fallback_modes' => isset( $policy['fallback_modes'] ) ? $policy['fallback_modes'] : array(),
                 'fallback_requires_new_explicit_plan' => true,
                 'no_automatic_fallback_for_import_writes' => true,
                 'ready_to_mutate_posts' => false,
