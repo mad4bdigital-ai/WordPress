@@ -28,6 +28,20 @@ function wp_has_ability($a){ return false; }
 
 final class MAD4B_SCP_Site_Profile {
 	public static function site_uuid(){ return '11111111-2222-4333-8444-555555555555'; }
+	public static $mode='profile_only';
+	public static $bound=false;
+	public static $rev=3;
+	public static function deployment_binding_digest(){ return self::$bound ? str_repeat('b',64) : ''; }
+	public static function status(){ return array(
+		'authority_ready'=>true,'origin_match'=>true,'environment_match'=>true,
+		'deployment_binding_configured'=>self::$bound,'deployment_binding_bound'=>self::$bound,
+		'deployment_binding_match'=>self::$bound,'same_origin_clone_protection'=>self::$bound,
+		'environment_sync_mode'=>self::$mode,
+		'environment_sync_state'=>self::$bound ? 'awaiting_host_bootstrap' : 'blocked_missing_deployment_binding',
+		'configured_environment'=>'staging','environment'=>'staging',
+		'site_uuid'=>self::site_uuid(),'wordpress_environment'=>'production',
+		'wordpress_environment_explicit'=>false,'profile_digest'=>str_repeat('a',64),'revision'=>self::$rev
+	); }
 }
 final class MAD4B_SCP_Policy {
 	public static function can_read(){ return true; }
@@ -338,6 +352,51 @@ $blocked=MAD4B_SCP_Host_Bridge::requeue(array(
 	'idempotency_key'=>'idem-recovery-blocked',
 ));
 $check(is_wp_error($blocked) && 'mad4b_host_requeue_reconciliation_required'===$blocked->get_error_code(), 'recovery-required requeue was not denied for reconciliation');
+
+
+$host_ops=array_column(MAD4B_SCP_Host_Bridge::capabilities()['operations'],'operation_id');
+$check(in_array('wordpress_environment_sync',$host_ops,true),'Host environment sync absent from MCP');
+$check(in_array('wordpress_environment_rollback',$host_ops,true),'Host environment rollback absent from MCP');
+$host_request=array(
+ 'operation_id'=>'wordpress_environment_sync',
+ 'runner_profile_id'=>'ci-runner',
+ 'arguments'=>array('reason'=>'Configure exact Staging environment')
+);
+$host_denied=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_binding_required'===$host_denied->get_error_code(),'unbound Host sync plan accepted');
+MAD4B_SCP_Site_Profile::$bound=true;
+$host_denied=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_mode_required'===$host_denied->get_error_code(),'Profile Only plan allowed Host edit');
+MAD4B_SCP_Site_Profile::$mode='host_managed';
+$host_plan=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_array($host_plan) && 'wordpress_environment_sync'===$host_plan['operation_id'],'approved Host mode did not create exact plan');
+$host_inner=$host_plan['arguments']['plan'];
+$check('staging'===$host_inner['desired_wordpress_environment'] && 'production'===$host_inner['expected_wordpress_environment'],'Host plan changed fixed environment values');
+$check(false===$host_inner['production_authorized'] && false===$host_inner['caller_supplied_path_allowed'],'Host plan widened authority');
+$check(str_repeat('b',64)===$host_inner['deployment_binding_digest'],'Host secret identity not bound');
+$check(hash_file('sha256',$tmp.'/wp-config.php')===$host_inner['expected_wp_config_sha256'],'Host config identity not bound');
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_operation_approval_required'===$host_denied->get_error_code(),'Host queued write without approval');
+MAD4B_SCP_Site_Profile::$rev++;
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_profile_plan_stale'===$host_denied->get_error_code(),'stale Host plan accepted after profile change');
+MAD4B_SCP_Site_Profile::$rev--;
+MAD4B_SCP_Site_Profile::$mode='profile_only';
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_mode_required'===$host_denied->get_error_code(),'Host plan accepted after mode cancellation');
+MAD4B_SCP_Site_Profile::$mode='host_managed';
+$pre_host_sha=hash_file('sha256',$tmp.'/wp-config.php');
+$host_pending=MAD4B_SCP_Host_Bridge::apply(array(
+ 'plan'=>$host_plan,
+ 'job_id'=>'44444444-5555-4666-8aaa-777777777777',
+ 'idempotency_key'=>'exact-staging-host-env',
+ 'approval_ref'=>'approved:staging-host-env',
+ 'server_id'=>'mad4b-primary',
+ '_mad4b_approval_ticket_id'=>'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+));
+$check(is_array($host_pending) && true===$host_pending['queued'], 'MCP Host operation did not enqueue');
+$check(false===$host_pending['host_mutation_performed'] && true===$host_pending['host_verification_pending'], 'MCP queue fabricated Host completion');
+$check($pre_host_sha===hash_file('sha256',$tmp.'/wp-config.php'), 'WordPress MCP changed Host bootstrap directly');
 
 // Stale target plan must fail after root identity changes.
 file_put_contents($tmp . '/wp-config.php', "<?php // changed target\n");
