@@ -55,10 +55,19 @@ check(!is_wp_error($normalized)&&$normalized['field_owners']['category_code']===
  $normalized['sync_targets']['brand_folder']['purpose']==='editorial_policy',
  'Field owners and editorial context not normalized');
 $typed=$raw;$typed['sync_targets']['wp_feed']['field_bindings']=array(
- 'category_code'=>array('provider_field'=>'Sheet1!B2','value_type'=>'string','null_policy'=>'manual_review'));
+ 'category_code'=>array('provider_field'=>'category_code','value_type'=>'string','null_policy'=>'manual_review'));
 $yes=MAD4B_SCP_Business_Activity_Contracts::normalize($typed,'vendors',array('category_code'),array('region'));
-check(!is_wp_error($yes)&&$yes['sync_targets']['wp_feed']['field_bindings']['category_code']['provider_field']==='Sheet1!B2',
+check(!is_wp_error($yes)&&$yes['sync_targets']['wp_feed']['field_bindings']['category_code']['provider_field']==='category_code',
  'Typed per-source selector configuration unavailable');
+$driveMapped=$raw;
+$driveMapped['sync_targets']['drive_record']=array(
+ 'provider'=>'google_drive','resource_kind'=>'drive_sheet','source_ref'=>'sheet_record_01',
+ 'direction'=>'bidirectional','field_keys'=>array('category_code'),
+ 'field_bindings'=>array('category_code'=>array('provider_field'=>'Sheet1!B2',
+  'value_type'=>'string','null_policy'=>'manual_review')));
+$yes=MAD4B_SCP_Business_Activity_Contracts::normalize($driveMapped,'vendors',array('category_code'),array('region'));
+check(!is_wp_error($yes)&&$yes['sync_targets']['drive_record']['field_bindings']['category_code']['provider_field']==='Sheet1!B2',
+ 'Drive Sheet field selectors cannot be configured as data');
 $expression=$typed;$expression['sync_targets']['wp_feed']['field_bindings']['category_code']['provider_field']='eval(PHP)';
 $no=MAD4B_SCP_Business_Activity_Contracts::normalize($expression,'vendors',array('category_code'),array('region'));
 check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_source_binding_value_invalid',
