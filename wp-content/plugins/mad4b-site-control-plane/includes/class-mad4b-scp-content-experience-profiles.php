@@ -747,6 +747,13 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			array( 'name' => 'mad4b/business-activity-link-plan', 'label' => 'Plan User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'plan' ), 'permission' => $read,
 				'schema' => self::business_activity_link_schema( false ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			array( 'name' => 'mad4b/business-activity-sync-plan', 'label' => 'Plan Configured Business Activity Source Synchronization', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'sync_plan' ), 'permission' => $read,
+				'schema' => self::schema( array(
+					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'target_id' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+					'operation' => array( 'type' => 'string', 'enum' => array( 'import', 'export', 'update', 'improve', 'reconcile' ) ),
+				), array( 'profile_slug', 'target_id', 'operation' ) ),
+				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			array( 'name' => 'mad4b/business-activity-link-apply', 'label' => 'Apply Exact User and Business Profile Link', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
 				'schema' => self::business_activity_link_schema( true ),
 				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
