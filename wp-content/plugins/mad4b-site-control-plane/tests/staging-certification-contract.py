@@ -153,6 +153,8 @@ for marker in [
     "'deployment_identity_review' => array( 'deployment_host_binding' )",
     "'release_acceptance' => array( 'deployment_host_binding'",
     "'developer_host_isolation_not_verified'",
+    "'developer_host_execution' => 'mad4b/full-staging-authority-status'",
+    "'readback_ability' => 'mad4b/full-staging-authority-status'",
 
     "public static function convergence_site_identity()",
     "MAD4B_SCP_Site_Profile::site_uuid()",
