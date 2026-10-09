@@ -123,6 +123,13 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         if ( empty( $context['ready'] ) ) $reasons[] = 'context_not_ready';
         $summaries = array();
         $seen = array();
+        // Select the canonical duplicate deterministically: source query
+        // order must not decide which immutable Artifact is excluded.
+        usort( $artifacts, static function ( $a, $b ) {
+            $first = is_array( $a ) && is_string( $a['artifact_id'] ?? null ) ? strtolower( $a['artifact_id'] ) : '';
+            $second = is_array( $b ) && is_string( $b['artifact_id'] ?? null ) ? strtolower( $b['artifact_id'] ) : '';
+            return strcmp( $first, $second );
+        } );
         $groups = array();
         $duplicate_artifact_ids = array();
         $conflicting_groups = array();
