@@ -15,11 +15,13 @@ $GLOBALS['abilities'] = array();
 $GLOBALS['hooks'] = array();
 function current_user_can( $cap ) { return 'manage_options' === $cap && $GLOBALS['can_read']; }
 function get_current_blog_id() { return 3; }
+function get_current_user_id() { return 7; }
 function add_action( $name, $cb, $priority = 10 ) { $GLOBALS['hooks'][] = $name; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][ $name ] ); }
 function wp_register_ability( $name, $args ) { $GLOBALS['abilities'][ $name ] = $args; }
 function wp_get_ability( $name ) { return new Fake_Ability( $GLOBALS['abilities'][ $name ] ); }
-class MAD4B_SCP_Policy { public static function can_read() { return true; } }
+class MAD4B_SCP_Policy { public static function can_read() { return true; }
+    public static function can_connect_user( $id ) { return 7 === $id && ( ! isset( $GLOBALS['actor_enrolled'] ) || $GLOBALS['actor_enrolled'] ); } }
 class MAD4B_SCP_Site_Profile {
     public static function configured() { return $GLOBALS['enrolled']; }
     public static function origin_enrolled() { return $GLOBALS['enrolled']; }
