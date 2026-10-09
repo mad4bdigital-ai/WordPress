@@ -44,8 +44,11 @@ final class MAD4B_SCP_Activity_Import_Review {
     public static function capabilities( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
             return self::error( 'mad4b_import_authority_denied', 'Enrolled administrator required.' );
+        $mode_catalog = class_exists( 'MAD4B_SCP_Activity_Import_Modes' )
+            ? MAD4B_SCP_Activity_Import_Modes::catalog() : null;
         return array(
             'contract' => self::CONTRACT, 'read_only' => true,
+            'mode_catalog' => is_array( $mode_catalog ) ? $mode_catalog : null,
             'wp_all_import_detected' => class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' ),
             'available_sources' => array( 'xlsx_via_bounded_csv_handoff', 'csv_upload', 'google_sheet_managed', 'apps_script_signed_webhook' ),
             'available_destinations' => array( 'wp_all_import_existing_template', 'governed_content_experience_profile' ),
@@ -427,6 +430,44 @@ final class MAD4B_SCP_Activity_Import_Review {
             'profile_slug' => $slug, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
     }
+    /**
+     * Archive a read-only review snapshot, never delete imported business data.
+     * This makes subsequent signed/manual feed proposals possible.
+     */
+    public static function archive_preview() {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
+            ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
+            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
+            wp_die( 'Staging administrator authority required.' );
+        check_admin_referer( 'mad4b_activity_archive_review', 'mad4b_archive_nonce' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $expected = isset( $_POST['expected_payload_sha256'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['expected_payload_sha256'] ) ) : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
+            wp_die( 'Exact review identity and digest required.' );
+        $key = self::option_key( $slug );
+        $state = get_option( $key, false );
+        if ( ! is_array( $state ) ||
+            ! isset( $state['payload_sha256'] ) ||
+            ! hash_equals( (string) $state['payload_sha256'], $expected ) )
+            wp_die( 'Review changed since the archive confirmation.' );
+        $audit_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $expected );
+        $audit = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'payload_sha256' => $expected,
+            'archived_at' => gmdate( 'c' ), 'post_writes' => 0 );
+        if ( ! add_option( $audit_key, $audit, '', false ) ||
+            self::digest( get_option( $audit_key, false ) ) !== self::digest( $audit ) )
+            wp_die( 'Immutable preview archive could not be confirmed.' );
+        delete_option( $key );
+        if ( false !== get_option( $key, false ) )
+            wp_die( 'Preview archive recorded but active review could not be cleared.' );
+        wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
+            'profile_slug' => $slug, 'archived' => 1 ), admin_url( 'tools.php' ) ) );
+        exit;
+    }
     public static function register_admin() {
         add_management_page( 'MAD4B Import Review', 'MAD4B Import Review',
             'manage_options', 'mad4b-import-review', array( __CLASS__, 'admin_page' ) );
@@ -473,6 +514,18 @@ final class MAD4B_SCP_Activity_Import_Review {
                 foreach ( $review['plan']['issues'] as $issue )
                     echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' . esc_html( $issue['reason'] ) . '</td><td>' . esc_html( $issue['severity'] ) . '</td></tr>';
                 echo '</tbody></table>';
+                if ( isset( $review['payload_sha256'] ) &&
+                    method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
+                    MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ) {
+                    echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                    echo '<input type="hidden" name="action" value="mad4b_activity_import_archive" />';
+                    echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+                    echo '<input type="hidden" name="expected_payload_sha256" value="' .
+                        esc_attr( $review['payload_sha256'] ) . '" />';
+                    wp_nonce_field( 'mad4b_activity_archive_review', 'mad4b_archive_nonce' );
+                    submit_button( 'Archive reviewed snapshot (no WordPress post changes)', 'secondary' );
+                    echo '</form>';
+                }
             } else echo '<p>No staged feed for this profile.</p>';
         }
         echo '</div>';
@@ -482,5 +535,6 @@ if ( function_exists( 'add_action' ) ) {
     add_action( 'rest_api_init', array( 'MAD4B_SCP_Activity_Import_Review', 'register_rest' ) );
     add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
     add_action( 'admin_post_mad4b_activity_import_csv', array( 'MAD4B_SCP_Activity_Import_Review', 'admin_upload_csv' ) );
+    add_action( 'admin_post_mad4b_activity_import_archive', array( 'MAD4B_SCP_Activity_Import_Review', 'archive_preview' ) );
     add_action( 'mad4b_activity_import_expire_nonce', array( 'MAD4B_SCP_Activity_Import_Review', 'expire_nonce' ), 10, 1 );
 }
