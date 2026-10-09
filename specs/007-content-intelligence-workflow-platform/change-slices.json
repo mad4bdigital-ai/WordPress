@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 564,
+  "changed_file_count": 570,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1112,8 +1112,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-imp01-spreadsheet-intake-governance-20261010",
+      "semantic_unit": "IMP01 generic Content Experience import preview and conflict review: governed Brand Core approval queue, signed Apps Script staging inbox, WP All Import handoff/specification and exact-source fixtures; no imported content mutation on source commit.",
+      "revert_boundary": "Revert IMP01 intake bridge, Apps Script example, isolated tests and import spec without altering existing Activity Sync, approved Brand Core assets, imported posts, or WP All Import jobs.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/examples/all-royal-tour-rates-import.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/imp01-dynamic-spreadsheet-import-and-apps-script.md",
+        "tools/feature007/google-apps-script/mad4b-activity-import-push.gs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-source-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "1b8bb992f5a8325c3b87dd9697b9d35c6c4cce255636324cfb6d5d03ecb5be20",
+  "changed_paths_sha256": "9927a0823a002957e6ea2de183caa621eff958dc3f8ab0692f95691dd1e7b98f",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
