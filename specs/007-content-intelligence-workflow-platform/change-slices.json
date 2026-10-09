@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 553,
+  "changed_file_count": 555,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1077,8 +1077,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-contract-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-aci01-recipe-normalizer-domain-split-20261009",
+      "semantic_unit": "Native Content Experience ACI01 exact-site recipe scope validator extracted into bounded non-mutating domain class, native PHP rejection fixtures and contract test.",
+      "revert_boundary": "Revert the dedicated recipe scope helper and its native fixture with the profile delegation and Python conformance hook, preserving other profile execution policy and identity.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-recipe-scope.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-recipe-scope-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "f96bde08fd874c755d5d6cc65f9696ce9e365c34d9882e67f94d9ba6fc9e17dd",
+  "changed_paths_sha256": "83c80c3e21b118e94acd67c852a882d52c88755cd5690ed8b0818b80d05d04c7",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
