@@ -128,7 +128,8 @@ export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
   try {
     await installContextNetworkBoundary(context, validated.origin, process.env, {
       passiveOnly: true,
-      allowedDocumentPaths: validated.cases.map(item => new URL(item.page_path, validated.origin).pathname)
+      allowedDocumentPaths: [...new Set(validated.cases.map(item =>
+        new URL(item.page_path, validated.origin).pathname))]
     });
     const page = await context.newPage();
     const cases = [];
