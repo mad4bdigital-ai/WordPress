@@ -168,6 +168,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-bootstrap-diagn
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-solution-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-solution-router.php';
+// The capability atlas must be loaded before its lifecycle hook is registered.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-atlas.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-task-contract.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-task-journal-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-assistant-read-work-operations.php';
@@ -456,7 +458,6 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );
-require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-capability-atlas.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
