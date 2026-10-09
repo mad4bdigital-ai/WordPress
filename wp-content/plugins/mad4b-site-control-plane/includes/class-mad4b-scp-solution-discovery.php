@@ -330,12 +330,19 @@ final class MAD4B_SCP_Solution_Discovery {
                 || 'excluded_high_risk' === $state;
             $candidate['risk_metadata_source'] = 'governed_plugin_discovery';
             $candidate['risk_version_observed'] = $version;
-            $candidate['qualification_status'] = ( 'excluded_high_risk' === $state ||
-                in_array( $risk, array( 'high', 'exceptional' ), true ) ) ? 'EXCEPTIONAL_REVIEW'
-                : ( $candidate['side_channel_blocked'] || 'safety_blocked' === $candidate['functional_state'] )
-                    ? 'SAFETY_BLOCKED'
-                    : ( 'unknown' === $risk || 'unknown' === $candidate['functional_state'] )
-                        ? 'EVIDENCE_INCOMPLETE' : 'FUNCTIONAL_REVIEW_REQUIRED';
+            // Explicit priority avoids PHP 8's ambiguous nested ternary syntax.
+            // Exceptional review always overrides safety and incomplete evidence.
+            if ( 'excluded_high_risk' === $state ||
+                in_array( $risk, array( 'high', 'exceptional' ), true ) ) {
+                $candidate['qualification_status'] = 'EXCEPTIONAL_REVIEW';
+            } elseif ( $candidate['side_channel_blocked'] ||
+                'safety_blocked' === $candidate['functional_state'] ) {
+                $candidate['qualification_status'] = 'SAFETY_BLOCKED';
+            } elseif ( 'unknown' === $risk || 'unknown' === $candidate['functional_state'] ) {
+                $candidate['qualification_status'] = 'EVIDENCE_INCOMPLETE';
+            } else {
+                $candidate['qualification_status'] = 'FUNCTIONAL_REVIEW_REQUIRED';
+            }
         }
         unset( $candidate );
         $inventory['risk_coverage_complete'] = $complete;
