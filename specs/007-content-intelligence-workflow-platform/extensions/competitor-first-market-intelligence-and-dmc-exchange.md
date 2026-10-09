@@ -1,55 +1,45 @@
-# Feature 007 — Competitor-first Market Intelligence & Contracted DMC Exchange
+# Feature 007 — Site-Neutral Market Intelligence & Business Activity Contracts
 
-**Design correction (2026-10-09):** Competitor research, benchmarking and independent brand writing are the **primary workflow** and do **not** need a supplier/distributor agreement. DMC/supplier distribution, catalog imports and catalog exports form a **different** contractual lane using live WordPress Post Types, taxonomies and permitted mappings. A user may dynamically configure both profiles and pricing strategies without deploying per-partner code.
+## Architectural decision (10 Oct 2026)
+MAD4B remains **one reusable WordPress Control Plane**. DMC, driver, tour guide or any professional/business profile is NOT a PHP class, fixed post type, installed sub-plugin, or globally enabled module. It is a **site-owned optional `activity_contract` facet** of an existing `Content Experience Profile`.
 
-## Two separate lanes
+The canonical source of configuration and versioned authority remains `mad4b_content_experience_profiles_v1`. No second tourism plugin, separate site-domain allowlist, parallel CPT registry, global role creation or hard-coded travel flows.
 
-### A. Competitor Intelligence — default, noncontracted
-1. Register a bounded competitor research profile (HTTP(S) source and display name). No supplier contract expected.
-2. Research observable facts, routes, inclusions, itinerary structure, prices, availability clues, positioning and SEO opportunities. Respect source access controls, applicable terms and rate limits. Record each fact's source and observation date; cross-check material booking facts.
-3. Use `mad4b/competitor-research-plan`: input is **facts and media candidates**, never a command to clone a complete competitor website. It is read-only and explicitly permits market analysis and draft preparation without a supplier contract.
-4. Use `mad4b/market-growth-evaluate` to compare like-for-like currency and minor-unit price inputs. Strategies: `match_market`, `markup_percent`, `discount_percent`, `markup_fixed`, `discount_fixed`, `fixed_price`. Minimum cost and optional floor/ceiling cannot be silently overridden. Values are suggestions, **not a confirmed live supplier/consumer quote**; taxes, booking conditions, FX and inventory need independent readbacks.
-5. Use current, approved Brand Core + a scoped Writer Skill to produce **new, original, brand-aligned** wording; Critic/Reviewer roles are independent. Source text must not be copied verbatim as a substitute for writing.
-6. Discover competitor media URLs *as metadata only*. Assess authorship, licensed use, public-domain claims and actual license restrictions. Do **not** download/rehost/publish a competitor's copyrighted image just because it is publicly accessible or easily downloadable. Reuse only first-party or verified-license material; use licensed originals/alternatives when verification is absent.
-7. Resolve site CPT/taxonomy dynamically and build a draft with `mad4b/content-orchestration-plan` and separately approved `mad4b/content-apply-bundle`. No suggestion may claim partnership, allow supplier checkout, or publish automatically without independent service/rights/price/acceptance gates.
-8. Drafting independent informational content is distinct from publishing a real bookable commercial offer. A competitor catalog is **not** live inventory and does not create seller/booking rights.
+### General reusable layers
+1. **Competitor research:** dynamically configured public source profiles; independently authored brand-aligned content and price benchmarking, without assuming a supplier contract. Research and media candidates are not customer booking inventory.
+2. **Content Experience Profile:** site-selected registered CPT, taxonomy allowlist, meta allowlist, content and media mutation lanes, revision, exact plan hash, existing independent readback/rollback.
+3. **Optional Business Activity facet:** `activity_contract.enabled=true` activates configurable User ↔ CPT relations, distinct protected keys on user/post, low-privilege role, attribute allowlist, allowed taxonomies, new user/post options. Defaults to DISABLED.
+4. **Source sync targets:** each enabled profile can configure 0..12 targets with provider `wordpress` or `google_drive`, direction (`import`, `export`, `bidirectional`), field allowlist inherited from the Content Experience Profile, provider resource reference and conflict policy. `business-activity-sync-plan` is a read-only plan. It does not create external Drive files, pretend generic Context/Brand APIs update arbitrary Drive documents, or skip provider revisions/independent execution grants.
+5. **Generic external image ingestion:** `media/import-plan` and `media/import-external` in the already existing Media Adapter, bounded HTTPS and safe HTTP validation, media type/size checks, stable idempotency key, source checksum, attachment/alt metadata and readback. The source import does not automatically publish or assign a featured image; media metadata may be updated separately using existing `media/update-metadata`.
+6. **Persisted retry journal:** governed Brand Core write endpoints reserve server-side attempts and block blind repetition after a successful/uncertain write. An attempt reservation is not an independent authorization.
+7. **Contract permissions:** `mad4b/business-activity-link-apply` is a separately approved administrator/content mutation. Users are created only with an explicitly configured registered nonprivileged role; new profiles remain Draft, with a stable operator key and mirrored relation readback.
 
-### B. Contracted DMC exchange — optional
-1. Register an actual DMC/supplier profile and agreement reference/validity; configure a connection (`import`, `export`, `bidirectional`), independent from competitors.
-2. Register a mapping to the **existing** WordPress CPT (e.g., `tours-and-activities`) rather than hardcoding a site-specific post type. Discover registered taxonomies through WordPress at use time and restrict fields to an allowlist.
-3. `mad4b/dmc-exchange-plan` checks recorded agreement status, direction, registered CPT and current WordPress capabilities. Metadata is not independently verified legal proof, so the plan does not send a feed or authorize publication.
-4. `mad4b/dmc-import-prepare` converts 1–20 bounded source records into **draft candidates**, each with deterministic operation key. Actual writes must still pass the existing separately approved `mad4b/content-orchestration-plan` then `mad4b/content-apply-bundle`, exact readback, context/license review and duplicate handling.
-5. `mad4b/dmc-export-preview` retrieves only authorized, published local CPT rows and only explicitly mapped safe core fields (20 per page max). The resulting JSON is a handoff payload; outbound HTTP transfer is **not implemented** and must be a separately authenticated, scoped, rate-limited, audited connector.
-6. Contract termination, expiry, privacy, localized product rules and tax/price conversion invalidate affected exchange plans; production transfers remain independently gated.
+### Runtime-discoverable abilities
+- `mad4b/content-experience-profile-plan` → `mad4b/content-experience-profile-apply`: configure or extend the canonical profile (including the optional facet) with existing revision and exact plan hash.
+- `mad4b/business-activity-status`: effective profile/role/field/sync mapping inspection.
+- `mad4b/business-activity-link-plan`: normalize and validate user/profile/attribute/classification intent against registered CPT, attached taxonomies and the current effective profile.
+- `mad4b/business-activity-link-apply`: exact approved write through the existing governed content lane, with unique operation key and bidirectional post/user meta readback. Partial failures retain a reconciliation lock rather than duplicating accounts.
+- `mad4b/business-activity-sync-plan`: discover operations for each configured provider and require source/destination revision comparison, diff, conflict policy and independent provider write before update, enhancement, import or export.
 
-## Configurable registry
-`mad4b/market-growth-policy-status` returns a bounded, redacted registry view with exact revision and SHA-256. `mad4b/market-growth-admin-settings` returns full configuration to authenticated WordPress administrators for conversational/editable forms, never to general read principals. `mad4b/market-growth-policy-update` permits confirmed `manage_options` edits using the exact expected revision and hash, an atomic option writer lock, typed field allowlists and postwrite readback. Collections: `competitors`, `suppliers`, `dmc_connections`, `feed_mappings`, `pricing_rules`, `media_rules`, `assistant_roles`. Plugin extensions can evolve the schema through explicit reviewed versions; arbitrary properties cannot silently grant rights.
+### Site-scoped All Royal Egypt sample — NOT an active installation
+The Staging runtime explicitly confirmed these registered CPTs:
+- `dmcs`: taxonomy `location_jet`
+- `drivers`: taxonomy `location_jet`
+- `guides`: taxonomies `location_jet`, `guide-languages_jet`
+- `tours-and-activities` is a separate content type for products, **not** the identity profile for professionals.
 
-`mad4b/market-assistant-route` picks configured research/writer/critic/reviewer/recovery Skill candidates using current external runtime evidence and defaults to human fallback. It **does not inherit exact Agent grant** and cannot authorize a write or its own independent review.
+Example profile JSON is in `examples/all-royal-activity-contracts.json`. Its meta link keys are **proposed new keys**, not existing JetEngine field names. No user, post, taxonomy term, role, or profile configuration has been created or changed on the site. Before applying, reconcile live JetEngine definitions and actual meta mappings, choose correct role and relationship keys, and use the canonical Content Experience Profile review/approval.
 
-## Persistent recovery
-The existing governed Brand draft creation, materialization and reconciliation endpoints now reserve atomic, site/environment/scope-bound retry slots in WordPress options. Three reservations constitute a hard ceiling for that exact scope; a successful attempt or a pending/uncertain provider result blocks a duplicate automatic retry. An uncertain result must first be reconciled. Operator reset requires `manage_options`, explicit confirmation and a current exact journal SHA-256; no AI auto-reset. A write reservation is not a new authorization: existing policies and exact Context mutation tickets remain mandatory. This local attempt budget complements, not replaces, the existing operation journal and idempotent materialization identity; cross-node native concurrency tests remain a release gate.
+### Required tests
+- The engine has no `dmcs`, `drivers`, `guides`, All Royal host or travel-only conditions.
+- No facet is active without an exact site-owned configured profile, registered CPT and attached allowlisted taxonomy.
+- No privileged WordPress role can be assigned by profile configuration; unknown metadata, provider fields and source URL credentials fail closed.
+- A user cannot silently be taken from an existing linked post, nor can a linked post be stolen from an existing user.
+- Double submissions/pending external writes cannot silently create duplicate users or posts.
+- New user and profile operations require exact authorized plan SHA; partial failures are reconciled independently.
+- Google Drive plan is **not** proof that a scoped writable Drive provider/verified version/Drive revision exists.
+- Media import requires a reviewed source plan, explicit permission, HTTPS safe retrieval, bounded files, type checks and exact readback.
+- Native PHP/WordPress Staging runtime, multiple real role/CPT configurations, Staging acceptances and the external Drive write round trip remain independent release gates.
 
-## Acceptance & negative cases
-
-| Scenario | Expected |
-|---|---|
-| Competitor without a contract | Public-fact research, benchmark and original draft plan allowed |
-| Competitor image without independent reuse license | Candidate URL recorded; reupload/republication not authorized |
-| Third-party supplier offer without an agreement | No supplier affiliation/booking authorization |
-| Contracted DMC | Only configured direction/CPT and authorized source products can be prepared/exchanged |
-| Unknown or expired DMC agreement | Export/import plan blocked |
-| Native post type missing | Structured error, not arbitrary CPT creation |
-| Duplicate DMC external ID | Error before writes; stable deterministic bundle key |
-| Export private/unmapped WP content | Filter out by status, field allowlist and `edit_post` permission |
-| Stale pricing registry or currencies mismatch | No authoritative quote; replan from current evidence |
-| Retry after a successful or uncertain provider write | Stop and reconcile; no duplicate write |
-| Fourth attempt on same exact scope | Persistent `mad4b_retry_circuit_open` |
-| Runtime Skills ready but Agent grant absent | Planning possible; write authority not implied |
-
-## Not yet claimed
-No remote crawler/scraper, licensed image downloader, remote DMC feed push, external contract authenticator, market quote feed, native PHP/WordPress/Staging integration or production publication has been executed or verified by this PR alone. This implementation establishes guarded configurable registries, actionable read-only competitor/DMC/assistant plans, bounded native CPT export payload, import candidates delegating writes to the already governed content adapter, and persistent guarded attempts in the existing Context write paths.
-
-
-## Controlled public observation follow-up
-A proposed live HTML observation module was deliberately **excluded** from this slice after the robots/user-agent parser needed further safety review. As shipped here, competitor research planning ingests externally gathered, source-attributed facts and candidate media URLs supplied by authorized research tools/users; it does **not** bypass robots.txt, fetch protected pages, crawl at scale or download competitor photos. A future first-party fetch adapter must pass robots-group precedence, redirects, SSRF, authentication walls, personal-data scrubbing, source terms and rate-limit tests before it is mounted.
+## Status
+Implemented in source on Draft PR #366. **No new independent tourism plugin remains in the proposed branch**. This does not claim automatic Drive editing, activated site-specific profiles, executed media imports, final publication or native Staging acceptance.
