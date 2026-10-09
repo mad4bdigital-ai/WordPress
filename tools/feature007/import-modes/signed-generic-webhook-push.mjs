@@ -3,7 +3,7 @@
  * Make/n8n/Zapier/BitFlows/Node.js alternative to Google Apps Script.
  * Input: a JSON file containing the exact IMP01 "input" object (max 500 rows).
  * Environment: MAD4B_INTAKE_URL (HTTPS exact /wp-json/.../intake),
- * MAD4B_SITE_UUID, MAD4B_INTAKE_SECRET (min 32 chars).
+ * MAD4B_SITE_UUID, MAD4B_INTAKE_SECRET (min 32 chars), MAD4B_INTAKE_KEY_ID.
  * Run: node signed-generic-webhook-push.mjs ./approved-preview.json
  *
  * This submits a REVIEW snapshot only. No WP All Import job or WordPress
@@ -15,8 +15,10 @@ const [file] = process.argv.slice(2);
 const url = process.env.MAD4B_INTAKE_URL || '';
 const secret = process.env.MAD4B_INTAKE_SECRET || '';
 const site = process.env.MAD4B_SITE_UUID || '';
+const keyId = process.env.MAD4B_INTAKE_KEY_ID || '';
 if (!file || !/^https:\/\/[^\s]+\/wp-json\/mad4b\/v1\/activity-import\/intake$/.test(url) ||
-    secret.length < 32 || !/^[0-9a-f-]{20,64}$/i.test(site))
+    secret.length < 32 || !/^[0-9a-f-]{20,64}$/i.test(site) ||
+    !/^[a-z][a-z0-9_-]{2,60}$/.test(keyId))
   throw new Error('Configure exact HTTPS intake, site UUID and managed site secret');
 const rawInput = await readFile(file, 'utf8');
 if (Buffer.byteLength(rawInput) > 900000)
@@ -35,7 +37,8 @@ if (Buffer.byteLength(packet) > 1048576) throw new Error('Signed envelope exceed
 const signature = createHmac('sha256',secret).update(packet).digest('hex');
 const response = await fetch(url, {
   method: 'POST', redirect: 'error',
-  headers: {'Content-Type':'application/json', 'x-mad4b-signature':signature},
+  headers: {'Content-Type':'application/json', 'x-mad4b-signature':signature,
+            'x-mad4b-key-id':keyId},
   body: packet,
   signal: AbortSignal.timeout(30000)
 });
