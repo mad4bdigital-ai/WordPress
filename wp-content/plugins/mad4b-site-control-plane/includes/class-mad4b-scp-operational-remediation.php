@@ -19,8 +19,64 @@ final class MAD4B_SCP_Operational_Remediation {
 
 	public static function boot() {
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
+			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
 	}
 
+	public static function register_menu() {
+		if ( ! class_exists( 'MAD4B_SCP_Admin_UI', false ) ) return;
+		add_submenu_page(
+			MAD4B_SCP_Admin_UI::PAGE_SLUG,
+			__( 'Operational Remediation', 'mad4b-site-control-plane' ),
+			__( 'Operational Remediation', 'mad4b-site-control-plane' ),
+			'manage_options',
+			'mad4b-operational-remediation',
+			array( __CLASS__, 'render_page' )
+		);
+	}
+
+	/**
+	 * A read-only admin view. This is an operator work queue, not an installer,
+	 * privileged job runner or one-click approval surface.
+	 */
+	public static function render_page() {
+		if ( ! current_user_can( 'manage_options' ) )
+			wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
+		$view = self::status( array( 'include_live_acceptance' => false ) );
+		echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Observed diagnostic only. Provider installation, host commands, Browser execution, Brand approval, WordPress writes and release acceptance require separate governed steps.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Integrity', 'mad4b-site-control-plane' ) . ':</strong> '
+			. esc_html( ! empty( $view['diagnostic_integrity_ready'] ) ? 'Verified observation' : 'Blocked: recheck source and providers' ) . '</p>';
+		echo '<p><strong>Source:</strong> <code>' . esc_html( (string) ( $view['source_commit_sha'] ?? '' ) ) . '</code> <strong>Plan:</strong> <code>'
+			. esc_html( (string) ( $view['plan_sha256'] ?? '' ) ) . '</code></p>';
+		$issues = is_array( $view['plan_integrity_blockers'] ?? null ) ? $view['plan_integrity_blockers'] : array();
+		if ( $issues ) echo '<div class="notice notice-error inline"><p>'
+			. esc_html( implode( ', ', array_slice( $issues, 0, 15 ) ) ) . '</p></div>';
+		echo '<h2>' . esc_html__( 'Unresolved evidence and remediation owners', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<table class="widefat striped"><thead><tr><th>Gate</th><th>Owner</th><th>Remediation</th><th>Executor evidence</th></tr></thead><tbody>';
+		$items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
+		foreach ( array_slice( $items, 0, self::MAX_GATES ) as $item ) {
+			if ( ! is_array( $item ) ) continue;
+			$paths = is_array( $item['paths'] ?? null ) ? $item['paths'] : array();
+			echo '<tr><td><code>' . esc_html( (string) ( $item['gate_id'] ?? '' ) ) . '</code></td><td>'
+				. esc_html( (string) ( $item['owner'] ?? '' ) ) . '</td><td>';
+			foreach ( array_slice( $paths, 0, 10 ) as $action ) {
+				if ( ! is_array( $action ) ) continue;
+				echo '<p><code>' . esc_html( (string) ( $action['action_id'] ?? '' ) ) . '</code> — '
+					. esc_html( (string) ( $action['kind'] ?? '' ) ) . '</p>';
+			}
+			echo '</td><td>';
+			foreach ( array_slice( $paths, 0, 10 ) as $action ) {
+				if ( ! is_array( $action ) ) continue;
+				echo '<p>' . esc_html( (string) ( $action['apply_ability'] ?? '' ) ) . ': '
+					. esc_html( ! empty( $action['apply_registered'] ) ? 'Registered; separate approval required' : 'Missing or external executor' )
+					. '</p>';
+			}
+			echo '</td></tr>';
+		}
+		if ( ! $items ) echo '<tr><td colspan="4">No blocked gates observed. This is not a release certificate.</td></tr>';
+		echo '</tbody></table></div>';
+	}
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) ) return;
 		$definitions = array(
