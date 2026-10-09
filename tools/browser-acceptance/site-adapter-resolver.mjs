@@ -70,6 +70,7 @@ export function resolveSiteBrowserAdapter(caps, {
     if (!row || !valid(row.provider_id, ID) || !valid(row.contract, CONTRACT) ||
         !row.descriptor || row.descriptor.provider_id !== row.provider_id ||
         row.descriptor.contract !== row.contract ||
+        !["primary","supplemental"].includes(row.descriptor.selection_role ?? "primary") ||
         row.descriptor.read_only !== true || row.descriptor.authorizing !== false ||
         !row.capabilities || row.capabilities.error ||
         row.capabilities.read_only !== true || row.capabilities.authorizing !== false ||
@@ -160,6 +161,14 @@ export function resolveSiteBrowserAdapter(caps, {
     if (requestedProfile) possible = eligible.filter(id =>
       providers.get(id).capabilities.default_profile_id === requestedProfile);
     if (!possible.length) fail("site_adapter_profile_unmatched");
+    // In the absence of an explicit profile, a general read-only
+    // observer must not shadow a specialized contract. Still fail
+    // closed if multiple primary providers remain.
+    if (!requestedProfile && !pref.profile_id && possible.length > 1) {
+      const primary = possible.filter(id =>
+        (providers.get(id).descriptor.selection_role ?? "primary") === "primary");
+      if (primary.length) possible = primary;
+    }
     if (possible.length > 1) fail("site_adapter_ambiguous");
     providerId = possible[0];
   }
