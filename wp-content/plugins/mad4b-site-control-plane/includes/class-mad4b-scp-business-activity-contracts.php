@@ -269,8 +269,12 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         if ( ! isset( $targets[ $target_id ] ) || ! in_array( $op, array( 'import', 'export', 'update', 'improve', 'reconcile' ), true ) )
             return self::err( 'mad4b_activity_sync_not_configured', 'Target and operation must be explicitly configured.' );
         $target = $targets[ $target_id ];
-        $direction = in_array( $op, array( 'import', 'export' ), true ) ? $op : 'bidirectional';
-        if ( ! in_array( $target['direction'], array( $direction, 'bidirectional' ), true ) )
+        // Update/improve/reconcile is a comparison request, not a blanket
+        // outbound and inbound mutation authorization. One-way sources
+        // must remain discoverable for impact review.
+        $direction = in_array( $op, array( 'import', 'export' ), true ) ? $op : 'comparison_only';
+        if ( 'comparison_only' !== $direction &&
+            ! in_array( $target['direction'], array( $direction, 'bidirectional' ), true ) )
             return self::err( 'mad4b_activity_sync_direction_denied', 'Requested operation exceeds configured sync direction.' );
         $routes = MAD4B_SCP_Content_Experience_Profiles::profile_routes(
             $binding['profile']['slug'], (int) $binding['profile']['revision'] );
@@ -291,6 +295,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'conflict_policy' => $target['conflict_policy'],
             'resource_kind' => $target['resource_kind'],
             'purpose' => $target['purpose'],
+            'configured_direction' => $target['direction'],
+            'requested_direction' => $direction,
             'field_bindings' => isset( $target['field_bindings'] ) ? $target['field_bindings'] : array(),
             'field_owners' => isset( $binding['contract']['field_owners'] ) ? $binding['contract']['field_owners'] : array(),
             'provider_abilities_to_discover' => $ability,
