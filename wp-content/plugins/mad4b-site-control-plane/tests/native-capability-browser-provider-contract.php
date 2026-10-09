@@ -67,6 +67,10 @@ native_expect( $plan['state'] === 'ready' && $plan['case_count'] === 1,
 native_expect( $plan['cases'][0]['expected']['path'] === '/public/' &&
     $plan['cases'][0]['case_id'] === 'page-42', 'password pages and nonpublished post records excluded' );
 native_expect( strlen( $plan['plan_signature'] ) === 64, 'HMAC plan signature produced' );
+$another = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
+native_expect( $another['plan_digest'] !== $plan['plan_digest'] &&
+    $another['challenge']['nonce'] !== $plan['challenge']['nonce'],
+    'two issued plans even within one second must have unique nonces and HMAC digests' );
 $evidence = array(
     'contract' => $c::EVIDENCE, 'plan_digest' => $plan['plan_digest'],
     'plan_signature' => $plan['plan_signature'], 'origin' => $plan['origin'],
@@ -122,6 +126,9 @@ $bad_key_id = $request;
 $bad_key_id['evidence']['attestation']['key_id'] = 'rsa-spki-sha256:' . str_repeat( 'e', 64 );
 native_expect( $c::result( $bad_key_id )['verdict'] === 'BLOCKED',
     'RSA signature from correct key with forged identity denied' );
+$changed = $request; $changed['evidence']['cases'][0]['challenge_nonce'] = str_repeat( '0', 32 );
+native_expect( $c::result( $changed )['verdict'] === 'BLOCKED',
+    'challenge nonce tampering rejects stateless plan reconstruction' );
 $changed = $request; $changed['plan_signature'] = str_repeat( '0', 64 );
 native_expect( $c::result( $changed )['verdict'] === 'BLOCKED', 'forged plan signature denied' );
 $changed = $request; $changed['evidence']['observer']['plan_issued_at'] -= 2000;
