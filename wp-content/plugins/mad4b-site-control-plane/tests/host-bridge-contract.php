@@ -423,12 +423,14 @@ $host_receipt=array(
  'mutation_performed'=>true, 'readback_verdict'=>'PASS',
  'runner_source_sha256'=>str_repeat('1',64), 'plan_sha256'=>str_repeat('2',64),
  'authority_ref'=>str_repeat('3',64), 'approval_ref'=>'approved:fixture',
+ 'target_fingerprint'=>$host_plan['target']['target_fingerprint'],
  'completed_at'=>gmdate('c',time()-60),
  'result'=>array(
   'host_file_readback_verified'=>true,'fresh_wordpress_bootstrap_verified'=>false,
   'expected_site_profile_digest'=>str_repeat('a',64),
   'expected_site_profile_revision'=>MAD4B_SCP_Site_Profile::$rev,
   'expected_deployment_binding_digest'=>str_repeat('b',64),
+  'before_sha256'=>$host_inner['expected_wp_config_sha256'],
   'after_sha256'=>hash_file('sha256',$tmp.'/wp-config.php'),
  )
 );
@@ -449,10 +451,12 @@ $sign_host_receipt=function($row) use ($fixture_keypair,$sort_evidence){
   'job_id'=>$row['job_id'],'site_uuid'=>$row['site_uuid'],
   'environment'=>$row['environment'],'operation_id'=>$row['operation_id'],
   'plan_sha256'=>$row['plan_sha256'],'authority_ref'=>$row['authority_ref'],
+  'approval_ref'=>$row['approval_ref'],'target_fingerprint'=>$row['target_fingerprint'],
   'runner_source_sha256'=>$row['runner_source_sha256'],
   'completed_at'=>$row['completed_at'],'readback_verdict'=>$row['readback_verdict'],
   'mutation_performed'=>$row['mutation_performed'],
   'result'=>array(
+   'before_sha256'=>$result['before_sha256'],
    'after_sha256'=>$result['after_sha256'],
    'expected_site_profile_digest'=>$result['expected_site_profile_digest'],
    'expected_site_profile_revision'=>$result['expected_site_profile_revision'],
