@@ -101,6 +101,16 @@ export async function installContextNetworkBoundary(context, origin, env = proce
   passiveOnly = false
 } = {}) {
   if (!context || typeof context.route !== "function") throw new Error("browser_context_route_unavailable");
+  if (passiveOnly) {
+    // Playwright's HTTP route() does NOT intercept WebSockets. The separate
+    // API must be armed before page creation or the passive guarantee fails.
+    if (typeof context.routeWebSocket !== "function") {
+      throw new Error("browser_websocket_boundary_unavailable");
+    }
+    await context.routeWebSocket("**/*", async socket => {
+      await socket.close({ code: 1008, reason: "read_only_browser_probe" });
+    });
+  }
   await context.route("**/*", async (route) => {
     const request = route.request();
     const decision = requestBoundaryDecision({
@@ -120,6 +130,7 @@ export async function installContextNetworkBoundary(context, origin, env = proce
     configured_asset_hosts: configuredAllowedHosts(env),
     active_cross_origin_denied: true,
     passive_cross_origin_assets_allowed: false,
-    passive_only_requests: passiveOnly
+    passive_only_requests: passiveOnly,
+    websocket_network_denied: passiveOnly
   };
 }
