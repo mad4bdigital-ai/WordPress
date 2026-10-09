@@ -30,7 +30,7 @@ One Content Experience Profile / Business Activity Contract supplies the site-sp
 4. **Verify:** compare WordPress post IDs, language groups, row count, field hashes, import logs and independent readback. Reconcile failures with MSR02; never infer success from HTTP 200 or a queued background task.
 
 ### Current code delivered
-- `MAD4B_SCP_Activity_Import_Review::capabilities`, `plan`, `review`, `brand_core_plan` are bounded read abilities. Live property allowlists come from the exact Content Experience Profile.
+- `MAD4B_SCP_Activity_Import_Review::capabilities`, `plan`, `review`, `wp_all_import_plan`, `brand_core_plan` are bounded read abilities. Live property allowlists come from the exact Content Experience Profile. WP All Import job option handoff is structured read-only discovery, not a substitute for its installed-version wizard or certified programmatic runner.
 - Signed Apps Script REST intake `POST /wp-json/mad4b/v1/activity-import/intake`: HMAC-SHA256 over **exact raw JSON bytes**, site-bound UUID, timestamp freshness, unique nonce, 1 MiB limit, 500 rows, 80 columns. Stores only a redacted conflict/plan snapshot as a nonautoloaded option. Never writes WordPress posts.
 - WordPress Tools → MAD4B Import Review shows redacted conflicts. A new intake cannot replace an unreviewed one. Setup secret is site-scoped constant `MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET` and a separate Apps Script Script Property. Never send secrets via chat, PR comments or GitHub.
 - `tools/feature007/google-apps-script/mad4b-activity-import-push.gs` is a sample client for **native Google Sheets**, not XLSX files. It uses Script Properties, explicit tab ID/name, guarded formula treatment, LockService for *script-worker serialization*, and sends no direct content mutation to the WordPress runtime.
@@ -39,6 +39,7 @@ One Content Experience Profile / Business Activity Contract supplies the site-sp
 ### All Royal sample (not a global default)
 Attached workbook has two tabs: Sheet3 (180 records plus 35 blank/separator rows) and Sheet5 (180 exact records). Five languages each per translation group; 36 groups. WPML fields: `_wpml_import_language_code`, `_wpml_import_source_language_code`, `_wpml_import_translation_group`.
 - 108 `ERU` currency values: BLOCK / explicitly confirm approved ISO currency; do not replace by EUR silently.
+- The preview requires a configured allowed-currency list, and supports optional `price_tier_policy=review_monotonic` and `review_past_intervals=true`. Full issue counts are recorded by reason even when review rows are capped at 200 for safe display.
 - 180 `puplished` status values: BLOCK / map to a configured WP status with human confirmation.
 - 12 tier-price ordering exceptions: REVIEW rather than auto-correct; commercial tier rules may differ.
 - 90 rows date window 2026-05-01..2026-09-30 (already ended on 2026-10-10), 90 rows 2026-10-01..2027-04-30. Historical records must not be blindly deleted or published.
