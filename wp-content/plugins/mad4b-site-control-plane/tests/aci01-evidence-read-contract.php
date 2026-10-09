@@ -161,6 +161,11 @@ check($duplicate['provenance_observation']['excluded_duplicate_artifact_ids']===
     'excluded immutable duplicate points to second artifact');
 check(in_array('duplicate_research_request_observed',$duplicate['reason_codes'],true),
     'duplicate fact not counted as fresh independent evidence');
+$reversed=$service::project($job,$jobRow,$ctx,array($b,$a),604800,$scope,
+    strtotime('2026-10-01T11:00:00Z'));
+check($duplicate['preview_sha256']===$reversed['preview_sha256'] &&
+    $duplicate['provenance_observation']===$reversed['provenance_observation'],
+    'reversing caller artifact refs cannot change canonical evidence identity');
 $b['payload']['normalized_data']=array('different_competitor_facts'=>true);
 $contradiction=$service::project($job,$jobRow,$ctx,array($a,$b),604800,$scope,
     strtotime('2026-10-01T11:00:00Z'));
