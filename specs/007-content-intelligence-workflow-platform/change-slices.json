@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 541,
+  "changed_file_count": 542,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -864,6 +864,7 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
       ]
     },
@@ -1051,6 +1052,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "91f66c29ac3e5571fe6cbfbef8ea662b2a6afd9257b0e7be8b31bc65dacc34f3",
+  "changed_paths_sha256": "113fe98b4596dcd1b52049d29e81001201c9628f34c950c2f06300105081f7ea",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
