@@ -52,7 +52,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'input_schema' => array(
 				'type' => 'object',
 				'properties' => array(
-					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
+					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => false ),
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
 				),
