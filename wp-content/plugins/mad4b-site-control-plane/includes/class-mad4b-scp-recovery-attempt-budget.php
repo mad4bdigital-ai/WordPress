@@ -50,7 +50,7 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
             if ( ! is_array( $row ) || ! isset( $row['scope_sha256'] )
                 || ! hash_equals( $basis, (string) $row['scope_sha256'] ) )
                 return self::error( 'mad4b_retry_journal_corrupt', 'Persistent retry journal cannot be trusted.' );
-            $rows[] = array( 'attempt' => $i, 'reserved_at' => isset( $row['reserved_at'] ) ? $row['reserved_at'] : '' );
+            $rows[] = array( 'attempt' => $i, 'reserved_at' => isset( $row['reserved_at'] ) ? $row['reserved_at'] : '', 'outcome' => isset( $row['outcome'] ) ? $row['outcome'] : 'unknown' );
         }
         // A discontinuous journal must fail closed; a transient read miss
         // is not evidence that a higher attempt has never been reserved.
@@ -64,6 +64,8 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
             'scope_sha256' => $basis, 'attempts_reserved' => $count,
             'max_attempts' => self::LIMIT, 'remaining' => self::LIMIT - $count,
             'circuit_open' => $count >= self::LIMIT,
+            'last_outcome' => $count ? $rows[ $count - 1 ]['outcome'] : 'none',
+            'retry_eligible' => $count < self::LIMIT && ( 0 === $count || 'failed' === $rows[ $count - 1 ]['outcome'] ),
             'journal_sha256' => $sha, 'attempts' => $rows,
             'persisted' => true, 'count_authoritative' => true,
             'read_only' => true, 'mutation_performed' => false );
@@ -76,7 +78,12 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         if ( $status['circuit_open'] ) return self::error( 'mad4b_retry_circuit_open', 'Retry limit reached; operator reconciliation required.' );
         $hash = $status['scope_sha256'];
         $at = (int) $status['attempts_reserved'] + 1;
-        $value = array( 'scope_sha256' => $hash, 'reserved_at' => gmdate( 'c' ) );
+        if ( $at > 1 ) {
+            $prior = get_option( self::key( $hash, $at - 1 ), false );
+            if ( ! is_array( $prior ) || ! isset( $prior['outcome'] ) || 'failed' !== $prior['outcome'] )
+                return self::error( 'mad4b_retry_prior_not_reconciled', 'Previous operation succeeded or has an unknown outcome; independently reconcile before retry.' );
+        }
+        $value = array( 'scope_sha256' => $hash, 'reserved_at' => gmdate( 'c' ), 'outcome' => 'pending' );
         if ( ! add_option( self::key( $hash, $at ), $value, '', false ) )
             return self::error( 'mad4b_retry_concurrent_reservation', 'Another worker reserved this retry; re-read authoritative status.' );
         $readback = get_option( self::key( $hash, $at ), false );
@@ -86,6 +93,27 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
         return array( 'attempt' => $at, 'scope_sha256' => $hash,
             'reserved_at' => $value['reserved_at'], 'persisted' => true,
             'authorizes_context_write' => false );
+    }
+
+    public static function finish( $reservation, $outcome ) {
+        if ( ! is_array( $reservation ) || ! in_array( $outcome, array( 'failed', 'succeeded' ), true ) )
+            return self::error( 'mad4b_retry_outcome_invalid', 'Retry completion requires exact reservation and outcome.' );
+        $hash = isset( $reservation['scope_sha256'] ) ? $reservation['scope_sha256'] : '';
+        $at = isset( $reservation['attempt'] ) ? (int) $reservation['attempt'] : 0;
+        if ( ! preg_match( '/^[a-f0-9]{64}$/', $hash ) || $at < 1 || $at > self::LIMIT )
+            return self::error( 'mad4b_retry_reservation_invalid', 'Retry reservation is invalid.' );
+        $key = self::key( $hash, $at );
+        $prior = get_option( $key, false );
+        if ( ! is_array( $prior ) || ! isset( $prior['scope_sha256'], $prior['outcome'] )
+            || ! hash_equals( $hash, (string) $prior['scope_sha256'] ) || 'pending' !== $prior['outcome'] )
+            return self::error( 'mad4b_retry_reservation_drift', 'Retry record is no longer pending.' );
+        $prior['outcome'] = $outcome;
+        $prior['finished_at'] = gmdate( 'c' );
+        if ( ! update_option( $key, $prior, false ) ) return self::error( 'mad4b_retry_finish_failed', 'Retry completion could not persist.' );
+        $read = get_option( $key, false );
+        if ( ! is_array( $read ) || ! isset( $read['outcome'] ) || $read['outcome'] !== $outcome )
+            return self::error( 'mad4b_retry_finish_readback_failed', 'Retry outcome readback failed.' );
+        return true;
     }
 
     /** Human recovery requires exact journal hash; no background auto-reset. */
