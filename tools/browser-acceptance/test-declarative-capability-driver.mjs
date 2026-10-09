@@ -63,8 +63,9 @@ const page={
  async title(){return "Demo Title";},
  locator(selector){
    if(selector==='link[rel="canonical"]')return {first(){return {getAttribute:async()=>"/tours/"}}};
-   if(selector==="[data-mad4b-capability-key]")return {evaluateAll:async(cb,key)=>cb([
-      {getAttribute:()=>key},{getAttribute:()=>key}],key)};
+   if(selector==='[data-mad4b-capability-key="listing.results"]')return {
+     count:async()=>2
+   };
    throw Error("unapproved selector:"+selector);
  }
 };
