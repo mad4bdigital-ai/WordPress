@@ -30,6 +30,10 @@ On uncertain/failed write: `step_inflight` → `needs_reconcile` → independent
 ### Durable state, crash handling, consistency
 - WordPress Options store is keyed by hash of `site_uuid|profile_slug|entity_id`: immutable accepted source checkpoints containing resource IDs, opaque revisions and type-aware field SHA-256; no plaintext business values or OAuth tokens. Active journal holds exact step identities/hashes, approved plan hash, authority revision, next step, state and timestamps; archive is immutable and hash-addressed.
 - `add_option` provides single-winner per-entity operation reservation and a fail-closed execution lease. Crashed leases **are not silently stolen**. Admin exact-readback recovery or explicit prewrite cancel is required.
+- Before **any** external provider write, the `step_inflight` journal transition is persisted and independently reread from WordPress Options; failed readback blocks the provider call. After readback-confirmed writes, the next-step journal is verified before unlocking. First-run checkpoints also require readback before claiming success.
+- A definite prewrite refusal records `needs_reconcile` before releasing the execution lease; cancellation obtains the **same** atomic per-entity lease and rechecks its exact journal checksum before archiving, blocking a cancel/advance race.
+- Recovery and full-convergence finalization share a per-entity recovery reservation. Unverified journal transitions prevent a success result. An ambiguous `step_inflight` write cannot be recovered while the original execution lease may represent an active provider request; genuine process quiescence requires an independent operational check, not an age-only takeover or user-provided boolean.
+- Exact journal readback is a necessary guard, **not** proof of transactional compare-and-swap in arbitrary WordPress storage engines. Concurrency and cache-coherence must be certified on native MySQL/MariaDB with multiple PHP processes.
 - Source reader return must include exact resource ID, revision, observed timestamp, complete mapped fields and `present` state. Stale, truncated, absent or reordered bindings cannot become accepted checkpoints.
 - Admin `manage_options`, WP parent post edit authorization, exact Site Profile enrollment, profile revision and SHA, source field allowlists are required. The source ownership map can be versioned through the existing governed Profile plan/apply.
 - No two-phase transaction exists across Google and MySQL. This is a bounded outbox/saga with partial-progress recovery, not fake atomic commit.
@@ -68,6 +72,9 @@ Trusted WP-local code registers adapters via `mad4b_activity_sync_adapters`, eac
 14. No hidden credential values in status/journal or public source sample.
 15. No sector-specific DMC/driver/guide code in generic runtime.
 16. Native PHP fixture `business-activity-sync-runtime.php` covers fake provider CAS/readback, initial arbitration, stale approval, concurrent destination edit, partial closeout, ambiguous-write recovery, immutable archive.
+17. Simulated Options-write failure before `step_inflight` receipt → no external write, explicit failure and safe lease release.
+18. Simulated Options-write failure after provider write → no false progress/lease release, retained `step_inflight` and blocked recovery while worker may be active.
+19. Two recovery workers → exactly one recovery reservation; cancel against a leased execution → hard refusal; settled prewrite conflicts release unused leases.
 
 ## Current acceptance and blockers
 **Source delivered on child PR #366**, not deployed to WordPress Staging or Production.
