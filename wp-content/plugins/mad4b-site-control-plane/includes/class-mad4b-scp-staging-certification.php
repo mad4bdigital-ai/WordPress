@@ -298,6 +298,16 @@ final class MAD4B_SCP_Staging_Certification {
 		$current_source = (string) ( $binding['source_commit_sha'] ?? '' );
 		$identity_ready = (bool) preg_match( '/^[a-f0-9]{64}$/D', $current_sha )
 			&& (bool) preg_match( '/^[a-f0-9]{40}$/D', $current_source );
+		// A shared build SHA is never a cross-site authority token.
+		$site_ready = ! empty( $binding['nonproduction_site_ready'] )
+			&& (bool) preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D',
+				(string) ( $binding['site_uuid'] ?? '' ) )
+			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', (string) ( $binding['site_profile_digest'] ?? '' ) )
+			&& is_string( $binding['site_origin'] ?? null )
+			&& '' !== $binding['site_origin']
+			&& is_string( $binding['environment'] ?? null )
+			&& '' !== $binding['environment']
+			&& 'production' !== $binding['environment'];
 		$sha_match = $identity_ready && is_string( $sha ) && strlen( $sha ) === 64
 			&& hash_equals( $sha, $current_sha );
 		$source_match = $identity_ready && is_string( $source ) && strlen( $source ) === 40
@@ -306,14 +316,16 @@ final class MAD4B_SCP_Staging_Certification {
 		$live_ready = ! $live_required || ( ! empty( $overlay['included'] ) && ! empty( $overlay['ready'] ) );
 		$clear = ! empty( $plan['current_ready'] ) && ! empty( $plan['gate_coverage_complete'] )
 			&& empty( $plan['blocking_gates'] ) && empty( $plan['plan_integrity_blockers'] ) && $live_ready;
-		$ready = $identity_ready && $sha_match && $source_match && $clear;
+		$ready = $identity_ready && $site_ready && $sha_match && $source_match && $clear;
 		$state = ! $identity_ready ? 'CURRENT_BUILD_IDENTITY_UNAVAILABLE'
-			: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
-				: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) );
+			: ( ! $site_ready ? 'GOVERNED_SITE_IDENTITY_UNAVAILABLE'
+				: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
+					: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) ) );
 		return array(
 			'contract' => 'mad4b.staging-convergence-verification.v1',
 			'state' => $state, 'ready' => $ready,
 			'plan_matches' => $sha_match, 'source_matches' => $source_match,
+			'governed_site_identity_ready' => $site_ready,
 			'current_plan_sha256' => $current_sha,
 			'current_source_commit_sha' => $current_source,
 			'live_acceptance_included' => ! empty( $overlay['included'] ),
@@ -800,6 +812,75 @@ final class MAD4B_SCP_Staging_Certification {
 	}
 
 	/**
+	 * Deliberately bypasses request-local manifest cache: reading the full
+	 * plugin file inventory twice is expensive, but this manifest SHA fence
+	 * detects a ZIP/update switch during the read-only convergence request.
+	 */
+	public static function convergence_manifest_file_sha256() {
+		if ( ! defined( 'MAD4B_SCP_DIR' ) ) return '';
+		$path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
+		if ( ! is_readable( $path ) || ! is_file( $path ) ) return '';
+		$sha = hash_file( 'sha256', $path );
+		return is_string( $sha ) && preg_match( '/^[a-f0-9]{64}$/D', $sha ) ? $sha : '';
+	}
+
+	/**
+	 * A declaration in the plan is not proof of an installed or executable
+	 * provider. Observe the WordPress Ability registry after boot, never
+	 * materialize/install a missing provider as a side effect of inspection.
+	 */
+	public static function observe_convergence_ability_registration( array $actions ) {
+		foreach ( $actions as &$action ) {
+			if ( ! is_array( $action ) ) continue;
+			$apply = is_string( $action['apply_ability'] ?? null ) ? $action['apply_ability'] : '';
+			$readback = is_string( $action['readback_ability'] ?? null ) ? $action['readback_ability'] : '';
+			$action['apply_ability_registered'] = '' !== $apply && function_exists( 'wp_has_ability' )
+				&& wp_has_ability( $apply );
+			$action['readback_ability_registered'] = '' !== $readback && function_exists( 'wp_has_ability' )
+				&& wp_has_ability( $readback );
+			$action['registration_is_not_execution_permission'] = true;
+			$action['automatic_execution_allowed'] = false;
+			if ( '' !== $apply && ! $action['apply_ability_registered'] ) {
+				$action['execution_provider_missing'] = true;
+				$action['remediation_requires_adapter_discovery'] = true;
+			}
+			if ( '' !== $readback && ! $action['readback_ability_registered'] )
+				$action['readback_provider_missing'] = true;
+		}
+		unset( $action );
+		return $actions;
+	}
+
+	/**
+	 * Purely observational, per-request site identity. This is deliberately
+	 * unrelated to any single tenant, CPT, domain, or named host provider.
+	 */
+	public static function convergence_site_identity() {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ) return array(
+			'ready' => false, 'site_uuid' => '', 'site_profile_digest' => '',
+			'site_origin' => '', 'environment' => '', 'blockers' => array( 'site_profile_provider_missing' ),
+		);
+		$uuid = (string) MAD4B_SCP_Site_Profile::site_uuid();
+		$digest = (string) MAD4B_SCP_Site_Profile::profile_digest();
+		$origin = (string) MAD4B_SCP_Site_Profile::site_origin();
+		$environment = (string) MAD4B_SCP_Site_Profile::current_environment();
+		$bound = MAD4B_SCP_Site_Profile::nonproduction_governed()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+		$valid = (bool) preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/D', $uuid )
+			&& (bool) preg_match( '/^[a-f0-9]{64}$/D', $digest )
+			&& '' !== $origin && '' !== $environment && 'production' !== $environment;
+		$ready = $bound && $valid;
+		return array(
+			'ready' => $ready,
+			'site_uuid' => $uuid,
+			'site_profile_digest' => $digest,
+			'site_origin' => $origin,
+			'environment' => $environment,
+			'blockers' => $ready ? array() : array( 'nonproduction_site_identity_or_origin_unverified' ),
+		);
+	}
+
+	/**
 	 * Opt-in, read-only merge with independent Live Acceptance. This is an
 	 * evidence union, never an authority union: a second gate cannot become
 	 * ready from the first gate's status. All unknown families are preserved as
@@ -948,6 +1029,11 @@ final class MAD4B_SCP_Staging_Certification {
 			$row['read_only_plan'] = true;
 			$row['authorizing'] = false;
 			$row['mutation_performed'] = false;
+			// No item in this read-only diagnostic can be launched by a
+			// downstream automation engine, even if its legacy kind was
+			// "read_only_followup" or an unrecognized provider-defined kind.
+			$row['automatic_execution_allowed'] = false;
+			$row['external_execution_authority_granted'] = false;
 			if ( in_array( $row['kind'] ?? '', array(
 				'governed_mutation', 'hybrid_creation', 'external_oauth_reauthorization',
 				'external_executor_job',
@@ -989,6 +1075,12 @@ final class MAD4B_SCP_Staging_Certification {
 		foreach ( $blocked as $gate_id => $gate ) {
 			if ( ! empty( $coverage[ $gate_id ] ) ) continue;
 			$id = 'review_gate_' . $gate_id;
+			if ( isset( $by_id[ $id ] ) ) {
+				// Never silently overwrite a provider-supplied action with
+				// a generated review action or vice versa.
+				$issues[] = 'generated_action_identity_collision:' . $id;
+				continue;
+			}
 			$by_id[ $id ] = array(
 				'action_id' => $id,
 				'kind' => 'read_only_blocker',
@@ -1012,6 +1104,7 @@ final class MAD4B_SCP_Staging_Certification {
 			);
 			$coverage[ $gate_id ][] = $id;
 		}
+		if ( count( $by_id ) > 256 ) $issues[] = 'expanded_action_registry_limit_exceeded';
 		// A strictly bounded topological ordering. Unknown dependency IDs
 		// stay blocked rather than being removed from the operation contract.
 		$ordered = array();
