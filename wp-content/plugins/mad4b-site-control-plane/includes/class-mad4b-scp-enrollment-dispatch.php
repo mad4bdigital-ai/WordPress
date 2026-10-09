@@ -231,7 +231,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$code = '';
 		if ( $evaluated && ! $allowed ) {
 			$code = preg_replace( '/[^a-z0-9_]/', '', strtolower( (string) $error_code ) );
-			if ( '' === $code ) $code = 'request_permission_unverified';
+			// Unknown WP_Error codes may originate in third-party plugins.
+			// Return a generic code rather than echoing potential secrets.
+			if ( ! preg_match( '/^mad4b_remote_operation_[a-z0-9_]+$/', $code ) ) {
+				$code = 'request_permission_denied_unclassified';
+			}
 			$code = substr( $code, 0, 96 );
 		}
 		$next = 'inspect_current_transport_and_oauth_step_up';
