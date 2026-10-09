@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 452,
+  "changed_file_count": 454,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -832,8 +832,18 @@
         "tools/browser-acceptance/test-plan-consumption-ledger.mjs",
         "tools/browser-acceptance/test-receipt.mjs"
       ]
+    },
+    {
+      "id": "aci01-parent-content-intelligence-qa-admission-20261009",
+      "semantic_unit": "Existing Feature 007 Content Intelligence Pipeline QA evidence truth and pre-effect full-bundle admission",
+      "revert_boundary": "Revert child PR #331 source + negative tests as one source-only QA safety slice",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "2daf8a1cf85ef116f812a7bcf8ba4cafe6caf79c0121984c9f8d2418afe73a24",
+  "changed_paths_sha256": "85f72668544ef918ce01d5bd20cab20e9eb3e3d36a9643982e65ddf499898a3a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
