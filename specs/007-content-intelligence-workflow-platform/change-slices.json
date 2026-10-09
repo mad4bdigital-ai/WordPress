@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 442,
+  "changed_file_count": 444,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -806,8 +806,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-native-relation-audit-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-recipe-gap-contract.php"
       ]
+    },
+    {
+      "id": "feature007-provider-candidate-risk-boundary-20261009",
+      "semantic_unit": "Risk classification hard stop for dynamic provider candidate support levels",
+      "revert_boundary": "Plugin Discovery risk gate and its disposable WordPress smoke acceptance must revert together",
+      "certification": "source_review_native_runtime_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "df46631daafe48aad35bea829ae612e29b0561e845407b5937c770507f2131ee",
+  "changed_paths_sha256": "5bfe9f0242cae119524e5bdd7c2f7289c5ea5acf87514dc346a34c5c0f17562c",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
