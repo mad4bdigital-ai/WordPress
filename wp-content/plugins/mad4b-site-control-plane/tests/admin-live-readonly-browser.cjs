@@ -14,6 +14,11 @@ if (requested.protocol !== 'https:' || requested.username || requested.password 
   throw new Error('UNSAFE_SITE_ORIGIN');
 }
 const origin = requested.origin;
+const adminPath = process.env.MAD4B_UI_ADMIN_PATH || '/wp-admin/admin.php';
+// Explicitly support WordPress installed in a bounded subdirectory.
+if (!/^\/(?:[a-zA-Z0-9._-]+\/)*wp-admin\/admin\.php$/.test(adminPath)) {
+  throw new Error('UNSAFE_ADMIN_PATH');
+}
 const stateFile = required('MAD4B_UI_AUTH_STATE_FILE');
 if (!fs.existsSync(stateFile) || !fs.statSync(stateFile).isFile()) {
   throw new Error('AUTH_STATE_MISSING');
@@ -24,7 +29,7 @@ function link(href) {
   let u;
   try { u = new URL(href, origin); } catch (_) { return null; }
   const slug = u.searchParams.get('page') || '';
-  if (u.origin !== origin || u.pathname !== '/wp-admin/admin.php' ||
+  if (u.origin !== origin || u.pathname !== adminPath ||
       !/^mad4b-[a-z0-9-]{1,100}$/.test(slug) ||
       u.searchParams.has('action') || u.searchParams.has('_wpnonce')) return null;
   return { slug, url: u.href };
@@ -51,7 +56,7 @@ function link(href) {
     }
     return route.continue();
   });
-  const entry = origin + '/wp-admin/admin.php?page=mad4b-operator-control-center';
+  const entry = origin + adminPath + '?page=mad4b-operator-control-center';
   const first = await page.goto(entry, { waitUntil: 'domcontentloaded', timeout: 25000 });
   if (!first || first.status() !== 200 || !link(page.url()) ||
       await page.locator('.mad4b-workspace').count() !== 1) {
