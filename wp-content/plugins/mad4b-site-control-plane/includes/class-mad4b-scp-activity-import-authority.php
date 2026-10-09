@@ -55,6 +55,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
             '_wpml_import_language_code', '_wpml_import_source_language_code',
             '_wpml_import_translation_group', '_wpml_import_after_process_post_status'
         ), true );
+        if ( count( array_unique( array_values( $mapping ) ) ) !== count( $mapping ) )
+            return self::err( 'mad4b_import_duplicate_destination_mapping',
+                'Import source columns must not compete for the same destination field.' );
         foreach ( $mapping as $from => $to ) {
             if ( ! is_string( $from ) ||
                 ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $from ) ||
@@ -137,6 +140,11 @@ final class MAD4B_SCP_Activity_Import_Authority {
             return self::err( 'mad4b_import_site_validation_not_configured',
                 'Commercial import requires an approved site-owned validation policy.' );
         if ( ! is_array( $input ) ) return self::err( 'mad4b_import_source_invalid', 'Invalid input.');
+        if ( array_diff( array_keys( $input ), array(
+            'profile_slug', 'rows', 'headers', 'identity_field', 'field_mapping',
+            'allowed_currencies', 'price_tier_policy', 'review_past_intervals'
+        ) ) ) return self::err( 'mad4b_import_source_unknown_fields',
+            'Source may submit rows and legacy-compatible requests only, never new validation authority.' );
         foreach ( array( 'identity_field', 'field_mapping', 'allowed_currencies',
             'price_tier_policy', 'review_past_intervals' ) as $name ) {
             if ( array_key_exists( $name, $input ) &&
