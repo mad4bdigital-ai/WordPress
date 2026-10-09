@@ -16,6 +16,7 @@ function wp_remote_get( $url, $options ) {
 	if ( $GLOBALS['http_fail'] ) return new WP_Error( 'external_unavailable' );
 	return array( 'response' => array( 'code' => $GLOBALS['http_status'] ), 'body' => json_encode( $GLOBALS['http_body'] ) );
 }
+function wp_safe_remote_get( $url, $options ) { return wp_remote_get( $url, $options ); }
 function wp_remote_retrieve_response_code( $result ) { return $result['response']['code']; }
 function wp_remote_retrieve_body( $result ) { return $result['body']; }
 $GLOBALS['checks'] = 0;
