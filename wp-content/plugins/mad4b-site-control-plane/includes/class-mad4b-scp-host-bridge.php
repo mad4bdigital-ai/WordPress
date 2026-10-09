@@ -845,6 +845,25 @@ final class MAD4B_SCP_Host_Bridge {
 		return true;
 	}
 
+	/** WordPress wp-load.php: first root, then one parent only if parent is not another WP root. */
+	private static function wordpress_config_path( $root ) {
+		$root = rtrim( (string) $root, '/\\' );
+		if ( '' === $root || ! is_dir( $root ) )
+			return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'Verified WordPress root is unavailable.' );
+		$local = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
+		$parent_dir = dirname( $root );
+		$parent = $parent_dir . DIRECTORY_SEPARATOR . 'wp-config.php';
+		if ( is_link( $local ) || is_link( $parent ) || is_link( $parent_dir ) )
+			return new WP_Error( 'mad4b_host_wp_config_link_forbidden', 'Linked WordPress configuration paths are forbidden.' );
+		if ( is_file( $local ) ) return $local;
+		if ( file_exists( $local ) ) return new WP_Error( 'mad4b_host_wp_config_type_invalid', 'Root configuration is not a regular file.' );
+		if ( file_exists( $parent_dir . DIRECTORY_SEPARATOR . 'wp-settings.php' )
+			|| is_link( $parent_dir . DIRECTORY_SEPARATOR . 'wp-settings.php' ) )
+			return new WP_Error( 'mad4b_host_wp_config_parent_root_denied', 'Parent is another WordPress root.' );
+		if ( ! is_file( $parent ) ) return new WP_Error( 'mad4b_host_wp_config_unavailable', 'WordPress configuration identity is unavailable.' );
+		return $parent;
+	}
+
 	private static function target_identity() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return new WP_Error( 'mad4b_host_site_profile_unavailable', 'Site Profile is unavailable.' );
 		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
@@ -852,8 +871,8 @@ final class MAD4B_SCP_Host_Bridge {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$root = defined( 'ABSPATH' ) ? realpath( ABSPATH ) : false;
 		if ( false === $root ) return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'WordPress root is unavailable.' );
-		$wp_config = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
-		if ( is_link( $wp_config ) || ! is_file( $wp_config ) ) return new WP_Error( 'mad4b_host_wp_config_unavailable', 'WordPress configuration identity is unavailable.' );
+		$wp_config = self::wordpress_config_path( $root );
+		if ( is_wp_error( $wp_config ) ) return $wp_config;
 		$wp_config_sha256 = hash_file( 'sha256', $wp_config );
 		if ( ! is_string( $wp_config_sha256 ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $wp_config_sha256 ) ) {
 			return new WP_Error( 'mad4b_host_wp_config_identity_invalid', 'WordPress configuration identity could not be resolved.' );

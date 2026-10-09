@@ -302,7 +302,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	}
 
 	private static function live_managed_skills_preflight() {
+		// In partially loaded/isolated environments, never infer a
+		// Staging grant from the presence of a class without the status API.
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& method_exists( 'MAD4B_SCP_Site_Profile', 'status' )
 			? MAD4B_SCP_Site_Profile::status() : array();
 		$profile = is_array( $profile ) ? $profile : array();
 		$skills_available = class_exists( 'MAD4B_SCP_Skill_Registry', false );

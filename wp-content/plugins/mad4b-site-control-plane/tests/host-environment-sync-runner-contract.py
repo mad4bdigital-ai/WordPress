@@ -262,6 +262,42 @@ def test_flow():
             }),
             "symlinked rollback store permitted",
         )
+        # WordPress core permits a *single* parent-level wp-config when the
+        # local file is absent and the parent is not another WP installation.
+        layout = tmp / "parent-layout"
+        nested = layout / "wordpress"
+        nested.mkdir(parents=True)
+        (nested / "wp-content" / "mad4b-runner").mkdir(parents=True)
+        external_config = layout / "wp-config.php"
+        external_config.write_bytes(original)
+        external_config.chmod(0o600)
+        external_profile = profile_for(nested, private, site_uuid, external_config, nested / "wp-content" / "mad4b-runner")
+        external_profile["host_environment_receipt_signing_key_file"] = str(private_file)
+        external_profile["host_environment_receipt_signing_public_key_b64"] = base64.b64encode(public_raw).decode("ascii")
+        assert runner.wordpress_config_for_root(nested) == external_config
+        parent_plan = exact_sync(external_profile)
+        parent_job = wrapped("wordpress_environment_sync", parent_plan)
+        parent_result = runner.execute_wp_environment_sync(external_profile, parent_job)
+        assert parent_result["relative_path"] == "../wp-config.php"
+        assert runner.sha256_file(external_config) == parent_result["after_sha256"]
+        assert external_config.read_bytes().count(b"define( 'WP_ENVIRONMENT_TYPE', 'staging' );") == 1
+        assert not (nested / "wp-config.php").exists()
+        assert runner._rollback_wp_environment(parent_result)
+        assert external_config.read_bytes() == original
+        (layout / "wp-settings.php").write_text("<?php", encoding="utf-8")
+        expect_rejection(lambda: runner.wordpress_config_for_root(nested),
+                         "parent wp-settings should block the parent config")
+        (layout / "wp-settings.php").unlink()
+        local_config = nested / "wp-config.php"
+        local_config.write_bytes(original)
+        assert runner.wordpress_config_for_root(nested) == local_config
+        local_config.unlink()
+        external_config.unlink()
+        external_config.symlink_to(config)
+        expect_rejection(lambda: runner.wordpress_config_for_root(nested),
+                         "linked parent config should be denied")
+        external_config.unlink()
+
         production = dict(profile, environment="production")
         expect_rejection(lambda: runner._wp_environment_config(production),
                          "Production host edit accepted")
