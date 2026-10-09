@@ -54,6 +54,21 @@ $normalized=MAD4B_SCP_Business_Activity_Contracts::normalize($raw,'vendors',arra
 check(!is_wp_error($normalized)&&$normalized['field_owners']['category_code']==='wp_feed'&&
  $normalized['sync_targets']['brand_folder']['purpose']==='editorial_policy',
  'Field owners and editorial context not normalized');
+$typed=$raw;$typed['sync_targets']['wp_feed']['field_bindings']=array(
+ 'category_code'=>array('provider_field'=>'Sheet1!B2','value_type'=>'string','null_policy'=>'manual_review'));
+$yes=MAD4B_SCP_Business_Activity_Contracts::normalize($typed,'vendors',array('category_code'),array('region'));
+check(!is_wp_error($yes)&&$yes['sync_targets']['wp_feed']['field_bindings']['category_code']['provider_field']==='Sheet1!B2',
+ 'Typed per-source selector configuration unavailable');
+$expression=$typed;$expression['sync_targets']['wp_feed']['field_bindings']['category_code']['provider_field']='eval(PHP)';
+$no=MAD4B_SCP_Business_Activity_Contracts::normalize($expression,'vendors',array('category_code'),array('region'));
+check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_source_binding_value_invalid',
+ 'Executable expression accepted as field selector');
+$duplicateRef=$raw;$duplicateRef['sync_targets']['another']=array('provider'=>'google_drive',
+ 'source_ref'=>'brand_docs','resource_kind'=>'drive_document','purpose'=>'reference',
+ 'field_keys'=>array(),'direction'=>'import');
+$no=MAD4B_SCP_Business_Activity_Contracts::normalize($duplicateRef,'vendors',array('category_code'),array('region'));
+check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_duplicate_resource_binding',
+ 'Duplicate Drive resource alias accepted');
 $misowner=$raw;$misowner['field_owners']['category_code']='brand_folder';
 $no=MAD4B_SCP_Business_Activity_Contracts::normalize($misowner,'vendors',array('category_code'),array('region'));
 check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_field_owner_invalid','Editorial policy promoted to record field owner');
