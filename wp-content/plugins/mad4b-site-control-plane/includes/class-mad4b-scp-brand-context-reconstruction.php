@@ -19,7 +19,7 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'malformed_file', 'conflicting_authorities', 'insufficient_evidence',
             'assistant_unavailable', 'provider_timeout', 'repeated_failure',
             'draft_not_materialized', 'review_denied', 'receipt_drift',
-            'asset_rights_unverified',
+            'asset_rights_unverified', 'source_scan_incomplete',
         );
     }
 
@@ -95,6 +95,11 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             $reason = 'draft_exists_without_verified_provider_asset';
             $action = 'reconcile_existing_draft_before_retry';
             $next_ability = 'context/brand-core-convergence-plan';
+        } elseif ( in_array( $scenario, array( 'source_scan_incomplete', 'missing_file' ), true ) && ! $requires_owner && $dependency_ok ) {
+            $state = 'SOURCE_DISCOVERY';
+            $reason = 'source_recovery_or_exact_empty_scan_required';
+            $action = 'verify_complete_governed_source_scan_before_recreating';
+            $next_ability = 'context/source-scan-plan';
         } elseif ( $requires_owner ) {
             // Strategy is never synthesized from arbitrary website/competitor
             // content into authoritative Brand Core.
@@ -176,6 +181,13 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
                     $read( 'context/provider-capabilities', 'reconnect_exact_managed_source_first' ),
                     $read( 'context/source-scan-plan', 'only_after_provider_recovery' ),
                 );
+            case 'SOURCE_DISCOVERY':
+                return array(
+                    $read( 'context/provider-capabilities', 'verify_enrolled_source_health' ),
+                    $read( 'context/source-scan-plan', 'establish_complete_governed_source_scan_and_exact_absence' ),
+                    $write( 'context/source-scan-apply', 'only_for_exact_approved_complete_source_scan' ),
+                    $read( 'context/brand-core-coverage', 'recheck_current_approved_source_before_draft' ),
+                );
             case 'NORMALIZATION_REQUIRED':
             case 'RESCAN_REQUIRED':
                 return array(
@@ -237,6 +249,20 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         foreach ( $actions as $item ) {
             if ( is_array( $item ) && isset( $item['category'] ) ) $by_category[ $item['category'] ] = $item;
         }
+        // A complete authoritative scan is required before a missing file
+        // can be treated as eligible for recreation. Status is observed, not
+        // inferred from the existence of a writable Drive destination.
+        $source_scan_complete = false;
+        if ( method_exists( 'MAD4B_SCP_Context_Authority', 'sources' ) ) {
+            $governed_count = 0;
+            $incomplete_count = 0;
+            foreach ( MAD4B_SCP_Context_Authority::sources() as $source ) {
+                if ( ! is_array( $source ) || 'governed' !== ( isset( $source['mode'] ) ? (string) $source['mode'] : '' ) ) continue;
+                ++$governed_count;
+                if ( empty( $source['last_scan_complete'] ) || 'ready' !== ( isset( $source['status'] ) ? (string) $source['status'] : '' ) ) ++$incomplete_count;
+            }
+            $source_scan_complete = $governed_count > 0 && 0 === $incomplete_count;
+        }
         $matrix = array();
         foreach ( MAD4B_SCP_Brand_Context_Builder::expected_categories() as $category => $label ) {
             $observed = isset( $coverage['coverage'][ $category ] ) && is_array( $coverage['coverage'][ $category ] ) ? $coverage['coverage'][ $category ] : array();
@@ -264,6 +290,8 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
                 if ( 'live' === $diagnosed && in_array( 'content_incomplete', $reasons, true ) ) $diagnosed = 'malformed_file';
                 if ( 'live' === $diagnosed && in_array( 'generation_evidence_stale', $reasons, true ) ) $diagnosed = 'stale_version';
                 if ( 'live' === $diagnosed && in_array( 'review_not_exactly_bound', $reasons, true ) ) $diagnosed = 'receipt_drift';
+                if ( 'live' === $diagnosed && empty( $observed['observed_assets'] ) && ! $source_scan_complete
+                    && ! empty( $observed['dependency_ready'] ) ) $diagnosed = 'source_scan_incomplete';
             }
             $result = self::classify( $category, $observed, $diagnosed, $attempts, $assistant_available );
             if ( is_wp_error( $result ) ) return $result;
@@ -286,6 +314,11 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'assistant_declared_available' => $assistant_requested,
             'assistant_certification_verified' => $assistant_certified,
             'assistant_effectively_available' => $assistant_available,
+            // Managed Skills readiness proves the catalog/runtime; it does
+            // not prove exact Agent/ability authorization or role separation.
+            'assistant_exact_mutation_grant_verified' => false,
+            'assistant_can_execute_writes' => false,
+            'assistant_writer_reviewer_independence_verified' => false,
             'assistant_roles' => array( 'evidence_researcher', 'draft_writer', 'independent_critic', 'policy_reviewer' ),
             'assistant_fallback' => 'human_without_automatic_approval',
             'review_separation_of_duties' => true,
@@ -293,9 +326,15 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'idempotency_basis' => 'site_uuid_category_evidence_digest_registry_revision',
             'recover_before_recreate' => true,
             'retry_limit_per_stage' => self::MAX_ATTEMPTS,
+            'retry_counter_source' => 'untrusted_request_advisory',
+            'retry_counter_persisted' => false,
+            'retry_budget_enforced_by_planner' => false,
+            'execution_requires_authoritative_retry_journal' => true,
+            'governed_source_scan_complete' => $source_scan_complete,
             'states' => $matrix,
             'transitions' => array(
                 array( 'from' => 'SOURCE_RECOVERY', 'on' => 'provider_recovered', 'to' => 'RESCAN_REQUIRED' ),
+                array( 'from' => 'SOURCE_DISCOVERY', 'on' => 'complete_governed_scan_verified', 'to' => 'EVIDENCE_COLLECTION' ),
                 array( 'from' => 'RESCAN_REQUIRED', 'on' => 'exact_evidence_verified', 'to' => 'EVIDENCE_COLLECTION' ),
                 array( 'from' => 'WAIT_DEPENDENCY', 'on' => 'upstream_owner_approved', 'to' => 'EVIDENCE_COLLECTION' ),
                 array( 'from' => 'EVIDENCE_COLLECTION', 'on' => 'independent_quality_pass', 'to' => 'DRAFT_PREPARATION' ),
