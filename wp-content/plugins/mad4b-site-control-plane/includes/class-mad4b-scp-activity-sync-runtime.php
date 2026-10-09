@@ -732,6 +732,13 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
         if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
             return self::err( 'mad4b_sync_cancel_write_may_exist', 'Exact queued journal checksum is required.' );
+        // Cancel and finalize/recover are mutually exclusive as well as
+        // cancel and advance: acquire recovery reservation first.
+        $recovery_mutex = self::key( $binding, 'recovery_lease' );
+        $recovery_token = self::digest( array( $expected, 'cancel' ) );
+        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+            return self::err( 'mad4b_sync_recovery_busy', 'Another recovery/cancel worker is active.' );
+        try {
         $lease_key = self::key( $binding, 'lease' );
         $cancel_token = self::digest( array( $binding['site_uuid'], $expected, 'cancel' ) );
         // Same atomic reservation used by advance. No cancel/advance TOCTOU.
@@ -762,6 +769,10 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             if ( is_array( $lease ) && isset( $lease['operation_key'] ) &&
                 hash_equals( (string) $lease['operation_key'], $cancel_token ) )
                 delete_option( $lease_key );
+        }
+        } finally {
+            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
+                delete_option( $recovery_mutex );
         }
     }
 
