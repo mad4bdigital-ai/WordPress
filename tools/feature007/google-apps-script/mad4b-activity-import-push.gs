@@ -34,7 +34,9 @@ function mad4bImportSettings_() {
     url: url,
     secret: secret,
     idKey: get('MAD4B_IDENTITY_FIELD'),
-    currencies: currencies
+    currencies: currencies,
+    pricePolicy: props.getProperty('MAD4B_PRICE_POLICY') || 'none',
+    reviewPastIntervals: props.getProperty('MAD4B_REVIEW_PAST_INTERVALS') === 'true'
   };
 }
 function mad4bHex_(signedBytes) {
@@ -72,7 +74,9 @@ function mad4bPushRatesForReview() {
     const input = {
       profile_slug: cfg.profile, identity_field: cfg.idKey,
       headers: headers, rows: rows, field_mapping: fieldMapping,
-      allowed_currencies: cfg.currencies
+      allowed_currencies: cfg.currencies,
+      price_tier_policy: cfg.pricePolicy,
+      review_past_intervals: cfg.reviewPastIntervals
     };
     const payload = JSON.stringify({
       site_uuid: cfg.site, issued_at: Math.floor(Date.now() / 1000),
