@@ -302,6 +302,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
         $import_contract = MAD4B_SCP_Activity_Import_Authority::normalize_contract(
             isset( $raw['import_contract'] ) ? $raw['import_contract'] : array(), $meta_keys );
         if ( is_wp_error( $import_contract ) ) return $import_contract;
+        $import_contract['configured_explicitly'] = array_key_exists( 'import_contract', $raw );
 
 		$profile = array(
 			'contract' => self::CONTRACT,
