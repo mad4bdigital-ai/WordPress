@@ -168,7 +168,9 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             return self::error( 'not_declared_readonly' );
         $fields = self::compile_schema( $ability->get_input_schema() );
         if ( is_wp_error( $fields ) ) return $fields;
-        $digest = hash( 'sha256', wp_json_encode( array( self::CONTRACT, $binding, $fields ) ) );
+        $serialized = wp_json_encode( array( self::CONTRACT, $binding, $fields ) );
+        if ( ! is_string( $serialized ) || '' === $serialized ) return self::error( 'descriptor_serialization_failed' );
+        $digest = hash( 'sha256', $serialized );
         return array(
             'contract' => self::CONTRACT . '.form.v1',
             'ability_name' => $name,
@@ -225,9 +227,11 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             if ( null !== $enum && ( ! is_array( $enum ) || count( $enum ) > self::MAX_OPTIONS ) )
                 return self::error( 'field_enum_invalid' );
             if ( null !== $enum ) foreach ( $enum as $value ) {
-                if ( ( 'string' === $type && ( ! is_string( $value ) || strlen( $value ) > 128 ) )
+                if ( ( 'string' === $type && ( ! is_string( $value ) || strlen( $value ) > 512
+                        || 1 !== preg_match( '//u', $value ) ) )
                     || ( 'integer' === $type && ! is_int( $value ) )
-                    || ( 'number' === $type && ! is_int( $value ) && ! is_float( $value ) )
+                    || ( 'number' === $type && ( ( ! is_int( $value ) && ! is_float( $value ) )
+                        || ! is_finite( (float) $value ) ) )
                     || ( 'boolean' === $type && ! is_bool( $value ) ) )
                     return self::error( 'field_enum_type_invalid' );
             }
@@ -310,6 +314,7 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             return self::error( 'stale_descriptor' );
         $result = self::validate_values( $form['fields'], $input['values'] );
         if ( is_wp_error( $result ) ) return $result;
+        if ( ! self::same_scope( $form['site'] ) ) return self::error( 'scope_changed' );
         $result['site'] = $form['site'];
         $result['descriptor_sha256'] = $form['descriptor_sha256'];
         return $result;
@@ -322,6 +327,7 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
         $form = self::form_schema( array( 'ability_name' => $input['ability_name'] ) );
         if ( is_wp_error( $form ) ) return $form;
         foreach ( $form['fields'] as $field ) if ( $field['key'] === $input['field'] ) {
+            if ( ! self::same_scope( $form['site'] ) ) return self::error( 'scope_changed' );
             return array( 'contract' => self::CONTRACT . '.explain.v1',
                 'field' => $field, 'site' => $form['site'],
                 'explanation' => 'Schema field from an explicitly enumerated read-only WordPress Ability. Storage and side effects are not certified.',
