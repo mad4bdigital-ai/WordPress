@@ -705,3 +705,55 @@ jobs:
           php -l "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
           php "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
           python3 "$PLUGIN/tests/oauth-consent-script-syntax.py"
+
+  cso01-read-foundation:
+    name: CSO01 read-only PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Exact source identity
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Native CSO01 read-only adversarial contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          php -l "$root/includes/class-mad4b-scp-cso01-read-foundation.php"
+          php -l "$root/tests/cso01-read-foundation-runtime.php"
+          php -l "$root/tests/cso01-read-foundation-collision-runtime.php"
+          php -l "$root/tests/cso01-read-foundation-registration-runtime.php"
+          php -l "$root/tests/cso01-unified-discovery-funnel-runtime.php"
+          php "$root/tests/cso01-unified-discovery-funnel-runtime.php"
+          php "$root/tests/cso01-read-foundation-runtime.php"
+          php "$root/tests/cso01-read-foundation-collision-runtime.php"
+          php "$root/tests/cso01-read-foundation-registration-runtime.php"
+      - name: Enforce read-only CSO01 source and Spec Kit contracts
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php').read_text()
+          forbidden=('update_option(', 'add_option(', 'delete_option(', 'wp_insert_post(', 'wp_update_post(', 'wpdb->', 'shell_exec(', 'eval(')
+          assert all(token not in p for token in forbidden), 'CSO01 must never mutate WordPress or execute shell code'
+          for name in ('cso/discover', 'cso/form-catalog', 'cso/integration-search', 'cso/integration-inspect', 'cso/form-schema', 'cso/form-validate', 'cso/form-explain'):
+              assert name in p
+          assert "'readonly' => true" in p and "'authorizing' => false" in p
+          print('CSO01 read-only static contract: PASS')
+          PY

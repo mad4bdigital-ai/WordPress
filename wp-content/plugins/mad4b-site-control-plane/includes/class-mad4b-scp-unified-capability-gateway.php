@@ -171,6 +171,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			if ( ! is_array( $input[$key] ) || count( $input[$key] ) > $max ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway arrays exceed their preparation/search bounds.', array( 'status' => 400 ) );
 			foreach ( $input[$key] as $value ) if ( ! is_string( $value ) || strlen( $value ) > 512 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway array entries must be bounded strings.', array( 'status' => 400 ) );
 		}
+		if ( array_key_exists( 'declared_readonly_only', $input ) && ! is_bool( $input['declared_readonly_only'] ) ) return new WP_Error( 'mad4b_capability_gateway_read_filter_invalid', 'Read-only discovery filter must be a boolean.', array( 'status' => 400 ) );
 		if ( isset( $input['limit'] ) && false === filter_var( $input['limit'], FILTER_VALIDATE_INT ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Search limit must be an integer.', array( 'status' => 400 ) );
 		if ( isset( $input['client_capabilities'] ) ) {
 			if ( ! is_array( $input['client_capabilities'] ) || count( $input['client_capabilities'] ) > 16 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Client capabilities must be a bounded object.', array( 'status' => 400 ) );
@@ -288,19 +289,26 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$task = self::bounded_text( $task, self::MAX_TASK_BYTES );
 		$terms = array();
 		if ( '' !== $task ) {
-			$split = preg_split( '/[^\p{L}\p{N}._+\/-]+/u', function_exists( 'mb_strtolower' ) ? mb_strtolower( $task, 'UTF-8' ) : strtolower( $task ) );
+			$split = preg_split( '/[^\p{L}\p{N}._+\/-]+/u', self::lower( $task ) );
 			foreach ( is_array( $split ) ? $split : array() as $term ) if ( strlen( $term ) >= 2 ) $terms[] = $term;
 		}
 		$keywords = isset( $input['keywords'] ) && is_array( $input['keywords'] ) ? array_slice( $input['keywords'], 0, self::MAX_KEYWORDS ) : array();
 		foreach ( $keywords as $keyword ) {
 			$keyword = self::bounded_text( trim( (string) $keyword ), 80 );
-			if ( '' !== $keyword ) $terms[] = function_exists( 'mb_strtolower' ) ? mb_strtolower( $keyword, 'UTF-8' ) : strtolower( $keyword );
+			if ( '' !== $keyword ) $terms[] = self::lower( $keyword );
 		}
 		return array( $task, array_values( array_unique( $terms ) ) );
 	}
 
 	private static function lower( $value ) {
 		$value = (string) $value;
+		// Fold Arabic variants for discovery text only; never change a value
+		// submitted to WordPress or an Ability name/authority signature.
+		$folded = preg_replace( '/[\x{064B}-\x{065F}\x{0670}\x{0640}]/u', '', $value );
+		if ( is_string( $folded ) ) $value = strtr( $folded, array(
+			'أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ٱ' => 'ا',
+			'ى' => 'ي', 'ئ' => 'ي', 'ؤ' => 'و',
+		) );
 		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
 	}
 
@@ -345,6 +353,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		list( $task, $terms ) = self::task_terms( $input );
 		if ( '' === $task && empty( $terms ) ) return new WP_Error( 'mad4b_capability_gateway_task_required', 'Task text or keywords are required for bounded capability search.' );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 25, (int) $input['limit'] ) ) : 12;
+		$readonly_only = true === ( $input['declared_readonly_only'] ?? false );
 		$ability_names = MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names();
 		$matches = array();
 		foreach ( $ability_names as $ability_name ) {
@@ -370,6 +379,10 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			} catch ( Throwable $error ) {
 				continue;
 			}
+			// Filter *before* top-N ranking; otherwise 25 high-ranked write
+			// abilities can crowd out every relevant safe read capability.
+			// This is still provisional metadata, not an execution grant.
+			if ( $readonly_only && true !== $row['declared_readonly'] ) continue;
 			$score = self::relevance_score( $row, $task, $terms );
 			if ( $score <= 0 ) continue;
 			$row['preparation_required'] = true;
@@ -388,7 +401,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'contract' => self::CONTRACT,
 			'task' => $task,
 			'keywords' => $terms,
-			'search_mode' => 'bounded_metadata_only_relevance',
+			'search_mode' => $readonly_only
+				? 'bounded_declared_readonly_metadata_relevance' : 'bounded_metadata_only_relevance',
+			'declared_readonly_filter_applied' => $readonly_only,
 			'items' => $matches,
 			'count' => count( $matches ),
 			'universe_count' => count( $ability_names ),

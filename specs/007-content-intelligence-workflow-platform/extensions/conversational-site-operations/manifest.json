@@ -17,14 +17,14 @@
   "requirement_count": 27,
   "gate_count": 11,
   "task_count": 81,
-  "operation_count": 27,
+  "operation_count": 30,
   "use_case_count": 26,
   "canonical_authority": "existing_mad4b_site_control_plane",
   "initial_validation_profiles": [
     "All Royal Egypt Staging",
     "ETG Staging"
   ],
-  "notes": "Universal provider-neutral architecture and future delivery only; WordPress site remains unchanged.",
+  "notes": "Spec Kit remains backlog/non-authorizing. CSO01 provides only candidate read-only compatibility tools in PR #368; live site runs older release. No deployment, approval or credential ingestion.",
   "required_files": [
     "README.md",
     "abilities.json",
@@ -32,6 +32,7 @@
     "architecture.md",
     "constitution.md",
     "contracts/adapter-certification.md",
+    "contracts/dynamic-integration-resolution.md",
     "contracts/multisite-and-promotion.md",
     "contracts/receipts-and-privacy.md",
     "contracts/secret-handoff.md",
@@ -39,6 +40,7 @@
     "contracts/workflow-and-bulk.md",
     "data-model.md",
     "gates.json",
+    "integration-compatibility.md",
     "manifest.json",
     "operations.md",
     "plan.md",
