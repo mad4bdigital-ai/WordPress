@@ -83,9 +83,50 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'max_rows' => $max_rows
         );
     }
+    /** Independent, optional profile-level import contract; no user role/link required. */
+    public static function normalize_contract( $raw, $meta_keys ) {
+        if ( null === $raw || array() === $raw || false === $raw ) return array( 'enabled' => false );
+        if ( ! is_array( $raw ) || array_diff( array_keys( $raw ),
+            array( 'enabled', 'validation', 'enabled_modes', 'preferred_mode',
+                'fallback_modes', 'manual_review_required' ) ) )
+            return self::err( 'mad4b_import_contract_unknown_fields', 'Unsupported import contract options.' );
+        if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
+        $enabled = isset( $raw['enabled_modes'] ) ? $raw['enabled_modes'] : array();
+        $fallback = isset( $raw['fallback_modes'] ) ? $raw['fallback_modes'] : array();
+        $preferred = isset( $raw['preferred_mode'] ) ? (string) $raw['preferred_mode'] : '';
+        if ( ! is_array( $enabled ) || count( $enabled ) > 40 ||
+            ! is_array( $fallback ) || count( $fallback ) > 40 )
+            return self::err( 'mad4b_import_contract_mode_bounds', 'Import alternatives exceed policy limits.' );
+        foreach ( array_merge( $enabled, $fallback ) as $id )
+            if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{2,64}$/D', $id ) )
+                return self::err( 'mad4b_import_contract_mode_invalid', 'Only registered safe Mode IDs are accepted.' );
+        if ( count( $enabled ) !== count( array_unique( $enabled ) ) ||
+            count( $fallback ) !== count( array_unique( $fallback ) ) ||
+            array_diff( $fallback, $enabled ) ||
+            ( $preferred && ! in_array( $preferred, $enabled, true ) ) ||
+            ( isset( $raw['manual_review_required'] ) && true !== $raw['manual_review_required'] ) )
+            return self::err( 'mad4b_import_contract_mode_policy_invalid', 'Approved Mode allowlist and human review are mandatory.' );
+        $validation = self::normalize( isset( $raw['validation'] ) ? $raw['validation'] : null, $meta_keys );
+        if ( is_wp_error( $validation ) ) return $validation;
+        return array( 'enabled' => true, 'validation' => $validation,
+            'enabled_modes' => array_values( $enabled ),
+            'preferred_mode' => $preferred,
+            'fallback_modes' => array_values( $fallback ),
+            'manual_review_required' => true,
+            'auto_execute' => false
+        );
+    }
+    public static function profile_contract( $profile ) {
+        if ( ! empty( $profile['import_contract']['enabled'] ) )
+            return $profile['import_contract'];
+        if ( ! empty( $profile['activity_contract']['enabled'] ) &&
+            ! empty( $profile['activity_contract']['import_modes']['validation'] ) )
+            return $profile['activity_contract']['import_modes'];
+        return array();
+    }
     public static function resolve( $profile, $input ) {
-        $policy = isset( $profile['activity_contract']['import_modes']['validation'] ) ?
-            $profile['activity_contract']['import_modes']['validation'] : null;
+        $contract = self::profile_contract( $profile );
+        $policy = isset( $contract['validation'] ) ? $contract['validation'] : null;
         if ( ! is_array( $policy ) || !$policy )
             return self::err( 'mad4b_import_site_validation_not_configured',
                 'Commercial import requires an approved site-owned validation policy.' );
