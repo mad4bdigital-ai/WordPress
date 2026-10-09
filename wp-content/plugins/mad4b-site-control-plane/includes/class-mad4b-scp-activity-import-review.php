@@ -25,6 +25,22 @@ final class MAD4B_SCP_Activity_Import_Review {
         return 'mad4b_activity_import_review_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $profile_slug );
     }
+    public static function brand_core_plan( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
+            return self::error( 'mad4b_brand_acceptance_denied', 'Enrolled administrator required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ||
+            ! method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) )
+            return self::error( 'mad4b_brand_context_missing', 'Exact Context Authority runtime unavailable.' );
+        $coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+        $queue = MAD4B_SCP_Context_Authority::review_queue();
+        return array( 'contract' => 'mad4b.brand-core-acceptance-plan.v1',
+            'required' => array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ),
+            'ready' => ! empty( $coverage['ready'] ),
+            'coverage' => $coverage,
+            'review_queue' => $queue,
+            'automated_approval_performed' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
     public static function capabilities( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
             return self::error( 'mad4b_import_authority_denied', 'Enrolled administrator required.' );
@@ -200,6 +216,10 @@ final class MAD4B_SCP_Activity_Import_Review {
         $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256', $data['site_uuid'] . '|' . $data['nonce'] );
         if ( ! add_option( $nonce_key, time(), '', false ) )
             return self::error( 'mad4b_import_webhook_replay', 'Webhook nonce already accepted.' );
+        // Nonces remain rejected for the entire signature-validity window,
+        // then WordPress Cron may reclaim the stored bounded replay marker.
+        if ( function_exists( 'wp_schedule_single_event' ) )
+            wp_schedule_single_event( time() + 610, 'mad4b_activity_import_expire_nonce', array( $nonce_key ) );
         $input = $data['input'];
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_webhook_input', 'Invalid import input.' );
         $preview = self::inspect( $input );
@@ -215,6 +235,11 @@ final class MAD4B_SCP_Activity_Import_Review {
         return array( 'contract' => self::CONTRACT, 'staged' => true,
             'plan_sha256' => $preview['plan_sha256'],
             'issue_count' => $preview['issue_count_observed'], 'post_writes' => 0 );
+    }
+    public static function expire_nonce( $key ) {
+        if ( ! is_string( $key ) || ! preg_match( '/^mad4b_import_nonce_[a-f0-9]{64}$/D', $key ) ) return;
+        $recorded = get_option( $key, false );
+        if ( is_numeric( $recorded ) && (int) $recorded + 600 <= time() ) delete_option( $key );
     }
     public static function register_admin() {
         add_management_page( 'MAD4B Import Review', 'MAD4B Import Review',
@@ -245,4 +270,5 @@ final class MAD4B_SCP_Activity_Import_Review {
 if ( function_exists( 'add_action' ) ) {
     add_action( 'rest_api_init', array( 'MAD4B_SCP_Activity_Import_Review', 'register_rest' ) );
     add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
+    add_action( 'mad4b_activity_import_expire_nonce', array( 'MAD4B_SCP_Activity_Import_Review', 'expire_nonce' ), 10, 1 );
 }
