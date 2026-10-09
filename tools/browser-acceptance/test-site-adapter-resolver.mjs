@@ -90,8 +90,18 @@ mixed.site_discovery.plugins.push("mad4b-site-control-plane");
 mixed.site_discovery.plugin_versions.push({slug:"mad4b-site-control-plane",
   basename:"mad4b-site-control-plane/main.php",version:"1.0.0"});
 mixed.site_discovery.provider_matches.push(match("mad4b-native-public","mad4b-site-control-plane"));
+mixed.providers[1].descriptor.selection_role="supplemental";
 const mixedOptions={approvedDrivers:[etg,royal,generic]};
-assert.throws(()=>resolve(mixed,mixedOptions),/site_browser_site_adapter_ambiguous/);
+assert.equal(resolve(mixed,mixedOptions).siteProviderId,"etg-dfsb");
+const genericOnly=structuredClone(mixed);
+genericOnly.providers=genericOnly.providers.slice(1);
+genericOnly.provider_count=1;
+genericOnly.site_discovery.provider_matches=genericOnly.site_discovery.provider_matches.slice(1);
+genericOnly.site_discovery.unmapped_plugins=["etg-dynamic-filter-seo-bridge","unmapped-plugin"];
+assert.equal(resolve(genericOnly,mixedOptions).siteProviderId,"mad4b-native-public");
+const invalidRole=structuredClone(mixed);
+invalidRole.providers[1].descriptor.selection_role="force-primary";
+assert.throws(()=>resolve(invalidRole,mixedOptions),/site_browser_provider_registry_invalid/);
 assert.equal(resolve(mixed,{...mixedOptions,requestedProfile:"public-canonical"}).siteProviderId,
   "mad4b-native-public");
 assert.equal(resolve(mixed,{...mixedOptions,requestedProfile:"tours"}).siteProviderId,
