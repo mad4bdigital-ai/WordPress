@@ -54,20 +54,63 @@ final class MAD4B_SCP_ACI01_Intake_Preview {
         if ( ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false ) ) return self::denied( 'binding_provider_unavailable' );
         $binding = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $binding ) || ! is_array( $binding ) ) return self::denied( 'site_binding_unverified' );
+        // Read the same translation bridge used by ACI01 Native Relation Audit.
+        // Unknown provider coverage requires review; it cannot certify absence.
+        $translation_before = self::current_translation_snapshot();
         $site = array(
             'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'origin' => MAD4B_SCP_Site_Profile::site_origin(),
             'environment' => $binding['environment'],
             'verified_binding' => $binding,
-            'multilingual_detected' => defined( 'ICL_SITEPRESS_VERSION' )
-                || function_exists( 'icl_object_id' )
-                || ( function_exists( 'has_filter' ) && false !== has_filter( 'wpml_element_language_details' ) ),
+            'multilingual_detected' => $translation_before['requires_review'],
         );
         $inventory = MAD4B_SCP_Content_Experience_Profiles::discover( array() );
+        $translation_after = self::current_translation_snapshot();
         $after = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $after ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $after ) )
             return self::denied( 'runtime_changed_during_read' );
+        if ( $translation_before !== $translation_after )
+            return self::denied( 'translation_provider_state_changed' );
         return self::plan_from_discovery( $input, $site, $inventory );
+    }
+
+    /**
+     * Provider snapshot for native identity policy. A bridge failure cannot
+     * silently downgrade WPML/Polylang to a monolingual content recipe.
+     * The legacy signals only increase caution, never certify a provider.
+     */
+    public static function translation_provider_state( $bridge, $signals ) {
+        if ( ! is_array( $signals ) || ! is_bool( $signals['wpml'] ?? null )
+            || ! is_bool( $signals['polylang'] ?? null ) )
+            return array( 'wpml' => false, 'polylang' => false, 'complete' => false, 'requires_review' => true );
+        if ( ! is_array( $bridge ) || ! is_bool( $bridge['wpml'] ?? null )
+            || ! is_bool( $bridge['polylang'] ?? null ) )
+            return array( 'wpml' => $signals['wpml'], 'polylang' => $signals['polylang'],
+                'complete' => false, 'requires_review' => true );
+        $wpml = $bridge['wpml'] || $signals['wpml'];
+        $polylang = $bridge['polylang'] || $signals['polylang'];
+        return array( 'wpml' => $wpml, 'polylang' => $polylang,
+            'complete' => true, 'requires_review' => $wpml || $polylang );
+    }
+
+    private static function current_translation_snapshot() {
+        $signals = array(
+            'wpml' => defined( 'ICL_SITEPRESS_VERSION' ) || function_exists( 'icl_object_id' )
+                || ( function_exists( 'has_filter' ) && false !== has_filter( 'wpml_element_language_details' ) ),
+            'polylang' => function_exists( 'pll_get_post_language' )
+                || function_exists( 'pll_get_post_translations' ),
+        );
+        $bridge = null;
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ) {
+            try {
+                $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'translation-bridge' );
+                $bridge = is_object( $adapter ) && method_exists( $adapter, 'translation_status' )
+                    ? $adapter->translation_status() : array();
+            } catch ( \Throwable $e ) {
+                $bridge = array();
+            }
+        }
+        return self::translation_provider_state( $bridge, $signals );
     }
 
     /** Pure adapter: useful for disposable PHP fixtures, no WordPress read/write. */
