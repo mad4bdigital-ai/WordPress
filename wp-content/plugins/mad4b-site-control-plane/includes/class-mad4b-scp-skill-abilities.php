@@ -64,18 +64,25 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( __CLASS__, 'skill_get' )
 		);
 
+		// Report blocked authoring Context without exposing assets, instructions or receipts.
 		self::add(
 			'mad4b/skill-context-preflight',
 			'Inspect Skill Context Readiness',
-			array( 'type'=>'object','properties'=>array(
-				'level'=>array('type'=>'string','enum'=>MAD4B_SCP_Skill_Registry::levels()),
-				'target'=>array('type'=>'string','maxLength'=>120),
-				'name'=>array('type'=>'string','pattern'=>'^[a-z0-9]+(?:-[a-z0-9]+)*$'),
-				'task_scope'=>array('type'=>'string','maxLength'=>160),
-				'intended_ability'=>array('type'=>'string','maxLength'=>191),
-			),'required'=>array('level','name'),'additionalProperties'=>false),
+			array(
+				'type' => 'object',
+				'properties' => array(
+					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
+					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
+					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				),
+				'required' => array( 'level', 'name' ),
+				'additionalProperties' => false,
+			),
 			array( __CLASS__, 'skill_context_preflight' )
 		);
+
 
 		self::add(
 			'mad4b/external-source-rights-preflight',
