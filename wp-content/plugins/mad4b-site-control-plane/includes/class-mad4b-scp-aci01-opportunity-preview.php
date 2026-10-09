@@ -67,15 +67,35 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             || ! class_exists( 'MAD4B_SCP_ACI01_Runtime_Binding', false ) ) return self::denied( 'semantic_or_binding_provider_missing' );
         $semantic = MAD4B_SCP_ACI01_Semantic_Recipe::current(
             array( 'content_type' => $evidence['scope']['content_type'] ?? '' ), $intake );
+        if ( ! class_exists( 'MAD4B_SCP_ACI01_Recipe_Gap', false ) )
+            return self::denied( 'recipe_gap_provider_missing' );
+        // Governed source lookup belongs at the read boundary, not the pure
+        // compiler. The compiler accepts only an observed, non-authorizing
+        // snapshot and remains replayable on disposable input fixtures.
+        $recipe_read = MAD4B_SCP_ACI01_Recipe_Gap::resolve_current( $semantic, $evidence['scope'] );
+        if ( ! is_array( $recipe_read ) || ! in_array( $recipe_read['status'] ?? null,
+                array( 'FOUND', 'MISSING' ), true ) )
+            return self::denied( 'recipe_profile_scope_or_authority_invalid' );
+        if ( ! is_string( $evidence['job_id'] ?? null ) ||
+            strtolower( $evidence['job_id'] ) !== strtolower( $input['job_id'] ) )
+            return self::denied( 'requested_job_not_bound_to_evidence' );
+        // All reads, including profile resolution, must be inside one current
+        // runtime generation/restore epoch and one still-effective read grant.
         $now = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $now ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $intake['scope']['binding'] ?? null, $now )
             || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $evidence['scope']['binding'] ?? null, $now ) )
             return self::denied( 'runtime_snapshot_changed' );
-        return self::compile( $intake, $evidence, $input['goal'], $semantic );
+        if ( ! MAD4B_SCP_Policy::can_read() )
+            return self::denied( 'read_permission_revoked_during_resolution' );
+        return self::compile( $intake, $evidence, $input['goal'], $semantic, $recipe_read );
     }
 
-    /** Pure candidate compiler. No generation, external tool dispatch or persistence. */
-    public static function compile( $intake, $evidence, $goal, $semantic = null ) {
+    /**
+     * Pure deterministic compiler. The optional observed recipe snapshot is
+     * not authority; it never changes mutation eligibility or bypasses QA.
+     * Omission preserves a conservative missing-recipe projection.
+     */
+    public static function compile( $intake, $evidence, $goal, $semantic = null, $recipe_read = null ) {
         if ( ! is_array( $intake ) || ! is_array( $evidence ) || ! is_string( $goal ) ||
              '' === trim( $goal ) || strlen( $goal ) > self::MAX_GOAL_BYTES ) return self::denied( 'candidate_inputs_invalid' );
         if ( ! isset( $intake['status'], $evidence['status'] ) ||
@@ -165,10 +185,25 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
         // inferred from WordPress post-type names or taxonomy presence.
         if ( ! class_exists( 'MAD4B_SCP_ACI01_Recipe_Gap', false ) )
             return self::denied( 'recipe_gap_provider_missing' );
-        $recipe_read = MAD4B_SCP_ACI01_Recipe_Gap::resolve_current( $semantic, $evidence['scope'] );
-        if ( ! is_array( $recipe_read ) || ( $recipe_read['status'] ?? null ) === 'DENIED'
-            || ! in_array( $recipe_read['status'] ?? null, array( 'MISSING', 'FOUND' ), true ) )
-            return self::denied( 'recipe_profile_scope_or_authority_invalid' );
+        if ( $recipe_read === null )
+            $recipe_read = array( 'status' => 'MISSING', 'recipe' => null,
+                'reason_codes' => array( 'scoped_content_recipe_not_configured' ) );
+        if ( ! is_array( $recipe_read )
+            || ! in_array( $recipe_read['status'] ?? null, array( 'MISSING', 'FOUND' ), true )
+            || ! array_key_exists( 'recipe', $recipe_read )
+            || ! is_array( $recipe_read['reason_codes'] ?? null )
+            || count( $recipe_read['reason_codes'] ) > 20 )
+            return self::denied( 'recipe_snapshot_invalid' );
+        if ( 'FOUND' === $recipe_read['status'] && ! is_array( $recipe_read['recipe'] ) )
+            return self::denied( 'recipe_snapshot_incomplete' );
+        if ( 'MISSING' === $recipe_read['status'] && $recipe_read['recipe'] !== null )
+            return self::denied( 'recipe_missing_snapshot_inconsistent' );
+        foreach ( $recipe_read['reason_codes'] as $reason ) {
+            if ( ! is_string( $reason ) || ! preg_match( '/^[a-z0-9_.-]{1,120}$/D', $reason ) )
+                return self::denied( 'recipe_snapshot_reason_invalid' );
+        }
+        // Even a forged positive recipe snapshot only changes *missing*
+        // obligations. It cannot set rights_verified, approved, or can_write.
         $recipe_gap = MAD4B_SCP_ACI01_Recipe_Gap::evaluate(
             $semantic, $recipe_read['recipe'], array() );
         if ( ! is_array( $recipe_gap ) || ( $recipe_gap['status'] ?? '' ) === 'DENIED' )
