@@ -64,10 +64,14 @@ export function requestBoundaryDecision({
       "worker", "sharedworker", "serviceworker"].includes(kind)) {
       return { allow: false, reason: "passive_active_resource_denied" };
     }
-    if (/^(?:blob|data):/i.test(raw) &&
-        ["script", "document", "worker", "sharedworker", "serviceworker"].includes(
-          String(resourceType || "").toLowerCase())) {
-      return { allow: false, reason: "passive_active_local_scheme_denied" };
+    // In generic signed-document probes, even GET images/stylesheets/fonts
+    // can hit same-origin endpoints with side effects (e.g. an img GET
+    // triggering a legacy action). No subresource is needed to inspect the
+    // server-rendered title/canonical/DOM markers. Fail closed for ALL kinds
+    // other than document. ETG's specialized active workflow is unchanged.
+    if (kind !== "document") return { allow: false, reason: "passive_subresource_denied" };
+    if (/^(?:blob|data|about):/i.test(raw)) {
+      return { allow: false, reason: "passive_document_scheme_denied" };
     }
   }
   if (/^(?:data|blob|about):/i.test(raw)) return { allow: true, reason: "local_scheme" };
