@@ -273,6 +273,13 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return '';
 	}
 
+	public static function candidate_read_eligible( $coverage_state, $risk, $active,
+		$adapter_registered, $adapter_available, $read_ability_count, $side_channel_blocked ) {
+		return '' === self::candidate_risk_gate( $coverage_state, $risk ) &&
+			(bool) $active && (bool) $adapter_registered && (bool) $adapter_available &&
+			(int) $read_ability_count > 0 && ! $side_channel_blocked;
+	}
+
 	public static function provider_candidate_matrix() {
 		$coverage = self::coverage();
 		$items = array();
@@ -309,8 +316,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 				$next_gate = $restriction;
 			}
 
-			if ( '' === $restriction && $active && $adapter_registered &&
-				$adapter_runtime_available && $read_ability_count > 0 && ! $side_channel_blocked ) {
+			if ( self::candidate_read_eligible( $coverage_state, $risk, $active,
+				$adapter_registered, $adapter_runtime_available, $read_ability_count, $side_channel_blocked ) ) {
 				$level = 'L2_read';
 				$safe_actions[] = 'provider_read';
 				$next_gate = 'provider_mutation_certification';

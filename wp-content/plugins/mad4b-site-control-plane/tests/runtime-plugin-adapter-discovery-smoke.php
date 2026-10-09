@@ -208,6 +208,15 @@ try {
 		'Unknown plugin risk must never imply reader eligibility.' );
 	$check( '' === MAD4B_SCP_Plugin_Discovery::candidate_risk_gate( 'read_only_supported', 'low' ),
 		'Low-risk reader metadata remains discoverable but not self-authorizing.' );
+	$check( ! MAD4B_SCP_Plugin_Discovery::candidate_read_eligible(
+		'read_only_supported', 'exceptional', true, true, true, 4, false ),
+		'Exceptional plugin cannot escalate to L2 when every other signal looks healthy.' );
+	$check( ! MAD4B_SCP_Plugin_Discovery::candidate_read_eligible(
+		'read_only_supported', 'unknown', true, true, true, 4, false ),
+		'Unknown risk cannot escalate through a seemingly healthy adapter.' );
+	$check( MAD4B_SCP_Plugin_Discovery::candidate_read_eligible(
+		'read_only_supported', 'low', true, true, true, 2, false ),
+		'Only a classified, available read adapter may be considered for L2.' );
 	$risk_matrix = MAD4B_SCP_Plugin_Discovery::provider_candidate_matrix();
 	$restricted_row = null;
 	foreach ( (array) ( $risk_matrix['items'] ?? array() ) as $risk_item )
