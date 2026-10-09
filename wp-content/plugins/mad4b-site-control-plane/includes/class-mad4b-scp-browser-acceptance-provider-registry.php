@@ -103,6 +103,13 @@ final class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
 			if ( true !== ( isset( $descriptor['read_only'] ) ? $descriptor['read_only'] : null ) ) $reasons[] = 'descriptor_not_read_only';
 			if ( false !== ( isset( $descriptor['authorizing'] ) ? $descriptor['authorizing'] : null ) ) $reasons[] = 'descriptor_authorizing';
 			if ( false !== ( isset( $descriptor['transport_owned_by_provider'] ) ? $descriptor['transport_owned_by_provider'] : null ) ) $reasons[] = 'descriptor_transport_authority';
+			// Selection roles change routing only, never execution authority.
+			// A malformed role must be rejected by the registry, not deferred to
+			// the external agent, where it could invalidate the entire site.
+			if ( isset( $descriptor['selection_role'] ) &&
+				! in_array( $descriptor['selection_role'], array( 'primary', 'supplemental' ), true ) ) {
+				$reasons[] = 'descriptor_selection_role_invalid';
+			}
 			if ( false !== ( isset( $descriptor['browser_engine_owned_by_provider'] ) ? $descriptor['browser_engine_owned_by_provider'] : null ) ) $reasons[] = 'descriptor_browser_engine_authority';
 			if ( 'external_browser_agent' !== (string) ( isset( $descriptor['execution_mode'] ) ? $descriptor['execution_mode'] : '' ) ) $reasons[] = 'descriptor_execution_mode_invalid';
 			foreach ( array( 'business_state_mutation', 'profile_mutation', 'seo_mutation', 'production_activation' ) as $effect ) {
