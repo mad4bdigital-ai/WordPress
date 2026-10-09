@@ -46,6 +46,7 @@ const safeLabel = (s,max) => {
 const boundTo = (s, target) => isObject(s) &&
   s.site_id === target.site_id && s.environment === target.environment &&
   s.origin_sha256 === target.origin_sha256 && s.runtime_generation === target.runtime_generation &&
+  (!target.tenant_id || s.tenant_id === target.tenant_id) &&
   (!target.profile_digest || s.profile_digest === target.profile_digest);
 
 export function checkTarget(target) {
@@ -56,10 +57,13 @@ export function checkTarget(target) {
   }
   if (target.profile_digest!==undefined && !SHA.test(target.profile_digest))
     throw new TypeError("INVALID_WORDPRESS_PROFILE");
+  if (target.tenant_id!==undefined && !ID.test(target.tenant_id))
+    throw new TypeError("INVALID_TENANT_BINDING");
   return Object.freeze({
     site_id:target.site_id, environment:target.environment,
     origin_sha256:target.origin_sha256,
     runtime_generation:target.runtime_generation,
+    ...(target.tenant_id ? {tenant_id:target.tenant_id} : {}),
     ...(target.profile_digest ? {profile_digest:target.profile_digest} : {})
   });
 }
@@ -217,6 +221,7 @@ export async function discoverFederated({target,query,enumerate,inspect,
           "READ_METADATA_CANDIDATE":"SEPARATE_QUALIFICATION_REQUIRED",
         observation_sha256:observed.observation_sha256,
         site_id:site.site_id, environment:site.environment,
+        ...(site.tenant_id ? {tenant_id:site.tenant_id} : {}),
         execution_allowed:false, authorization_verified:false,
         metadata_is_untrusted:true
       });
@@ -308,6 +313,7 @@ export function planRemediation({target,discovery,operation_id,requested_effect,
   const entries=[];
   for(const c of discovery.candidates) {
     if(!isObject(c) || c.site_id!==site.site_id ||
+       (site.tenant_id && c.tenant_id!==site.tenant_id) ||
        c.environment!==site.environment || c.execution_allowed!==false ||
        !ID.test(c.id??"")) throw new TypeError("FOREIGN_OR_AUTHORIZED_CANDIDATE");
     const exceptional=Boolean(c.requires_separate_risk_review) ||

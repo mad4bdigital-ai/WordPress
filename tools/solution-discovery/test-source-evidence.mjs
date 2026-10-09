@@ -4,12 +4,12 @@ import {canonicalJson,catalogDigest,verifySourceCatalogReceipt,createTrustedCata
 let n=0;
 const yes=(v,m)=>{assert.ok(v,m);n++};
 const H=x=>x.repeat(64);
-const site={site_id:"any-site",environment:"staging",origin_sha256:H("a"),runtime_generation:H("b")};
+const site={tenant_id:"tenant-001",site_id:"any-site",environment:"staging",origin_sha256:H("a"),runtime_generation:H("b")};
 const catalog={contract:"mad4b.site-source-catalog.v1",binding:site,complete:true,
  read_only:true,authorizing:false,sources:[{id:"source-aa",kind:"connector",...site,lane:"read",connected:true,read_authorized:true}]};
 const now=2000000000;
 const keys=generateKeyPairSync("ed25519");
-const trusted={"release-key":{public_key_pem:keys.publicKey.export({type:"spki",format:"pem"}),issuer:"platform-registry",site,not_before:now-60,not_after:now+300,revoked:false}};
+const trusted={"release-key":{public_key_pem:keys.publicKey.export({type:"spki",format:"pem"}),issuer:"platform-registry",site,purpose:"capability.catalog.attestation",not_before:now-60,not_after:now+300,revoked:false}};
 const body={contract:RECEIPT_CONTRACT,issuer:"platform-registry",site,
  source_ids:["source-aa"],complete:true,catalog_sha256:catalogDigest(catalog),
  nonce:"opaque-nonce-0123456789",issued_at:now-10,expires_at:now+120,lane:"read"};
@@ -37,6 +37,11 @@ const noLedger=await verifySourceCatalogReceipt({...options,receipt:receipt({...
 yes(noLedger.code==="INVALID_OR_UNAVAILABLE_PROOF","ledger unavailable");
 const envChanged=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"environment-nonce-123",site:{...site,environment:"production"}})});
 yes(envChanged.code==="INVALID_RECEIPT_SCOPE","environment cannot cross");
+const tenantChanged=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"new-other-tenant-1234",site:{...site,tenant_id:"tenant-002"}})});
+yes(tenantChanged.code==="INVALID_RECEIPT_SCOPE","tenant cannot cross");
+const missingTenant=await verifySourceCatalogReceipt({...options,site:{...site,tenant_id:undefined},
+ receipt:receipt({...body,nonce:"new-missing-tenant-1234"})});
+yes(missingTenant.accepted!==true,"signed catalog requires tenant-binding");
 const revoked=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"revocation-check-nonce123"}),trustedPublicKeys:{"release-key":{...trusted["release-key"],revoked:true}}});
 yes(revoked.code==="KEY_SCOPE_OR_ROTATION_INVALID","revoked key rejected");
 const wrongTenant=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"tenant-binding-nonce123"}),trustedPublicKeys:{"release-key":{...trusted["release-key"],site:{...site,site_id:"other-site"}}}});

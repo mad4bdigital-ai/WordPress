@@ -33,7 +33,7 @@ export function catalogDigest(catalog) {
 const exact=(a,b)=>typeof a==="string"&&typeof b==="string"&&
  HEX.test(a)&&HEX.test(b)&&timingSafeEqual(Buffer.from(a,"hex"),Buffer.from(b,"hex"));
 const sameSite=(a,b)=>isRecord(a)&&isRecord(b)&&
- ["site_id","environment","origin_sha256","runtime_generation","profile_digest"].every(k=>
+ ["tenant_id","site_id","environment","origin_sha256","runtime_generation","profile_digest"].every(k=>
    (a[k]??null)===(b[k]??null));
 
 /**
@@ -49,7 +49,8 @@ export async function verifySourceCatalogReceipt({
  receipt,catalog,site,trustedPublicKeys,consumeNonce,nowEpochSeconds=Math.floor(Date.now()/1000)
 }={}) {
  try {
-  if(!isRecord(receipt)||receipt.contract!==RECEIPT_CONTRACT||
+  if(!isRecord(site)||!ID.test(site.tenant_id??"")||
+     !isRecord(receipt)||receipt.contract!==RECEIPT_CONTRACT||
      !ID.test(receipt.kid??"")||typeof receipt.body!=="string"||
      receipt.body.length>16384||!BASE64URL.test(receipt.signature_b64url??"")||
      !isRecord(trustedPublicKeys)||!Object.prototype.hasOwnProperty.call(trustedPublicKeys,receipt.kid)||
@@ -82,6 +83,7 @@ export async function verifySourceCatalogReceipt({
   // is authorized for this exact issuer, site, environment and generation.
   const trust=trustedPublicKeys[receipt.kid];
   if(!isRecord(trust)||trust.issuer!==raw.issuer||!sameSite(trust.site,site)||
+     trust.purpose!=="capability.catalog.attestation"||
      trust.revoked!==false||typeof trust.public_key_pem!=="string"||
      !Number.isSafeInteger(trust.not_before)||!Number.isSafeInteger(trust.not_after)||
      trust.not_before>raw.issued_at||trust.not_after<raw.expires_at||
@@ -95,7 +97,7 @@ export async function verifySourceCatalogReceipt({
   // issuer/site/key/nonce; the caller guarantees that contract.
   const used=await consumeNonce({
    issuer:raw.issuer,kid:receipt.kid,nonce:raw.nonce,
-   site_id:site.site_id,environment:site.environment,
+   tenant_id:site.tenant_id,site_id:site.site_id,environment:site.environment,
    origin_sha256:site.origin_sha256,runtime_generation:site.runtime_generation,
    expires_at:raw.expires_at
   });

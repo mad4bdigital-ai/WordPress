@@ -9,6 +9,14 @@ const inspect=async ({site,source_id,kind})=>({...site,source_id,kind,read_only:
   observation_sha256:H("c"),capabilities:[{id:"file-support",label:"Site File Workspace",description:"Edit configuration files"}]});
 let assertions=0;
 function yes(x,reason){assert.ok(x,reason);assertions++;}
+const scopedSite={...site,tenant_id:"tenant-one"};
+const tenantAware=await discoverFederated({target:scopedSite,query:"file",
+ enumerate:async()=>({contract:"mad4b.site-source-catalog.v1",binding:scopedSite,read_only:true,
+ authorizing:false,complete:true,sources:[{...item("only-tenant"),tenant_id:"another-tenant"}]}),
+ inspect:async()=>{throw Error("should not inspect foreign tenant")}});
+yes(tenantAware.candidate_total===0 && tenantAware.sources.some(s=>s.status==="CROSS_SITE_SCOPE_DENIED"),
+ "foreign tenant not inspected by site-scoped federation");
+
 const sources=[item("file-reader"),item("skill-reader","skill"),{...item("wrong"),site_id:"other-site"},{...item("offline"),connected:false}];
 let inspected=0;
 const run=async (items)=>discoverFederated({target:site,query:"site configuration",

@@ -98,3 +98,8 @@ Use `createTrustedCatalogVerifier({getReceipt,trustedPublicKeys,consumeNonce,clo
 A signed read-only catalog establishes origin/provenance within its scope, not behavioral certification, write authority or inspector authenticity. Without a deployed issuer, trusted-key rotation and durable replay ledger, `catalog_authority_verified` must remain false and runtime release is BLOCKED.
 
 Production requires independent key provisioning, durable nonce persistence and compare-and-consume atomicity, key rotation, canonical serializer interoperability, clock skew tests and real cross-process receipts. Code and tests alone do not prove these services exist.
+
+
+## Central issuer integration (9 October 2026)
+
+The platform-side implementation is staged in MAD4B Central Platform PR #8467: issuer, Catalog V2 source collector, metadata-only key registry and shared MySQL nonce adapter. WordPress PR #258 now requires an exact tenant_id binding for any signed catalog receipt, in addition to site/environment/origin/runtime. Cross-tenant records fail closed before signature admission. The tenant field remains optional only for generic unsigned discovery previews. Neither PR deploys the issuer or upgrades Production rights. Central runtime enrollment, KMS private key handles, trusted public-key refresh, migration, durable shared DB rights, cross-process tests and a permissioned transport must be certified separately.
