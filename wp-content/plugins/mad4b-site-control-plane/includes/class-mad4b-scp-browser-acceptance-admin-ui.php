@@ -119,13 +119,12 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			global $wpdb;
 			if ( ! isset( $wpdb->options ) )
 				return new WP_Error( 'mad4b_browser_setup_storage_unavailable', 'WordPress options storage unavailable.' );
-			$changed = $wpdb->update(
-				$wpdb->options,
-				array( 'option_value' => maybe_serialize( $updated ) ),
-				array( 'option_name' => self::OPTION, 'option_value' => maybe_serialize( $stored ) ),
-				array( '%s' ),
-				array( '%s', '%s' )
-			);
+			// Use BINARY comparison: a case-insensitive SQL collation must
+			// never accept a different serialized state as the same revision.
+			$changed = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+				maybe_serialize( $updated ), self::OPTION, maybe_serialize( $stored )
+			) );
 			if ( 1 !== (int) $changed )
 				return new WP_Error( 'mad4b_browser_setup_concurrent_change', 'Browser settings changed during save. Reload first.' );
 			wp_cache_delete( self::OPTION, 'options' );
