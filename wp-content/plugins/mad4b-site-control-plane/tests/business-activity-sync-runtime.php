@@ -120,6 +120,12 @@ $GLOBALS['drive_value']='Other editor';$GLOBALS['drive_revision']++;
 $mut=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(104)));
 ck(is_wp_error($mut)&&$mut->get_error_code()==='mad4b_sync_destination_changed_since_approval',
  'Unapproved external Drive edit overwritten');
+$GLOBALS['drive_value']='Next revision';$GLOBALS['drive_revision']++;
+$partialStatus=MAD4B_SCP_Activity_Sync_Runtime::status(scope(104));
+$closed=MAD4B_SCP_Activity_Sync_Runtime::finalize_reconciled(array_merge(
+ scope(104),array('confirmed'=>true,'expected_operation_sha256'=>$partialStatus['operation_sha256'])));
+ck(!is_wp_error($closed)&&$closed['state']==='complete'&&
+ $closed['provider_readbacks_verified'],'Partial saga could not close after independent convergence');
 $GLOBALS['drive_value']='Original';$GLOBALS['drive_revision']++;
 $seed3=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(103));
 ck(!is_wp_error($seed3)&&$seed3['ready_for_apply'],'Third clean bootstrap failed');
