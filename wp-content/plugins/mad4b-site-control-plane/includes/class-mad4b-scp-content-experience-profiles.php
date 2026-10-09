@@ -714,6 +714,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                     'rows' => array( 'type' => 'array', 'maxItems' => 500, 'items' => array( 'type' => 'object', 'additionalProperties' => true ) ),
                     'field_mapping' => array( 'type' => 'object', 'maxProperties' => 80, 'additionalProperties' => array( 'type' => 'string' ) ),
                     'allowed_currencies' => array( 'type' => 'array', 'maxItems' => 20, 'items' => array( 'type' => 'string' ) ),
+                    'price_tier_policy' => array( 'type' => 'string', 'enum' => array( 'none', 'review_monotonic' ) ),
+                    'review_past_intervals' => array( 'type' => 'boolean' ),
                 ), array( 'profile_slug', 'identity_field', 'headers', 'rows' ) ),
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
