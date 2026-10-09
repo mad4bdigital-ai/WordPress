@@ -315,6 +315,27 @@ $passed = MAD4B_SCP_Browser_Acceptance_Core::result( array(
 	'evidence' => array( 'force_divergence' => false ),
 ) );
 browser_expect( 'PASS' === (string) $passed['verdict'] && true === (bool) $passed['verification']['browser_runtime_parity_verified'], 'complete matching browser evidence must verify parity' );
+browser_expect( false === $passed['release_ready'] && false === $passed['globally_unique_consumption_proven'],
+    'browser parity PASS is never a release certificate or distributed replay proof' );
+$spoofed_provider = browser_safe_provider();
+$original_reducer = $spoofed_provider['result_callback'];
+$spoofed_provider['result_callback'] = function ( array $request ) use ( $original_reducer ) {
+    $result = $original_reducer( $request );
+    $result['release_ready'] = true;
+    $result['globally_unique_consumption_proven'] = true;
+    return $result;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => $spoofed_provider );
+$spoofed = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+    'provider_id' => 'fake-browser', 'profile_id' => 'tours',
+    'suite' => 'browser_runtime', 'plan_digest' => $plan['plan_digest'],
+    'plan_signature' => $plan['plan_signature'],
+    'evidence' => array( 'force_divergence' => false ),
+) );
+browser_expect( 'BLOCKED' === $spoofed['verdict'] &&
+    in_array( 'provider_pass_receipt_contract_invalid', $spoofed['blocking_reasons'], true ),
+    'provider cannot spoof release readiness or distributed replay proof' );
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
 
 $oversized = MAD4B_SCP_Browser_Acceptance_Core::result( array(
 	'provider_id' => 'fake-browser',

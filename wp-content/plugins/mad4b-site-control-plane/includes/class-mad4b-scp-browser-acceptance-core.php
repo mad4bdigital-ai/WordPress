@@ -126,6 +126,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$plan['suite'] = 'browser_runtime';
 		$plan['authorizing'] = false;
 		$plan['read_only'] = true;
+		$plan['release_ready'] = false;
+		$plan['globally_unique_consumption_proven'] = false;
 		return $plan;
 	}
 
@@ -159,6 +161,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				&& true === ( isset( $result['verification']['browser_runtime_parity_verified'] ) ? $result['verification']['browser_runtime_parity_verified'] : null )
 				&& 'live_browser_runtime' === ( isset( $result['verification']['verified_through'] ) ? $result['verification']['verified_through'] : '' )
 				&& false === ( isset( $result['receipt_authorizing'] ) ? $result['receipt_authorizing'] : null )
+				&& ( ! isset( $result['release_ready'] ) || false === $result['release_ready'] )
+				&& ( ! isset( $result['globally_unique_consumption_proven'] ) || false === $result['globally_unique_consumption_proven'] )
 				&& ( ! isset( $result['authorizing'] ) || false === $result['authorizing'] )
 				&& ( ! isset( $result['read_only'] ) || true === $result['read_only'] );
 			if ( ! $verified ) return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_pass_receipt_contract_invalid' ) );
@@ -169,6 +173,10 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$result['suite'] = 'browser_runtime';
 		$result['authorizing'] = false;
 		$result['read_only'] = true;
+		// Browser observations are not a distributed consume or release receipt.
+		// Even an installed provider cannot upgrade Core into release authority.
+		$result['release_ready'] = false;
+		$result['globally_unique_consumption_proven'] = false;
 		return $result;
 	}
 
@@ -261,6 +269,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'state' => 'blocked',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 		);
 	}
@@ -274,6 +284,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'suite' => 'browser_runtime',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'verification' => array( 'browser_runtime_parity_verified' => false ),
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 			'infrastructure_failures' => array(),
