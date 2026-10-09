@@ -1,0 +1,79 @@
+name: CSO01 Read Foundation Native Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/**'
+      - '.github/workflows/cso01-read-foundation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cso01-${{ github.event.pull_request.number || github.ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: CSO01 read-only PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Setup native PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: PHP lint and adversarial isolated tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-cso01-read-foundation.php"
+          php -l "$root/tests/cso01-read-foundation-runtime.php"
+          php -l "$root/mad4b-site-control-plane.php"
+          php "$root/tests/cso01-read-foundation-runtime.php"
+      - name: Preserve non-authorizing scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php').read_text()
+          forbidden=('update_option(', 'add_option(', 'delete_option(', 'wp_insert_post(', 'wp_update_post(', 'wpdb->', 'shell_exec(', 'eval(')
+          assert all(token not in p for token in forbidden), 'CSO01 gained a forbidden mutation or shell surface'
+          for name in ('cso/discover','cso/form-schema','cso/form-validate','cso/form-explain'):
+              assert name in p
+          assert "'readonly' => true" in p and "'authorizing' => false" in p
+          print('CSO01 read-only static guard: PASS')
+          PY
+  spec:
+    name: CSO01 offline spec traceability
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify CSO01 spec kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
