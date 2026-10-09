@@ -273,7 +273,7 @@ final class MAD4B_SCP_Operational_Remediation {
 						? 'OBSERVED_STAGING_GATES_READY' : 'NATIVE_STAGING_EVIDENCE_PENDING' ) ),
 			'diagnostic_integrity_ready' => $verified,
 			'native_staging_ready' => ! empty( $native['ready'] ),
-			'staging_release_gates_ready' => $verified && ! $items && ! empty( $plan['current_ready'] ),
+			'staging_release_gates_ready' => $verified && ! $items && ! empty( $native['ready'] ) && ! empty( $plan['current_ready'] ),
 			'live_acceptance_included' => ! empty( $overlay['included'] ),
 			'live_acceptance_ready' => $live_requested && $live_ready,
 			'full_release_certified' => false,
