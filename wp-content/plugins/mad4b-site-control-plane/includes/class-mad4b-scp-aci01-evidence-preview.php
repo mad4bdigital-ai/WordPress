@@ -80,6 +80,8 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         $after = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $after ) || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $after ) )
             return self::denied( 'runtime_changed_during_evidence_read' );
+        if ( ! MAD4B_SCP_Policy::can_read() )
+            return self::denied( 'read_permission_revoked_during_evidence_read' );
         return self::project( $job_id, $result['job'], $context, $rows, $age, $scope );
     }
 
@@ -134,8 +136,15 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             $payload = $row['payload'];
             if ( ! isset( $payload['provider_id'], $payload['request_fingerprint'], $payload['collected_at'], $payload['source_refs'] ) ||
                  ! is_string( $payload['provider_id'] ) || '' === trim( $payload['provider_id'] ) ||
-                 ! is_string( $payload['request_fingerprint'] ) || ! preg_match( '/^[a-f0-9]{64}$/', $payload['request_fingerprint'] ) ||
-                 ! is_array( $payload['source_refs'] ) || count( $payload['source_refs'] ) > 64 ) return self::denied( 'research_provenance_missing' );
+                 strlen( $payload['provider_id'] ) > 191 ||
+                 preg_match( '/[\\x00-\\x1F\\x7F]/', $payload['provider_id'] ) ||
+                 ! is_string( $payload['request_fingerprint'] ) || ! preg_match( '/^[a-f0-9]{64}$/D', $payload['request_fingerprint'] ) ||
+                 ! is_array( $payload['source_refs'] ) || count( $payload['source_refs'] ) > 64 )
+                return self::denied( 'research_provenance_missing' );
+            foreach ( $payload['source_refs'] as $source_ref ) {
+                if ( ! self::source_ref_shape_valid( $source_ref ) )
+                    return self::denied( 'research_source_reference_invalid' );
+            }
             $timestamp = self::utc_time( $payload['collected_at'] );
             if ( false === $timestamp || $timestamp > $now || $now - $timestamp > $age ) $reasons[] = 'research_evidence_expired_or_future';
             if ( empty( $payload['source_refs'] ) ) $reasons[] = 'research_source_refs_missing';
@@ -176,6 +185,29 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             $output['job_id'], $output['scope'], $output['context'], $summaries, $reasons
         ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         return $output;
+    }
+
+    /**
+     * Accept bounded opaque locators, not scraped bodies or arbitrary object
+     * graphs. This is shape validation only, never copyright/license proof.
+     * Typed provider refs stay extensible via standard locator field names.
+     */
+    private static function source_ref_shape_valid( $value ) {
+        if ( is_string( $value ) )
+            return strlen( $value ) > 0 && strlen( $value ) <= 512
+                && trim( $value ) !== ''
+                && ! preg_match( '/[\\x00-\\x1F\\x7F]/', $value );
+        if ( ! is_array( $value ) || count( $value ) > 12 || count( $value ) === 0 )
+            return false;
+        $has_locator = false;
+        foreach ( $value as $key => $item ) {
+            if ( ! is_string( $key ) || ! preg_match( '/^[a-z][a-z0-9_]{0,63}$/D', $key )
+                || ! is_string( $item ) || ! self::source_ref_shape_valid( $item ) )
+                return false;
+            if ( in_array( $key, array( 'source_uri_or_native_id', 'uri', 'url', 'id', 'native_id' ), true ) )
+                $has_locator = true;
+        }
+        return $has_locator;
     }
 
     private static function uuid( $value ) {
