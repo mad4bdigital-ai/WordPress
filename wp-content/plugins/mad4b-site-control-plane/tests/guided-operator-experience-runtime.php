@@ -52,4 +52,4 @@ verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'] && empty( $model['steps']
 $untrusted = guide_operator(); $untrusted['contract'] = 'forged';
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'], 'unknown contract cannot drive navigation' );
-fwrite( STDOUT, "PASS guided operator native behavior: 13 assertions\n" );
+fwrite( STDOUT, "PASS guided operator native behavior: 15 assertions\n" );
