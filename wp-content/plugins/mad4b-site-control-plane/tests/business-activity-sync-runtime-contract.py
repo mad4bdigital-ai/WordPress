@@ -24,7 +24,10 @@ for k in ("site_uuid","profile_revision","authority_sha256","initial_checkpoint_
  "bootstrap_arbitration","field_sources","mad4b_sync_initial_sources_invalid",
  "mad4b_sync_reconcile_still_divergent","mad4b_sync_reconcile_checkpoint_failed",
  "mad4b_activity_sync_adapters","mad4b_sync_conditional_writer_missing",
- "mad4b_sync_wp_row_cas_failed"):
+ "mad4b_sync_wp_row_cas_failed", "mad4b_sync_inflight_journal_unverified",
+ "mad4b_sync_postwrite_journal_unverified", "mad4b_sync_recovery_busy",
+ "mad4b_sync_cancel_worker_active", "mad4b_sync_recover_inflight_worker_not_quiesced",
+ "persist_operation", "release_operation_lease"):
  ck(k in runtime,"Missing durable authority/cas/recovery guard "+k)
 for k in ("requiredRevisionId","MAD4B_SCP_Google_Drive_Context::activity_docs_request",
  "connection_status","mad4b_drive_docs_cas_changed","textRun","utf16_length",
@@ -43,7 +46,11 @@ for k in ("entity_post_meta","resource_binding_meta_key","resource_binding_mode"
  ck(k in facet and k in runtime,"Per-entity resource reference not supported "+k)
 for k in ("checkpoint_initialized","Divergent initial sources lack exact owner-reviewed bootstrap plan",
  "Unapproved external Drive edit overwritten","Uncertain write not journaled",
- "Recovered write did not converge checkpoint"):
+ "Recovered write did not converge checkpoint",
+ "Write proceeded despite failed durable inflight journal",
+ "Unrecorded postwrite step was incorrectly accepted",
+ "Recovery overtook a potentially active provider worker",
+ "Two recovery workers entered the journal"):
  ck(k in tests,"Native recovery/transaction scenario missing "+k)
 inventory=profile.split("public static function ability_names( $surface )",1)[1].split("public static function high_impact_abilities",1)[0]
 definitions=profile.split("public static function ability_definitions()",1)[1].split("private static function route_definition",1)[0]
