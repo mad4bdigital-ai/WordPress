@@ -289,7 +289,13 @@ with tempfile.TemporaryDirectory() as td:
         "integrity_key_file": str(key),
         "expected_runner_sha256": runner.sha256_file(Path(runner.__file__).resolve()),
         "receipt_root": str(wp / "wp-content" / "mad4b-runner" / "receipts"),
-        "allowed_operations": sorted(runner.OPERATIONS),
+        # Generic kernel fixtures intentionally do not enroll the exceptional
+        # environment edit operations: they require independent Host-private
+        # backup AND Ed25519 signer enrollment, tested in their own fixture.
+        "allowed_operations": sorted(
+            op for op in runner.OPERATIONS
+            if op not in {"wordpress_environment_sync", "wordpress_environment_rollback"}
+        ),
     }), encoding="utf-8")
     profile = runner.load_profile(profile_path)
     if not isinstance(profile.get("_integrity_key"), (bytes, bytearray)):
