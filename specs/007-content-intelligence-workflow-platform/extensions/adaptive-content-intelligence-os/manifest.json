@@ -53,6 +53,7 @@
     "reuse-authority-crosswalk.json",
     "spec.md",
     "system-map.json",
+    "task-integrity.py",
     "task-registry.json",
     "tasks.md",
     "traceability.md",
