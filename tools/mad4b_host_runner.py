@@ -398,6 +398,8 @@ def load_profile(path: Path) -> dict[str, Any]:
         "bridge_root": str((expected_workspace / "bridge").resolve()),
         "bridge_job_root": str((expected_workspace / "bridge-jobs").resolve()),
         "package_staging_root": str((expected_workspace / "package-staging").resolve()),
+        # Independent private Host state outside WordPress: never spool secrets in wp-content.
+        "host_environment_backup_root": str(profile.get("host_environment_backup_root") or ""),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
@@ -408,6 +410,10 @@ def load_profile(path: Path) -> dict[str, Any]:
             raise ValueError(f"Host Runner {evidence_root_key} escaped dedicated runner workspace")
         if candidate.exists() and (_is_link_like(candidate) or not candidate.is_dir()):
             raise ValueError(f"Host Runner {evidence_root_key} must be a regular directory")
+    if any(op in allowed for op in ("wordpress_environment_sync", "wordpress_environment_rollback")):
+        if not normalized["host_environment_backup_root"]:
+            raise ValueError("Host environment operation requires a separately enrolled private backup root")
+        _wp_environment_private_backup_root(normalized)
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "site_uuid": site_uuid,
         "environment": environment,
