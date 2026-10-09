@@ -239,10 +239,25 @@ final class MAD4B_SCP_Market_Content_Exchange {
         $ready = is_array( $cert ) && ! empty( $cert['ready'] )
             && ! empty( $cert['external_client_snapshot_verified'] )
             && ! empty( $cert['build_identity_current'] ) && empty( $cert['historical_evidence_only'] );
+        // Configuration is not proof a Skill exists. Select only an enabled
+        // exact-name entry in the live registry, not an arbitrary label.
+        $registered = class_exists( 'MAD4B_SCP_Skill_Registry' )
+            ? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+        $resolved = array();
+        foreach ( $routes as $route ) {
+            foreach ( is_array( $registered ) ? $registered : array() as $skill ) {
+                if ( is_array( $skill ) && ! empty( $skill['enabled'] ) &&
+                    isset( $skill['name'] ) && hash_equals( (string) $skill['name'], (string) $route['skill_name'] ) ) {
+                    $resolved[] = $route;
+                    break;
+                }
+            }
+        }
         return array( 'contract' => 'mad4b.market-assistant-route.v1',
             'role' => $role, 'configured_candidates' => $routes,
+            'registered_enabled_candidates' => $resolved,
             'managed_skills_runtime_ready' => $ready,
-            'selected_for_research_or_draft' => $ready && ! empty( $routes ) ? $routes[0] : null,
+            'selected_for_research_or_draft' => $ready && ! empty( $resolved ) ? $resolved[0] : null,
             'fallback' => 'human_agent_with_independent_capability_review',
             'exact_agent_identity_verified' => false,
             'exact_write_grant_verified' => false,
