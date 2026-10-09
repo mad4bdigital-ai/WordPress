@@ -54,6 +54,8 @@ for marker in (
     "hash_equals( $plan['plan_sha256'], $expected )",
     "if ( empty( $plan['eligible'] ) )",
     "INSTALL EXACT STAGING CANDIDATE",
+    "mad4b_self_update_staging_owner_step_up_required",
+    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
     "self::verify_archive( $tmp, $plan['target'] )",
     "MAD4B_SCP_Staging_Source_Selector::resolve",
     "mad4b_self_update_staging_source_changed",
@@ -91,7 +93,7 @@ for marker in (
     expect(marker in SOURCE, "selector missing " + marker)
 expect("refs/pull/258/head" not in SOURCE and "'258'" not in SOURCE, "selector hard-coded to PR #258")
 expect("wp_remote_post" not in SOURCE and "file_put_contents" not in SOURCE, "source resolver must be strictly read-only")
-expect("wp_remote_get" in SOURCE, "remote GitHub ref verification required")
+expect("wp_safe_remote_get" in SOURCE, "SSRF-safe GitHub ref verification required")
 expect("MAD4B_DYNAMIC_STAGING_SOURCE" in TEST and "future PR is not hardcoded" in TEST,
        "runtime fixture missing dynamic-ref assertions")
 print("MAD4B_STAGING_CANDIDATE_CONTRACT: PASS (dynamic selector, independent release policy, exact-hash apply guards)")
