@@ -45,6 +45,9 @@ LINT = (
     "class-mad4b-scp-aci01-semantic-recipe.php",
     "class-mad4b-scp-aci01-native-relation-audit.php",
     "class-mad4b-scp-aci01-recipe-gap.php",
+    "class-mad4b-scp-content-experience-governance.php",
+    "class-mad4b-scp-content-experience-profiles.php",
+    "class-mad4b-scp-content-intelligence-pipeline.php",
     "adapters/class-mad4b-scp-aci01-read-adapter.php",
 )
 FIXTURES = (
@@ -73,6 +76,8 @@ FIXTURES = (
     "aci01-p0-governed-contract.php",
     "aci01-native-relation-audit-contract.php",
     "aci01-recipe-gap-contract.php",
+    "runtime-content-experience-smoke.php",
+    "content-intelligence-pipeline-contract.php",
 )
 NODE_FIXTURES = (
     "tools/solution-discovery/test-federation.mjs",
