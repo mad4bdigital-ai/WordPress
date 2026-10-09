@@ -67,7 +67,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $sync = array();
         foreach ( $targets as $target_id => $target ) {
             if ( ! is_string( $target_id ) || 'wordpress' === $target_id || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
-                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind' ) ) )
+                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose' ) ) )
                 return self::err( 'mad4b_activity_sync_target_fields', 'Sync target must have bounded fields and ID.' );
             $provider = isset( $target['provider'] ) ? $target['provider'] : '';
             $direction = isset( $target['direction'] ) ? $target['direction'] : '';
@@ -87,12 +87,18 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             if ( ! in_array( $kind, 'wordpress' === $provider ? array( 'wordpress_post' ) :
                 array( 'drive_document', 'drive_sheet', 'drive_file', 'drive_folder' ), true ) )
                 return self::err( 'mad4b_activity_sync_resource_kind_invalid', 'Configured resource type does not match the source provider.' );
+            $purpose = isset( $target['purpose'] ) ? (string) $target['purpose'] : 'record_data';
+            if ( ! in_array( $purpose, array( 'record_data', 'editorial_policy', 'reference',
+                'media_assets' ), true ) )
+                return self::err( 'mad4b_activity_sync_purpose_invalid', 'Source purpose must be an allowed data or context role.' );
+            if ( 'record_data' !== $purpose && $field_keys )
+                return self::err( 'mad4b_activity_policy_source_field_denied', 'Guidelines/reference/media sources are context, not direct canonical business fields.' );
             $policy = isset( $target['conflict_policy'] ) ? $target['conflict_policy'] : 'manual_review';
             if ( ! in_array( $policy, array( 'manual_review', 'source_wins', 'site_wins' ), true ) )
                 return self::err( 'mad4b_activity_sync_conflict_policy', 'Sync conflict policy is not supported.' );
             $sync[ $target_id ] = array( 'provider' => $provider, 'direction' => $direction,
                 'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
-                'conflict_policy' => $policy, 'resource_kind' => $kind );
+                'conflict_policy' => $policy, 'resource_kind' => $kind, 'purpose' => $purpose );
         }
         // Exactly one field owner per canonical field. An owner's ability
         // to author a field must be declared explicitly and independently
@@ -107,7 +113,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             if ( 'wordpress' !== $owner && 'manual_review' !== $owner &&
                 ( ! isset( $sync[ $owner ] ) || ! in_array( $field, $sync[ $owner ]['field_keys'], true ) ) )
                 return self::err( 'mad4b_activity_field_owner_invalid', 'Field owner must be WordPress, manual review or configured source containing the exact field.' );
-            if ( isset( $sync[ $owner ] ) && 'export' === $sync[ $owner ]['direction'] )
+            if ( isset( $sync[ $owner ] ) && ( 'export' === $sync[ $owner ]['direction'] ||
+                'record_data' !== $sync[ $owner ]['purpose'] ) )
                 return self::err( 'mad4b_activity_field_owner_direction_invalid', 'Outbound-only target cannot be canonical field owner.' );
             $owners[ $field ] = $owner;
         }
@@ -252,6 +259,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'source_ref' => $target['source_ref'], 'field_keys' => $target['field_keys'],
             'conflict_policy' => $target['conflict_policy'],
             'resource_kind' => $target['resource_kind'],
+            'purpose' => $target['purpose'],
             'field_owners' => isset( $binding['contract']['field_owners'] ) ? $binding['contract']['field_owners'] : array(),
             'provider_abilities_to_discover' => $ability,
             'provider_write_certified' => $provider_write_certified,
