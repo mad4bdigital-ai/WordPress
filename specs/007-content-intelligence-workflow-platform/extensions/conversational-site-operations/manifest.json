@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.cso01.spec-kit.v1",
+  "extension_id": "CSO01",
+  "parent_feature_id": "007",
+  "parent_integration_pr": 258,
+  "status": "SPEC_BACKLOG_ONLY",
+  "design_review_status": "OWNER_REVIEW_REQUIRED",
+  "authorizing": false,
+  "production_authorized": false,
+  "release_closure_included": false,
+  "spec_only": true,
+  "execution_enabled": false,
+  "mutations_enabled": false,
+  "secret_collection_enabled": false,
+  "external_credential_storage_claimed": false,
+  "no_parent_task_denominator_changes": true,
+  "requirement_count": 27,
+  "gate_count": 11,
+  "task_count": 81,
+  "operation_count": 27,
+  "use_case_count": 26,
+  "canonical_authority": "existing_mad4b_site_control_plane",
+  "initial_validation_profiles": [
+    "All Royal Egypt Staging",
+    "ETG Staging"
+  ],
+  "notes": "Universal provider-neutral architecture and future delivery only; WordPress site remains unchanged.",
+  "required_files": []
+}

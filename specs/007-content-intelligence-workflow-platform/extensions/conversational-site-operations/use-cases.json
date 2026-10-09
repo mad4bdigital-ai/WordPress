@@ -1,0 +1,187 @@
+{
+  "contract": "mad4b.cso01.use-cases.v1",
+  "use_cases": [
+    {
+      "id": "UC01",
+      "title": "View all configurable Rank Math fields; inspect allowed descriptors and read-only values",
+      "requirement_id": "CSO-R001",
+      "negative_case": "enumeration of private options refused",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC02",
+      "title": "Change SEO on one page from a typed conversation form",
+      "requirement_id": "CSO-R002",
+      "negative_case": "stale post revision blocks commit",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC03",
+      "title": "Create a tour draft with images, taxonomies, WPML and custom relations",
+      "requirement_id": "CSO-R010",
+      "negative_case": "media rights and translation mismatch blocks publication",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC04",
+      "title": "Set an external API key without including it in chat or MCP request",
+      "requirement_id": "CSO-R006",
+      "negative_case": "copied/replayed secret handoff URL rejected",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC05",
+      "title": "Edit SEO for fifty tour pages after impact diff, canary and per-item results",
+      "requirement_id": "CSO-R007",
+      "negative_case": "third item failure shows partial receipt",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC06",
+      "title": "Build workflow: draft tour → SEO QA → approval → publish",
+      "requirement_id": "CSO-R008",
+      "negative_case": "untrusted source injects publish command denied",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC07",
+      "title": "Explain what changed and rollback a supported plugin option",
+      "requirement_id": "CSO-R009",
+      "negative_case": "unknown target current revision disables undo",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC08",
+      "title": "Apply form template to three sites with differing plugin versions",
+      "requirement_id": "CSO-R011",
+      "negative_case": "site B cannot reuse site A grant",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC09",
+      "title": "Approve a dangerous update with exact impact, owner and expiry",
+      "requirement_id": "CSO-R012",
+      "negative_case": "self-approval and expired ticket rejected",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC10",
+      "title": "Detect API credential expiration and propose rotation",
+      "requirement_id": "CSO-R013",
+      "negative_case": "alert cannot expose key",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC11",
+      "title": "Promote signed Staging change to Production after independent certification",
+      "requirement_id": "CSO-R014",
+      "negative_case": "missing Prod authority always blocks",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC12",
+      "title": "Autocomplete destinations and relationship links from scoped taxonomy",
+      "requirement_id": "CSO-R003",
+      "negative_case": "foreign-tenant values cannot be selected",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC13",
+      "title": "Show conditional fields for chosen provider and reject hidden injected values",
+      "requirement_id": "CSO-R004",
+      "negative_case": "invisible value escalation denied",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC14",
+      "title": "Explain what a plugin option changes and identify responsible adapter",
+      "requirement_id": "CSO-R016",
+      "negative_case": "unregistered plugin option labelled unsupported",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC15",
+      "title": "Resume a draft conversation after session expiry and reconnect",
+      "requirement_id": "CSO-R018",
+      "negative_case": "expired approval cannot be reused",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC16",
+      "title": "Create a reusable trip publishing template with no credentials",
+      "requirement_id": "CSO-R015",
+      "negative_case": "template secret fields are references only",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC17",
+      "title": "Diagnose disconnected browser provider and recover without Breakglass",
+      "requirement_id": "CSO-R017",
+      "negative_case": "Host prerequisite absent prevents execution",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC18",
+      "title": "Receive signed webhook to create a draft, not publish",
+      "requirement_id": "CSO-R026",
+      "negative_case": "duplicate nonce and invalid signature dropped",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC19",
+      "title": "Run accessible RTL keyboard-only form from phone",
+      "requirement_id": "CSO-R020",
+      "negative_case": "missing focus/tab order fails usability",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC20",
+      "title": "Edit WooCommerce inventory/order using certified object provider",
+      "requirement_id": "CSO-R027",
+      "negative_case": "uncertified order side effects denied",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC21",
+      "title": "Detect plugin schema drift during form editing",
+      "requirement_id": "CSO-R024",
+      "negative_case": "stale form cannot commit after update",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC22",
+      "title": "Run large DAG with per-step checkpoint and recovery",
+      "requirement_id": "CSO-R023",
+      "negative_case": "unknown partial commit escalates to reconcile",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC23",
+      "title": "Rotate an external provider key without secret display",
+      "requirement_id": "CSO-R025",
+      "negative_case": "old secret never appears in logs",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC24",
+      "title": "Inspect engagement/completion metrics without sensitive form values",
+      "requirement_id": "CSO-R021",
+      "negative_case": "PII not present in telemetry",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC25",
+      "title": "Propose a new custom-table adapter after provider discovery",
+      "requirement_id": "CSO-R019",
+      "negative_case": "unapproved table never writable",
+      "status": "DESIGN_ONLY"
+    },
+    {
+      "id": "UC26",
+      "title": "Explain cross-tenant data residency and policy denial",
+      "requirement_id": "CSO-R022",
+      "negative_case": "cross-site query cannot leak existence",
+      "status": "DESIGN_ONLY"
+    }
+  ]
+}
