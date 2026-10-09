@@ -150,6 +150,8 @@ def test_flow():
             "operation_id": "wordpress_environment_sync",
             "plan_sha256": plan["plan_sha256"],
             "authority_ref": "c"*64,
+            "approval_ref": verified["approval_ref"],
+            "target_fingerprint": profile["target_fingerprint"],
             "runner_source_sha256": runner.sha256_file(RUNNER_PATH),
             "completed_at": runner.utc_now(),
             "readback_verdict": "PASS",
