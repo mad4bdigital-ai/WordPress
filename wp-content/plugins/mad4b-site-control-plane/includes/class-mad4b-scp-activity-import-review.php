@@ -493,6 +493,34 @@ final class MAD4B_SCP_Activity_Import_Review {
         echo '<label>Content Experience Profile <input name="profile_slug" value="' . esc_attr( $slug ) . '" /></label>';
         submit_button( 'Inspect staged conflicts', 'secondary', '', false );
         echo '</form>';
+        if ( $slug && is_array( $catalog ) ) {
+            $chosen = isset( $_GET['mode_id'] ) ? sanitize_key( wp_unslash( $_GET['mode_id'] ) ) : '';
+            echo '<form method="get">';
+            echo '<input type="hidden" name="page" value="mad4b-import-review" />';
+            echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+            echo '<label>Import Mode <select name="mode_id"><option value="">Choose a transport</option>';
+            foreach ( $catalog['modes'] as $m )
+                echo '<option value="' . esc_attr( $m['id'] ) . '"' .
+                    selected( $chosen, $m['id'], false ) . '>' .
+                    esc_html( $m['id'] . ' — ' . $m['state'] ) . '</option>';
+            echo '</select></label>';
+            submit_button( 'Inspect mode requirements', 'secondary', '', false );
+            echo '</form>';
+            if ( $chosen ) {
+                $mode_plan = MAD4B_SCP_Activity_Import_Modes::plan( array(
+                    'profile_slug' => $slug, 'mode_id' => $chosen ) );
+                if ( is_wp_error( $mode_plan ) ) echo '<p>' .
+                    esc_html( $mode_plan->get_error_message() ) . '</p>';
+                else {
+                    echo '<h3>Selected mode prerequisites</h3><ul>';
+                    foreach ( $mode_plan['required_setup'] as $step )
+                        echo '<li>' . esc_html( $step ) . '</li>';
+                    echo '</ul><p>Ready for staging review: ' .
+                        esc_html( $mode_plan['eligible_for_staging_review'] ? 'yes' : 'no' ) .
+                        '. Automatic post writing: no.</p>';
+                }
+            }
+        }
         if ( method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
             MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ) {
             echo '<h2>Staging CSV source review</h2>';
