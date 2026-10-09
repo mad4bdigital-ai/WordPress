@@ -115,10 +115,12 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		foreach ( $model['steps'] as $step ) {
 			$url = MAD4B_SCP_Admin_Workspace::link( $step['route'], $step['query'] );
 			if ( '' === $url ) continue;
-			echo '<li class="mad4b-guided-step">';
+			$is_next = $step['id'] === $model['next_step'];
+			echo '<li class="mad4b-guided-step' . ( $is_next ? ' is-next' : '' ) . '"' . ( $is_next ? ' aria-current="step"' : '' ) . '>';
 			echo '<div><strong>' . esc_html( $step['title'] ) . '</strong> <span class="mad4b-guided-state">' . esc_html( str_replace( '_', ' ', $step['state'] ) ) . '</span></div>';
 			echo '<p>' . esc_html( $step['summary'] ) . '</p>';
-			echo '<a class="button button-secondary" href="' . esc_url( $url ) . '">' . esc_html__( 'Open this step', 'mad4b-site-control-plane' ) . '</a>';
+			echo '<p class="description"><strong>' . esc_html__( 'Responsible:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( str_replace( '_', ' ', $step['owner'] ) ) . '</p>';
+			echo '<a class="button ' . ( $is_next ? 'button-primary' : 'button-secondary' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $is_next ? __( 'Continue with this step', 'mad4b-site-control-plane' ) : __( 'Open this step', 'mad4b-site-control-plane' ) ) . '</a>';
 			echo '</li>';
 		}
 		echo '</ol></section>';
