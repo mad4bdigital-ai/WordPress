@@ -39,12 +39,14 @@ final class MAD4B_SCP_Activity_Import_Modes {
         $google = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) &&
             method_exists( 'MAD4B_SCP_Google_Drive_Context', 'connection_status' );
         $cli = defined( 'WP_CLI' ) && WP_CLI;
+        $staging = method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
+            MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
         $files = array();
         // Each source mode deliberately reports its actual capability:
         // "detected" never means a source URL or credential is authorized.
         $files[] = self::mode( 'admin_csv_upload', 'file', 'csv_tsv',
             'wp_admin_nonce_upload', 'review_inbox', 'native_review',
-            array( 'admin', 'staging', 'approved_profile' ), true, true );
+            array( 'admin', 'staging', 'approved_profile' ), $staging, $staging );
         $files[] = self::mode( 'admin_xlsx_convert', 'file', 'xlsx_xls_ods',
             'admin_upload_converter', 'review_inbox', 'converter_required',
             array( 'controlled_parser', 'zip_limits', 'no_formulas' ), false, false );
@@ -71,10 +73,10 @@ final class MAD4B_SCP_Activity_Import_Modes {
             array( 'site_bound_oauth', 'file_id', 'snapshot_hash' ), $google, false );
         $files[] = self::mode( 'google_apps_script', 'push', 'google_sheet',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed, $signed );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed && $staging, $signed && $staging );
         $files[] = self::mode( 'signed_generic_webhook', 'push', 'make_n8n_zapier_pabbly_bitflows_custom',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed, $signed );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed && $staging, $signed && $staging );
         $files[] = self::mode( 'wordpress_authenticated_rest', 'push', 'rest_api',
             'wp_rest_auth', 'review_inbox', 'adapter_required',
             array( 'administrator', 'nonce_or_app_password', 'profile_scope' ), false, false );
