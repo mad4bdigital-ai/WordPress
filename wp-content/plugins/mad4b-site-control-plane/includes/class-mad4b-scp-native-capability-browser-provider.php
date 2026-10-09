@@ -34,6 +34,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
     public static function descriptor() {
         return array(
             'contract' => self::CONTRACT, 'provider_id' => self::ID,
+            // A generic observation is supplemental to a site-specific
+            // semantic contract, never a replacement for that contract.
+            'selection_role' => 'supplemental',
             'recognition' => array( 'source_post_types' => array( 'page' ) ),
             'read_only' => true, 'authorizing' => false,
             'execution_mode' => 'external_browser_agent',
