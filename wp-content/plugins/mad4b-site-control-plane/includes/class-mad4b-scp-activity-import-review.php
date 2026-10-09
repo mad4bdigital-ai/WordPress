@@ -50,8 +50,12 @@ final class MAD4B_SCP_Activity_Import_Review {
             'contract' => self::CONTRACT, 'read_only' => true,
             'mode_catalog' => is_array( $mode_catalog ) ? $mode_catalog : null,
             'wp_all_import_detected' => class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' ),
-            'available_sources' => array( 'xlsx_via_bounded_csv_handoff', 'csv_upload', 'google_sheet_managed', 'apps_script_signed_webhook' ),
-            'available_destinations' => array( 'wp_all_import_existing_template', 'governed_content_experience_profile' ),
+            'available_sources' => is_array( $mode_catalog ) ?
+                array_values( array_unique( array_map( static function ( $m ) { return $m['source']; },
+                    array_values( array_filter( $mode_catalog['modes'],
+                        static function ( $m ) { return ! empty( $m['review_intake_implemented'] ) && ! empty( $m['detected'] ); } ) ) ) ) ) : array(),
+            'available_destinations' => array( 'review_inbox' ),
+            'candidate_destinations' => array( 'wp_all_import_existing_template', 'governed_content_experience_profile' ),
             'wp_all_import_execution_certified' => false,
             'google_sheets_atomic_cas_certified' => false,
             'generic_importer_options' => array(
