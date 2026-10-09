@@ -37,3 +37,6 @@ x markers are source deliverables, NOT live runtime certification.
 - [x] N029 Native reducer rejects unknown envelope fields and invalid typed observations as infrastructure, not product defect
 - [ ] N030 Native exact-HEAD PHP and Playwright runtime evidence for script-disabled mode, dynamic-theme compatibility and browser egress
 - [ ] N031 Specialized JavaScript/AJAX/business-effect semantic drivers with independent oracles, transactional safety and site acceptance
+
+- [x] N032 Replace evaluateAll marker inspection with reviewed static Locator count for JS-disabled contexts
+- [x] N033 Verify post-type-based capability recognition without any matching plugin on a dissimilar site fixture
