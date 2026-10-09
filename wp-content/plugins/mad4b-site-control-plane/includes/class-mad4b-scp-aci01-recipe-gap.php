@@ -11,6 +11,97 @@ final class MAD4B_SCP_ACI01_Recipe_Gap {
     const MAX_REQUIREMENTS = 40;
     const MAX_RECEIPTS = 80;
 
+    /**
+     * Scope a stored declaration through the existing governed profile.
+     * A profile receipt is a declaration, not editorial/fact/rights approval.
+     * No caller-supplied recipe payload can self-certify this read.
+     */
+    public static function resolve_current( $semantic, $scope ) {
+        if ( ! is_array( $semantic ) || ! is_array( $semantic['mapping'] ?? null )
+            || ! is_array( $scope ) || ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles', false ) )
+            return self::resolved_denied( 'recipe_profile_provider_unavailable' );
+        $mapping = $semantic['mapping'];
+        foreach ( array( 'site_uuid', 'brand_id', 'locale', 'market' ) as $field )
+            if ( ! isset( $scope[$field] ) || ! is_string( $scope[$field] ) || $scope[$field] === '' )
+                return self::resolved_denied( 'recipe_scope_missing' );
+        foreach ( array( 'profile_slug', 'profile_revision', 'profile_authority_sha256' ) as $field )
+            if ( ! isset( $mapping[$field] ) ) return self::resolved_denied( 'recipe_profile_identity_missing' );
+        $status = MAD4B_SCP_Content_Experience_Profiles::profile_status( array() );
+        if ( ! is_array( $status ) || ( $status['contract'] ?? '' ) !== 'mad4b.content-experience-profiles.v1'
+            || ! is_array( $status['profiles'] ?? null ) )
+            return self::resolved_denied( 'recipe_profile_status_unavailable' );
+        $matches = array();
+        foreach ( $status['profiles'] as $item ) {
+            if ( ! is_array( $item ) ) return self::resolved_denied( 'recipe_profile_status_malformed' );
+            if ( ( $item['slug'] ?? null ) === $mapping['profile_slug'] ) $matches[] = $item;
+        }
+        if ( count( $matches ) !== 1 ) return self::resolved_denied( 'recipe_profile_status_ambiguous_or_missing' );
+        $selected = $matches[0];
+        if ( true !== ( $selected['authority_current'] ?? null ) || empty( $selected['enabled'] )
+            || true !== ( $selected['runtime_post_type_ready'] ?? null )
+            || true !== ( $selected['helper_catalog_match'] ?? null )
+            || ! is_int( $selected['revision'] ?? null )
+            || $selected['revision'] !== $mapping['profile_revision']
+            || ! is_string( $selected['authority_sha256'] ?? null )
+            || ! hash_equals( $mapping['profile_authority_sha256'], $selected['authority_sha256'] ) )
+            return self::resolved_denied( 'recipe_profile_authority_changed' );
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $mapping['profile_slug'] );
+        if ( ! is_array( $profile ) || ( $profile['slug'] ?? null ) !== $selected['slug']
+            || ( $profile['revision'] ?? null ) !== $selected['revision']
+            || ( $profile['post_type'] ?? null ) !== ( $mapping['post_type'] ?? null )
+            || ! is_string( $profile['authority_sha256'] ?? null )
+            || ! hash_equals( $selected['authority_sha256'], $profile['authority_sha256'] ) )
+            return self::resolved_denied( 'recipe_profile_source_changed' );
+        $variants = $profile['aci01_recipe_variants'] ?? array();
+        if ( ! is_array( $variants ) || count( $variants ) > 24 )
+            return self::resolved_denied( 'recipe_variant_registry_invalid' );
+        $found = array();
+        $seen = array();
+        foreach ( $variants as $variant ) {
+            if ( ! is_array( $variant ) || array_diff( array_keys( $variant ), array(
+                'site_uuid', 'brand_id', 'locale', 'market', 'requirements' ) ) )
+                return self::resolved_denied( 'recipe_variant_invalid' );
+            foreach ( array( 'site_uuid', 'brand_id', 'locale', 'market' ) as $key )
+                if ( ! isset( $variant[$key] ) || ! is_string( $variant[$key] ) )
+                    return self::resolved_denied( 'recipe_variant_scope_invalid' );
+            $identity = implode( '|', array( $variant['site_uuid'], $variant['brand_id'], $variant['locale'], $variant['market'] ) );
+            if ( isset( $seen[$identity] ) ) return self::resolved_denied( 'recipe_variant_duplicate' );
+            $seen[$identity] = true;
+            if ( ! is_array( $variant['requirements'] ?? null ) || ! count( $variant['requirements'] )
+                || count( $variant['requirements'] ) > self::MAX_REQUIREMENTS )
+                return self::resolved_denied( 'recipe_variant_requirements_invalid' );
+            $requirements = array();
+            foreach ( $variant['requirements'] as $key ) {
+                if ( ! is_string( $key ) || ! preg_match( '/^[a-z][a-z0-9_.-]{1,79}$/D', $key )
+                    || isset( $requirements[$key] ) )
+                    return self::resolved_denied( 'recipe_variant_requirement_invalid' );
+                $requirements[$key] = true;
+            }
+            if ( $variant['site_uuid'] === $scope['site_uuid']
+                && $variant['brand_id'] === $scope['brand_id']
+                && $variant['locale'] === $scope['locale']
+                && $variant['market'] === $scope['market'] ) $found[] = $variant;
+        }
+        $fresh = MAD4B_SCP_Content_Experience_Profiles::profile_status( array() );
+        if ( ! is_array( $fresh ) || $status !== $fresh )
+            return self::resolved_denied( 'recipe_profile_changed_during_read' );
+        if ( count( $found ) === 0 ) return array( 'status' => 'MISSING', 'recipe' => null,
+            'reason_codes' => array( 'scoped_content_recipe_not_configured' ) );
+        if ( count( $found ) !== 1 ) return self::resolved_denied( 'recipe_variant_ambiguous' );
+        return array( 'status' => 'FOUND',
+            'recipe' => array( 'contract' => 'mad4b.aci01.recipe-declaration.v1',
+                'profile_slug' => $mapping['profile_slug'],
+                'profile_revision' => $mapping['profile_revision'],
+                'profile_authority_sha256' => $mapping['profile_authority_sha256'],
+                'requirements' => $found[0]['requirements'] ),
+            'reason_codes' => array( 'independent_recipe_review_and_fact_authority_pending' ) );
+    }
+
+    private static function resolved_denied( $reason ) {
+        return array( 'status' => 'DENIED', 'recipe' => null,
+            'reason_codes' => array( $reason ) );
+    }
+
     public static function evaluate( $semantic, $recipe, $evidence ) {
         if ( ! is_array( $semantic ) || ( $semantic['contract'] ?? '' ) !== 'mad4b.aci01.semantic-recipe.v1'
             || ( $semantic['status'] ?? '' ) !== 'NEEDS_EVIDENCE'
