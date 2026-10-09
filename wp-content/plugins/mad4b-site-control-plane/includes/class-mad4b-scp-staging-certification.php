@@ -516,6 +516,40 @@ final class MAD4B_SCP_Staging_Certification {
 			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
 		) );
 
+		// Cheap late identity reread closes the window between Staging,
+		// optional independent acceptance and final plan issuance. Full file
+		// hashing was already performed by the exact_build gate earlier.
+		$late_site = self::convergence_site_identity();
+		$late_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		$early_build = $status['gates']['exact_build']['evidence'] ?? array();
+		$site_same = ! empty( $site_profile['ready'] ) && ! empty( $late_site['ready'] );
+		foreach ( array( 'site_uuid', 'site_profile_digest', 'site_origin', 'environment' ) as $field ) {
+			if ( ! is_string( $late_site[ $field ] ?? null )
+				|| ! hash_equals( (string) ( $site_profile[ $field ] ?? '' ), $late_site[ $field ] ) )
+				$site_same = false;
+		}
+		$build_same = ! empty( $late_identity['identity_ready'] )
+			&& ! empty( $early_build['runtime_manifest_match'] );
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+			if ( ! is_string( $late_identity[ $field ] ?? null )
+				|| ! hash_equals( (string) ( $early_build[ $field ] ?? '' ), $late_identity[ $field ] ) )
+				$build_same = false;
+		}
+		if ( ! $site_same || ! $build_same ) {
+			$plan_gates['runtime_identity_changed_during_plan'] = array(
+				'ready' => false,
+				'state' => 'runtime_identity_drift',
+				'source' => 'mad4b.build-provenance+site-profile',
+				'remediation_owner' => 'release_operator',
+				'blockers' => array( $site_same ? 'build_changed_during_plan' : 'site_changed_during_plan' ),
+			);
+		}
+		$blocking = array();
+		foreach ( $plan_gates as $gate_id => $gate ) {
+			if ( is_array( $gate ) && empty( $gate['ready'] ) ) $blocking[] = $gate_id;
+		}
 		// Complete the dynamic gate-to-action map after all native planners
 		// have spoken. No missing gate, dangling dependency or unverified
 		// external executor may silently become an executable operation.
