@@ -282,4 +282,23 @@ foreach ( $collision['actions'] as $item ) {
 	$check( $item['automatic_execution_allowed'] === false,
 		'conflicting remediation route is non-executable');
 }
+
+// The catalog can claim an operation without having a registered WordPress
+// Ability; this can never become an executable or automatically repaired item.
+$registered = MAD4B_SCP_Staging_Certification::observe_convergence_ability_registration( array(
+	array( 'action_id' => 'not_installed_host',
+		'kind' => 'external_executor_job',
+		'apply_ability' => 'mad4b/supplemental-host-run',
+		'readback_ability' => 'mad4b/supplemental-host-result',
+		'automatic_execution_allowed' => true ),
+) );
+$check( $registered[0]['apply_ability_registered'] === false
+	&& $registered[0]['readback_ability_registered'] === false,
+	'missing host providers are discovered, not fabricated' );
+$check( $registered[0]['execution_provider_missing'] === true
+	&& $registered[0]['remediation_requires_adapter_discovery'] === true
+	&& $registered[0]['automatic_execution_allowed'] === false,
+	'catalog metadata never grants host execution' );
+$check( $registered[0]['registration_is_not_execution_permission'] === true,
+	'even observed registration would not grant runtime write authority' );
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;
