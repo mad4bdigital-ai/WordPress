@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 468,
+  "changed_file_count": 470,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -880,8 +880,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-recovery-workspace-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-recovery-lifecycle-contract.py"
       ]
+    },
+    {
+      "id": "feature007-dynamic-readonly-admin-browser-acceptance-20261009",
+      "semantic_unit": "Discover exact capability-scoped Staging wp-admin pages and declared child sections; survey only GET navigation, accessibility, viewport, effective/host environment and session errors with no writes or external requests.",
+      "revert_boundary": "Revert non-authorizing local external browser survey and its source contract as a single test-only slice without removing source or runtime privileges.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-live-readonly-browser-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-live-readonly-browser.cjs"
+      ]
     }
   ],
-  "changed_paths_sha256": "353586b68b8e35751c3128ab25dd95109ef8a259c270f50b99b56846095d38d1",
+  "changed_paths_sha256": "a2c717c195215ef43efc96e2b2d88b41421083d58f8a95dae907734474305968",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
