@@ -390,6 +390,13 @@ $capabilities = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( 
 ) );
 $check( $capabilities['ready'] === false && count( $capabilities['blockers'] ) === 2,
 	'actual host isolation blockers preserved without Breakglass' );
+$contradictory_host = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array(
+	'normal_no_network_execution_ready' => true,
+	'normal_no_network_execution_blockers' => array( 'network_isolation_unavailable' ),
+) );
+$check( $contradictory_host['ready'] === false &&
+	in_array( 'network_isolation_unavailable', $contradictory_host['blockers'], true ),
+	'false-green Developer attestation with an explicit blocker is denied' );
 $isolated = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array(
 	'normal_no_network_execution_ready' => true,
 	'normal_no_network_execution_blockers' => array(),
