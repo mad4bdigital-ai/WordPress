@@ -146,7 +146,10 @@ final class MAD4B_SCP_Activity_Import_Authority {
         $headers = isset( $input['headers'] ) ? $input['headers'] : array();
         if ( ! is_array( $headers ) || array_diff( $policy['required_columns'], $headers ) ||
             ! in_array( $policy['identity_field'], $headers, true ) ||
-            array_diff( array_keys( $policy['field_mapping'] ), $headers ) )
+            array_diff( array_keys( $policy['field_mapping'] ), $headers ) ||
+            ( ! empty( $policy['require_complete_wpml_groups'] ) &&
+              ( ! in_array( '_wpml_import_translation_group', $headers, true ) ||
+                ! in_array( '_wpml_import_language_code', $headers, true ) ) ) )
             return self::err( 'mad4b_import_required_columns_missing',
                 'Required site-owned fields or approved mappings are missing from source.' );
         return array( 'policy' => $policy, 'policy_sha256' => self::digest( $policy ) );
