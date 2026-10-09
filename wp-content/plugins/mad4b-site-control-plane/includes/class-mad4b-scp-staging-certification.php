@@ -66,6 +66,29 @@ final class MAD4B_SCP_Staging_Certification {
 				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			),
 		) );
+		if ( ! wp_has_ability( 'mad4b/staging-convergence-verify' ) ) wp_register_ability( 'mad4b/staging-convergence-verify', array(
+			'label' => 'Verify Exact Staging Convergence Plan',
+			'description' => 'Reread Staging and optional Live Acceptance without granting execution.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'convergence_verify' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'input_schema' => array(
+				'type' => 'object',
+				'properties' => array(
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'expected_source_commit_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				'required' => array( 'expected_plan_sha256', 'expected_source_commit_sha' ),
+				'additionalProperties' => false,
+			),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false, 'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read', 'non_authorizing' => true ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
 	}
 
 	public static function status( $input = array() ) {
