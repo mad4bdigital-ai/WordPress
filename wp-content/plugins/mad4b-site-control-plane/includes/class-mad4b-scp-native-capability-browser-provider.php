@@ -56,9 +56,15 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             'capabilities' => array( 'browser.canonical_path' ),
             'semantic_oracle' => 'wp_get_canonical_url_published_page',
             'browser_attestation' => 'trusted_rsa_sha256',
-            'browser_attestation_ready' => self::trusted_key() !== '',
+            // A valid public key alone never proves a browser session or
+            // matching private-key ownership by the remote worker.
+            'browser_attestation_public_key_valid' => self::trusted_key() !== '',
             'browser_attestation_key_id' => self::trusted_key_id(),
+            'browser_attestation_ready' => false,
+            'external_agent_identity_verified' => false,
+            'replay_prevention_verified' => false,
             'independent_reducer' => true,
+            'release_ready' => false,
         );
     }
 
