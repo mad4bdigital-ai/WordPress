@@ -89,7 +89,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	}
 
 	public static function register_menu() {
-		MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' );
+		if ( ! MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' ) ) return;
 		add_submenu_page( MAD4B_SCP_Admin_UI::PAGE_SLUG,
 			__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ),
 			__( 'Browser Acceptance', 'mad4b-site-control-plane' ),
