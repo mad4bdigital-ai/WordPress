@@ -48,8 +48,12 @@ $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), $enrolle
 verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'deployment' )['state'], 'independent missing deployment binding assigned to host operator' );
 $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false ), guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'NOT_CHECKED' === guide_step( $model, 'approvals' )['state'], 'write blocker must not fabricate pending approval' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array( 'developer_lane_not_ready' ) ), guide_site(), guide_skills( true, true ), $browser );
+$host_requested = guide_operator( array( 'developer_lane_not_ready' ) );
+$host_requested['operational']['lanes'] = array( 'client_action' => 'resolve_developer_host_execution_prerequisites' );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( $host_requested, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'host' )['state'], 'host sandbox is external' );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array( 'developer_lane_not_ready' ) ), guide_site(), guide_skills( true, true ), $browser );
+verify_guide( null === guide_step( $model, 'host' ), 'optional disabled developer lane must not demand Host action' );
 verify_guide( 'OBSERVED_READY' === guide_step( $model, 'skills' )['state'], 'local Skills only observed ready' );
 $untrusted = guide_operator(); $untrusted['production_authorized'] = true;
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
@@ -57,4 +61,4 @@ verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'] && empty( $model['steps']
 $untrusted = guide_operator(); $untrusted['contract'] = 'forged';
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'], 'unknown contract cannot drive navigation' );
-fwrite( STDOUT, "PASS guided operator native behavior: 17 assertions\n" );
+fwrite( STDOUT, "PASS guided operator native behavior: 18 assertions\n" );
