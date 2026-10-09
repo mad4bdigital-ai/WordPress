@@ -66,9 +66,13 @@ class MAD4B_SCP_Plugin_Discovery {
         return array( 'contract'=>'mad4b.plugin-adapter-discovery.v1','truncated'=>false,
             'plugins'=>array(
                 array( 'plugin_file'=>'unknown-file-ops/tool.php','version'=>'',
-                    'risk'=>'exceptional','coverage_state'=>'excluded_high_risk' ),
+                    'risk'=>'exceptional','coverage_state'=>'excluded_high_risk',
+                    'side_channel_blocker'=>'dangerous-code-execution',
+                    'functional_coverage'=>array('state'=>'safety_blocked') ),
                 array( 'plugin_file'=>'plain-cache/cache.php','version'=>'',
-                    'risk'=>'low','coverage_state'=>'read_only_supported' ),
+                    'risk'=>'low','coverage_state'=>'read_only_supported',
+                    'adapter_runtime_available'=>true,'adapter_read_ability_count'=>2,
+                    'functional_coverage'=>array('state'=>'read_ready_write_blocked') ),
                 array( 'plugin_file'=>'unknown-file-ops/alternate.php',
                     'version'=>self::$wrong_version ? 'obsolete' : $GLOBALS['plugin_version'],
                     'risk'=>'medium','coverage_state'=>'read_only_supported' )
@@ -113,12 +117,22 @@ ok( $r['candidates'][0]['lexical_score'] >= $r['candidates'][1]['lexical_score']
 $high=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:unknown-file-ops/tool.php';}));
 ok(count($high)===1 && $high[0]['declared_risk']==='exceptional'
     && $high[0]['requires_exceptional_review']===true
-    && $high[0]['coverage_state']==='excluded_high_risk',
+    && $high[0]['coverage_state']==='excluded_high_risk'
+    && $high[0]['qualification_status']==='EXCEPTIONAL_REVIEW'
+    && $high[0]['side_channel_blocked']===true
+    && $high[0]['qualification_verified']===false,
     'unknown plugin risk derived from existing plugin discovery not folder name');
 ok($r['coverage']['risk_coverage_complete']===true,'joined live risk registry complete');
+$plain=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:plain-cache/cache.php';}));
+ok(count($plain)===1 && $plain[0]['functional_state']==='read_ready_write_blocked'
+    && $plain[0]['read_ability_count']===2 && $plain[0]['qualification_verified']===false,
+    'live functionality projected as evidence only not certified effect');
+ok($r['qualification_incomplete']===false && $r['coverage']['qualification_coverage_complete']===true,
+    'qualification completeness separately reported from discovery completeness');
 MAD4B_SCP_Plugin_Discovery::$wrong_version=true;
 $stale=MAD4B_SCP_Solution_Discovery::read_discover($in);
-ok(is_array($stale) && $stale['coverage']['risk_coverage_complete']===false,
+ok(is_array($stale) && $stale['qualification_incomplete']===true
+    && $stale['coverage']['risk_coverage_complete']===false,
     'provider version mismatch is not treated as current risk evidence');
 MAD4B_SCP_Plugin_Discovery::$wrong_version=false;
 

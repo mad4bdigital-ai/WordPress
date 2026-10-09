@@ -149,6 +149,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'status' => $result['total_matches'] ? 'VERIFY_CANDIDATE_BEHAVIOR'
                     : ( ! empty( $result['inventory_incomplete'] ) ? 'INVENTORY_INCOMPLETE_RETRY' : 'EVALUATE_UNRANKED_FALLBACK' ),
                 'inventory_incomplete' => $result['inventory_incomplete'],
+                'qualification_incomplete' => $result['qualification_incomplete'],
                 'candidates' => $result['candidates'],
                 'unranked_fallback_candidates' => $fallback['candidates'],
                 'unranked_fallback_next_offset' => $fallback['next_offset'],
@@ -167,6 +168,7 @@ final class MAD4B_SCP_Assistant_Solution_Router {
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
                 'extension_inventory_complete' => ! empty( $inventory['extension_inventory_complete'] ),
                 'risk_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
+                'qualification_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
                 'external_inventory_complete' => false ),
             'authorizing' => false, 'execution_allowed' => false, 'mutation_performed' => false,
             'provider_executed' => false, 'automatic_install_allowed' => false );

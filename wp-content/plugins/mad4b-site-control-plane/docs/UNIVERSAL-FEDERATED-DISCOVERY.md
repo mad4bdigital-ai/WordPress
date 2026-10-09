@@ -61,3 +61,9 @@ Production-safe defaults: no source discovery may mint credentials, call a write
 ## True completion evidence
 
 Native Node fixture: `node tools/solution-discovery/test-federation.mjs` (included in the exact-source manual preflight); native PHP fixtures under 7.4 and 8.3; real site admission and connected-source registry evidence; current profile/host/permission mapping; a signed or independently verified execution receipt and rollback proof for any actual mutation. V8 structural source checks are valuable but do not certify those requirements.
+
+## Qualification projection: no implicit execution or write grants
+
+The WordPress Solution Discovery reducer now projects the **existing** governed Plugin Discovery signals by exact plugin main-file/version: risk, functional state, side-channel blocking, adapter runtime availability, available read abilities, certification status and reversible contract count. This information is advice only; **every candidate keeps `qualification_verified=false` and `execution_allowed=false`**, even if a provider declares `functional_ready`. Missing/stale plugin evidence is `EVIDENCE_INCOMPLETE`, not safe. Extraordinary risk and blocked side channels require dedicated review.
+
+`inventory_incomplete` describes source coverage, while `qualification_incomplete` describes provider effect/risk evidence; neither is silently promoted to runtime-ready. G3 remains the sole owner of independent effects certification.

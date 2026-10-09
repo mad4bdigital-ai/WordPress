@@ -314,10 +314,28 @@ final class MAD4B_SCP_Solution_Discovery {
             }
             $candidate['declared_risk'] = $risk;
             $candidate['coverage_state'] = $state;
+            $functional = is_array( $row['functional_coverage'] ?? null )
+                ? ( $row['functional_coverage']['state'] ?? '' ) : '';
+            $states = array( 'functional_ready', 'read_ready_write_blocked',
+                'status_only_candidate', 'contract_discovery_required',
+                'safety_blocked', 'adapter_missing', 'intentionally_excluded', 'inactive' );
+            $candidate['functional_state'] = in_array( $functional, $states, true ) ? $functional : 'unknown';
+            $candidate['side_channel_blocked'] = ! empty( $row['side_channel_blocker'] );
+            $candidate['provider_certification_ok'] = ( $row['provider_certification_ok'] ?? null ) === true;
+            $candidate['adapter_runtime_available'] = ( $row['adapter_runtime_available'] ?? null ) === true;
+            $candidate['read_ability_count'] = max( 0, min( 100, (int) ( $row['adapter_read_ability_count'] ?? 0 ) ) );
+            $candidate['reversible_contract_count'] = is_array( $row['reversible_contracts'] ?? null )
+                ? min( 100, count( $row['reversible_contracts'] ) ) : 0;
             $candidate['requires_exceptional_review'] = in_array( $risk, array( 'high', 'exceptional' ), true )
                 || 'excluded_high_risk' === $state;
             $candidate['risk_metadata_source'] = 'governed_plugin_discovery';
             $candidate['risk_version_observed'] = $version;
+            $candidate['qualification_status'] = ( 'excluded_high_risk' === $state ||
+                in_array( $risk, array( 'high', 'exceptional' ), true ) ) ? 'EXCEPTIONAL_REVIEW'
+                : ( $candidate['side_channel_blocked'] || 'safety_blocked' === $candidate['functional_state'] )
+                    ? 'SAFETY_BLOCKED'
+                    : ( 'unknown' === $risk || 'unknown' === $candidate['functional_state'] )
+                        ? 'EVIDENCE_INCOMPLETE' : 'FUNCTIONAL_REVIEW_REQUIRED';
         }
         unset( $candidate );
         $inventory['risk_coverage_complete'] = $complete;
@@ -389,12 +407,21 @@ final class MAD4B_SCP_Solution_Discovery {
             $risk = in_array( $row['declared_risk'] ?? '', array( 'low', 'medium', 'high', 'exceptional', 'unknown' ), true )
                 ? $row['declared_risk'] : 'unassessed';
             $risk_review = ! empty( $row['requires_exceptional_review'] );
+            $qualification = $row['qualification_status'] ?? 'EVIDENCE_INCOMPLETE';
             $candidates[] = array( 'id' => $row['id'], 'label' => $row['label'],
                 'source' => $row['source'], 'observed_state' => $row['observed_state'],
                 'metadata_digest' => $row['metadata_digest'] ?? null,
                 'declared_risk' => $risk,
                 'coverage_state' => $row['coverage_state'] ?? 'unknown',
                 'requires_exceptional_review' => $risk_review,
+                'qualification_status' => $qualification,
+                'functional_state' => $row['functional_state'] ?? 'unknown',
+                'side_channel_blocked' => ! empty( $row['side_channel_blocked'] ),
+                'provider_certification_ok' => ! empty( $row['provider_certification_ok'] ),
+                'adapter_runtime_available' => ! empty( $row['adapter_runtime_available'] ),
+                'read_ability_count' => $row['read_ability_count'] ?? 0,
+                'reversible_contract_count' => $row['reversible_contract_count'] ?? 0,
+                'qualification_verified' => false,
                 'risk_metadata_source' => $row['risk_metadata_source'] ?? 'unassessed',
                 'matched_terms' => $matches, 'lexical_score' => $score,
                 'classification' => 'UNMAPPED_OR_UNVERIFIED',
@@ -420,6 +447,7 @@ final class MAD4B_SCP_Solution_Discovery {
                 'ability_inventory_complete' => ! empty( $inventory['ability_inventory_complete'] ),
                 'extension_inventory_complete' => ! empty( $inventory['extension_inventory_complete'] ),
                 'risk_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
+                'qualification_coverage_complete' => ! empty( $inventory['risk_coverage_complete'] ),
                 'ability_visibility_scope' => 'show_in_rest_only',
                 'plugin_inventory_scope' => $inventory['plugin_inventory_scope'] ?? 'unknown',
                 'external_inventory_complete' => false ),
@@ -429,6 +457,7 @@ final class MAD4B_SCP_Solution_Discovery {
             'inventory_incomplete' => empty( $inventory['plugin_inventory_complete'] )
                 || empty( $inventory['ability_inventory_complete'] )
                 || empty( $inventory['extension_inventory_complete'] ),
+            'qualification_incomplete' => empty( $inventory['risk_coverage_complete'] ),
             'next_offset' => $offset + $limit < count( $candidates ) && $offset + $limit <= 1024 ? $offset + $limit : null,
             'candidates' => array_slice( $candidates, $offset, $limit ),
             'decision' => count( $candidates ) ? 'EVALUATE_CANDIDATES'
