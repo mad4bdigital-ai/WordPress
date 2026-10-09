@@ -25,6 +25,12 @@ if (!fs.existsSync(stateFile) || !fs.statSync(stateFile).isFile()) {
 }
 const root = required('MAD4B_UI_NODE_MODULES');
 const { chromium } = require(path.join(root, 'playwright'));
+function surveyState(failures, countMatches, blocked, consoleErrors) {
+  // Refuse the *whole run*, even when the initial authenticated GET required
+  // blocked third-party resources or attempted a forbidden write.
+  return failures > 0 || !countMatches || blocked.external > 0 ||
+    blocked.write > 0 || consoleErrors > 0 ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED';
+}
 function link(href) {
   let u;
   try { u = new URL(href, origin); } catch (_) { return null; }
@@ -162,8 +168,7 @@ function link(href) {
   const failures = results.filter(item => item.status === 'BLOCKED').length;
   const report = {
     contract: 'mad4b.admin-readonly-browser-survey.v1',
-    state: failures || !countMatches || blocked.external || blocked.write || consoleErrors
-      ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED',
+    state: surveyState(failures, countMatches, blocked, consoleErrors),
     discovered_routes: routes.size, discovered_route_and_section_cases: cases.size,
     expected_route_count_match: countMatches,
     blocked_external_requests: blocked.external, blocked_write_requests: blocked.write,
