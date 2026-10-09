@@ -9,6 +9,9 @@ if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Reconstruction' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-reconstruction.php';
 }
+if ( ! class_exists( 'MAD4B_SCP_Recovery_Attempt_Budget' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-recovery-attempt-budget.php';
+}
 
 if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-context-provider-gateway.php';
@@ -40,6 +43,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/brand-core-coverage',
 				'context/brand-core-convergence-plan',
 				'context/brand-reconstruction-plan',
+				'context/recovery-attempt-status',
 				'context/google-drive-status',
 				'context/runtime-readiness',
 				'context/conflicts',
@@ -142,6 +146,19 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'attempts' => array( 'type'=>'integer', 'minimum'=>0, 'maximum'=>100, 'default'=>0 ),
 				'assistant_available' => array( 'type'=>'boolean', 'default'=>true ),
 			) )
+		);
+		$this->add_ability(
+			'context/recovery-attempt-status',
+			'Persistent Brand Recovery Retry Budget',
+			'recovery_attempt_status',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'lane' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Recovery_Attempt_Budget::LANES ),
+				'category' => array( 'type' => 'string', 'maxLength' => 64 ),
+				'artifact_id' => array( 'type' => 'string', 'maxLength' => 36 ),
+				'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+			), array( 'lane' ) )
 		);
 		$this->add_ability(
 			'context/google-drive-status',
@@ -896,8 +913,31 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Brand_Context_Builder::append_draft( is_array( $input ) ? $input : array() );
 	}
 
+	/** An option-backed retry reservation is a limit, never an authority ticket. */
+	private function guarded_brand_attempt( $lane, $method, $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$reservation = MAD4B_SCP_Recovery_Attempt_Budget::reserve( $lane, $input );
+		if ( is_wp_error( $reservation ) ) return $reservation;
+		$result = call_user_func( array( 'MAD4B_SCP_Brand_Context_Builder', $method ), $input );
+		// Any error may conceal a completed remote provider write. Conservatively
+		// block blind retry until operator/provider readback resolves uncertainty.
+		$outcome = is_wp_error( $result ) ? 'uncertain' : 'succeeded';
+		$finished = MAD4B_SCP_Recovery_Attempt_Budget::finish( $reservation, $outcome );
+		if ( is_wp_error( $finished ) ) return new WP_Error(
+			'mad4b_brand_retry_outcome_unverified',
+			'Brand operation retry outcome could not be journaled; reconcile independently before next action.',
+			array( 'operation_lane' => $lane, 'recovery_required' => true )
+		);
+		return $result;
+	}
+
+	public function recovery_attempt_status( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		return MAD4B_SCP_Recovery_Attempt_Budget::status( isset( $input['lane'] ) ? $input['lane'] : '', $input );
+	}
+
 	public function brand_draft_create( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::create_draft( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'brand_draft_create', 'create_draft', $input );
 	}
 
 	public function source_scan_apply( $input ) {
@@ -905,11 +945,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function materialize_brand_draft( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::materialize_draft( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'materialize_brand_draft', 'materialize_draft', $input );
 	}
 
 	public function reconcile_brand_materialization( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::reconcile_materialization( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'reconcile_brand_materialization', 'reconcile_materialization', $input );
 	}
 
 	public function rollback_materialized_brand_draft( $input ) {
