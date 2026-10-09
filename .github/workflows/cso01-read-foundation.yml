@@ -5,6 +5,7 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-collision-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/**'
@@ -47,6 +48,8 @@ jobs:
           php -l "$root/tests/cso01-read-foundation-runtime.php"
           php -l "$root/mad4b-site-control-plane.php"
           php "$root/tests/cso01-read-foundation-runtime.php"
+          php -l "$root/tests/cso01-read-foundation-collision-runtime.php"
+          php "$root/tests/cso01-read-foundation-collision-runtime.php"
       - name: Preserve non-authorizing scope
         shell: bash
         run: |
