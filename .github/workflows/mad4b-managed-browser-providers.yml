@@ -48,8 +48,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  php-compatibility:
+    name: Browser Core PHP ${{ matrix.php }} full-tree lint and contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint every Control Plane PHP file, fail closed on syntax errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 |
+            xargs -0 -r -n1 php -l
+      - name: Core and native browser contract fixtures
+        run: |
+          php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-capability-browser-provider-contract.php
+
   contract:
     name: Browser provider contract
+    needs: php-compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

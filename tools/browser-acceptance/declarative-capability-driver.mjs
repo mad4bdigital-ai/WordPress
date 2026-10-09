@@ -144,7 +144,11 @@ export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
       origin: validated.origin, build_identity: validated.build_identity,
       observer: {
         contract: "mad4b.capability-browser-observer.v1",
-        javascript_runtime: true, browser_engine: providerId + ":" + String(engine),
+        // Legacy field means the managed runner can execute JS, NOT that the
+        // target page executed JS. Passive mode disables page scripts.
+        javascript_runtime: true, runner_javascript_runtime: true,
+        page_javascript_enabled: false,
+        browser_engine: providerId + ":" + String(engine),
         execution_mode: "managed_browser_agent",
         plan_issued_at: validated.challenge.issued_at
       },

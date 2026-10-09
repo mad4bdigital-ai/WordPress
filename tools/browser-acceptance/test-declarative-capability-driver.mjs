@@ -87,6 +87,9 @@ const browser={
 };
 const evidence=await runDeclarativeBrowserPlan({browser,providerId:"local",plan});
 assert.equal(evidence.contract,"mad4b.capability-browser-evidence.v1");
+assert.equal(evidence.observer.javascript_runtime,true);
+assert.equal(evidence.observer.runner_javascript_runtime,true);
+assert.equal(evidence.observer.page_javascript_enabled,false);
 assert.deepEqual(evidence.cases.map(c=>c.matches_expected),[true,true,true]);
 assert(evidence.cases.every(c=>c.authorizing===false && c.certification_issued===false));
 assert.equal(created[0].closed,true);
