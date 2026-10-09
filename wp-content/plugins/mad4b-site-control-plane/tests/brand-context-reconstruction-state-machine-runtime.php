@@ -84,7 +84,7 @@ class MAD4B_SCP_Brand_Context_Builder {
 }
 class MAD4B_SCP_Context_Authority {
  static function brand_core_coverage(){
-   return array('ready'=>false,'coverage'=>array(
+   return array('ready'=>false,'registry_revision'=>4,'authority_manifest_fingerprint'=>str_repeat('a',64),'coverage'=>array(
      'brand_strategy'=>array('ready'=>true,'conflict'=>false,'observed_assets'=>array()),
      'tone_of_voice'=>array('ready'=>false,'conflict'=>false,
        'observed_assets'=>array(array('reasons'=>array('content_incomplete')))),
@@ -104,6 +104,23 @@ if($states['brand_strategy']['state']!=='READY' ||
    empty($states['tone_of_voice']['detected_from_live_evidence']) ||
    $states['editorial_guidelines']['state']!=='WAIT_DEPENDENCY') {
   throw new RuntimeException('Real Context reasons did not select safe reconstruction order');
+}
+// A half-updated authority registry must invalidate plans instead of
+// silently emitting a repair path bound to an obsolete source.
+class ContextStateFixture {
+ static $drift=false;
+}
+// Isolated source-scan challenge for absence evidence; no write is performed.
+$missing = MAD4B_SCP_Brand_Context_Reconstruction::classify(
+  'tone_of_voice', array('dependency_ready'=>true), 'missing_file', 0, true
+);
+if (is_wp_error($missing) || $missing['state']!=='SOURCE_DISCOVERY') {
+  throw new RuntimeException('Missing file was recreated without source discovery');
+}
+$procedure=MAD4B_SCP_Brand_Context_Reconstruction::procedure_for_state('SOURCE_DISCOVERY');
+if (count($procedure)!==4 || $procedure[0]['lane']!=='read' ||
+    $procedure[2]['lane']!=='write' || empty($procedure[2]['exact_new_ticket_required'])) {
+  throw new RuntimeException('Source discovery can mutate without exact source-scan approval');
 }
 $simulation=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'provider_timeout'));
 if(is_wp_error($simulation)||$simulation['state']!=='simulation_only'||
