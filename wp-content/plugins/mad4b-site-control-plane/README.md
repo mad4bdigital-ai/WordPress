@@ -614,3 +614,43 @@ The WordPress control plane does not provide arbitrary PHP/shell execution or pr
 Runtime provider health distinguishes artifact drift from unsafe capability drift. An active provider may remain platform-healthy when its mounted read capabilities are structurally compatible and every mutation capability remains fail-closed. Active providers with exposed read incompatibilities, adapter-runtime failure, or mutation eligibility under unresolved artifact drift remain blockers.
 
 Functional-gap evaluation also distinguishes evaluator completion from provider closure. The legacy `ready` field is a backward-compatible alias for `evaluation_complete`; it is not provider certification. Operators should use `decision_handoff`, `followup_required`, and per-family decision states for the next governed action.
+
+
+### Exact-identity WordPress Recovery Lifecycle (Feature 007 child PR #339)
+
+The operator Action Center offers an **explicit, read-only** recovery inspection. A new
+`MAD4B_SCP_Recovery_Lifecycle` compiler captures the enrolled site, current
+environment, build/provenance identity and adaptive-provider event generation
+**before and after** the deep plan. It rejects a stale, incomplete, malformed or
+oversized plan, duplicate actions, missing dependencies and cyclic dependencies.
+The administration screen never directly applies grants, packages or executable
+remediation; existing governed native/external owners are still responsible for
+authorization, execution, independently verified readback and compensation.
+
+The planner distinguishes **Core Runtime**, **Governed Write**, **Managed Skills**,
+**Feature Integrations** and **Release Acceptance**. These are separately observed
+domains: an unrelated optional integration must not be reported as a Core failure.
+Provider closure builds bounded capability-specific review steps with exact
+`provider_id`/capability/ability inputs. Unresolved mappings remain review-only;
+no guessed provider is ever used. A disabled WP-Cron with a pending safe-phase job
+is diagnosed as requiring **external cron transport evidence**, not silently retried.
+An unenrolled deployment binding is an operator review, never an auto-host change.
+
+The lifecycle stages are deliberately **not** claimed complete on source evidence
+alone: detection/classification/planning and structural admission are implemented.
+`Runtime Convergence`, `Post Update Continuation` and the provider certifier
+already own applicable safe native operations, but true owner approval, effect
+execution, postconditions, rollback/compensation and external certification still
+require signed/current-site runtime receipts. **No generic executor was added.**
+
+Offline verification (without relying on queued GitHub Actions):
+
+```bash
+python wp-content/plugins/mad4b-site-control-plane/tests/recovery-no-ci-preflight.py --expected-head YOUR_EXACT_40_CHAR_HEAD
+```
+
+The script demands a clean checkout at that HEAD, real PHP 7.4+ CLI, source lint,
+native lifecycle/DAG/UI/scenario tests and Python contract checks. It emits
+`PASS`, `FAIL` or `BLOCKED` as JSON; it does **not** certify WordPress,
+MariaDB/MySQL, Browser, Host Sandbox, an external service or a deployable ZIP.
+Repeat on PHP 7.4 and 8.3 and complete live/Staging acceptance before Hub merge.
