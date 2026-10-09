@@ -286,7 +286,10 @@ final class MAD4B_SCP_Activity_Import_Review {
             'permission_callback' => array( __CLASS__, 'authorize_signed' ) ) );
     }
     public static function authorize_signed( $request ) {
-        if ( ! self::enrolled() || ! defined( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET' ) ||
+        if ( ! self::enrolled() ||
+            ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
+            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ||
+            ! defined( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET' ) ||
             ! is_string( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) ||
             strlen( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) < 32 )
             return self::error( 'mad4b_import_webhook_disabled', 'Webhook disabled until site-scoped host secret is provisioned.' );
@@ -301,6 +304,9 @@ final class MAD4B_SCP_Activity_Import_Review {
         return true;
     }
     public static function receive_signed( $request ) {
+        if ( ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
+            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
+            return self::error( 'mad4b_import_intake_staging_only', 'External intake is restricted to enrolled Staging.' );
         $data = json_decode( $request->get_body(), true );
         if ( ! is_array( $data ) || ! isset( $data['issued_at'], $data['nonce'], $data['input'], $data['site_uuid'] ) ||
             ! is_int( $data['issued_at'] ) || abs( time() - $data['issued_at'] ) > 300 ||
@@ -320,7 +326,10 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_webhook_input', 'Invalid import input.' );
         $preview = self::inspect( $input );
         if ( is_wp_error( $preview ) ) return $preview;
-        $record = array( 'source' => 'google_apps_script', 'received_at' => gmdate( 'c' ),
+        $source_mode = isset( $data['source_mode'] ) ? (string) $data['source_mode'] : 'google_apps_script';
+        if ( ! in_array( $source_mode, array( 'google_apps_script', 'signed_generic_webhook' ), true ) )
+            return self::error( 'mad4b_import_intake_source_invalid', 'Only registered signed-push source modes are accepted.' );
+        $record = array( 'source' => $source_mode, 'received_at' => gmdate( 'c' ),
             'payload_sha256' => hash( 'sha256', $request->get_body() ), 'plan' => $preview );
         $key = self::option_key( $preview['profile_slug'] );
         // One inbox snapshot at a time: no implicit overwrites or auto-import.
@@ -336,6 +345,87 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! is_string( $key ) || ! preg_match( '/^mad4b_import_nonce_[a-f0-9]{64}$/D', $key ) ) return;
         $recorded = get_option( $key, false );
         if ( is_numeric( $recorded ) && (int) $recorded + 600 <= time() ) delete_option( $key );
+    }
+    /**
+     * Admin CSV upload is a second actual intake transport, separate from
+     * Google Apps Script and HMAC webhooks. It stores no uploaded raw records.
+     */
+    public static function admin_upload_csv() {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
+            ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
+            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
+            wp_die( 'Staging-only enrolled administrator required.' );
+        check_admin_referer( 'mad4b_activity_csv_intake', 'mad4b_import_nonce' );
+        $file = isset( $_FILES['import_csv'] ) ? $_FILES['import_csv'] : null;
+        if ( ! is_array( $file ) || ! isset( $file['error'], $file['size'], $file['tmp_name'], $file['name'] ) ||
+            UPLOAD_ERR_OK !== (int) $file['error'] || (int) $file['size'] < 1 ||
+            (int) $file['size'] > 1048576 ||
+            ! preg_match( '/\\.csv$/iD', (string) $file['name'] ) ||
+            ! is_string( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) )
+            wp_die( 'A genuine CSV upload under 1 MiB is required.' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $identity = isset( $_POST['identity_field'] ) ?
+            sanitize_key( wp_unslash( $_POST['identity_field'] ) ) : '';
+        $allowed = isset( $_POST['allowed_currencies'] ) ?
+            strtoupper( (string) wp_unslash( $_POST['allowed_currencies'] ) ) : '';
+        $currencies = array_values( array_filter( array_map( 'trim', explode( ',', $allowed ) ) ) );
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
+            empty( $profile['activity_contract']['enabled'] ) )
+            wp_die( 'Exact enabled Content Experience Profile required.' );
+        $fh = fopen( $file['tmp_name'], 'rb' );
+        if ( false === $fh ) wp_die( 'CSV open failed.' );
+        $headers = fgetcsv( $fh, 16384, ',', '"', '\\' );
+        if ( ! is_array( $headers ) || count( $headers ) < 1 ||
+            count( $headers ) > self::MAX_COLUMNS ) {
+            fclose( $fh );
+            wp_die( 'CSV header is invalid.' );
+        }
+        $headers[0] = preg_replace( '/^\\xEF\\xBB\\xBF/', '', $headers[0] );
+        $headers = array_map( 'trim', $headers );
+        $rows = array();
+        while ( ( $cells = fgetcsv( $fh, 16384, ',', '"', '\\' ) ) !== false ) {
+            if ( count( $cells ) === 1 && ( null === $cells[0] || '' === trim( $cells[0] ) ) ) continue;
+            if ( count( $cells ) !== count( $headers ) || count( $rows ) >= self::MAX_ROWS ) {
+                fclose( $fh );
+                wp_die( 'CSV row width or record count exceeds the bounded contract.' );
+            }
+            foreach ( $cells as $cell ) {
+                if ( ! is_string( $cell ) || strlen( $cell ) > 4096 ||
+                    preg_match( '/^[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/', $cell ) ||
+                    ( preg_match( '/^[=+@]/', ltrim( $cell ) ) ) )
+                {
+                    fclose( $fh );
+                    wp_die( 'Unsafe spreadsheet formula, control character or oversized cell.' );
+                }
+            }
+            $rows[] = array_combine( $headers, $cells );
+        }
+        fclose( $fh );
+        $meta = array_fill_keys( (array) $profile['meta_keys'], true );
+        $mapping = array();
+        foreach ( $headers as $header )
+            if ( isset( $meta[ $header ] ) ) $mapping[ $header ] = $header;
+        if ( !$mapping ) wp_die( 'No approved Meta mapping found. Configure the parent Profile first.' );
+        $input = array( 'profile_slug' => $slug, 'identity_field' => $identity,
+            'headers' => $headers, 'rows' => $rows,
+            'field_mapping' => $mapping, 'allowed_currencies' => $currencies,
+            'price_tier_policy' => 'review_monotonic', 'review_past_intervals' => true );
+        $preview = self::inspect( $input );
+        if ( is_wp_error( $preview ) ) wp_die( esc_html( $preview->get_error_message() ) );
+        $key = self::option_key( $slug );
+        $record = array( 'source' => 'admin_csv_upload',
+            'received_at' => gmdate( 'c' ),
+            'payload_sha256' => hash( 'sha256', wp_json_encode( $input ) ),
+            'plan' => $preview );
+        if ( ! add_option( $key, $record, '', false ) )
+            wp_die( 'An existing import review must be completed or archived first.' );
+        if ( self::digest( get_option( $key, false ) ) !== self::digest( $record ) )
+            wp_die( 'Review staging persistence could not be verified.' );
+        wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
+            'profile_slug' => $slug, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
+        exit;
     }
     public static function register_admin() {
         add_management_page( 'MAD4B Import Review', 'MAD4B Import Review',
@@ -366,5 +456,6 @@ final class MAD4B_SCP_Activity_Import_Review {
 if ( function_exists( 'add_action' ) ) {
     add_action( 'rest_api_init', array( 'MAD4B_SCP_Activity_Import_Review', 'register_rest' ) );
     add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
+    add_action( 'admin_post_mad4b_activity_import_csv', array( 'MAD4B_SCP_Activity_Import_Review', 'admin_upload_csv' ) );
     add_action( 'mad4b_activity_import_expire_nonce', array( 'MAD4B_SCP_Activity_Import_Review', 'expire_nonce' ), 10, 1 );
 }
