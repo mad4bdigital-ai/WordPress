@@ -29,8 +29,6 @@ ok(!is_wp_error($initial)&&$initial['revision']===0,'Initial market registry inv
 $conf=array(
  'competitors'=>array('competitor_one'=>array('display_name'=>'Tour market peer','source_url'=>'https://competitor.example/tours')),
  'suppliers'=>array('dmc_one'=>array('display_name'=>'Licensed DMC','source_url'=>'https://dmc.example/catalog','commercial_status'=>'contract_reviewed','agreement_ref'=>'internal-contract-42','valid_until'=>'2099-12-31')),
- 'dmc_connections'=>array('conn_one'=>array('supplier_id'=>'dmc_one','direction'=>'bidirectional')),
- 'feed_mappings'=>array('mapping_one'=>array('post_type'=>'tours-and-activities','direction'=>'bidirectional','fields'=>array('post_title','post_excerpt'))),
  'pricing_rules'=>array('competitive'=>array('mode'=>'discount_percent','basis_points'=>1000,'currency'=>'EGP','cost_minor'=>7000)),
  'media_rules'=>array('image_one'=>array('source_url'=>'https://competitor.example/image.jpg','rights_status'=>'unknown')),
  'assistant_roles'=>array('writer_one'=>array('role'=>'writer','skill_name'=>'brand-content-authoring')),
@@ -45,14 +43,7 @@ $competitor=MAD4B_SCP_Market_Content_Exchange::competitor_plan(array('competitor
 ok(!is_wp_error($competitor)&&$competitor['draft_without_supplier_contract_allowed']&&
  !$competitor['resale_rights_granted']&&!$competitor['publication_authorized']&&!$competitor['media_copied']&&
  $competitor['pricing']['amount_minor']===9000,'Noncontracted competitor research must remain a draft');
-$dmc=MAD4B_SCP_Market_Content_Exchange::dmc_plan(array('connection_id'=>'conn_one','mapping_id'=>'mapping_one','direction'=>'import'));
-ok(!is_wp_error($dmc)&&$dmc['exchange_plan_ready']&&$dmc['post_type']==='tours-and-activities'&&!$dmc['source_authorization_independently_verified'],'Native DMC CPT plan invalid');
-$import=MAD4B_SCP_Market_Content_Exchange::import_prepare(array('connection_id'=>'conn_one','mapping_id'=>'mapping_one',
- 'items'=>array(array('external_id'=>'tour-1','post_title'=>'DMC tour','post_excerpt'=>'Available itinerary'))));
-ok(!is_wp_error($import)&&$import['draft_candidates'][0]['post']['post_status']==='draft'&&
- !empty($import['draft_candidates'][0]['operation_key'])&&!$import['import_written'],'DMC must prepare drafts only');
-$export=MAD4B_SCP_Market_Content_Exchange::export_preview(array('connection_id'=>'conn_one','mapping_id'=>'mapping_one'));
-ok(!is_wp_error($export)&&$export['count']===1&&!isset($export['items'][0]['post_content'])&&!$export['remote_transfer_executed'],'DMC exported a forbidden field or performed an external transfer');
+ok(!method_exists('MAD4B_SCP_Market_Content_Exchange','dmc_plan'),'Tourism-specific DMC methods leaked into generic market engine');
 $redacted=MAD4B_SCP_Market_Growth_Policies::status();
 ok(!isset($redacted['suppliers']['dmc_one']['agreement_ref'])&&
    !isset($redacted['pricing_rules']['competitive']['cost_minor']),'Read-only market status leaked contract/cost metadata');
@@ -60,13 +51,6 @@ $assistant=MAD4B_SCP_Market_Content_Exchange::assistant_route(array('role'=>'wri
 ok(!is_wp_error($assistant)&&!empty($assistant['configured_candidates'])&&
    empty($assistant['selected_for_research_or_draft'])&&
    !$assistant['exact_write_grant_verified'],'Configured writer became authorized without certified live Skill');
-$dup=MAD4B_SCP_Market_Content_Exchange::import_prepare(array(
- 'connection_id'=>'conn_one','mapping_id'=>'mapping_one',
- 'items'=>array(
-   array('external_id'=>'duplicate','post_title'=>'First'),
-   array('external_id'=>'duplicate','post_title'=>'Second')
- )));
-ok(is_wp_error($dup)&&$dup->get_error_code()==='mad4b_dmc_import_duplicate','DMC duplicate ID accepted');
 $unlicensed=MAD4B_SCP_Market_Growth_Policies::inspect(array('media_id'=>'image_one'));
 ok(!$unlicensed['checks']['media_ingest_preflight_eligible']&&!$unlicensed['publication_ready'],'Competitor image gained implicit license');
 $attempt=array('category'=>'tone_of_voice','expected_plan_sha256'=>str_repeat('a',64));
@@ -92,4 +76,4 @@ ok(!is_wp_error($new)&&$new['attempt']===1,'Reset did not start clean epoch');
 $bad=MAD4B_SCP_Market_Growth_Policies::replace(array('settings'=>array('competitors'=>array('evil'=>array(
  'display_name'=>'Bad','source_url'=>'file:///etc/passwd'))),'confirmed'=>true,'expected_revision'=>1,'expected_sha256'=>$saved['registry_sha256']));
 ok(is_wp_error($bad)&&$bad->get_error_code()==='mad4b_growth_competitor_invalid','Unsafe competitor source accepted');
-echo "PASS market competitor/DMC separation, CPT mapping, price and media guards, durable retry circuit\n";
+echo "PASS general competitor market rules, site-neutral engine, pricing and bounded durable retry circuit\n";
