@@ -15,6 +15,7 @@ import tempfile
 PLUGIN = Path("wp-content/plugins/mad4b-site-control-plane")
 WF = Path(".github/workflows/feature-007-spec-ci.yml")
 LEDGER = Path("specs/007-content-intelligence-workflow-platform/change-slices.json")
+ACI01_INTEGRITY = Path("specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/task-integrity.py")
 EXT = Path("specs/007-content-intelligence-workflow-platform/extensions/competitive-experience")
 LINT = (
     "class-mad4b-scp-agent-registry.php",
@@ -281,6 +282,11 @@ def main():
                     receipt["results"].append(result)
             for filename in PY_CHECKS:
                 receipt["results"].append(python_check(root, filename, env))
+            spec_result = run(root, [sys.executable, "-B", str(ACI01_INTEGRITY),
+                                     "--self-test"], env)
+            spec_result["case"] = "aci01:spec-integrity:negative-self-test"
+            spec_result["authorizing"] = False
+            receipt["results"].append(spec_result)
             for filename in NODE_FIXTURES:
                 if shutil.which("node", path=env["PATH"]) is None:
                     receipt["results"].append({"case": "node:" + filename,
