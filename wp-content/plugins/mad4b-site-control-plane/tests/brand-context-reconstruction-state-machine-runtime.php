@@ -65,4 +65,49 @@ if (count($recoveryProcedure)!==3 || $recoveryProcedure[0]['lane']!=='read' ||
     empty($recoveryProcedure[1]['exact_new_ticket_required'])) {
   throw new RuntimeException('Unverified provider re-creation may duplicate a draft');
 }
+// Independent live-evidence planning: a caller flag never certifies an agent.
+function wp_json_encode($v,$flags=0) { return json_encode($v,$flags); }
+class MAD4B_SCP_Skill_Runtime_Certification {
+ static function current_status(){ return array('ready'=>false,'historical_evidence_only'=>true); }
+}
+class MAD4B_SCP_Brand_Context_Builder {
+ static function expected_categories(){ return array('brand_strategy'=>'Brand Strategy','tone_of_voice'=>'Tone of Voice','editorial_guidelines'=>'Editorial Guidelines'); }
+ static function convergence_plan($args=array()) {
+   return array('registry_revision'=>4,'authority_manifest_fingerprint'=>str_repeat('a',64),'plan_sha256'=>str_repeat('b',64),
+     'writable_sources'=>array(array('source_id'=>'managed')),
+     'actions'=>array(
+       array('category'=>'brand_strategy','state'=>'blocked','blockers'=>array('non_generatable_brand_authority_missing')),
+       array('category'=>'tone_of_voice','state'=>'ready_to_create','blockers'=>array()),
+       array('category'=>'editorial_guidelines','state'=>'blocked','blockers'=>array('approved_tone_of_voice_required_for_editorial_generation')),
+     ));
+ }
+}
+class MAD4B_SCP_Context_Authority {
+ static function brand_core_coverage(){
+   return array('ready'=>false,'coverage'=>array(
+     'brand_strategy'=>array('ready'=>true,'conflict'=>false,'observed_assets'=>array()),
+     'tone_of_voice'=>array('ready'=>false,'conflict'=>false,
+       'observed_assets'=>array(array('reasons'=>array('content_incomplete')))),
+     'editorial_guidelines'=>array('ready'=>false,'conflict'=>false,'observed_assets'=>array()),
+   ));
+ }
+}
+$live=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live','assistant_available'=>true));
+if(is_wp_error($live)||$live['state']!=='evidence_bound_plan'||!empty($live['assistant_certification_verified']) ||
+   !empty($live['assistant_effectively_available']) || empty($live['read_only']) || !empty($live['mutation_performed'])) {
+  throw new RuntimeException('Live reconstruction plan failed read-only certification');
+}
+$states=array();
+foreach($live['states'] as $record) $states[$record['category']]=$record;
+if($states['brand_strategy']['state']!=='READY' ||
+   $states['tone_of_voice']['state']!=='NORMALIZATION_REQUIRED' ||
+   empty($states['tone_of_voice']['detected_from_live_evidence']) ||
+   $states['editorial_guidelines']['state']!=='WAIT_DEPENDENCY') {
+  throw new RuntimeException('Real Context reasons did not select safe reconstruction order');
+}
+$simulation=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'provider_timeout'));
+if(is_wp_error($simulation)||$simulation['state']!=='simulation_only'||
+   empty($simulation['scenario_is_hypothetical'])||!empty($simulation['authorizing'])) {
+  throw new RuntimeException('Hypothetical provider timeout became authorization');
+}
 echo "PASS ".$count." Brand reconstruction scenarios, retries, no automatic authority\n";
