@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 536,
+  "changed_file_count": 539,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1036,8 +1036,27 @@
         "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py",
         "specs/007-content-intelligence-workflow-platform/spec.md"
       ]
+    },
+    {
+      "id": "feature007-admin-route-registry-contract-ownership-20261009",
+      "semantic_unit": "Own previously integrated administration route registry Python conformance fixture that was not registered in the Feature007 changed-file Work Map.",
+      "revert_boundary": "Revert that sole admin route fixture with its owning original feature change, never route this into core policy changes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-aci01-recipe-normalizer-domain-split-20261009",
+      "semantic_unit": "Native Content Experience ACI01 exact-site recipe scope validator extracted into bounded non-mutating domain class, native PHP rejection fixtures and contract test.",
+      "revert_boundary": "Revert the dedicated recipe scope helper and its native fixture with the profile delegation and Python conformance hook, preserving other profile execution policy and identity.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-recipe-scope.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-recipe-scope-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "c8f47e75f92682f94b307d9c364381b7bccee81fa73398359364d75046665fd0",
+  "changed_paths_sha256": "16d0bfea925d9b9b84e4de3e862ddc5239fdd3907077faac631f2399e4aec558",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

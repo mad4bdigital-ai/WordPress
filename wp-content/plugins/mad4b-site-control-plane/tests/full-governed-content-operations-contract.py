@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import subprocess
 
 root = Path(__file__).resolve().parents[1]
 adapters = root / "includes" / "adapters"
@@ -14,6 +15,7 @@ remote_media = adapters / "class-mad4b-scp-remote-media-adapter.php"
 servers = root / "includes" / "class-mad4b-scp-servers.php"
 semantic = root / "includes" / "class-mad4b-scp-semantic-content-field-contracts.php"
 experience = root / "includes" / "class-mad4b-scp-content-experience-profiles.php"
+experience_recipe_scope = root / "includes" / "class-mad4b-scp-content-experience-recipe-scope.php"
 experience_bootstrap = root / "includes" / "class-mad4b-scp-content-experience-bootstrap.php"
 experience_governance = root / "includes" / "class-mad4b-scp-content-experience-governance.php"
 experience_media = root / "includes" / "class-mad4b-scp-content-experience-media.php"
@@ -726,5 +728,18 @@ assert "Recovery overview did not surface partial manifests." in experience_runt
 
 assert "progress_known" in remote_media_recovery_src
 assert "Legacy recovery rows were misclassified as partial manifests." in experience_runtime_smoke_src
+
+
+assert experience_recipe_scope.is_file(), "missing exact-site recipe-scope domain module"
+assert "class-mad4b-scp-content-experience-recipe-scope.php" in experience_src
+assert "MAD4B_SCP_Content_Experience_Recipe_Scope::normalize( $rows )" in experience_src
+scope_src = experience_recipe_scope.read_text(encoding="utf-8")
+for proof in ("mad4b_aci01_recipe_site_invalid", "mad4b_aci01_recipe_scope_invalid",
+              "mad4b_aci01_recipe_duplicate_scope", "mad4b_aci01_recipe_requirement_invalid"):
+    assert proof in scope_src, "recipe-scope rejection lost: " + proof
+recipe_fixture = root / "tests" / "content-experience-recipe-scope-runtime.php"
+assert recipe_fixture.is_file()
+subprocess.run(["php", "-l", str(experience_recipe_scope)], check=True, timeout=20)
+subprocess.run(["php", str(recipe_fixture)], check=True, timeout=20)
 
 print("MAD4B full governed content operations contract: PASS")
