@@ -49,8 +49,10 @@ for phrase in (
     check(phrase in skill, "Missing rights fence: "+phrase)
 check("mad4b_context_ai_brand_strategy_source_human_review_required" in authority,
       "AI may not approve strategy classified from an operational doc")
-check("! $named_strategy && $operational_title" in authority,
-      "Technical operations title must not imply strategy authority")
+check("! $named_authority && $operational_title" in authority,
+      "Technical operations title must not imply any Brand Core authority")
+check("mad4b_context_ai_brand_core_operational_human_review_required" in authority,
+      "AI cannot self-approve technical files as Voice or Editorial Guidelines")
 check("Scenario mismatch" in tests and "Retry breaker failed" in tests,
       "Missing scenario and retry negative regression coverage")
 for function in ('private static function add(', 'public static function skill_get(',
