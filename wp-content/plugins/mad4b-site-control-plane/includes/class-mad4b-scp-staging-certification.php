@@ -496,7 +496,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'blockers' => isset( $host['normal_no_network_execution_blockers'] ) && is_array( $host['normal_no_network_execution_blockers'] )
 					? array_values( $host['normal_no_network_execution_blockers'] ) : array( 'host_capability_evidence_unavailable' ),
 				'host_capability_fingerprint' => isset( $host['capability_fingerprint'] ) ? (string) $host['capability_fingerprint'] : '',
-				'readback_ability' => 'mad4b/developer-runtime-status',
+				'readback_ability' => 'mad4b/full-staging-authority-status',
 				'instruction' => 'Provision and independently test non-root resource limiting and no-network isolation on the authorized host. Binary presence or Developer authority alone does not certify executable isolation.',
 				'developer_execution_allowed' => false,
 				'breakglass_allowed' => false,
@@ -1108,7 +1108,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'rollback_candidate' => 'mad4b/staging-certification-status',
 			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
 			'deployment_host_binding' => 'mad4b/site-profile-status',
-			'developer_host_execution' => 'mad4b/developer-runtime-status',
+			'developer_host_execution' => 'mad4b/full-staging-authority-status',
 		);
 		$blocked = array();
 		$coverage = array();
