@@ -192,10 +192,9 @@ final class MAD4B_SCP_Activity_Import_Modes {
             return self::err( 'mad4b_import_mode_profile_invalid', 'Exact enabled site profile is required.' );
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
-            empty( $profile['activity_contract']['enabled'] ) )
+            ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             return self::err( 'mad4b_import_mode_profile_not_ready', 'Business Activity facet must be enabled.' );
-        $policy = isset( $profile['activity_contract']['import_modes'] ) ?
-            $profile['activity_contract']['import_modes'] : array();
+        $policy = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
         if ( ! empty( $policy['enabled_modes'] ) &&
             ! in_array( $id, $policy['enabled_modes'], true ) )
             return self::err( 'mad4b_import_mode_disabled_for_profile',
