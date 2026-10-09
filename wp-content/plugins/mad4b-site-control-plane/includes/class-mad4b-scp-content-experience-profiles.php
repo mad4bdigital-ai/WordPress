@@ -6,6 +6,8 @@ if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __
 if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-source-reconciliation.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Sync_Runtime' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-sync-runtime.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Google_Docs_Adapter' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-google-docs-adapter.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Authority' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-authority.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-snapshot.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
