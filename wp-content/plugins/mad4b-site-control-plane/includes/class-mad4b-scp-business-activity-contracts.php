@@ -67,7 +67,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $sync = array(); $resource_bindings = array();
         foreach ( $targets as $target_id => $target ) {
             if ( ! is_string( $target_id ) || 'wordpress' === $target_id || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
-                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose', 'field_bindings' ) ) )
+                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose', 'field_bindings', 'resource_binding_mode', 'resource_binding_meta_key' ) ) )
                 return self::err( 'mad4b_activity_sync_target_fields', 'Sync target must have bounded fields and ID.' );
             $provider = isset( $target['provider'] ) ? $target['provider'] : '';
             $direction = isset( $target['direction'] ) ? $target['direction'] : '';
@@ -113,7 +113,16 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 return self::err( 'mad4b_activity_sync_purpose_invalid', 'Source purpose must be an allowed data or context role.' );
             if ( 'record_data' !== $purpose && $field_keys )
                 return self::err( 'mad4b_activity_policy_source_field_denied', 'Guidelines/reference/media sources are context, not direct canonical business fields.' );
-            if ( 'google_drive' === $provider && '' === $source_ref )
+            $binding_mode = isset( $target['resource_binding_mode'] ) ? (string) $target['resource_binding_mode'] : 'static';
+            $binding_meta = isset( $target['resource_binding_meta_key'] ) ? (string) $target['resource_binding_meta_key'] : '';
+            if ( ! in_array( $binding_mode, array( 'static', 'entity_post_meta' ), true ) ||
+                ( 'entity_post_meta' === $binding_mode &&
+                    ( ! self::meta_key( $binding_meta ) || ! in_array( $binding_meta, $meta_keys, true ) ||
+                      '' !== $source_ref ) ) ||
+                ( 'static' === $binding_mode && '' !== $binding_meta ) )
+                return self::err( 'mad4b_activity_resource_binding_invalid',
+                    'Choose an exact static provider ID or a registered per-entity WordPress Meta binding, never both.' );
+            if ( 'google_drive' === $provider && '' === $source_ref && 'static' === $binding_mode )
                 return self::err( 'mad4b_activity_drive_binding_required', 'Google Drive source must bind to an exact provider resource reference.' );
             if ( 'record_data' === $purpose && 'drive_folder' === $kind )
                 return self::err( 'mad4b_activity_folder_not_row_source', 'Drive folder is a container; select exact child file/sheet IDs as record sources.' );
@@ -129,7 +138,9 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             $sync[ $target_id ] = array( 'provider' => $provider, 'direction' => $direction,
                 'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
                 'conflict_policy' => $policy, 'resource_kind' => $kind, 'purpose' => $purpose,
-                'field_bindings' => $field_bindings );
+                'field_bindings' => $field_bindings,
+                'resource_binding_mode' => $binding_mode,
+                'resource_binding_meta_key' => $binding_meta );
         }
         // Exactly one field owner per canonical field. An owner's ability
         // to author a field must be declared explicitly and independently
@@ -294,6 +305,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'source_ref' => $target['source_ref'], 'field_keys' => $target['field_keys'],
             'conflict_policy' => $target['conflict_policy'],
             'resource_kind' => $target['resource_kind'],
+            'resource_binding_mode' => isset( $target['resource_binding_mode'] ) ? $target['resource_binding_mode'] : 'static',
+            'resource_binding_meta_key' => isset( $target['resource_binding_meta_key'] ) ? $target['resource_binding_meta_key'] : '',
             'purpose' => $target['purpose'],
             'configured_direction' => $target['direction'],
             'requested_direction' => $direction,
