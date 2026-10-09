@@ -46,6 +46,16 @@ export function consumeLocalBrowserPlanOnce({
   if (!plan || !evidence || !result ||
       plan.provider_contract !== "mad4b.capability-browser-provider.v1" ||
       plan.state !== "ready" || plan.read_only !== true || plan.authorizing !== false ||
+      plan.suite !== "browser_runtime" ||
+      !/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9._-]+)*\/$/.test(plan.origin || "") ||
+      result.contract !== "mad4b.browser-acceptance-result.v1" ||
+      result.provider_id !== plan.provider_id ||
+      result.provider_contract !== plan.provider_contract ||
+      result.profile_id !== plan.profile_id ||
+      result.suite !== plan.suite ||
+      evidence.contract !== "mad4b.capability-browser-evidence.v1" ||
+      evidence.origin !== plan.origin ||
+      canonicalSha256(evidence.build_identity) !== canonicalSha256(plan.build_identity) ||
       result.verdict !== "PASS" ||
       result.verification?.browser_runtime_parity_verified !== true ||
       result.read_only !== true || result.authorizing !== false ||
@@ -57,6 +67,7 @@ export function consumeLocalBrowserPlanOnce({
       evidence.plan_signature !== plan.plan_signature ||
       !HEX64.test(result.evidence_digest || "") ||
       result.evidence_digest !== canonicalSha256(evidence) ||
+      evidence.cases?.[0]?.challenge_nonce !== plan.challenge.nonce ||
       !HEX64.test(result.receipt_signature || "") ||
       !Number.isSafeInteger(plan.challenge?.issued_at) ||
       !Number.isSafeInteger(plan.challenge?.expires_at) ||
