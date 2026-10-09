@@ -172,4 +172,56 @@ foreach ( $mutating['actions'] as $action ) {
 		$action['independent_governed_preflight_required'] === true,
 		'no effectful action may inherit automatic authority' );
 }
+
+// Fresh-read verification is the only plan completion surface. Technical
+// Staging readiness remains distinct from independent release approval.
+$head = str_repeat( 'a', 40 );
+$hash = str_repeat( 'b', 64 );
+$plan = array(
+	'plan_sha256' => $hash,
+	'plan_binding' => array( 'source_commit_sha' => $head ),
+	'current_ready' => true,
+	'gate_coverage_complete' => true,
+	'blocking_gates' => array(),
+	'plan_integrity_blockers' => array(),
+	'live_acceptance_overlay' => array( 'included' => false, 'ready' => null ),
+);
+$verified = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$plan, $hash, $head, false
+);
+$check( $verified['state'] === 'CURRENT_STAGING_GATES_READY' && $verified['ready'] === true,
+	'exact fresh Staging evidence can report Stage readiness' );
+$check( $verified['full_release_certified'] === false &&
+	$verified['authorizing'] === false && $verified['mutation_performed'] === false,
+	'passing Staging check never authorizes release or mutation' );
+$stale = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$plan, str_repeat( 'c', 64 ), $head, false
+);
+$check( $stale['state'] === 'REPLAN_REQUIRED' && $stale['ready'] === false,
+	'changed plan digest never replayed' );
+$changed_head = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$plan, $hash, str_repeat( 'd', 40 ), false
+);
+$check( $changed_head['state'] === 'REPLAN_REQUIRED' &&
+	$changed_head['source_matches'] === false, 'changed source build never replayed' );
+$blocked = $plan;
+$blocked['blocking_gates'] = array( 'browser_runtime' );
+$blocked['current_ready'] = false;
+$pending = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$blocked, $hash, $head, false
+);
+$check( $pending['state'] === 'NEEDS_EVIDENCE' && $pending['ready'] === false,
+	'incomplete runtime keeps Staging pending' );
+$missing_live = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$plan, $hash, $head, true
+);
+$check( $missing_live['ready'] === false && $missing_live['state'] === 'NEEDS_EVIDENCE',
+	'Staging-only status cannot satisfy independent Live Acceptance' );
+$unbound = $plan;
+$unbound['plan_binding']['source_commit_sha'] = '';
+$bad_source = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$unbound, $hash, $head, false
+);
+$check( $bad_source['state'] === 'CURRENT_BUILD_IDENTITY_UNAVAILABLE' &&
+	$bad_source['ready'] === false, 'unknown package identity is never ready' );
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;
