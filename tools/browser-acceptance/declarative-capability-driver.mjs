@@ -121,7 +121,7 @@ export async function runDeclarativeBrowserPlan({ browser, providerId, plan }) {
   if (!browser || typeof browser.newContext !== "function") deny("browser_unavailable");
   const context = await browser.newContext({ serviceWorkers: "block" });
   try {
-    await installContextNetworkBoundary(context, validated.origin, process.env);
+    await installContextNetworkBoundary(context, validated.origin, process.env, { passiveOnly: true });
     const page = await context.newPage();
     const cases = [];
     for (const item of validated.cases) cases.push(await observePage(page, validated, item));
