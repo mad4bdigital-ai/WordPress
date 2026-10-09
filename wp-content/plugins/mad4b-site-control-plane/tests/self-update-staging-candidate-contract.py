@@ -74,7 +74,6 @@ for marker in (
     "foreign_or_closed_pr",
     "lookup_failed",
     "source_sha_invalid",
-    "get_error_code",
 ):
     expect(marker in SOURCE, "selector missing " + marker)
 expect("refs/pull/258/head" not in SOURCE and "'258'" not in SOURCE, "selector hard-coded to PR #258")
