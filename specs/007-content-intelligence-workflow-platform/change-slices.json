@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 480,
+  "changed_file_count": 487,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -924,8 +924,31 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/effective-environment-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-universal-operational-remediation-control-20261009",
+      "semantic_unit": "Read-only universal Staging operational remediation controller: two MCP abilities, site-scoped independent gate parity, non-authorizing exact action preparation, governed adapter availability, admin work queue, native/adversarial contract tests",
+      "revert_boundary": "Revert new controller and its source/native acceptance fixtures together; existing main plugin wiring, offline preflight and ACI01 spec updates remain independently owned",
+      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-remediation-control-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-remediation-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-dynamic-staging-candidate-selection-20261009",
+      "semantic_unit": "Dynamic Staging exact-source candidate selection, safe update and rollback runbook, native package validation and source selector regression contract",
+      "revert_boundary": "Revert candidate source selector, test fixtures and candidate-update runbook as one feature; no production mutation",
+      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "path_globs": [
+        "docs/runbooks/dynamic-staging-candidate-updates.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "60e3c7b212a092b2774a9d76c89f51f0e3fbed310a4b2f893ca42adfd4368c41",
+  "changed_paths_sha256": "1a7ccd9fb20a8e5b566e894db987b8427798b42c545c864ccf2d4958fd5be170",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
