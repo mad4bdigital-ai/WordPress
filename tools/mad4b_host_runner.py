@@ -10,8 +10,11 @@ Repository slice:
 - Named filesystem zones with canonical path confinement.
 - Durable idempotent receipts.
 
-General host/site writes, scheduler/bootstrap enrollment, provider CLI/API adapters,
-and Production eligibility remain unavailable until separately implemented/certified.
+Only the explicitly enrolled, receipt-bound WordPress Staging environment
+bootstrap operation may touch wp-config.php. Its secret rollback backup must
+be in a host-enrolled private (0700) directory outside the WordPress root.
+General host/site writes, scheduler/bootstrap enrollment, provider CLI/API
+adapters, and Production eligibility remain unavailable.
 """
 
 from __future__ import annotations
