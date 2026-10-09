@@ -360,7 +360,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			'draft_replan_required'=>$live_state_requested,
 			'draft_replan_override'=>$live_state_requested?array('post'=>array('post_status'=>'draft')):array(),
 			'context_preflight_step'=>array('ability'=>'mad4b/skill-context-preflight','required_before_mutation'=>true,'policy_bypass_allowed'=>false),
-			'draft_step'=>array('ability'=>self::APPLY,'requires_exact_draft_plan'=>true,'requires_signed_context_receipt'=>true,'requires_exact_mutation_approval'=>true),
+			'draft_step'=>array('ability'=>self::APPLY,'requires_exact_draft_plan'=>true,'requires_signed_context_receipt_for_brand_content'=>true,'requires_exact_mutation_approval'=>true),
 			'acceptance_step'=>array('ability'=>self::READBACK,'requires_verified_post_id'=>true,'requires_current_acceptance_receipt'=>true,'required_readback_field'=>'publication_acceptance'),
 			'publication_step'=>array('ability'=>'mad4b/content-update-post','post_status'=>$live_state_requested?$status:'publish','required_input_fields'=>array('post_id','expected_modified_gmt','dynamic_acceptance_sha256','post_status'),'requires_separate_exact_mutation_approval'=>true,'requires_acceptance_receipt_verification'=>true),
 			'verification_step'=>array('ability'=>'mad4b/publication-verification-evaluate','required_inputs'=>array('required_dimensions','origin','public_edge','verification_started_at','evaluated_at'),'origin_and_edge_observations_required'=>true,'independent_readback_required'=>true),
