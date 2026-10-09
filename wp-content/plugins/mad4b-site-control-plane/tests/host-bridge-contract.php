@@ -353,6 +353,39 @@ $blocked=MAD4B_SCP_Host_Bridge::requeue(array(
 ));
 $check(is_wp_error($blocked) && 'mad4b_host_requeue_reconciliation_required'===$blocked->get_error_code(), 'recovery-required requeue was not denied for reconciliation');
 
+
+$host_ops=array_column(MAD4B_SCP_Host_Bridge::capabilities()['operations'],'operation_id');
+$check(in_array('wordpress_environment_sync',$host_ops,true),'Host environment sync absent from MCP');
+$check(in_array('wordpress_environment_rollback',$host_ops,true),'Host environment rollback absent from MCP');
+$host_request=array(
+ 'operation_id'=>'wordpress_environment_sync',
+ 'runner_profile_id'=>'ci-runner',
+ 'arguments'=>array('reason'=>'Configure exact Staging environment')
+);
+$host_denied=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_binding_required'===$host_denied->get_error_code(),'unbound Host sync plan accepted');
+MAD4B_SCP_Site_Profile::$bound=true;
+$host_denied=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_mode_required'===$host_denied->get_error_code(),'Profile Only plan allowed Host edit');
+MAD4B_SCP_Site_Profile::$mode='host_managed';
+$host_plan=MAD4B_SCP_Host_Bridge::plan($host_request);
+$check(is_array($host_plan) && 'wordpress_environment_sync'===$host_plan['operation_id'],'approved Host mode did not create exact plan');
+$host_inner=$host_plan['arguments']['plan'];
+$check('staging'===$host_inner['desired_wordpress_environment'] && 'production'===$host_inner['expected_wordpress_environment'],'Host plan changed fixed environment values');
+$check(false===$host_inner['production_authorized'] && false===$host_inner['caller_supplied_path_allowed'],'Host plan widened authority');
+$check(str_repeat('b',64)===$host_inner['deployment_binding_digest'],'Host secret identity not bound');
+$check(hash_file('sha256',$tmp.'/wp-config.php')===$host_inner['expected_wp_config_sha256'],'Host config identity not bound');
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_operation_approval_required'===$host_denied->get_error_code(),'Host queued write without approval');
+MAD4B_SCP_Site_Profile::$rev++;
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_profile_plan_stale'===$host_denied->get_error_code(),'stale Host plan accepted after profile change');
+MAD4B_SCP_Site_Profile::$rev--;
+MAD4B_SCP_Site_Profile::$mode='profile_only';
+$host_denied=MAD4B_SCP_Host_Bridge::apply(array('plan'=>$host_plan));
+$check(is_wp_error($host_denied) && 'mad4b_host_wp_environment_mode_required'===$host_denied->get_error_code(),'Host plan accepted after mode cancellation');
+MAD4B_SCP_Site_Profile::$mode='host_managed';
+
 // Stale target plan must fail after root identity changes.
 file_put_contents($tmp . '/wp-config.php', "<?php // changed target\n");
 $stale = MAD4B_SCP_Host_Bridge::apply(array(
