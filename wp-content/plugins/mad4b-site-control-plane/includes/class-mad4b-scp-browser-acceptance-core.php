@@ -429,8 +429,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				),
 				'blocked_events' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $blocked_event_schema ),
 				'history_calls' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $history_call_schema ),
-				// Bounded generic capability case fields. The provider owns exact
-				// semantic validation; ETG retains its original case fields.
+				// Generic capability evidence is bounded; provider validates semantics.
 				'capability_id' => $string160,
 				'probe_type' => $string160,
 				'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
@@ -438,96 +437,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'type' => 'object', 'maxProperties' => 4,
 					'properties' => array(
 						'path' => $string2048,
-						'title_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}
-			),
-			'required' => array( 'case_id' ),
-			'additionalProperties' => false,
-		);
-		$challenge_schema = array(
-			'type' => 'object',
-			'maxProperties' => 5,
-			'properties' => array(
-				'contract' => $string160,
-				'nonce' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32, 'pattern' => '^[A-Fa-f0-9]{32}$' ),
-				'issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
-				'expires_at' => array( 'type' => 'integer', 'minimum' => 1 ),
-				'signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-			),
-			'additionalProperties' => false,
-		);
-		$hex64 = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' );
-		$attestation_schema = array(
-			'type' => 'object', 'maxProperties' => 3,
-			'properties' => array(
-				'algorithm' => array( 'type' => 'string', 'enum' => array( 'rsa-sha256' ) ),
-				'key_id' => array( 'type' => 'string', 'maxLength' => 80, 'pattern' => '^rsa-spki-sha256:[a-f0-9]{64}$' ),
-				'signature' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 1400, 'pattern' => '^[A-Za-z0-9+/]+={0,2}$' ),
-			),
-			'required' => array( 'algorithm', 'key_id', 'signature' ),
-			'additionalProperties' => false,
-		);
-		return array(
-			'type' => 'object',
-			'properties' => array(
-				'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
-				'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
-				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
-				'plan_digest' => $hex64,
-				'plan_signature' => $hex64,
-				'evidence' => array(
-					'type' => 'object', 'maxProperties' => 9,
-					'properties' => array(
-						'contract' => array( 'type' => 'string', 'enum' => array( 'etg.dfsb.browser-acceptance-evidence.v1', 'mad4b.capability-browser-evidence.v1' ) ),
-						'plan_digest' => $hex64,
-						'plan_signature' => $hex64,
-						'origin' => $string2048,
-						'build_identity' => array(
-							'type' => 'object', 'maxProperties' => 3,
-							'properties' => array(
-								'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ),
-								'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ),
-								'build_fingerprint' => $hex64,
-							),
-							'additionalProperties' => false,
-						),
-						'observer' => array(
-							'type' => 'object', 'maxProperties' => 7,
-							'properties' => array(
-								'contract' => $string160,
-								'javascript_runtime' => array( 'type' => 'boolean' ),
-								'runner_javascript_runtime' => array( 'type' => 'boolean' ),
-								'page_javascript_enabled' => array( 'type' => 'boolean' ),
-								'browser_engine' => $string160,
-								'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ),
-								'plan_issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
-							),
-							'additionalProperties' => false,
-						),
-						'challenge' => $challenge_schema,
-						'cases' => array( 'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
-						'attestation' => $attestation_schema,
-					),
-					'required' => array( 'contract', 'plan_digest', 'plan_signature', 'origin', 'build_identity', 'observer', 'cases' ),
-					'additionalProperties' => false,
-				),
-			),
-			'required' => array( 'profile_id', 'plan_digest', 'plan_signature' ),
-			'maxProperties' => 6,
-			'additionalProperties' => false,
-		);
-	}
-
-	private static function registry() {
-		if ( ! self::$registry ) self::$registry = new MAD4B_SCP_Browser_Acceptance_Provider_Registry();
-		return self::$registry;
-	}
-
-	private static function clean_id( $value ) {
-		if ( ! is_string( $value ) ) return '';
-		return preg_match( '/^[a-z0-9][a-z0-9._\\-]{0,63}$/D', $value ) ? $value : '';
-	}
-}
- ),
+						'title_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
 						'marker_key' => $string160,
 						'count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
 					),
