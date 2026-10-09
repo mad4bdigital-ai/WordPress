@@ -73,6 +73,8 @@ $GLOBALS['abilities'][ $target ] = array( 'input_schema' => $input_schema,
 MAD4B_SCP_CSO01_Read_Foundation::boot();
 mad4b_test( in_array( 'wp_abilities_api_init', $GLOBALS['hooks'], true ), 'register hook missing' );
 MAD4B_SCP_CSO01_Read_Foundation::register_abilities();
+mad4b_test( 4 === count( MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() ),
+    'owned read ability registration not recognized' );
 foreach ( array( 'cso/discover', 'cso/form-schema', 'cso/form-validate', 'cso/form-explain' ) as $name ) {
     mad4b_test( wp_has_ability( $name ), 'registered ability missing: ' . $name );
     $args = $GLOBALS['abilities'][ $name ];
