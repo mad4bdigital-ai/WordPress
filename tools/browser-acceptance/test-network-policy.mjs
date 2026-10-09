@@ -86,4 +86,19 @@ assert.equal(requestBoundaryDecision({
   url:"https://cdn.example.com:4443/file.jpg",
   resourceType:"image", origin, env
 }).reason,"asset_host_nonstandard_port");
+for (const req of [
+ {url:"https://staging.egypttourgates.com/public/",method:"POST",resourceType:"fetch"},
+ {url:"https://staging.egypttourgates.com/wp-admin/admin-ajax.php",method:"GET",resourceType:"xhr"},
+ {url:"https://staging.egypttourgates.com/wp-json/wp/v2/pages",method:"GET",resourceType:"fetch"},
+ {url:"blob:https://staging.egypttourgates.com/code",method:"GET",resourceType:"script"},
+ {url:"https://staging.egypttourgates.com/socket",method:"GET",resourceType:"websocket"}
+]) assert.equal(requestBoundaryDecision({...req,origin,env,passiveOnly:true}).allow,false);
+assert.equal(requestBoundaryDecision({
+  url:"https://staging.egypttourgates.com/public/",method:"GET",
+  resourceType:"document",origin,env,passiveOnly:true
+}).allow,true);
+assert.equal(requestBoundaryDecision({
+  url:"https://staging.egypttourgates.com/wp-admin/admin-ajax.php",method:"POST",
+  resourceType:"xhr",origin,env,passiveOnly:false
+}).allow,true); // Legacy ETG AJAX parity retains its own reviewed policy.
 console.log("MAD4B browser network boundary PASS");
