@@ -288,6 +288,7 @@ $evidence['provenance_observation']=array(
     'distinct_request_observations'=>1,'duplicate_request_count'=>1,
     'excluded_duplicate_artifact_ids'=>array($duplicate_id),
     'conflicting_response_group_sha256'=>array(str_repeat('e',64)),
+    'duplicated_source_locator_count'=>0,
     'independently_reviewed'=>false,'authorizing'=>false);
 $deduped=$cls::compile($intake,$evidence,$input['goal'],$semantic);
 check($deduped['status']==='NEEDS_EVIDENCE' &&
@@ -309,6 +310,14 @@ $bad=$evidence;
 $bad['provenance_observation']['conflicting_response_group_sha256']=array('untrusted');
 check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
     'conflict digest must be exact SHA');
+$bad=$evidence;
+$bad['provenance_observation']['duplicated_source_locator_count']=769;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'unbounded repeated locator count denied');
+$bad=$evidence;
+$bad['provenance_observation']['authorizing']=true;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'forged provider provenance authorizing flag denied');
 $bad=$evidence;
 $bad['provenance_observation']['independently_reviewed']=true;
 check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
