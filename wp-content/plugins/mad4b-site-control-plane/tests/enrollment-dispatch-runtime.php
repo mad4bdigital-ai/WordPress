@@ -14,6 +14,11 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function current_user_can( $capability ) { return 'manage_options' === (string) $capability; }
 function get_current_user_id() { return 7; }
+function get_option( $name, $default = false ) {
+    // Missing managed-Skills lock is an empty observation, not an authorization.
+    if ( 'mad4b_scp_remote_skills_reconciliation_lock_v1' === (string) $name ) return array();
+    return $default;
+}
 
 class WP_Error {
     private $code;
@@ -212,6 +217,17 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php'
 $discover = MAD4B_SCP_Enrollment_Dispatch::discover( array() );
 mad4b_assert( 1 === (int) $discover['count'], 'dispatcher discovery must expose only operator-role non-human Staging operations' );
 mad4b_assert( isset( $discover['operations']['managed_skills_reconciliation'] ), 'managed Skills reconciliation was not discoverable' );
+$preflight = $discover['operations']['managed_skills_reconciliation']['execution_preflight'];
+mad4b_assert( 'mad4b.enrollment-skills-preflight.v1' === $preflight['contract'], 'discovery lost the bounded managed-Skills preflight' );
+mad4b_assert( 'blocked' === $preflight['state'] && false === $preflight['structurally_ready'],
+    'partial Site Profile without status() was incorrectly treated as ready' );
+mad4b_assert( in_array( 'site_profile_not_authoritative_staging', $preflight['blockers'], true )
+    && in_array( 'skills_disabled_for_site', $preflight['blockers'], true ),
+    'missing authoritative Site Profile did not fail closed' );
+mad4b_assert( false === $preflight['authorization_performed'] && false === $preflight['permission_evaluated']
+    && false === $preflight['execution_performed'] && false === $preflight['mutation_performed']
+    && false === $preflight['production_mutation_allowed'],
+    'read-only discovery preflight widened authority or claimed execution' );
 mad4b_assert( ! isset( $discover['operations']['external_executor_work_claim'] ), 'external executor lease claim leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['human_decision_test'] ), 'human-decision operation leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['system_test'] ), 'system caller operation leaked into ChatGPT dispatcher' );
