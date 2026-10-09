@@ -18,7 +18,10 @@ final class MAD4B_SCP_Staging_Source_Selector {
 			if ( is_array( $custom ) ) $allowed = $custom;
 		}
 		return array_values( array_filter( $allowed, static function ( $value ) {
-			return is_string( $value ) && 1 === preg_match( '/^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/D', $value );
+			if ( ! is_string( $value ) || 1 !== preg_match( '/^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/D', $value ) ) return false;
+			$segments = explode( '/', $value );
+			return ! in_array( $segments[0], array( '.', '..' ), true )
+				&& ! in_array( $segments[1], array( '.', '..' ), true );
 		} ) );
 	}
 
