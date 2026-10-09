@@ -398,8 +398,18 @@ final class MAD4B_SCP_Staging_Certification {
 			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
 		) );
 
+		// Complete the dynamic gate-to-action map after all native planners
+		// have spoken. No missing gate, dangling dependency or unverified
+		// external executor may silently become an executable operation.
+		$coverage = self::complete_convergence_coverage( $status['gates'] ?? array(), $actions );
+		$actions = $coverage['actions'];
 		$basis = array(
 			'contract' => self::CONVERGENCE_CONTRACT,
+			'coverage_contract' => $coverage['contract'],
+			'gate_action_coverage' => $coverage['gate_action_coverage'],
+			'plan_integrity_blockers' => $coverage['plan_integrity_blockers'],
+			'external_execution_requires_independent_preflight' => true,
+			'autonomous_mutation_authorized' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
@@ -411,6 +421,182 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Pure cross-gate closure reducer. A gate's owner and evidence source come
+	 * from the live site snapshot; no site-specific CPT, domain, provider or
+	 * authority is inferred here. Unknown/new gates become review-only actions.
+	 *
+	 * This is a *plan*, never an execution engine. It may enumerate existing
+	 * governed apply Abilities, but does not approve or invoke them.
+	 */
+	public static function complete_convergence_coverage( array $gates, array $actions ) {
+		$links = array(
+			'external_mcp_handshake_refresh' => array( 'safe_boot' ),
+			'google_drive_reconnect' => array( 'google_provider_connection', 'brand_core_context_coverage' ),
+			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
+			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
+			'write_authority_plan_blocked' => array( 'write_authority', 'write_runtime' ),
+			'write_authority_reconcile' => array( 'write_authority', 'write_runtime' ),
+			'candidate_binding_only' => array( 'write_authority', 'write_runtime' ),
+			'browser_acceptance' => array( 'browser_runtime' ),
+			'frontend_performance_sampling' => array( 'performance_budget' ),
+		);
+		$readbacks = array(
+			'exact_build' => 'mad4b/staging-certification-status',
+			'safe_boot' => 'mad4b/connection-status',
+			'context_authority' => 'context/brand-core-coverage',
+			'brand_core_context_coverage' => 'context/brand-core-coverage',
+			'google_provider_connection' => 'context/google-drive-status',
+			'managed_google_broker' => 'mad4b/staging-certification-status',
+			'skills_runtime' => 'mad4b/skills-runtime-certification',
+			'external_skill_snapshot' => 'mad4b/live-acceptance-status',
+			'write_authority' => 'mad4b/write-authority-status',
+			'write_runtime' => 'mad4b/write-runtime-certification',
+			'browser_runtime' => 'mad4b/browser-acceptance-capabilities',
+			'performance_budget' => 'mad4b/frontend-performance-status',
+			'admin_query_performance' => 'mad4b/staging-certification-status',
+			'query_monitor_db_attribution' => 'mad4b/staging-certification-status',
+			'oauth_live_authority_projection' => 'mad4b/staging-certification-status',
+			'rollback_candidate' => 'mad4b/staging-certification-status',
+			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
+		);
+		$blocked = array();
+		$coverage = array();
+		foreach ( $gates as $id => $gate ) {
+			if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id ) ) continue;
+			if ( ! is_array( $gate ) || ! empty( $gate['ready'] ) ) continue;
+			$blocked[ $id ] = $gate;
+			$coverage[ $id ] = array();
+		}
+		$by_id = array();
+		$issues = array();
+		foreach ( $actions as $row ) {
+			if ( ! is_array( $row ) || ! is_string( $row['action_id'] ?? null )
+				|| ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $row['action_id'] ) ) {
+				$issues[] = 'invalid_action_identity';
+				continue;
+			}
+			$id = $row['action_id'];
+			if ( isset( $by_id[ $id ] ) ) {
+				$issues[] = 'duplicate_action_identity:' . $id;
+				continue;
+			}
+			$related = array();
+			foreach ( $links[ $id ] ?? array() as $gate_id ) {
+				if ( isset( $blocked[ $gate_id ] ) ) {
+					$related[] = $gate_id;
+					$coverage[ $gate_id ][] = $id;
+				}
+			}
+			$row['target_gates'] = $related;
+			$row['read_only_plan'] = true;
+			$row['authorizing'] = false;
+			$row['mutation_performed'] = false;
+			// A configuration flag is not a signed external browser receipt.
+			// No external executor can be launched from this planning view.
+			if ( 'external_executor_job' === ( $row['kind'] ?? '' ) ) {
+				$row['automatic_execution_allowed'] = false;
+				$row['external_preflight_required'] = true;
+				$row['required_evidence'] = array(
+					'current_build_bound_plan', 'registered_provider',
+					'verified_external_executor_identity', 'signed_replay_safe_receipt',
+					'fresh_post_execution_readback',
+				);
+			}
+			$by_id[ $id ] = $row;
+		}
+		if ( isset( $blocked['external_skill_snapshot'] ) && isset( $by_id['external_snapshot_refresh'] )
+			&& ! isset( $by_id['external_mcp_handshake_refresh'] ) ) {
+			$by_id['external_mcp_handshake_refresh'] = array(
+				'action_id' => 'external_mcp_handshake_refresh',
+				'kind' => 'external_evidence',
+				'executor' => 'external_mcp_client',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'depends_on' => array(),
+				'target_gates' => array( 'external_skill_snapshot' ),
+				'instruction' => 'Repeat an authenticated exact-build MCP initialize and tools/list readback before finalizing external snapshot.',
+				'readback_ability' => 'mad4b/live-acceptance-status',
+				'read_only_plan' => true,
+				'authorizing' => false,
+				'mutation_performed' => false,
+			);
+			$coverage['external_skill_snapshot'][] = 'external_mcp_handshake_refresh';
+		}
+		foreach ( $blocked as $gate_id => $gate ) {
+			if ( ! empty( $coverage[ $gate_id ] ) ) continue;
+			$id = 'review_gate_' . $gate_id;
+			$by_id[ $id ] = array(
+				'action_id' => $id,
+				'kind' => 'read_only_blocker',
+				'executor' => (string) ( $gate['remediation_owner'] ?? 'operator' ),
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'depends_on' => array(),
+				'target_gates' => array( $gate_id ),
+				'evidence_source' => (string) ( $gate['source'] ?? '' ),
+				'evidence_blockers' => array_values( array_slice(
+					is_array( $gate['blockers'] ?? null ) ? $gate['blockers'] : array(), 0, 12
+				) ),
+				'readback_ability' => $readbacks[ $gate_id ] ?? 'mad4b/staging-certification-status',
+				'instruction' => 'Inspect this exact live gate, resolve missing provider/host/owner evidence in its own governed lane, then rerun Staging certification.',
+				'no_automatic_remediation_available' => true,
+				'read_only_plan' => true,
+				'authorizing' => false,
+				'mutation_performed' => false,
+			);
+			$coverage[ $gate_id ][] = $id;
+		}
+		// A strictly bounded topological ordering. Unknown dependency IDs
+		// stay blocked rather than being removed from the operation contract.
+		$ordered = array();
+		$state = array();
+		$visit = static function ( $id ) use ( &$visit, &$state, &$ordered, &$issues, $by_id ) {
+			if ( ( $state[ $id ] ?? '' ) === 'complete' ) return;
+			if ( ( $state[ $id ] ?? '' ) === 'visiting' ) {
+				$issues[] = 'action_dependency_cycle:' . $id;
+				return;
+			}
+			$state[ $id ] = 'visiting';
+			$deps = $by_id[ $id ]['depends_on'] ?? array();
+			if ( ! is_array( $deps ) ) {
+				$issues[] = 'invalid_action_dependencies:' . $id;
+				$deps = array();
+			}
+			foreach ( $deps as $dependency ) {
+				if ( ! is_string( $dependency ) || ! isset( $by_id[ $dependency ] ) ) {
+					$issues[] = 'missing_action_dependency:' . $id;
+					continue;
+				}
+				$visit( $dependency );
+			}
+			$state[ $id ] = 'complete';
+			$ordered[] = $by_id[ $id ];
+		};
+		foreach ( array_keys( $by_id ) as $id ) $visit( $id );
+		$issues = array_values( array_unique( $issues ) );
+		if ( $issues ) {
+			// A broken plan cannot provide executable or approving authority.
+			foreach ( $ordered as &$item ) {
+				$item['automatic_execution_allowed'] = false;
+				$item['plan_integrity_blocked'] = true;
+			}
+			unset( $item );
+		}
+		ksort( $coverage, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.staging-gate-action-coverage.v1',
+			'actions' => $ordered,
+			'gate_action_coverage' => $coverage,
+			'plan_integrity_blockers' => $issues,
+			'blocked_gate_count' => count( $blocked ),
+			'covered_gate_count' => count( $coverage ),
+			'coverage_complete' => count( $blocked ) === count( $coverage ) && ! $issues,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function safe_read( $name, $callback ) {
