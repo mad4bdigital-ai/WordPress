@@ -7,6 +7,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
 import { signerKeyId } from "./browser-attestation.mjs";
+import { consumeLocalBrowserPlanOnce } from "./plan-consumption-ledger.mjs";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
@@ -137,8 +138,17 @@ try {
   if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
     throw new Error("mad4b_browser_receipt_signature_missing");
   }
-  // Do not persist a reducer response until all exact source and evidence
-  // bindings pass. A local result file is not a release certificate.
+  // Native signed PASS is still replayable at the read-only WordPress
+  // endpoint. Our governed runner must atomically burn the plan once locally
+  // before releasing a receipt; missing ledger configuration fails closed.
+  // This local record is NOT a distributed or WordPress-side consumption proof.
+  let consumption = null;
+  if (configured.siteProviderContract === "mad4b.capability-browser-provider.v1" &&
+      result.verdict === "PASS") {
+    consumption = consumeLocalBrowserPlanOnce({ plan, evidence, result });
+  }
+  // Do not persist a reducer response until exact bindings and the optional
+  // local anti-replay claim pass. Neither file is a release certificate.
   fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
@@ -147,6 +157,7 @@ try {
     attempts,
     evidence,
     result,
+    consumption,
     sourceHead: process.env.GITHUB_SHA || ""
   });
   fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2));
@@ -171,7 +182,10 @@ try {
     receipt_file: receiptPath,
     receipt_sha256: receipt.receipt_sha256,
     reducer_evidence_digest: reducerEvidenceDigest,
-    reducer_receipt_signature_present: true
+    reducer_receipt_signature_present: true,
+    local_consumption_claimed: consumption !== null,
+    globally_unique_consumption_proven: false,
+    release_ready: false
   }));
 
   if (verdict !== "PASS" || !verified) process.exitCode = 1;
