@@ -117,6 +117,16 @@ $sync=MAD4B_SCP_Business_Activity_Contracts::sync_plan(array(
 check(!is_wp_error($sync)&&$sync['provider']==='google_drive'&&
  !$sync['provider_write_certified']&&!$sync['mutation_performed']&&
  $sync['requires_source_and_destination_revision_readback'],'Drive operation was implicitly authorized');
+$originalProfile=MAD4B_SCP_Content_Experience_Profiles::$profile;
+MAD4B_SCP_Content_Experience_Profiles::$profile['activity_contract']['sync_targets']['brand_folder']['direction']='import';
+$review=MAD4B_SCP_Business_Activity_Contracts::sync_plan(array(
+ 'profile_slug'=>'vendors','target_id'=>'brand_folder','operation'=>'update'));
+check(!is_wp_error($review)&&$review['requested_direction']==='comparison_only'&&
+ !$review['mutation_performed'],'One-way Drive policy update review was incorrectly denied');
+$unauthorizedExport=MAD4B_SCP_Business_Activity_Contracts::sync_plan(array(
+ 'profile_slug'=>'vendors','target_id'=>'brand_folder','operation'=>'export'));
+check(is_wp_error($unauthorizedExport),'Drive read-only policy gained export rights');
+MAD4B_SCP_Content_Experience_Profiles::$profile=$originalProfile;
 $badSync=MAD4B_SCP_Business_Activity_Contracts::sync_plan(array(
  'profile_slug'=>'vendors','target_id'=>'missing','operation'=>'update'));
 check(is_wp_error($badSync),'Nonconfigured provider sync target accepted');
