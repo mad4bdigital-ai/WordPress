@@ -149,6 +149,21 @@ final class MAD4B_SCP_Host_Bridge {
 		$plan_check = self::validate_plan( $plan );
 		if ( is_wp_error( $plan_check ) ) return $plan_check;
 		$operation_id = (string) $plan['operation_id'];
+		if ( 'wordpress_environment_sync' === $operation_id ) {
+			$nested = isset( $plan['arguments']['plan'] ) && is_array( $plan['arguments']['plan'] )
+				? $plan['arguments']['plan'] : array();
+			$target = self::target_identity();
+			if ( is_wp_error( $target ) ) return $target;
+			$expected = self::wordpress_environment_sync_arguments(
+				array( 'reason' => $nested['reason'] ?? '' ), (string) $plan['runner_profile_id'], $target
+			);
+			if ( is_wp_error( $expected ) ) return $expected;
+			if ( ! hash_equals( (string) ( $expected['plan']['plan_sha256'] ?? '' ),
+				(string) ( $nested['plan_sha256'] ?? '' ) ) ) {
+				return new WP_Error( 'mad4b_host_wp_environment_profile_plan_stale',
+					'Host-managed Site Profile or deployment binding changed since the exact plan was reviewed.' );
+			}
+		}
 		$is_write = 'read_only' !== (string) self::$operations[ $operation_id ]['risk'];
 		$approval_ref = isset( $input['approval_ref'] ) ? trim( (string) $input['approval_ref'] ) : '';
 		if ( $is_write && '' === $approval_ref ) return new WP_Error( 'mad4b_host_operation_approval_required', 'Reversible Host operation requires an approval reference.' );
@@ -215,6 +230,10 @@ final class MAD4B_SCP_Host_Bridge {
 		$submission['queued'] = true;
 		$submission['replayed'] = false;
 		$submission['mutation_performed'] = true;
+		// This describes the WordPress bridge spool write only. The Host config
+		// remains untouched until independent Host Runner execution and readback.
+		$submission['host_mutation_performed'] = false;
+		$submission['host_verification_pending'] = true;
 		return $submission;
 	}
 
