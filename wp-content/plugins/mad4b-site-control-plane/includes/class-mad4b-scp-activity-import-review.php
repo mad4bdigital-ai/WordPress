@@ -650,6 +650,36 @@ final class MAD4B_SCP_Activity_Import_Review {
                 foreach ( $review['plan']['issues'] as $issue )
                     echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' . esc_html( $issue['reason'] ) . '</td><td>' . esc_html( $issue['severity'] ) . '</td></tr>';
                 echo '</tbody></table>';
+                if ( isset( $review['snapshot_sha256'] ) ) {
+                    $receipt = MAD4B_SCP_Activity_Import_Snapshot::approval(
+                        $slug, $review['snapshot_sha256'] );
+                    if ( ! is_wp_error( $receipt ) ) {
+                        echo '<p>Approved snapshot <code>' .
+                            esc_html( $review['snapshot_sha256'] ) .
+                            '</code>. Ready for manual CSV handoff, not automated post write.</p>';
+                        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                        echo '<input type="hidden" name="action" value="mad4b_activity_import_export" />';
+                        echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+                        echo '<input type="hidden" name="snapshot_sha256" value="' .
+                            esc_attr( $review['snapshot_sha256'] ) . '" />';
+                        wp_nonce_field( 'mad4b_activity_export_approved', 'mad4b_export_nonce' );
+                        submit_button( 'Download approved immutable CSV', 'secondary' );
+                        echo '</form>';
+                    } elseif ( isset( $review['plan']['block_issue_count'] ) &&
+                        0 === (int) $review['plan']['block_issue_count'] &&
+                        empty( $review['plan']['issues_truncated'] ) ) {
+                        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                        echo '<input type="hidden" name="action" value="mad4b_activity_import_approve" />';
+                        echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+                        echo '<input type="hidden" name="snapshot_sha256" value="' .
+                            esc_attr( $review['snapshot_sha256'] ) . '" />';
+                        wp_nonce_field( 'mad4b_activity_approve_review', 'mad4b_approve_nonce' );
+                        submit_button( 'Approve exact staged snapshot for manual export', 'primary' );
+                        echo '</form>';
+                    } else {
+                        echo '<p>Approval blocked: fix all blocking issues and truncated reviews at source, then stage a new snapshot.</p>';
+                    }
+                }
                 if ( isset( $review['payload_sha256'] ) &&
                     method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
                     MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ) {
