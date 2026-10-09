@@ -5,7 +5,7 @@
  *
  * Script Properties required:
  * MAD4B_SPREADSHEET_ID, MAD4B_SHEET_NAME, MAD4B_PROFILE_SLUG,
- * MAD4B_SITE_UUID, MAD4B_WEBHOOK_URL, MAD4B_WEBHOOK_SECRET,
+ * MAD4B_SITE_UUID, MAD4B_WEBHOOK_URL, MAD4B_WEBHOOK_SECRET, MAD4B_WEBHOOK_KEY_ID,
  * MAD4B_IDENTITY_FIELD, MAD4B_CURRENCY_ALLOWLIST_JSON
  *
  * Convert XLSX to native Google Sheets first; SpreadsheetApp.openById()
@@ -33,7 +33,7 @@ function mad4bImportSettings_() {
     site: get('MAD4B_SITE_UUID'),
     url: url,
     secret: secret,
-    idKey: get('MAD4B_IDENTITY_FIELD'),
+    keyId: get('MAD4B_WEBHOOK_KEY_ID'),
     currencies: currencies,
     pricePolicy: props.getProperty('MAD4B_PRICE_POLICY') || 'none',
     reviewPastIntervals: props.getProperty('MAD4B_REVIEW_PAST_INTERVALS') === 'true'
@@ -72,14 +72,12 @@ function mad4bPushRatesForReview() {
       .map(row => Object.fromEntries(headers.map((h, i) => [h, mad4bCell_(row[i])])));
     const fieldMapping = {}; // Bind approved meta keys in the governed site profile separately.
     const input = {
-      profile_slug: cfg.profile, identity_field: cfg.idKey,
-      headers: headers, rows: rows, field_mapping: fieldMapping,
-      allowed_currencies: cfg.currencies,
-      price_tier_policy: cfg.pricePolicy,
-      review_past_intervals: cfg.reviewPastIntervals
+      profile_slug: cfg.profile,
+      headers: headers, rows: rows
     };
     const payload = JSON.stringify({
-      site_uuid: cfg.site, issued_at: Math.floor(Date.now() / 1000),
+      site_uuid: cfg.site, source_mode: 'google_apps_script',
+      issued_at: Math.floor(Date.now() / 1000),
       nonce: Utilities.getUuid().replace(/[^A-Za-z0-9_-]/g, ''),
       input: input
     });
@@ -88,7 +86,7 @@ function mad4bPushRatesForReview() {
     const response = UrlFetchApp.fetch(cfg.url, {
       method: 'post', contentType: 'application/json',
       payload: payload, muteHttpExceptions: true,
-      headers: {'x-mad4b-signature': signature}
+      headers: {'x-mad4b-signature': signature, 'x-mad4b-key-id': cfg.keyId}
     });
     const code = response.getResponseCode();
     if (code < 200 || code >= 300)
