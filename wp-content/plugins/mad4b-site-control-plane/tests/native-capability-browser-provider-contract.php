@@ -146,6 +146,13 @@ native_expect( $c::result( $request )['verdict'] === 'PASS' &&
     $c::result( $request )['release_ready'] === false,
     'replayed same signed observation remains observable but cannot issue a release certificate' );
 native_expect( strlen( $passed['receipt_signature'] ) === 64, 'server receipt signed' );
+$unexpected_observation = $request;
+$unexpected_observation['evidence']['cases'][0]['observed']['unreviewed_claim'] = true;
+$unexpected_observation['evidence'] = native_sign( array_diff_key(
+    $unexpected_observation['evidence'], array( 'attestation' => true )
+), $method, $private_pem );
+native_expect( $c::result( $unexpected_observation )['verdict'] === 'BLOCKED',
+    'site-neutral Core may carry bounded data but provider reducer rejects unreviewed observation keys' );
 $bad_js = $request;
 $bad_js['evidence']['observer']['page_javascript_enabled'] = true;
 $bad_js['evidence'] = native_sign( array_diff_key( $bad_js['evidence'],
