@@ -150,7 +150,7 @@ for marker in [
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
     "'generated_action_identity_collision:'",
     "'expanded_action_registry_limit_exceeded'",
-    "\$row['external_execution_authority_granted'] = false",
+    "$row['external_execution_authority_granted'] = false",
     "'authoritative_context_content_included' => false",
     "'include_authoritative_content' => false",
     "public static function observe_convergence_ability_registration(",
