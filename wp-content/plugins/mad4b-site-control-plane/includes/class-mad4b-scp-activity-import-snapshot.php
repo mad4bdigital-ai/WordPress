@@ -182,6 +182,50 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             return self::err( 'mad4b_import_not_approved', 'Source snapshot is not approved.' );
         return $approval;
     }
+    public static function approval_plan( $input = array() ) {
+        if ( ! is_array( $input ) || ! isset( $input['profile_slug'], $input['snapshot_sha256'] ) )
+            return self::err( 'mad4b_import_approval_request_invalid', 'Exact profile and snapshot are required.' );
+        $slug = (string) $input['profile_slug'];
+        $sha = (string) $input['snapshot_sha256'];
+        $loaded = self::raw_snapshot( $slug, $sha );
+        if ( is_wp_error( $loaded ) ) return $loaded;
+        $current = self::check_current( $loaded['receipt'] );
+        if ( is_wp_error( $current ) ) return $current;
+        $fresh = MAD4B_SCP_Activity_Import_Review::plan( $loaded['input'] );
+        if ( is_wp_error( $fresh ) ) return $fresh;
+        $bound = hash_equals( $loaded['receipt']['plan']['plan_sha256'],
+            $fresh['plan_sha256'] );
+        return array( 'contract' => 'mad4b.import-approval-plan.v1',
+            'profile_slug' => $slug, 'snapshot_sha256' => $sha,
+            'plan_sha256' => $fresh['plan_sha256'],
+            'policy_sha256' => $fresh['policy_sha256'],
+            'block_issue_count' => $fresh['block_issue_count'],
+            'review_issue_count' => $fresh['review_issue_count'],
+            'review_list_truncated' => $fresh['issues_truncated'],
+            'receipt_bound_exact' => $bound,
+            'ready_for_manual_approval' => $bound &&
+                0 === $fresh['block_issue_count'] && ! $fresh['issues_truncated'],
+            'approval_is_not_import_execution' => true,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+    public static function approve_ability( $input = array() ) {
+        if ( ! is_array( $input ) || true !== ( isset( $input['confirmed'] ) ? $input['confirmed'] : false ) ||
+            ! isset( $input['plan_sha256'], $input['snapshot_sha256'] ) )
+            return self::err( 'mad4b_import_approve_confirmation_missing', 'Exact plan hash and confirmed=true required.' );
+        $plan = self::approval_plan( $input );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( ! $plan['ready_for_manual_approval'] ||
+            ! is_string( $input['plan_sha256'] ) ||
+            ! hash_equals( $plan['plan_sha256'], $input['plan_sha256'] ) )
+            return self::err( 'mad4b_import_approve_plan_stale', 'Exact current approval plan required.' );
+        return self::approve( $plan['profile_slug'], $plan['snapshot_sha256'], true );
+    }
+    public static function approval_receipt( $input = array() ) {
+        if ( ! is_array( $input ) || ! isset( $input['profile_slug'], $input['snapshot_sha256'] ) )
+            return self::err( 'mad4b_import_approval_receipt_invalid', 'Profile and snapshot required.' );
+        return self::approval( (string) $input['profile_slug'],
+            (string) $input['snapshot_sha256'] );
+    }
     public static function export_approved_csv( $slug, $snapshot_sha ) {
         $approved = self::approval( $slug, $snapshot_sha );
         if ( is_wp_error( $approved ) ) return $approved;
