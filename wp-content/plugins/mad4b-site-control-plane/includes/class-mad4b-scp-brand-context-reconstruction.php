@@ -235,7 +235,10 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         $assistant_status = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
             ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
         $assistant_certified = is_array( $assistant_status ) && ! empty( $assistant_status['ready'] )
-            && empty( $assistant_status['historical_evidence_only'] );
+            && empty( $assistant_status['historical_evidence_only'] )
+            && ! empty( $assistant_status['build_identity_current'] )
+            && ! empty( $assistant_status['external_client_snapshot_verified'] )
+            && empty( $assistant_status['local_runtime_only'] );
         $assistant_available = $assistant_requested && $assistant_certified;
         $convergence = MAD4B_SCP_Brand_Context_Builder::convergence_plan( array(
             'include_authoritative_content' => false,
@@ -332,6 +335,7 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             // Managed Skills readiness proves the catalog/runtime; it does
             // not prove exact Agent/ability authorization or role separation.
             'assistant_exact_mutation_grant_verified' => false,
+            'assistant_no_authoritative_write_without_agent_grant' => true,
             'assistant_can_execute_writes' => false,
             'assistant_writer_reviewer_independence_verified' => false,
             'assistant_roles' => array( 'evidence_researcher', 'draft_writer', 'independent_critic', 'policy_reviewer' ),
