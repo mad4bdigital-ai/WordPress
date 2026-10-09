@@ -299,6 +299,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$activity_contract = MAD4B_SCP_Business_Activity_Contracts::normalize(
 			isset( $raw['activity_contract'] ) ? $raw['activity_contract'] : array(), $post_type, $meta_keys, $taxonomies );
 		if ( is_wp_error( $activity_contract ) ) return $activity_contract;
+        $import_contract = MAD4B_SCP_Activity_Import_Authority::normalize_contract(
+            isset( $raw['import_contract'] ) ? $raw['import_contract'] : array(), $meta_keys );
+        if ( is_wp_error( $import_contract ) ) return $import_contract;
 
 		$profile = array(
 			'contract' => self::CONTRACT,
@@ -322,6 +325,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'aci01_recipe_variants' => $aci01_recipe_variants,
 			'activity_contract' => $activity_contract,
+            'import_contract' => $import_contract,
 			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
 		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
