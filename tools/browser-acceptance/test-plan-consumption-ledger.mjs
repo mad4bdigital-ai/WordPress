@@ -11,13 +11,20 @@ fs.chmodSync(base,0o700);
 const plan = {
   provider_contract:"mad4b.capability-browser-provider.v1",
   provider_id:"mad4b-native-public",origin:"https://site.example/",
+  profile_id:"public-canonical",suite:"browser_runtime",
+  build_identity:{git_sha:"f".repeat(40),build_fingerprint:"e".repeat(64)},
   state:"ready",read_only:true,authorizing:false,
   plan_digest:"a".repeat(64),plan_signature:"b".repeat(64),
   challenge:{nonce:"c".repeat(32),issued_at:start-2,expires_at:start+300}
 };
 const evidence = {plan_digest:plan.plan_digest,plan_signature:plan.plan_signature,
-  contract:"mad4b.capability-browser-evidence.v1",cases:[{case_id:"page-10"}]};
+  origin:plan.origin,build_identity:plan.build_identity,
+  contract:"mad4b.capability-browser-evidence.v1",
+  cases:[{case_id:"page-10",challenge_nonce:plan.challenge.nonce}]};
 const result = {
+  contract:"mad4b.browser-acceptance-result.v1",
+  provider_id:plan.provider_id,provider_contract:plan.provider_contract,
+  profile_id:plan.profile_id,suite:plan.suite,
   verdict:"PASS",plan_digest:plan.plan_digest,
   evidence_digest:canonicalSha256(evidence),receipt_signature:"d".repeat(64),
   verification:{browser_runtime_parity_verified:true},
@@ -30,6 +37,11 @@ try {
   assert.throws(()=>consumeLocalBrowserPlanOnce({...args,ledgerDir:"/invalid"}),/directory_unavailable/);
   assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
     evidence:{...evidence,cases:[]}}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    evidence:{...evidence,origin:"https://other.example/"}}),/invalid_or_stale_proof/);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
+    evidence:{...evidence,build_identity:{...plan.build_identity,git_sha:"d".repeat(40)}}}),
+    /invalid_or_stale_proof/);
   assert.throws(()=>consumeLocalBrowserPlanOnce({...args,
     now:start+301}),/invalid_or_stale_proof/);
   const claimed=passes();
