@@ -56,3 +56,12 @@ The Opportunity candidate uses `resolve_current` rather than passing a permanent
 **Limits:** a governed profile declaration is **not** a standalone editorial acceptance, rights license, verified field owner, independent source receipt, AI quality certificate, or write grant. `Recipe_Gap::evaluate` continues returning `NEEDS_EVIDENCE` and `source_receipts_independently_certified=false`. Runtime and release gates must still enforce live approval, fresh scope and downstream factual attestations. No site-specific recipe rows are seeded automatically.
 
 **Adversarial PHP fixtures added, execution NOT_RUN until an exact-source PHP environment is available:** brand/locale/market mismatch, duplicate scoped variant, duplicate fact, unknown key, oversized variant registry and requirement list, foreign site, wildcard language, stale profile revision, revoked authority and changed profile status during resolution. Legacy authority hash compatibility and stored recipe tamper rejection are separately covered. Source presence and hypothetical fixture expectations must not be reported as executed PHP PASS.
+
+
+## P0 continuation — Pure candidate compiler and runtime generation fence
+
+The governed read route `mad4b/aci01-opportunity-preview` now resolves current scoped Content Recipe evidence **before** calling the pure compiler. `Opportunity_Preview::compile` must not call WordPress, `profile_status`, or any remote provider and accepts only an explicitly supplied, non-authorizing snapshot. Omitted snapshots become a conservative missing-recipe observation; contradictory `MISSING` / non-null receipt and forged `READY` declarations are denied.
+
+The route validates the returned ContentJob ID against the original requested UUID, rereads runtime generation/restore epoch **after** scoped recipe resolution, and checks the actor's existing read grant once more before compiling. It never dispatches `mad4b/blueprint-build`, writes an artifact, spends budget or upgrades publication authority.
+
+Added adversarial PHP fixture cases for job substitution, policy revocation during a profile read, restore epoch drift, deterministic offline pure replay while the profile registry changes, injected reason codes, forged recipe revisions and direct ready-state forgery. **Executed native PHP status: NOT_RUN until an exact-head PHP checkout is available.** Presence of assertions in a fixture is not a PASS certificate.
