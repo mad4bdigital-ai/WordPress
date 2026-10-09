@@ -44,6 +44,8 @@ jobs:
           set -euo pipefail
           node --check tools/solution-discovery/federation.mjs
           node tools/solution-discovery/test-federation.mjs
+          node --check tools/solution-discovery/source-evidence.mjs
+          node tools/solution-discovery/test-source-evidence.mjs
 
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2

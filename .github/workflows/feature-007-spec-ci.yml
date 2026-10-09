@@ -114,6 +114,8 @@ jobs:
           node --check tools/solution-discovery/federation.mjs
           node --check tools/solution-discovery/test-federation.mjs
           node tools/solution-discovery/test-federation.mjs
+          node --check tools/solution-discovery/source-evidence.mjs
+          node tools/solution-discovery/test-source-evidence.mjs
 
       - name: Enforce current baseline ancestry
         shell: bash

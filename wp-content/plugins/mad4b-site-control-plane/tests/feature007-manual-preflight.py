@@ -75,6 +75,7 @@ FIXTURES = (
 )
 NODE_FIXTURES = (
     "tools/solution-discovery/test-federation.mjs",
+    "tools/solution-discovery/test-source-evidence.mjs",
 )
 PY_CHECKS = (
     "oauth-consent-script-syntax.py",

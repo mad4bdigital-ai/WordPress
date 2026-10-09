@@ -87,3 +87,14 @@ php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-
 ```
 
 The plugin adapter discovery smoke requires **disposable WordPress test runtime** and must not be run against Production, since its fixture creates and cleans temporary plugins. Its risk escalation assertions are exercised only within that isolation.
+
+
+## Signed, durable host-side source catalog verification
+
+The portable host-side module `tools/solution-discovery/source-evidence.mjs` verifies Ed25519 signatures over the exact canonical catalog body and exact site/environment/origin/runtime binding. It never trusts public keys offered by the plugin, site or catalog. It enforces source IDs, bounded issuance/expiry, signature encoding and a host-owned durable atomic `consumeNonce` callback. Unavailable, throwing, duplicate or non-atomic ledgers must fail closed.
+
+Use `createTrustedCatalogVerifier({getReceipt,trustedPublicKeys,consumeNonce,clock})` with `discoverFederated({verifyCatalog: ...})` only when an independently authenticated host control plane supplies trusted keys, signed receipts and an atomic one-use ledger. The native fixture uses an ephemeral test Ed25519 key and a test-only Set; this Set is NOT a production replay ledger.
+
+A signed read-only catalog establishes origin/provenance within its scope, not behavioral certification, write authority or inspector authenticity. Without a deployed issuer, trusted-key rotation and durable replay ledger, `catalog_authority_verified` must remain false and runtime release is BLOCKED.
+
+Production requires independent key provisioning, durable nonce persistence and compare-and-consume atomicity, key rotation, canonical serializer interoperability, clock skew tests and real cross-process receipts. Code and tests alone do not prove these services exist.
