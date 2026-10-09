@@ -17,6 +17,32 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $s = wp_json_encode( $value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
         return is_string( $s ) ? hash( 'sha256', $s ) : '';
     }
+
+    /**
+     * Every provider-facing transition must be persisted AND reread before
+     * an external side effect or a lease release. WordPress returns false
+     * from update_option() for unchanged values; exact readback is decisive.
+     */
+    private static function persist_operation( $key, $next, $code ) {
+        update_option( $key, $next, false );
+        if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( $key, 'options' );
+        $back = get_option( $key, false );
+        if ( ! is_array( $back ) ||
+            ! hash_equals( self::digest( $next ), self::digest( $back ) ) )
+            return self::err( $code, 'Operation journal write/readback was not confirmed. No new provider write is authorized.' );
+        return true;
+    }
+    private static function release_operation_lease( $binding, $operation_key ) {
+        $key = self::key( $binding, 'lease' );
+        $lease = get_option( $key, false );
+        if ( ! is_array( $lease ) || ! isset( $lease['operation_key'] ) ||
+            ! hash_equals( (string) $lease['operation_key'], (string) $operation_key ) )
+            return self::err( 'mad4b_sync_lease_identity_changed', 'Cannot release a lease belonging to another worker.' );
+        delete_option( $key );
+        if ( false !== get_option( $key, false ) )
+            return self::err( 'mad4b_sync_lease_release_unverified', 'Could not verify release of this operation lease.' );
+        return true;
+    }
     private static function key( $binding, $which ) {
         return 'mad4b_asyn_' . $which . '_' . hash( 'sha256',
             $binding['site_uuid'] . '|' . $binding['profile']['slug'] . '|' . $binding['entity_id'] );
@@ -386,6 +412,9 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'started_at' => gmdate( 'c' ) );
         if ( ! add_option( $key, $op, '', false ) )
             return self::err( 'mad4b_sync_operation_raced', 'Another worker reserved the same sync entity.' );
+        if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( $key, 'options' );
+        if ( self::digest( get_option( $key, false ) ) !== self::digest( $op ) )
+            return self::err( 'mad4b_sync_operation_begin_unverified', 'New operation journal was not read back; no provider write authorized.' );
         return array( 'contract' => self::CONTRACT, 'state' => 'queued', 'step_count' => count( $op['steps'] ),
             'operation_key' => $operation_key, 'mutation_performed' => true );
     }
@@ -411,12 +440,12 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $i = (int) $op['next_step'];
         if ( $i >= count( $op['steps'] ) ) {
             $obs = self::observe( $binding );
-            if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; update_option( $key, $op, false ); return $obs; }
+            if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' ); return $obs; }
             $cp = ! empty( $op['bootstrap_arbitration'] )
                 ? get_option( self::key( $binding, 'checkpoint' ), false ) : self::checkpoint( $binding );
             if ( ( ! empty( $op['bootstrap_arbitration'] ) && false !== $cp ) ||
                 ( empty( $op['bootstrap_arbitration'] ) && is_wp_error( $cp ) ) ) {
-                $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+                $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
                 return self::err( 'mad4b_sync_checkpoint_changed', 'Checkpoint unexpected or altered during sync.' );
             }
             // A successful outbox is not enough: every configured field must
@@ -431,8 +460,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                         $values[] = $current[ $source_id ]['field_hashes'][ $field ];
                 }
                 if ( count( array_unique( $values ) ) > 1 ) {
-                    $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
-                    return self::err( 'mad4b_sync_postwrite_divergence', 'At least one field diverged after provider writes.' );
+                    $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
+                return self::err( 'mad4b_sync_postwrite_divergence', 'At least one field diverged after provider writes.' );
                 }
             }
             // The option is a per-entity journal; no other writer can begin
@@ -441,7 +470,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             if ( empty( $op['bootstrap_arbitration'] ) &&
                 ( ! isset( $op['initial_checkpoint_sha256'] ) ||
                   ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $cp ) ) ) ) {
-                $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+                $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
                 return self::err( 'mad4b_sync_checkpoint_cas_drift', 'Checkpoint changed while the operation was active.' );
             }
             $next_cp = array( 'site_uuid' => $binding['site_uuid'],
@@ -453,23 +482,26 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 : update_option( self::key( $binding, 'checkpoint' ), $next_cp, false );
             if ( !$saved &&
                 self::digest( get_option( self::key( $binding, 'checkpoint' ), false ) ) !== self::digest( $next_cp ) ) {
-                $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+                $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
                 return self::err( 'mad4b_sync_checkpoint_update_failed', 'Durable checkpoint update failed.' );
             }
             $back = get_option( self::key( $binding, 'checkpoint' ), false );
             if ( ! is_array( $back ) || ! hash_equals( self::digest( $next_cp ), self::digest( $back ) ) ) {
-                $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+                $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
                 return self::err( 'mad4b_sync_checkpoint_readback_failed', 'Durable checkpoint readback failed.' );
             }
             $op['state'] = 'complete'; $op['completed_at'] = gmdate( 'c' );
-            update_option( $key, $op, false ); delete_option( $mutex );
+            $persisted = self::persist_operation( $key, $op, 'mad4b_sync_completion_journal_unverified' );
+            if ( is_wp_error( $persisted ) ) return $persisted;
+            $released = self::release_operation_lease( $binding, $op['operation_key'] );
+            if ( is_wp_error( $released ) ) return $released;
             return array( 'contract' => self::CONTRACT, 'state' => 'complete',
                 'writes_applied' => $i, 'checkpoint_advanced' => true,
                 'checkpoint_sha256' => self::digest( $back ), 'mutation_performed' => true );
         }
         $step = $op['steps'][ $i ];
         $obs = self::observe( $binding );
-        if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; update_option( $key, $op, false ); return $obs; }
+        if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' ); return $obs; }
         $source = $obs['observations'][ $step['source'] ];
         $dest = $obs['observations'][ $step['destination'] ];
         $field = $step['field'];
@@ -477,13 +509,13 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $destination_value = $dest['fields'][ $field ];
         if ( self::digest( array( 'type' => gettype( $destination_value ), 'value' => $destination_value ) ) !==
             $step['expected_destination_value_sha256'] ) {
-            $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
-            return self::err( 'mad4b_sync_destination_changed_since_approval',
+            $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
+                return self::err( 'mad4b_sync_destination_changed_since_approval',
                 'Destination changed since the approved exact plan. A new read and review is required.' );
         }
         if ( self::digest( array( 'type' => gettype( $value ), 'value' => $value ) ) !== $step['value_sha256'] ) {
-            $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
-            return self::err( 'mad4b_sync_owner_field_drifted', 'Owner field changed since exact approved plan.' );
+            $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
+                return self::err( 'mad4b_sync_owner_field_drifted', 'Owner field changed since exact approved plan.' );
         }
         $provider = $binding['sources'][ $step['destination'] ]['provider'];
         $adapters = $obs['adapters'];
@@ -492,7 +524,12 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             ! isset( $adapter['write'] ) || ! is_callable( $adapter['write'] ) )
             return self::err( 'mad4b_sync_writer_not_verified', 'Provider is not certified for conditional writes.' );
         $op['state'] = 'step_inflight'; $op['inflight_step'] = $i;
-        update_option( $key, $op, false );
+        $persisted = self::persist_operation( $key, $op, 'mad4b_sync_inflight_journal_unverified' );
+        if ( is_wp_error( $persisted ) ) {
+            // The CAS provider call has NOT started. Keep the operation
+            // conservative; a later exact read/recovery handles storage faults.
+            return $persisted;
+        }
         $written = call_user_func( $adapter['write'], $binding['sources'][ $step['destination'] ],
             $field, $value, $dest, $binding );
         if ( is_wp_error( $written ) ) {
@@ -503,11 +540,14 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             array_values( $binding['sources'][ $step['destination'] ]['field_keys'] ), $binding );
         if ( is_wp_error( $readback ) || ! isset( $readback['fields'][ $field ] ) ||
             (string) $readback['fields'][ $field ] !== (string) $value ) {
-            $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
-            return self::err( 'mad4b_sync_provider_readback_uncertain', 'Provider write outcome has not passed exact readback.' );
+            $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
+                return self::err( 'mad4b_sync_provider_readback_uncertain', 'Provider write outcome has not passed exact readback.' );
         }
         $op['next_step'] = $i + 1; unset( $op['inflight_step'] ); $op['state'] = 'running';
-        update_option( $key, $op, false ); delete_option( $mutex );
+        $persisted = self::persist_operation( $key, $op, 'mad4b_sync_postwrite_journal_unverified' );
+        if ( is_wp_error( $persisted ) ) return $persisted;
+        $released = self::release_operation_lease( $binding, $op['operation_key'] );
+        if ( is_wp_error( $released ) ) return $released;
         return array( 'contract' => self::CONTRACT, 'state' => 'running',
             'completed_steps' => $op['next_step'], 'step_count' => count( $op['steps'] ),
             'readback_verified' => true, 'mutation_performed' => true );
