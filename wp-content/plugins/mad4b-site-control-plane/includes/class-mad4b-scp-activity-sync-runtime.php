@@ -394,4 +394,74 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'completed_steps' => $op['next_step'], 'step_count' => count( $op['steps'] ),
             'readback_verified' => true, 'mutation_performed' => true );
     }
+    /**
+     * Recover only a previously attempted write whose *current provider
+     * readback* matches the approved source value. Never blindly replay a
+     * provider call with an unknown outcome.
+     */
+    public static function recover( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
+            return self::err( 'mad4b_sync_recover_denied', 'Exact administrator recovery required.' );
+        $binding = self::bind( $input );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $key = self::key( $binding, 'operation' );
+        $op = get_option( $key, false );
+        $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
+        if ( ! is_array( $op ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
+            ! hash_equals( self::digest( $op ), $expected ) ||
+            ! isset( $input['operation_key'] ) || ! isset( $op['operation_key'] ) ||
+            ! hash_equals( $op['operation_key'], (string) $input['operation_key'] ) ||
+            ! in_array( $op['state'], array( 'step_inflight', 'needs_reconcile' ), true ) ||
+            ! isset( $op['inflight_step'] ) )
+            return self::err( 'mad4b_sync_recover_state_not_exact', 'Unknown-write reconciliation requires an exact in-flight journal checksum.' );
+        $i = (int) $op['inflight_step'];
+        if ( ! isset( $op['steps'][ $i ] ) || $i !== (int) $op['next_step'] )
+            return self::err( 'mad4b_sync_recover_step_missing', 'Recorded in-flight step is inconsistent.' );
+        $step = $op['steps'][ $i ];
+        $observed = self::observe( $binding );
+        if ( is_wp_error( $observed ) ) return $observed;
+        if ( ! isset( $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ],
+            $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ] ) )
+            return self::err( 'mad4b_sync_recover_field_missing', 'No verified postwrite fields available.' );
+        $current = $observed['observations'][ $step['destination'] ]['fields'][ $step['field'] ];
+        $owner = $observed['observations'][ $step['source'] ]['fields'][ $step['field'] ];
+        $hash = static function ( $v ) { return self::digest( array( 'type' => gettype( $v ), 'value' => $v ) ); };
+        if ( ! hash_equals( $step['value_sha256'], $hash( $current ) ) ||
+            ! hash_equals( $step['value_sha256'], $hash( $owner ) ) )
+            return self::err( 'mad4b_sync_recover_requires_review', 'Uncertain provider result differs from exact approved write. Do not replay.' );
+        $op['next_step'] = $i + 1; unset( $op['inflight_step'] );
+        $op['state'] = 'running'; $op['recovered_at'] = gmdate( 'c' );
+        update_option( $key, $op, false );
+        delete_option( self::key( $binding, 'lease' ) );
+        return array( 'contract' => self::CONTRACT, 'state' => 'running',
+            'next_step' => $op['next_step'], 'recovered_by_exact_readback' => true,
+            'provider_replayed' => false, 'mutation_performed' => true );
+    }
+
+    /** Archive only completed operations. A failed journal is never erased. */
+    public static function archive( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || empty( $input['confirmed'] ) )
+            return self::err( 'mad4b_sync_archive_denied', 'Administrator confirmation required.' );
+        $binding = self::bind( $input );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $key = self::key( $binding, 'operation' );
+        $op = get_option( $key, false );
+        $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
+        if ( ! is_array( $op ) || ! isset( $op['state'] ) || 'complete' !== $op['state'] ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
+            ! hash_equals( self::digest( $op ), $expected ) )
+            return self::err( 'mad4b_sync_archive_not_exact_complete', 'Only an exactly verified completed operation may be archived.' );
+        $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
+        if ( ! add_option( $archive_key, $op, '', false ) )
+            return self::err( 'mad4b_sync_archive_already_exists', 'Operation is already archived or a duplicate.' );
+        $back = get_option( $archive_key, false );
+        if ( ! is_array( $back ) || ! hash_equals( self::digest( $op ), self::digest( $back ) ) )
+            return self::err( 'mad4b_sync_archive_readback_failed', 'Cannot remove active record before archival readback.' );
+        delete_option( $key );
+        if ( false !== get_option( $key, false ) )
+            return self::err( 'mad4b_sync_archive_active_record_present', 'Old active operation was not cleared.' );
+        return array( 'contract' => self::CONTRACT, 'archived' => true,
+            'archive_sha256' => self::digest( $back ), 'mutation_performed' => true );
+    }
+
 }
