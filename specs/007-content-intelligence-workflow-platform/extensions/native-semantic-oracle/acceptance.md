@@ -28,3 +28,13 @@
 | Generic passive browser attempts WebSocket | Independent WebSocket route closes it before connecting to server |
 | External browser adapter lacks WebSocket route support | Block the generic browser run; never downgrade to HTTP-only proof |
 | WebRTC or DNS/IP egress not audited | Release gate remains blocked regardless of passive-only source checks |
+
+| Specialist + generic browser provider both recognized, no profile | Choose single primary specialist, not supplemental generic; still do not reuse specialist for unsupported site |
+| Multiple primary functional providers recognized, no operator selection | Ambiguity BLOCKED |
+| Saved operator profile selects supplemental generic | Honor declared operator profile without hostname rules |
+| Arbitrary invalid provider selection role | Reject inside WordPress Provider Registry |
+| Generic page executes JavaScript / emits dynamic XHR/fetch | Block script and active request transport; JS disabled |
+| Generic navigation redirects to a second WordPress page | Intercept and reject any document path not in signed plan |
+| Distinct cases share the same signed public URL | De-duplicate navigation allowlist, preserve separate semantic cases |
+| Signed-but-ill-typed HTTP status, extra release_ready key, unexpected observer claims | Treat as infrastructure BLOCKED, never spurious product FAIL or release PASS |
+| First public page entries password protected, duplicate ID/path | Scan bounded additional published pages and select unique public candidates |
