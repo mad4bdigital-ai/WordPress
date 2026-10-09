@@ -310,7 +310,47 @@ final class MAD4B_SCP_Host_Bridge {
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['plan_sha256'] ?? '' ) )
 			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['authority_ref'] ?? '' ) )
 			&& '' !== (string) ( $receipt['approval_ref'] ?? '' );
+		// The Bridge spool is WordPress-writeable; even a structurally valid
+		// receipt is untrusted until an independently pinned Host public key
+		// verifies the detached signature of its exact bounded payload.
+		$attestation = isset( $receipt['host_environment_attestation'] ) && is_array( $receipt['host_environment_attestation'] )
+			? $receipt['host_environment_attestation'] : array();
+		$payload = array(
+			'contract' => 'mad4b.host-environment-receipt-payload.v1',
+			'job_id' => $receipt['job_id'] ?? null,
+			'site_uuid' => $receipt['site_uuid'] ?? null,
+			'environment' => $receipt['environment'] ?? null,
+			'operation_id' => $receipt['operation_id'] ?? null,
+			'plan_sha256' => $receipt['plan_sha256'] ?? null,
+			'authority_ref' => $receipt['authority_ref'] ?? null,
+			'runner_source_sha256' => $receipt['runner_source_sha256'] ?? null,
+			'completed_at' => $receipt['completed_at'] ?? null,
+			'readback_verdict' => $receipt['readback_verdict'] ?? null,
+			'mutation_performed' => $receipt['mutation_performed'] ?? null,
+			'result' => array(
+				'after_sha256' => $details['after_sha256'] ?? null,
+				'expected_site_profile_digest' => $details['expected_site_profile_digest'] ?? null,
+				'expected_site_profile_revision' => $details['expected_site_profile_revision'] ?? null,
+				'expected_deployment_binding_digest' => $details['expected_deployment_binding_digest'] ?? null,
+				'host_file_readback_verified' => $details['host_file_readback_verified'] ?? null,
+			),
+		);
+		$public_b64 = defined( 'MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64' )
+			? (string) MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64 : '';
+		$public = base64_decode( $public_b64, true );
+		$signature = base64_decode( (string) ( $attestation['signature_b64'] ?? '' ), true );
+		$encoded = wp_json_encode( self::canonicalize( $payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$sig_ok = function_exists( 'sodium_crypto_sign_verify_detached' )
+			&& 'mad4b.host-environment-ed25519-attestation.v1' === (string) ( $attestation['contract'] ?? '' )
+			&& 'mad4b.host-environment-receipt-payload.v1' === (string) ( $attestation['payload_contract'] ?? '' )
+			&& 'Ed25519' === (string) ( $attestation['algorithm'] ?? '' )
+			&& is_string( $public ) && 32 === strlen( $public )
+			&& is_string( $signature ) && 64 === strlen( $signature )
+			&& is_string( $encoded )
+			&& hash_equals( hash( 'sha256', $public ), (string) ( $attestation['pinned_public_key_sha256'] ?? '' ) )
+			&& sodium_crypto_sign_verify_detached( $signature, $encoded, $public );
 		if ( ! $receipt_ok ) $blocking[] = 'host_receipt_untrusted_or_incomplete';
+		if ( ! $sig_ok ) $blocking[] = 'host_receipt_signature_missing_or_invalid';
 		$profile_ok = ! empty( $status['authority_ready'] ) && ! empty( $status['origin_match'] )
 			&& ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] )
 			&& ! empty( $status['same_origin_clone_protection'] )
@@ -343,7 +383,8 @@ final class MAD4B_SCP_Host_Bridge {
 			'job_id' => $job_id,
 			'ready' => empty( $blocking ),
 			'state' => empty( $blocking ) ? 'VERIFIED_STAGING_HOST_ALIGNED' : 'BLOCKED',
-			'host_file_receipt_verified' => $receipt_ok,
+			'host_file_receipt_verified' => $receipt_ok && $sig_ok,
+			'host_receipt_signature_verified' => $sig_ok,
 			'site_profile_and_binding_verified' => $profile_ok,
 			'wordpress_explicit_staging_verified' => $bootstrap_ok,
 			'wp_config_receipt_hash_verified' => $config_ok,
