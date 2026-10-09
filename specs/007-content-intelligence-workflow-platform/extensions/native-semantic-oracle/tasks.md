@@ -40,3 +40,12 @@ x markers are source deliverables, NOT live runtime certification.
 
 - [x] N032 Replace evaluateAll marker inspection with reviewed static Locator count for JS-disabled contexts
 - [x] N033 Verify post-type-based capability recognition without any matching plugin on a dissimilar site fixture
+
+## Replay ledger implementation
+- [x] N034 Add non-authorizing native Node single-host atomic O_EXCL consumption ledger
+- [x] N035 Fail closed when directory or explicit authority mode is absent, untrusted or insecure
+- [x] N036 Validate exact plan/evidence digest, signed native PASS, nonce and expiry before claim
+- [x] N037 Integrate claim before publishing native PASS result/receipt files; legacy specialist results unchanged
+- [x] N038 Add parallel eight-process negative fixture, crash-fail-closed persistence and receipt scope fields
+- [ ] N039 Authorized distributed atomic ledger with DB uniqueness, runtime fencing, one-time signed receipt and multi-region replay tests
+- [ ] N040 Staging provisioning of single-host directory / approval of shared ledger authority with operational proof
