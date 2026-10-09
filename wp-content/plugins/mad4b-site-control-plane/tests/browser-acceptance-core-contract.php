@@ -233,11 +233,17 @@ $case_schema = $evidence_schema['properties']['cases']['items'];
 browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'], 'browser evidence case limit must match provider MAX_CASES' );
 browser_expect( 21 === (int) $case_schema['maxProperties'], 'browser case schema must bound ETG and generic capability evidence' );
 browser_expect( isset( $case_schema['properties']['capability_id'], $case_schema['properties']['probe_type'], $case_schema['properties']['observed']['properties']['path'], $case_schema['properties']['matches_expected'] ), 'generic capability case fields must be accepted by Core' );
-browser_expect( false === $case_schema['properties']['observed']['additionalProperties'], 'generic observed evidence must be bounded' );
+browser_expect( true === $case_schema['properties']['observed']['additionalProperties'] &&
+    12 === (int) $case_schema['properties']['observed']['maxProperties'],
+    'site-neutral observation data must be extensible but property-bounded; provider owns semantics' );
 browser_expect( isset( $evidence_schema['properties']['build_identity']['properties']['build_fingerprint'] ), 'generic build fingerprint must cross Ability schema' );
 browser_expect( isset( $evidence_schema['properties']['attestation']['properties']['key_id'] ), 'RSA evidence attestation must cross Ability schema' );
 browser_expect( false === $evidence_schema['properties']['attestation']['additionalProperties'], 'attestation must reject unknown fields' );
-browser_expect( in_array( 'mad4b.capability-browser-evidence.v1', $evidence_schema['properties']['contract']['enum'], true ), 'generic Evidence contract must be recognized' );
+browser_expect( '^[a-z][a-z0-9._-]{2,159}$' === $evidence_schema['properties']['contract']['pattern'],
+    'Core must allow bounded future provider Evidence versions without hostname or plugin hard-coding' );
+browser_expect( false === $evidence_schema['additionalProperties'] &&
+    false === $case_schema['additionalProperties'],
+    'site-neutral contracts must still reject arbitrary envelope and case fields' );
 browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_digest']['pattern'], 'plan digest schema must not be truncated' );
 browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_signature']['pattern'], 'plan signature schema must not be truncated' );
 $network_schema = $case_schema['properties']['network'];
