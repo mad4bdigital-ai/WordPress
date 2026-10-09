@@ -51,7 +51,7 @@ check_browser( strpos( $browser_source, "MAD4B_SCP_Admin_Route_Registry::registe
 check_browser( strpos( $browser_source, "MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'preference_saved'" ) !== false, 'success requires signed persisted-view receipt' );
 check_browser( strpos( $browser_source, "add_query_arg( 'saved', '1'" ) === false, 'forged URL flags cannot report save success' );
 check_browser( strpos( $browser_source, 'expected_configuration_revision' ) !== false, 'form must bind exact revision' );
-check_browser( strpos( $browser_source, "array( 'option_name' => self::OPTION, 'option_value' => maybe_serialize( $stored ) )" ) !== false, 'compare-and-swap must verify stored option bytes' );
+check_browser( strpos( $browser_source, 'AND BINARY option_value = BINARY %s' ) !== false, 'compare-and-swap checks exact persisted bytes regardless of collation' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'unknown','profile_id'=>'');
 check_browser( $c::selection()['executor']==='auto', 'invalid option fail-closed' );
 $main=file_get_contents(dirname(__DIR__).'/mad4b-site-control-plane.php');
