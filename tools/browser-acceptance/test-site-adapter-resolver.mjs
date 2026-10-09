@@ -93,6 +93,9 @@ mixed.site_discovery.provider_matches.push(match("mad4b-native-public","mad4b-si
 mixed.providers[1].descriptor.selection_role="supplemental";
 const mixedOptions={approvedDrivers:[etg,royal,generic]};
 assert.equal(resolve(mixed,mixedOptions).siteProviderId,"etg-dfsb");
+const savedGeneric=structuredClone(mixed);
+savedGeneric.operator_preference.profile_id="public-canonical";
+assert.equal(resolve(savedGeneric,mixedOptions).siteProviderId,"mad4b-native-public");
 const genericOnly=structuredClone(mixed);
 genericOnly.providers=genericOnly.providers.slice(1);
 genericOnly.provider_count=1;
