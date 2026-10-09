@@ -7,6 +7,16 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 ADAPTER=(ROOT/"includes/adapters/class-mad4b-scp-dynamic-content-adapter.php").read_text(encoding="utf-8")
 SKILLS=(ROOT/"includes/class-mad4b-scp-skill-abilities.php").read_text(encoding="utf-8")
+# A previous write accidentally duplicated a complete PHP class tail after its
+# closing brace; ordinary string assertions missed this fatal production defect.
+# Fail source preflight even when PHP executable is unavailable.
+assert SKILLS.count("final class MAD4B_SCP_Skill_Abilities") == 1
+assert SKILLS.count("private static function add(") == 1
+assert SKILLS.count("public static function skill_get(") == 1
+assert SKILLS.count("public static function skill_context_preflight(") == 1
+assert SKILLS.rstrip().endswith("}")
+assert SKILLS.count("private static function all_ready(") == 1
+
 ABILITIES=(ROOT/"includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 def require(b,msg):
     if not b:
