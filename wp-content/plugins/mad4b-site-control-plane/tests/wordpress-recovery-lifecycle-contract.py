@@ -8,6 +8,8 @@ cert = (root / "includes/class-mad4b-scp-staging-certification.php").read_text(e
 view = (root / "includes/class-mad4b-scp-runtime-recovery-workspace.php").read_text(encoding="utf-8")
 operator = (root / "includes/class-mad4b-scp-operator-workspace.php").read_text(encoding="utf-8")
 entry = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
+skills = (root / "includes/class-mad4b-scp-skill-runtime-certification.php").read_text(encoding="utf-8")
+scenarios = (root / "includes/class-mad4b-scp-auto-reconcile-scenarios.php").read_text(encoding="utf-8")
 
 def require(body, needle):
     if needle not in body:
@@ -16,6 +18,9 @@ def require(body, needle):
 for marker in (
     "MAD4B_SCP_Skill_Runtime_Certification::current_status()",
     "'skills_pending' => $skills_pending",
+    "'skills_certification_drift'",
+    "'persisted_build_identity_current'",
+    "'persisted_ready'",
     "$checkpoint_signals['site_profile_drift'] = $site_profile_drift;",
     "$site_profile_drift = empty( $site_profile['authority_ready'] );",
 ):
@@ -52,6 +57,13 @@ for marker in (
 for forbidden in ("update_option(", "delete_option(", "grant_ability(", "proc_open(", "shell_exec(", "wp_remote_post(", "wp_schedule_event(", "$_POST", "$_GET"):
     if forbidden in view:
         raise SystemExit("WordPress recovery UI cannot dispatch a mutation: " + forbidden)
+for marker in (
+    "'boot_provenance_sha256' => $boot_provenance_sha256",
+    "'boot_provenance_sha256_mismatch'",
+    "MAD4B_SCP_BOOT_PROVENANCE_SHA256",
+):
+    require(skills, marker)
+require(scenarios, "|| ! empty( $context['skills_pending'] )")
 require(entry, "class-mad4b-scp-runtime-recovery-workspace.php")
 require(operator, "MAD4B_SCP_Runtime_Recovery_Workspace::render()")
 print("MAD4B WordPress recovery lifecycle static contract PASS")
