@@ -6,6 +6,10 @@ if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.php';
 }
 
+if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Reconstruction' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-reconstruction.php';
+}
+
 if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-context-provider-gateway.php';
 }
@@ -35,6 +39,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/review-audit',
 				'context/brand-core-coverage',
 				'context/brand-core-convergence-plan',
+				'context/brand-reconstruction-plan',
 				'context/google-drive-status',
 				'context/runtime-readiness',
 				'context/conflicts',
@@ -126,6 +131,17 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 				)
 			)
+		);
+		$this->add_ability(
+			'context/brand-reconstruction-plan',
+			'Plan Governed Brand Context Reconstruction',
+			'brand_reconstruction_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'scenario' => array( 'type'=>'string', 'enum'=>MAD4B_SCP_Brand_Context_Reconstruction::scenarios(), 'default'=>'live' ),
+				'attempts' => array( 'type'=>'integer', 'minimum'=>0, 'maximum'=>100, 'default'=>0 ),
+				'assistant_available' => array( 'type'=>'boolean', 'default'=>true ),
+			) )
 		);
 		$this->add_ability(
 			'context/google-drive-status',
@@ -862,6 +878,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function brand_core_convergence_plan( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Builder::convergence_plan( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_reconstruction_plan( $input = array() ) {
+		return MAD4B_SCP_Brand_Context_Reconstruction::plan( is_array( $input ) ? $input : array() );
 	}
 
 	public function brand_draft_preflight( $input = array() ) {
