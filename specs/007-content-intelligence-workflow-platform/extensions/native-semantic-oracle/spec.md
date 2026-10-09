@@ -35,3 +35,6 @@ Both ends must be provisioned under the existing environment-bound governance. T
 5. Execute approved browser providers, verify RSA evidence, HMAC receipt, no cross-site egress, exact-origin scopes and independent page canonical parity.
 6. Re-run after plugin/theme/source revision change, wrong signer, challenge expiration, public content status change and operator revision rotation. All must deny stale acceptance.
 7. Reject master/Production release until all receipts and owner release gates are complete.
+
+### WebSocket is a separate egress primitive
+HTTP request routing does not intercept WebSockets in Playwright. The generic passive observer must register `browserContext.routeWebSocket('**/*')` and close every attempted connection with a policy-violation code **before creating a page**. Browser engines missing this API are blocked rather than silently downgraded. This is not a WebRTC/DNS/IP network firewall certification.
