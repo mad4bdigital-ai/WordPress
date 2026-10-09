@@ -433,6 +433,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-closure-matrix.p
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-write-runtime-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-lifecycle.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-recovery-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-governance-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-permission-changes.php';

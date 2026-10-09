@@ -123,7 +123,9 @@ for marker in [
 
     "'browser_acceptance'",
     "'frontend_performance_sampling'",
-    "'provider_closure_review'",
+    "'provider_capability_review'",
+    "'provider_mapping_review'",
+    "'provider_actions_overflow_review'",
     "'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority'",
     "complete_convergence_coverage",
     "mad4b.staging-gate-action-coverage.v1",
@@ -361,6 +363,7 @@ for regression_contract in (
     "portable-readonly-reconnect-contract.py",
     "dependency-certified-runtime-contract.py",
     "upgrade-continuity-implicit-staging-contract.py",
+    "wordpress-recovery-lifecycle-contract.py",
 ):
     runpy.run_path(str(ROOT / "tests" / regression_contract), run_name="__main__")
 

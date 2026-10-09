@@ -94,6 +94,18 @@ check( 'HARD_BLOCK' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $breakglas
 $skills = $base; $skills['skills_pending'] = true;
 check( 'SCHEDULE_PROBE' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $skills )['decision'], 'pending Skills must schedule the worker that reconciles the dependency before rebind' );
 
+// Same deployed build can retain an older Skills certificate even after the
+// candidate binding is current; this still warrants a safe-phase probe only.
+$skills_only = $base;
+$skills_only['candidate_binding'] = array( 'required' => true, 'stored_bound' => true, 'match' => true );
+$skills_only['build_changed'] = false;
+$skills_only['current_version'] = $skills_only['stored_version'];
+$skills_only['skills_pending'] = true;
+$skills_only_result = MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $skills_only );
+check( 'skills_dependency_pending' === $skills_only_result['scenario_id'], 'Skills-only drift must select the native Skills dependency probe' );
+check( 'SCHEDULE_PROBE' === $skills_only_result['decision'], 'Skills-only drift may only schedule a bounded probe' );
+check( empty( $skills_only_result['mutation_allowed'] ) && empty( $skills_only_result['authority_expansion_allowed'] ), 'Skills-only drift must not grant authority' );
+
 $owner = $base; $owner['continuation'] = array( 'active' => true, 'state' => 'owner_gate' );
 check( 'REVIEW_REQUIRED' === MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( $owner )['decision'], 'owner gate must require review' );
 

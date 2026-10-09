@@ -124,6 +124,9 @@ final class MAD4B_SCP_Staging_Certification {
 		$skills = self::safe_read( 'skills_runtime', static function () {
 			return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
 		} );
+		$skills_persisted = self::safe_read( 'skills_runtime_persisted', static function () {
+			return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		} );
 		$snapshot = self::safe_read( 'external_skill_snapshot', static function () use ( $client_snapshot_token ) {
 			if ( ! class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' ) ) return array();
 			return '' !== $client_snapshot_token
@@ -173,7 +176,10 @@ final class MAD4B_SCP_Staging_Certification {
 			'brand_core_context_coverage' => self::gate( ! empty( $context_coverage['ready'] ), 'brand_core_context_coverage', $context_coverage, 'human_review' ),
 			'google_provider_connection' => self::gate( ! empty( $google['connected'] ) && ! empty( $google['read_available'] ), 'google_provider_connection', $google, 'operator' ),
 			'managed_google_broker' => self::gate( ! empty( $managed_gate['ready'] ), 'managed_google_broker', $managed_gate, 'server_secret' ),
-			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), 'skills_runtime', $skills, 'runtime' ),
+			'skills_runtime' => self::gate(
+				! empty( $skills['ready'] ) && ! empty( $skills_persisted['ready'] ) && ! empty( $skills_persisted['build_identity_current'] ),
+				'skills_runtime_current_and_persisted', array( 'live' => $skills, 'persisted' => $skills_persisted ), 'runtime'
+			),
 			'external_skill_snapshot' => self::gate( ! empty( $snapshot['verified'] ) || ! empty( $snapshot['exact_match'] ), 'external_skill_snapshot', $snapshot, 'external_client' ),
 			'write_authority' => self::gate( ! empty( $authority['ready'] ) && ! empty( $authority['runtime_reconciled'] ), 'write_authority', $authority, 'operator_reconcile' ),
 			'write_runtime' => self::gate( ! empty( $write_runtime['ready'] ), 'write_runtime_certification', $write_runtime, 'operator_reconcile' ),
@@ -340,6 +346,45 @@ final class MAD4B_SCP_Staging_Certification {
 		foreach ( $plan_gates as $gate_id => $gate ) {
 			if ( is_array( $gate ) && empty( $gate['ready'] ) ) $blocking[] = $gate_id;
 		}
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			? MAD4B_SCP_Site_Profile::environment_resolution() : array();
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
+			? MAD4B_SCP_Site_Profile::status() : array();
+		$effective = isset( $environment['effective_environment'] ) ? sanitize_key( (string) $environment['effective_environment'] ) : 'unknown';
+		$not_staging_site = 'staging' !== $effective;
+		// The same read ability can be queried from any site. Never return a
+		// runnable Staging remediation graph for an unbound/Production target.
+		if ( 'staging' !== $effective || empty( $profile['authority_ready'] ) ) {
+			$blocked = array(
+				'contract' => self::CONVERGENCE_CONTRACT,
+				'read_only' => true,
+				'mutation_performed' => false,
+				'production_mutation_performed' => false,
+				'current_ready' => false,
+				'blocking_gates' => array_values( array_unique( array_merge( $blocking, array( 'staging_environment_authority' ) ) ) ),
+				'actions' => array( array(
+				'action_id' => 'environment_authority_review',
+				'kind' => 'host_bootstrap_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'required_config' => 'WP_ENVIRONMENT_TYPE',
+				'wordpress_environment' => isset( $environment['wordpress_environment'] ) ? (string) $environment['wordpress_environment'] : '',
+				'profile_environment' => isset( $environment['profile_environment'] ) ? (string) $environment['profile_environment'] : '',
+				'wordpress_environment_explicit' => ! empty( $environment['wordpress_environment_explicit'] ),
+				'profile_binding_state' => isset( $profile['binding_state'] ) ? (string) $profile['binding_state'] : 'unavailable',
+				'reason' => $not_staging_site ? 'not_an_authorized_staging_target' : 'staging_profile_identity_not_ready',
+				'instruction' => $not_staging_site
+					? 'This is a Staging-only recovery planner. Do not change an actual Production site to Staging or enable Staging capabilities. Inspect the configured WordPress environment and exact host ownership separately.'
+					: 'Verify the exact enrolled origin and binding first. An authorized host operator must correct any proven WP_ENVIRONMENT_TYPE misconfiguration without changing the Site Profile to bypass identity checks.',
+				'readback_ability' => 'mad4b/staging-certification-status',
+		) ),
+			'principle' => 'fail_closed_when_staging_identity_or_host_environment_is_unverified',
+		);
+			$encoded = wp_json_encode( $blocked, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$blocked['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
+			return $blocked;
+		}
 		$actions = array();
 		$seen = array();
 		$append = static function ( &$actions, &$seen, $id, array $row ) {
@@ -348,6 +393,179 @@ final class MAD4B_SCP_Staging_Certification {
 			$actions[] = array_merge( array( 'action_id' => $id ), $row );
 		};
 
+		// Common recovery dependencies are derived from live, site-local facts.
+		// They are advisory DAG edges, not authority grants or an executor.
+		$recovery_dependencies = array();
+		if ( ! empty( $environment['wordpress_profile_mismatch'] ) ) {
+			$append( $actions, $seen, 'wordpress_environment_alignment', array(
+				'kind' => 'host_bootstrap_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'required_config' => 'WP_ENVIRONMENT_TYPE',
+				'expected_value' => 'staging',
+				'observed_value' => isset( $environment['wordpress_environment'] ) ? (string) $environment['wordpress_environment'] : '',
+				'wordpress_environment_explicit' => ! empty( $environment['wordpress_environment_explicit'] ),
+				'instruction' => 'Align host WordPress environment with the exact enrolled staging profile; re-read effective environment before accepting new credentials or certificates.',
+				'readback_ability' => 'mad4b/staging-certification-status',
+				'production_policy' => 'deny',
+			) );
+			// WordPress's implicit-production default can coexist with an explicitly attested
+			// enrolled Staging profile; host alignment is an independent review,
+			// not a reason to deadlock already-authorized native safe phases.
+		}
+		if ( empty( $profile['deployment_binding_configured'] ) ) {
+			$append( $actions, $seen, 'deployment_identity_review', array(
+				'kind' => 'host_bootstrap_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'readback_ability' => 'mad4b/site-profile-status',
+				'instruction' => 'Enroll an independent host-bound deployment identity to detect copied environments. Do not infer site identity from hostname or auto-clone existing credentials.',
+				'production_policy' => 'deny',
+			) );
+		}
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		$skills_record = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		$skills_required = class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::skills_enabled();
+		if ( $skills_required && ( empty( $skills['ready'] ) || empty( $skills_record['ready'] ) || empty( $skills_record['build_identity_current'] ) ) ) {
+			$append( $actions, $seen, 'managed_skills_runtime_refresh', array(
+				'kind' => 'bounded_native_convergence',
+				'executor' => 'existing_runtime_convergence_worker',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'depends_on' => $recovery_dependencies,
+				'plan_ability' => 'mad4b/runtime-convergence-plan',
+				'readback_ability' => 'mad4b/skill-runtime-certification',
+				'blockers' => array_values( array_unique( array_merge(
+					isset( $skills['blockers'] ) && is_array( $skills['blockers'] ) ? $skills['blockers'] : array(),
+					isset( $skills_record['stale_reasons'] ) && is_array( $skills_record['stale_reasons'] ) ? $skills_record['stale_reasons'] : array()
+				) ) ),
+				'instruction' => 'Resume only the existing governed safe-phase worker with an exact runtime identity, then require persisted and live build-bound Skills readback. This plan alone does not dispatch it.',
+				'production_policy' => 'deny',
+			) );
+			$recovery_dependencies[] = 'managed_skills_runtime_refresh';
+		}
+		$developer = class_exists( 'MAD4B_SCP_Developer_Runtime', false )
+			? MAD4B_SCP_Developer_Runtime::runtime_status() : array();
+		$developer_requested = ! empty( $developer['developer_enabled'] ) || ! empty( $developer['direct_execution_enabled'] );
+		$host = $developer_requested && class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
+			? MAD4B_SCP_Developer_Host_Capabilities::snapshot() : array();
+		if ( $developer_requested && empty( $host['normal_no_network_execution_ready'] ) ) {
+			$append( $actions, $seen, 'developer_host_isolation_preflight', array(
+				'kind' => 'host_isolation_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'blockers' => isset( $host['normal_no_network_execution_blockers'] ) && is_array( $host['normal_no_network_execution_blockers'] )
+					? array_values( $host['normal_no_network_execution_blockers'] ) : array( 'host_capability_evidence_unavailable' ),
+				'host_capability_fingerprint' => isset( $host['capability_fingerprint'] ) ? (string) $host['capability_fingerprint'] : '',
+				'readback_ability' => 'mad4b/developer-runtime-status',
+				'instruction' => 'Provision and independently test non-root resource limiting and no-network isolation on the authorized host. Binary presence or Developer authority alone does not certify executable isolation.',
+				'developer_execution_allowed' => false,
+				'breakglass_allowed' => false,
+				'production_policy' => 'deny',
+			) );
+		}
+		// Cron-disabled sites may use a real external wp-cron runner. Never
+		// declare it broken solely from DISABLE_WP_CRON: demand transport proof
+		// when a safe-phase job is pending or materially overdue.
+		$checkpoint = get_option( 'mad4b_scp_runtime_convergence_v1', array() );
+		$checkpoint_state = is_array( $checkpoint ) && isset( $checkpoint['state'] )
+			? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$pending_cron = in_array( $checkpoint_state, array( 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true );
+		$cron_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+		$next_cron = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( 'mad4b_scp_runtime_convergence_resume' ) : false;
+		$cron_overdue = $pending_cron && false !== $next_cron && (int) $next_cron + 600 < time();
+		if ( $pending_cron && ( $cron_disabled || $cron_overdue ) ) {
+			$append( $actions, $seen, 'runtime_scheduler_delivery_review', array(
+				'kind' => 'host_scheduler_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'checkpoint_state' => $checkpoint_state,
+				'wordpress_cron_disabled' => $cron_disabled,
+				'cron_overdue' => $cron_overdue,
+				'next_scheduled_unix' => false === $next_cron ? 0 : (int) $next_cron,
+				'plan_ability' => 'mad4b/runtime-convergence-plan',
+				'readback_ability' => 'mad4b/runtime-convergence-status',
+				'instruction' => 'Verify a governed external WordPress cron runner if WP-Cron is disabled, or investigate an overdue job. Never auto-unblock, forge delivery receipts or replay an uncertain outcome.',
+				'production_policy' => 'deny',
+			) );
+		}
+		$provider_matrix = array();
+		try {
+			$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
+				? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
+		} catch ( Throwable $error ) {
+			// Failure to read a provider catalog is NOT proof of no pending
+			// capabilities. Preserve an explicit non-authorizing blocker.
+			$provider_matrix = array();
+		}
+		$provider_gated = isset( $provider_matrix['provider_gated_count'] ) ? max( 0, (int) $provider_matrix['provider_gated_count'] ) : 0;
+		if ( 'mad4b.provider-closure-matrix.v1' !== ( isset( $provider_matrix['contract'] ) ? $provider_matrix['contract'] : '' )
+			|| empty( $provider_matrix['read_only'] ) || ! empty( $provider_matrix['mutation_performed'] ) ) {
+			$append( $actions, $seen, 'provider_inventory_unavailable', array(
+				'kind' => 'read_only_blocker',
+				'executor' => 'governed_provider_certifier',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'readback_ability' => 'mad4b/provider-closure-matrix',
+				'instruction' => 'Provider closure matrix is unavailable or invalid. Do not infer that absent providers are certified.',
+			) );
+		} else {
+			$provider_items = isset( $provider_matrix['items'] ) && is_array( $provider_matrix['items'] ) ? $provider_matrix['items'] : array();
+			$provider_actions = 0;
+			$provider_pending = 0;
+			foreach ( $provider_items as $provider_item ) {
+				if ( ! is_array( $provider_item ) || empty( $provider_item['operational_action_required'] )
+					|| 'inactive' === ( isset( $provider_item['applicability_state'] ) ? $provider_item['applicability_state'] : '' ) ) continue;
+				++$provider_pending;
+				// Keep the complete plan under 64 nodes, reserving space for
+				// Host, Browser and write actions assembled further below.
+				if ( $provider_actions >= 40 ) continue;
+				$ability = isset( $provider_item['ability'] ) && is_string( $provider_item['ability'] ) ? $provider_item['ability'] : '';
+				$id = 'provider_' . substr( hash( 'sha256', $ability . '|' . ( isset( $provider_item['catalog_provider_id'] ) ? (string) $provider_item['catalog_provider_id'] : '' ) . '|' . ( isset( $provider_item['capability_id'] ) ? (string) $provider_item['capability_id'] : '' ) ), 0, 24 );
+				$provider_id = isset( $provider_item['catalog_provider_id'] ) ? sanitize_key( (string) $provider_item['catalog_provider_id'] ) : '';
+				$capability_id = isset( $provider_item['capability_id'] ) ? sanitize_key( (string) $provider_item['capability_id'] ) : '';
+				$resolved = 1 === preg_match( '/^[a-z0-9_-]{1,64}$/D', $provider_id )
+					&& '' !== $capability_id && empty( $provider_item['ambiguous_mapping'] );
+				$append( $actions, $seen, $id, array(
+					'kind' => $resolved ? 'provider_capability_review' : 'provider_mapping_review',
+					'executor' => 'governed_provider_certifier',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'depends_on' => $recovery_dependencies,
+					'provider_id' => $resolved ? $provider_id : '',
+					'capability_id' => $resolved ? $capability_id : '',
+					'ability' => $ability,
+					'plan_ability' => $resolved ? 'mad4b/provider-recertification-plan' : 'mad4b/provider-closure-matrix',
+					'plan_input' => $resolved ? array( 'provider_id' => $provider_id ) : array(),
+					'readback_ability' => $resolved ? 'mad4b/provider-behavioral-evidence-status' : 'mad4b/provider-closure-matrix',
+					'readback_input' => $resolved ? array( 'provider_id' => $provider_id, 'capability_id' => $capability_id ) : array( 'ability' => $ability ),
+					'classification' => isset( $provider_item['closure_class'] ) ? sanitize_key( (string) $provider_item['closure_class'] ) : 'unknown',
+					'next_action' => isset( $provider_item['next_action'] ) ? sanitize_key( (string) $provider_item['next_action'] ) : 'review',
+					'instruction' => $resolved ? 'Reassess exact capability and provider artifact then require independently verified behavioral and rollback receipts before any write is eligible.' : 'Resolve ambiguous or absent provider mapping before certification; never guess a provider ID.',
+					'production_policy' => 'deny',
+					'activation_allowed' => false,
+				) );
+				++$provider_actions;
+			}
+			if ( $provider_pending > $provider_actions ) {
+				$append( $actions, $seen, 'provider_actions_overflow_review', array(
+					'kind' => 'read_only_blocker',
+					'executor' => 'governed_provider_certifier',
+					'human_decision_required' => true,
+					'automatic_execution_allowed' => false,
+					'remaining_count' => $provider_pending - $provider_actions,
+					'plan_ability' => 'mad4b/provider-closure-matrix',
+					'readback_ability' => 'mad4b/provider-closure-matrix',
+					'instruction' => 'Provider actions exceed the bounded recovery projection. Continue through paged provider review; omitted actions are not certified.',
+				) );
+			}
+		}
 		if ( in_array( 'safe_boot', $blocking, true ) ) {
 			$append( $actions, $seen, 'external_mcp_handshake_refresh', array(
 				'kind' => 'external_evidence',
@@ -398,7 +616,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'executor' => 'external_mcp_client',
 				'human_decision_required' => false,
 				'automatic_execution_allowed' => false,
-				'depends_on' => array( 'external_mcp_handshake_refresh' ),
+				'depends_on' => in_array( 'safe_boot', $blocking, true ) ? array( 'external_mcp_handshake_refresh' ) : array(),
 				'instruction' => 'Export a fresh exact-build snapshot token and finalize it from the same verified external subject/session after tools/list.',
 				'readback_ability' => 'mad4b/live-acceptance-status',
 			) );
@@ -446,11 +664,29 @@ final class MAD4B_SCP_Staging_Certification {
 				$candidate_plan = class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'plan' )
 					? MAD4B_SCP_Staging_Write_Candidate_Binding::plan()
 					: array();
+				$binding = is_array( $candidate_plan ) && isset( $candidate_plan['candidate_binding'] ) && is_array( $candidate_plan['candidate_binding'] )
+					? $candidate_plan['candidate_binding'] : array();
+				if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) || empty( $candidate_plan['execution_eligible'] ) ) {
+					$append( $actions, $seen, 'write_runtime_evidence_review', array(
+						'kind' => 'read_only_blocker',
+						'executor' => 'wordpress_native',
+						'human_decision_required' => false,
+						'automatic_execution_allowed' => false,
+						'depends_on' => $recovery_dependencies,
+						'plan_ability' => 'mad4b/staging-write-candidate-binding-plan',
+						'blockers' => isset( $candidate_plan['blockers'] ) && is_array( $candidate_plan['blockers'] ) ? $candidate_plan['blockers'] : array( 'binding_plan_not_eligible' ),
+						'instruction' => 'Review the exact current Write runtime evidence. Never request a candidate-binding mutation when it is already current or the underlying plan is ineligible.',
+						'readback_ability' => 'mad4b/write-runtime-certification',
+						'production_policy' => 'deny',
+					) );
+				} else {
 				$append( $actions, $seen, 'candidate_binding_only', array(
 					'kind' => 'governed_mutation',
 					'executor' => 'wordpress_native',
 					'human_decision_required' => true,
 					'automatic_execution_allowed' => false,
+					'depends_on' => $recovery_dependencies,
+					'zero_delta_probe_first' => true,
 					'plan_ability' => 'mad4b/staging-write-candidate-binding-plan',
 					'apply_ability' => 'mad4b/staging-write-candidate-bind',
 					'plan' => $candidate_plan,
@@ -459,6 +695,7 @@ final class MAD4B_SCP_Staging_Certification {
 					'production_policy' => 'deny',
 					'breakglass' => false,
 				) );
+				}
 			}
 		}
 		if ( in_array( 'browser_runtime', $blocking, true ) ) {
@@ -484,15 +721,28 @@ final class MAD4B_SCP_Staging_Certification {
 				'minimum_samples' => 3,
 			) );
 		}
-		$append( $actions, $seen, 'provider_closure_review', array(
-			'kind' => 'read_only_followup',
-			'executor' => 'wordpress_native',
-			'human_decision_required' => false,
-			'automatic_execution_allowed' => true,
-			'plan_ability' => 'mad4b/provider-closure-matrix',
-			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
-		) );
-
+		// Keep release acceptance strict, but expose independent domain truth.
+		// An unconfigured optional feature must not masquerade as broken Core.
+		$domain_keys = array(
+			// Domain names explicitly describe what is actually measured.
+			// Package/MCP readiness is not proof of every WordPress Core phase;
+			// local Skills readiness is not the external snapshot acceptance.
+			'package_and_mcp' => array( 'exact_build', 'safe_boot' ),
+			'governed_write' => array( 'write_authority', 'write_runtime' ),
+			'managed_skills_runtime' => array( 'skills_runtime' ),
+			'optional_integrations' => array( 'context_authority', 'brand_core_context_coverage', 'google_provider_connection', 'managed_google_broker', 'wp_import_export_exact_artifact' ),
+			'release_acceptance' => array( 'external_skill_snapshot', 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
+		);
+		$readiness_domains = array();
+		foreach ( $domain_keys as $domain => $requirements ) {
+			$missing = array_values( array_intersect( $requirements, $blocking ) );
+			$readiness_domains[ $domain ] = array(
+				'state' => empty( $missing ) ? 'observed_ready' : 'pending_or_blocked',
+				'ready' => empty( $missing ),
+				'blocking_gates' => $missing,
+				'authorizing' => false,
+			);
+		}
 		// Complete the dynamic gate-to-action map after all native planners
 		// have spoken. No missing gate, dangling dependency or unverified
 		// external executor may silently become an executable operation.
@@ -535,6 +785,13 @@ final class MAD4B_SCP_Staging_Certification {
 			'current_ready' => ! empty( $status['ready'] ) && empty( $blocking ),
 			'blocking_gates' => $blocking,
 			'actions' => $actions,
+			'recovery_scope' => 'exact_site_staging_only',
+			'readiness_domains' => $readiness_domains,
+			'recovery_dependencies' => $recovery_dependencies,
+			'provider_gated_count' => $provider_gated,
+			'developer_host_requested' => $developer_requested,
+			'developer_host_prerequisites_observed' => $developer_requested && ! empty( $host['normal_no_network_execution_ready'] ),
+			'developer_isolation_certified_by_this_plan' => false,
 			'principle' => 'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority',
 		);
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -626,6 +883,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'google_drive_reconnect' => array( 'google_provider_connection', 'brand_core_context_coverage' ),
 			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
 			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
+			'managed_skills_runtime_refresh' => array( 'skills_runtime' ),
+			'write_runtime_evidence_review' => array( 'write_authority', 'write_runtime' ),
 			'write_authority_plan_blocked' => array( 'write_authority', 'write_runtime' ),
 			'write_authority_reconcile' => array( 'write_authority', 'write_runtime' ),
 			'candidate_binding_only' => array( 'write_authority', 'write_runtime' ),
