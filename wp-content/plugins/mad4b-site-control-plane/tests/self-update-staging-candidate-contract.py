@@ -10,6 +10,19 @@ def expect(ok, msg):
     if not ok:
         raise AssertionError("STAGING_CANDIDATE_CONTRACT:" + msg)
 
+permission = SELF.split("public static function can_upload_apply( $input = null ) {", 1)[1].split(
+    "public static function can_native_apply( $input = null ) {", 1
+)[0]
+for marker in (
+    "'staging_candidate_upload'",
+    "current_user_can( 'manage_options' )",
+    "user_is_enrolled( get_current_user_id() )",
+    "verified_bearer_active()",
+    "verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )",
+    "mad4b_self_update_staging_owner_step_up_required",
+):
+    expect(marker in permission, "owner Step-Up permission missing " + marker)
+
 plan = SELF.split("public static function upload_plan( $input ) {", 1)[1].split(
     "public static function upload_apply( $input ) {", 1
 )[0]
