@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 493,
+  "changed_file_count": 495,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -961,8 +961,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/host-environment-sync-runner-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/host-runner-kernel-contract.py"
       ]
+    },
+    {
+      "id": "feature007-staging-request-permission-preflight-20261009",
+      "semantic_unit": "Explicit request-local, non-authorizing OAuth/ChatGPT Skills permission diagnostics with strict error allowlist and native no-CI fixtures.",
+      "revert_boundary": "Revert the two new request-permission tests with their enrollment-info permission projection and preflight integration only; preserve existing governed enrollment, current Write authority and native execution fence.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-request-permission-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-request-permission-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "ad90780aa1ef0ad84befc7078802fab8cf8e8317e2f22de1f3ce3a73f062d2ac",
+  "changed_paths_sha256": "acd7d948cd8abbe4cf00e9d37b69fe260578754b4026663acd3253358181ea66",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

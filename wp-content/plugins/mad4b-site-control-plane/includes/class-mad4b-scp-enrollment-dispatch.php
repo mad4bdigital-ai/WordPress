@@ -219,6 +219,88 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		);
 	}
 
+	/**
+	 * Pure, permission-only projection for one request. A positive result
+	 * NEVER grants rights or proves that a future execution will succeed.
+	 * Do not leak bearer tokens, client identifiers or transport fingerprints.
+	 */
+	public static function managed_skills_permission_model( $transport, $evaluated, $allowed, $error_code = '' ) {
+		$on_chatgpt = 'mad4b-chatgpt' === (string) $transport;
+		$evaluated = true === $evaluated && $on_chatgpt;
+		$allowed = true === $allowed && $evaluated;
+		$code = '';
+		if ( $evaluated && ! $allowed ) {
+			$code = preg_replace( '/[^a-z0-9_]/', '', strtolower( (string) $error_code ) );
+			// Return known guard codes ONLY. Unknown third-party WP_Error
+			// identifiers can contain private data even after sanitization.
+			$known = array(
+				'mad4b_remote_operation_admin_required',
+				'mad4b_remote_operation_bearer_required',
+				'mad4b_remote_operation_profile_missing',
+				'mad4b_remote_operation_staging_only',
+				'mad4b_remote_operation_origin_mismatch',
+				'mad4b_remote_operation_subject_not_enrolled',
+				'mad4b_remote_operation_step_up_scope_required',
+				'mad4b_remote_operation_chatgpt_client_required',
+				'request_guard_unavailable',
+				'request_guard_failed',
+			);
+			if ( ! in_array( $code, $known, true ) ) $code = 'request_permission_denied_unclassified';
+			$code = substr( $code, 0, 96 );
+		}
+		$next = 'inspect_current_transport_and_oauth_step_up';
+		if ( $allowed ) $next = 'confirm_exact_plan_and_revalidate_before_execution';
+		elseif ( 'mad4b_remote_operation_step_up_scope_required' === $code ) $next = 'reauthorize_chatgpt_authority_step_up_scope';
+		elseif ( 'mad4b_remote_operation_chatgpt_client_required' === $code ) $next = 'review_exact_chatgpt_cimd_oauth_client_attribution';
+		elseif ( 'mad4b_remote_operation_subject_not_enrolled' === $code ) $next = 'review_site_profile_subject_enrollment';
+		elseif ( 'mad4b_remote_operation_bearer_required' === $code ) $next = 'reauthorize_oauth_bearer';
+		elseif ( 'mad4b_remote_operation_admin_required' === $code ) $next = 'review_enrolled_wordpress_administrator';
+		elseif ( 'mad4b_remote_operation_profile_missing' === $code ) $next = 'review_exact_site_enrollment';
+		elseif ( 'mad4b_remote_operation_origin_mismatch' === $code ) $next = 'review_site_profile_origin_binding';
+		elseif ( 'mad4b_remote_operation_staging_only' === $code ) $next = 'verify_exact_staging_environment_not_production';
+		return array(
+			'contract' => 'mad4b.enrollment-request-permission-preflight.v1',
+			'state' => ! $evaluated ? 'not_evaluated' : ( $allowed ? 'request_permission_observed' : 'request_permission_blocked' ),
+			'evaluated_current_request' => $evaluated,
+			'permission_observed' => $allowed,
+			'blocker_code' => $code,
+			'next_safe_action' => $next,
+			'same_request_only' => true,
+			'execution_authorized' => false,
+			'execution_performed' => false,
+			'authority_granted' => false,
+			'mutation_performed' => false,
+			'production_mutation_allowed' => false,
+			'blind_retry_allowed' => false,
+		);
+	}
+
+	/**
+	 * Explicit info-only request-local guard. Never call from tools/list,
+	 * passive admin routes or the global operation discovery inventory.
+	 */
+	private static function live_managed_skills_permission_preflight() {
+		$server = class_exists( 'MAD4B_SCP_Transport_Context', false )
+			&& method_exists( 'MAD4B_SCP_Transport_Context', 'current_server_id' )
+			? (string) MAD4B_SCP_Transport_Context::current_server_id() : '';
+		if ( 'mad4b-chatgpt' !== $server ) {
+			return self::managed_skills_permission_model( $server, false, false );
+		}
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false )
+			|| ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'can_execute_chatgpt_direct_step_up' ) ) {
+			return self::managed_skills_permission_model( $server, true, false, 'request_guard_unavailable' );
+		}
+		try {
+			$allowed = MAD4B_SCP_Remote_Operation_Parity::can_execute_chatgpt_direct_step_up();
+			if ( is_wp_error( $allowed ) ) {
+				return self::managed_skills_permission_model( $server, true, false, $allowed->get_error_code() );
+			}
+			return self::managed_skills_permission_model( $server, true, true === $allowed );
+		} catch ( Throwable $error ) {
+			return self::managed_skills_permission_model( $server, true, false, 'request_guard_failed' );
+		}
+	}
+
 	private static function live_managed_skills_preflight() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::status() : array();
@@ -327,6 +409,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'operation' => $row,
 			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
 				? self::live_managed_skills_preflight() : null,
+			'request_permission_preflight' => 'managed_skills_reconciliation' === $operation_id
+				? self::live_managed_skills_permission_preflight() : null,
 			'step_up_scope_required' => MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
 			'human_decision_required' => false,
 			'production_mutation_allowed' => false,
