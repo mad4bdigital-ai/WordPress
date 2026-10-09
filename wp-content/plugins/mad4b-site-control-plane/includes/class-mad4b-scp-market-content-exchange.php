@@ -116,4 +116,105 @@ final class MAD4B_SCP_Market_Content_Exchange {
             'mutation_performed' => false, 'publication_authorized' => false,
         );
     }
+    /**
+     * Read-only, bounded WordPress CPT export for contracted DMCs. Produces a
+     * handoff payload, not an unaudited HTTP push to an external distributor.
+     */
+    public static function export_preview( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        $plan = self::dmc_plan( array(
+            'connection_id' => isset( $input['connection_id'] ) ? $input['connection_id'] : '',
+            'mapping_id' => isset( $input['mapping_id'] ) ? $input['mapping_id'] : '',
+            'direction' => 'export',
+        ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( empty( $plan['exchange_plan_ready'] ) )
+            return self::error( 'mad4b_dmc_export_not_ready', 'DMC export requires a current registered contract and WordPress capabilities.' );
+        $registry = MAD4B_SCP_Market_Growth_Policies::current();
+        if ( is_wp_error( $registry ) ) return $registry;
+        $map = $registry['feed_mappings'][ $plan['mapping_id'] ];
+        $allowed = array( 'post_title', 'post_excerpt', 'post_content' );
+        $fields = isset( $map['fields'] ) ? $map['fields'] : array( 'post_title', 'post_excerpt' );
+        if ( ! is_array( $fields ) || count( $fields ) > count( $allowed ) ||
+            array_diff( $fields, $allowed ) ) return self::error( 'mad4b_dmc_export_field_denied', 'Mapping contains fields not permitted for DMC export.' );
+        $limit = isset( $input['limit'] ) ? max( 1, min( 20, (int) $input['limit'] ) ) : 10;
+        $offset = isset( $input['offset'] ) ? max( 0, min( 100000, (int) $input['offset'] ) ) : 0;
+        if ( ! function_exists( 'get_posts' ) ) return self::error( 'mad4b_dmc_export_runtime_missing', 'WordPress CPT query is unavailable.' );
+        $posts = get_posts( array(
+            'post_type' => $plan['post_type'], 'post_status' => 'publish',
+            'posts_per_page' => $limit, 'offset' => $offset, 'orderby' => 'ID',
+            'order' => 'ASC', 'suppress_filters' => false,
+        ) );
+        if ( ! is_array( $posts ) ) return self::error( 'mad4b_dmc_export_query_failed', 'WordPress export query failed.' );
+        $items = array();
+        foreach ( $posts as $post ) {
+            if ( ! is_object( $post ) || ! isset( $post->ID ) || ! current_user_can( 'edit_post', (int) $post->ID ) ) continue;
+            $record = array( 'source_post_id' => (int) $post->ID, 'post_type' => $plan['post_type'] );
+            foreach ( $fields as $field ) $record[ $field ] = isset( $post->$field ) ? (string) $post->$field : '';
+            $items[] = $record;
+        }
+        return array( 'contract' => 'mad4b.dmc-export-preview.v1', 'plan' => $plan,
+            'items' => $items, 'count' => count( $items ), 'offset' => $offset,
+            'content_export_payload_generated' => true, 'remote_transfer_executed' => false,
+            'channel_contract_verification_before_send_required' => true,
+            'read_only' => true, 'mutation_performed' => false, 'publication_authorized' => false );
+    }
+
+    /**
+     * Converts contracted feed records to exact CPT draft bundle candidates.
+     * The content-apply-bundle endpoint, never this planner, owns mutation,
+     * idempotency, its independent approval and post-write acceptance.
+     */
+    public static function import_prepare( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        $plan = self::dmc_plan( array(
+            'connection_id' => isset( $input['connection_id'] ) ? $input['connection_id'] : '',
+            'mapping_id' => isset( $input['mapping_id'] ) ? $input['mapping_id'] : '',
+            'direction' => 'import',
+        ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( empty( $plan['exchange_plan_ready'] ) )
+            return self::error( 'mad4b_dmc_import_not_ready', 'DMC draft import requires current registered agreement and post-type capabilities.' );
+        $items = isset( $input['items'] ) && is_array( $input['items'] ) ? $input['items'] : array();
+        if ( ! $items || count( $items ) > 20 ) return self::error( 'mad4b_dmc_import_items_invalid', 'One to twenty source records are required.' );
+        $registry = MAD4B_SCP_Market_Growth_Policies::current();
+        if ( is_wp_error( $registry ) ) return $registry;
+        $mapping = $registry['feed_mappings'][ $plan['mapping_id'] ];
+        $fields = isset( $mapping['fields'] ) ? $mapping['fields'] : array( 'post_title', 'post_excerpt' );
+        if ( ! is_array( $fields ) || count( $fields ) > 3 || array_diff( $fields, array( 'post_title', 'post_excerpt', 'post_content' ) ) )
+            return self::error( 'mad4b_dmc_import_fields_invalid', 'Mapping fields are not permitted for safe draft import.' );
+        $out = array(); $seen = array();
+        foreach ( $items as $item ) {
+            $foreign = isset( $item['external_id'] ) ? (string) $item['external_id'] : '';
+            if ( ! is_array( $item ) || ! preg_match( '/^[A-Za-z0-9._:-]{1,128}$/', $foreign ) )
+                return self::error( 'mad4b_dmc_import_identity_invalid', 'Every source record needs a bounded stable external ID.' );
+            if ( isset( $seen[ $foreign ] ) ) return self::error( 'mad4b_dmc_import_duplicate', 'Duplicate external record ID.' );
+            $seen[ $foreign ] = true;
+            $post = array( 'post_status' => 'draft' );
+            foreach ( $fields as $field ) {
+                if ( ! isset( $item[ $field ] ) || ! is_string( $item[ $field ] ) ) continue;
+                $bound = 'post_title' === $field ? 1000 : ( 'post_excerpt' === $field ? 262144 : 2097152 );
+                if ( strlen( $item[ $field ] ) > $bound )
+                    return self::error( 'mad4b_dmc_import_value_excess', 'Source field exceeds WordPress bundle maximum.' );
+                $post[ $field ] = $item[ $field ];
+            }
+            if ( empty( $post['post_title'] ) )
+                return self::error( 'mad4b_dmc_import_title_missing', 'Source item must have a mapped post title.' );
+            $key = 'dmc-' . hash( 'sha256', $plan['connection_id'] . '|' . $plan['mapping_id'] . '|' . $foreign );
+            $out[] = array(
+                'mode' => 'create', 'post_type' => $plan['post_type'], 'operation_key' => $key,
+                'post' => $post, 'external_id' => $foreign,
+                'next_ability' => 'mad4b/content-orchestration-plan',
+                'mutation_ability_after_independent_approval' => 'mad4b/content-apply-bundle',
+            );
+        }
+        return array( 'contract' => 'mad4b.dmc-import-prepare.v1',
+            'plan' => $plan, 'draft_candidates' => $out,
+            'source_feed_trusted_without_independent_validation' => false,
+            'requires_brand_rewriting_and_licensing_check' => true,
+            'requires_existing_duplicate_search_before_creation' => true,
+            'import_written' => false, 'publishing_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+
 }
