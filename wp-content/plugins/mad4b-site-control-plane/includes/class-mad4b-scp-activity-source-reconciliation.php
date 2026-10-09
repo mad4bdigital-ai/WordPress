@@ -54,6 +54,74 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
         return $out;
     }
 
+    /**
+     * Rules/assets/reference sources are not row data. Compare the editorial
+     * source revisions used to draft one WordPress entity with the current
+     * resource revisions, then queue review rather than rewriting content.
+     */
+    public static function context_impact_plan( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        if ( ! current_user_can( 'list_users' ) || ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) ||
+            ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+            ! MAD4B_SCP_Site_Profile::configured() ||
+            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+            return self::fail( 'mad4b_activity_context_site_denied', 'Context impact comparison needs exact enrolled site access.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) ) return $profile;
+        if ( empty( $profile['activity_contract']['enabled'] ) )
+            return self::fail( 'mad4b_activity_context_not_configured', 'Business activity contract must be enabled.' );
+        $targets = isset( $profile['activity_contract']['sync_targets'] ) ? $profile['activity_contract']['sync_targets'] : array();
+        $current = isset( $input['current_revisions'] ) ? $input['current_revisions'] : null;
+        $used = isset( $input['used_revisions'] ) ? $input['used_revisions'] : null;
+        if ( ! is_array( $current ) || ! is_array( $used ) || count( $current ) > 12 || count( $used ) > 12 )
+            return self::fail( 'mad4b_activity_context_versions_invalid', 'Bounded current and previously used revisions required.' );
+        $context = array();
+        foreach ( $targets as $id => $target ) {
+            if ( ! is_array( $target ) || ! isset( $target['purpose'] ) ||
+                'record_data' === $target['purpose'] ) continue;
+            $context[ $id ] = $target;
+        }
+        if ( array_diff( array_keys( $current ), array_keys( $context ) ) ||
+            array_diff( array_keys( $used ), array_keys( $context ) ) )
+            return self::fail( 'mad4b_activity_context_source_unconfigured', 'Context includes an unconfigured source.' );
+        $impact = array(); $review = false;
+        foreach ( $context as $id => $target ) {
+            $ref = isset( $target['source_ref'] ) ? (string) $target['source_ref'] : '';
+            $now = isset( $current[ $id ] ) && is_array( $current[ $id ] ) ? $current[ $id ] : array();
+            $old = isset( $used[ $id ] ) && is_array( $used[ $id ] ) ? $used[ $id ] : array();
+            $matching = '' !== $ref && isset( $now['resource_id'], $old['resource_id'] ) &&
+                $now['resource_id'] === $ref && $old['resource_id'] === $ref &&
+                isset( $now['revision'], $old['revision'] ) &&
+                self::valid_revision( $now['revision'] ) && self::valid_revision( $old['revision'] );
+            if ( ! $matching || ! isset( $now['observed_at'] ) ||
+                ! is_string( $now['observed_at'] ) || ! preg_match( '/^\\d{4}-\\d{2}-\\d{2}T/', $now['observed_at'] ) ||
+                false === strtotime( $now['observed_at'] ) ||
+                strtotime( $now['observed_at'] ) > time() + 60 ||
+                time() - strtotime( $now['observed_at'] ) > 3600 ) {
+                $impact[] = array( 'source_id' => $id, 'purpose' => $target['purpose'],
+                    'status' => 'source_unverified_or_stale', 'action' => 'fresh_provider_readback_and_review' );
+                $review = true;
+                continue;
+            }
+            $changed = ! hash_equals( $now['revision'], $old['revision'] );
+            $impact[] = array( 'source_id' => $id, 'purpose' => $target['purpose'],
+                'status' => $changed ? 'source_revision_changed' : 'same_source_revision',
+                'action' => $changed ? 'evaluate_draft_impact_and_reapprove' : 'no_new_impact_detected' );
+            if ( $changed ) $review = true;
+        }
+        $intent = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
+            'profile_authority_sha256' => $profile['authority_sha256'], 'impact' => $impact );
+        return array( 'contract' => 'mad4b.activity-context-impact.v1',
+            'profile_slug' => $slug, 'comparison_sha256' => self::digest( $intent ),
+            'impact' => $impact, 'review_required' => $review,
+            'source_revisions_cryptographically_verified' => false,
+            'update_authorized' => false, 'publication_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+
     public static function plan( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         if ( ! current_user_can( 'list_users' ) )
@@ -92,7 +160,15 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
             count( $observed ) > self::MAX_SOURCES || count( $baseline ) > self::MAX_SOURCES )
             return self::fail( 'mad4b_activity_reconcile_evidence_missing', 'Bounded observations and a previous baseline are required.' );
         $sources = array( 'wordpress' => array( 'field_keys' => $fields, 'direction' => 'bidirectional', 'provider' => 'wordpress' ) );
+        $context_sources = array();
         foreach ( $targets as $id => $t ) {
+            if ( is_array( $t ) && isset( $t['purpose'] ) && 'record_data' !== $t['purpose'] ) {
+                $context_sources[ $id ] = array( 'provider' => isset( $t['provider'] ) ? $t['provider'] : '',
+                    'source_ref' => isset( $t['source_ref'] ) ? $t['source_ref'] : '',
+                    'purpose' => $t['purpose'],
+                    'requires_policy_impact_review' => 'editorial_policy' === $t['purpose'] );
+                continue;
+            }
             if ( ! is_array( $t ) || ! isset( $t['field_keys'] ) || ! is_array( $t['field_keys'] ) ||
                 isset( $sources[ $id ] ) )
                 return self::fail( 'mad4b_activity_reconcile_source_invalid', 'Source IDs and fields must be unique and configured.' );
@@ -223,7 +299,8 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
             'profile_revision' => $profile['revision'], 'profile_authority_sha256' => $profile['authority_sha256'],
             'entity_id' => $entity_id, 'identity_strategy' => $identity,
             'snapshots' => $snapshots, 'checkpoints' => $checkpoints,
-            'field_owners' => $owners, 'field_results' => $items,
+            'field_owners' => $owners, 'context_sources' => $context_sources,
+            'field_results' => $items,
             'conflicts' => $conflicts, 'copy_proposals' => $proposals,
         );
         $digest = self::digest( $intent );
@@ -232,6 +309,8 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
             'site_uuid' => $site_uuid, 'profile_slug' => $profile['slug'],
             'entity_id' => $entity_id, 'plan_sha256' => $digest,
             'sources_expected' => array_keys( $sources ),
+            'separate_context_sources' => $context_sources,
+            'context_policy_impact_not_assumed' => true,
             'source_revisions' => array_map( static function ( $row ) { return $row['revision']; }, $snapshots ),
             'field_results' => $items, 'conflicts' => $conflicts,
             'copy_proposals' => $proposals,
