@@ -98,7 +98,8 @@ $evidence = array(
     'build_identity' => $plan['build_identity'],
     'observer' => array(
         'contract' => 'mad4b.capability-browser-observer.v1',
-        'javascript_runtime' => true, 'browser_engine' => 'test:Chromium',
+        'javascript_runtime' => true, 'runner_javascript_runtime' => true,
+        'page_javascript_enabled' => false, 'browser_engine' => 'test:Chromium',
         'execution_mode' => 'managed_browser_agent',
         'plan_issued_at' => $plan['challenge']['issued_at'],
     ),
@@ -114,6 +115,8 @@ $evidence = array(
 );
 $method = new ReflectionMethod( $c, 'canonical_json' );
 $method->setAccessible( true );
+native_expect( '{"items":[]}' === $method->invoke( null, array( 'items' => array() ) ),
+    'empty PHP arrays must serialize as JSON lists for cross-language RSA signatures' );
 function native_sign( $evidence, $method, $private_pem ) {
     $material = $method->invoke( null, $evidence );
     openssl_sign( $material, $signed_bytes, $private_pem, OPENSSL_ALGO_SHA256 );
@@ -143,6 +146,12 @@ native_expect( $c::result( $request )['verdict'] === 'PASS' &&
     $c::result( $request )['release_ready'] === false,
     'replayed same signed observation remains observable but cannot issue a release certificate' );
 native_expect( strlen( $passed['receipt_signature'] ) === 64, 'server receipt signed' );
+$bad_js = $request;
+$bad_js['evidence']['observer']['page_javascript_enabled'] = true;
+$bad_js['evidence'] = native_sign( array_diff_key( $bad_js['evidence'],
+    array( 'attestation' => true ) ), $method, $private_pem );
+native_expect( $c::result( $bad_js )['verdict'] === 'BLOCKED',
+    'signed passive observation cannot falsely claim page JavaScript was enabled' );
 $changed = $request;
 $changed['evidence']['cases'][0]['observed']['path'] = '/other/';
 native_expect( $c::result( $changed )['verdict'] === 'BLOCKED',
