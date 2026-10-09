@@ -344,28 +344,64 @@ final class MAD4B_SCP_Activity_Import_Review {
             'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_signed' ),
             'permission_callback' => array( __CLASS__, 'authorize_signed' ) ) );
     }
-    public static function authorize_signed( $request ) {
+    /**
+     * Site-host constant must provide independent source keys. Untrusted JSON
+     * cannot choose or upgrade its identity/role; only the validated key may.
+     * Example host configuration is documented, never committed as a secret.
+     */
+    private static function verified_sender( $request ) {
         if ( ! self::enrolled() ||
             ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
             ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ||
-            ! defined( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET' ) ||
-            ! is_string( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) ||
-            strlen( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) < 32 )
-            return self::error( 'mad4b_import_webhook_disabled', 'Webhook disabled until site-scoped host secret is provisioned.' );
+            ! defined( 'MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS' ) ||
+            ! is_array( MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS ) )
+            return self::error( 'mad4b_import_source_keys_required',
+                'An enrolled Staging site with per-source managed keys is required.' );
+        $key_id = (string) $request->get_header( 'x-mad4b-key-id' );
+        if ( ! preg_match( '/^[a-z][a-z0-9_-]{2,60}$/D', $key_id ) ||
+            ! isset( MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS[ $key_id ] ) )
+            return self::error( 'mad4b_import_key_id_unknown', 'Configured source key identifier required.' );
+        $spec = MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS[ $key_id ];
+        if ( ! is_array( $spec ) || array_diff( array_keys( $spec ),
+            array( 'mode', 'secret', 'profile_slugs', 'site_uuid', 'enabled' ) ) ||
+            empty( $spec['enabled'] ) ||
+            ! isset( $spec['secret'], $spec['mode'], $spec['site_uuid'], $spec['profile_slugs'] ) ||
+            ! is_string( $spec['secret'] ) || strlen( $spec['secret'] ) < 32 ||
+            ! is_string( $spec['site_uuid'] ) ||
+            ! hash_equals( (string) MAD4B_SCP_Site_Profile::site_uuid(), $spec['site_uuid'] ) ||
+            ! in_array( $spec['mode'], array( 'google_apps_script', 'signed_generic_webhook' ), true ) ||
+            ! is_array( $spec['profile_slugs'] ) ||
+            count( $spec['profile_slugs'] ) < 1 || count( $spec['profile_slugs'] ) > 40 )
+            return self::error( 'mad4b_import_key_scope_invalid', 'Site-bound source key must have a valid mode and scoped profiles.' );
         $raw = $request->get_body();
-        if ( ! is_string( $raw ) || strlen( $raw ) > 1048576 )
+        if ( ! is_string( $raw ) || strlen( $raw ) < 2 || strlen( $raw ) > 1048576 )
             return self::error( 'mad4b_import_webhook_size', 'Signed payload must be below 1 MiB.' );
-        $provided = (string) $request->get_header( 'x-mad4b-signature' );
-        $expected = hash_hmac( 'sha256', $raw, MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET );
-        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $provided ) ||
-            ! hash_equals( $expected, $provided ) )
-            return self::error( 'mad4b_import_webhook_signature', 'Valid request signature required.' );
-        return true;
+        $received = (string) $request->get_header( 'x-mad4b-signature' );
+        $expected = hash_hmac( 'sha256', $raw, $spec['secret'] );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $received ) ||
+            ! hash_equals( $expected, $received ) )
+            return self::error( 'mad4b_import_webhook_signature', 'Valid per-source raw-body HMAC is required.' );
+        $data = json_decode( $raw, true );
+        $slug = is_array( $data ) && isset( $data['input']['profile_slug'] ) ?
+            (string) $data['input']['profile_slug'] : '';
+        $claimed = is_array( $data ) && isset( $data['source_mode'] ) ?
+            (string) $data['source_mode'] : '';
+        if ( ! in_array( $slug, $spec['profile_slugs'], true ) ||
+            ! hash_equals( $spec['mode'], $claimed ) )
+            return self::error( 'mad4b_import_source_scope_denied',
+                'Request source mode and exact profile must match its independently managed key.' );
+        return array( 'key_id' => $key_id, 'mode' => $spec['mode'] );
+    }
+    public static function authorize_signed( $request ) {
+        $source = self::verified_sender( $request );
+        return is_wp_error( $source ) ? $source : true;
     }
     public static function receive_signed( $request ) {
         if ( ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
             ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
             return self::error( 'mad4b_import_intake_staging_only', 'External intake is restricted to enrolled Staging.' );
+        $sender = self::verified_sender( $request );
+        if ( is_wp_error( $sender ) ) return $sender;
         $data = json_decode( $request->get_body(), true );
         if ( ! is_array( $data ) || ! isset( $data['issued_at'], $data['nonce'], $data['input'], $data['site_uuid'] ) ||
             ! is_int( $data['issued_at'] ) || abs( time() - $data['issued_at'] ) > 300 ||
@@ -374,7 +410,8 @@ final class MAD4B_SCP_Activity_Import_Review {
             return self::error( 'mad4b_import_webhook_replay_or_site', 'Fresh site-bound signed request required.' );
         // Reuse the same profile validator; inbound HMAC carries data authority
         // only for STAGING, never a WordPress-post mutation or approval.
-        $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256', $data['site_uuid'] . '|' . $data['nonce'] );
+        $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256',
+            $data['site_uuid'] . '|' . $sender['key_id'] . '|' . $data['nonce'] );
         if ( ! add_option( $nonce_key, time(), '', false ) )
             return self::error( 'mad4b_import_webhook_replay', 'Webhook nonce already accepted.' );
         // Nonces remain rejected for the entire signature-validity window,
@@ -385,11 +422,9 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_webhook_input', 'Invalid import input.' );
         $preview = self::inspect( $input );
         if ( is_wp_error( $preview ) ) return $preview;
-        $source_mode = isset( $data['source_mode'] ) ? (string) $data['source_mode'] : 'google_apps_script';
-        if ( ! in_array( $source_mode, array( 'google_apps_script', 'signed_generic_webhook' ), true ) )
-            return self::error( 'mad4b_import_intake_source_invalid', 'Only registered signed-push source modes are accepted.' );
+        $source_mode = $sender['mode'];
         $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
-            $preview['profile_slug'], $input, $preview, $source_mode, $data['site_uuid'] );
+            $preview['profile_slug'], $input, $preview, $source_mode, $sender['key_id'] );
         if ( is_wp_error( $receipt ) ) return $receipt;
         return $receipt;
     }
