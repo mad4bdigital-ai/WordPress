@@ -179,7 +179,14 @@ $head = str_repeat( 'a', 40 );
 $hash = str_repeat( 'b', 64 );
 $plan = array(
 	'plan_sha256' => $hash,
-	'plan_binding' => array( 'source_commit_sha' => $head ),
+	'plan_binding' => array(
+		'source_commit_sha' => $head,
+		'site_uuid' => '123e4567-e89b-42d3-a456-426614174000',
+		'site_profile_digest' => str_repeat( 'f', 64 ),
+		'site_origin' => 'https://staging.example.test',
+		'environment' => 'staging',
+		'nonproduction_site_ready' => true,
+	),
 	'current_ready' => true,
 	'gate_coverage_complete' => true,
 	'blocking_gates' => array(),
@@ -224,4 +231,55 @@ $bad_source = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
 );
 $check( $bad_source['state'] === 'CURRENT_BUILD_IDENTITY_UNAVAILABLE' &&
 	$bad_source['ready'] === false, 'unknown package identity is never ready' );
+
+// Cross-tenant / wrong environment / stale profile grants must never be
+// inferred from the same Git commit and matching semantically valid plan.
+$other_site = $plan;
+$other_site['plan_binding']['site_uuid'] = '';
+$wrong_site = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$other_site, $hash, $head, false
+);
+$check( $wrong_site['state'] === 'GOVERNED_SITE_IDENTITY_UNAVAILABLE' &&
+	$wrong_site['ready'] === false, 'missing tenant site UUID denied' );
+$untrusted_profile = $plan;
+$untrusted_profile['plan_binding']['site_profile_digest'] = 'unknown';
+$wrong_profile = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$untrusted_profile, $hash, $head, false
+);
+$check( $wrong_profile['state'] === 'GOVERNED_SITE_IDENTITY_UNAVAILABLE',
+	'stale/invalid Site Profile revision cannot certify Staging' );
+$prod = $plan;
+$prod['plan_binding']['environment'] = 'production';
+$wrong_env = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$prod, $hash, $head, false
+);
+$check( $wrong_env['state'] === 'GOVERNED_SITE_IDENTITY_UNAVAILABLE' &&
+	$wrong_env['ready'] === false, 'production profile cannot certify as Staging' );
+$unset_proof = $plan;
+$unset_proof['plan_binding']['nonproduction_site_ready'] = false;
+$wrong_grant = MAD4B_SCP_Staging_Certification::compare_convergence_plan(
+	$unset_proof, $hash, $head, false
+);
+$check( $wrong_grant['ready'] === false,
+	'nonproduction eligibility must be verified independently' );
+$generic = MAD4B_SCP_Staging_Certification::complete_convergence_coverage( array(), array(
+	array( 'action_id' => 'provider_defined_read', 'kind' => 'custom_safe_hint',
+		'automatic_execution_allowed' => true ),
+) );
+$check( $generic['actions'][0]['automatic_execution_allowed'] === false &&
+	$generic['actions'][0]['external_execution_authority_granted'] === false,
+	'unknown provider kind may not inherit automatic execution');
+$collision = MAD4B_SCP_Staging_Certification::complete_convergence_coverage(
+	array( 'future_gate' => array( 'ready' => false ) ),
+	array( array( 'action_id' => 'review_gate_future_gate',
+		'kind' => 'read_only_followup', 'automatic_execution_allowed' => true ) )
+);
+$check( $collision['coverage_complete'] === false &&
+	in_array( 'generated_action_identity_collision:review_gate_future_gate',
+		$collision['plan_integrity_blockers'], true ),
+	'generated fallback cannot overwrite provider-owned action');
+foreach ( $collision['actions'] as $item ) {
+	$check( $item['automatic_execution_allowed'] === false,
+		'conflicting remediation route is non-executable');
+}
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;
