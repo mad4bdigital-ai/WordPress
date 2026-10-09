@@ -1,0 +1,222 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * IMP03 review-only storage and approval of an exact source snapshot.
+ * No post creation/update, provider dispatch or WP All Import execution.
+ * Staging only. Active snapshot is stored in a nonautoloaded option with
+ * authenticated encryption, so review is bound to EXACT source bytes.
+ */
+final class MAD4B_SCP_Activity_Import_Snapshot {
+    const CONTRACT = 'mad4b.activity-import-snapshot.v1';
+    private static function err( $code, $message ) { return new WP_Error( $code, $message ); }
+    private static function digest( $v ) {
+        $json = wp_json_encode( $v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
+    }
+    private static function data_key() {
+        if ( ! defined( 'MAD4B_ACTIVITY_IMPORT_DATA_KEY' ) ||
+            ! is_string( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) ||
+            strlen( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) < 32 ||
+            ! function_exists( 'openssl_encrypt' ) ||
+            ! function_exists( 'openssl_decrypt' ) ||
+            ! in_array( 'aes-256-gcm', openssl_get_cipher_methods(), true ) )
+            return self::err( 'mad4b_import_data_key_unavailable',
+                'A dedicated 32+ character host-managed import encryption key and AES-GCM are required.' );
+        return hash( 'sha256', MAD4B_ACTIVITY_IMPORT_DATA_KEY . '|' .
+            MAD4B_SCP_Site_Profile::site_uuid(), true );
+    }
+    public static function option_key( $profile_slug ) {
+        return 'mad4b_activity_import_review_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $profile_slug );
+    }
+    private static function approval_key( $slug, $snapshot_sha ) {
+        return 'mad4b_import_approval_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $snapshot_sha );
+    }
+    private static function environment_ready() {
+        return class_exists( 'MAD4B_SCP_Site_Profile' ) &&
+            MAD4B_SCP_Site_Profile::configured() &&
+            MAD4B_SCP_Site_Profile::origin_enrolled() &&
+            MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
+            MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
+    }
+    public static function stage( $slug, $input, $preview, $source_mode, $source_identity = '' ) {
+        if ( ! self::environment_ready() ) return self::err( 'mad4b_import_snapshot_staging_only', 'Staging enrolled site required.' );
+        $key = self::data_key();
+        if ( is_wp_error( $key ) ) return $key;
+        if ( ! is_array( $input ) || ! is_array( $preview ) ||
+            ! preg_match( '/^[a-z0-9_-]{2,48}$/D', (string) $slug ) ||
+            ! isset( $preview['plan_sha256'], $preview['policy_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) $preview['plan_sha256'] ) )
+            return self::err( 'mad4b_import_snapshot_invalid', 'Bounded source and policy-bound preview required.' );
+        $json = wp_json_encode( $input, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        if ( ! is_string( $json ) || strlen( $json ) > 1048576 ||
+            ! function_exists( 'random_bytes' ) )
+            return self::err( 'mad4b_import_snapshot_size', 'Bounded JSON snapshot required.' );
+        $data_sha = hash( 'sha256', $json );
+        $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+            $data_sha . '|' . $preview['policy_sha256'];
+        $nonce = random_bytes( 12 );
+        $tag = '';
+        $cipher = openssl_encrypt( $json, 'aes-256-gcm', $key, OPENSSL_RAW_DATA,
+            $nonce, $tag, $aad, 16 );
+        if ( ! is_string( $cipher ) || strlen( $tag ) !== 16 )
+            return self::err( 'mad4b_import_snapshot_encrypt', 'Authenticated snapshot encryption failed.' );
+        $record = array(
+            'contract' => self::CONTRACT, 'state' => 'requires_review',
+            'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'source' => $source_mode,
+            'source_identity_sha256' => hash( 'sha256', (string) $source_identity ),
+            'received_at' => gmdate( 'c' ),
+            'payload_sha256' => $data_sha,
+            'policy_sha256' => $preview['policy_sha256'],
+            'snapshot_sha256' => hash( 'sha256', $aad . '|' . $preview['plan_sha256'] ),
+            'plan' => $preview,
+            'ciphertext' => base64_encode( $cipher ),
+            'nonce' => base64_encode( $nonce ),
+            'tag' => base64_encode( $tag )
+        );
+        $store = self::option_key( $slug );
+        if ( ! add_option( $store, $record, '', false ) )
+            return self::err( 'mad4b_import_review_pending', 'Another immutable review is already staged.' );
+        $persisted = get_option( $store, false );
+        if ( ! is_array( $persisted ) || self::digest( $persisted ) !== self::digest( $record ) )
+            return self::err( 'mad4b_import_snapshot_readback_failed', 'Staging receipt could not be independently read back.' );
+        return array( 'contract' => self::CONTRACT, 'staged' => true,
+            'snapshot_sha256' => $record['snapshot_sha256'],
+            'payload_sha256' => $data_sha, 'plan_sha256' => $preview['plan_sha256'],
+            'issue_count' => $preview['issue_count_observed'],
+            'status' => 'requires_review', 'post_writes' => 0 );
+    }
+    public static function raw_snapshot( $slug, $expected_sha ) {
+        if ( ! self::environment_ready() || ! current_user_can( 'manage_options' ) )
+            return self::err( 'mad4b_import_snapshot_read_denied', 'Enrolled staging administrator required.' );
+        $record = get_option( self::option_key( $slug ), false );
+        if ( ! is_array( $record ) || ! isset( $record['contract'] ) ||
+            self::CONTRACT !== $record['contract'] ||
+            ! isset( $record['snapshot_sha256'] ) ||
+            ! is_string( $expected_sha ) ||
+            ! hash_equals( $record['snapshot_sha256'], $expected_sha ) )
+            return self::err( 'mad4b_import_snapshot_stale', 'Exact snapshot receipt required.' );
+        $key = self::data_key();
+        if ( is_wp_error( $key ) ) return $key;
+        $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+            $record['payload_sha256'] . '|' . $record['policy_sha256'];
+        $json = openssl_decrypt( base64_decode( $record['ciphertext'], true ),
+            'aes-256-gcm', $key, OPENSSL_RAW_DATA,
+            base64_decode( $record['nonce'], true ), base64_decode( $record['tag'], true ), $aad );
+        if ( ! is_string( $json ) || ! hash_equals( $record['payload_sha256'],
+            hash( 'sha256', $json ) ) )
+            return self::err( 'mad4b_import_snapshot_tampered', 'Snapshot authentication or source digest failed.' );
+        $input = json_decode( $json, true );
+        if ( ! is_array( $input ) )
+            return self::err( 'mad4b_import_snapshot_json_invalid', 'Encrypted source JSON invalid.' );
+        return array( 'input' => $input, 'receipt' => $record );
+    }
+    private static function check_current( $record ) {
+        $slug = $record['profile_slug'];
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) )
+            return self::err( 'mad4b_import_snapshot_profile_invalid', 'Profile disabled or missing.' );
+        $policy = isset( $profile['activity_contract']['import_modes']['validation'] ) ?
+            $profile['activity_contract']['import_modes']['validation'] : array();
+        if ( ! $policy || self::digest( $policy ) !== $record['policy_sha256'] ||
+            (string) $profile['revision'] !== (string) $record['plan']['profile_revision'] ||
+            (string) $profile['authority_sha256'] !== (string) $record['plan']['authority_sha256'] )
+            return self::err( 'mad4b_import_snapshot_authority_drift',
+                'Profile or site-owned validation changed since intake.' );
+        return true;
+    }
+    public static function approve( $slug, $expected_sha, $confirmed ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::environment_ready() ||
+            true !== $confirmed )
+            return self::err( 'mad4b_import_approval_denied', 'Exact administrator approval is required.' );
+        $loaded = self::raw_snapshot( $slug, $expected_sha );
+        if ( is_wp_error( $loaded ) ) return $loaded;
+        $record = $loaded['receipt'];
+        $current = self::check_current( $record );
+        if ( is_wp_error( $current ) ) return $current;
+        // Inspection is rerun against the SAME decrypted source before approval.
+        $fresh = MAD4B_SCP_Activity_Import_Review::plan( $loaded['input'] );
+        if ( is_wp_error( $fresh ) || ! hash_equals( $record['plan']['plan_sha256'],
+            isset( $fresh['plan_sha256'] ) ? $fresh['plan_sha256'] : '' ) )
+            return self::err( 'mad4b_import_snapshot_review_stale', 'Validation output changed since staging.' );
+        $block_count = isset( $fresh['block_issue_count'] ) ? (int) $fresh['block_issue_count'] : -1;
+        if ( $block_count !== 0 || ! empty( $fresh['issues_truncated'] ) )
+            return self::err( 'mad4b_import_approval_blocked', 'Resolve all blocking issues before acceptance.' );
+        $approval = array(
+            'contract' => 'mad4b.import-approval.v1',
+            'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'snapshot_sha256' => $expected_sha,
+            'payload_sha256' => $record['payload_sha256'],
+            'plan_sha256' => $record['plan']['plan_sha256'],
+            'policy_sha256' => $record['policy_sha256'],
+            'approved_at' => gmdate( 'c' ),
+            'reviewer_user_id' => (int) get_current_user_id(),
+            'warning_count_acknowledged' => isset( $fresh['review_issue_count'] ) ?
+                (int) $fresh['review_issue_count'] : 0,
+            'authorization_scope' => 'manual_approved_snapshot_export_only',
+            'wordpress_post_writes' => 0
+        );
+        $key = self::approval_key( $slug, $expected_sha );
+        if ( ! add_option( $key, $approval, '', false ) )
+            return self::err( 'mad4b_import_approval_already_exists', 'Approval already recorded; read existing receipt.' );
+        if ( self::digest( get_option( $key, false ) ) !== self::digest( $approval ) )
+            return self::err( 'mad4b_import_approval_readback_failure', 'Independent approval readback failed.' );
+        return $approval;
+    }
+    public static function approval( $slug, $snapshot_sha ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::environment_ready() )
+            return self::err( 'mad4b_import_approval_read_denied', 'Staging administrator required.' );
+        $loaded = self::raw_snapshot( $slug, $snapshot_sha );
+        if ( is_wp_error( $loaded ) ) return $loaded;
+        $current = self::check_current( $loaded['receipt'] );
+        if ( is_wp_error( $current ) ) return $current;
+        $approval = get_option( self::approval_key( $slug, $snapshot_sha ), false );
+        if ( ! is_array( $approval ) || ! isset( $approval['snapshot_sha256'],
+            $approval['policy_sha256'], $approval['payload_sha256'] ) ||
+            ! hash_equals( $approval['snapshot_sha256'], $snapshot_sha ) ||
+            ! hash_equals( $approval['policy_sha256'], $loaded['receipt']['policy_sha256'] ) ||
+            ! hash_equals( $approval['payload_sha256'], $loaded['receipt']['payload_sha256'] ) )
+            return self::err( 'mad4b_import_not_approved', 'Source snapshot is not approved.' );
+        return $approval;
+    }
+    public static function export_approved_csv( $slug, $snapshot_sha ) {
+        $approved = self::approval( $slug, $snapshot_sha );
+        if ( is_wp_error( $approved ) ) return $approved;
+        $loaded = self::raw_snapshot( $slug, $snapshot_sha );
+        if ( is_wp_error( $loaded ) ) return $loaded;
+        $input = $loaded['input'];
+        $headers = isset( $input['headers'] ) ? $input['headers'] : array();
+        $rows = isset( $input['rows'] ) ? $input['rows'] : array();
+        if ( ! is_array( $headers ) || ! is_array( $rows ) ||
+            count( $rows ) > 500 || count( $headers ) > 80 )
+            return self::err( 'mad4b_import_export_invalid', 'Approved snapshot out of bounds.' );
+        if ( headers_sent() ) return self::err( 'mad4b_import_export_headers_sent', 'Cannot stream after headers.' );
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="mad4b-approved-' .
+            substr( $snapshot_sha, 0, 16 ) . '.csv"' );
+        header( 'X-Content-Type-Options: nosniff' );
+        $out = fopen( 'php://output', 'wb' );
+        if ( false === $out ) return self::err( 'mad4b_import_export_failed', 'Output stream unavailable.' );
+        fputcsv( $out, $headers );
+        foreach ( $rows as $row ) {
+            $ordered = array();
+            foreach ( $headers as $key ) {
+                $v = isset( $row[ $key ] ) ? (string) $row[ $key ] : '';
+                // No CSV formula injection in downstream editors.
+                if ( preg_match( '/^[=+@]/', ltrim( $v ) ) ||
+                    ( preg_match( '/^-(?!\\d+(?:\\.\\d+)?$)/', ltrim( $v ) ) ) ) {
+                    fclose( $out );
+                    return self::err( 'mad4b_import_csv_formula_denied', 'Unsafe cell escaped preview guard.' );
+                }
+                $ordered[] = $v;
+            }
+            fputcsv( $out, $ordered );
+        }
+        fclose( $out );
+        exit;
+    }
+}
