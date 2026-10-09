@@ -28,6 +28,8 @@ assert(registry.includes("DECLARATIVE_PROVIDER_CONTRACT"), "generic capability p
 const genericDriver = fs.readFileSync(path.join(here, "declarative-capability-driver.mjs"), "utf8");
 assert(genericDriver.includes("certification_issued: false"), "generic observations must not certify themselves");
 assert(genericDriver.includes("permittedCaseKeys"), "untrusted case actions must be blocked");
+assert(genericDriver.includes("javaScriptEnabled: false"), "generic site scripts must be disabled");
+assert(genericDriver.includes("allowedDocumentPaths:"), "generic navigation must be scoped to the signed case plan");
 assert(!genericDriver.includes("eval(") && !genericDriver.includes("new Function("),
   "no arbitrary executable site JS");
 const generic = fs.readFileSync(path.join(here, "run-live-site-browser-acceptance.mjs"), "utf8");

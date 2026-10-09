@@ -52,14 +52,17 @@ export function allowedHostSet(origin, env = process.env) {
 // asset hosts are allowed, regardless of resource type.
 
 export function requestBoundaryDecision({
-  url, resourceType, origin, env = process.env, method = "GET", passiveOnly = false
+  url, resourceType, origin, env = process.env, method = "GET", passiveOnly = false,
+  allowedDocumentPaths = null
 }) {
   const raw = String(url || "");
   if (passiveOnly) {
     const verb = String(method || "").toUpperCase();
     if (!["GET", "HEAD"].includes(verb)) return { allow: false, reason: "passive_method_denied" };
-    if (["websocket", "eventsource"].includes(String(resourceType || "").toLowerCase())) {
-      return { allow: false, reason: "passive_stream_denied" };
+    const kind = String(resourceType || "").toLowerCase();
+    if (["script", "xhr", "fetch", "websocket", "eventsource",
+      "worker", "sharedworker", "serviceworker"].includes(kind)) {
+      return { allow: false, reason: "passive_active_resource_denied" };
     }
     if (/^(?:blob|data):/i.test(raw) &&
         ["script", "document", "worker", "sharedworker", "serviceworker"].includes(
@@ -74,6 +77,12 @@ export function requestBoundaryDecision({
   catch { return { allow: false, reason: "invalid_url" }; }
 
   if (parsed.protocol !== "https:") return { allow: false, reason: "non_https_network_request" };
+  if (passiveOnly && String(resourceType || "").toLowerCase() === "document") {
+    if (!Array.isArray(allowedDocumentPaths) || !allowedDocumentPaths.includes(parsed.pathname) ||
+        parsed.search || parsed.hash || parsed.origin !== new URL(origin).origin) {
+      return { allow: false, reason: "passive_document_not_in_signed_plan" };
+    }
+  }
   if (passiveOnly &&
       /\/(?:wp-admin|wp-json)(?:\/|$)|\/(?:wp-login\.php|xmlrpc\.php|wp-cron\.php)(?:$|\/)/i.test(parsed.pathname)) {
     return { allow: false, reason: "passive_admin_or_api_denied" };
@@ -98,9 +107,15 @@ export function requestBoundaryDecision({
 }
 
 export async function installContextNetworkBoundary(context, origin, env = process.env, {
-  passiveOnly = false
+  passiveOnly = false, allowedDocumentPaths = null
 } = {}) {
   if (!context || typeof context.route !== "function") throw new Error("browser_context_route_unavailable");
+  if (passiveOnly && (!Array.isArray(allowedDocumentPaths) ||
+      allowedDocumentPaths.length < 1 || allowedDocumentPaths.length > 8 ||
+      allowedDocumentPaths.some(path => typeof path !== "string" || !path.startsWith("/")) ||
+      new Set(allowedDocumentPaths).size !== allowedDocumentPaths.length)) {
+    throw new Error("browser_passive_document_scope_invalid");
+  }
   if (passiveOnly) {
     // Playwright's HTTP route() does NOT intercept WebSockets. The separate
     // API must be armed before page creation or the passive guarantee fails.
@@ -118,6 +133,7 @@ export async function installContextNetworkBoundary(context, origin, env = proce
       resourceType: request.resourceType(),
       method: typeof request.method === "function" ? request.method() : "INVALID",
       passiveOnly,
+      allowedDocumentPaths,
       origin,
       env
     });
@@ -131,6 +147,7 @@ export async function installContextNetworkBoundary(context, origin, env = proce
     active_cross_origin_denied: true,
     passive_cross_origin_assets_allowed: false,
     passive_only_requests: passiveOnly,
+    exact_signed_document_paths: passiveOnly ? allowedDocumentPaths.length : 0,
     websocket_network_denied: passiveOnly
   };
 }

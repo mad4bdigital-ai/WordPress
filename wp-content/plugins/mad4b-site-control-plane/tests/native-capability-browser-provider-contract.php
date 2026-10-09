@@ -50,7 +50,8 @@ class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 function home_url( $path = '/' ) { return 'https://demo.example' . $GLOBALS['native_prefix'] . $path; }
 function wp_salt( $scheme = '' ) { return str_repeat( 'native-secret-', 5 ); }
 function get_posts( $args ) {
-    native_expect( $args['post_type'] === 'page' && $args['post_status'] === 'publish',
+    native_expect( $args['post_type'] === 'page' && $args['post_status'] === 'publish' &&
+        $args['posts_per_page'] === MAD4B_SCP_Native_Capability_Browser_Provider::MAX_SCAN,
         'only publicly published pages qualify' );
     return array(
         (object) array( 'ID' => 3, 'post_type' => 'page', 'post_status' => 'publish',
@@ -58,6 +59,10 @@ function get_posts( $args ) {
         (object) array( 'ID' => 4, 'post_type' => 'page', 'post_status' => 'draft',
             'post_password' => '' ),
         (object) array( 'ID' => 42, 'post_type' => 'page', 'post_status' => 'publish',
+            'post_password' => '' ),
+        (object) array( 'ID' => 42, 'post_type' => 'page', 'post_status' => 'publish',
+            'post_password' => '' ),
+        (object) array( 'ID' => 43, 'post_type' => 'page', 'post_status' => 'publish',
             'post_password' => '' )
     );
 }
@@ -145,6 +150,24 @@ native_expect( $c::result( $bad_key_id )['verdict'] === 'BLOCKED',
 $changed = $request; $changed['evidence']['cases'][0]['challenge_nonce'] = str_repeat( '0', 32 );
 native_expect( $c::result( $changed )['verdict'] === 'BLOCKED',
     'challenge nonce tampering rejects stateless plan reconstruction' );
+$malformed = $request;
+$malformed['evidence']['cases'][0]['http_status'] = '200';
+$malformed['evidence'] = native_sign( array_diff_key( $malformed['evidence'],
+    array( 'attestation' => true ) ), $method, $private_pem );
+native_expect( $c::result( $malformed )['verdict'] === 'BLOCKED',
+    'signed string HTTP status is evidence infrastructure failure, not product defect' );
+$malformed = $request;
+$malformed['evidence']['observer']['release_ready'] = true;
+$malformed['evidence'] = native_sign( array_diff_key( $malformed['evidence'],
+    array( 'attestation' => true ) ), $method, $private_pem );
+native_expect( $c::result( $malformed )['verdict'] === 'BLOCKED',
+    'signed observer cannot invent release-ready claim' );
+$malformed = $request;
+$malformed['evidence']['business_state_mutated'] = true;
+$malformed['evidence'] = native_sign( array_diff_key( $malformed['evidence'],
+    array( 'attestation' => true ) ), $method, $private_pem );
+native_expect( $c::result( $malformed )['verdict'] === 'BLOCKED',
+    'signed extra evidence fields rejected' );
 $changed = $request; $changed['plan_signature'] = str_repeat( '0', 64 );
 native_expect( $c::result( $changed )['verdict'] === 'BLOCKED', 'forged plan signature denied' );
 $changed = $request; $changed['evidence']['observer']['plan_issued_at'] -= 2000;

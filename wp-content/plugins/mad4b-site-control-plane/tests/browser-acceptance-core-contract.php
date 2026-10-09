@@ -353,6 +353,24 @@ $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => 
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
 
 // Signed digest inputs and explicit selectors must never be normalized.
+$bad_role = browser_safe_provider( 'bad-role' );
+$bad_role['descriptor_callback'] = function () {
+    $descriptor = browser_safe_descriptor( 'bad-role' );
+    $descriptor['selection_role'] = 'force-primary';
+    return $descriptor;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'bad-role' => $bad_role );
+browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ),
+    'provider cannot inject arbitrary selection role' );
+$secondary = browser_safe_provider( 'secondary' );
+$secondary['descriptor_callback'] = function () {
+    $descriptor = browser_safe_descriptor( 'secondary' );
+    $descriptor['selection_role'] = 'supplemental';
+    return $descriptor;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'secondary' => $secondary );
+browser_expect( 1 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ),
+    'reviewed supplemental selection role is permitted without authority' );
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
 $null_plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => null, 'profile_id' => 'site.v1' ) );
 browser_expect( 'blocked' === $null_plan['state'] && in_array( 'provider_id_invalid', $null_plan['blocking_reasons'], true ), 'explicit null cannot invoke provider auto-selection' );

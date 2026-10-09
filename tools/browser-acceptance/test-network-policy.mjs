@@ -96,7 +96,8 @@ for (const req of [
 ]) assert.equal(requestBoundaryDecision({...req,origin,env,passiveOnly:true}).allow,false);
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/public/",method:"GET",
-  resourceType:"document",origin,env,passiveOnly:true
+  resourceType:"document",origin,env,passiveOnly:true,
+  allowedDocumentPaths:["/public/"]
 }).allow,true);
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/wp-admin/admin-ajax.php",method:"POST",
@@ -107,14 +108,37 @@ const fakeContext={
   async routeWebSocket(pattern, handler) { rules.push({type:"ws",pattern,handler}); },
   async route(pattern,handler) { rules.push({type:"http",pattern,handler}); }
 };
-const report=await installContextNetworkBoundary(fakeContext,origin,env,{passiveOnly:true});
+const report=await installContextNetworkBoundary(fakeContext,origin,env,{
+  passiveOnly:true,allowedDocumentPaths:["/public/"]
+});
 assert.equal(report.websocket_network_denied,true);
 assert.deepEqual(rules.map(r=>r.type),["ws","http"]); // Must arm socket denial first.
 let closed=false;
 await rules[0].handler({ close:async()=>{closed=true;} });
 assert.equal(closed,true);
 await assert.rejects(
-  installContextNetworkBoundary({route:async()=>{}},origin,env,{passiveOnly:true}),
+  installContextNetworkBoundary({route:async()=>{}},origin,env,{
+    passiveOnly:true,allowedDocumentPaths:["/public/"]
+  }),
   /browser_websocket_boundary_unavailable/
 );
+for (const testCase of [
+  {url:origin+"wp-json/data",resourceType:"document",method:"GET"},
+  {url:origin+"other/",resourceType:"document",method:"GET"},
+  {url:origin+"public/?mutate=1",resourceType:"document",method:"GET"},
+  {url:origin+"public/",resourceType:"script",method:"GET"},
+  {url:origin+"public/",resourceType:"xhr",method:"GET"},
+  {url:"https://cdn.example.com/public/",resourceType:"document",method:"GET"}
+]) {
+  assert.equal(requestBoundaryDecision({...testCase,origin,env,passiveOnly:true,
+    allowedDocumentPaths:["/public/"]}).allow,false);
+}
+assert.equal(requestBoundaryDecision({
+  url:origin+"public/",resourceType:"document",method:"GET",origin,env,
+  passiveOnly:true,allowedDocumentPaths:["/public/"]
+}).allow,true);
+assert.equal(report.exact_signed_document_paths,1);
+await assert.rejects(installContextNetworkBoundary(fakeContext,origin,env,{
+  passiveOnly:true,allowedDocumentPaths:[]
+}),/browser_passive_document_scope_invalid/);
 console.log("MAD4B browser network boundary PASS");

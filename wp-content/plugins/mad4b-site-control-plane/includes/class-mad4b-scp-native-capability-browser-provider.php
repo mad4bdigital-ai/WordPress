@@ -14,6 +14,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
     const EVIDENCE = 'mad4b.capability-browser-evidence.v1';
     const PROFILE = 'public-canonical';
     const MAX_CASES = 4;
+    const MAX_SCAN = 32;
     const VALID_SECONDS = 600;
 
     public static function register( $providers ) {
@@ -34,6 +35,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
     public static function descriptor() {
         return array(
             'contract' => self::CONTRACT, 'provider_id' => self::ID,
+            // A generic observation is supplemental to a site-specific
+            // semantic contract, never a replacement for that contract.
+            'selection_role' => 'supplemental',
             'recognition' => array( 'source_post_types' => array( 'page' ) ),
             'read_only' => true, 'authorizing' => false,
             'execution_mode' => 'external_browser_agent',
@@ -169,16 +173,21 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! function_exists( 'wp_get_canonical_url' ) ) return array();
         $posts = get_posts( array(
             'post_type' => 'page', 'post_status' => 'publish',
-            'posts_per_page' => self::MAX_CASES, 'orderby' => 'ID', 'order' => 'ASC',
+            'posts_per_page' => self::MAX_SCAN, 'orderby' => 'ID', 'order' => 'ASC',
             'suppress_filters' => false, 'no_found_rows' => true,
         ) );
         if ( ! is_array( $posts ) ) return array();
         $cases = array();
+        $seen_ids = array();
+        $seen_paths = array();
         foreach ( $posts as $post ) {
+            if ( count( $cases ) >= self::MAX_CASES ) break;
             if ( ! is_object( $post ) || ! isset( $post->ID ) || (int) $post->ID <= 0 ||
                 ( $post->post_type ?? '' ) !== 'page' ||
                 ( $post->post_status ?? '' ) !== 'publish' ||
-                ! empty( $post->post_password ) ) continue;
+                ! empty( $post->post_password ) ||
+                isset( $seen_ids[ (int) $post->ID ] ) ) continue;
+            $seen_ids[ (int) $post->ID ] = true;
             $permalink = get_permalink( (int) $post->ID );
             $canonical = wp_get_canonical_url( (int) $post->ID );
             if ( ! is_string( $permalink ) || ! is_string( $canonical ) ||
@@ -194,6 +203,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             if ( ! preg_match( '#^/(?!/)[a-zA-Z0-9~._/%-]*$#D', $path ) ||
                 preg_match( '~(?:\\.\\.|%2e|%2f|%5c|%00|\\\\|#)~i', $path ) ||
                 preg_match( '~(?:^|/)(?:wp-admin|wp-json|wp-login\\.php|xmlrpc\\.php|wp-cron\\.php)(?:/|$)~i', $path ) ) continue;
+            if ( isset( $seen_paths[ $path ] ) ) continue;
+            $seen_paths[ $path ] = true;
             $cases[] = array(
                 'case_id' => 'page-' . (int) $post->ID,
                 'capability_id' => 'seo.canonical',
@@ -266,6 +277,17 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
                 return self::blocked( 'result', array( 'plan_signature_or_digest_mismatch' ) );
             }
         }
+        if ( array_diff( array_keys( $evidence ), array(
+                'contract', 'plan_digest', 'plan_signature', 'origin',
+                'build_identity', 'observer', 'cases', 'attestation'
+            ) ) ||
+            ! is_array( $evidence['observer'] ?? null ) ||
+            array_diff( array_keys( $evidence['observer'] ), array(
+                'contract', 'javascript_runtime', 'browser_engine',
+                'execution_mode', 'plan_issued_at'
+            ) ) ) {
+            return self::blocked( 'result', array( 'browser_evidence_unknown_fields' ) );
+        }
         if ( ( $evidence['contract'] ?? '' ) !== self::EVIDENCE ||
             ( $evidence['origin'] ?? '' ) !== $plan['origin'] ||
             ( $evidence['build_identity'] ?? null ) !== $plan['build_identity'] ||
@@ -273,7 +295,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ( $evidence['observer']['javascript_runtime'] ?? null ) !== true ||
             ( $evidence['observer']['execution_mode'] ?? '' ) !== 'managed_browser_agent' ||
             ! is_string( $evidence['observer']['browser_engine'] ?? null ) ||
-            '' === trim( $evidence['observer']['browser_engine'] ) ) {
+            ! preg_match( '/^[\\x20-\\x7e]{1,160}$/D', $evidence['observer']['browser_engine'] ) ) {
             return self::blocked( 'result', array( 'browser_evidence_envelope_invalid' ) );
         }
         if ( ! isset( $evidence['cases'] ) || ! is_array( $evidence['cases'] ) ||
@@ -284,6 +306,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             return self::blocked( 'result', array( 'browser_attestation_untrusted' ) );
         }
         $match = true;
+        $shape_invalid = false;
         foreach ( $plan['cases'] as $index => $expected ) {
             $observed = $evidence['cases'][ $index ] ?? null;
             if ( ! is_array( $observed ) ||
@@ -291,7 +314,15 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
                     'case_id', 'capability_id', 'probe_type', 'challenge_nonce',
                     'http_status', 'observed', 'matches_expected', 'certification_issued', 'authorizing'
                 ) ) ||
-                ( $observed['case_id'] ?? '' ) !== $expected['case_id'] ||
+                ! is_int( $observed['http_status'] ?? null ) ||
+                ! is_bool( $observed['matches_expected'] ?? null ) ||
+                ! is_array( $observed['observed'] ?? null ) ||
+                array_keys( $observed['observed'] ) !== array( 'path' ) ||
+                ! is_string( $observed['observed']['path'] ?? null ) ) {
+                $shape_invalid = true;
+                continue;
+            }
+            if ( ( $observed['case_id'] ?? '' ) !== $expected['case_id'] ||
                 ( $observed['capability_id'] ?? '' ) !== $expected['capability_id'] ||
                 ( $observed['probe_type'] ?? '' ) !== $expected['probe_type'] ||
                 ( $observed['challenge_nonce'] ?? '' ) !== $plan['challenge']['nonce'] ||
@@ -299,13 +330,12 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
                 ( $observed['http_status'] ?? 0 ) > 299 ||
                 ( $observed['authorizing'] ?? null ) !== false ||
                 ( $observed['certification_issued'] ?? null ) !== false ||
-                ! is_array( $observed['observed'] ?? null ) ||
-                array_keys( $observed['observed'] ) !== array( 'path' ) ||
                 ( $observed['matches_expected'] ?? null ) !== true ||
                 ( $observed['observed']['path'] ?? null ) !== $expected['expected']['path'] ) {
                 $match = false;
             }
         }
+        if ( $shape_invalid ) return self::blocked( 'result', array( 'browser_case_schema_invalid' ) );
         $verdict = $match ? 'PASS' : 'FAIL';
         $evidence_digest = hash( 'sha256', self::canonical_json( $evidence ) );
         $secret = (string) wp_salt( 'auth' );

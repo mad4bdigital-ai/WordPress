@@ -71,6 +71,9 @@ const page={
 const browser={
  async newContext(opts){
   assert.equal(opts.serviceWorkers,"block");
+  assert.equal(opts.javaScriptEnabled,false);
+  assert.equal(opts.acceptDownloads,false);
+  assert.deepEqual(opts.permissions,[]);
   const ctx={
    route:async()=>{},
    routeWebSocket:async()=>{},
