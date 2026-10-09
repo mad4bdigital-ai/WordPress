@@ -60,6 +60,7 @@ final class MAD4B_SCP_Admin_Workspace {
 			'mad4b-approval-decisions' => array( __( 'Approval Decisions', 'mad4b-site-control-plane' ), __( 'Review exact proposed changes and decision history.', 'mad4b-site-control-plane' ), 'operate', 'view', array( 'actionable', 'history' ) ),
 			'mad4b-adapter-coverage' => array( __( 'Provider Coverage', 'mad4b-site-control-plane' ), __( 'Review installed providers and capability-specific gaps.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
 			'mad4b-runtime-components' => array( __( 'Runtime Components', 'mad4b-site-control-plane' ), __( 'Review component identity, updates and maintenance.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
+			'mad4b-browser-acceptance' => array( __( 'Review browser acceptance', 'mad4b-site-control-plane' ), __( 'Review provider certification', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-skills' => array( __( 'Managed Skills', 'mad4b-site-control-plane' ), __( 'Review available skills and their reconciliation status.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-performance' => array( __( 'Performance', 'mad4b-site-control-plane' ), __( 'Inspect database performance and maintenance evidence.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 		);
@@ -109,15 +110,33 @@ final class MAD4B_SCP_Admin_Workspace {
 		}
 		echo '</nav><details class="mad4b-workspace-directory"><summary>' . esc_html__( 'All workspaces & setup', 'mad4b-site-control-plane' ) . ' <span>(' . esc_html( (string) count( $inventory ) ) . ')</span></summary>';
 		echo '<div data-mad4b-directory-controls hidden><label for="mad4b-workspace-filter">' . esc_html__( 'Find a page or setting', 'mad4b-site-control-plane' ) . '</label><input type="search" id="mad4b-workspace-filter" aria-controls="mad4b-workspace-pages" autocomplete="off"><p data-mad4b-directory-empty hidden>' . esc_html__( 'No matching workspace. Clear the search to see all pages.', 'mad4b-site-control-plane' ) . '</p><span class="screen-reader-text" role="status" aria-live="polite" aria-atomic="true" data-mad4b-directory-status data-template="' . esc_attr__( '%d workspaces found', 'mad4b-site-control-plane' ) . '"></span></div>';
+		// Reuse the existing capability-filtered inventory; groups are purely
+		// presentation and cannot expose an unregistered or unauthorized route.
+		$groups = array(
+			'operate' => __( 'Action Center', 'mad4b-site-control-plane' ),
+			'connect' => __( 'Connection', 'mad4b-site-control-plane' ),
+			'content' => __( 'Content Pipeline', 'mad4b-site-control-plane' ),
+			'runtime' => __( 'Runtime Components', 'mad4b-site-control-plane' ),
+		);
 		echo '<div id="mad4b-workspace-pages" class="mad4b-workspace-pages">';
-		foreach ( $inventory as $slug => $row ) {
-			echo '<article data-mad4b-workspace-item><a href="' . esc_url( $row['url'] ) . '"' . ( $slug === $page ? ' aria-current="page"' : '' ) . '><strong>' . esc_html( $row['title'] ) . '</strong><span>' . esc_html( $row['description'] ) . '</span></a>';
-			if ( '' !== $row['query_key'] && $row['sections'] ) {
-				echo '<ul class="mad4b-workspace-section-links">';
-				foreach ( $row['sections'] as $section ) echo '<li><a href="' . esc_url( add_query_arg( $row['query_key'], $section, $row['url'] ) ) . '">' . esc_html( __( ucwords( str_replace( array( '-', '_' ), ' ', $section ) ), 'mad4b-site-control-plane' ) ) . '</a></li>';
-				echo '</ul>';
+		foreach ( $groups as $group => $group_label ) {
+			$found = false;
+			foreach ( $inventory as $row ) if ( $row['group'] === $group ) { $found = true; break; }
+			if ( ! $found ) continue;
+			echo '<section class="mad4b-workspace-group" data-mad4b-workspace-group aria-labelledby="mad4b-workspace-group-' . esc_attr( $group ) . '">';
+			echo '<h3 id="mad4b-workspace-group-' . esc_attr( $group ) . '">' . esc_html( $group_label ) . '</h3>';
+			echo '<div class="mad4b-workspace-group-items">';
+			foreach ( $inventory as $slug => $row ) {
+				if ( $row['group'] !== $group ) continue;
+				echo '<article data-mad4b-workspace-item><a href="' . esc_url( $row['url'] ) . '"' . ( $slug === $page ? ' aria-current="page"' : '' ) . '><strong>' . esc_html( $row['title'] ) . '</strong><span>' . esc_html( $row['description'] ) . '</span></a>';
+				if ( '' !== $row['query_key'] && $row['sections'] ) {
+					echo '<ul class="mad4b-workspace-section-links">';
+					foreach ( $row['sections'] as $section ) echo '<li><a href="' . esc_url( add_query_arg( $row['query_key'], $section, $row['url'] ) ) . '">' . esc_html( __( ucwords( str_replace( array( '-', '_' ), ' ', $section ) ), 'mad4b-site-control-plane' ) ) . '</a></li>';
+					echo '</ul>';
+				}
+				echo '</article>';
 			}
-			echo '</article>';
+			echo '</div></section>';
 		}
 		echo '</div></details></section><span id="mad4b-page-content" tabindex="-1"></span>';
 	}

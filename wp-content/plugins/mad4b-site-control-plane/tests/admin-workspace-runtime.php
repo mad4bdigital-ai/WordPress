@@ -39,10 +39,10 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-workspace.php';
 $assertions = 0;
 $check = static function ( $value, $message ) use ( &$assertions ) { ++$assertions; if ( ! $value ) throw new RuntimeException( $message ); };
-$pages = array( 'mad4b-control-plane', 'mad4b-operator-control-center', 'mad4b-control-plane-site-profile', 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt', 'mad4b-control-plane-oauth-canary', 'mad4b-control-plane-context', 'mad4b-search-intelligence', 'mad4b-control-plane-content-pipeline', 'mad4b-approval-decisions', 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-control-plane-skills', 'mad4b-control-plane-performance' );
+$pages = array( 'mad4b-control-plane', 'mad4b-operator-control-center', 'mad4b-control-plane-site-profile', 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt', 'mad4b-control-plane-oauth-canary', 'mad4b-control-plane-context', 'mad4b-search-intelligence', 'mad4b-control-plane-content-pipeline', 'mad4b-approval-decisions', 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-control-plane-skills', 'mad4b-control-plane-performance', 'mad4b-browser-acceptance' );
 foreach ( $pages as $slug ) MAD4B_SCP_Admin_Route_Registry::register( $slug, 'manage_options' );
 $inventory = MAD4B_SCP_Admin_Workspace::inventory();
-$check( count( $inventory ) === 14, 'All fourteen registered workspaces are discoverable.' );
+$check( count( $inventory ) === 15, 'All fifteen registered workspaces are discoverable.' );
 foreach ( $inventory as $row ) $check( false !== strpos( $row['url'], '/wp-admin/admin.php?page=' ) && false === $row['authorizing'], 'Canonical non-authorizing workspace links.' );
 $_GET = array( 'page' => 'mad4b-search-intelligence' );
 $check( 'mad4b-search-intelligence' === MAD4B_SCP_Admin_Workspace::current_page(), 'Exact registered page admitted.' );
@@ -52,7 +52,9 @@ $url = MAD4B_SCP_Admin_Workspace::link( 'mad4b-search-intelligence', array( 'sec
 $check( false !== strpos( $url, 'section=providers#search-providers' ), 'API setup is directly linked before configuration.' );
 ob_start(); MAD4B_SCP_Admin_Workspace::render(); $html = ob_get_clean();
 $check( false !== strpos( $html, 'Search API credentials' ) && false !== strpos( $html, 'aria-current="page"' ), 'Setup discovery and active page semantics render.' );
-$check( 14 === substr_count( $html, 'data-mad4b-workspace-item' ), 'No registered workspace is hidden by default.' );
+$check( 15 === substr_count( $html, 'data-mad4b-workspace-item' ), 'No registered workspace is hidden by default.' );
+$check( 4 === substr_count( $html, 'data-mad4b-workspace-group ' ), 'Four navigation group sections are accessible.' );
+$check( false !== strpos( $html, 'Review browser acceptance' ), 'Browser Acceptance appears in the capability-filtered directory.' );
 foreach ( array( array( 'page' => array( 'mad4b-search-intelligence' ) ), array( 'page' => 'mad4b-unregistered' ), array( 'page' => 'mad4b-search-intelligence<script>' ) ) as $query ) {
 	$_GET = $query; $GLOBALS['workspace_assets'] = array(); MAD4B_SCP_Admin_Workspace::enqueue();
 	$check( '' === MAD4B_SCP_Admin_Workspace::current_page() && ! $GLOBALS['workspace_assets'], 'Malformed or unregistered pages have no assets.' );

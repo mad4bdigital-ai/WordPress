@@ -89,17 +89,64 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	}
 
 	public static function register_menu() {
+		if ( ! MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' ) ) return;
 		add_submenu_page( MAD4B_SCP_Admin_UI::PAGE_SLUG,
 			__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ),
 			__( 'Browser Acceptance', 'mad4b-site-control-plane' ),
 			'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render_page' ) );
 	}
 
+	/**
+	 * Form is bound to the revision the operator saw, not just to its nonce.
+	 * An invalid legacy preference may be replaced from the blank revision.
+	 */
+	public static function revision_guard( $expected, $stored ) {
+		if ( ! is_string( $expected ) || ( '' !== $expected && 1 !== preg_match( '/^[a-f0-9]{32}$/D', $expected ) ) )
+			return new WP_Error( 'mad4b_browser_setup_expected_revision_invalid', 'Reload Browser Acceptance Setup before saving.' );
+		$current = self::normalize( is_array( $stored ) ? $stored : array() );
+		$actual = is_wp_error( $current ) ? '' : $current['configuration_revision'];
+		if ( ! hash_equals( $actual, $expected ) )
+			return new WP_Error( 'mad4b_browser_setup_stale_revision', 'Browser settings changed in another tab. Reload before saving.' );
+		return true;
+	}
+
+	/** Exact option-value compare-and-swap; no silent last-writer-wins. */
+	private static function persist_if_unchanged( $stored, array $updated ) {
+		if ( false === $stored ) {
+			if ( ! add_option( self::OPTION, $updated, '', false ) )
+				return new WP_Error( 'mad4b_browser_setup_concurrent_change', 'Browser settings changed during save. Reload first.' );
+		} else {
+			global $wpdb;
+			if ( ! isset( $wpdb->options ) )
+				return new WP_Error( 'mad4b_browser_setup_storage_unavailable', 'WordPress options storage unavailable.' );
+			// Use BINARY comparison: a case-insensitive SQL collation must
+			// never accept a different serialized state as the same revision.
+			$changed = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+				maybe_serialize( $updated ), self::OPTION, maybe_serialize( $stored )
+			) );
+			if ( 1 !== (int) $changed )
+				return new WP_Error( 'mad4b_browser_setup_concurrent_change', 'Browser settings changed during save. Reload first.' );
+			wp_cache_delete( self::OPTION, 'options' );
+			wp_cache_delete( 'alloptions', 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		$readback = get_option( self::OPTION, array() );
+		if ( ! is_array( $readback ) || $readback !== $updated )
+			return new WP_Error( 'mad4b_browser_setup_readback_failed', 'Saved state could not be independently read back; refresh before another action.' );
+		return true;
+	}
+
 	public static function save() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.', '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
-		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'site_provider_id', 'submit' ) ) )
+		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'site_provider_id', 'expected_configuration_revision', 'submit' ) ) )
 			wp_die( 'Unsupported or secret-bearing request fields are forbidden.', '', array( 'response' => 400 ) );
+		$stored = get_option( self::OPTION, false );
+		$expected = isset( $_POST['expected_configuration_revision'] ) && is_string( $_POST['expected_configuration_revision'] )
+			? wp_unslash( $_POST['expected_configuration_revision'] ) : null;
+		$guard = self::revision_guard( $expected, $stored );
+		if ( is_wp_error( $guard ) ) wp_die( esc_html( $guard->get_error_message() ), '', array( 'response' => 409 ) );
 		$value = self::normalize( array(
 			'executor' => isset( $_POST['executor'] ) ? wp_unslash( $_POST['executor'] ) : 'auto',
 			'profile_id' => isset( $_POST['profile_id'] ) ? wp_unslash( $_POST['profile_id'] ) : '',
@@ -109,9 +156,14 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		// A fresh unique revision on every save prevents silent A→B→A reuse.
 		try { $value['configuration_revision'] = bin2hex( random_bytes( 16 ) ); }
 		catch ( Throwable $error ) { wp_die( 'Secure configuration revision generation failed.', '', array( 'response' => 503 ) ); }
-		if ( ! update_option( self::OPTION, $value, false ) )
-			wp_die( 'Operator preference persistence could not be verified.', '', array( 'response' => 503 ) );
-		wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ), 303 );
+		$persisted = self::persist_if_unchanged( $stored, $value );
+		if ( is_wp_error( $persisted ) ) wp_die(
+			esc_html( $persisted->get_error_message() ), '', array(
+				'response' => 'mad4b_browser_setup_concurrent_change' === $persisted->get_error_code() ? 409 : 503,
+			)
+		);
+		$receipt = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, 'preference_saved', $value['configuration_revision'] );
+		wp_safe_redirect( add_query_arg( 'mad4b_notice_receipt', $receipt, admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ), 303 );
 		exit;
 	}
 
@@ -129,7 +181,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'A legacy operator preference has no revision. Re-save it before browser execution.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Default provider/profile preference is discovered automatically. Execution still requires a registered semantic provider and external browser credentials.</p>';
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
-		if ( isset( $_GET['saved'] ) && '1' === (string) $_GET['saved'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- display only.
+		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) && MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'preference_saved', $choice['configuration_revision'] ) )
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<h2>' . esc_html__( 'Site capability discovery (read-only)', 'mad4b-site-control-plane' ) . '</h2>';
 		$complete = ! empty( $discovery['discovery_complete'] );
@@ -177,6 +229,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="mad4b_browser_setup_save">';
 		wp_nonce_field( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
+		echo '<input type="hidden" name="expected_configuration_revision" value="' . esc_attr( $choice['configuration_revision'] ) . '">';
 		echo '<table class="form-table"><tbody><tr><th><label for="mad4b-site-provider">Site acceptance provider</label></th><td><select id="mad4b-site-provider" name="site_provider_id">';
 		echo '<option value="">Auto-select only one discovered, supported site adapter</option>';
 		foreach ( array_slice( $registered, 0, 32 ) as $site_provider ) {

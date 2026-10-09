@@ -34,8 +34,8 @@ final class MAD4B_SCP_Admin_Experience {
 		$page = sanitize_key( self::query_string( 'page', '', 128 ) );
 		if ( 0 !== strpos( $page, 'mad4b-' ) ) return;
 		$context = self::environment_context();
-		echo '<div class="notice notice-info mad4b-environment-context"><p><strong>Environment context:</strong> Effective: <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; Raw WordPress: <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
-		if ( ! $context['match'] ) echo ' &middot; Operational authority follows the MAD4B Site Profile; raw WordPress environment is diagnostic only.';
+		echo '<div class="notice ' . ( $context['match'] ? 'notice-info' : 'notice-warning' ) . ' mad4b-environment-context"><p><strong>Environment context:</strong> Effective: <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; Raw WordPress: <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
+		if ( ! $context['match'] ) echo ' &middot; Environment mismatch: verify WordPress host settings and deployment binding before release acceptance; MAD4B Site Profile authority remains separate.';
 		echo '</p></div>';
 	}
 
