@@ -2030,6 +2030,27 @@ final class MAD4B_SCP_Context_Authority {
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
 		}
+		// Operational/connector inventories often quote "brand strategy" while
+		// describing data plumbing, not the approved commercial Brand Strategy.
+		// When only document body text produced a strategy hit, never elevate
+		// an operational document into mandatory Brand Authority automatically.
+		// An explicit human-classified asset is preserved by the caller and can
+		// still be reviewed via the separate Context review authority surface.
+		if ( 'brand_strategy' === $best ) {
+			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+			$named_strategy = false;
+			foreach ( $rules['brand_strategy'] as $needle ) {
+				if ( false !== strpos( $title_path, $needle ) ) { $named_strategy = true; break; }
+			}
+			$operational_title = 1 === preg_match(
+				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
+				(string) $name . ' ' . (string) $path
+			);
+			if ( ! $named_strategy && $operational_title ) {
+				$best = 'uncategorized';
+				$best_hits = 0;
+			}
+		}
 		$confidence = 0.35;
 		if ( 1 === $best_hits ) $confidence = 0.72;
 		if ( 2 === $best_hits ) $confidence = 0.88;
