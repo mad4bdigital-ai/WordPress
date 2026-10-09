@@ -64,6 +64,10 @@ def validate(manifest, task_registry, gate_registry, requirements):
            and manifest.get("execution_enabled") is False
            and manifest.get("authorizing") is False
            and manifest.get("production_authorized") is False, "spec_authority_widening")
+    insist(task_registry.get("contract") == "mad4b.aci-os.task-registry.v2"
+           and gate_registry.get("contract") == "mad4b.aci-os.gate-registry.v2"
+           and requirements.get("contract") == "mad4b.aci-os.requirement-registry.v2",
+           "registry_contract_invalid")
     tasks = task_registry.get("tasks")
     gates = gate_registry.get("gates")
     reqs = requirements.get("requirements")
@@ -151,7 +155,8 @@ def self_test(bundle):
     reject(lambda m, t, g, r: t["tasks"][0].update(requirement_ids=["ACI-999"]), "task_unknown_requirement")
     reject(lambda m, t, g, r: g["gates"][0].update(task_ids=[]), "gate_task_membership_mismatch")
     reject(lambda m, t, g, r: m.update(task_count=1), "task_count_mismatch")
-    return {"cases": 9, "status": "PASS_SOURCE_ONLY", "authorizing": False}
+    reject(lambda m, t, g, r: t.update(contract="arbitrary"), "registry_contract_invalid")
+    return {"cases": 10, "status": "PASS_SOURCE_ONLY", "authorizing": False}
 
 
 def main():
