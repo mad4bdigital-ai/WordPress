@@ -93,6 +93,7 @@ PY_CHECKS = (
     "full-staging-authority-contract.py",
     "staging-write-authority-convergence-contract.py",
     "staging-certification-contract.py",
+    "operational-remediation-source-contract.py",
     "g6-delivery-integrity.py",
     "g9-delivery-contract.py",
     "g9-security-source-contract.py",
