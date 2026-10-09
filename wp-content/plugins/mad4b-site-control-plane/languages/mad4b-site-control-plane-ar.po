@@ -744,3 +744,12 @@ msgstr "لا يستطيع WordPress التحقق من المنفذ الخارج�
 
 msgid "No secret is accepted on this page, and no test runs merely by saving preferences."
 msgstr "لا تستقبل هذه الصفحة مفاتيح سرية، ولا يبدأ اختبار بمجرد حفظ التفضيلات."
+
+msgid "Not applicable"
+msgstr "غير منطبق"
+
+msgid "Complete site identification first"
+msgstr "أكمل تعريف الموقع أولًا"
+
+msgid "No action currently reported"
+msgstr "لا يوجد إجراء مطلوب حاليًا"
