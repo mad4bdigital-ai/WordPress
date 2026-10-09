@@ -61,12 +61,14 @@ function wp_get_abilities() {
 ); }
 class MAD4B_SCP_Plugin_Discovery {
     public static $wrong_version = false;
+    public static $nonexceptional_safety_probe = false;
     public static function coverage() {
         if ( $GLOBALS['fail_plugin_registry'] ) throw new RuntimeException('risk registry not readable');
         return array( 'contract'=>'mad4b.plugin-adapter-discovery.v1','truncated'=>false,
             'plugins'=>array(
                 array( 'plugin_file'=>'unknown-file-ops/tool.php','version'=>'',
-                    'risk'=>'exceptional','coverage_state'=>'excluded_high_risk',
+                    'risk'=>self::$nonexceptional_safety_probe ? 'low' : 'exceptional',
+                    'coverage_state'=>self::$nonexceptional_safety_probe ? 'read_only_supported' : 'excluded_high_risk',
                     'side_channel_blocker'=>'dangerous-code-execution',
                     'functional_coverage'=>array('state'=>'safety_blocked') ),
                 array( 'plugin_file'=>'plain-cache/cache.php','version'=>'',
@@ -125,8 +127,19 @@ ok(count($high)===1 && $high[0]['declared_risk']==='exceptional'
 ok($r['coverage']['risk_coverage_complete']===true,'joined live risk registry complete');
 $plain=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:plain-cache/cache.php';}));
 ok(count($plain)===1 && $plain[0]['functional_state']==='read_ready_write_blocked'
-    && $plain[0]['read_ability_count']===2 && $plain[0]['qualification_verified']===false,
+    && $plain[0]['read_ability_count']===2 && $plain[0]['qualification_verified']===false
+    && $plain[0]['qualification_status']==='FUNCTIONAL_REVIEW_REQUIRED',
     'live functionality projected as evidence only not certified effect');
+$unresolved=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:unknown-file-ops/alternate.php';}));
+ok(count($unresolved)===1 && $unresolved[0]['qualification_status']==='EVIDENCE_INCOMPLETE',
+    'missing functional status requires evidence, never runtime authorization');
+MAD4B_SCP_Plugin_Discovery::$nonexceptional_safety_probe=true;
+$safety=MAD4B_SCP_Solution_Discovery::read_discover($in);
+$safety_candidates=is_array($safety) ? array_values(array_filter($safety['candidates'],function($v){return $v['id']==='plugin:unknown-file-ops/tool.php';})) : array();
+ok(count($safety_candidates)===1 && $safety_candidates[0]['qualification_status']==='SAFETY_BLOCKED'
+    && $safety_candidates[0]['qualification_verified']===false,
+    'safety blocker is never downgraded to missing evidence or normal review');
+MAD4B_SCP_Plugin_Discovery::$nonexceptional_safety_probe=false;
 ok($r['qualification_incomplete']===false && $r['coverage']['qualification_coverage_complete']===true,
     'qualification completeness separately reported from discovery completeness');
 MAD4B_SCP_Plugin_Discovery::$wrong_version=true;
