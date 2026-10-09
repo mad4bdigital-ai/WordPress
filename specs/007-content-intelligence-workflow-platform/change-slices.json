@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 451,
+  "changed_file_count": 452,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -625,6 +625,7 @@
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/reuse-authority-crosswalk.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/spec.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/system-map.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/task-integrity.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/task-registry.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/tasks.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_design_closure.py",
@@ -833,6 +834,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "1e95f8ca88d92bcf020733d69ecf54fae3e772984e26fab0dfd6fa2899225771",
+  "changed_paths_sha256": "2daf8a1cf85ef116f812a7bcf8ba4cafe6caf79c0121984c9f8d2418afe73a24",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
