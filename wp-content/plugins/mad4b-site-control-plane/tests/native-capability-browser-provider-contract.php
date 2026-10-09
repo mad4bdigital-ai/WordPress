@@ -28,7 +28,18 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 }
 class MAD4B_SCP_Site_Capability_Discovery {
     public static function observe( $origin, $providers ) {
+        native_expect( isset( $providers[ MAD4B_SCP_Native_Capability_Browser_Provider::ID ] ),
+            'semantic fingerprint uses live registered providers, never empty registry' );
         return array( 'discovery_complete' => true, 'snapshot_sha256' => str_repeat( 'd', 64 ) );
+    }
+}
+class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
+    public function all() {
+        return array(
+            MAD4B_SCP_Native_Capability_Browser_Provider::ID => array(
+                'descriptor' => MAD4B_SCP_Native_Capability_Browser_Provider::descriptor()
+            )
+        );
     }
 }
 class MAD4B_SCP_Browser_Acceptance_Admin_UI {
