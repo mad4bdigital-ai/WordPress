@@ -37,6 +37,10 @@ assert(generic.includes("assertSiteBindingUnchanged(configured, preExecution)"),
 assert(generic.includes("assertSiteBindingUnchanged(configured, postExecution)"), "postflight drift readback required");
 assert(generic.includes("delete childEnv.MAD4B_MCP_ACCESS_TOKEN"), "bearer token must not reach browser worker");
 assert(generic.includes("run-site-browser-acceptance.mjs"), "site-neutral executor is used");
+assert(generic.includes("consumeLocalBrowserPlanOnce({ plan, evidence, result })"),
+  "generic native PASS must claim local replay ledger before any receipt");
+assert(generic.includes('globally_unique_consumption_proven: false'),
+  "local replay claim must never be presented as distributed certification");
 const resolver = fs.readFileSync(path.join(here, "site-adapter-resolver.mjs"), "utf8");
 assert(resolver.includes("provider_recognition_mismatch"), "untrusted discovery-to-descriptor mismatch forbidden");
 assert(resolver.includes("discoverySha256"), "provider discovery generation must be fenced");
