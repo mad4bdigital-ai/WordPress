@@ -58,19 +58,31 @@ final class MAD4B_SCP_Market_Growth_Policies {
             'contract' => self::CONTRACT,
             'revision' => (int) $current['revision'],
             'registry_sha256' => self::checksum( $current ),
-            'suppliers' => $current['suppliers'],
-            'competitors' => $current['competitors'],
-            'dmc_connections' => $current['dmc_connections'],
-            'feed_mappings' => $current['feed_mappings'],
-            'pricing_rules' => $current['pricing_rules'],
-            'media_rules' => $current['media_rules'],
-            'assistant_roles' => $current['assistant_roles'],
+            // Display only public rule metadata. Agreement references, API
+            // endpoints and confidential unit costs remain in the guarded
+            // registry and must not be returned to generic read clients.
+            'suppliers' => self::public_fields( $current['suppliers'], array( 'display_name', 'source_url', 'commercial_status', 'valid_until' ) ),
+            'competitors' => self::public_fields( $current['competitors'], array( 'display_name', 'source_url', 'disabled' ) ),
+            'dmc_connections' => self::public_fields( $current['dmc_connections'], array( 'supplier_id', 'direction' ) ),
+            'feed_mappings' => self::public_fields( $current['feed_mappings'], array( 'post_type', 'direction', 'fields' ) ),
+            'pricing_rules' => self::public_fields( $current['pricing_rules'], array( 'mode', 'currency', 'basis_points', 'amount_minor' ) ),
+            'media_rules' => self::public_fields( $current['media_rules'], array( 'source_url', 'rights_status', 'valid_until' ) ),
+            'assistant_roles' => self::public_fields( $current['assistant_roles'], array( 'role', 'skill_name' ) ),
             'no_implicit_copyright_waiver' => true,
             'no_automatic_media_license' => true,
             'no_automatic_supplier_resale_authority' => true,
             'read_only' => true,
             'mutation_performed' => false,
         );
+    }
+
+    private static function public_fields( $records, $allowed ) {
+        $result = array();
+        foreach ( $records as $id => $row ) {
+            if ( ! is_array( $row ) ) continue;
+            $result[ $id ] = array_intersect_key( $row, array_flip( $allowed ) );
+        }
+        return $result;
     }
 
     private static function bounded_id( $value ) {
@@ -80,7 +92,8 @@ final class MAD4B_SCP_Market_Growth_Policies {
     private static function valid_url( $url ) {
         if ( ! is_string( $url ) || strlen( $url ) > 2048 ) return false;
         $p = parse_url( $url );
-        return is_array( $p ) && isset( $p['scheme'], $p['host'] )
+        return is_array( $p ) && ! preg_match( '/[?&](?:access_token|token|api_?key|secret|signature|password)=/i', $url )
+            && isset( $p['scheme'], $p['host'] )
             && in_array( strtolower( $p['scheme'] ), array( 'http', 'https' ), true )
             && ! isset( $p['user'] ) && ! isset( $p['pass'] );
     }
@@ -133,6 +146,19 @@ final class MAD4B_SCP_Market_Growth_Policies {
                 if ( empty( $item['skill_name'] ) || ! is_string( $item['skill_name'] ) || strlen( $item['skill_name'] ) > 128
                     || ! in_array( isset( $item['role'] ) ? $item['role'] : '', array( 'researcher', 'writer', 'critic', 'reviewer', 'recovery' ), true ) ) return self::error( 'mad4b_growth_agent_role_invalid', 'Assistant role and skill name are required.' );
             }
+            // Explicit fields are versioned; no magic flags can silently
+            // grant rights or authorize external plugin execution.
+            $allowed = array(
+                'suppliers' => array( 'display_name', 'source_url', 'commercial_status', 'agreement_ref', 'valid_until' ),
+                'competitors' => array( 'display_name', 'source_url', 'disabled' ),
+                'dmc_connections' => array( 'supplier_id', 'direction', 'feed_url' ),
+                'feed_mappings' => array( 'post_type', 'direction', 'fields' ),
+                'pricing_rules' => array( 'mode', 'currency', 'amount_minor', 'basis_points', 'floor_minor', 'ceiling_minor', 'cost_minor' ),
+                'media_rules' => array( 'source_url', 'rights_status', 'evidence_ref', 'valid_until', 'allowed_channels' ),
+                'assistant_roles' => array( 'role', 'skill_name' ),
+            );
+            if ( array_diff( array_keys( $item ), $allowed[ $group ] ) )
+                return self::error( 'mad4b_growth_rule_field_unknown', 'Rule includes an unsupported field.' );
             if ( strlen( (string) wp_json_encode( $item ) ) > 8192 ) return self::error( 'mad4b_growth_rule_size_invalid', 'Rule size limit exceeded.' );
         }
         return true;
