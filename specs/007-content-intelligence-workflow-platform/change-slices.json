@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 477,
+  "changed_file_count": 480,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -913,8 +913,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-skills-preflight-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-skills-preflight-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-wordpress-host-environment-sync-mode-20261009",
+      "semantic_unit": "Add supported Profile Only and opt-in Host-Managed WordPress environment sync mode with exact identity, explicit-host priority, unique Deployment Binding, boot-time host separation, non-authorizing status and negative save tests.",
+      "revert_boundary": "Revert governed Site Profile Host sync selection, administrative readback and native failure-mode fixtures together; no wp-config.php writer or host privilege introduced.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/effective-environment-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-lifecycle-matrix-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "a212bd3820a6a41b5e35111a860faff938c2e61b228bebc56d42fd91e72d834e",
+  "changed_paths_sha256": "60e3c7b212a092b2774a9d76c89f51f0e3fbed310a4b2f893ca42adfd4368c41",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
