@@ -151,14 +151,62 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             || ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $job_id )
             || ! is_array( $research_rows ) || count( $research_rows ) > 12 )
             return self::denied( 'blueprint_handoff_source_invalid' );
+        $provenance = $evidence['provenance_observation'] ?? null;
+        $excluded = array();
+        if ( $provenance !== null ) {
+            if ( ! is_array( $provenance ) ||
+                ( $provenance['contract'] ?? '' ) !== 'mad4b.aci01.provenance-observation.v1' ||
+                ! is_array( $provenance['excluded_duplicate_artifact_ids'] ?? null ) ||
+                count( $provenance['excluded_duplicate_artifact_ids'] ) > 12 ||
+                ! is_array( $provenance['conflicting_response_group_sha256'] ?? null ) ||
+                count( $provenance['conflicting_response_group_sha256'] ) > 12 ||
+                ( $provenance['independently_reviewed'] ?? null ) !== false ||
+                ( $provenance['authorizing'] ?? null ) !== false ||
+                ! is_int( $provenance['duplicated_source_locator_count'] ?? null ) ||
+                $provenance['duplicated_source_locator_count'] < 0 ||
+                $provenance['duplicated_source_locator_count'] > 768 ||
+                ! is_int( $provenance['distinct_request_observations'] ?? null ) ||
+                $provenance['distinct_request_observations'] < 0 ||
+                $provenance['distinct_request_observations'] > 12 ||
+                ! is_int( $provenance['duplicate_request_count'] ?? null ) ||
+                $provenance['duplicate_request_count'] < 0 ||
+                $provenance['duplicate_request_count'] > 12 )
+                return self::denied( 'provenance_observation_invalid' );
+            foreach ( $provenance['excluded_duplicate_artifact_ids'] as $x ) {
+                if ( ! is_string( $x ) ||
+                    ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $x ) ||
+                    isset( $excluded[strtolower( $x )] ) )
+                    return self::denied( 'provenance_exclusion_invalid' );
+                $excluded[strtolower( $x )] = true;
+            }
+            if ( $provenance['duplicate_request_count'] !== count( $excluded ) ||
+                $provenance['distinct_request_observations'] + count( $excluded ) !== count( $research_rows ) )
+                return self::denied( 'provenance_observation_cardinality_invalid' );
+        }
         $research_ids = array();
+        $observed_ids = array();
         foreach ( $research_rows as $row ) {
             if ( ! is_array( $row ) || ! is_string( $row['artifact_id'] ?? null )
                 || ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $row['artifact_id'] )
                 || ! in_array( $row['artifact_type'] ?? null, array( 'keyword_research', 'serp_research' ), true )
-                || in_array( strtolower( $row['artifact_id'] ), $research_ids, true ) )
+                || isset( $observed_ids[strtolower( $row['artifact_id'] )] ) )
                 return self::denied( 'blueprint_handoff_research_invalid' );
-            $research_ids[] = strtolower( $row['artifact_id'] );
+            $observed_ids[strtolower( $row['artifact_id'] )] = true;
+            if ( ! isset( $excluded[strtolower( $row['artifact_id'] )] ) )
+                $research_ids[] = strtolower( $row['artifact_id'] );
+        }
+        foreach ( $excluded as $excluded_id => $_ )
+            if ( ! isset( $observed_ids[$excluded_id] ) )
+                return self::denied( 'provenance_exclusion_not_in_research' );
+        if ( $provenance !== null ) {
+            $unique_conflicts = array();
+            foreach ( $provenance['conflicting_response_group_sha256'] as $digest ) {
+                if ( ! is_string( $digest ) ||
+                    ! preg_match( '/^[a-f0-9]{64}$/D', $digest ) ||
+                    isset( $unique_conflicts[$digest] ) )
+                    return self::denied( 'provenance_conflict_fingerprint_invalid' );
+                $unique_conflicts[$digest] = true;
+            }
         }
         sort( $research_ids, SORT_STRING );
         $handoff = array(
@@ -166,6 +214,11 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'target_ability' => 'mad4b/blueprint-build',
             'job_id' => strtolower( $job_id ),
             'observed_research_artifact_ids' => $research_ids,
+            'excluded_duplicate_artifact_ids' => array_keys( $excluded ),
+            'provenance_review_required' => $provenance !== null
+                && ( count( $excluded ) > 0 ||
+                    count( $provenance['conflicting_response_group_sha256'] ) > 0 ||
+                    $provenance['duplicated_source_locator_count'] > 0 ),
             'required_input_keys' => array( 'job_id', 'context_artifact_id',
                 'research_artifact_ids', 'search_intent', 'audience', 'goals',
                 'outline', 'section_objectives', 'evidence_requirements' ),

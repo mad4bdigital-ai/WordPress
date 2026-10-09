@@ -123,6 +123,18 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         if ( empty( $context['ready'] ) ) $reasons[] = 'context_not_ready';
         $summaries = array();
         $seen = array();
+        // Select the canonical duplicate deterministically: source query
+        // order must not decide which immutable Artifact is excluded.
+        usort( $artifacts, static function ( $a, $b ) {
+            $first = is_array( $a ) && is_string( $a['artifact_id'] ?? null ) ? strtolower( $a['artifact_id'] ) : '';
+            $second = is_array( $b ) && is_string( $b['artifact_id'] ?? null ) ? strtolower( $b['artifact_id'] ) : '';
+            return strcmp( $first, $second );
+        } );
+        $groups = array();
+        $duplicate_artifact_ids = array();
+        $conflicting_groups = array();
+        $duplicated_source_ref_count = 0;
+        $all_source_ref_hashes = array();
         foreach ( $artifacts as $row ) {
             if ( ! is_array( $row ) || ! isset( $row['artifact_id'], $row['job_id'], $row['artifact_type'], $row['payload'], $row['status'] ) ||
                  ! self::uuid( $row['artifact_id'] ) || ! is_string( $row['job_id'] ) || strtolower( $row['job_id'] ) !== strtolower( $job_id ) ||
@@ -145,6 +157,34 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
                 if ( ! self::source_ref_shape_valid( $source_ref ) )
                     return self::denied( 'research_source_reference_invalid' );
             }
+            // Same provider, exact request fingerprint and observation time:
+            // repeated receipts are one logical observation, not new sources.
+            // Distinct payloads for that identity are a conflict requiring
+            // independent review, never evidence eligible for publication.
+            $group_identity = array( $payload['provider_id'], $payload['request_fingerprint'],
+                $payload['collected_at'] );
+            $group_json = json_encode( $group_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            if ( false === $group_json ) return self::denied( 'research_group_identity_encoding_invalid' );
+            $group_sha = hash( 'sha256', $group_json );
+            $source_identity = json_encode( array( $payload['source_refs'],
+                $payload['normalized_data'] ?? null ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            if ( false === $source_identity )
+                return self::denied( 'research_evidence_source_encoding_invalid' );
+            $payload_sha = hash( 'sha256', $source_identity );
+            if ( isset( $groups[$group_sha] ) ) {
+                $duplicate_artifact_ids[] = $id;
+                if ( ! hash_equals( $groups[$group_sha], $payload_sha ) )
+                    $conflicting_groups[$group_sha] = true;
+            } else {
+                $groups[$group_sha] = $payload_sha;
+            }
+            foreach ( $payload['source_refs'] as $ref ) {
+                $ref_encoded = json_encode( $ref, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+                if ( false === $ref_encoded ) return self::denied( 'research_source_ref_encoding_invalid' );
+                $ref_sha = hash( 'sha256', $ref_encoded );
+                if ( isset( $all_source_ref_hashes[$ref_sha] ) ) ++$duplicated_source_ref_count;
+                $all_source_ref_hashes[$ref_sha] = true;
+            }
             $timestamp = self::utc_time( $payload['collected_at'] );
             if ( false === $timestamp || $timestamp > $now || $now - $timestamp > $age ) $reasons[] = 'research_evidence_expired_or_future';
             if ( empty( $payload['source_refs'] ) ) $reasons[] = 'research_source_refs_missing';
@@ -157,9 +197,34 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
                 'source_ref_count' => count( $payload['source_refs'] ) );
         }
         usort( $summaries, static function ( $a, $b ) { return strcmp( $a['artifact_id'], $b['artifact_id'] ); } );
+        sort( $duplicate_artifact_ids, SORT_STRING );
+        $conflicting_group_hashes = array_keys( $conflicting_groups );
+        sort( $conflicting_group_hashes, SORT_STRING );
+        if ( $duplicate_artifact_ids ) $reasons[] = 'duplicate_research_request_observed';
+        if ( $conflicting_group_hashes ) $reasons[] = 'conflicting_research_response_observed';
+        if ( $duplicated_source_ref_count ) $reasons[] = 'duplicate_source_locator_observed';
         if ( empty( $summaries ) ) $reasons[] = 'research_evidence_required';
         $reasons = array_values( array_unique( $reasons ) );
         sort( $reasons, SORT_STRING );
+        // Candidate-only handoff to the existing immutable Artifact Registry
+        // type. Actual append requires an independent review and governed write
+        // permission, never implicit in this read preview.
+        $eligible_ids = array();
+        foreach ( $summaries as $summary ) {
+            if ( ! in_array( $summary['artifact_id'], $duplicate_artifact_ids, true ) )
+                $eligible_ids[] = $summary['artifact_id'];
+        }
+        sort( $eligible_ids, SORT_STRING );
+        $coverage_candidate = array(
+            'contract' => 'mad4b.aci01.evidence-coverage-candidate.v1',
+            'target_artifact_type' => 'evidence_coverage_matrix',
+            'existing_append_ability' => 'mad4b/artifact-append',
+            'job_id' => strtolower( $job_id ),
+            'observed_research_artifact_ids' => $eligible_ids,
+            'excluded_duplicate_artifact_ids' => $duplicate_artifact_ids,
+            'source_rights_verified' => false,
+            'editor_reviewed' => false, 'artifact_created' => false,
+            'dispatch_allowed' => false, 'authorizing' => false );
         // Return identifiers and digests, never raw brand extracts or scraper HTML.
         $output = array(
             'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
@@ -173,7 +238,17 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
                 'requirements_digest' => isset( $context['job_requirements_sha256'] ) ? (string) $context['job_requirements_sha256'] : '',
                 'context_digest' => isset( $context['context_pack_sha256'] ) ? (string) $context['context_pack_sha256'] : '',
                 'reviewed_coverage_observed' => ! empty( $context['ready'] ) ),
-            'evidence_summaries' => $summaries, 'reason_codes' => $reasons,
+            'evidence_summaries' => $summaries,
+            'evidence_coverage_handoff' => $coverage_candidate,
+            'provenance_observation' => array(
+                'contract' => 'mad4b.aci01.provenance-observation.v1',
+                'distinct_request_observations' => count( $groups ),
+                'duplicate_request_count' => count( $duplicate_artifact_ids ),
+                'excluded_duplicate_artifact_ids' => $duplicate_artifact_ids,
+                'conflicting_response_group_sha256' => $conflicting_group_hashes,
+                'duplicated_source_locator_count' => $duplicated_source_ref_count,
+                'independently_reviewed' => false, 'authorizing' => false ),
+            'reason_codes' => $reasons,
             'next_steps' => array( 'independently_verify_source_rights', 'resolve_missing_context',
                 'obtain_scoped_provider_certification', 'request_editorial_review' ),
             'source' => 'EXISTING_FEATURE007_READ_SERVICES',
@@ -182,7 +257,8 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             'provider_calls_performed' => false, 'paid_calls' => 0,
         );
         $output['preview_sha256'] = hash( 'sha256', json_encode( array(
-            $output['job_id'], $output['scope'], $output['context'], $summaries, $reasons
+            $output['job_id'], $output['scope'], $output['context'], $summaries,
+            $output['provenance_observation'], $output['evidence_coverage_handoff'], $reasons
         ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         return $output;
     }

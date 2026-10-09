@@ -271,4 +271,59 @@ check($cls::preview($input)['status']==='DENIED',
     'restore epoch changed during recipe lookup denied');
 MAD4B_SCP_ACI01_Runtime_Binding::$epoch_flip_after=0;
 MAD4B_SCP_Content_Experience_Profiles::$variants=array();
+
+// ACI01 G2/G3: duplicate provider receipts are excluded from the
+// non-dispatchable Blueprint candidate rather than promoted twice.
+$primary='22222222-2222-4222-8222-222222222222';
+$duplicate_id='44444444-4444-4444-8444-444444444444';
+$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($input);
+$semantic=MAD4B_SCP_ACI01_Semantic_Recipe::current(
+    array('content_type'=>'article'),$intake);
+$evidence=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
+$evidence['evidence_summaries']=array(
+    array('artifact_id'=>$primary,'artifact_type'=>'serp_research'),
+    array('artifact_id'=>$duplicate_id,'artifact_type'=>'serp_research'));
+$evidence['provenance_observation']=array(
+    'contract'=>'mad4b.aci01.provenance-observation.v1',
+    'distinct_request_observations'=>1,'duplicate_request_count'=>1,
+    'excluded_duplicate_artifact_ids'=>array($duplicate_id),
+    'conflicting_response_group_sha256'=>array(str_repeat('e',64)),
+    'duplicated_source_locator_count'=>0,
+    'independently_reviewed'=>false,'authorizing'=>false);
+$deduped=$cls::compile($intake,$evidence,$input['goal'],$semantic);
+check($deduped['status']==='NEEDS_EVIDENCE' &&
+    $deduped['blueprint_handoff']['observed_research_artifact_ids']===array($primary),
+    'only nonduplicated research is eligible for human Blueprint review');
+check($deduped['blueprint_handoff']['provenance_review_required']===true &&
+    $deduped['blueprint_handoff']['dispatch_allowed']===false,
+    'conflicted receipts require human review without dispatch');
+$bad=$evidence;
+$bad['provenance_observation']['duplicate_request_count']=0;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'forged duplicate counter denied');
+$bad=$evidence;
+$bad['provenance_observation']['excluded_duplicate_artifact_ids']=array(
+    '55555555-5555-4555-8555-555555555555');
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'exclusion outside bounded research denied');
+$bad=$evidence;
+$bad['provenance_observation']['conflicting_response_group_sha256']=array('untrusted');
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'conflict digest must be exact SHA');
+$bad=$evidence;
+$bad['provenance_observation']['duplicated_source_locator_count']=769;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'unbounded repeated locator count denied');
+$bad=$evidence;
+$bad['provenance_observation']['authorizing']=true;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'forged provider provenance authorizing flag denied');
+$bad=$evidence;
+$bad['provenance_observation']['independently_reviewed']=true;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'source cannot self-approve independent provenance review');
+$bad=$evidence;
+$bad['provenance_observation']['distinct_request_observations']=2;
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'forged provenance cardinality denied');
 echo "ACI01_OPPORTUNITY_CANDIDATE: PASS\n";
