@@ -90,6 +90,7 @@ unset( $mad4b_scp_early_zero_touch_reason );
 
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-route-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-workspace.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-guided-operator-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operator-workspace.php';
 MAD4B_SCP_Admin_Route_Registry::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile.php';
