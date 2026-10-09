@@ -363,6 +363,32 @@ final class MAD4B_SCP_Staging_Certification {
 				'production_policy' => 'deny',
 			) );
 		}
+		// Cron-disabled sites may use a real external wp-cron runner. Never
+		// declare it broken solely from DISABLE_WP_CRON: demand transport proof
+		// when a safe-phase job is pending or materially overdue.
+		$checkpoint = get_option( 'mad4b_scp_runtime_convergence_v1', array() );
+		$checkpoint_state = is_array( $checkpoint ) && isset( $checkpoint['state'] )
+			? sanitize_key( (string) $checkpoint['state'] ) : '';
+		$pending_cron = in_array( $checkpoint_state, array( 'pending_safe_phases', 'waiting_for_exact_runtime_restart' ), true );
+		$cron_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+		$next_cron = function_exists( 'wp_next_scheduled' ) ? wp_next_scheduled( 'mad4b_scp_runtime_convergence_resume' ) : false;
+		$cron_overdue = $pending_cron && false !== $next_cron && (int) $next_cron + 600 < time();
+		if ( $pending_cron && ( $cron_disabled || $cron_overdue ) ) {
+			$append( $actions, $seen, 'runtime_scheduler_delivery_review', array(
+				'kind' => 'host_scheduler_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'checkpoint_state' => $checkpoint_state,
+				'wordpress_cron_disabled' => $cron_disabled,
+				'cron_overdue' => $cron_overdue,
+				'next_scheduled_unix' => false === $next_cron ? 0 : (int) $next_cron,
+				'plan_ability' => 'mad4b/runtime-convergence-plan',
+				'readback_ability' => 'mad4b/runtime-convergence-status',
+				'instruction' => 'Verify a governed external WordPress cron runner if WP-Cron is disabled, or investigate an overdue job. Never auto-unblock, forge delivery receipts or replay an uncertain outcome.',
+				'production_policy' => 'deny',
+			) );
+		}
 		$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
 			? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
 		$provider_gated = isset( $provider_matrix['provider_gated_count'] ) ? max( 0, (int) $provider_matrix['provider_gated_count'] ) : 0;
