@@ -191,6 +191,22 @@ $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::HUMAN ] = n
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SYSTEM ] = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, array() );
 MAD4B_SCP_Servers::$mounted = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 
+// Simulate the exact parent-bound single-use child permit; the production
+// runtime uses MAD4B_SCP_Execution_Fence rather than this isolated fixture.
+final class MAD4B_SCP_Execution_Fence {
+    public static $parent_active = true;
+    public static $pending = false;
+    public static $child_calls = array();
+    public static function with_governed_child( $name, $input, $callback, $reason = 'dispatcher' ) {
+        if ( ! self::$parent_active ) return new WP_Error( 'mad4b_child_operation_parent_required' );
+        if ( self::$pending ) return new WP_Error( 'mad4b_child_operation_permit_pending' );
+        self::$pending = true;
+        self::$child_calls[] = array( 'name' => $name, 'input' => $input, 'reason' => $reason );
+        try { return call_user_func( $callback ); }
+        finally { self::$pending = false; }
+    }
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php';
 
 $discover = MAD4B_SCP_Enrollment_Dispatch::discover( array() );
@@ -238,6 +254,22 @@ mad4b_assert( true === $result['operation_invoked'], 'dispatcher did not report 
 mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote explicit target no-op mutation evidence' );
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
 mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'enrollment dispatch skipped its exact governed child permit' );
+$child = MAD4B_SCP_Execution_Fence::$child_calls[0];
+mad4b_assert( MAD4B_SCP_Remote_Operation_Parity::SKILLS === $child['name'], 'child permit was issued for a different ability' );
+mad4b_assert( $execute_input['input'] === $child['input'] && 'enrollment_dispatch' === $child['reason'], 'child permit did not bind the exact caller payload' );
+mad4b_assert( false === MAD4B_SCP_Execution_Fence::$pending, 'child permit leaked after execution' );
+
+// A missing parent must never fall back to direct target execution. The
+// managed-Skills adapter returns a bounded uncertain-error envelope.
+MAD4B_SCP_Execution_Fence::$parent_active = false;
+$without_parent = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( is_array( $without_parent ) && 'target_error_reconciliation_required' === $without_parent['state'], 'missing parent did not fail closed' );
+mad4b_assert( 'mad4b_child_operation_parent_required' === $without_parent['target_error_code'], 'missing parent was not preserved as redacted error code' );
+mad4b_assert( null === $without_parent['mutation_performed'] && false === $without_parent['blind_retry_allowed'], 'missing parent was misclassified as a safe retry' );
+mad4b_assert( 1 === $skills->calls && 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'missing parent executed a child target' );
+MAD4B_SCP_Execution_Fence::$parent_active = true;
+
 
 $sensitive_target = new MAD4B_Test_Ability(
     mad4b_test_meta(),

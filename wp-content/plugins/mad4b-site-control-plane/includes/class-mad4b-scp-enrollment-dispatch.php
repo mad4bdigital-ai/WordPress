@@ -361,7 +361,22 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$target_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
 		if ( ( null === $target_schema || empty( $target_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
-		$result = $ability->execute( $params );
+		// The compact ChatGPT Enrollment dispatcher is already an admitted parent
+		// mutation. Enter the exact child through the same one-time fence used by
+		// Write and Developer dispatch; a direct nested execute fails closed.
+		// The fence binds the selected registered Ability and validated input to
+		// the current parent frame, without expanding grants or authority.
+		if ( ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+			|| ! method_exists( 'MAD4B_SCP_Execution_Fence', 'with_governed_child' ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_child_fence_unavailable', 'Governed child execution is unavailable.' );
+		}
+		$child_ability = (string) $row['remote_ability'];
+		$result = MAD4B_SCP_Execution_Fence::with_governed_child(
+			$child_ability,
+			$params,
+			static function () use ( $ability, $params ) { return $ability->execute( $params ); },
+			'enrollment_dispatch'
+		);
 		if ( is_wp_error( $result ) ) {
 			// Only the bounded managed-Skills operation returns a non-authorizing
 			// diagnostic envelope. The generic dispatcher otherwise preserves WP_Error.
