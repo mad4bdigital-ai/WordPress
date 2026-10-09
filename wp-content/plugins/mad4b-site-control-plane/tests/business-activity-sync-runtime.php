@@ -177,6 +177,16 @@ ck(is_wp_error($failed) && $failed->get_error_code()==='mad4b_sync_inflight_jour
  'Write proceeded despite failed durable inflight journal');
 ck($GLOBALS['drive_revision']===$before && $GLOBALS['drive_value']==='Original',
  'Provider write must not occur without journal readback');
+$noWriteState=MAD4B_SCP_Activity_Sync_Runtime::status(scope(105));
+$lease105='mad4b_asyn_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|105');
+ck($noWriteState['operation_state']==='queued' &&
+ !array_key_exists($lease105,$GLOBALS['options']),
+ 'Unwritten operation held a lease after failed inflight journal');
+$cancel105=MAD4B_SCP_Activity_Sync_Runtime::cancel(array_merge(scope(105),
+ array('confirmed'=>true,'expected_operation_sha256'=>$noWriteState['operation_sha256'])));
+ck(!is_wp_error($cancel105)&&$cancel105['provider_writes_executed']===0,
+ 'Exact zero-write failed journal operation could not be cancelled');
 
 // Fault injection: provider write succeeds but checkpoint progress storage fails.
 // Never report success or unlock a step whose durable receipt is uncertain.
@@ -237,6 +247,14 @@ $c7=MAD4B_SCP_Activity_Sync_Runtime::status(scope(107));
 $workerLease='mad4b_asyn_lease_'.hash('sha256',
  MAD4B_SCP_Site_Profile::site_uuid().'|vendor|107');
 $GLOBALS['options'][$workerLease]=array('operation_key'=>'other_worker','at'=>time());
+$recoveryLease107='mad4b_asyn_recovery_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|107');
+$GLOBALS['options'][$recoveryLease107]='another_finalizer';
+$blockedRecoveryCancel=MAD4B_SCP_Activity_Sync_Runtime::cancel(array_merge(scope(107),
+ array('confirmed'=>true,'expected_operation_sha256'=>$c7['operation_sha256'])));
+ck(is_wp_error($blockedRecoveryCancel)&&$blockedRecoveryCancel->get_error_code()==='mad4b_sync_recovery_busy',
+ 'Cancel raced an existing reconcile/finalize worker');
+unset($GLOBALS['options'][$recoveryLease107]);
 $blockedCancel=MAD4B_SCP_Activity_Sync_Runtime::cancel(array_merge(scope(107),
  array('confirmed'=>true,'expected_operation_sha256'=>$c7['operation_sha256'])));
 ck(is_wp_error($blockedCancel)&&$blockedCancel->get_error_code()==='mad4b_sync_cancel_worker_active',
