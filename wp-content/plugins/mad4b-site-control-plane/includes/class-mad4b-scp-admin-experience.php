@@ -43,9 +43,13 @@ final class MAD4B_SCP_Admin_Experience {
 			&& empty( $profile['wordpress_environment_explicit'] )
 			&& 'production' === $context['raw_wordpress_environment']
 			&& 'staging' === $context['effective_environment'];
-		$warning = ! $context['match'] && ! $confirmed_default;
+		$host_sync_pending = is_array( $profile )
+			&& 'host_managed' === ( $profile['environment_sync_mode'] ?? '' )
+			&& 'host_aligned' !== ( $profile['environment_sync_state'] ?? '' );
+		$warning = $host_sync_pending || ( ! $context['match'] && ! $confirmed_default );
 		echo '<div class="notice ' . ( $warning ? 'notice-warning' : 'notice-info' ) . ' mad4b-environment-context"><p><strong>' . esc_html__( 'Environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; ' . esc_html__( 'WordPress setting:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
-		if ( $confirmed_default ) echo ' &middot; ' . esc_html__( 'Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant.', 'mad4b-site-control-plane' );
+		if ( $host_sync_pending ) echo ' &middot; ' . esc_html__( 'Host-Managed Sync is pending or blocked. Apply WordPress environment settings at the trusted Host, then verify a fresh bootstrap before release.', 'mad4b-site-control-plane' );
+		elseif ( $confirmed_default ) echo ' &middot; ' . esc_html__( 'Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant.', 'mad4b-site-control-plane' );
 		elseif ( $warning ) echo ' &middot; ' . esc_html__( 'The environment differs: verify the exact host and Site Profile before accepting a release.', 'mad4b-site-control-plane' );
 		echo '</p></div>';
 	}
