@@ -67,6 +67,8 @@ function link(href) {
   if (effective !== 'staging') throw new Error('SITE_PROFILE_NOT_STAGING');
   const rawLinks = await page.locator('[data-mad4b-workspace-item] > a')
     .evaluateAll(items => items.map(a => a.getAttribute('href')).filter(Boolean));
+  const sectionHrefs = await page.locator('.mad4b-workspace-section-links a')
+    .evaluateAll(items => items.map(a => a.getAttribute('href')).filter(Boolean));
   const routes = new Map();
   for (const raw of rawLinks) {
     const item = link(raw);
@@ -77,8 +79,22 @@ function link(href) {
   }
   const expected = Number.parseInt(process.env.MAD4B_UI_EXPECTED_COUNT || '', 10);
   const countMatches = Number.isInteger(expected) && expected > 0 && expected === routes.size;
+  // Explore every declared, capability-checked tab/section/view link in the
+  // current WP directory. Do not fabricate arbitrary ids or execute actions.
+  const cases = new Map(routes);
+  for (const raw of sectionHrefs) {
+    const destination = link(raw);
+    if (!destination || !routes.has(destination.slug)) continue;
+    const parsed = new URL(destination.url);
+    const variants = ['tab','section','view'].filter(key => parsed.searchParams.has(key));
+    if (variants.length !== 1) continue;
+    const key = variants[0], value = parsed.searchParams.get(key) || '';
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(value)) continue;
+    cases.set(destination.slug + ':' + key + ':' + value, destination.url);
+  }
+  if (cases.size > 180) throw new Error('UI_CASE_BUDGET_EXCEEDED');
   const results = [];
-  for (const [slug, url] of routes) {
+  for (const [slug, url] of cases) {
     const issues = [];
     let code = 0, unlabeled = 0, duplicateIds = 0;
     const overflowWidths = [];
@@ -88,7 +104,7 @@ function link(href) {
       code = response ? response.status() : 0;
       if (code !== 200) issues.push('HTTP_ERROR');
       const current = link(page.url());
-      if (!current || current.slug !== slug) issues.push('CROSS_ROUTE_REDIRECT');
+      if (!current || current.slug !== slug.split(':')[0]) issues.push('CROSS_ROUTE_REDIRECT');
       if (await page.locator('.mad4b-workspace').count() !== 1) issues.push('WORKSPACE_MISSING');
       if (await page.locator('.mad4b-workspace [aria-current="page"]').count() !== 1) {
         issues.push('CURRENT_PAGE_AMBIGUOUS');
@@ -135,7 +151,8 @@ function link(href) {
   const report = {
     contract: 'mad4b.admin-readonly-browser-survey.v1',
     state: failures || !countMatches ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED',
-    discovered_routes: routes.size, expected_route_count_match: countMatches,
+    discovered_routes: routes.size, discovered_route_and_section_cases: cases.size,
+    expected_route_count_match: countMatches,
     blocked_external_requests: blocked.external, blocked_write_requests: blocked.write,
     failures, results, source_manifest_verified: false,
     browser_attestation_verified: false, provider_mutations_verified: false,
