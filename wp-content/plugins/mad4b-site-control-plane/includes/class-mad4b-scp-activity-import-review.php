@@ -78,7 +78,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
-            empty( $profile['activity_contract']['enabled'] ) )
+            ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             return self::error( 'mad4b_wpai_profile_not_enabled', 'Enabled Profile Activity facet required.' );
         $import_id = isset( $input['import_id'] ) ? (int) $input['import_id'] : 0;
         $unique = isset( $input['unique_identifier'] ) ? (string) $input['unique_identifier'] : '';
@@ -138,7 +138,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             return self::error( 'mad4b_import_profile_invalid', 'Exact Experience Profile required.' );
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
-            empty( $profile['activity_contract']['enabled'] ) )
+            ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             return self::error( 'mad4b_import_profile_not_enabled', 'Enabled Activity facet required.' );
         $policy_result = MAD4B_SCP_Activity_Import_Authority::resolve( $profile, $input );
         if ( is_wp_error( $policy_result ) ) return $policy_result;
@@ -424,7 +424,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         $currencies = array_values( array_filter( array_map( 'trim', explode( ',', $allowed ) ) ) );
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
-            empty( $profile['activity_contract']['enabled'] ) )
+            ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             wp_die( 'Exact enabled Content Experience Profile required.' );
         $fh = fopen( $file['tmp_name'], 'rb' );
         if ( false === $fh ) wp_die( 'CSV open failed.' );
