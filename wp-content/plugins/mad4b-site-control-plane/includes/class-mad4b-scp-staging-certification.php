@@ -403,8 +403,29 @@ final class MAD4B_SCP_Staging_Certification {
 		// external executor may silently become an executable operation.
 		$coverage = self::complete_convergence_coverage( $status['gates'] ?? array(), $actions );
 		$actions = $coverage['actions'];
+		// Every action must be checked against *current* site, profile and
+		// package authority again by its own governed executor. This binding
+		// is evidence for planning, not an approval or time-independent grant.
+		$build_evidence = $status['gates']['exact_build']['evidence'] ?? array();
+		$authority_evidence = $status['gates']['write_authority']['evidence'] ?? array();
+		$plan_binding = array(
+			'contract' => 'mad4b.staging-convergence-plan-binding.v1',
+			'source_commit_sha' => (string) ( $build_evidence['source_commit_sha'] ?? '' ),
+			'build_fingerprint' => (string) ( $build_evidence['build_fingerprint'] ?? '' ),
+			'package_manifest_digest' => (string) ( $build_evidence['package_manifest_digest'] ?? '' ),
+			'site_uuid' => (string) ( $authority_evidence['site_uuid'] ?? '' ),
+			'site_profile_digest' => (string) ( $authority_evidence['site_profile_digest'] ?? '' ),
+			'candidate_binding_match' => ! empty( $authority_evidence['candidate_binding_match'] ),
+			'revalidate_before_any_effect' => true,
+			'never_grants_authority' => true,
+		);
 		$basis = array(
 			'contract' => self::CONVERGENCE_CONTRACT,
+			'plan_binding' => $plan_binding,
+			'gate_coverage_complete' => $coverage['coverage_complete'],
+			'covered_gate_count' => $coverage['covered_gate_count'],
+			'blocked_gate_count' => $coverage['blocked_gate_count'],
+			'dispatch_allowed' => false,
 			'coverage_contract' => $coverage['contract'],
 			'gate_action_coverage' => $coverage['gate_action_coverage'],
 			'plan_integrity_blockers' => $coverage['plan_integrity_blockers'],
@@ -575,6 +596,7 @@ final class MAD4B_SCP_Staging_Certification {
 			$state[ $id ] = 'complete';
 			$ordered[] = $by_id[ $id ];
 		};
+		ksort( $by_id, SORT_STRING );
 		foreach ( array_keys( $by_id ) as $id ) $visit( $id );
 		$issues = array_values( array_unique( $issues ) );
 		if ( $issues ) {
