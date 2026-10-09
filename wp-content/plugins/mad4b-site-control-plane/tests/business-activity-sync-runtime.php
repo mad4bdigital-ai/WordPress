@@ -6,7 +6,7 @@ class WP_Error { private $code; function __construct($code,$message=''){ $this->
 function is_wp_error($x){return $x instanceof WP_Error;}
 function wp_json_encode($value,$options=0){return json_encode($value,$options);}
 function current_user_can($cap,$id=0){return true;}
-function get_post_type($id){return in_array($id,array(101,102,103),true)?'vendor_profiles':'other';}
+function get_post_type($id){return in_array($id,array(101,102,103,104),true)?'vendor_profiles':'other';}
 function get_post_meta($id,$field,$single){return isset($GLOBALS['wp_values'][$id][$field])?$GLOBALS['wp_values'][$id][$field]:'';}
 function get_option($key,$default=false){return array_key_exists($key,$GLOBALS['options'])?$GLOBALS['options'][$key]:$default;}
 function add_option($key,$value,$unused='',$autoload=false){
@@ -88,16 +88,36 @@ $disagree=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(102));
 ck(!is_wp_error($disagree)&&$disagree['mode']==='bootstrap'&&
  !$disagree['ready_for_apply']&&$disagree['requires_manual_reconciliation'],
  'Divergent initial sources autoaccepted without arbitration');
-$GLOBALS['wp_values'][102]['biography']='Original';
-$seedPlan=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(102));
-ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(102),
+$arbitration=MAD4B_SCP_Activity_Sync_Runtime::plan(array_merge(scope(102),
+ array('field_sources'=>array('biography'=>'wordpress'))));
+ck(!is_wp_error($arbitration)&&$arbitration['mode']==='bootstrap_arbitrate'&&
+ $arbitration['ready_for_apply']&&count($arbitration['steps'])===1,
+ 'Divergent initial sources lack exact owner-reviewed bootstrap plan');
+$startArbitration=MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(102),
+ array('field_sources'=>array('biography'=>'wordpress'),'plan_sha256'=>$arbitration['plan_sha256']))));
+ck(!is_wp_error($startArbitration)&&$startArbitration['state']==='queued',
+ 'Owner-reviewed initial source choice failed to reserve journal');
+$applyArbitration=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(102)));
+ck(!is_wp_error($applyArbitration)&&$GLOBALS['drive_value']==='Different',
+ 'Arbitration failed exact conditional destination update');
+$finishArbitration=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(102)));
+ck(!is_wp_error($finishArbitration)&&$finishArbitration['checkpoint_advanced'],
+ 'Initial divergent sources did not converge to a trusted checkpoint');
+$archiveStatus=MAD4B_SCP_Activity_Sync_Runtime::status(scope(102));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::archive(array_merge(scope(102),
+ array('confirmed'=>true,'expected_operation_sha256'=>$archiveStatus['operation_sha256'])))),
+ 'Arbitrated operation was not archived');
+$GLOBALS['wp_values'][104]=array('biography'=>'Original');
+$GLOBALS['drive_value']='Original';$GLOBALS['drive_revision']++;
+$seedPlan=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(104));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(104),
  array('plan_sha256'=>$seedPlan['plan_sha256']))))), 'Second entity bootstrap failed');
-$GLOBALS['wp_values'][102]['biography']='Next revision';
-$p=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(102));
-$start=MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(102),array('plan_sha256'=>$p['plan_sha256']))));
+$GLOBALS['wp_values'][104]['biography']='Next revision';
+$p=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(104));
+$start=MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(104),array('plan_sha256'=>$p['plan_sha256']))));
 ck(!is_wp_error($start),'Exact concurrent test start failed');
 $GLOBALS['drive_value']='Other editor';$GLOBALS['drive_revision']++;
-$mut=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(102)));
+$mut=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(104)));
 ck(is_wp_error($mut)&&$mut->get_error_code()==='mad4b_sync_destination_changed_since_approval',
  'Unapproved external Drive edit overwritten');
 $GLOBALS['drive_value']='Original';$GLOBALS['drive_revision']++;
