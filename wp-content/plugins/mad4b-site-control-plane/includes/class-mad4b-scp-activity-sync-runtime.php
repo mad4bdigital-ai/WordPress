@@ -42,9 +42,23 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $sources = array( 'wordpress' => array( 'provider' => 'wordpress', 'direction' => 'bidirectional',
             'resource_kind' => 'wordpress_post', 'purpose' => 'record_data',
             'source_ref' => $entity, 'field_keys' => $c['attribute_meta_keys'], 'field_bindings' => array() ) );
-        foreach ( $c['sync_targets'] as $id => $target )
-            if ( isset( $target['purpose'] ) && 'record_data' === $target['purpose'] )
-                $sources[ $id ] = $target;
+        foreach ( $c['sync_targets'] as $id => $target ) {
+            if ( ! isset( $target['purpose'] ) || 'record_data' !== $target['purpose'] ) continue;
+            $mode = isset( $target['resource_binding_mode'] ) ? $target['resource_binding_mode'] : 'static';
+            if ( 'entity_post_meta' === $mode ) {
+                $key = isset( $target['resource_binding_meta_key'] ) ? (string) $target['resource_binding_meta_key'] : '';
+                if ( ! ctype_digit( $entity ) || (int) $entity < 1 ||
+                    ! in_array( $key, $profile['meta_keys'], true ) ||
+                    get_post_type( (int) $entity ) !== $profile['post_type'] ||
+                    ! current_user_can( 'edit_post', (int) $entity ) )
+                    return self::err( 'mad4b_sync_entity_provider_binding_denied', 'Per-entity source binding is not allowed by this profile.' );
+                $resource = get_post_meta( (int) $entity, $key, true );
+                if ( ! is_string( $resource ) || ! preg_match( '/^[A-Za-z0-9._:-]{8,180}$/D', $resource ) )
+                    return self::err( 'mad4b_sync_entity_provider_ref_missing', 'Entity has no approved exact resource ID bound to its profile Meta.' );
+                $target['source_ref'] = $resource;
+            }
+            $sources[ $id ] = $target;
+        }
         return array( 'profile' => $profile, 'contract' => $c, 'entity_id' => $entity,
             'site_uuid' => (string) MAD4B_SCP_Site_Profile::site_uuid(), 'sources' => $sources );
     }
