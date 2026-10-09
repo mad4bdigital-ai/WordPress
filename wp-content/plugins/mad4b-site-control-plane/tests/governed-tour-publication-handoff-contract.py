@@ -18,7 +18,7 @@ for text in (
     "'draft_replan_required'=>$live_state_requested",
     "'draft_replan_override'=>$live_state_requested?array('post'=>array('post_status'=>'draft')):array()",
     "'requires_exact_draft_plan'=>true",
-    "'requires_signed_context_receipt'=>true",
+    "'requires_signed_context_receipt_for_brand_content'=>true",
     "'requires_exact_mutation_approval'=>true",
     "'requires_acceptance_receipt_verification'=>true",
     "'mad4b/publication-verification-evaluate'",
