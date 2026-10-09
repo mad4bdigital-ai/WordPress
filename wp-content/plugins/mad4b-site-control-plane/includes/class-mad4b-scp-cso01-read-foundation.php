@@ -21,7 +21,10 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
 
     public static function can_read() {
         return function_exists( 'current_user_can' ) && current_user_can( 'manage_options' )
-            && class_exists( 'MAD4B_SCP_Policy', false ) && MAD4B_SCP_Policy::can_read();
+            && function_exists( 'get_current_user_id' )
+            && class_exists( 'MAD4B_SCP_Policy', false )
+            && MAD4B_SCP_Policy::can_read()
+            && MAD4B_SCP_Policy::can_connect_user( get_current_user_id() );
     }
 
     public static function register_abilities() {
@@ -86,7 +89,7 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             'profile_revision' => (string) MAD4B_SCP_Site_Profile::revision(),
             'blog_id' => function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 1,
         );
-        if ( ! preg_match( '/^[a-f0-9-]{36}$/iD', $site['site_uuid'] )
+        if ( ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $site['site_uuid'] )
             || ! preg_match( '~^https://[a-zA-Z0-9.-]+(?::[0-9]{2,5})?(?:/[a-zA-Z0-9._/-]*)?$~D', $site['origin'] )
             || ! in_array( $site['environment'], array( 'local', 'development', 'staging', 'production' ), true )
             || $site['blog_id'] < 1 ) return self::error( 'site_scope_invalid' );
@@ -181,6 +184,10 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             || ( $schema['additionalProperties'] ?? null ) !== false
             || ! is_array( $schema['properties'] ?? null )
             || count( $schema['properties'] ) > self::MAX_FIELDS ) return self::error( 'schema_unsupported' );
+        foreach ( array_keys( $schema ) as $key ) {
+            if ( ! in_array( $key, array( 'type', 'additionalProperties', 'properties', 'required', 'title', 'description' ), true ) )
+                return self::error( 'root_schema_unsupported' );
+        }
         $required = isset( $schema['required'] ) ? $schema['required'] : array();
         if ( ! is_array( $required ) || count( $required ) > self::MAX_FIELDS ) return self::error( 'required_invalid' );
         foreach ( $required as $key ) if ( ! is_string( $key ) || ! array_key_exists( $key, $schema['properties'] ) )
@@ -190,8 +197,11 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             if ( ! is_string( $key ) || ! preg_match( '/^[a-zA-Z_][a-zA-Z0-9_-]{0,63}$/D', $key )
                 || preg_match( '/secret|token|password|credential|api.?key|auth|private|bearer|nonce/i', $key )
                 || ! is_array( $spec ) ) return self::error( 'field_sensitive_or_invalid' );
-            foreach ( array( '$ref', 'oneOf', 'allOf', 'anyOf', 'patternProperties', 'dependentSchemas', 'if', 'then', 'else', 'default' ) as $unsafe ) {
-                if ( array_key_exists( $unsafe, $spec ) ) return self::error( 'field_schema_unsupported' );
+            // Never silently omit a constraint such as pattern, minimum,
+            // format or a vendor extension and then claim validation passed.
+            foreach ( array_keys( $spec ) as $constraint ) {
+                if ( ! in_array( $constraint, array( 'type', 'enum', 'maxLength', 'title', 'description' ), true ) )
+                    return self::error( 'field_schema_unsupported' );
             }
             $type = isset( $spec['type'] ) ? $spec['type'] : '';
             if ( ! in_array( $type, array( 'string', 'integer', 'number', 'boolean' ), true ) )
@@ -210,6 +220,8 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             if ( 'string' === $type ) {
                 $max_length = isset( $spec['maxLength'] ) ? $spec['maxLength'] : 256;
                 if ( ! is_int( $max_length ) || $max_length < 1 || $max_length > 2048 ) return self::error( 'field_length_invalid' );
+            } elseif ( array_key_exists( 'maxLength', $spec ) ) {
+                return self::error( 'nonstring_length_invalid' );
             }
             $fields[] = array(
                 'key' => $key, 'type' => $type,
@@ -222,6 +234,15 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             );
         }
         return $fields;
+    }
+
+    /** JSON Schema string limits count Unicode code points, not UTF-8 bytes. */
+    private static function valid_text( $value, $max_length ) {
+        if ( ! is_string( $value ) || strlen( $value ) > 8192 || 1 !== preg_match( '//u', $value ) ) return false;
+        $characters = function_exists( 'mb_strlen' )
+            ? mb_strlen( $value, 'UTF-8' )
+            : preg_match_all( '/./us', $value );
+        return false !== $characters && $characters <= $max_length;
     }
 
     /** No submitted values appear in diagnostics, logs or results. */
@@ -241,7 +262,7 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             }
             $field = $map[ $key ];
             $type = $field['type'];
-            $valid = ( 'string' === $type && is_string( $value ) && strlen( $value ) <= $field['max_length'] )
+            $valid = ( 'string' === $type && self::valid_text( $value, $field['max_length'] ) )
                 || ( 'boolean' === $type && is_bool( $value ) )
                 || ( 'integer' === $type && is_int( $value ) )
                 || ( 'number' === $type && ( is_int( $value ) || is_float( $value ) )
