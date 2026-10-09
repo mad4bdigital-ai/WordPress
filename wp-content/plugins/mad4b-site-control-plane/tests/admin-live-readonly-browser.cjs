@@ -25,6 +25,12 @@ if (!fs.existsSync(stateFile) || !fs.statSync(stateFile).isFile()) {
 }
 const root = required('MAD4B_UI_NODE_MODULES');
 const { chromium } = require(path.join(root, 'playwright'));
+function surveyState(failures, countMatches, blocked, consoleErrors) {
+  // Refuse the *whole run*, even when the initial authenticated GET required
+  // blocked third-party resources or attempted a forbidden write.
+  return failures > 0 || !countMatches || blocked.external > 0 ||
+    blocked.write > 0 || consoleErrors > 0 ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED';
+}
 function link(href) {
   let u;
   try { u = new URL(href, origin); } catch (_) { return null; }
@@ -44,8 +50,11 @@ function link(href) {
   });
   const page = await context.newPage();
   const blocked = { external: 0, write: 0 };
-  let pageErrors = 0;
+  let pageErrors = 0, consoleErrors = 0;
   page.on('pageerror', () => { pageErrors++; });
+  page.on('console', message => {
+    if (message.type() === 'error') consoleErrors++;
+  });
   await page.route('**/*', route => {
     const req = route.request();
     let trusted = false;
@@ -100,6 +109,9 @@ function link(href) {
     let code = 0, unlabeled = 0, duplicateIds = 0;
     const overflowWidths = [];
     const priorErrors = pageErrors;
+    const priorConsoleErrors = consoleErrors;
+    const priorExternalBlocked = blocked.external;
+    const priorWriteBlocked = blocked.write;
     try {
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
       code = response ? response.status() : 0;
@@ -141,6 +153,11 @@ function link(href) {
     } catch (_) {
       issues.push('NAVIGATION_EXCEPTION');
     }
+    // A denied request is never evidence of a clean, fully loaded page.
+    // Preserve the refusal (do not retry by relaxing the safety policy).
+    if (blocked.external > priorExternalBlocked) issues.push('EXTERNAL_RESOURCE_BLOCKED');
+    if (blocked.write > priorWriteBlocked) issues.push('WRITE_ATTEMPT_BLOCKED');
+    if (consoleErrors > priorConsoleErrors) issues.push('BROWSER_CONSOLE_ERRORS');
     results.push({
       slug, status: issues.length ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED',
       http_code: code, issues, unlabeled, duplicate_ids: duplicateIds,
@@ -151,10 +168,11 @@ function link(href) {
   const failures = results.filter(item => item.status === 'BLOCKED').length;
   const report = {
     contract: 'mad4b.admin-readonly-browser-survey.v1',
-    state: failures || !countMatches ? 'BLOCKED' : 'OBSERVED_UNCERTIFIED',
+    state: surveyState(failures, countMatches, blocked, consoleErrors),
     discovered_routes: routes.size, discovered_route_and_section_cases: cases.size,
     expected_route_count_match: countMatches,
     blocked_external_requests: blocked.external, blocked_write_requests: blocked.write,
+    browser_console_errors: consoleErrors,
     failures, results, source_manifest_verified: false,
     browser_attestation_verified: false, provider_mutations_verified: false,
     release_certified: false
