@@ -56,6 +56,12 @@ assert_recovery( 'REVIEW_REQUIRED' === MAD4B_SCP_Runtime_Recovery_Workspace::mod
 $incomplete = $empty;
 unset( $incomplete['production_mutation_performed'] );
 assert_recovery( 'UNAVAILABLE' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $incomplete )['state'], 'missing mutation evidence is not trusted' );
+$incomplete = $empty;
+unset( $incomplete['blocking_gates'] );
+assert_recovery( 'REVIEW_REQUIRED' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $incomplete )['state'], 'unknown blocker inventory cannot be treated as clear' );
+$incomplete = $empty;
+$incomplete['read_only'] = 1;
+assert_recovery( 'UNAVAILABLE' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $incomplete )['state'], 'read-only must be strict boolean true' );
 $truncated = $valid;
 $truncated['actions'] = array_fill( 0, 100, array( 'action_id' => 'candidate_binding_only' ));
 assert_recovery( 1 === MAD4B_SCP_Runtime_Recovery_Workspace::model( $truncated )['action_count'], 'workspace must bound and deduplicate untrusted action lists' );
