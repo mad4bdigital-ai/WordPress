@@ -1843,6 +1843,7 @@ def _wp_environment_guarded_write(config: Path, raw: bytes) -> None:
     if _is_link_like(config) or not config.is_file():
         raise ValueError("Host wp-config changed type before atomic write")
     existing = config.stat()
+    expected_current_sha = sha256_file(config)
     if hasattr(os, "geteuid") and os.geteuid() != existing.st_uid:
         raise ValueError("Host Runner must own wp-config to preserve its owner")
     if len(raw) > MAX_WRITE_BYTES:
@@ -1858,9 +1859,13 @@ def _wp_environment_guarded_write(config: Path, raw: bytes) -> None:
             os.fsync(out.fileno())
         if not hasattr(os, "fchmod"):
             os.chmod(temp, stat.S_IMODE(existing.st_mode))
-        if _is_link_like(config) or sha256_file(config) != sha256_file(config):
+        if (_is_link_like(config) or not config.is_file()
+            or not hmac.compare_digest(sha256_file(config), expected_current_sha)
+            or config.stat().st_ino != existing.st_ino):
             raise ValueError("Host wp-config pre-commit object changed")
         os.replace(temp, config)
+        if stat.S_IMODE(config.stat().st_mode) != stat.S_IMODE(existing.st_mode):
+            raise RuntimeError("Host wp-config owner permissions changed during replace")
         try:
             fd = os.open(str(config.parent), os.O_RDONLY)
             os.fsync(fd)
