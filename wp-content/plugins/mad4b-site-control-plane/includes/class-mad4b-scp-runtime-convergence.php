@@ -890,12 +890,12 @@ final class MAD4B_SCP_Runtime_Convergence {
 			: array();
 		// A foreign/misbound profile is a safety gate, not version drift.
 		// Recorded checkpoint hints cannot clear this observed authoritative fact.
-		$site_profile_drift = ! empty( $site_profile['configured'] )
-			&& empty( $site_profile['authority_ready'] );
+		$site_profile_drift = empty( $site_profile['authority_ready'] );
 		$checkpoint_signals = isset( $checkpoint['auto_reconcile_signals'] ) && is_array( $checkpoint['auto_reconcile_signals'] )
 			? $checkpoint['auto_reconcile_signals'] : array();
-		$checkpoint_signals['site_profile_drift'] = $site_profile_drift
-			|| ! empty( $checkpoint_signals['site_profile_drift'] );
+		// Never allow stale checkpoint flags to override fresh, exact-site
+		// authority observations in either direction.
+		$checkpoint_signals['site_profile_drift'] = $site_profile_drift;
 		return array(
 			'environment' => sanitize_key( (string) $environment ),
 			'source' => $source,
