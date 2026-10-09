@@ -54,6 +54,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'properties' => array(
 					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
 				),
 				'additionalProperties' => false,
 			),
@@ -61,6 +62,29 @@ final class MAD4B_SCP_Staging_Certification {
 			'meta' => array(
 				'public' => false,
 				'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read', 'non_authorizing' => true ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+		if ( ! wp_has_ability( 'mad4b/staging-convergence-verify' ) ) wp_register_ability( 'mad4b/staging-convergence-verify', array(
+			'label' => 'Verify Exact Staging Convergence Plan',
+			'description' => 'Reread Staging and optional Live Acceptance without granting execution.',
+			'category' => 'mad4b-read',
+			'execute_callback' => array( __CLASS__, 'convergence_verify' ),
+			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+			'input_schema' => array(
+				'type' => 'object',
+				'properties' => array(
+					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+					'expected_source_commit_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
+				),
+				'required' => array( 'expected_plan_sha256', 'expected_source_commit_sha' ),
+				'additionalProperties' => false,
+			),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false, 'show_in_rest' => false,
 				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read', 'non_authorizing' => true ),
 				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			),
@@ -241,10 +265,81 @@ final class MAD4B_SCP_Staging_Certification {
 		);
 	}
 
+	/**
+	 * Read after planned repair. Never reuse prior authority/certificates
+	 * when the package, gate observations or plan digest have changed.
+	 */
+	public static function convergence_verify( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$sha = (string) ( $input['expected_plan_sha256'] ?? '' );
+		$source = (string) ( $input['expected_source_commit_sha'] ?? '' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $source ) ) {
+			return array( 'contract' => 'mad4b.staging-convergence-verification.v1',
+				'state' => 'INVALID_EXPECTED_IDENTITY', 'ready' => false,
+				'authorizing' => false, 'mutation_performed' => false );
+		}
+		$live_required = ! empty( $input['include_live_acceptance'] );
+		$fresh = self::convergence_plan( array( 'include_live_acceptance' => $live_required,
+			'include_authoritative_content' => false, 'include_rendered_frontend' => false ) );
+		return self::compare_convergence_plan( $fresh, $sha, $source, $live_required );
+	}
+
+	/** Pure verification reducer; not a release certificate or mutation ticket. */
+	public static function compare_convergence_plan( array $plan, $sha, $source, $live_required = false ) {
+		$binding = is_array( $plan['plan_binding'] ?? null ) ? $plan['plan_binding'] : array();
+		$current_sha = (string) ( $plan['plan_sha256'] ?? '' );
+		$current_source = (string) ( $binding['source_commit_sha'] ?? '' );
+		$identity_ready = (bool) preg_match( '/^[a-f0-9]{64}$/D', $current_sha )
+			&& (bool) preg_match( '/^[a-f0-9]{40}$/D', $current_source );
+		$sha_match = $identity_ready && is_string( $sha ) && strlen( $sha ) === 64
+			&& hash_equals( $sha, $current_sha );
+		$source_match = $identity_ready && is_string( $source ) && strlen( $source ) === 40
+			&& hash_equals( $source, $current_source );
+		$overlay = is_array( $plan['live_acceptance_overlay'] ?? null ) ? $plan['live_acceptance_overlay'] : array();
+		$live_ready = ! $live_required || ( ! empty( $overlay['included'] ) && ! empty( $overlay['ready'] ) );
+		$clear = ! empty( $plan['current_ready'] ) && ! empty( $plan['gate_coverage_complete'] )
+			&& empty( $plan['blocking_gates'] ) && empty( $plan['plan_integrity_blockers'] ) && $live_ready;
+		$ready = $identity_ready && $sha_match && $source_match && $clear;
+		$state = ! $identity_ready ? 'CURRENT_BUILD_IDENTITY_UNAVAILABLE'
+			: ( ! $sha_match || ! $source_match ? 'REPLAN_REQUIRED'
+				: ( $ready ? 'CURRENT_STAGING_GATES_READY' : 'NEEDS_EVIDENCE' ) );
+		return array(
+			'contract' => 'mad4b.staging-convergence-verification.v1',
+			'state' => $state, 'ready' => $ready,
+			'plan_matches' => $sha_match, 'source_matches' => $source_match,
+			'current_plan_sha256' => $current_sha,
+			'current_source_commit_sha' => $current_source,
+			'live_acceptance_included' => ! empty( $overlay['included'] ),
+			'blocking_gates' => is_array( $plan['blocking_gates'] ?? null ) ? array_values( $plan['blocking_gates'] ) : array( 'plan_gates_unavailable' ),
+			'plan_integrity_blockers' => is_array( $plan['plan_integrity_blockers'] ?? null ) ? array_values( $plan['plan_integrity_blockers'] ) : array( 'plan_integrity_unknown' ),
+			'full_release_certified' => false, 'authorizing' => false,
+			'mutation_performed' => false, 'production_mutation_performed' => false,
+		);
+	}
+
 	public static function convergence_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$status = self::status( array( 'compact' => false ) );
-		$blocking = isset( $status['blocking_gates'] ) && is_array( $status['blocking_gates'] ) ? array_values( $status['blocking_gates'] ) : array();
+		$plan_gates = is_array( $status['gates'] ?? null ) ? $status['gates'] : array();
+		$live_overlay = array( 'included' => false, 'ready' => null, 'gate_count' => 0, 'blockers' => array() );
+		// Explicit opt-in: the independent Live Acceptance registry is more
+		// expensive and may itself call external evidentiary reducers. Never
+		// synthesize Live gates from Staging evidence or call external clients.
+		if ( ! empty( $input['include_live_acceptance'] ) ) {
+			$live = self::safe_read( 'independent_live_acceptance', static function () {
+				return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+					? MAD4B_SCP_Live_Acceptance_Observer::live_acceptance_status( array() )
+					: array( 'ready' => false, 'blockers' => array( 'live_acceptance_provider_unavailable' ) );
+			} );
+			$live_overlay = self::merge_live_acceptance_gates( $plan_gates, $live );
+			$plan_gates = $live_overlay['gates'];
+			unset( $live_overlay['gates'] );
+		}
+		$blocking = array();
+		foreach ( $plan_gates as $gate_id => $gate ) {
+			if ( is_array( $gate ) && empty( $gate['ready'] ) ) $blocking[] = $gate_id;
+		}
 		$actions = array();
 		$seen = array();
 		$append = static function ( &$actions, &$seen, $id, array $row ) {
@@ -398,12 +493,46 @@ final class MAD4B_SCP_Staging_Certification {
 			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
 		) );
 
+		// Complete the dynamic gate-to-action map after all native planners
+		// have spoken. No missing gate, dangling dependency or unverified
+		// external executor may silently become an executable operation.
+		$coverage = self::complete_convergence_coverage( $plan_gates, $actions );
+		$actions = $coverage['actions'];
+		// Every action must be checked against *current* site, profile and
+		// package authority again by its own governed executor. This binding
+		// is evidence for planning, not an approval or time-independent grant.
+		$build_evidence = $status['gates']['exact_build']['evidence'] ?? array();
+		$authority_evidence = $status['gates']['write_authority']['evidence'] ?? array();
+		$plan_binding = array(
+			'contract' => 'mad4b.staging-convergence-plan-binding.v1',
+			'source_commit_sha' => (string) ( $build_evidence['source_commit_sha'] ?? '' ),
+			'build_fingerprint' => (string) ( $build_evidence['build_fingerprint'] ?? '' ),
+			'package_manifest_digest' => (string) ( $build_evidence['package_manifest_digest'] ?? '' ),
+			'site_uuid' => (string) ( $authority_evidence['site_uuid'] ?? '' ),
+			'site_profile_digest' => (string) ( $authority_evidence['site_profile_digest'] ?? '' ),
+			'candidate_binding_match' => ! empty( $authority_evidence['candidate_binding_match'] ),
+			'revalidate_before_any_effect' => true,
+			'never_grants_authority' => true,
+		);
 		$basis = array(
 			'contract' => self::CONVERGENCE_CONTRACT,
+			'plan_binding' => $plan_binding,
+			'gate_coverage_complete' => $coverage['coverage_complete'],
+			'covered_gate_count' => $coverage['covered_gate_count'],
+			'blocked_gate_count' => $coverage['blocked_gate_count'],
+			'dispatch_allowed' => false,
+			'verification_ability' => 'mad4b/staging-convergence-verify',
+			'verification_requires_exact_source_and_plan' => true,
+			'live_acceptance_overlay' => $live_overlay,
+			'coverage_contract' => $coverage['contract'],
+			'gate_action_coverage' => $coverage['gate_action_coverage'],
+			'plan_integrity_blockers' => $coverage['plan_integrity_blockers'],
+			'external_execution_requires_independent_preflight' => true,
+			'autonomous_mutation_authorized' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
-			'current_ready' => ! empty( $status['ready'] ),
+			'current_ready' => ! empty( $status['ready'] ) && empty( $blocking ),
 			'blocking_gates' => $blocking,
 			'actions' => $actions,
 			'principle' => 'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority',
@@ -411,6 +540,268 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Opt-in, read-only merge with independent Live Acceptance. This is an
+	 * evidence union, never an authority union: a second gate cannot become
+	 * ready from the first gate's status. All unknown families are preserved as
+	 * review-only blockers for the generic convergence reducer.
+	 */
+	public static function merge_live_acceptance_gates( array $staging_gates, array $live ) {
+		$ready = ! empty( $live['ready'] );
+		$items = $live['gates'] ?? null;
+		$blocked = array();
+		$count = 0;
+		if ( ! is_array( $items ) || ! $items ) {
+			$staging_gates['live_acceptance_evidence_unavailable'] = array(
+				'ready' => false,
+				'state' => 'pending_external_evidence',
+				'source' => 'mad4b/live-acceptance-status',
+				'remediation_owner' => 'external_evidence_operator',
+				'blockers' => array( 'live_acceptance_gate_snapshot_missing' ),
+			);
+			$blocked[] = 'live_acceptance_evidence_unavailable';
+		} else {
+			foreach ( array_slice( $items, 0, 64, true ) as $id => $gate ) {
+				if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id ) || ! is_array( $gate ) )
+					continue;
+				$key = 'live_acceptance_' . $id;
+				$is_ready = ! empty( $gate['ready'] ) && ! empty( $gate['effective_ready'] )
+					&& ( empty( $gate['freshness_required'] ) || ! empty( $gate['fresh'] ) );
+				$staging_gates[ $key ] = array(
+					'ready' => $is_ready,
+					'state' => (string) ( $gate['state'] ?? 'unknown' ),
+					'source' => (string) ( $gate['source_contract'] ?? 'mad4b/live-acceptance-status' ),
+					'remediation_owner' => 'independent_acceptance_provider',
+					'blockers' => is_array( $gate['blockers'] ?? null ) ? array_slice( $gate['blockers'], 0, 12 ) : array(),
+				);
+				++$count;
+				if ( ! $is_ready ) $blocked[] = $key;
+			}
+			// Missing/invalid categories may never yield a positive verdict.
+			if ( count( $items ) > 64 || $count !== count( $items ) ) {
+				$ready = false;
+				$staging_gates['live_acceptance_registry_invalid'] = array(
+					'ready' => false, 'state' => 'untrusted_registry',
+					'source' => 'mad4b/live-acceptance-status',
+					'remediation_owner' => 'independent_acceptance_provider',
+					'blockers' => array( 'live_acceptance_registry_unbounded_or_invalid' ),
+				);
+				$blocked[] = 'live_acceptance_registry_invalid';
+			}
+		}
+		// The global reducer cannot outrank a negative independent verdict.
+		if ( ! $ready && empty( $blocked ) ) {
+			$staging_gates['live_acceptance_verdict_blocked'] = array(
+				'ready' => false, 'state' => 'pending_or_blocked',
+				'source' => 'mad4b/live-acceptance-status',
+				'remediation_owner' => 'independent_acceptance_provider',
+				'blockers' => array( 'live_acceptance_global_verdict_not_ready' ),
+			);
+			$blocked[] = 'live_acceptance_verdict_blocked';
+		}
+		return array(
+			'included' => true,
+			'ready' => $ready && ! $blocked,
+			'gate_count' => $count,
+			'blockers' => $blocked,
+			'gates' => $staging_gates,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Pure cross-gate closure reducer. A gate's owner and evidence source come
+	 * from the live site snapshot; no site-specific CPT, domain, provider or
+	 * authority is inferred here. Unknown/new gates become review-only actions.
+	 *
+	 * This is a *plan*, never an execution engine. It may enumerate existing
+	 * governed apply Abilities, but does not approve or invoke them.
+	 */
+	public static function complete_convergence_coverage( array $gates, array $actions ) {
+		$links = array(
+			'external_mcp_handshake_refresh' => array( 'safe_boot' ),
+			'google_drive_reconnect' => array( 'google_provider_connection', 'brand_core_context_coverage' ),
+			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
+			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
+			'write_authority_plan_blocked' => array( 'write_authority', 'write_runtime' ),
+			'write_authority_reconcile' => array( 'write_authority', 'write_runtime' ),
+			'candidate_binding_only' => array( 'write_authority', 'write_runtime' ),
+			'browser_acceptance' => array( 'browser_runtime' ),
+			'frontend_performance_sampling' => array( 'performance_budget' ),
+		);
+		$readbacks = array(
+			'exact_build' => 'mad4b/staging-certification-status',
+			'safe_boot' => 'mad4b/connection-status',
+			'context_authority' => 'context/brand-core-coverage',
+			'brand_core_context_coverage' => 'context/brand-core-coverage',
+			'google_provider_connection' => 'context/google-drive-status',
+			'managed_google_broker' => 'mad4b/staging-certification-status',
+			'skills_runtime' => 'mad4b/skills-runtime-certification',
+			'external_skill_snapshot' => 'mad4b/live-acceptance-status',
+			'write_authority' => 'mad4b/write-authority-status',
+			'write_runtime' => 'mad4b/write-runtime-certification',
+			'browser_runtime' => 'mad4b/browser-acceptance-capabilities',
+			'performance_budget' => 'mad4b/frontend-performance-status',
+			'admin_query_performance' => 'mad4b/staging-certification-status',
+			'query_monitor_db_attribution' => 'mad4b/staging-certification-status',
+			'oauth_live_authority_projection' => 'mad4b/staging-certification-status',
+			'rollback_candidate' => 'mad4b/staging-certification-status',
+			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
+		);
+		$blocked = array();
+		$coverage = array();
+		$issues = array();
+		if ( count( $gates ) > 128 ) $issues[] = 'gate_registry_limit_exceeded';
+		foreach ( array_slice( $gates, 0, 128, true ) as $id => $gate ) {
+			if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id )
+				|| ! is_array( $gate ) ) {
+				$issues[] = 'invalid_gate_identity_or_shape';
+				continue;
+			}
+			if ( ! empty( $gate['ready'] ) ) continue;
+			$blocked[ $id ] = $gate;
+			$coverage[ $id ] = array();
+		}
+		$by_id = array();
+		if ( count( $actions ) > 256 ) $issues[] = 'action_registry_limit_exceeded';
+		foreach ( array_slice( $actions, 0, 256 ) as $row ) {
+			if ( ! is_array( $row ) || ! is_string( $row['action_id'] ?? null )
+				|| ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $row['action_id'] ) ) {
+				$issues[] = 'invalid_action_identity';
+				continue;
+			}
+			$id = $row['action_id'];
+			if ( isset( $by_id[ $id ] ) ) {
+				$issues[] = 'duplicate_action_identity:' . $id;
+				continue;
+			}
+			$related = array();
+			foreach ( $links[ $id ] ?? array() as $gate_id ) {
+				if ( isset( $blocked[ $gate_id ] ) ) {
+					$related[] = $gate_id;
+					$coverage[ $gate_id ][] = $id;
+				}
+			}
+			$row['target_gates'] = $related;
+			$row['read_only_plan'] = true;
+			$row['authorizing'] = false;
+			$row['mutation_performed'] = false;
+			if ( in_array( $row['kind'] ?? '', array(
+				'governed_mutation', 'hybrid_creation', 'external_oauth_reauthorization',
+				'external_executor_job',
+			), true ) ) {
+				$row['automatic_execution_allowed'] = false;
+				$row['independent_governed_preflight_required'] = true;
+			}
+			// A configuration flag is not a signed external browser receipt.
+			// No external executor can be launched from this planning view.
+			if ( 'external_executor_job' === ( $row['kind'] ?? '' ) ) {
+				$row['automatic_execution_allowed'] = false;
+				$row['external_preflight_required'] = true;
+				$row['required_evidence'] = array(
+					'current_build_bound_plan', 'registered_provider',
+					'verified_external_executor_identity', 'signed_replay_safe_receipt',
+					'fresh_post_execution_readback',
+				);
+			}
+			$by_id[ $id ] = $row;
+		}
+		if ( isset( $blocked['external_skill_snapshot'] ) && isset( $by_id['external_snapshot_refresh'] )
+			&& ! isset( $by_id['external_mcp_handshake_refresh'] ) ) {
+			$by_id['external_mcp_handshake_refresh'] = array(
+				'action_id' => 'external_mcp_handshake_refresh',
+				'kind' => 'external_evidence',
+				'executor' => 'external_mcp_client',
+				'human_decision_required' => false,
+				'automatic_execution_allowed' => false,
+				'depends_on' => array(),
+				'target_gates' => array( 'external_skill_snapshot' ),
+				'instruction' => 'Repeat an authenticated exact-build MCP initialize and tools/list readback before finalizing external snapshot.',
+				'readback_ability' => 'mad4b/live-acceptance-status',
+				'read_only_plan' => true,
+				'authorizing' => false,
+				'mutation_performed' => false,
+			);
+			$coverage['external_skill_snapshot'][] = 'external_mcp_handshake_refresh';
+		}
+		foreach ( $blocked as $gate_id => $gate ) {
+			if ( ! empty( $coverage[ $gate_id ] ) ) continue;
+			$id = 'review_gate_' . $gate_id;
+			$by_id[ $id ] = array(
+				'action_id' => $id,
+				'kind' => 'read_only_blocker',
+				'executor' => (string) ( $gate['remediation_owner'] ?? 'operator' ),
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'depends_on' => array(),
+				'target_gates' => array( $gate_id ),
+				'evidence_source' => (string) ( $gate['source'] ?? '' ),
+				'evidence_blockers' => array_values( array_slice(
+					is_array( $gate['blockers'] ?? null ) ? $gate['blockers'] : array(), 0, 12
+				) ),
+				'readback_ability' => $readbacks[ $gate_id ] ??
+					( 0 === strpos( $gate_id, 'live_acceptance_' )
+						? 'mad4b/live-acceptance-status' : 'mad4b/staging-certification-status' ),
+				'instruction' => 'Inspect this exact live gate, resolve missing provider/host/owner evidence in its own governed lane, then rerun Staging certification.',
+				'no_automatic_remediation_available' => true,
+				'read_only_plan' => true,
+				'authorizing' => false,
+				'mutation_performed' => false,
+			);
+			$coverage[ $gate_id ][] = $id;
+		}
+		// A strictly bounded topological ordering. Unknown dependency IDs
+		// stay blocked rather than being removed from the operation contract.
+		$ordered = array();
+		$state = array();
+		$visit = static function ( $id ) use ( &$visit, &$state, &$ordered, &$issues, $by_id ) {
+			if ( ( $state[ $id ] ?? '' ) === 'complete' ) return;
+			if ( ( $state[ $id ] ?? '' ) === 'visiting' ) {
+				$issues[] = 'action_dependency_cycle:' . $id;
+				return;
+			}
+			$state[ $id ] = 'visiting';
+			$deps = $by_id[ $id ]['depends_on'] ?? array();
+			if ( ! is_array( $deps ) ) {
+				$issues[] = 'invalid_action_dependencies:' . $id;
+				$deps = array();
+			}
+			foreach ( $deps as $dependency ) {
+				if ( ! is_string( $dependency ) || ! isset( $by_id[ $dependency ] ) ) {
+					$issues[] = 'missing_action_dependency:' . $id;
+					continue;
+				}
+				$visit( $dependency );
+			}
+			$state[ $id ] = 'complete';
+			$ordered[] = $by_id[ $id ];
+		};
+		ksort( $by_id, SORT_STRING );
+		foreach ( array_keys( $by_id ) as $id ) $visit( $id );
+		$issues = array_values( array_unique( $issues ) );
+		if ( $issues ) {
+			// A broken plan cannot provide executable or approving authority.
+			foreach ( $ordered as &$item ) {
+				$item['automatic_execution_allowed'] = false;
+				$item['plan_integrity_blocked'] = true;
+			}
+			unset( $item );
+		}
+		ksort( $coverage, SORT_STRING );
+		return array(
+			'contract' => 'mad4b.staging-gate-action-coverage.v1',
+			'actions' => $ordered,
+			'gate_action_coverage' => $coverage,
+			'plan_integrity_blockers' => $issues,
+			'blocked_gate_count' => count( $blocked ),
+			'covered_gate_count' => count( $coverage ),
+			'coverage_complete' => count( $blocked ) === count( $coverage ) && ! $issues,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	private static function safe_read( $name, $callback ) {
