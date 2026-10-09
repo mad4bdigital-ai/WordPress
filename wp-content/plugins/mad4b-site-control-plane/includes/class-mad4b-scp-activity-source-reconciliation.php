@@ -210,6 +210,10 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
             $allowed = array_values( array_intersect( $fields, $t['field_keys'] ) );
             $hashes = self::normalize_value_hashes( $item['fields'], $allowed );
             if ( is_wp_error( $hashes ) ) return $hashes;
+            if ( array_diff( $allowed, array_keys( $hashes ) ) ) {
+                $errors[] = array( 'source' => $id, 'code' => 'snapshot_field_coverage_incomplete' );
+                continue;
+            }
             if ( ! isset( $baseline[ $id ] ) || ! is_array( $baseline[ $id ] ) ) {
                 $errors[] = array( 'source' => $id, 'code' => 'checkpoint_missing' );
                 continue;
