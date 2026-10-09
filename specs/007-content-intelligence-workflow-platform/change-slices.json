@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 542,
+  "changed_file_count": 548,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1050,8 +1050,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-state-machine-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-mi01-competitor-first-dmc-exchange-20261009",
+      "semantic_unit": "MI01 competitor-first public-facts market research with dynamic pricing and original brand drafts, distinct from contracted DMC native CPT import/export; site-configurable media, assistant roles and persistent guarded Brand write attempts.",
+      "revert_boundary": "Revert MI01 market registry, research/DMC import-export planners, exact admin rules, persistent retry attempt budget, native/static fixtures and specification; retain original BR01 Context gates and independent publication/rights contracts.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitor-first-market-intelligence-and-dmc-exchange.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-growth-policies.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-source-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "113fe98b4596dcd1b52049d29e81001201c9628f34c950c2f06300105081f7ea",
+  "changed_paths_sha256": "c9f008a64d20b169691f9793edd0429b3eda3eb73e29121985e84c7cdeb42c85",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
