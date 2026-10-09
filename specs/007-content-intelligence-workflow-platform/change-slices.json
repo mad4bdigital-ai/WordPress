@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 461,
+  "changed_file_count": 468,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -865,8 +865,23 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-wordpress-exact-recovery-lifecycle-20261009",
+      "semantic_unit": "WordPress-native, exact-site and exact-source recovery lifecycle, Skills persisted receipt continuity, operator Action Center and CI-independent regression/preflight fixtures. Read-only action admission; no new execution authority.",
+      "revert_boundary": "Revert the seven added recovery model/UI/Skills evidence/test files together with their plugin bootstrap and Staging planner integrations; retain pre-existing Staging verification and gate coverage.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-lifecycle.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-recovery-workspace.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-lifecycle-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-no-ci-preflight.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-recovery-workspace-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-recovery-lifecycle-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "ee0b41753b63b4383878ebbd0d84356e129ad4f5f17d935d7141ef5a93154fdb",
+  "changed_paths_sha256": "353586b68b8e35751c3128ab25dd95109ef8a259c270f50b99b56846095d38d1",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
