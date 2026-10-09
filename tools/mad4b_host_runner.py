@@ -1877,6 +1877,30 @@ def _wp_environment_guarded_write(config: Path, raw: bytes) -> None:
             temp.unlink()
 
 
+def _wp_environment_private_backup_root(profile: dict[str, Any]) -> Path:
+    # wp-config holds DB/auth secrets. Never place an unencrypted snapshot in
+    # WordPress content, its runner spool or an implicit public directory.
+    name = str(profile.get("host_environment_backup_root") or "")
+    if not name:
+        raise ValueError("Host environment sync requires an enrolled host-private backup root")
+    root = Path(name).expanduser()
+    if not root.is_absolute():
+        raise ValueError("Host environment backup root must be absolute")
+    _reject_link_ancestors(root)
+    if _is_link_like(root) or not root.is_dir():
+        raise ValueError("Host environment backup root is missing or a link")
+    root = root.resolve()
+    wordpress = Path(profile["wordpress_root"]).resolve()
+    if root == wordpress or _is_within(root, wordpress):
+        raise ValueError("Host environment config snapshot must remain outside WordPress public root")
+    mode = stat.S_IMODE(root.stat().st_mode)
+    if mode & 0o077:
+        raise ValueError("Host environment private snapshot directory must have mode 0700 or stricter")
+    if hasattr(os, "geteuid") and os.geteuid() != root.stat().st_uid:
+        raise ValueError("Host Runner must own the private snapshot directory")
+    return root
+
+
 def _rollback_wp_environment(result: dict[str, Any]) -> bool:
     try:
         path = Path(str(result.get("_target_path") or ""))
@@ -1950,11 +1974,10 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
                            config: Path, before: bytes, after: bytes,
                            extra: dict[str, Any] | None = None) -> dict[str, Any]:
     journal_root = Path(profile["journal_root"])
-    rollback_root = Path(profile["rollback_root"])
-    for directory in (journal_root, rollback_root):
-        directory.mkdir(parents=True, exist_ok=True)
-        if _is_link_like(directory):
-            raise ValueError("Host Runner environment evidence directory is a symlink")
+    journal_root.mkdir(parents=True, exist_ok=True)
+    if _is_link_like(journal_root):
+        raise ValueError("Host Runner environment journal directory is a symlink")
+    rollback_root = _wp_environment_private_backup_root(profile)
     job_id = verified["job_id"]
     journal_path = journal_root / f"{job_id}.json"
     backup = rollback_root / f"{job_id}.bin"
@@ -1964,6 +1987,8 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
     after_sha = sha256_bytes(after)
     atomic_bytes_write(backup, before)
     os.chmod(backup, 0o600)
+    if stat.S_IMODE(backup.stat().st_mode) != 0o600:
+        raise RuntimeError("Host environment secret backup permissions are too broad")
     if not hmac.compare_digest(sha256_file(backup), before_sha):
         raise RuntimeError("Host environment sync backup verification failed")
     journal = {
@@ -2070,7 +2095,7 @@ def execute_wp_environment_rollback(profile: dict[str, Any], verified: dict[str,
         or before_sha != plan["restore_wp_config_sha256"] or after_sha != plan["expected_wp_config_sha256"]
         or after_sha != profile["wp_config_sha256"]):
         raise ValueError("Host environment rollback source/current digest drift")
-    backup = Path(profile["rollback_root"]) / f"{source}.bin"
+    backup = _wp_environment_private_backup_root(profile) / f"{source}.bin"
     if _is_link_like(backup) or not backup.is_file() or not hmac.compare_digest(sha256_file(backup), before_sha):
         raise ValueError("Host environment rollback source snapshot missing or corrupt")
     config = _wp_environment_config(profile)
