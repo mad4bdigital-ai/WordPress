@@ -8,6 +8,7 @@
       var controls = root.querySelector('[data-mad4b-directory-controls]');
       var input = root.querySelector('#mad4b-workspace-filter');
       var items = Array.from(root.querySelectorAll('[data-mad4b-workspace-item]'));
+      var groups = Array.from(root.querySelectorAll('[data-mad4b-workspace-group]'));
       var empty = root.querySelector('[data-mad4b-directory-empty]');
       var status = root.querySelector('[data-mad4b-directory-status]');
       if (controls && input && empty && status) {
@@ -18,6 +19,9 @@
           items.forEach(function (item) {
             item.hidden = item.textContent.toLocaleLowerCase().indexOf(query) === -1;
             if (!item.hidden) count += 1;
+          });
+          groups.forEach(function (group) {
+            group.hidden = !group.querySelector('[data-mad4b-workspace-item]:not([hidden])');
           });
           empty.hidden = count !== 0;
           status.textContent = status.dataset.template.replace('%d', String(count));
