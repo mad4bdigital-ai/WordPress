@@ -37,7 +37,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         if ( null === $raw || array() === $raw ) return array( 'enabled' => false );
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ), array(
             'enabled', 'user_role', 'post_user_meta_key', 'user_post_meta_key',
-            'attribute_meta_keys', 'taxonomy_slugs', 'create_user', 'create_profile',
+            'attribute_meta_keys', 'taxonomy_slugs', 'create_user', 'create_profile', 'sync_targets',
         ) ) ) return self::err( 'mad4b_activity_contract_unknown_field', 'Activity facet has unrecognized fields.' );
         if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
         $role = isset( $raw['user_role'] ) ? sanitize_key( $raw['user_role'] ) : '';
@@ -60,12 +60,41 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $attached = get_object_taxonomies( $post_type );
         foreach ( $taxonomies as $taxonomy ) if ( ! is_string( $taxonomy ) || ! in_array( $taxonomy, $attached, true ) || ! in_array( $taxonomy, $configured_taxonomies, true ) )
             return self::err( 'mad4b_activity_taxonomy_unavailable', 'Configured classification taxonomy is not attached to the profile CPT.' );
+        $targets = isset( $raw['sync_targets'] ) ? $raw['sync_targets'] : array();
+        if ( ! is_array( $targets ) || count( $targets ) > 12 )
+            return self::err( 'mad4b_activity_sync_target_invalid', 'Business Activity sync target count is invalid.' );
+        $sync = array();
+        foreach ( $targets as $target_id => $target ) {
+            if ( ! is_string( $target_id ) || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
+                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy' ) ) )
+                return self::err( 'mad4b_activity_sync_target_fields', 'Sync target must have bounded fields and ID.' );
+            $provider = isset( $target['provider'] ) ? $target['provider'] : '';
+            $direction = isset( $target['direction'] ) ? $target['direction'] : '';
+            if ( ! in_array( $provider, array( 'wordpress', 'google_drive' ), true ) ||
+                ! in_array( $direction, array( 'import', 'export', 'bidirectional' ), true ) )
+                return self::err( 'mad4b_activity_sync_provider_invalid', 'Provider and direction are unsupported.' );
+            $field_keys = isset( $target['field_keys'] ) ? $target['field_keys'] : array();
+            if ( ! is_array( $field_keys ) || count( $field_keys ) > self::MAX_FIELDS ||
+                array_diff( $field_keys, $meta_keys ) )
+                return self::err( 'mad4b_activity_sync_fields_invalid', 'Sync fields must be permitted by the parent Content Experience Profile.' );
+            $source_ref = isset( $target['source_ref'] ) ? $target['source_ref'] : '';
+            if ( ! is_string( $source_ref ) || strlen( $source_ref ) > 180 ||
+                ( '' !== $source_ref && ! preg_match( '/^[A-Za-z0-9._:-]+$/', $source_ref ) ) )
+                return self::err( 'mad4b_activity_sync_source_invalid', 'Sync source uses only a bounded provider resource identifier, never credentials or arbitrary URLs.' );
+            $policy = isset( $target['conflict_policy'] ) ? $target['conflict_policy'] : 'manual_review';
+            if ( ! in_array( $policy, array( 'manual_review', 'source_wins', 'site_wins' ), true ) )
+                return self::err( 'mad4b_activity_sync_conflict_policy', 'Sync conflict policy is not supported.' );
+            $sync[ $target_id ] = array( 'provider' => $provider, 'direction' => $direction,
+                'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
+                'conflict_policy' => $policy );
+        }
         return array( 'enabled' => true, 'user_role' => $role,
             'post_user_meta_key' => $post_key, 'user_post_meta_key' => $user_key,
             'attribute_meta_keys' => array_keys( $allow ),
             'taxonomy_slugs' => array_values( array_unique( $taxonomies ) ),
             'create_user' => ! empty( $raw['create_user'] ),
             'create_profile' => ! empty( $raw['create_profile'] ),
+            'sync_targets' => $sync,
         );
     }
 
@@ -95,6 +124,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'configured_role' => $binding['contract']['user_role'],
             'allowed_attribute_meta_keys' => $binding['contract']['attribute_meta_keys'],
             'attached_taxonomies' => $binding['contract']['taxonomy_slugs'],
+            'configured_sync_targets' => isset( $binding['contract']['sync_targets'] ) ? $binding['contract']['sync_targets'] : array(),
             'site_uuid' => $binding['site_uuid'],
             'read_only' => true, 'mutation_performed' => false );
     }
@@ -156,6 +186,52 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'requires_governed_approval' => true,
             'read_only' => true, 'mutation_performed' => false );
     }
+    /**
+     * This is a site-configured cross-provider transfer plan, not an
+     * unreviewed Google Drive or WordPress mutation. Each provider's
+     * existing authenticated and revision-bound adapter performs the write.
+     */
+    public static function sync_plan( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        $binding = self::binding( $input );
+        if ( is_wp_error( $binding ) ) return $binding;
+        $target_id = isset( $input['target_id'] ) ? (string) $input['target_id'] : '';
+        $op = isset( $input['operation'] ) ? (string) $input['operation'] : '';
+        $targets = isset( $binding['contract']['sync_targets'] ) ? $binding['contract']['sync_targets'] : array();
+        if ( ! isset( $targets[ $target_id ] ) || ! in_array( $op, array( 'import', 'export', 'update', 'improve', 'reconcile' ), true ) )
+            return self::err( 'mad4b_activity_sync_not_configured', 'Target and operation must be explicitly configured.' );
+        $target = $targets[ $target_id ];
+        $direction = in_array( $op, array( 'import', 'export' ), true ) ? $op : 'bidirectional';
+        if ( ! in_array( $target['direction'], array( $direction, 'bidirectional' ), true ) )
+            return self::err( 'mad4b_activity_sync_direction_denied', 'Requested operation exceeds configured sync direction.' );
+        $routes = MAD4B_SCP_Content_Experience_Profiles::profile_routes(
+            $binding['profile']['slug'], (int) $binding['profile']['revision'] );
+        $provider = $target['provider'];
+        $ability = 'wordpress' === $provider
+            ? array( $routes['update_plan'], $routes['update_apply'], $routes['verify'] )
+            : array( 'context/provider-capabilities', 'context/source-scan-plan',
+                'context/source-scan-apply', 'context/reconcile-brand-materialization' );
+        // The Google Drive Context abilities are Brand Core-specific. They
+        // are prerequisites only; arbitrary Drive document updates require
+        // an exact certified provider operation and an independent revision.
+        $provider_write_certified = false;
+        $plan = array( 'contract' => self::CONTRACT, 'provider' => $provider,
+            'profile_slug' => $binding['profile']['slug'], 'site_uuid' => $binding['site_uuid'],
+            'profile_revision' => (int) $binding['profile']['revision'],
+            'profile_authority_sha256' => $binding['profile']['authority_sha256'],
+            'target_id' => $target_id, 'operation' => $op,
+            'source_ref' => $target['source_ref'], 'field_keys' => $target['field_keys'],
+            'conflict_policy' => $target['conflict_policy'],
+            'provider_abilities_to_discover' => $ability,
+            'provider_write_certified' => $provider_write_certified,
+            'requires_source_and_destination_revision_readback' => true,
+            'requires_authenticated_provider_write' => true,
+            'requires_independent_content_diff' => true,
+            'read_only' => true, 'mutation_performed' => false );
+        $plan['plan_sha256'] = self::digest( $plan );
+        return $plan;
+    }
+
     public static function apply( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || ! current_user_can( 'create_users' ) ||
             ! current_user_can( 'edit_users' ) )
