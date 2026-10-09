@@ -132,6 +132,18 @@ export async function installContextNetworkBoundary(context, origin, env = proce
   }
   await context.route("**/*", async (route) => {
     const request = route.request();
+    if (passiveOnly && request.resourceType() === "document") {
+      // A signed page-path allowlist is not permission for nested iframe
+      // documents or meta-initiated subframes to generate extra GETs.
+      // Use the browser's actual frame ancestry; no URL string heuristic.
+      let mainFrameRequest = false;
+      try {
+        const frame = request.frame();
+        mainFrameRequest = !!frame && typeof frame.parentFrame === "function" &&
+          frame.parentFrame() === null;
+      } catch { /* network requests without a Frame fail closed */ }
+      if (!mainFrameRequest) return route.abort("blockedbyclient");
+    }
     const decision = requestBoundaryDecision({
       url: request.url(),
       resourceType: request.resourceType(),
