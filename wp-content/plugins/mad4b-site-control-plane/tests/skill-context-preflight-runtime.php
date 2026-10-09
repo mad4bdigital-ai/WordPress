@@ -6,8 +6,10 @@ function is_wp_error($value) { return $value instanceof WP_Error; }
 function wp_register_ability($name, $args) { $GLOBALS['abilities'][$name] = $args; }
 class WP_Error {
   private $code;
-  function __construct($code, $message = '') { $this->code = (string)$code; }
+  private $data;
+  function __construct($code, $message = '', $data = null) { $this->code = (string)$code; $this->data=$data; }
   function get_error_code() { return $this->code; }
+  function get_error_data() { return $this->data; }
 }
 class MAD4B_SCP_Skill_Registry {
   static function levels() { return array('site','workflow'); }
@@ -57,6 +59,13 @@ if (strpos(json_encode($blocked),'PRIVATE_') !== false ||
 $skill = MAD4B_SCP_Skill_Abilities::skill_get($input);
 if (!is_wp_error($skill) || 'mad4b_required_brand_context_unavailable' !== $skill->get_error_code()) {
   throw new RuntimeException('Blocked Skill content unexpectedly bypassed original publication guard');
+}
+$errorData=$skill->get_error_data();
+if (!is_array($errorData) || !in_array('editorial_guidelines',$errorData['missing_context_sets'],true) ||
+    !empty($errorData['context_envelope_exposed']) || !empty($errorData['context_receipt_exposed']) ||
+    isset($errorData['context_preflight']) || isset($errorData['receipt']) ||
+    strpos(json_encode($errorData),'PRIVATE_')!==false) {
+  throw new RuntimeException('Blocked Skill error leaked Context envelope or receipt');
 }
 $GLOBALS['brand_context_ready'] = true;
 $ready = MAD4B_SCP_Skill_Abilities::skill_context_preflight($input);
