@@ -57,6 +57,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             'semantic_oracle' => 'wp_get_canonical_url_published_page',
             'browser_attestation' => 'trusted_rsa_sha256',
             'browser_attestation_ready' => self::trusted_key() !== '',
+            'browser_attestation_key_id' => self::trusted_key_id(),
             'independent_reducer' => true,
         );
     }
@@ -91,9 +92,27 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
 
     private static function trusted_key() {
         if ( ! defined( 'MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM' ) ||
-            ! is_string( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM ) ) return '';
-        $key = trim( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM );
-        return strlen( $key ) <= 8192 && strpos( $key, '-----BEGIN PUBLIC KEY-----' ) === 0 ? $key : '';
+            ! is_string( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM ) ||
+            ! function_exists( 'openssl_pkey_get_public' ) ||
+            ! function_exists( 'openssl_pkey_get_details' ) ) return '';
+        $pem = trim( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM );
+        if ( strlen( $pem ) > 8192 ||
+            strpos( $pem, '-----BEGIN PUBLIC KEY-----' ) !== 0 ) return '';
+        $parsed = openssl_pkey_get_public( $pem );
+        $details = $parsed ? openssl_pkey_get_details( $parsed ) : false;
+        if ( ! is_array( $details ) || ( $details['type'] ?? null ) !== OPENSSL_KEYTYPE_RSA ||
+            (int) ( $details['bits'] ?? 0 ) < 2048 ||
+            ! is_string( $details['key'] ?? null ) ) return '';
+        return $details['key'];
+    }
+
+    private static function trusted_key_id() {
+        $pem = self::trusted_key();
+        if ( '' === $pem ) return '';
+        $base64 = preg_replace( '/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\\s+/', '', $pem );
+        $der = is_string( $base64 ) ? base64_decode( $base64, true ) : false;
+        return false === $der || strlen( $der ) < 200
+            ? '' : 'rsa-spki-sha256:' . hash( 'sha256', $der );
     }
 
     private static function binding() {
@@ -301,7 +320,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         if ( ! function_exists( 'openssl_verify' ) || ! is_array( $evidence['attestation'] ?? null ) ||
             array_keys( $evidence['attestation'] ) !== array( 'algorithm', 'key_id', 'signature' ) ||
             ( $evidence['attestation']['algorithm'] ?? '' ) !== 'rsa-sha256' ||
-            ( $evidence['attestation']['key_id'] ?? '' ) !== 'mad4b-browser-v1' ) return false;
+            ! is_string( $evidence['attestation']['key_id'] ?? null ) ||
+            '' === self::trusted_key_id() ||
+            ! hash_equals( self::trusted_key_id(), $evidence['attestation']['key_id'] ) ) return false;
         $signature = base64_decode( (string) ( $evidence['attestation']['signature'] ?? '' ), true );
         if ( false === $signature || strlen( $signature ) > 1024 || strlen( $signature ) < 32 ) return false;
         $copy = $evidence;
