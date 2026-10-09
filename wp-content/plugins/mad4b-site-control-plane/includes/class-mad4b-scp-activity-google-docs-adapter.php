@@ -12,6 +12,7 @@ final class MAD4B_SCP_Activity_Google_Docs_Adapter {
     private static function error( $id, $message ) { return new WP_Error( $id, $message ); }
     public static function register( $adapters, $profile ) {
         if ( ! is_array( $adapters ) ) $adapters = array();
+        if ( isset( $adapters['google_drive'] ) ) return $adapters; // Never replace another site-configured certified provider.
         if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) return $adapters;
         $connection = MAD4B_SCP_Google_Drive_Context::connection_status();
         if ( empty( $connection['read_available'] ) ) return $adapters;
