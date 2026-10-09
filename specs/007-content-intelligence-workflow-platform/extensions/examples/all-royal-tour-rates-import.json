@@ -1,0 +1,109 @@
+{
+  "contract": "mad4b.activity-import-template.v1",
+  "id": "all-royal-tour-rates-example",
+  "descriptive_only": true,
+  "system_defaults": false,
+  "site_profile_slug": "DISCOVER_ON_ENROLLED_STAGING",
+  "target_post_type": "DISCOVER_ON_ENROLLED_STAGING",
+  "provider_options": {
+    "engine": "wp_all_import",
+    "import_id": null,
+    "configured_existing_job_required": true,
+    "import_mode": "match_existing_or_draft_create_only_after_review",
+    "unique_identifier": "ID",
+    "never_assume_existing_post_id": true,
+    "record_handling": {
+      "create": false,
+      "update": false,
+      "delete": false,
+      "skip_unchanged": true,
+      "selected_fields_only": true
+    },
+    "multi_language": {
+      "extension": "wpml_export_import",
+      "fields": [
+        "_wpml_import_language_code",
+        "_wpml_import_source_language_code",
+        "_wpml_import_translation_group"
+      ],
+      "requires_postimport_linking": true
+    },
+    "field_groups": {
+      "relationships": [
+        "related_tour_id",
+        "related_package_term_id",
+        "related_properties_id"
+      ],
+      "pricing": [
+        "base_currency",
+        "single_price",
+        "double_price",
+        "triple_price"
+      ],
+      "availability": [
+        "avilabile_status",
+        "has_allotment_inevntory"
+      ],
+      "terms": [
+        "tour_rate_start_date",
+        "tour_rate_end_date"
+      ],
+      "policy": [
+        "has_properties",
+        "is_on_sale",
+        "has_egyptians_price",
+        "unit_type",
+        "_wpml_import_after_process_post_status"
+      ]
+    },
+    "structure": {
+      "worksheet": "Sheet5",
+      "rows": 180,
+      "columns": 20,
+      "separator_rows_removed_from_sheet3": 35,
+      "serialized_meta": "treat_as_data_validate_post_refs_never_execute"
+    },
+    "date_conventions": {
+      "start": "unix_epoch_seconds_utc",
+      "end": "unix_epoch_seconds_utc"
+    },
+    "currency_policy": {
+      "allowed_codes": [
+        "USD",
+        "EUR"
+      ],
+      "known_unresolved": "ERU",
+      "unresolved_count": 108
+    },
+    "status_policy": {
+      "allowed": [
+        "draft",
+        "pending",
+        "private",
+        "publish"
+      ],
+      "known_unresolved": "puplished",
+      "unresolved_count": 180
+    },
+    "commercial_review": {
+      "price_tier_outliers": 12,
+      "require_rate_owner_signoff": true
+    },
+    "source_periods": [
+      {
+        "start": "2026-05-01",
+        "end": "2026-09-30",
+        "records": 90
+      },
+      {
+        "start": "2026-10-01",
+        "end": "2027-04-30",
+        "records": 90
+      }
+    ],
+    "staging_acceptance_required": true
+  },
+  "preview_only": true,
+  "block_auto_execution": true,
+  "source_artifact_origin": "user-uploaded workbook; source snapshot not stored in GitHub"
+}
