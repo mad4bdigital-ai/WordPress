@@ -53,6 +53,8 @@ $check( false !== strpos( $url, 'section=providers#search-providers' ), 'API set
 ob_start(); MAD4B_SCP_Admin_Workspace::render(); $html = ob_get_clean();
 $check( false !== strpos( $html, 'Search API credentials' ) && false !== strpos( $html, 'aria-current="page"' ), 'Setup discovery and active page semantics render.' );
 $check( 15 === substr_count( $html, 'data-mad4b-workspace-item' ), 'No registered workspace is hidden by default.' );
+$check( 4 === substr_count( $html, 'data-mad4b-workspace-group ' ), 'Four navigation group sections are accessible.' );
+$check( false !== strpos( $html, 'Review browser acceptance' ), 'Browser Acceptance appears in the capability-filtered directory.' );
 foreach ( array( array( 'page' => array( 'mad4b-search-intelligence' ) ), array( 'page' => 'mad4b-unregistered' ), array( 'page' => 'mad4b-search-intelligence<script>' ) ) as $query ) {
 	$_GET = $query; $GLOBALS['workspace_assets'] = array(); MAD4B_SCP_Admin_Workspace::enqueue();
 	$check( '' === MAD4B_SCP_Admin_Workspace::current_page() && ! $GLOBALS['workspace_assets'], 'Malformed or unregistered pages have no assets.' );
