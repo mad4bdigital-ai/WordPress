@@ -59,6 +59,9 @@ def main():
     checks = [
         ["lint:recovery-lifecycle", [php, "-l", str(ROOT / "includes/class-mad4b-scp-recovery-lifecycle.php")]],
         ["lint:staging-certification", [php, "-l", str(ROOT / "includes/class-mad4b-scp-staging-certification.php")]],
+        ["lint:runtime-recovery-workspace", [php, "-l", str(ROOT / "includes/class-mad4b-scp-runtime-recovery-workspace.php")]],
+        ["php:staging-independent-evidence", [php, str(ROOT / "tests/staging-independent-evidence-runtime.php")]],
+        ["python:staging-independent-evidence", [sys.executable, str(ROOT / "tests/staging-independent-evidence-contract.py")]],
         ["lint:recovery-workspace", [php, "-l", str(ROOT / "includes/class-mad4b-scp-runtime-recovery-workspace.php")]],
         ["lint:runtime-convergence", [php, "-l", str(ROOT / "includes/class-mad4b-scp-runtime-convergence.php")]],
         ["lint:skill-certification", [php, "-l", str(ROOT / "includes/class-mad4b-scp-skill-runtime-certification.php")]],
