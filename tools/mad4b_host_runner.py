@@ -301,6 +301,32 @@ def _reject_symlink_chain(path: Path, stop: Path) -> None:
         current = current.parent
 
 
+def wordpress_config_for_root(root: Path) -> Path:
+    """Mirror WordPress wp-load.php's exact local/one-parent config precedence.
+
+    No caller path is accepted. The parent is eligible only if local config
+    is absent AND the parent is not itself a WordPress installation.
+    """
+    root = root.resolve()
+    local = root / "wp-config.php"
+    parent_dir = root.parent
+    parent = parent_dir / "wp-config.php"
+    if _is_link_like(local) or _is_link_like(parent):
+        raise ValueError("WordPress wp-config symlink/reparse point forbidden")
+    if local.is_file():
+        return local
+    if local.exists():
+        raise ValueError("WordPress root wp-config has invalid file type")
+    _reject_link_ancestors(parent_dir)
+    if _is_link_like(parent_dir) or not parent_dir.is_dir():
+        raise ValueError("WordPress parent config directory is not trusted")
+    if (parent_dir / "wp-settings.php").exists() or _is_link_like(parent_dir / "wp-settings.php"):
+        raise ValueError("WordPress parent is another WordPress root")
+    if not parent.is_file():
+        raise ValueError("WordPress config missing in root and supported parent")
+    return parent
+
+
 def load_profile(path: Path) -> dict[str, Any]:
     profile = load_json_bounded(path)
     if profile.get("contract") != PROFILE_CONTRACT:
@@ -325,9 +351,7 @@ def load_profile(path: Path) -> dict[str, Any]:
     root = root_input.resolve()
     if not root.is_dir():
         raise ValueError("Host Runner profile WordPress root is invalid")
-    wp_config = root / "wp-config.php"
-    if _is_link_like(wp_config) or not wp_config.is_file():
-        raise ValueError("Host Runner profile WordPress root guard failed")
+    wp_config = wordpress_config_for_root(root)
     wp_config_sha256 = sha256_file(wp_config)
 
     key_file_raw = str(profile.get("integrity_key_file") or "")
@@ -1829,10 +1853,11 @@ def _wp_environment_config(profile: dict[str, Any]) -> Path:
     if profile["environment"] != "staging":
         raise ValueError("WordPress environment Host edit is Staging-only")
     root = Path(profile["wordpress_root"])
-    config = root / "wp-config.php"
-    _reject_symlink_chain(config, root)
-    if _is_link_like(config) or not config.is_file() or config.parent.resolve() != root.resolve():
-        raise ValueError("WordPress Host config must be a regular file at the verified root")
+    config = wordpress_config_for_root(root)
+    stop = root if config.parent == root else root.parent
+    _reject_symlink_chain(config, stop)
+    if _is_link_like(config) or not config.is_file():
+        raise ValueError("WordPress Host config must be a regular file at the verified WordPress location")
     if not hmac.compare_digest(sha256_file(config), profile["wp_config_sha256"]):
         raise ValueError("WordPress Host config drifted from attested Host Runner profile")
     return config
@@ -2126,13 +2151,14 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
         "contract": "mad4b.host-runner-mutation-journal.v1",
         "job_id": job_id,"operation_id": verified["operation_id"],
         "plan_sha256": verified["plan_sha256"],"approval_ref": verified["approval_ref"],
-        "relative_path": "wp-config.php", "before_sha256": before_sha,
+        "relative_path": ("wp-config.php" if config.parent == Path(profile["wordpress_root"]) else "../wp-config.php"),
+        "before_sha256": before_sha,
         "expected_after_sha256": after_sha, "state": "MUTATION_STARTED",
         "terminal": False, "blind_retry_allowed": False, "created_at": utc_now(),
     }
     atomic_json_write(journal_path, journal)
     result = {
-        "relative_path": "wp-config.php",
+        "relative_path": ("wp-config.php" if config.parent == Path(profile["wordpress_root"]) else "../wp-config.php"),
         "before_sha256": before_sha, "after_sha256": after_sha,
         "source_job_id": (extra or {}).get("source_job_id", ""),
         # These are non-secret policy identities, never the Host binding itself.
@@ -2150,7 +2176,8 @@ def _wp_environment_mutate(profile: dict[str, Any], verified: dict[str, Any],
         "_journal_path": str(journal_path),
     }
     try:
-        _reject_symlink_chain(config, Path(profile["wordpress_root"]))
+        root = Path(profile["wordpress_root"])
+        _reject_symlink_chain(config, root if config.parent == root else root.parent)
         if not hmac.compare_digest(sha256_file(config), before_sha):
             raise ValueError("Host wp-config changed at commit boundary")
         _wp_environment_guarded_write(config, after)
@@ -2265,7 +2292,7 @@ def execute_operation(profile: dict[str, Any], verified: dict[str, Any]) -> dict
     if operation_id == "runtime.status.read":
         if inputs:
             raise ValueError("runtime.status.read takes no input fields")
-        config = root / "wp-config.php"
+        config = wordpress_config_for_root(root)
         return {
             "contract": "mad4b.runtime-status-read.v1",
             "operation_id": "runtime.status.read",

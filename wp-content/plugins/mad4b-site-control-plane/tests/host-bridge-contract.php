@@ -509,6 +509,26 @@ $tampered_receipt=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('jo
 $check(false===$tampered_receipt['ready'] && in_array('host_receipt_signature_missing_or_invalid',$tampered_receipt['blocking_reasons'],true),'Unsigned post-receipt file hash tampering was certified');
 
 
+
+/* WordPress core parent wp-config lookup: no caller-selected path. */
+$parent_site = $tmp . '/nested-wordpress';
+@mkdir( $parent_site, 0777, true );
+$resolver = new ReflectionMethod( 'MAD4B_SCP_Host_Bridge', 'wordpress_config_path' );
+$resolver->setAccessible( true );
+$check( $tmp . '/wp-config.php' === $resolver->invoke( null, $parent_site ), 'Parent wp-config was not discovered' );
+file_put_contents( $parent_site . '/wp-config.php', "<?php // root preferred\n" );
+$check( $parent_site . '/wp-config.php' === $resolver->invoke( null, $parent_site ), 'WordPress root precedence was not preserved' );
+unlink( $parent_site . '/wp-config.php' );
+file_put_contents( $tmp . '/wp-settings.php', "<?php // adjacent install\n" );
+$adjacent = $resolver->invoke( null, $parent_site );
+$check( is_wp_error( $adjacent ) && 'mad4b_host_wp_config_parent_root_denied' === $adjacent->get_error_code(), 'Parent WordPress installation was accepted' );
+unlink( $tmp . '/wp-settings.php' );
+if ( function_exists( 'symlink' ) && @symlink( $tmp . '/wp-config.php', $parent_site . '/wp-config.php' ) ) {
+	$link_result = $resolver->invoke( null, $parent_site );
+	$check( is_wp_error( $link_result ) && 'mad4b_host_wp_config_link_forbidden' === $link_result->get_error_code(), 'Linked local config was accepted' );
+	unlink( $parent_site . '/wp-config.php' );
+}
+
 $source = file_get_contents(dirname(__DIR__) . '/includes/class-mad4b-scp-host-bridge.php');
 foreach(array('shell_exec(','exec(','proc_open(','passthru(','system(','eval(','WP_CLI::runcommand') as $forbidden){
 	$check(false===strpos($source,$forbidden), 'forbidden execution primitive present: '.$forbidden);
