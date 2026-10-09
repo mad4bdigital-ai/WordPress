@@ -247,15 +247,55 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                         $set[] = $hashes[ $id ]['field_hashes'][ $field ];
                 if ( count( array_unique( $set ) ) > 1 ) $equal = false;
             }
-            $proposal = array( 'mode' => 'bootstrap', 'site_uuid' => $binding['site_uuid'],
+            $choices = isset( $input['field_sources'] ) ? $input['field_sources'] : array();
+            if ( ! is_array( $choices ) || count( $choices ) > 40 ||
+                array_diff( array_keys( $choices ), $binding['contract']['attribute_meta_keys'] ) )
+                return self::err( 'mad4b_sync_initial_sources_invalid', 'Initial per-field source choices must be bounded and configured.' );
+            $steps = array(); $requires_review = false;
+            if ( ! $equal ) foreach ( $binding['contract']['attribute_meta_keys'] as $field ) {
+                $involved = array();
+                foreach ( $binding['sources'] as $id => $source ) {
+                    if ( in_array( $field, $source['field_keys'], true ) ) $involved[] = $id;
+                }
+                $values = array();
+                foreach ( $involved as $id ) $values[ $id ] = $hashes[ $id ]['field_hashes'][ $field ];
+                if ( count( array_unique( array_values( $values ) ) ) < 2 ) continue;
+                $owner = isset( $binding['contract']['field_owners'][ $field ] )
+                    ? $binding['contract']['field_owners'][ $field ] : 'manual_review';
+                $chosen = isset( $choices[ $field ] ) ? $choices[ $field ] : '';
+                if ( ! in_array( $chosen, $involved, true ) ||
+                    ( 'manual_review' !== $owner && $owner !== $chosen ) ||
+                    ( 'wordpress' !== $chosen && 'export' === $binding['sources'][ $chosen ]['direction'] ) ) {
+                    $requires_review = true; continue;
+                }
+                foreach ( $involved as $dest ) {
+                    if ( $chosen === $dest || $values[ $dest ] === $values[ $chosen ] ) continue;
+                    if ( ! isset( $observed['capabilities'][ $dest ] ) ||
+                        !$observed['capabilities'][ $dest ]['write'] ||
+                        ( 'wordpress' !== $dest &&
+                          ! in_array( $binding['sources'][ $dest ]['direction'], array( 'export', 'bidirectional' ), true ) ) ) {
+                        $requires_review = true; continue;
+                    }
+                    $steps[] = array( 'source' => $chosen, 'destination' => $dest,
+                        'field' => $field, 'value_sha256' => $values[ $chosen ],
+                        'expected_destination_value_sha256' => $values[ $dest ] );
+                }
+            }
+            if ( count( $steps ) > self::MAX_STEPS )
+                return self::err( 'mad4b_sync_initial_steps_unbounded', 'Initial arbitration exceeds the step budget.' );
+            $mode = $equal ? 'bootstrap' : 'bootstrap_arbitrate';
+            $proposal = array( 'mode' => $mode, 'site_uuid' => $binding['site_uuid'],
                 'profile_slug' => $binding['profile']['slug'],
                 'profile_revision' => $binding['profile']['revision'],
                 'profile_authority_sha256' => $binding['profile']['authority_sha256'],
-                'entity_id' => $binding['entity_id'], 'sources' => $hashes );
-            return array( 'contract' => self::CONTRACT, 'mode' => 'bootstrap',
+                'entity_id' => $binding['entity_id'], 'sources' => $hashes,
+                'field_sources' => $choices, 'steps' => $steps );
+            return array( 'contract' => self::CONTRACT, 'mode' => $mode,
                 'plan_sha256' => self::digest( $proposal ), 'sources_consistent' => $equal,
-                'requires_manual_reconciliation' => !$equal, 'source_ids' => array_keys( $hashes ),
-                'ready_for_apply' => $equal, 'read_only' => true, 'mutation_performed' => false );
+                'requires_manual_reconciliation' => !$equal && ( $requires_review || !$choices ),
+                'source_ids' => array_keys( $hashes ), 'steps' => $steps,
+                'ready_for_apply' => !$requires_review && ( $equal || ! empty( $steps ) ),
+                'read_only' => true, 'mutation_performed' => false );
         }
         $checkpoint = self::checkpoint( $binding );
         if ( is_wp_error( $checkpoint ) ) return $checkpoint;
@@ -314,7 +354,9 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'authority_sha256' => $binding['profile']['authority_sha256'],
             'plan_sha256' => $plan['plan_sha256'], 'operation_key' => $operation_key,
             'state' => 'queued', 'next_step' => 0, 'steps' => $plan['steps'],
-            'initial_checkpoint_sha256' => self::digest( self::checkpoint( $binding ) ),
+            'initial_checkpoint_sha256' => 'bootstrap_arbitrate' === $plan['mode']
+                ? null : self::digest( self::checkpoint( $binding ) ),
+            'bootstrap_arbitration' => 'bootstrap_arbitrate' === $plan['mode'],
             'started_at' => gmdate( 'c' ) );
         if ( ! add_option( $key, $op, '', false ) )
             return self::err( 'mad4b_sync_operation_raced', 'Another worker reserved the same sync entity.' );
@@ -344,8 +386,13 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         if ( $i >= count( $op['steps'] ) ) {
             $obs = self::observe( $binding );
             if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; update_option( $key, $op, false ); return $obs; }
-            $cp = self::checkpoint( $binding );
-            if ( is_wp_error( $cp ) ) { $op['state'] = 'needs_reconcile'; update_option( $key, $op, false ); return $cp; }
+            $cp = ! empty( $op['bootstrap_arbitration'] )
+                ? get_option( self::key( $binding, 'checkpoint' ), false ) : self::checkpoint( $binding );
+            if ( ( ! empty( $op['bootstrap_arbitration'] ) && false !== $cp ) ||
+                ( empty( $op['bootstrap_arbitration'] ) && is_wp_error( $cp ) ) ) {
+                $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
+                return self::err( 'mad4b_sync_checkpoint_changed', 'Checkpoint unexpected or altered during sync.' );
+            }
             // A successful outbox is not enough: every configured field must
             // now agree across participating providers, including fields
             // that this operation did not write. Otherwise retain the old
@@ -365,8 +412,9 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             // The option is a per-entity journal; no other writer can begin
             // while the lease remains held. Compare the checkpoint to the
             // immutable source of this operation before the final update.
-            if ( ! isset( $op['initial_checkpoint_sha256'] ) ||
-                ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $cp ) ) ) {
+            if ( empty( $op['bootstrap_arbitration'] ) &&
+                ( ! isset( $op['initial_checkpoint_sha256'] ) ||
+                  ! hash_equals( $op['initial_checkpoint_sha256'], self::digest( $cp ) ) ) ) {
                 $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
                 return self::err( 'mad4b_sync_checkpoint_cas_drift', 'Checkpoint changed while the operation was active.' );
             }
@@ -374,7 +422,10 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'profile_revision' => (int) $binding['profile']['revision'],
                 'authority_sha256' => $binding['profile']['authority_sha256'],
                 'sources' => $current );
-            if ( ! update_option( self::key( $binding, 'checkpoint' ), $next_cp, false ) &&
+            $saved = ! empty( $op['bootstrap_arbitration'] )
+                ? add_option( self::key( $binding, 'checkpoint' ), $next_cp, '', false )
+                : update_option( self::key( $binding, 'checkpoint' ), $next_cp, false );
+            if ( !$saved &&
                 self::digest( get_option( self::key( $binding, 'checkpoint' ), false ) ) !== self::digest( $next_cp ) ) {
                 $op['state'] = 'needs_reconcile'; update_option( $key, $op, false );
                 return self::err( 'mad4b_sync_checkpoint_update_failed', 'Durable checkpoint update failed.' );
