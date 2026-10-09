@@ -104,6 +104,14 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  $eligible=$enrolled && 'production'!==$selected;
  journey_check( $eligible===MAD4B_SCP_Site_Profile::early_managed_runtime_binding()['eligible'] && $eligible===isset($scheduled[MAD4B_SCP_MCP_Runtime_Recovery::HOOK]), 'regular/MU/scheduled eligibility diverged' );
  $uuid=MAD4B_SCP_Site_Profile::site_uuid(); $before=get_option(MAD4B_SCP_Site_Profile::OPTION); $hook_count=$saved_hooks;
+ $invalid_mode_input=$input; $invalid_mode_input['expected_revision']=1; $invalid_mode_input['environment_sync_mode']='unexpected';
+ $invalid_mode=MAD4B_SCP_Site_Profile::save_current_site($invalid_mode_input);
+ journey_check(is_wp_error($invalid_mode) && 'mad4b_site_profile_environment_sync_mode_invalid'===$invalid_mode->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION), 'invalid environment sync mode changed exact profile');
+ if ('production'===$selected) {
+  $unsafe_sync_input=$input; $unsafe_sync_input['expected_revision']=1; $unsafe_sync_input['environment_sync_mode']='host_managed';
+  $unsafe_sync=MAD4B_SCP_Site_Profile::save_current_site($unsafe_sync_input);
+  journey_check(is_wp_error($unsafe_sync) && 'mad4b_site_profile_host_sync_production_denied'===$unsafe_sync->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION), 'host-managed Production downgrade was accepted');
+ }
  $stale=MAD4B_SCP_Site_Profile::save_current_site($input);
  journey_check( is_wp_error($stale) && 'mad4b_site_profile_stale'===$stale->get_error_code() && $before===get_option(MAD4B_SCP_Site_Profile::OPTION) && $hook_count===$saved_hooks, 'stale browser form mutated enrollment' );
  $input['expected_revision']=1; $input['write_enabled']=true;
