@@ -51,8 +51,22 @@ export function allowedHostSet(origin, env = process.env) {
 // other browser state through their query strings. Only explicitly reviewed
 // asset hosts are allowed, regardless of resource type.
 
-export function requestBoundaryDecision({ url, resourceType, origin, env = process.env }) {
+export function requestBoundaryDecision({
+  url, resourceType, origin, env = process.env, method = "GET", passiveOnly = false
+}) {
   const raw = String(url || "");
+  if (passiveOnly) {
+    const verb = String(method || "").toUpperCase();
+    if (!["GET", "HEAD"].includes(verb)) return { allow: false, reason: "passive_method_denied" };
+    if (["websocket", "eventsource"].includes(String(resourceType || "").toLowerCase())) {
+      return { allow: false, reason: "passive_stream_denied" };
+    }
+    if (/^(?:blob|data):/i.test(raw) &&
+        ["script", "document", "worker", "sharedworker", "serviceworker"].includes(
+          String(resourceType || "").toLowerCase())) {
+      return { allow: false, reason: "passive_active_local_scheme_denied" };
+    }
+  }
   if (/^(?:data|blob|about):/i.test(raw)) return { allow: true, reason: "local_scheme" };
 
   let parsed;
@@ -60,6 +74,10 @@ export function requestBoundaryDecision({ url, resourceType, origin, env = proce
   catch { return { allow: false, reason: "invalid_url" }; }
 
   if (parsed.protocol !== "https:") return { allow: false, reason: "non_https_network_request" };
+  if (passiveOnly &&
+      /\/(?:wp-admin|wp-json)(?:\/|$)|\/(?:wp-login\.php|xmlrpc\.php|wp-cron\.php)(?:$|\/)/i.test(parsed.pathname)) {
+    return { allow: false, reason: "passive_admin_or_api_denied" };
+  }
 
   const allowedHosts = allowedHostSet(origin, env);
   const host = validHostname(parsed.hostname);
@@ -79,13 +97,17 @@ export function requestBoundaryDecision({ url, resourceType, origin, env = proce
   return { allow: false, reason: "cross_origin_not_allowlisted" };
 }
 
-export async function installContextNetworkBoundary(context, origin, env = process.env) {
+export async function installContextNetworkBoundary(context, origin, env = process.env, {
+  passiveOnly = false
+} = {}) {
   if (!context || typeof context.route !== "function") throw new Error("browser_context_route_unavailable");
   await context.route("**/*", async (route) => {
     const request = route.request();
     const decision = requestBoundaryDecision({
       url: request.url(),
       resourceType: request.resourceType(),
+      method: typeof request.method === "function" ? request.method() : "INVALID",
+      passiveOnly,
       origin,
       env
     });
@@ -97,6 +119,7 @@ export async function installContextNetworkBoundary(context, origin, env = proce
     origin_host: originHostname(origin),
     configured_asset_hosts: configuredAllowedHosts(env),
     active_cross_origin_denied: true,
-    passive_cross_origin_assets_allowed: false
+    passive_cross_origin_assets_allowed: false,
+    passive_only_requests: passiveOnly
   };
 }
