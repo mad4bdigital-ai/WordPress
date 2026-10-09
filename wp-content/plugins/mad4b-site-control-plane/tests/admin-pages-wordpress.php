@@ -19,6 +19,7 @@ $pages = array(
 	'mad4b-control-plane-site-profile' => array( 'MAD4B_SCP_Site_Profile_Admin', 'render_page', array( '' ) ),
 	'mad4b-control-plane-performance' => array( 'MAD4B_SCP_Admin_Query_Performance_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-skills' => array( 'MAD4B_SCP_Skills_Admin_UI', 'render_page', array( '' ) ),
+	'mad4b-browser-acceptance' => array( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-oauth-canary' => array( 'MAD4B_SCP_Local_OAuth_Browser_Canary', 'render_page', array( '' ) ),
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
 	'mad4b-adapter-coverage' => array( 'MAD4B_SCP_Adapter_Coverage_Admin_UI', 'render_page', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
@@ -44,7 +45,7 @@ $check( '' === MAD4B_SCP_Admin_Workspace::current_page(), 'Nested route input is
 $before_profile = get_option( MAD4B_SCP_Site_Profile::OPTION );
 $before_pipeline = get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION );
 $malformed = array();
-foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
+foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'saved', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
 $render = static function ( $slug, array $page, array $query ) use ( &$renders, $check ) {
 	$_GET = array_merge( array( 'page' => $slug ), $query ); $_POST = array(); $_REQUEST = $_GET;
 	set_current_screen( 'mad4b-control-plane_page_' . $slug );
@@ -77,6 +78,9 @@ $check( MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'stat
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-b' ) && ! MAD4B_SCP_Admin_Experience::notice_verified( 'other-page', 'saved', 'state-a' ), 'Stale view and cross-page notices denied.' );
 $_GET['mad4b_notice_receipt'] .= '0';
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-a' ), 'Tampered notice denied.' );
+$html = $render( 'mad4b-browser-acceptance', $pages['mad4b-browser-acceptance'], array( 'saved' => '1' ) );
+$check( false === strpos( $html, 'Preference saved; execution and browser acceptance remain separately unverified.' ), 'Forged Browser Acceptance URL success denied.' );
+$check( false !== strpos( $html, 'expected_configuration_revision' ), 'Browser preference form binds current revision.' );
 $html = $render( 'mad4b-control-plane-content-pipeline', $pages['mad4b-control-plane-content-pipeline'], array( 'mad4b_pipeline_saved' => '1' ) );
 $check( false === strpos( $html, 'Pipeline settings saved and verified.' ), 'A GET flag cannot fabricate pipeline success.' );
 $html = $render( 'mad4b-control-plane-context', $pages['mad4b-control-plane-context'], array( 'mad4b_notice' => 'google_connected' ) );

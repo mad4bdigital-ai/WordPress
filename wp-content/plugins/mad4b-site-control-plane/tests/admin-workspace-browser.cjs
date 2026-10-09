@@ -36,7 +36,7 @@ assert(fixtureDir, 'A disposable fixture directory is required.');
       check(await page.locator('[data-mad4b-directory-empty]').isVisible(), 'No results provide a recovery instruction.');
       check(await page.locator('[data-mad4b-directory-status]').textContent() !== '', 'Search announces a contextual result count.');
       await input.fill('');
-      check(await page.locator('[data-mad4b-workspace-item]:visible').count() === 14, 'Clearing restores all fourteen pages.');
+      check(await page.locator('[data-mad4b-workspace-item]:visible').count() === 15, 'Clearing restores all fifteen pages.');
       await input.focus();
       check(await input.evaluate(node => getComputedStyle(node).outlineStyle !== 'none'), 'Keyboard focus has a visible outline.');
       check(await page.locator('.mad4b-action-card').count() === 4, 'Action cards preserve distinct handoffs.');
@@ -56,7 +56,7 @@ assert(fixtureDir, 'A disposable fixture directory is required.');
     await page.route('**/*', route => { outbound += 1; return route.abort(); });
     await page.setContent(readFileSync(path.join(fixtureDir, `workspace-${locale}.html`), 'utf8'));
     await page.locator('.mad4b-workspace-directory > summary').click();
-    check(await page.locator('[data-mad4b-workspace-item]:visible').count() === 14, 'Native directory works without JavaScript.');
+    check(await page.locator('[data-mad4b-workspace-item]:visible').count() === 15, 'Native directory works without JavaScript.');
     check(!await page.locator('[data-mad4b-directory-controls]').isVisible(), 'Unavailable enhancement controls stay hidden.');
     await context.close();
   }

@@ -40,6 +40,18 @@ check_browser( is_wp_error($c::runtime_target_guard('site-a','other')), 'mismatc
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'not-configured','profile_id'=>'');
 check_browser( is_wp_error($c::runtime_target_guard('site-a','royal')), 'corrupt preference cannot run browser acceptance' );
 check_browser( $c::public_selection()['preference_valid'] === false, 'invalid stored preference must be visible to external runner' );
+check_browser( $c::revision_guard( '', array() ) === true, 'new form accepts empty revision' );
+check_browser( $c::revision_guard( $revision, array( 'executor'=>'auto', 'configuration_revision'=>$revision ) ) === true, 'current exact revision accepted' );
+check_browser( is_wp_error( $c::revision_guard( '', array( 'executor'=>'auto', 'configuration_revision'=>$revision ) ) ), 'stale open tab denied' );
+check_browser( is_wp_error( $c::revision_guard( array( 'nested'=>'bad' ), array() ) ), 'nested revision denied' );
+check_browser( is_wp_error( $c::revision_guard( 'bogus', array() ) ), 'malformed revision denied' );
+check_browser( $c::revision_guard( '', array( 'executor'=>'unknown', 'profile_id'=>'' ) ) === true, 'corrupt saved preference repairable from an empty revision' );
+$browser_source=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acceptance-admin-ui.php');
+check_browser( strpos( $browser_source, "MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' )" ) !== false, 'Browser Acceptance must register in shared navigation' );
+check_browser( strpos( $browser_source, "MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'preference_saved'" ) !== false, 'success requires signed persisted-view receipt' );
+check_browser( strpos( $browser_source, "add_query_arg( 'saved', '1'" ) === false, 'forged URL flags cannot report save success' );
+check_browser( strpos( $browser_source, 'expected_configuration_revision' ) !== false, 'form must bind exact revision' );
+check_browser( strpos( $browser_source, "array( 'option_name' => self::OPTION, 'option_value' => maybe_serialize( $stored ) )" ) !== false, 'compare-and-swap must verify stored option bytes' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'unknown','profile_id'=>'');
 check_browser( $c::selection()['executor']==='auto', 'invalid option fail-closed' );
 $main=file_get_contents(dirname(__DIR__).'/mad4b-site-control-plane.php');

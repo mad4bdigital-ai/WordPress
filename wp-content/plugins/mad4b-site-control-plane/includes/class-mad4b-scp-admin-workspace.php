@@ -60,6 +60,7 @@ final class MAD4B_SCP_Admin_Workspace {
 			'mad4b-approval-decisions' => array( __( 'Approval Decisions', 'mad4b-site-control-plane' ), __( 'Review exact proposed changes and decision history.', 'mad4b-site-control-plane' ), 'operate', 'view', array( 'actionable', 'history' ) ),
 			'mad4b-adapter-coverage' => array( __( 'Provider Coverage', 'mad4b-site-control-plane' ), __( 'Review installed providers and capability-specific gaps.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
 			'mad4b-runtime-components' => array( __( 'Runtime Components', 'mad4b-site-control-plane' ), __( 'Review component identity, updates and maintenance.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
+			'mad4b-browser-acceptance' => array( __( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ), __( 'Provider setup guide and external execution contract', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-skills' => array( __( 'Managed Skills', 'mad4b-site-control-plane' ), __( 'Review available skills and their reconciliation status.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-performance' => array( __( 'Performance', 'mad4b-site-control-plane' ), __( 'Inspect database performance and maintenance evidence.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 		);

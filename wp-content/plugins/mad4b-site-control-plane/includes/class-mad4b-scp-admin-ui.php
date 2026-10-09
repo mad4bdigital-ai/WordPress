@@ -161,12 +161,7 @@ final class MAD4B_SCP_Admin_UI {
 			return;
 		}
 
-		echo '<nav class="nav-tab-wrapper">';
-		foreach ( $tabs as $slug => $label ) {
-			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => $slug ), admin_url( 'admin.php' ) );
-			echo '<a class="nav-tab ' . ( $tab === $slug ? 'nav-tab-active' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
-		}
-		echo '</nav>';
+		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
 		if ( 'overview' === $tab ) self::render_overview( $snapshot );
 		if ( 'agents' === $tab ) self::render_agents( $snapshot, $agent_public_id );
