@@ -26,7 +26,10 @@
 .mad4b-workspace [data-mad4b-directory-controls] { margin-block: 12px; }
 .mad4b-workspace [data-mad4b-directory-controls] label { display: block; font-weight: 600; margin-block-end: 6px; }
 .mad4b-workspace input[type=search] { width: min(100%, 480px); min-height: 44px; }
-.mad4b-workspace-pages { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.mad4b-workspace-pages { display: block; }
+.mad4b-workspace-group { margin-block: 16px 20px; }
+.mad4b-workspace-group > h3 { font-size: 14px; font-weight: 700; margin: 0 0 10px; padding-block-end: 8px; border-block-end: 1px solid var(--mad4b-border); }
+.mad4b-workspace-group-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
 .mad4b-workspace-pages article { min-width: 0; }
 .mad4b-workspace-pages article > a { display: block; padding: 12px; box-sizing: border-box; border: 1px solid var(--mad4b-border); border-radius: 6px; color: var(--mad4b-ink); text-decoration: none; }
 .mad4b-workspace-section-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
