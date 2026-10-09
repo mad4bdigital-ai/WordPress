@@ -158,8 +158,9 @@ export function resolveSiteBrowserAdapter(caps, {
     // Provider profile selection is a *declared contract*, not site-name
     // inference. Only an explicit requested profile can disambiguate it.
     let possible = eligible;
-    if (requestedProfile) possible = eligible.filter(id =>
-      providers.get(id).capabilities.default_profile_id === requestedProfile);
+    const targetProfile = requestedProfile || pref.profile_id;
+    if (targetProfile) possible = eligible.filter(id =>
+      providers.get(id).capabilities.default_profile_id === targetProfile);
     if (!possible.length) fail("site_adapter_profile_unmatched");
     // In the absence of an explicit profile, a general read-only
     // observer must not shadow a specialized contract. Still fail
