@@ -33,6 +33,12 @@ export function assertSigningConfigured(env = process.env) {
   }
   return key;
 }
+export function signerKeyId(env = process.env) {
+  const key = assertSigningConfigured(env);
+  return "rsa-spki-sha256:" + crypto.createHash("sha256")
+    .update(crypto.createPublicKey(key).export({ format: "der", type: "spki" }))
+    .digest("hex");
+}
 export function signDeclarativeEvidence(evidence, env = process.env) {
   if (evidence?.contract !== "mad4b.capability-browser-evidence.v1") return evidence;
   const key = assertSigningConfigured(env);
@@ -41,9 +47,7 @@ export function signDeclarativeEvidence(evidence, env = process.env) {
     ...evidence,
     attestation: {
       algorithm: "rsa-sha256",
-      key_id: "rsa-spki-sha256:" + crypto.createHash("sha256")
-        .update(crypto.createPublicKey(key).export({ format: "der", type: "spki" }))
-        .digest("hex"),
+      key_id: signerKeyId(env),
       signature
     }
   };
