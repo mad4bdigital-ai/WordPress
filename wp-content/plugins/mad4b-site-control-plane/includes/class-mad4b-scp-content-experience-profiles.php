@@ -583,6 +583,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
             'mad4b/business-activity-import-capabilities',
             'mad4b/business-activity-import-plan', 'mad4b/business-activity-import-review',
+            'mad4b/business-activity-wp-all-import-plan',
             'mad4b/brand-core-acceptance-plan',
         );
         $content = array(
@@ -724,6 +725,23 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'schema' => self::schema( array(
                     'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
                 ), array( 'profile_slug' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-wp-all-import-plan',
+                'label' => 'Plan Exact WP All Import Job Settings and Commercial Safeguards',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'wp_all_import_plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'import_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+                    'unique_identifier' => array( 'type' => 'string', 'maxLength' => 120 ),
+                    'mode' => array( 'type' => 'string', 'enum' => array( 'create_new', 'match_existing', 'update_existing' ) ),
+                    'update_fields' => array( 'type' => 'array', 'maxItems' => 80, 'items' => array( 'type' => 'string' ) ),
+                    'provider_options' => array( 'type' => 'object', 'maxProperties' => 18, 'additionalProperties' => true ),
+                    'delete_missing' => array( 'type' => 'boolean' ),
+                    'publish_immediately' => array( 'type' => 'boolean' ),
+                ), array( 'profile_slug', 'import_id', 'unique_identifier', 'mode' ) ),
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
