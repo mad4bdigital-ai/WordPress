@@ -12,7 +12,8 @@ const evidence={
 };
 const signed=signDeclarativeEvidence(evidence,env);
 assert.equal(signed.attestation.algorithm,"rsa-sha256");
-assert.equal(signed.attestation.key_id,"mad4b-browser-v1");
+assert.equal(signed.attestation.key_id,"rsa-spki-sha256:" +
+  crypto.createHash("sha256").update(publicKey.export({format:"der",type:"spki"})).digest("hex"));
 assert(crypto.verify("sha256",canonicalEvidenceBytes(evidence),publicKey,
   Buffer.from(signed.attestation.signature,"base64")));
 const mutated={...evidence,cases:[{case_id:"page-2",observed:{path:"/changed/"}}]};
