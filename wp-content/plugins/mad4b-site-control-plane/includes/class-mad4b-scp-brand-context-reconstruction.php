@@ -246,8 +246,29 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             $observed['dependency_ready'] = 'brand_strategy' === $category
                 || ( ! empty( $coverage['coverage']['brand_strategy']['ready'] )
                     && ( 'editorial_guidelines' !== $category || ! empty( $coverage['coverage']['tone_of_voice']['ready'] ) ) );
-            $result = self::classify( $category, $observed, $scenario, $attempts, $assistant_available );
+            // Derive real repair states from exact Context Authority per-asset
+            // reasons; scenario input is only an explicit non-authorizing test.
+            $diagnosed = $scenario;
+            if ( 'live' === $scenario && empty( $observed['ready'] ) && empty( $observed['conflict'] ) ) {
+                $reasons = array();
+                foreach ( isset( $observed['observed_assets'] ) && is_array( $observed['observed_assets'] ) ? $observed['observed_assets'] : array() as $asset ) {
+                    if ( ! is_array( $asset ) ) continue;
+                    foreach ( isset( $asset['reasons'] ) && is_array( $asset['reasons'] ) ? $asset['reasons'] : array() as $reason ) {
+                        $reasons[] = (string) $reason;
+                    }
+                }
+                $blockers = isset( $action['blockers'] ) && is_array( $action['blockers'] ) ? $action['blockers'] : array();
+                foreach ( $blockers as $blocker ) {
+                    if ( 0 === strpos( (string) $blocker, 'authority_read_failed:' ) ) $diagnosed = 'provider_unavailable';
+                }
+                if ( 'live' === $diagnosed && in_array( 'content_incomplete', $reasons, true ) ) $diagnosed = 'malformed_file';
+                if ( 'live' === $diagnosed && in_array( 'generation_evidence_stale', $reasons, true ) ) $diagnosed = 'stale_version';
+                if ( 'live' === $diagnosed && in_array( 'review_not_exactly_bound', $reasons, true ) ) $diagnosed = 'receipt_drift';
+            }
+            $result = self::classify( $category, $observed, $diagnosed, $attempts, $assistant_available );
             if ( is_wp_error( $result ) ) return $result;
+            $result['observed_scenario'] = $diagnosed;
+            $result['detected_from_live_evidence'] = 'live' === $scenario && 'live' !== $diagnosed;
             $result['label'] = $label;
             $result['live_ready'] = ! empty( $observed['ready'] );
             $result['recovery_procedure'] = self::procedure_for_state( $result['state'] );
