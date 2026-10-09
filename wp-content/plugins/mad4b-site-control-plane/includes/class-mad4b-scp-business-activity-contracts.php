@@ -38,7 +38,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ), array(
             'enabled', 'user_role', 'post_user_meta_key', 'user_post_meta_key',
             'attribute_meta_keys', 'taxonomy_slugs', 'create_user', 'create_profile', 'sync_targets',
-            'field_owners', 'sync_identity_key',
+            'field_owners', 'sync_identity_key', 'import_modes',
         ) ) ) return self::err( 'mad4b_activity_contract_unknown_field', 'Activity facet has unrecognized fields.' );
         if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
         $role = isset( $raw['user_role'] ) ? sanitize_key( $raw['user_role'] ) : '';
@@ -163,7 +163,43 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $identity_key = isset( $raw['sync_identity_key'] ) ? (string) $raw['sync_identity_key'] : 'post_id';
         if ( ! in_array( $identity_key, array( 'post_id', 'external_stable_id' ), true ) )
             return self::err( 'mad4b_activity_sync_identity_invalid', 'Sync entity identity must be stable, never based on title or display name.' );
-        return array( 'enabled' => true, 'user_role' => $role,
+        // Import Mode policy is part of the governed Activity facet. It
+        // stores only IDs and safe preferences, never URLs/tokens/credentials.
+        $import_raw = isset( $raw['import_modes'] ) ? $raw['import_modes'] : array();
+        if ( ! is_array( $import_raw ) ||
+            array_diff( array_keys( $import_raw ),
+                array( 'enabled_modes', 'preferred_mode', 'fallback_modes', 'manual_review_required' ) ) )
+            return self::err( 'mad4b_activity_import_modes_invalid',
+                'Only declared import mode IDs and review policy are allowed.' );
+        $enabled_modes = isset( $import_raw['enabled_modes'] ) ? $import_raw['enabled_modes'] : array();
+        $fallback_modes = isset( $import_raw['fallback_modes'] ) ? $import_raw['fallback_modes'] : array();
+        $preferred = isset( $import_raw['preferred_mode'] ) ? (string) $import_raw['preferred_mode'] : '';
+        foreach ( array( $enabled_modes, $fallback_modes ) as $group ) {
+            if ( ! is_array( $group ) || count( $group ) > 40 )
+                return self::err( 'mad4b_activity_import_mode_count_invalid', 'Import mode preferences exceed limit.' );
+            foreach ( $group as $id )
+                if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{2,64}$/D', $id ) )
+                    return self::err( 'mad4b_activity_import_mode_id_invalid', 'Unsafe or invalid mode ID.' );
+        }
+        if ( count( array_unique( $enabled_modes ) ) !== count( $enabled_modes ) ||
+            count( array_unique( $fallback_modes ) ) !== count( $fallback_modes ) ||
+            array_diff( $fallback_modes, $enabled_modes ) ||
+            ( '' !== $preferred && ! in_array( $preferred, $enabled_modes, true ) ) )
+            return self::err( 'mad4b_activity_import_mode_policy_mismatch',
+                'Preferred and fallback modes must be included in this profile mode allowlist.' );
+        if ( array_key_exists( 'manual_review_required', $import_raw ) &&
+            true !== $import_raw['manual_review_required'] )
+            return self::err( 'mad4b_activity_import_manual_review_required',
+                'Commercial imports cannot disable human review in this version.' );
+        $import_modes = array();
+        if ( $import_raw ) $import_modes = array(
+            'enabled_modes' => array_values( $enabled_modes ),
+            'preferred_mode' => $preferred,
+            'fallback_modes' => array_values( $fallback_modes ),
+            'manual_review_required' => true,
+            'auto_execute' => false
+        );
+        $result = array( 'enabled' => true, 'user_role' => $role,
             'post_user_meta_key' => $post_key, 'user_post_meta_key' => $user_key,
             'attribute_meta_keys' => array_keys( $allow ),
             'taxonomy_slugs' => array_values( array_unique( $taxonomies ) ),
@@ -173,6 +209,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'field_owners' => $owners,
             'sync_identity_key' => $identity_key,
         );
+        if ( $import_modes ) $result['import_modes'] = $import_modes;
+        return $result;
     }
 
     private static function binding( $input ) {
