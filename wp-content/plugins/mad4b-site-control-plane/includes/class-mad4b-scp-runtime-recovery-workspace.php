@@ -19,6 +19,7 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			&& empty( $plan['mutation_performed'] )
 			&& empty( $plan['production_mutation_performed'] );
 		$rows = array();
+		$covered = array();
 		if ( $valid ) {
 			$seen = array();
 			foreach ( array_slice( isset( $plan['actions'] ) && is_array( $plan['actions'] ) ? $plan['actions'] : array(), 0, self::MAX_ACTIONS ) as $action ) {
@@ -32,8 +33,15 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 				foreach ( array_slice( isset( $action['depends_on'] ) && is_array( $action['depends_on'] ) ? $action['depends_on'] : array(), 0, 16 ) as $dependency ) {
 					if ( is_string( $dependency ) && '' !== sanitize_key( $dependency ) ) $dependencies[ sanitize_key( $dependency ) ] = true;
 				}
+				$target_gates = array();
+				foreach ( array_slice( isset( $action['target_gates'] ) && is_array( $action['target_gates'] ) ? $action['target_gates'] : array(), 0, 16 ) as $gate ) {
+					if ( ! is_string( $gate ) || strlen( $gate ) > 80 || 1 !== preg_match( '/^[a-z][a-z0-9_]{0,63}$/D', $gate ) ) continue;
+					$target_gates[ $gate ] = true;
+					$covered[ $gate ] = true;
+				}
 				$rows[] = array(
 					'id' => $id,
+					'target_gates' => array_keys( $target_gates ),
 					'kind' => $kind,
 					'owner' => $owner,
 					'classification' => ! empty( $action['human_decision_required'] ) ? 'APPROVAL_REQUIRED' : (
@@ -44,16 +52,31 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 					'readback' => isset( $action['readback_ability'] ) && is_string( $action['readback_ability'] ) ? substr( $action['readback_ability'], 0, 128 ) : '',
 					'link_slug' => self::local_page_for( $id, $kind ),
 					'plan_only' => true,
+					'readback_verified' => false,
+					'retry_authorized' => false,
+					'approval_granted' => false,
 					'execution_performed' => false,
 				);
 			}
 		}
-		$blocked = $valid && isset( $plan['blocking_gates'] ) && is_array( $plan['blocking_gates'] )
-			? array_values( array_filter( array_slice( $plan['blocking_gates'], 0, 64 ), 'is_string' ) ) : array();
+		$blocked = array();
+		if ( $valid && isset( $plan['blocking_gates'] ) && is_array( $plan['blocking_gates'] ) ) {
+			foreach ( array_slice( $plan['blocking_gates'], 0, 64 ) as $gate ) {
+				if ( is_string( $gate ) && strlen( $gate ) <= 80 && 1 === preg_match( '/^[a-z][a-z0-9_]{0,63}$/D', $gate ) ) $blocked[ $gate ] = true;
+			}
+		}
+		$blocked = array_keys( $blocked );
+		$unmapped = array();
+		foreach ( $blocked as $gate ) if ( ! isset( $covered[ $gate ] ) ) $unmapped[] = $gate;
 		return array(
 			'contract' => self::CONTRACT,
 			'state' => ! $valid ? 'UNAVAILABLE' : ( ! empty( $plan['current_ready'] ) && empty( $blocked ) ? 'OBSERVED_READY' : 'REVIEW_REQUIRED' ),
 			'blocking_gates' => $blocked,
+			'blocked_gate_count' => count( $blocked ),
+			'unmapped_blocking_gates' => $unmapped,
+			'plan_gate_coverage' => ! $valid ? 'UNAVAILABLE' : ( empty( $unmapped ) ? 'MAPPED_FOR_REVIEW' : 'UNMAPPED_GATE_REQUIRES_REVIEW' ),
+			'completion_verification' => 'mad4b/staging-convergence-verify',
+			'plan_readiness_does_not_authorize' => true,
 			'actions' => $rows,
 			'action_count' => count( $rows ),
 			'plan_sha256' => $valid && isset( $plan['plan_sha256'] ) && is_string( $plan['plan_sha256'] ) && preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_sha256'] ) ? $plan['plan_sha256'] : '',
@@ -149,6 +172,11 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			echo '<p><strong>' . esc_html__( 'Pending gates:', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html( implode( ', ', $model['blocking_gates'] ) ) . '</p>';
 		}
+		if ( $model['unmapped_blocking_gates'] ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Some blocked gates have no explicit remediation action in this bounded plan. Do not assume those gates are repaired.', 'mad4b-site-control-plane' ) . ' ';
+			echo '<code>' . esc_html( implode( ', ', $model['unmapped_blocking_gates'] ) ) . '</code></p></div>';
+		}
+		echo '<p class="description">' . esc_html__( 'Every row is a plan, not an execution or a verified repair. After a separately approved operation, reread the exact current-source plan and use mad4b/staging-convergence-verify; changed plan, site or source invalidates old evidence.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( empty( $lifecycle['identity_bound'] ) ) {
 			echo '<p>' . esc_html__( 'Recovery plan refused: source, site, identity or dependency graph changed or could not be validated. No execution is available.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<p><code>' . esc_html( implode( ', ', $lifecycle['reasons'] ) ) . '</code></p></section>';
@@ -163,11 +191,12 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			return;
 		}
 		echo '<div class="mad4b-workspace-table" role="region" tabindex="0"><table class="widefat striped"><thead><tr>';
-		foreach ( array( 'Action', 'Decision', 'Owner', 'Depends on', 'Verify after repair', 'Workspace' ) as $heading )
+		foreach ( array( 'Action', 'Blocked gates', 'Decision', 'Owner', 'Depends on', 'Verify after repair', 'Workspace' ) as $heading )
 			echo '<th scope="col">' . esc_html( __( $heading, 'mad4b-site-control-plane' ) ) . '</th>';
 		echo '</tr></thead><tbody>';
 		foreach ( $model['actions'] as $row ) {
 			echo '<tr><th scope="row"><code>' . esc_html( $row['id'] ) . '</code></th>';
+			echo '<td>' . esc_html( $row['target_gates'] ? implode( ', ', $row['target_gates'] ) : 'not_mapped' ) . '</td>';
 			echo '<td>' . esc_html( $row['classification'] ) . ' <small>(' . esc_html( isset( $row['lifecycle_stage'] ) ? $row['lifecycle_stage'] : 'REVIEW_REQUIRED' ) . ')</small></td>';
 			echo '<td><code>' . esc_html( $row['owner'] ) . '</code></td>';
 			echo '<td>' . esc_html( $row['depends_on'] ? implode( ', ', $row['depends_on'] ) : '—' ) . '</td>';
