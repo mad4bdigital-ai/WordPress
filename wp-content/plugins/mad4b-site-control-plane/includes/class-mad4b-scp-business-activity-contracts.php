@@ -33,7 +33,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         return true;
     }
 
-    public static function normalize( $raw, $post_type, $meta_keys ) {
+    public static function normalize( $raw, $post_type, $meta_keys, $configured_taxonomies ) {
         if ( null === $raw || array() === $raw ) return array( 'enabled' => false );
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ), array(
             'enabled', 'user_role', 'post_user_meta_key', 'user_post_meta_key',
@@ -58,7 +58,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $taxonomies = isset( $raw['taxonomy_slugs'] ) ? $raw['taxonomy_slugs'] : array();
         if ( ! is_array( $taxonomies ) || count( $taxonomies ) > 20 ) return self::err( 'mad4b_activity_taxonomy_count', 'Too many taxonomy classifications.' );
         $attached = get_object_taxonomies( $post_type );
-        foreach ( $taxonomies as $taxonomy ) if ( ! is_string( $taxonomy ) || ! in_array( $taxonomy, $attached, true ) )
+        foreach ( $taxonomies as $taxonomy ) if ( ! is_string( $taxonomy ) || ! in_array( $taxonomy, $attached, true ) || ! in_array( $taxonomy, $configured_taxonomies, true ) )
             return self::err( 'mad4b_activity_taxonomy_unavailable', 'Configured classification taxonomy is not attached to the profile CPT.' );
         return array( 'enabled' => true, 'user_role' => $role,
             'post_user_meta_key' => $post_key, 'user_post_meta_key' => $user_key,
@@ -137,8 +137,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $post_key = $cfg['post_user_meta_key']; $user_key = $cfg['user_post_meta_key'];
         $current_user = $post_id ? absint( get_post_meta( $post_id, $post_key, true ) ) : 0;
         $current_post = $user_id ? absint( get_user_meta( $user_id, $user_key, true ) ) : 0;
-        if ( $current_user && $user_id && $current_user !== $user_id ||
-            $current_post && $post_id && $current_post !== $post_id )
+        if ( ( $current_user && ( ! $user_id || $current_user !== $user_id ) ) ||
+            ( $current_post && ( ! $post_id || $current_post !== $post_id ) ) )
             return self::err( 'mad4b_activity_relation_conflict', 'Existing mirrored user/post relation conflicts with the requested link.' );
         $scope = array( 'contract' => self::CONTRACT, 'site_uuid' => $binding['site_uuid'],
             'profile_slug' => $binding['profile']['slug'], 'profile_revision' => $binding['profile']['revision'],
@@ -213,6 +213,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         if ( absint( get_post_meta( $post_id, $post_key, true ) ) !== $user_id ||
             absint( get_user_meta( $user_id, $user_key, true ) ) !== $post_id )
             return self::err( 'mad4b_activity_readback_failed', 'Bidirectional user/profile relation did not pass exact readback.' );
+        if ( ! empty( $plan['requires_create_user'] ) && function_exists( 'wp_send_new_user_notifications' ) )
+            wp_send_new_user_notifications( $user_id, 'user' );
         update_option( $lock, array( 'complete' => true, 'user_id' => $user_id,
             'post_id' => $post_id, 'plan_sha256' => $plan['plan_sha256'] ), false );
         return array( 'contract' => self::CONTRACT, 'profile_slug' => $slug,
