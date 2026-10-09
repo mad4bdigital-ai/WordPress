@@ -403,6 +403,8 @@ def load_profile(path: Path) -> dict[str, Any]:
         "package_staging_root": str((expected_workspace / "package-staging").resolve()),
         # Independent private Host state outside WordPress: never spool secrets in wp-content.
         "host_environment_backup_root": str(profile.get("host_environment_backup_root") or ""),
+        "host_environment_receipt_signing_key_file": str(profile.get("host_environment_receipt_signing_key_file") or ""),
+        "host_environment_receipt_signing_public_key_b64": str(profile.get("host_environment_receipt_signing_public_key_b64") or ""),
     }
     receipt_root = Path(normalized["receipt_root"])
     if not _is_within(receipt_root, expected_workspace):
@@ -417,6 +419,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         if not normalized["host_environment_backup_root"]:
             raise ValueError("Host environment operation requires a separately enrolled private backup root")
         _wp_environment_private_backup_root(normalized)
+        _wp_environment_receipt_signing_key(normalized)
     normalized["target_fingerprint"] = sha256_bytes(canonical_json({
         "site_uuid": site_uuid,
         "environment": environment,
@@ -1910,6 +1913,85 @@ def _wp_environment_private_backup_root(profile: dict[str, Any]) -> Path:
     return root
 
 
+def _wp_environment_receipt_signing_key(profile: dict[str, Any]):
+    """Host-private Ed25519 signer: WordPress sees the pinned public key only."""
+    path_value = str(profile.get("host_environment_receipt_signing_key_file") or "")
+    key_b64 = str(profile.get("host_environment_receipt_signing_public_key_b64") or "")
+    if not path_value or not key_b64:
+        raise ValueError("Independent Host environment receipt signing material is not enrolled")
+    key_path = Path(path_value).expanduser()
+    if not key_path.is_absolute():
+        raise ValueError("Host environment signing key must use an absolute Host-private file path")
+    _reject_link_ancestors(key_path)
+    if _is_link_like(key_path) or not key_path.is_file():
+        raise ValueError("Host environment signing key file is unavailable or linked")
+    key_path = key_path.resolve()
+    wordpress = Path(profile["wordpress_root"]).resolve()
+    if key_path == wordpress or _is_within(key_path, wordpress):
+        raise ValueError("Host signing key cannot reside inside WordPress")
+    mode = stat.S_IMODE(key_path.stat().st_mode)
+    if mode & 0o077:
+        raise ValueError("Host signing key must have private filesystem mode (0600 or stricter)")
+    if hasattr(os, "geteuid") and os.geteuid() != key_path.stat().st_uid:
+        raise ValueError("Host Runner must own its receipt signing key")
+    if key_path.stat().st_size > 4096:
+        raise ValueError("Host receipt signing key exceeds bounded size")
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        private = serialization.load_pem_private_key(key_path.read_bytes(), password=None)
+        if not isinstance(private, Ed25519PrivateKey):
+            raise ValueError("Host receipt signing key must be Ed25519")
+        public = private.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
+        )
+        pinned = base64.b64decode(key_b64, validate=True)
+        if len(pinned) != 32 or not hmac.compare_digest(public, pinned):
+            raise ValueError("Host receipt signer does not match the pinned public key")
+        return private
+    except ImportError as exc:
+        raise ValueError("Host receipt signer requires the audited cryptography Ed25519 package") from exc
+
+
+def _wp_environment_receipt_payload(receipt: dict[str, Any]) -> dict[str, Any]:
+    result = receipt["result"]
+    return {
+        "contract": "mad4b.host-environment-receipt-payload.v1",
+        "job_id": receipt["job_id"],
+        "site_uuid": receipt["site_uuid"],
+        "environment": receipt["environment"],
+        "operation_id": receipt["operation_id"],
+        "plan_sha256": receipt["plan_sha256"],
+        "authority_ref": receipt["authority_ref"],
+        "runner_source_sha256": receipt["runner_source_sha256"],
+        "completed_at": receipt["completed_at"],
+        "readback_verdict": receipt["readback_verdict"],
+        "mutation_performed": receipt["mutation_performed"],
+        "result": {
+            "after_sha256": result["after_sha256"],
+            "expected_site_profile_digest": result["expected_site_profile_digest"],
+            "expected_site_profile_revision": result["expected_site_profile_revision"],
+            "expected_deployment_binding_digest": result["expected_deployment_binding_digest"],
+            "host_file_readback_verified": result["host_file_readback_verified"],
+        },
+    }
+
+
+def _wp_environment_sign_receipt(profile: dict[str, Any], receipt: dict[str, Any]) -> dict[str, str]:
+    private = _wp_environment_receipt_signing_key(profile)
+    payload = _wp_environment_receipt_payload(receipt)
+    public_b64 = str(profile["host_environment_receipt_signing_public_key_b64"])
+    signature = private.sign(canonical_json(payload))
+    public = base64.b64decode(public_b64, validate=True)
+    return {
+        "contract": "mad4b.host-environment-ed25519-attestation.v1",
+        "algorithm": "Ed25519",
+        "payload_contract": payload["contract"],
+        "pinned_public_key_sha256": sha256_bytes(public),
+        "signature_b64": base64.b64encode(signature).decode("ascii"),
+    }
+
+
 def _rollback_wp_environment(result: dict[str, Any]) -> bool:
     try:
         path = Path(str(result.get("_target_path") or ""))
@@ -2304,6 +2386,8 @@ def run_job(profile_path: Path, job_path: Path) -> dict[str, Any]:
         "replayed": False,
     }
     try:
+        if verified["operation_id"] == "wordpress_environment_sync":
+            receipt["host_environment_attestation"] = _wp_environment_sign_receipt(profile, receipt)
         atomic_json_write(receipt_path, receipt)
         persisted = load_json_bounded(receipt_path, MAX_RECEIPT_BYTES)
         if persisted.get("job_id") != verified["job_id"] or persisted.get("readback_verdict") != "PASS":
