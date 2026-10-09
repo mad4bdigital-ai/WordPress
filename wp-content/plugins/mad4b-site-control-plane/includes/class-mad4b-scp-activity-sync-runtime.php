@@ -43,6 +43,15 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             return self::err( 'mad4b_sync_lease_release_unverified', 'Could not verify release of this operation lease.' );
         return true;
     }
+    /** Definitive refusal before the next provider call: journal, then unlock. */
+    private static function prewrite_failure( $binding, $key, $op, $reason ) {
+        $op['state'] = 'needs_reconcile';
+        $persisted = self::persist_operation( $key, $op, 'mad4b_sync_prewrite_failure_unverified' );
+        if ( is_wp_error( $persisted ) ) return $persisted;
+        $released = self::release_operation_lease( $binding, $op['operation_key'] );
+        if ( is_wp_error( $released ) ) return $released;
+        return $reason;
+    }
     private static function key( $binding, $which ) {
         return 'mad4b_asyn_' . $which . '_' . hash( 'sha256',
             $binding['site_uuid'] . '|' . $binding['profile']['slug'] . '|' . $binding['entity_id'] );
@@ -440,7 +449,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $i = (int) $op['next_step'];
         if ( $i >= count( $op['steps'] ) ) {
             $obs = self::observe( $binding );
-            if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' ); return $obs; }
+            if ( is_wp_error( $obs ) ) return self::prewrite_failure( $binding, $key, $op, $obs );
             $cp = ! empty( $op['bootstrap_arbitration'] )
                 ? get_option( self::key( $binding, 'checkpoint' ), false ) : self::checkpoint( $binding );
             if ( ( ! empty( $op['bootstrap_arbitration'] ) && false !== $cp ) ||
@@ -501,7 +510,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         }
         $step = $op['steps'][ $i ];
         $obs = self::observe( $binding );
-        if ( is_wp_error( $obs ) ) { $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' ); return $obs; }
+        if ( is_wp_error( $obs ) ) return self::prewrite_failure( $binding, $key, $op, $obs );
         $source = $obs['observations'][ $step['source'] ];
         $dest = $obs['observations'][ $step['destination'] ];
         $field = $step['field'];
@@ -509,20 +518,21 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $destination_value = $dest['fields'][ $field ];
         if ( self::digest( array( 'type' => gettype( $destination_value ), 'value' => $destination_value ) ) !==
             $step['expected_destination_value_sha256'] ) {
-            $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
-                return self::err( 'mad4b_sync_destination_changed_since_approval',
-                'Destination changed since the approved exact plan. A new read and review is required.' );
+            return self::prewrite_failure( $binding, $key, $op,
+                self::err( 'mad4b_sync_destination_changed_since_approval',
+                    'Destination changed since the approved exact plan. A new read and review is required.' ) );
         }
         if ( self::digest( array( 'type' => gettype( $value ), 'value' => $value ) ) !== $step['value_sha256'] ) {
-            $op['state'] = 'needs_reconcile'; self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
-                return self::err( 'mad4b_sync_owner_field_drifted', 'Owner field changed since exact approved plan.' );
+            return self::prewrite_failure( $binding, $key, $op,
+                self::err( 'mad4b_sync_owner_field_drifted', 'Owner field changed since exact approved plan.' ) );
         }
         $provider = $binding['sources'][ $step['destination'] ]['provider'];
         $adapters = $obs['adapters'];
         $adapter = $adapters[ $provider ];
         if ( empty( $adapter['conditional_write'] ) || empty( $adapter['readback'] ) ||
             ! isset( $adapter['write'] ) || ! is_callable( $adapter['write'] ) )
-            return self::err( 'mad4b_sync_writer_not_verified', 'Provider is not certified for conditional writes.' );
+            return self::prewrite_failure( $binding, $key, $op,
+                self::err( 'mad4b_sync_writer_not_verified', 'Provider is not certified for conditional writes.' ) );
         $op['state'] = 'step_inflight'; $op['inflight_step'] = $i;
         $persisted = self::persist_operation( $key, $op, 'mad4b_sync_inflight_journal_unverified' );
         if ( is_wp_error( $persisted ) ) {
