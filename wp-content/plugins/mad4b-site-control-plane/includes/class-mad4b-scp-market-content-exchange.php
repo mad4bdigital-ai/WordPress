@@ -217,4 +217,38 @@ final class MAD4B_SCP_Market_Content_Exchange {
             'read_only' => true, 'mutation_performed' => false );
     }
 
+    /**
+     * Configurable role -> registered Skill. A skill selection is neither
+     * agent identity nor exact grant and cannot authorize mutation.
+     */
+    public static function assistant_route( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        $registry = MAD4B_SCP_Market_Growth_Policies::current();
+        if ( is_wp_error( $registry ) ) return $registry;
+        $role = isset( $input['role'] ) ? sanitize_key( (string) $input['role'] ) : '';
+        if ( ! in_array( $role, array( 'researcher', 'writer', 'critic', 'reviewer', 'recovery' ), true ) )
+            return self::error( 'mad4b_market_role_unknown', 'Requested assistant role is invalid.' );
+        $routes = array();
+        foreach ( $registry['assistant_roles'] as $id => $entry ) {
+            if ( ! is_array( $entry ) || ! isset( $entry['role'], $entry['skill_name'] )
+                || $entry['role'] !== $role ) continue;
+            $routes[] = array( 'route_id' => $id, 'skill_name' => $entry['skill_name'] );
+        }
+        $cert = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+            ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+        $ready = is_array( $cert ) && ! empty( $cert['ready'] )
+            && ! empty( $cert['external_client_snapshot_verified'] )
+            && ! empty( $cert['build_identity_current'] ) && empty( $cert['historical_evidence_only'] );
+        return array( 'contract' => 'mad4b.market-assistant-route.v1',
+            'role' => $role, 'configured_candidates' => $routes,
+            'managed_skills_runtime_ready' => $ready,
+            'selected_for_research_or_draft' => $ready && ! empty( $routes ) ? $routes[0] : null,
+            'fallback' => 'human_agent_with_independent_capability_review',
+            'exact_agent_identity_verified' => false,
+            'exact_write_grant_verified' => false,
+            'writer_cannot_self_review' => true,
+            'mutation_authorized' => false, 'read_only' => true,
+            'mutation_performed' => false );
+    }
+
 }
