@@ -25,6 +25,9 @@ final class MAD4B_SCP_Market_Content_Exchange {
         $profile = isset( $registry['competitors'][ $id ] ) ? $registry['competitors'][ $id ] : array();
         if ( ! $profile || ! empty( $profile['disabled'] ) )
             return self::error( 'mad4b_competitor_unavailable', 'A configured active competitor profile is required.' );
+        $post_type = isset( $input['post_type'] ) ? sanitize_key( (string) $input['post_type'] ) : '';
+        if ( '' !== $post_type && ( ! function_exists( 'post_type_exists' ) || ! post_type_exists( $post_type ) ) )
+            return self::error( 'mad4b_competitor_destination_missing', 'Selected destination post type is not registered.' );
         $facts = isset( $input['facts'] ) && is_array( $input['facts'] ) ? $input['facts'] : array();
         $media = isset( $input['media_candidates'] ) && is_array( $input['media_candidates'] ) ? $input['media_candidates'] : array();
         if ( count( $facts ) > 64 || count( $media ) > 30 )
@@ -52,6 +55,9 @@ final class MAD4B_SCP_Market_Content_Exchange {
             'contract' => self::CONTRACT,
             'lane' => 'competitor_intelligence_without_contract',
             'competitor_id' => $id, 'source_url' => $profile['source_url'],
+            'destination_post_type' => '' === $post_type ? 'discover_at_runtime' : $post_type,
+            'destination_taxonomies' => '' === $post_type || ! function_exists( 'get_object_taxonomies' )
+                ? array() : array_values( (array) get_object_taxonomies( $post_type ) ),
             'registry_revision' => (int) $registry['revision'],
             'registry_sha256' => MAD4B_SCP_Market_Growth_Policies::checksum( $registry ),
             'research_contract_required' => false,
