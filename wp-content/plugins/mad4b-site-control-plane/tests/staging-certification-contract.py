@@ -123,7 +123,9 @@ for marker in [
 
     "'browser_acceptance'",
     "'frontend_performance_sampling'",
-    "'provider_closure_review'",
+    "'provider_capability_review'",
+    "'provider_mapping_review'",
+    "'provider_actions_overflow_review'",
     "'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority'",
 
     "'read_only' => true",
