@@ -95,10 +95,21 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		// Fence the complete deep plan, including provider enumeration, between
 		// two exact site/runtime identity captures. A racing update disables the
 		// entire projection; a stale plan never offers next-step navigation.
-		$start_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
-		$plan = class_exists( 'MAD4B_SCP_Staging_Certification', false )
-			? MAD4B_SCP_Staging_Certification::convergence_plan() : array();
-		$end_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
+		$start_identity = array();
+		$plan = array();
+		$end_identity = array();
+		try {
+			$start_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
+			$plan = class_exists( 'MAD4B_SCP_Staging_Certification', false )
+				? MAD4B_SCP_Staging_Certification::convergence_plan() : array();
+			$end_identity = MAD4B_SCP_Recovery_Lifecycle::capture_identity();
+		} catch ( Throwable $error ) {
+			// A failed deep diagnostic must degrade the local view to
+			// UNAVAILABLE, never crash wp-admin or show executable links.
+			$start_identity = array();
+			$end_identity = array();
+			$plan = array();
+		}
 		$lifecycle = MAD4B_SCP_Recovery_Lifecycle::compile( $plan, $start_identity, $end_identity );
 		$model = self::model( $plan );
 		if ( empty( $lifecycle['identity_bound'] ) ) {
