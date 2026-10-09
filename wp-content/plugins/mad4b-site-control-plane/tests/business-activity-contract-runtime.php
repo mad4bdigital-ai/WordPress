@@ -45,7 +45,25 @@ $raw=array('enabled'=>true,'user_role'=>'subscriber',
    'field_keys'=>array('category_code'),'source_ref'=>'local_catalog','conflict_policy'=>'manual_review'),
    'brand_folder'=>array('provider'=>'google_drive','direction'=>'bidirectional',
    'field_keys'=>array('category_code'),'source_ref'=>'brand_docs','conflict_policy'=>'manual_review')));
+$raw['field_owners']=array('category_code'=>'wp_feed');
+$raw['sync_identity_key']='post_id';
+$raw['sync_targets']['brand_folder']['field_keys']=array();
+$raw['sync_targets']['brand_folder']['purpose']='editorial_policy';
+$raw['sync_targets']['brand_folder']['resource_kind']='drive_document';
 $normalized=MAD4B_SCP_Business_Activity_Contracts::normalize($raw,'vendors',array('category_code'),array('region'));
+check(!is_wp_error($normalized)&&$normalized['field_owners']['category_code']==='wp_feed'&&
+ $normalized['sync_targets']['brand_folder']['purpose']==='editorial_policy',
+ 'Field owners and editorial context not normalized');
+$misowner=$raw;$misowner['field_owners']['category_code']='brand_folder';
+$no=MAD4B_SCP_Business_Activity_Contracts::normalize($misowner,'vendors',array('category_code'),array('region'));
+check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_field_owner_invalid','Editorial policy promoted to record field owner');
+$wrongDirection=$raw;$wrongDirection['sync_targets']['wp_feed']['direction']='export';
+$no=MAD4B_SCP_Business_Activity_Contracts::normalize($wrongDirection,'vendors',array('category_code'),array('region'));
+check(is_wp_error($no)&&$no->get_error_code()==='mad4b_activity_field_owner_direction_invalid','Outbound-only source promoted to field owner');
+$colliding=$raw;$colliding['sync_targets']['wordpress']=$raw['sync_targets']['wp_feed'];
+$no=MAD4B_SCP_Business_Activity_Contracts::normalize($colliding,'vendors',array('category_code'),array('region'));
+check(is_wp_error($no),'Reserved WordPress source ID hijacked');
+
 check(!is_wp_error($normalized)&&$normalized['enabled']&&count($normalized['sync_targets'])===2,'Generic facet config failed');
 $privileged=$raw;$privileged['user_role']='administrator';
 $bad=MAD4B_SCP_Business_Activity_Contracts::normalize($privileged,'vendors',array('category_code'),array('region'));
