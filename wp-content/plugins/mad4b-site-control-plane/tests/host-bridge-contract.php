@@ -413,7 +413,7 @@ $verification_id='88888888-1111-4333-8aaa-999999999999';
 $missing_verification=MAD4B_SCP_Host_Bridge::environment_sync_verification(array('job_id'=>$verification_id));
 $check(is_wp_error($missing_verification) && 'mad4b_host_environment_receipt_missing'===$missing_verification->get_error_code(),'Missing Host receipt was approved');
 
-$verified_config="<?php\\n/* fixture Staging Host bootstrap */\\ndefine( 'WP_ENVIRONMENT_TYPE', 'staging' );\\nrequire_once ABSPATH . 'wp-settings.php';\\n";
+$verified_config="<?php\n/* fixture Staging Host bootstrap */\ndefine( 'WP_ENVIRONMENT_TYPE', 'staging' );\nrequire_once ABSPATH . 'wp-settings.php';\n";
 file_put_contents($tmp.'/wp-config.php',$verified_config);
 $host_receipt=array(
  'contract'=>'mad4b.tool-execution-receipt.v1',
