@@ -64,7 +64,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $targets = isset( $raw['sync_targets'] ) ? $raw['sync_targets'] : array();
         if ( ! is_array( $targets ) || count( $targets ) > 12 )
             return self::err( 'mad4b_activity_sync_target_invalid', 'Business Activity sync target count is invalid.' );
-        $sync = array();
+        $sync = array(); $resource_bindings = array();
         foreach ( $targets as $target_id => $target ) {
             if ( ! is_string( $target_id ) || 'wordpress' === $target_id || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
                 ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind', 'purpose' ) ) )
@@ -93,6 +93,16 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 return self::err( 'mad4b_activity_sync_purpose_invalid', 'Source purpose must be an allowed data or context role.' );
             if ( 'record_data' !== $purpose && $field_keys )
                 return self::err( 'mad4b_activity_policy_source_field_denied', 'Guidelines/reference/media sources are context, not direct canonical business fields.' );
+            if ( 'google_drive' === $provider && '' === $source_ref )
+                return self::err( 'mad4b_activity_drive_binding_required', 'Google Drive source must bind to an exact provider resource reference.' );
+            if ( 'record_data' === $purpose && 'drive_folder' === $kind )
+                return self::err( 'mad4b_activity_folder_not_row_source', 'Drive folder is a container; select exact child file/sheet IDs as record sources.' );
+            if ( '' !== $source_ref ) {
+                $resource_key = $provider . ':' . $source_ref;
+                if ( isset( $resource_bindings[ $resource_key ] ) )
+                    return self::err( 'mad4b_activity_duplicate_resource_binding', 'Duplicate provider resource alias in the same profile.' );
+                $resource_bindings[ $resource_key ] = $target_id;
+            }
             $policy = isset( $target['conflict_policy'] ) ? $target['conflict_policy'] : 'manual_review';
             if ( ! in_array( $policy, array( 'manual_review', 'source_wins', 'site_wins' ), true ) )
                 return self::err( 'mad4b_activity_sync_conflict_policy', 'Sync conflict policy is not supported.' );
