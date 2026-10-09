@@ -365,6 +365,7 @@ final class MAD4B_SCP_Staging_Certification {
 		}
 		$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
 			? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
+		$provider_gated = isset( $provider_matrix['provider_gated_count'] ) ? max( 0, (int) $provider_matrix['provider_gated_count'] ) : 0;
 		if ( 'mad4b.provider-closure-matrix.v1' !== ( isset( $provider_matrix['contract'] ) ? $provider_matrix['contract'] : '' )
 			|| empty( $provider_matrix['read_only'] ) || ! empty( $provider_matrix['mutation_performed'] ) ) {
 			$append( $actions, $seen, 'provider_inventory_unavailable', array(
@@ -581,15 +582,26 @@ final class MAD4B_SCP_Staging_Certification {
 				'minimum_samples' => 3,
 			) );
 		}
-		$append( $actions, $seen, 'provider_closure_review', array(
-			'kind' => 'read_only_followup',
-			'executor' => 'wordpress_native',
-			'human_decision_required' => false,
-			'automatic_execution_allowed' => true,
-			'plan_ability' => 'mad4b/provider-closure-matrix',
-			'instruction' => 'Keep uncertified provider writes fail-closed; route each item to adapter/catalog reconciliation, behavioral recertification, artifact authority, or owner-governed canary.',
-		) );
 
+		// Keep release acceptance strict, but expose independent domain truth.
+		// An unconfigured optional feature must not masquerade as broken Core.
+		$domain_keys = array(
+			'core_runtime' => array( 'exact_build', 'safe_boot' ),
+			'governed_write' => array( 'write_authority', 'write_runtime' ),
+			'managed_skills' => array( 'skills_runtime', 'external_skill_snapshot' ),
+			'feature_integrations' => array( 'context_authority', 'brand_core_context_coverage', 'google_provider_connection', 'managed_google_broker', 'wp_import_export_exact_artifact' ),
+			'release_acceptance' => array( 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
+		);
+		$readiness_domains = array();
+		foreach ( $domain_keys as $domain => $requirements ) {
+			$missing = array_values( array_intersect( $requirements, $blocking ) );
+			$readiness_domains[ $domain ] = array(
+				'state' => empty( $missing ) ? 'observed_ready' : 'pending_or_blocked',
+				'ready' => empty( $missing ),
+				'blocking_gates' => $missing,
+				'authorizing' => false,
+			);
+		}
 		$basis = array(
 			'contract' => self::CONVERGENCE_CONTRACT,
 			'read_only' => true,
@@ -599,6 +611,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'blocking_gates' => $blocking,
 			'actions' => $actions,
 			'recovery_scope' => 'exact_site_staging_only',
+			'readiness_domains' => $readiness_domains,
 			'recovery_dependencies' => $recovery_dependencies,
 			'provider_gated_count' => $provider_gated,
 			'developer_host_requested' => $developer_requested,
