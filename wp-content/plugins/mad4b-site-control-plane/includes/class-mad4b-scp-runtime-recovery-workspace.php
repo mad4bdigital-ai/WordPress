@@ -52,6 +52,11 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 					$target_gates[ $gate ] = true;
 					$covered[ $gate ] = true;
 				}
+				$evidence = array();
+				foreach ( array_slice( isset( $action['required_evidence'] ) && is_array( $action['required_evidence'] ) ? $action['required_evidence'] : array(), 0, 12 ) as $evidence_item ) {
+					if ( ! is_string( $evidence_item ) || 1 !== preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $evidence_item ) ) continue;
+					$evidence[ $evidence_item ] = true;
+				}
 				$rows[] = array(
 					'id' => $id,
 					'target_gates' => array_keys( $target_gates ),
@@ -65,6 +70,8 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 					'readback' => isset( $action['readback_ability'] ) && is_string( $action['readback_ability'] ) ? substr( $action['readback_ability'], 0, 128 ) : '',
 					'link_slug' => self::local_page_for( $id, $kind ),
 					'plan_only' => true,
+					'expected_independent_evidence' => array_keys( $evidence ),
+					'evidence_count' => count( $evidence ),
 					'readback_verified' => false,
 					'retry_authorized' => false,
 					'approval_granted' => false,
@@ -105,6 +112,10 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 	private static function local_page_for( $id, $kind ) {
 		if ( false !== strpos( $id, 'environment' ) || false !== strpos( $id, 'authority' ) || false !== strpos( $id, 'candidate_binding' ) )
 			return 'mad4b-control-plane-site-profile';
+		if ( false !== strpos( $id, 'browser' ) ) return 'mad4b-browser-acceptance';
+		if ( false !== strpos( $id, 'context' ) || false !== strpos( $id, 'brand' ) ) return 'mad4b-control-plane-context';
+		if ( false !== strpos( $id, 'import_export' ) ) return 'mad4b-adapter-coverage';
+		if ( false !== strpos( $id, 'frontend' ) || false !== strpos( $id, 'performance' ) ) return 'mad4b-runtime-components';
 		if ( false !== strpos( $id, 'skills' ) ) return 'mad4b-control-plane-skills';
 		if ( false !== strpos( $id, 'provider' ) ) return 'mad4b-adapter-coverage';
 		if ( false !== strpos( $id, 'browser' ) || 'external_executor_job' === $kind ) return 'mad4b-control-plane-connection';
@@ -214,7 +225,14 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 			echo '<td>' . esc_html( $row['classification'] ) . ' <small>(' . esc_html( isset( $row['lifecycle_stage'] ) ? $row['lifecycle_stage'] : 'REVIEW_REQUIRED' ) . ')</small></td>';
 			echo '<td><code>' . esc_html( $row['owner'] ) . '</code></td>';
 			echo '<td>' . esc_html( $row['depends_on'] ? implode( ', ', $row['depends_on'] ) : '—' ) . '</td>';
-			echo '<td><code>' . esc_html( $row['readback'] ? $row['readback'] : 'not_specified' ) . '</code></td>';
+			echo '<td><code>' . esc_html( $row['readback'] ? $row['readback'] : 'not_specified' ) . '</code>';
+			if ( ! empty( $row['expected_independent_evidence'] ) ) {
+				echo '<details><summary>' . esc_html__( 'Required independent evidence', 'mad4b-site-control-plane' ) . '</summary><ul>';
+				foreach ( $row['expected_independent_evidence'] as $required )
+					echo '<li><code>' . esc_html( $required ) . '</code></li>';
+				echo '</ul><p class="description">' . esc_html__( 'No evidence is certified by this checklist. Verify the actual external receipt and exact current build.', 'mad4b-site-control-plane' ) . '</p></details>';
+			}
+			echo '</td>';
 			$url = MAD4B_SCP_Admin_Workspace::link( $row['link_slug'] );
 			echo '<td>';
 			if ( '' !== $url ) echo '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Inspect', 'mad4b-site-control-plane' ) . '</a>';

@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 496,
+  "changed_file_count": 498,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -972,8 +972,18 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-request-permission-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-request-permission-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-staging-independent-gate-evidence-routing-20261009",
+      "semantic_unit": "Source-only Staging evidence closure planning for Brand owner review, Browser signing, frontend samples, and disposable WP Import Export, plus Google credential health and admin routes.",
+      "revert_boundary": "Revert the two new tests together with acceptance-evidence model and planner/Recovery Workspace routing/locale hooks, leaving governed native executors and historical Staging certifications untouched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-independent-evidence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-independent-evidence-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "6853c05bb56477279ad42f8cfc8f6eb09648d296c1d267fa29321751092cc521",
+  "changed_paths_sha256": "01008e3cb46e18a6ea9b9aa56465d5331b4f0baaacd589241890ef1fb0308ac5",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

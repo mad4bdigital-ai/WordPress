@@ -614,6 +614,25 @@ final class MAD4B_SCP_Staging_Certification {
 			$google_connection = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'public_connection_status' )
 				? MAD4B_SCP_Google_Drive_Context::public_connection_status()
 				: array();
+			// A refresh-required credential is not a failed/revoked Google
+			// connection. Surface a distinct read-only token health check
+			// rather than forcing OAuth reconsent or an unbounded rescan.
+			$google_refresh_pending = ! empty( $google_connection['refresh_required'] )
+				&& empty( $google_connection['refresh_failed'] )
+				&& empty( $google_connection['reconnect_required'] );
+			if ( $google_refresh_pending ) {
+				$append( $actions, $seen, 'google_drive_token_health_review', array(
+					'kind' => 'external_oauth_health_check',
+					'executor' => 'authorized_google_context_operator',
+					'human_decision_required' => false,
+					'automatic_execution_allowed' => false,
+					'readback_ability' => 'context/google-drive-status',
+					'credential_fresh' => false,
+					'reconnect_automatically_required' => false,
+					'instruction' => 'Check managed token refresh using the existing consent flow and exact current Google connection. Do not expose tokens or force reconnection unless provider evidence requires it.',
+					'production_policy' => 'deny',
+				) );
+			}
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) {
 				$append( $actions, $seen, 'google_drive_reconnect', array(
 					'kind' => 'external_oauth_reauthorization',
@@ -636,6 +655,7 @@ final class MAD4B_SCP_Staging_Certification {
 				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
 			$depends_on = array();
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
+			if ( $google_refresh_pending ) $depends_on[] = 'google_drive_token_health_review';
 			$append( $actions, $seen, 'brand_core_convergence', array(
 				'kind' => 'hybrid_creation',
 				'executor' => 'managed_skill_or_agent_plus_wordpress',
@@ -740,10 +760,12 @@ final class MAD4B_SCP_Staging_Certification {
 				'kind' => 'external_executor_job',
 				'executor' => 'external_browser_agent',
 				'human_decision_required' => false,
-				'automatic_execution_allowed' => true,
+				'automatic_execution_allowed' => false,
 				'operation_id' => 'browser_acceptance_execution',
-				'apply_ability' => 'mad4b/browser-acceptance-run',
-				'readback_ability' => 'mad4b/browser-acceptance-result',
+				'plan_ability' => 'mad4b/browser-acceptance-plan',
+				'readback_ability' => 'mad4b/browser-acceptance-capabilities',
+				'trusted_external_agent_required' => true,
+				'signed_receipt_required' => true,
 			) );
 		}
 		if ( in_array( 'performance_budget', $blocking, true ) ) {
@@ -751,12 +773,20 @@ final class MAD4B_SCP_Staging_Certification {
 				'kind' => 'external_executor_job',
 				'executor' => 'external_browser_agent',
 				'human_decision_required' => false,
-				'automatic_execution_allowed' => true,
+				'automatic_execution_allowed' => false,
 				'operation_id' => 'frontend_performance_sampling',
-				'apply_ability' => 'mad4b/frontend-performance-sample-run',
+				'plan_ability' => 'mad4b/frontend-performance-status',
 				'readback_ability' => 'mad4b/frontend-performance-status',
+				'external_frontend_observation_required' => true,
 				'minimum_samples' => 3,
 			) );
+		}
+		// Targeted remediation for external acceptance gaps, without inventing
+		// WordPress-local browser, performance or import/export execution.
+		foreach ( self::acceptance_evidence_actions( $plan_gates ) as $evidence_action ) {
+			$id = $evidence_action['action_id'];
+			unset( $evidence_action['action_id'] );
+			$append( $actions, $seen, $id, $evidence_action );
 		}
 		// Keep release acceptance strict, but expose independent domain truth.
 		// An unconfigured optional feature must not masquerade as broken Core.
@@ -1077,6 +1107,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$links = array(
 			'external_mcp_handshake_refresh' => array( 'safe_boot' ),
 			'google_drive_reconnect' => array( 'google_provider_connection', 'brand_core_context_coverage' ),
+			'google_drive_token_health_review' => array( 'brand_core_context_coverage' ),
 			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
 			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
 			'managed_skills_runtime_refresh' => array( 'skills_runtime' ),
@@ -1088,6 +1119,10 @@ final class MAD4B_SCP_Staging_Certification {
 			'candidate_binding_only' => array( 'write_authority', 'write_runtime' ),
 			'browser_acceptance' => array( 'browser_runtime' ),
 			'frontend_performance_sampling' => array( 'performance_budget' ),
+			'context_owner_evidence_review' => array( 'context_authority', 'brand_core_context_coverage' ),
+			'browser_attestation_trust_review' => array( 'browser_runtime' ),
+			'frontend_sample_evidence_review' => array( 'performance_budget' ),
+			'import_export_disposable_acceptance' => array( 'wp_import_export_exact_artifact' ),
 		);
 		$readbacks = array(
 			'exact_build' => 'mad4b/staging-certification-status',
@@ -1106,7 +1141,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'query_monitor_db_attribution' => 'mad4b/staging-certification-status',
 			'oauth_live_authority_projection' => 'mad4b/staging-certification-status',
 			'rollback_candidate' => 'mad4b/staging-certification-status',
-			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
+			'wp_import_export_exact_artifact' => 'wp-import-export/execution-readiness',
 			'deployment_host_binding' => 'mad4b/site-profile-status',
 			'developer_host_execution' => 'mad4b/full-staging-authority-status',
 		);
@@ -1273,6 +1308,81 @@ final class MAD4B_SCP_Staging_Certification {
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	/**
+	 * Exact-gate read-only remediation inventory. These steps contain no
+	 * executor and NEVER invent a successful acceptance certificate.
+	 *
+	 * Keep this pure for native offline PHP fixture testing. A caller must
+	 * independently reread live gates and recheck exact current site/source.
+	 */
+	public static function acceptance_evidence_actions( array $gates ) {
+		$definitions = array(
+			'context_authority' => array(
+				'id' => 'context_owner_evidence_review',
+				'kind' => 'human_evidence_review',
+				'executor' => 'site_brand_authority_owner',
+				'plan_ability' => 'context/brand-core-convergence-plan',
+				'readback_ability' => 'context/review-queue',
+				'evidence' => array( 'fresh_governed_source_scan', 'correct_asset_classification', 'exact_content_hash_owner_approval' ),
+				'instruction' => 'Review each exact asset and reject operational data or automatically classified notes as Brand Strategy until independently checked. No bulk approval.',
+			),
+			'browser_runtime' => array(
+				'id' => 'browser_attestation_trust_review',
+				'kind' => 'external_trust_bootstrap',
+				'executor' => 'authorized_external_browser_operator',
+				'plan_ability' => 'mad4b/browser-acceptance-plan',
+				'readback_ability' => 'mad4b/browser-acceptance-capabilities',
+				'evidence' => array( 'trusted_browser_public_key', 'external_agent_identity', 'exact_origin_profile_and_source', 'unique_nonce_replay_rejection', 'independent_signed_browser_receipt' ),
+				'instruction' => 'Register a verified external browser public key and exact agent identity, then produce signed replay-safe Staging evidence. Keep its private key outside WordPress; do not launch browser code from this plan.',
+			),
+			'performance_budget' => array(
+				'id' => 'frontend_sample_evidence_review',
+				'kind' => 'external_measurement_review',
+				'executor' => 'external_frontend_observer',
+				'plan_ability' => 'mad4b/frontend-performance-status',
+				'readback_ability' => 'mad4b/frontend-performance-status',
+				'evidence' => array( 'at_least_three_real_frontend_samples', 'current_build_and_origin_binding', 'elapsed_ms_and_db_queries_and_memory', 'independent_budget_verdict' ),
+				'instruction' => 'Capture three or more real site frontend responses, not admin/MCP requests. Do not invent frontend samples or override the 2s/100-query/128MiB budget.',
+			),
+			'wp_import_export_exact_artifact' => array(
+				'id' => 'import_export_disposable_acceptance',
+				'kind' => 'external_disposable_canary_review',
+				'executor' => 'authorized_provider_operator',
+				'plan_ability' => 'wp-import-export/behavioral-acceptance-plan',
+				'readback_ability' => 'wp-import-export/execution-readiness',
+				'evidence' => array( 'exact_composite_artifact_provenance', 'disposable_saved_job_identity', 'independent_negative_transport_canary', 'import_dry_run_diff_and_rollback', 'export_registry_ingest', 'signed_operation_receipt' ),
+				'instruction' => 'Use a separately approved disposable import/export job with exact artifact and rollback/receipt evidence. Never run an existing content job or mount write abilities on a structural provider check.',
+			),
+		);
+		$actions = array();
+		foreach ( $definitions as $gate => $definition ) {
+			if ( ! isset( $gates[ $gate ] ) || ! is_array( $gates[ $gate ] )
+				|| true === ( $gates[ $gate ]['ready'] ?? null ) ) continue;
+			$action = array(
+				'action_id' => $definition['id'],
+				'kind' => $definition['kind'],
+				'executor' => $definition['executor'],
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'independent_governed_preflight_required' => true,
+				'depends_on' => array(),
+				'plan_ability' => $definition['plan_ability'],
+				'readback_ability' => $definition['readback_ability'],
+				'required_evidence' => $definition['evidence'],
+				'gate_blockers' => array_values( array_slice(
+					is_array( $gates[ $gate ]['blockers'] ?? null ) ? $gates[ $gate ]['blockers'] : array(), 0, 12
+				) ),
+				'instruction' => $definition['instruction'],
+				'production_policy' => 'deny',
+				'mutation_performed' => false,
+				'grant_created' => false,
+				'certificate_issued' => false,
+			);
+			$actions[] = $action;
+		}
+		return $actions;
 	}
 
 	private static function safe_read( $name, $callback ) {
