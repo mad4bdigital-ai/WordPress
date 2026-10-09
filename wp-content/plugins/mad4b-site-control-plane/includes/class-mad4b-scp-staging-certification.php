@@ -332,6 +332,7 @@ final class MAD4B_SCP_Staging_Certification {
 
 	public static function convergence_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
+		$manifest_at_start = self::convergence_manifest_file_sha256();
 		$status = self::status( array( 'compact' => false ) );
 		$plan_gates = is_array( $status['gates'] ?? null ) ? $status['gates'] : array();
 		// Source SHA alone is shared by every site using the same plugin ZIP.
@@ -523,6 +524,7 @@ final class MAD4B_SCP_Staging_Certification {
 		// optional independent acceptance and final plan issuance. Full file
 		// hashing was already performed by the exact_build gate earlier.
 		$late_site = self::convergence_site_identity();
+		$manifest_at_end = self::convergence_manifest_file_sha256();
 		$late_identity = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
 			&& method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_identity_status' )
 			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
@@ -534,7 +536,10 @@ final class MAD4B_SCP_Staging_Certification {
 				$site_same = false;
 		}
 		$build_same = ! empty( $late_identity['identity_ready'] )
-			&& ! empty( $early_build['runtime_manifest_match'] );
+			&& ! empty( $early_build['runtime_manifest_match'] )
+			&& '' !== $manifest_at_start
+			&& '' !== $manifest_at_end
+			&& hash_equals( $manifest_at_start, $manifest_at_end );
 		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
 			if ( ! is_string( $late_identity[ $field ] ?? null )
 				|| ! hash_equals( (string) ( $early_build[ $field ] ?? '' ), $late_identity[ $field ] ) )
@@ -606,6 +611,19 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Deliberately bypasses request-local manifest cache: reading the full
+	 * plugin file inventory twice is expensive, but this manifest SHA fence
+	 * detects a ZIP/update switch during the read-only convergence request.
+	 */
+	public static function convergence_manifest_file_sha256() {
+		if ( ! defined( 'MAD4B_SCP_DIR' ) ) return '';
+		$path = MAD4B_SCP_DIR . 'MAD4B-BUILD-PROVENANCE.json';
+		if ( ! is_readable( $path ) || ! is_file( $path ) ) return '';
+		$sha = hash_file( 'sha256', $path );
+		return is_string( $sha ) && preg_match( '/^[a-f0-9]{64}$/D', $sha ) ? $sha : '';
 	}
 
 	/**
