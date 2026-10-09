@@ -66,8 +66,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             return self::err( 'mad4b_activity_sync_target_invalid', 'Business Activity sync target count is invalid.' );
         $sync = array();
         foreach ( $targets as $target_id => $target ) {
-            if ( ! is_string( $target_id ) || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
-                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy' ) ) )
+            if ( ! is_string( $target_id ) || 'wordpress' === $target_id || ! preg_match( '/^[a-z][a-z0-9_-]{1,48}$/', $target_id ) ||
+                ! is_array( $target ) || array_diff( array_keys( $target ), array( 'provider', 'direction', 'field_keys', 'source_ref', 'conflict_policy', 'resource_kind' ) ) )
                 return self::err( 'mad4b_activity_sync_target_fields', 'Sync target must have bounded fields and ID.' );
             $provider = isset( $target['provider'] ) ? $target['provider'] : '';
             $direction = isset( $target['direction'] ) ? $target['direction'] : '';
@@ -76,18 +76,23 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 return self::err( 'mad4b_activity_sync_provider_invalid', 'Provider and direction are unsupported.' );
             $field_keys = isset( $target['field_keys'] ) ? $target['field_keys'] : array();
             if ( ! is_array( $field_keys ) || count( $field_keys ) > self::MAX_FIELDS ||
-                array_diff( $field_keys, $meta_keys ) )
+                array_diff( $field_keys, array_keys( $allow ) ) )
                 return self::err( 'mad4b_activity_sync_fields_invalid', 'Sync fields must be permitted by the parent Content Experience Profile.' );
             $source_ref = isset( $target['source_ref'] ) ? $target['source_ref'] : '';
             if ( ! is_string( $source_ref ) || strlen( $source_ref ) > 180 ||
                 ( '' !== $source_ref && ! preg_match( '/^[A-Za-z0-9._:-]+$/', $source_ref ) ) )
                 return self::err( 'mad4b_activity_sync_source_invalid', 'Sync source uses only a bounded provider resource identifier, never credentials or arbitrary URLs.' );
+            $kind = isset( $target['resource_kind'] ) ? (string) $target['resource_kind']
+                : ( 'wordpress' === $provider ? 'wordpress_post' : 'drive_document' );
+            if ( ! in_array( $kind, 'wordpress' === $provider ? array( 'wordpress_post' ) :
+                array( 'drive_document', 'drive_sheet', 'drive_file', 'drive_folder' ), true ) )
+                return self::err( 'mad4b_activity_sync_resource_kind_invalid', 'Configured resource type does not match the source provider.' );
             $policy = isset( $target['conflict_policy'] ) ? $target['conflict_policy'] : 'manual_review';
             if ( ! in_array( $policy, array( 'manual_review', 'source_wins', 'site_wins' ), true ) )
                 return self::err( 'mad4b_activity_sync_conflict_policy', 'Sync conflict policy is not supported.' );
             $sync[ $target_id ] = array( 'provider' => $provider, 'direction' => $direction,
                 'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
-                'conflict_policy' => $policy );
+                'conflict_policy' => $policy, 'resource_kind' => $kind );
         }
         // Exactly one field owner per canonical field. An owner's ability
         // to author a field must be declared explicitly and independently
@@ -234,8 +239,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         $provider = $target['provider'];
         $ability = 'wordpress' === $provider
             ? array( $routes['update_plan'], $routes['update_apply'], $routes['verify'] )
-            : array( 'context/provider-capabilities', 'context/source-scan-plan',
-                'context/source-scan-apply', 'context/reconcile-brand-materialization' );
+            : array(); // Drive integration must resolve its own certified provider; Brand Context routes are not generic file editors.
         // The Google Drive Context abilities are Brand Core-specific. They
         // are prerequisites only; arbitrary Drive document updates require
         // an exact certified provider operation and an independent revision.
@@ -247,8 +251,12 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'target_id' => $target_id, 'operation' => $op,
             'source_ref' => $target['source_ref'], 'field_keys' => $target['field_keys'],
             'conflict_policy' => $target['conflict_policy'],
+            'resource_kind' => $target['resource_kind'],
+            'field_owners' => isset( $binding['contract']['field_owners'] ) ? $binding['contract']['field_owners'] : array(),
             'provider_abilities_to_discover' => $ability,
             'provider_write_certified' => $provider_write_certified,
+            'provider_binding_required' => 'google_drive' === $provider,
+            'source_is_metadata_reference_only' => true,
             'requires_source_and_destination_revision_readback' => true,
             'requires_authenticated_provider_write' => true,
             'requires_independent_content_diff' => true,
