@@ -15,6 +15,7 @@ from pathlib import Path
 try:
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.exceptions import InvalidSignature
 except ImportError as exc:
     raise AssertionError("BLOCKED: Host Runner receipt signature acceptance needs audited cryptography package") from exc
 
@@ -28,7 +29,7 @@ spec.loader.exec_module(runner)
 def expect_rejection(fn, desc):
     try:
         fn()
-    except (ValueError, RuntimeError, runner.HostRunnerResourceError):
+    except (ValueError, RuntimeError, InvalidSignature, runner.HostRunnerResourceError):
         return
     raise AssertionError(desc)
 
