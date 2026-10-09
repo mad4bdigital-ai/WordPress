@@ -68,7 +68,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! in_array( $request['suite'] ?? '', array( 'browser_runtime', 'browser' ), true ) ) {
             return self::blocked( 'plan', array( 'profile_or_input_invalid' ) );
         }
-        return self::prepare( time() );
+        try { $nonce = bin2hex( random_bytes( 16 ) ); }
+        catch ( Throwable $error ) { return self::blocked( 'plan', array( 'secure_nonce_unavailable' ) ); }
+        return self::prepare( time(), $nonce );
     }
 
     private static function blocked( $kind, $reasons ) {
@@ -191,7 +193,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         return $cases;
     }
 
-    private static function prepare( $issued_at ) {
+    private static function prepare( $issued_at, $nonce ) {
         $context = self::binding();
         if ( ! $context ) return self::blocked( 'plan', array( 'build_or_discovery_or_preference_unverified' ) );
         if ( ! self::trusted_key() ) return self::blocked( 'plan', array( 'trusted_browser_attestation_key_missing' ) );
@@ -199,10 +201,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             $issued_at + self::VALID_SECONDS <= time() ) return self::blocked( 'plan', array( 'challenge_expired' ) );
         $cases = self::page_cases( $context['origin'] );
         if ( ! $cases ) return self::blocked( 'plan', array( 'published_public_page_oracle_unavailable' ) );
-        $nonce = substr( hash_hmac( 'sha256',
-            'nonce|' . $context['origin'] . '|' . $context['source_snapshot_sha256'] . '|' .
-            $context['configuration_revision'] . '|' . (string) $issued_at,
-            $context['secret'] ), 0, 32 );
+        if ( ! is_string( $nonce ) || ! preg_match( '/^[a-f0-9]{32}$/D', $nonce ) ) {
+            return self::blocked( 'plan', array( 'nonce_invalid' ) );
+        }
         $expires = $issued_at + self::VALID_SECONDS;
         $challenge = array(
             'nonce' => $nonce, 'issued_at' => $issued_at, 'expires_at' => $expires,
@@ -243,7 +244,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! is_int( $evidence['observer']['plan_issued_at'] ) ) {
             return self::blocked( 'result', array( 'signed_plan_epoch_missing' ) );
         }
-        $plan = self::prepare( $evidence['observer']['plan_issued_at'] );
+        $nonce = $evidence['cases'][0]['challenge_nonce'] ?? null;
+        $plan = self::prepare( $evidence['observer']['plan_issued_at'], $nonce );
         if ( ( $plan['state'] ?? '' ) !== 'ready' ) return self::blocked( 'result', $plan['blocking_reasons'] ?? array( 'plan_unavailable' ) );
         foreach ( array( 'plan_digest', 'plan_signature' ) as $field ) {
             if ( ! is_string( $request[ $field ] ?? null ) || ! is_string( $evidence[ $field ] ?? null ) ||
