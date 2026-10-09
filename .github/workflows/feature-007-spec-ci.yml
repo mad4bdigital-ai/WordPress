@@ -5,6 +5,7 @@ on:
     paths:
       - 'specs/007-content-intelligence-workflow-platform/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
@@ -105,6 +106,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Source federation adversarial fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/solution-discovery/federation.mjs
+          node --check tools/solution-discovery/test-federation.mjs
+          node tools/solution-discovery/test-federation.mjs
 
       - name: Enforce current baseline ancestry
         shell: bash

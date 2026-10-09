@@ -5,6 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
       - 'specs/007-content-intelligence-workflow-platform/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
   workflow_dispatch:
 
@@ -36,6 +38,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
+      - name: Source federation and dynamic WordPress discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/solution-discovery/federation.mjs
+          node tools/solution-discovery/test-federation.mjs
+
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2
         with:
@@ -49,6 +58,13 @@ jobs:
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
             | sort -z \
             | xargs -0 -n1 php -l
+
+      - name: Generic discovery PHP 7.4 runtime fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
 
       - name: Architecture maintainability and change-slice gate
         shell: bash
