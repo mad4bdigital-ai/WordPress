@@ -5,6 +5,7 @@ r=Path(__file__).resolve().parents[1]
 get=lambda path:(r/path).read_text(encoding="utf-8")
 runtime=get("includes/class-mad4b-scp-activity-sync-runtime.php")
 docs=get("includes/class-mad4b-scp-activity-google-docs-adapter.php")
+managed=get("includes/class-mad4b-scp-google-drive-context.php")
 facet=get("includes/class-mad4b-scp-business-activity-contracts.php")
 profile=get("includes/class-mad4b-scp-content-experience-profiles.php")
 tests=get("tests/business-activity-sync-runtime.php")
@@ -25,13 +26,17 @@ for k in ("site_uuid","profile_revision","authority_sha256","initial_checkpoint_
  "mad4b_activity_sync_adapters","mad4b_sync_conditional_writer_missing",
  "mad4b_sync_wp_row_cas_failed"):
  ck(k in runtime,"Missing durable authority/cas/recovery guard "+k)
-for k in ("requiredRevisionId","docs.googleapis.com","wp_safe_remote_request",
- "wp_safe_remote_get","mad4b_activity_google_oauth_access_token",
- "gettype","mad4b_drive_docs_cas_changed","textRun","utf16_length",
+for k in ("requiredRevisionId","MAD4B_SCP_Google_Drive_Context::activity_docs_request",
+ "connection_status","mad4b_drive_docs_cas_changed","textRun","utf16_length",
  "drive_document","record_data","mad4b_drive_multitab_or_identity_denied",
  "mad4b_drive_docs_write_unverified"):
- if k=="gettype": continue
- ck(k in docs,"Google Docs adapter missing guarded REST/CAS boundary "+k)
+ ck(k in docs,"Google Docs adapter missing guarded managed CAS boundary "+k)
+for k in ("public static function activity_docs_request","self::authorized_json_request",
+ "self::connection_status","self::DOCS_API","requiredRevisionId",
+ "mad4b_activity_docs_binding_mismatch","mad4b_activity_docs_write_scope_missing"):
+ ck(k in managed,"Preexisting encrypted Google OAuth bridge not used: "+k)
+ck("mad4b_activity_google_oauth_access_token" not in docs and "Bearer " not in docs,
+ "No alternate OAuth token path or bearer logging allowed in Activity Docs adapter")
 ck("drive_sheet" not in docs and "sheets.googleapis.com" not in docs,
  "Non-conditional Google Sheets cells must not be advertised as guarded writes")
 for k in ("entity_post_meta","resource_binding_meta_key","resource_binding_mode"):
