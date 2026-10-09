@@ -753,3 +753,9 @@ msgstr "أكمل تعريف الموقع أولًا"
 
 msgid "No action currently reported"
 msgstr "لا يوجد إجراء مطلوب حاليًا"
+
+msgid "Review independent deployment identity"
+msgstr "مراجعة هوية النشر المستقلة"
+
+msgid "Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants."
+msgstr "تعريف الموقع معتمد، لكن حماية نسخ الموقع على العنوان نفسه غير مفعلة. إعداد الخادم مستقل عن صلاحيات القراءة والكتابة الحالية."
