@@ -118,6 +118,7 @@ final class MAD4B_SCP_Operator_Workspace {
 		$cards = array();
 		foreach ( $model['checks'] as $check ) $cards[] = array( 'label' => $check['label'], 'value' => MAD4B_SCP_Admin_Experience::observed_state( $check['value'] ), 'help' => null === $check['value'] ? __( 'No current observation is available.', 'mad4b-site-control-plane' ) : __( 'Current local runtime observation.', 'mad4b-site-control-plane' ), 'state' => null === $check['value'] ? 'pending' : ( $check['value'] ? 'complete' : 'attention' ) );
 		MAD4B_SCP_Admin_Experience::cards( $cards );
+		if ( class_exists( 'MAD4B_SCP_Guided_Operator_Experience', false ) ) MAD4B_SCP_Guided_Operator_Experience::render( $snapshot );
 		echo '<h2>' . esc_html__( 'Next actions', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! $model['actions'] ) echo '<div class="mad4b-scp-panel"><p>' . esc_html__( 'No pending actions were reported by this snapshot. External acceptance and repair coverage still require their own evidence.', 'mad4b-site-control-plane' ) . '</p></div>';
 		echo '<div class="mad4b-action-list">';
@@ -140,7 +141,9 @@ final class MAD4B_SCP_Operator_Workspace {
 			echo '<p>' . esc_html__( 'Verified automation rate: unavailable until the eligible workload and readback evidence are measured.', 'mad4b-site-control-plane' ) . '</p></details>';
 		}
 		if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) ) MAD4B_SCP_Runtime_Recovery_Workspace::render();
+		echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'Advanced setup reference', 'mad4b-site-control-plane' ) . '</summary>';
 		self::setup_path();
+		echo '</details>';
 		self::external_notices();
 		if ( class_exists( 'MAD4B_SCP_Automation_SLO', false ) ) MAD4B_SCP_Automation_SLO::render_controls();
 		self::capabilities( $adaptive );

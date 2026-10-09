@@ -609,3 +609,153 @@ msgstr "التحقق من اتصال العميل الخارجي"
 
 msgid "Write authority"
 msgstr "صلاحية الكتابة"
+
+msgid "Your next safe steps"
+msgstr "خطواتك الآمنة التالية"
+
+msgid "This checklist adapts to the current site and existing observations. It does not grant access, perform repairs, or claim release acceptance."
+msgstr "تتغير هذه الخطوات بحسب حالة الموقع. لا تمنح صلاحيات ولا تنفذ إصلاحات ولا تعتمد الإصدار."
+
+msgid "Current operator evidence is incomplete or untrusted. Reopen Runtime Components before taking action."
+msgstr "بيانات التشغيل الحالية غير مكتملة أو غير موثوقة. راجع مكونات التشغيل قبل اتخاذ أي إجراء."
+
+msgid "Identify this WordPress site"
+msgstr "تحديد هوية موقع WordPress"
+
+msgid "Confirm the exact origin, environment and deployment identity."
+msgstr "تحقق من عنوان الموقع والبيئة وهوية النشر."
+
+msgid "Connect and verify ChatGPT"
+msgstr "ربط ChatGPT والتحقق من الاتصال"
+
+msgid "Complete OAuth consent and verify an external read. A configured profile alone is not certification."
+msgstr "أكمل الموافقة على الاتصال واختبر قراءة فعلية. إعداد الملف وحده لا يعني نجاح الاتصال."
+
+msgid "Restore Managed Skills"
+msgstr "معالجة Managed Skills"
+
+msgid "Reconcile managed seeds and providers, then verify the certificate for this exact build."
+msgstr "حدّث المهارات المُدارة ومزوّديها، ثم تحقق من شهادة الإصدار الحالي."
+
+msgid "Inspect installed capabilities and certify only the specific missing provider evidence."
+msgstr "راجع القدرات المثبتة وتحقق من الأدلة الناقصة لكل مزوّد على حدة."
+
+msgid "Configure browser acceptance"
+msgstr "إعداد اختبارات المتصفح"
+
+msgid "Choose a registered site adapter and external runner. A saved preference does not certify a test."
+msgstr "اختر محول الموقع المسجل ومنفذ المتصفح الخارجي. حفظ الاختيار لا يعني نجاح الاختبار."
+
+msgid "Review pending change approvals"
+msgstr "مراجعة الموافقات المعلقة"
+
+msgid "Inspect the exact affected scope and existing ticket before approving or rejecting."
+msgstr "راجع نطاق التغيير والتذكرة المرتبطة به قبل الموافقة أو الرفض."
+
+msgid "Resolve an uncertain previous change"
+msgstr "التحقق من تغيير سابق غير محسوم"
+
+msgid "Review the last receipt and independently read back the affected object before any retry."
+msgstr "راجع إيصال المحاولة السابقة وحالة العنصر الفعلية قبل أي إعادة محاولة."
+
+msgid "Review isolated developer execution"
+msgstr "مراجعة عزل تنفيذ المطور"
+
+msgid "Host sandbox prerequisites require an authorized external operator. Existing safe lanes remain usable."
+msgstr "يتطلب إعداد عزل الخادم مسؤولًا مخولًا. تظل المسارات الآمنة الأخرى متاحة."
+
+msgid "Review exact write readiness"
+msgstr "التحقق من جاهزية الكتابة"
+
+msgid "The write runtime is not ready. Verify grants and candidate binding before seeking approval; no grants are created here."
+msgstr "مسار الكتابة غير جاهز. تحقق من الصلاحيات وربط الإصدار قبل طلب الموافقة، ولن تُنشأ صلاحيات هنا."
+
+msgid "Open this step"
+msgstr "فتح هذه الخطوة"
+
+msgid "Continue with this step"
+msgstr "متابعة الخطوة التالية"
+
+msgid "Responsible:"
+msgstr "المسؤول:"
+
+msgid "Advanced setup reference"
+msgstr "دليل الإعداد المتقدم"
+
+msgid "Environment:"
+msgstr "البيئة:"
+
+msgid "WordPress setting:"
+msgstr "إعداد WordPress:"
+
+msgid "Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant."
+msgstr "الموقع معتمد كبيئة تجريبية. يستخدم WordPress قيمة الإنتاج الافتراضية؛ توحيد إعداد الخادم تحسين مقترح وليس صلاحية جديدة."
+
+msgid "The environment differs: verify the exact host and Site Profile before accepting a release."
+msgstr "توجد اختلافات في تعريف البيئة؛ تحقق من الخادم وهوية الموقع قبل اعتماد الإصدار."
+
+msgid "Managed Skills need verification"
+msgstr "تحتاج Managed Skills إلى التحقق"
+
+msgid "A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority."
+msgstr "شهادة التشغيل غير موجودة أو قديمة. نفّذ التسوية أدناه ثم افحص الشهادة الجديدة. لا تمنح هذه الصفحة صلاحية كتابة."
+
+msgid "Review exact decision boundary"
+msgstr "مراجعة نطاق القرار بدقة"
+
+msgid "Provider:"
+msgstr "المزوّد:"
+
+msgid "Target fingerprint:"
+msgstr "بصمة العنصر المستهدف:"
+
+msgid "Payload binding:"
+msgstr "بصمة ربط الطلب:"
+
+msgid "This ticket identifies an exact proposed operation. The current inbox does not independently prove before/after changes, rollback availability, or outcome. Review the operation plan and its owner before approving."
+msgstr "تحدد التذكرة عملية مقترحة بعينها، لكنها لا تثبت بمفردها أثر التغيير أو توفر التراجع أو نتيجته. راجع خطة العملية والمسؤول عنها قبل الموافقة."
+
+msgid "Before approving: identify the operation, affected provider and target, review the precise mutation plan and its rollback evidence. Unknown impact is never assumed safe."
+msgstr "قبل الموافقة، راجع العملية والمزوّد والعنصر المستهدف وخطة التغيير ودليل التراجع. لا يُعد الأثر غير المعروف آمنًا تلقائيًا."
+
+msgid "Browser setup progress"
+msgstr "تقدم إعداد المتصفح"
+
+msgid "Browser setup: your next step"
+msgstr "إعداد المتصفح: الخطوة التالية"
+
+msgid "1. A WordPress acceptance adapter is missing."
+msgstr "1. محوّل اختبارات WordPress غير موجود."
+
+msgid "Register a reviewed site adapter first. External Browser API credentials alone cannot repair this."
+msgstr "سجل محوّل موقع معتمدًا أولًا؛ مفاتيح خدمة المتصفح وحدها لا تحل المشكلة."
+
+msgid "2. Saved browser preference needs correction."
+msgstr "2. يجب تصحيح اختيار المتصفح المحفوظ."
+
+msgid "Choose a currently registered provider and save an exact new revision below."
+msgstr "اختر مزوّدًا مسجلًا حاليًا واحفظ نسخة إعداد جديدة أدناه."
+
+msgid "3. Verify external browser execution and receipt."
+msgstr "3. تحقق من التنفيذ الخارجي وإيصال النتيجة."
+
+msgid "WordPress cannot verify an external runner solely from these preferences. A signed browser result is required."
+msgstr "لا يستطيع WordPress التحقق من المنفذ الخارجي اعتمادًا على الإعدادات فقط؛ يلزم تقرير اختبار موقع."
+
+msgid "No secret is accepted on this page, and no test runs merely by saving preferences."
+msgstr "لا تستقبل هذه الصفحة مفاتيح سرية، ولا يبدأ اختبار بمجرد حفظ التفضيلات."
+
+msgid "Not applicable"
+msgstr "غير منطبق"
+
+msgid "Complete site identification first"
+msgstr "أكمل تعريف الموقع أولًا"
+
+msgid "No action currently reported"
+msgstr "لا يوجد إجراء مطلوب حاليًا"
+
+msgid "Review independent deployment identity"
+msgstr "مراجعة هوية النشر المستقلة"
+
+msgid "Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants."
+msgstr "تعريف الموقع معتمد، لكن حماية نسخ الموقع على العنوان نفسه غير مفعلة. إعداد الخادم مستقل عن صلاحيات القراءة والكتابة الحالية."

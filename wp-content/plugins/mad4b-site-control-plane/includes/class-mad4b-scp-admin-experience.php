@@ -34,8 +34,19 @@ final class MAD4B_SCP_Admin_Experience {
 		$page = sanitize_key( self::query_string( 'page', '', 128 ) );
 		if ( 0 !== strpos( $page, 'mad4b-' ) ) return;
 		$context = self::environment_context();
-		echo '<div class="notice ' . ( $context['match'] ? 'notice-info' : 'notice-warning' ) . ' mad4b-environment-context"><p><strong>Environment context:</strong> Effective: <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; Raw WordPress: <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
-		if ( ! $context['match'] ) echo ' &middot; Environment mismatch: verify WordPress host settings and deployment binding before release acceptance; MAD4B Site Profile authority remains separate.';
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
+		// An explicitly confirmed implicit-Production override is not an
+		// unverified environment mismatch. It remains an acceptance advisory.
+		$confirmed_default = is_array( $profile )
+			&& ! empty( $profile['authority_ready'] )
+			&& ! empty( $profile['implicit_nonproduction_override_confirmed'] )
+			&& empty( $profile['wordpress_environment_explicit'] )
+			&& 'production' === $context['raw_wordpress_environment']
+			&& 'staging' === $context['effective_environment'];
+		$warning = ! $context['match'] && ! $confirmed_default;
+		echo '<div class="notice ' . ( $warning ? 'notice-warning' : 'notice-info' ) . ' mad4b-environment-context"><p><strong>' . esc_html__( 'Environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; ' . esc_html__( 'WordPress setting:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
+		if ( $confirmed_default ) echo ' &middot; ' . esc_html__( 'Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant.', 'mad4b-site-control-plane' );
+		elseif ( $warning ) echo ' &middot; ' . esc_html__( 'The environment differs: verify the exact host and Site Profile before accepting a release.', 'mad4b-site-control-plane' );
 		echo '</p></div>';
 	}
 

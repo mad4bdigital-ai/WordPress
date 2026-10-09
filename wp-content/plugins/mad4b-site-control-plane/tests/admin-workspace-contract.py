@@ -33,4 +33,6 @@ for line in source.splitlines():
         assert re.findall(r'%[ds]', message) == re.findall(r'%[ds]', value), message
         count += 1
 assert count >= 160 and catalog.gettext('Not checked') == 'لم يتم الفحص'
+import runpy
+runpy.run_path(str(root / 'tests/guided-operator-experience-contract.py'))
 print('mad4b.admin-workspace-presentation-boundaries.v1: PASS')

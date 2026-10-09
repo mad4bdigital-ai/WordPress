@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 470,
+  "changed_file_count": 475,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -890,8 +890,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-live-readonly-browser-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-live-readonly-browser.cjs"
       ]
+    },
+    {
+      "id": "feature007-guided-wordpress-operator-ux-20261009",
+      "semantic_unit": "Task-first guided WordPress operator journey, contextual Skills/Browser/approval pages and offline UX safety fixtures.",
+      "revert_boundary": "Revert the two updated previously unchanged admin pages, guided model and two new native/static tests alongside the UI/bootstrap wiring. Retain native execution, identity and approval authority boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-decision-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-guided-operator-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skills-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-operator-experience-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-operator-experience-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "a2c717c195215ef43efc96e2b2d88b41421083d58f8a95dae907734474305968",
+  "changed_paths_sha256": "99f6e9a2e46d71b762ec265ab30bab054af9d28001b2f3ebc4e5d4f0b68e8414",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

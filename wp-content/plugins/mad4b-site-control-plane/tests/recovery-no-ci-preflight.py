@@ -65,6 +65,9 @@ def main():
         ["lint:recovery-native-test", [php, "-l", str(ROOT / "tests/recovery-lifecycle-runtime.php")]],
         ["php:recovery-lifecycle", [php, str(ROOT / "tests/recovery-lifecycle-runtime.php")]],
         ["php:recovery-workspace", [php, str(ROOT / "tests/runtime-recovery-workspace-runtime.php")]],
+        ["lint:guided-operator", [php, "-l", str(ROOT / "includes/class-mad4b-scp-guided-operator-experience.php")]],
+        ["php:guided-operator", [php, str(ROOT / "tests/guided-operator-experience-runtime.php")]],
+        ["python:guided-contract", [sys.executable, str(ROOT / "tests/guided-operator-experience-contract.py")]],
         ["php:scenario-registry", [php, str(ROOT / "tests/auto-reconcile-scenario-registry-runtime.php")]],
         ["python:recovery-static", [sys.executable, str(ROOT / "tests/wordpress-recovery-lifecycle-contract.py")]],
     ]

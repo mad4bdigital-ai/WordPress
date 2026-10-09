@@ -171,3 +171,71 @@ requires separate native PHP/DB, Host, Browser signed oracle, deployment identit
 and rollback evidence. Exit 2 means blocked. Unknown expected route count also
 blocks, rather than fabricating coverage. Run the static fail-closed contract
 with \`python3 tests/admin-live-readonly-browser-contract.py\`.
+
+
+## WordPress Guided Operator Experience — source delivery (2026-10-09)
+
+The `MAD4B_SCP_Guided_Operator_Experience` model adds a **task-first** journey to
+the existing Action Center using exact Site Profile, persisted current-build
+Managed Skills and the already-computed Operator Control Center snapshot. The
+model never manufactures provider execution/certification evidence, and it does
+not invoke deep/browser network discovery on every admin GET.
+
+The next task is prioritized deterministically: uncertain prior mutation (no
+blind retry) → site identity or stale Skills/write authorization → exact
+provider gaps → Browser configuration or externally owned Host prerequisites.
+Each item binds an existing canonical, capability-filtered WordPress workspace,
+a responsible role, independent verification Ability, and one of
+`OBSERVED_READY`, `NEEDS_ACTION`, `NOT_CHECKED`,
+`NOT_APPLICABLE`, `WAITING_FOR_SITE` or `EXTERNAL_ACTION`.
+It never marks Browser test acceptance, Production readiness, mutation execution
+or approvals as complete because a settings page or preference is available.
+
+The page keeps Advanced setup, all existing admin routes, approval/nonce checks,
+existing Skills seeder and provider certifiers, and the protected Recovery
+Lifecycle. The top-level journey points users to those proven components rather
+than opening new generic executors.
+
+Specific UX repairs:
+- **Staging environment notice:** an authoritative, confirmed Site Profile
+  with WordPress's implicit Production default gets an *advisory*, not a
+  misleading untrusted-site warning. Explicit/mismatched environments remain
+  warnings. No WP host setting or authority is changed.
+- **Managed Skills:** stale or missing build-bound persisted certification is
+  explained next to the already-governed reconciliation form. Reconciliation
+  retains existing editor/permission checks.
+- **Browser Acceptance:** distinguishes missing signed WordPress adapter, a
+  corrupt/legacy operator preference, and independent external runner and signed
+  evidence. Browser secrets are not accepted or auto-discovered.
+- **Approvals:** exposes exact ticket/provider/target/payload binding and states
+  that before/after impact or rollback is not proven by the inbox. No inferred
+  safe approval or auto-approval.
+- **Localization:** rebuild Arabic `.po` and runtime `.mo` together; controls
+  and tri-state meanings are translated without hiding technical identities.
+
+A guided use-case is closed **only** after an independent exact-current-build
+readback and, for write and Browser/Host effects, external evidence. A visible
+step or button does not certify any result.
+
+### Independent tests when CI is unavailable
+
+`php tests/guided-operator-experience-runtime.php` is a pure native PHP
+scenario matrix for stale Skills, source absence, corrupt Browser preferences,
+write/Provider gaps, uncertain mutation priority, external Host ownership,
+unknown statuses and untrusted snapshot denial.
+
+`python3 tests/guided-operator-experience-contract.py` enforces non-authorizing
+source boundaries and verifies that the deployed Arabic GNU gettext MO contains
+real translated user-facing messages. Existing
+`tests/admin-workspace-contract.py` and the exact-HEAD
+`tests/recovery-no-ci-preflight.py` invoke these checks. The separate Staging
+read-only Playwright route survey should be run against the **deployed exact
+source**, not against prior All Royal Egypt rc.96.
+
+Do not mark `release_certified`, `browser_certified` or
+`production_mutation_allowed` true based on these local checks. True A–Z
+acceptance requires an actual administrator user journey through a disposable
+WordPress site, Arabic and English localized renders, live Staging route/browser
+evidence, native PHP 7.4 and 8.3 plus MariaDB/MySQL, impact-readback/rollback,
+and signed Provider/Host certification. CI being stalled does not waive these
+independent evidence requirements.
