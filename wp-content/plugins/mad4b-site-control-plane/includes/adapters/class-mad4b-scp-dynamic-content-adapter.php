@@ -110,6 +110,7 @@ final class MAD4B_SCP_Dynamic_Content_Adapter extends MAD4B_SCP_Adapter_Base {
 			self::COMPETITOR_PLAN, 'Research Public Competitor Offers Without Supplier Agreement', 'competitor_plan', $read_permission,
 			$this->schema(array(
 				'competitor_id'=>array('type'=>'string','minLength'=>2,'maxLength'=>64),
+				'post_type'=>array('type'=>'string','maxLength'=>64),
 				'facts'=>array('type'=>'array','maxItems'=>64,'items'=>array('type'=>'object','additionalProperties'=>true)),
 				'media_candidates'=>array('type'=>'array','maxItems'=>30,'items'=>array('type'=>'object','additionalProperties'=>true)),
 				'pricing'=>array('type'=>'object','additionalProperties'=>true)
