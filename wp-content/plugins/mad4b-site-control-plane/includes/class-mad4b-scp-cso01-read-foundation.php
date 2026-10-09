@@ -12,6 +12,15 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
     const MAX_OPTIONS = 40;
     const MAX_VALUES = 24;
     private static $booted = false;
+    private static $registration_attempted = false;
+    private static $registered = false;
+
+    /** Only expose the endpoint set when THIS module registered every callback. */
+    public static function read_ability_names() {
+        return self::$registered
+            ? array( 'cso/discover', 'cso/form-schema', 'cso/form-validate', 'cso/form-explain' )
+            : array();
+    }
 
     public static function boot() {
         if ( self::$booted ) return;
@@ -28,7 +37,10 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
     }
 
     public static function register_abilities() {
-        if ( ! function_exists( 'wp_register_ability' ) ) return;
+        if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' )
+            || self::$registration_attempted ) return;
+        self::$registration_attempted = true;
+        $registered_ok = true;
         $names = array(
             'cso/discover' => array( 'CSO01 Site Explorer', 'discover',
                 array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ) ),
@@ -50,8 +62,9 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
                 ), 'required' => array( 'ability_name', 'field' ), 'additionalProperties' => false ) ),
         );
         foreach ( $names as $name => $row ) {
-            if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
-            wp_register_ability( $name, array(
+            // A plugin-claimed cso/* name is never silently trusted as ours.
+            if ( wp_has_ability( $name ) ) { $registered_ok = false; continue; }
+            $outcome = wp_register_ability( $name, array(
                 'label' => $row[0],
                 'description' => 'Read-only CSO01 contract; discovery, validation and form display never authorize, save or publish.',
                 'category' => 'mad4b-read',
@@ -67,7 +80,9 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
                         'idempotent' => true ),
                 ),
             ) );
+            if ( is_wp_error( $outcome ) || ! wp_has_ability( $name ) ) $registered_ok = false;
         }
+        self::$registered = $registered_ok;
     }
 
     private static function error( $code ) {
