@@ -38,3 +38,5 @@
 | Distinct cases share the same signed public URL | De-duplicate navigation allowlist, preserve separate semantic cases |
 | Signed-but-ill-typed HTTP status, extra release_ready key, unexpected observer claims | Treat as infrastructure BLOCKED, never spurious product FAIL or release PASS |
 | First public page entries password protected, duplicate ID/path | Scan bounded additional published pages and select unique public candidates |
+| Static marker count with site JavaScript disabled | Use fixed validated attribute locator and count(); never run evaluateAll or site JavaScript |
+| WordPress site has pages but no installed plugin mapped to the generic capability | Recognize by `source_post_types: ['page']`, no ETG/brand fallback |
