@@ -134,6 +134,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         $duplicate_artifact_ids = array();
         $conflicting_groups = array();
         $duplicated_source_ref_count = 0;
+        $all_source_ref_hashes = array();
         foreach ( $artifacts as $row ) {
             if ( ! is_array( $row ) || ! isset( $row['artifact_id'], $row['job_id'], $row['artifact_type'], $row['payload'], $row['status'] ) ||
                  ! self::uuid( $row['artifact_id'] ) || ! is_string( $row['job_id'] ) || strtolower( $row['job_id'] ) !== strtolower( $job_id ) ||
@@ -162,7 +163,9 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             // independent review, never evidence eligible for publication.
             $group_identity = array( $payload['provider_id'], $payload['request_fingerprint'],
                 $payload['collected_at'] );
-            $group_sha = hash( 'sha256', json_encode( $group_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+            $group_json = json_encode( $group_identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            if ( false === $group_json ) return self::denied( 'research_group_identity_encoding_invalid' );
+            $group_sha = hash( 'sha256', $group_json );
             $source_identity = json_encode( array( $payload['source_refs'],
                 $payload['normalized_data'] ?? null ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
             if ( false === $source_identity )
@@ -175,13 +178,12 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             } else {
                 $groups[$group_sha] = $payload_sha;
             }
-            $seen_source_refs = array();
             foreach ( $payload['source_refs'] as $ref ) {
                 $ref_encoded = json_encode( $ref, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
                 if ( false === $ref_encoded ) return self::denied( 'research_source_ref_encoding_invalid' );
                 $ref_sha = hash( 'sha256', $ref_encoded );
-                if ( isset( $seen_source_refs[$ref_sha] ) ) ++$duplicated_source_ref_count;
-                $seen_source_refs[$ref_sha] = true;
+                if ( isset( $all_source_ref_hashes[$ref_sha] ) ) ++$duplicated_source_ref_count;
+                $all_source_ref_hashes[$ref_sha] = true;
             }
             $timestamp = self::utc_time( $payload['collected_at'] );
             if ( false === $timestamp || $timestamp > $now || $now - $timestamp > $age ) $reasons[] = 'research_evidence_expired_or_future';
