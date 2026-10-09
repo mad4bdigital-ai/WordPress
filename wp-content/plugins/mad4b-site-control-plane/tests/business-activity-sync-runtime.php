@@ -6,7 +6,7 @@ class WP_Error { private $code; function __construct($code,$message=''){ $this->
 function is_wp_error($x){return $x instanceof WP_Error;}
 function wp_json_encode($value,$options=0){return json_encode($value,$options);}
 function current_user_can($cap,$id=0){return true;}
-function get_post_type($id){return in_array($id,array(101,102,103,104,105,106),true)?'vendor_profiles':'other';}
+function get_post_type($id){return in_array($id,array(101,102,103,104,105,106,107),true)?'vendor_profiles':'other';}
 function get_post_meta($id,$field,$single){return isset($GLOBALS['wp_values'][$id][$field])?$GLOBALS['wp_values'][$id][$field]:'';}
 function get_option($key,$default=false){return array_key_exists($key,$GLOBALS['options'])?$GLOBALS['options'][$key]:$default;}
 function add_option($key,$value,$unused='',$autoload=false){
@@ -125,6 +125,12 @@ $GLOBALS['drive_value']='Other editor';$GLOBALS['drive_revision']++;
 $mut=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(104)));
 ck(is_wp_error($mut)&&$mut->get_error_code()==='mad4b_sync_destination_changed_since_approval',
  'Unapproved external Drive edit overwritten');
+$afterRefusal=MAD4B_SCP_Activity_Sync_Runtime::status(scope(104));
+$driftLease='mad4b_asyn_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|104');
+ck($afterRefusal['operation_state']==='needs_reconcile' &&
+ !array_key_exists($driftLease,$GLOBALS['options']),
+ 'Prewrite refusal must durably record conflict and release inactive worker lease');
 $GLOBALS['drive_value']='Next revision';$GLOBALS['drive_revision']++;
 $partialStatus=MAD4B_SCP_Activity_Sync_Runtime::status(scope(104));
 $closed=MAD4B_SCP_Activity_Sync_Runtime::finalize_reconciled(array_merge(
@@ -217,6 +223,32 @@ ck(!is_wp_error($recovered6)&&$recovered6['provider_replayed']===false,
 $done6=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(106)));
 ck(!is_wp_error($done6)&&$done6['checkpoint_advanced'],
  'Recovered uncertain write was not checkpointed');
+
+$GLOBALS['wp_values'][107]=array('biography'=>'Original');
+$GLOBALS['drive_value']='Original'; $GLOBALS['drive_revision']++;
+$seed7=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(107));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(107),
+ array('plan_sha256'=>$seed7['plan_sha256']))))), 'Cancel race bootstrap failed');
+$GLOBALS['wp_values'][107]['biography']='Pending cancel';
+$p7=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(107));
+ck(!is_wp_error(MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(107),
+ array('plan_sha256'=>$p7['plan_sha256']))))), 'Cancel race begin failed');
+$c7=MAD4B_SCP_Activity_Sync_Runtime::status(scope(107));
+$workerLease='mad4b_asyn_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|107');
+$GLOBALS['options'][$workerLease]=array('operation_key'=>'other_worker','at'=>time());
+$blockedCancel=MAD4B_SCP_Activity_Sync_Runtime::cancel(array_merge(scope(107),
+ array('confirmed'=>true,'expected_operation_sha256'=>$c7['operation_sha256'])));
+ck(is_wp_error($blockedCancel)&&$blockedCancel->get_error_code()==='mad4b_sync_cancel_worker_active',
+ 'Cancellation raced a reserved execution worker');
+unset($GLOBALS['options'][$workerLease]);
+$cancellation=MAD4B_SCP_Activity_Sync_Runtime::cancel(array_merge(scope(107),
+ array('confirmed'=>true,'expected_operation_sha256'=>$c7['operation_sha256'])));
+ck(!is_wp_error($cancellation)&&$cancellation['archived']&&
+ !array_key_exists($workerLease,$GLOBALS['options']),
+ 'Cancellation after zero-write worker release failed');
+echo "PASS MSR02 deterministic conflict unlock and zero-write cancellation lease checks\n";
+
 echo "PASS MSR02 failure-injected prewrite/postwrite journal checks and serialized recovery\n";
 
 echo "PASS MSR02 durable checkpoint, WordPress/Drive CAS, stale plan, conflict, readback, uncertain-write recovery and archival\n";
