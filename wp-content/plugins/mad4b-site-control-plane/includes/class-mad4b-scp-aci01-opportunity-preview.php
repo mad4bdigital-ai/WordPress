@@ -159,8 +159,12 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
                 ! is_array( $provenance['excluded_duplicate_artifact_ids'] ?? null ) ||
                 count( $provenance['excluded_duplicate_artifact_ids'] ) > 12 ||
                 ! is_array( $provenance['conflicting_response_group_sha256'] ?? null ) ||
-                ! array_key_exists( 'independently_reviewed', $provenance ) ||
-                $provenance['independently_reviewed'] !== false ||
+                count( $provenance['conflicting_response_group_sha256'] ) > 12 ||
+                ( $provenance['independently_reviewed'] ?? null ) !== false ||
+                ( $provenance['authorizing'] ?? null ) !== false ||
+                ! is_int( $provenance['duplicated_source_locator_count'] ?? null ) ||
+                $provenance['duplicated_source_locator_count'] < 0 ||
+                $provenance['duplicated_source_locator_count'] > 768 ||
                 ! is_int( $provenance['distinct_request_observations'] ?? null ) ||
                 $provenance['distinct_request_observations'] < 0 ||
                 $provenance['distinct_request_observations'] > 12 ||
@@ -195,10 +199,14 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             if ( ! isset( $observed_ids[$excluded_id] ) )
                 return self::denied( 'provenance_exclusion_not_in_research' );
         if ( $provenance !== null ) {
-            foreach ( $provenance['conflicting_response_group_sha256'] as $digest )
+            $unique_conflicts = array();
+            foreach ( $provenance['conflicting_response_group_sha256'] as $digest ) {
                 if ( ! is_string( $digest ) ||
-                    ! preg_match( '/^[a-f0-9]{64}$/D', $digest ) )
+                    ! preg_match( '/^[a-f0-9]{64}$/D', $digest ) ||
+                    isset( $unique_conflicts[$digest] ) )
                     return self::denied( 'provenance_conflict_fingerprint_invalid' );
+                $unique_conflicts[$digest] = true;
+            }
         }
         sort( $research_ids, SORT_STRING );
         $handoff = array(
@@ -209,7 +217,8 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'excluded_duplicate_artifact_ids' => array_keys( $excluded ),
             'provenance_review_required' => $provenance !== null
                 && ( count( $excluded ) > 0 ||
-                    count( $provenance['conflicting_response_group_sha256'] ) > 0 ),
+                    count( $provenance['conflicting_response_group_sha256'] ) > 0 ||
+                    $provenance['duplicated_source_locator_count'] > 0 ),
             'required_input_keys' => array( 'job_id', 'context_artifact_id',
                 'research_artifact_ids', 'search_intent', 'audience', 'goals',
                 'outline', 'section_objectives', 'evidence_requirements' ),
