@@ -69,4 +69,47 @@ check_browser( strpos($remote, "sanitize_key( isset( \$input['provider_id'] )") 
 check_browser( strpos($staging, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id )') !== false, 'staging certification must check operator selection' );
 check_browser( strpos($main, 'MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();') !== false, 'setup available on admin' );
 
+
+// Model the WordPress options CAS independently of a browser, with exact bytes.
+function maybe_serialize( $value ) { return serialize( $value ); }
+function wp_cache_delete( $key, $group = '' ) { return true; }
+function add_option( $key, $value, $unused = '', $autoload = false ) {
+    if ( array_key_exists( $key, $GLOBALS['browser_setting'] ) ) return false;
+    $GLOBALS['browser_setting'][$key] = $value;
+    return true;
+}
+class MAD4B_Test_Browser_Option_DB {
+    public $options = 'wp_options';
+    private $args = array();
+    public $queries = 0;
+    public function prepare( $sql, ...$args ) { $this->args = $args; return $sql; }
+    public function query( $sql ) {
+        ++$this->queries;
+        if ( false === strpos( $sql, 'BINARY option_value = BINARY %s' ) ) return false;
+        list( $updated, $option, $expected ) = $this->args;
+        if ( ! array_key_exists( $option, $GLOBALS['browser_setting'] ) ||
+            ! hash_equals( serialize( $GLOBALS['browser_setting'][$option] ), $expected ) ) return 0;
+        $GLOBALS['browser_setting'][$option] = unserialize( $updated );
+        return 1;
+    }
+}
+$GLOBALS['wpdb'] = new MAD4B_Test_Browser_Option_DB();
+$cas = new ReflectionMethod( $c, 'persist_if_unchanged' );
+$cas->setAccessible( true );
+unset( $GLOBALS['browser_setting'][$c::OPTION] );
+$first = array( 'executor' => 'auto', 'profile_id' => 'royal', 'site_provider_id' => '', 'configuration_revision' => str_repeat('a',32) );
+check_browser( true === $cas->invoke( null, false, $first ), 'pristine preferences created with exact readback' );
+check_browser( $GLOBALS['browser_setting'][$c::OPTION] === $first, 'first persisted state matches exact initial value' );
+$second = $first;
+$second['executor'] = 'steel';
+$second['configuration_revision'] = str_repeat('b',32);
+check_browser( true === $cas->invoke( null, $first, $second ), 'one exact persisted revision can be updated' );
+check_browser( $GLOBALS['browser_setting'][$c::OPTION] === $second, 'updated state read back exactly' );
+$third = $second; $third['executor'] = 'browserbase'; $third['configuration_revision'] = str_repeat('c',32);
+$stale = $cas->invoke( null, $first, $third );
+check_browser( is_wp_error( $stale ), 'concurrent tab that saw old revision must fail' );
+check_browser( $GLOBALS['browser_setting'][$c::OPTION] === $second, 'concurrent write cannot overwrite newer preference' );
+check_browser( false !== strpos( $browser_source, 'BINARY option_value = BINARY %s' ), 'comparator must be byte-exact on case-insensitive SQL stores' );
+check_browser( $GLOBALS['wpdb']->queries === 2, 'two update attempts were bounded and non-recursive' );
+
 echo "MAD4B_BROWSER_ACCEPTANCE_ADMIN_SETUP: PASS\n";
