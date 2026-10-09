@@ -22,6 +22,6 @@ ensure_permission( 'not_evaluated' === $missing['state'] && ! $missing['permissi
 $wrong = $cls::managed_skills_permission_model( 'mad4b-enrollment', true, true );
 ensure_permission( 'not_evaluated' === $wrong['state'] && ! $wrong['permission_observed'], 'Non-ChatGPT transport cannot certify direct step-up.' );
 $unknown = $cls::managed_skills_permission_model( 'mad4b-chatgpt', true, false, '<Unsafe Secret 123>' );
-ensure_permission( 'unsafesecret' === $unknown['blocker_code'], 'Sanitize transport errors and reject secret echoes.' );
+ensure_permission( 'request_permission_denied_unclassified' === $unknown['blocker_code'], 'Unknown errors cannot echo third-party secrets.' );
 ensure_permission( ! $unknown['blind_retry_allowed'] && $unknown['same_request_only'], 'No blind retry and no reuse as future authority.' );
 echo "PASS: request-local Skills permission model 9 native assertions\n";
