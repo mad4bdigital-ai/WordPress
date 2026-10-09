@@ -78,6 +78,11 @@ check(!is_wp_error($r)&&$r['has_conflicts']&&$r['conflicts'][0]['code']==='confi
 $missing=$input;unset($missing['observations']['archive_drive']);
 $r=MAD4B_SCP_Activity_Source_Reconciliation::plan($missing);
 check(!is_wp_error($r)&&$r['has_conflicts']&&$r['conflicts'][0]['code']==='snapshot_missing_or_stale','Missing source treated as blank');
+$incomplete=$input;unset($incomplete['observations']['brand_drive']['fields']['biography']);
+unset($incomplete['baseline']['brand_drive']['field_hashes']['biography']);
+$r=MAD4B_SCP_Activity_Source_Reconciliation::plan($incomplete);
+check(!is_wp_error($r)&&$r['has_conflicts']&&$r['conflicts'][0]['code']==='snapshot_field_coverage_incomplete',
+ 'Omitted source fields falsely passed reconciliation');
 $prior_conflict=$input;$prior_conflict['baseline']['wordpress']['field_hashes']['biography']=fingerprint('Historic different');
 $r=MAD4B_SCP_Activity_Source_Reconciliation::plan($prior_conflict);
 check(!is_wp_error($r)&&$r['has_conflicts']&&$r['conflicts'][0]['code']==='baseline_already_divergent','Already-divergent baseline incorrectly trusted');
