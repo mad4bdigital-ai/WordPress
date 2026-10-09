@@ -40,7 +40,13 @@ class MAD4B_SCP_Content_Experience_Profiles {
         return array( 'enabled' => true, 'revision' => 5,
             'authority_sha256' => str_repeat( 'a', 64 ),
             'meta_keys' => array( 'base_currency', 'single_price', 'double_price' ),
-            'activity_contract' => array( 'enabled' => true ) );
+            'activity_contract' => array( 'enabled' => true,
+                'import_modes' => isset( $GLOBALS['imp02_enabled_modes'] ) ?
+                    array( 'enabled_modes' => $GLOBALS['imp02_enabled_modes'],
+                        'preferred_mode' => 'admin_csv_upload',
+                        'fallback_modes' => array( 'signed_generic_webhook' ),
+                        'manual_review_required' => true,
+                        'auto_execute' => false ) : array() ) );
     }
 }
 class MAD4B_SCP_Context_Authority {
@@ -163,5 +169,18 @@ $badMode = MAD4B_SCP_Activity_Import_Modes::plan( array( 'profile_slug' => 'pric
     'mode_id' => 'user_invented_exec' ) );
 ck( is_wp_error( $badMode ) && $badMode->get_error_code() === 'mad4b_import_mode_unknown',
     'Unregistered arbitrary execution mode accepted' );
+$GLOBALS['imp02_enabled_modes'] = array( 'admin_csv_upload', 'signed_generic_webhook' );
+$notAllowed = MAD4B_SCP_Activity_Import_Modes::plan( array(
+    'profile_slug' => 'pricing', 'mode_id' => 'wp_all_import_cron' ) );
+ck( is_wp_error( $notAllowed ) &&
+    $notAllowed->get_error_code() === 'mad4b_import_mode_disabled_for_profile',
+    'Profile-specific allowlist did not suppress nonapproved transport' );
+$allowed = MAD4B_SCP_Activity_Import_Modes::plan( array(
+    'profile_slug' => 'pricing', 'mode_id' => 'admin_csv_upload' ) );
+ck( !is_wp_error( $allowed ) &&
+    $allowed['profile_preferred_mode'] === 'admin_csv_upload' &&
+    $allowed['profile_fallback_modes'] === array( 'signed_generic_webhook' ),
+    'Versioned fallback mode preferences not read back' );
+unset( $GLOBALS['imp02_enabled_modes'] );
 echo "PASS IMP02 dynamic mode registry, exact profile authorization and write-safe selection\n";
 echo "PASS IMP01 bounded dynamic meta mapping, currency/status exceptions, duplicate IDs, preview limits and governed Brand Core review\n";
