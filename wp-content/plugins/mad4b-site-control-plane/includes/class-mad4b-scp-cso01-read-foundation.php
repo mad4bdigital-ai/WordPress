@@ -106,15 +106,20 @@ final class MAD4B_SCP_CSO01_Read_Foundation {
             return self::error( 'discovery_unavailable' );
         $inventory = MAD4B_SCP_Site_Capability_Discovery::observe( $site['origin'] );
         if ( ! self::same_scope( $site ) ) return self::error( 'scope_changed' );
-        if ( ! is_array( $inventory ) || empty( $inventory['discovery_complete'] ) )
-            return self::error( 'discovery_incomplete' );
+        if ( ! is_array( $inventory ) ) return self::error( 'discovery_invalid' );
+        // An incomplete inventory is a diagnostic, NOT a passed certification.
+        // Preserve its bounded blockers and prevent any inferred write rights.
+        $complete = true === ( $inventory['discovery_complete'] ?? false );
         return array(
             'contract' => self::CONTRACT,
             'site' => $site,
             'inventory' => $inventory,
+            'discovery_complete' => $complete,
             'read_only' => true, 'authorizing' => false, 'writes_enabled' => false,
             'provider_certification_issued' => false,
-            'next_safe_action' => 'request_explicit_canonical_read_ability_schema',
+            'next_safe_action' => $complete
+                ? 'request_explicit_canonical_read_ability_schema'
+                : 'reconcile_inventory_evidence_before_any_certification',
         );
     }
 
