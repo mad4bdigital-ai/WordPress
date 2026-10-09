@@ -35,10 +35,14 @@ final class MAD4B_SCP_Activity_Import_Authority {
             return count( $x ) === count( array_unique( $x ) );
         };
         if ( ! $safe_cols( $columns, 80 ) || ! $safe_cols( $relationships, 20 ) ||
-            ! is_array( $currencies ) || count( $currencies ) < 1 || count( $currencies ) > 20 ||
+            ! is_array( $currencies ) || count( $currencies ) > 20 ||
             ! is_array( $mapping ) || count( $mapping ) < 1 || count( $mapping ) > 80 ||
             ! is_array( $languages ) || count( $languages ) > 20 )
             return self::err( 'mad4b_import_policy_bounds', 'Identity, mapping, currency and required-column policy must be bounded.' );
+        if ( ( in_array( 'base_currency', $columns, true ) ||
+            array_key_exists( 'base_currency', $mapping ) ) && !$currencies )
+            return self::err( 'mad4b_import_policy_currency_required',
+                'Commercial currency fields require an administrator-owned currency allowlist.' );
         $currency_set = array();
         foreach ( $currencies as $currency ) {
             if ( ! is_string( $currency ) || ! preg_match( '/^[A-Z]{3}$/D', $currency ) ||
