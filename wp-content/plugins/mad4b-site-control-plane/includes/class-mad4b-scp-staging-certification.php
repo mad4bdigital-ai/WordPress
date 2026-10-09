@@ -575,15 +575,21 @@ final class MAD4B_SCP_Staging_Certification {
 		);
 		$blocked = array();
 		$coverage = array();
-		foreach ( $gates as $id => $gate ) {
-			if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id ) ) continue;
-			if ( ! is_array( $gate ) || ! empty( $gate['ready'] ) ) continue;
+		$issues = array();
+		if ( count( $gates ) > 128 ) $issues[] = 'gate_registry_limit_exceeded';
+		foreach ( array_slice( $gates, 0, 128, true ) as $id => $gate ) {
+			if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id )
+				|| ! is_array( $gate ) ) {
+				$issues[] = 'invalid_gate_identity_or_shape';
+				continue;
+			}
+			if ( ! empty( $gate['ready'] ) ) continue;
 			$blocked[ $id ] = $gate;
 			$coverage[ $id ] = array();
 		}
 		$by_id = array();
-		$issues = array();
-		foreach ( $actions as $row ) {
+		if ( count( $actions ) > 256 ) $issues[] = 'action_registry_limit_exceeded';
+		foreach ( array_slice( $actions, 0, 256 ) as $row ) {
 			if ( ! is_array( $row ) || ! is_string( $row['action_id'] ?? null )
 				|| ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $row['action_id'] ) ) {
 				$issues[] = 'invalid_action_identity';
@@ -605,6 +611,13 @@ final class MAD4B_SCP_Staging_Certification {
 			$row['read_only_plan'] = true;
 			$row['authorizing'] = false;
 			$row['mutation_performed'] = false;
+			if ( in_array( $row['kind'] ?? '', array(
+				'governed_mutation', 'hybrid_creation', 'external_oauth_reauthorization',
+				'external_executor_job',
+			), true ) ) {
+				$row['automatic_execution_allowed'] = false;
+				$row['independent_governed_preflight_required'] = true;
+			}
 			// A configuration flag is not a signed external browser receipt.
 			// No external executor can be launched from this planning view.
 			if ( 'external_executor_job' === ( $row['kind'] ?? '' ) ) {
