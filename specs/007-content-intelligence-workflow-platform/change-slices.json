@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 555,
+  "changed_file_count": 559,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1087,8 +1087,20 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-recipe-scope.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-recipe-scope-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-msr01-activity-multisource-reconciliation-20261010",
+      "semantic_unit": "MSR01: Site-configured WordPress/Google Drive source roles, field owners, typed field mappings, exact resource identities, checkpoint-relative N-way field reconciliation and editorial policy impact review; no implicit provider writes.",
+      "revert_boundary": "Revert optional multi-source conflict/revision planner and its static/native tests and spec; preserve preexisting governed Content Experience Profiles, business activity relations and source authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/activity-multisource-reconciliation-and-provenance.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-source-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-multisource-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-source-reconciliation-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "83c80c3e21b118e94acd67c852a882d52c88755cd5690ed8b0818b80d05d04c7",
+  "changed_paths_sha256": "0abd3ffebc5ed216bb24640995b35358efccdcbee9ab1cf790e8bc3f84812b67",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
