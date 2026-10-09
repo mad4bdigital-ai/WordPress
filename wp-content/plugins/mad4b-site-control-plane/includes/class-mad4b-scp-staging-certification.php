@@ -54,6 +54,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'properties' => array(
 					'include_authoritative_content' => array( 'type' => 'boolean', 'default' => true ),
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
+					'include_live_acceptance' => array( 'type' => 'boolean', 'default' => false ),
 				),
 				'additionalProperties' => false,
 			),
@@ -244,7 +245,25 @@ final class MAD4B_SCP_Staging_Certification {
 	public static function convergence_plan( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
 		$status = self::status( array( 'compact' => false ) );
-		$blocking = isset( $status['blocking_gates'] ) && is_array( $status['blocking_gates'] ) ? array_values( $status['blocking_gates'] ) : array();
+		$plan_gates = is_array( $status['gates'] ?? null ) ? $status['gates'] : array();
+		$live_overlay = array( 'included' => false, 'ready' => null, 'gate_count' => 0, 'blockers' => array() );
+		// Explicit opt-in: the independent Live Acceptance registry is more
+		// expensive and may itself call external evidentiary reducers. Never
+		// synthesize Live gates from Staging evidence or call external clients.
+		if ( ! empty( $input['include_live_acceptance'] ) ) {
+			$live = self::safe_read( 'independent_live_acceptance', static function () {
+				return class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+					? MAD4B_SCP_Live_Acceptance_Observer::live_acceptance_status( array() )
+					: array( 'ready' => false, 'blockers' => array( 'live_acceptance_provider_unavailable' ) );
+			} );
+			$live_overlay = self::merge_live_acceptance_gates( $plan_gates, $live );
+			$plan_gates = $live_overlay['gates'];
+			unset( $live_overlay['gates'] );
+		}
+		$blocking = array();
+		foreach ( $plan_gates as $gate_id => $gate ) {
+			if ( is_array( $gate ) && empty( $gate['ready'] ) ) $blocking[] = $gate_id;
+		}
 		$actions = array();
 		$seen = array();
 		$append = static function ( &$actions, &$seen, $id, array $row ) {
@@ -401,7 +420,7 @@ final class MAD4B_SCP_Staging_Certification {
 		// Complete the dynamic gate-to-action map after all native planners
 		// have spoken. No missing gate, dangling dependency or unverified
 		// external executor may silently become an executable operation.
-		$coverage = self::complete_convergence_coverage( $status['gates'] ?? array(), $actions );
+		$coverage = self::complete_convergence_coverage( $plan_gates, $actions );
 		$actions = $coverage['actions'];
 		// Every action must be checked against *current* site, profile and
 		// package authority again by its own governed executor. This binding
@@ -426,6 +445,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'covered_gate_count' => $coverage['covered_gate_count'],
 			'blocked_gate_count' => $coverage['blocked_gate_count'],
 			'dispatch_allowed' => false,
+			'live_acceptance_overlay' => $live_overlay,
 			'coverage_contract' => $coverage['contract'],
 			'gate_action_coverage' => $coverage['gate_action_coverage'],
 			'plan_integrity_blockers' => $coverage['plan_integrity_blockers'],
@@ -434,7 +454,7 @@ final class MAD4B_SCP_Staging_Certification {
 			'read_only' => true,
 			'mutation_performed' => false,
 			'production_mutation_performed' => false,
-			'current_ready' => ! empty( $status['ready'] ),
+			'current_ready' => ! empty( $status['ready'] ) && empty( $blocking ),
 			'blocking_gates' => $blocking,
 			'actions' => $actions,
 			'principle' => 'automate_evidence_and_planning_never_self_certify_or_auto_approve_authority',
@@ -442,6 +462,76 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Opt-in, read-only merge with independent Live Acceptance. This is an
+	 * evidence union, never an authority union: a second gate cannot become
+	 * ready from the first gate's status. All unknown families are preserved as
+	 * review-only blockers for the generic convergence reducer.
+	 */
+	public static function merge_live_acceptance_gates( array $staging_gates, array $live ) {
+		$ready = ! empty( $live['ready'] );
+		$items = $live['gates'] ?? null;
+		$blocked = array();
+		$count = 0;
+		if ( ! is_array( $items ) || ! $items ) {
+			$staging_gates['live_acceptance_evidence_unavailable'] = array(
+				'ready' => false,
+				'state' => 'pending_external_evidence',
+				'source' => 'mad4b/live-acceptance-status',
+				'remediation_owner' => 'external_evidence_operator',
+				'blockers' => array( 'live_acceptance_gate_snapshot_missing' ),
+			);
+			$blocked[] = 'live_acceptance_evidence_unavailable';
+		} else {
+			foreach ( array_slice( $items, 0, 64, true ) as $id => $gate ) {
+				if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{0,79}$/D', $id ) || ! is_array( $gate ) )
+					continue;
+				$key = 'live_acceptance_' . $id;
+				$is_ready = ! empty( $gate['ready'] ) && ! empty( $gate['effective_ready'] )
+					&& ( empty( $gate['freshness_required'] ) || ! empty( $gate['fresh'] ) );
+				$staging_gates[ $key ] = array(
+					'ready' => $is_ready,
+					'state' => (string) ( $gate['state'] ?? 'unknown' ),
+					'source' => (string) ( $gate['source_contract'] ?? 'mad4b/live-acceptance-status' ),
+					'remediation_owner' => 'independent_acceptance_provider',
+					'blockers' => is_array( $gate['blockers'] ?? null ) ? array_slice( $gate['blockers'], 0, 12 ) : array(),
+				);
+				++$count;
+				if ( ! $is_ready ) $blocked[] = $key;
+			}
+			// Missing/invalid categories may never yield a positive verdict.
+			if ( count( $items ) > 64 || $count !== count( $items ) ) {
+				$ready = false;
+				$staging_gates['live_acceptance_registry_invalid'] = array(
+					'ready' => false, 'state' => 'untrusted_registry',
+					'source' => 'mad4b/live-acceptance-status',
+					'remediation_owner' => 'independent_acceptance_provider',
+					'blockers' => array( 'live_acceptance_registry_unbounded_or_invalid' ),
+				);
+				$blocked[] = 'live_acceptance_registry_invalid';
+			}
+		}
+		// The global reducer cannot outrank a negative independent verdict.
+		if ( ! $ready && empty( $blocked ) ) {
+			$staging_gates['live_acceptance_verdict_blocked'] = array(
+				'ready' => false, 'state' => 'pending_or_blocked',
+				'source' => 'mad4b/live-acceptance-status',
+				'remediation_owner' => 'independent_acceptance_provider',
+				'blockers' => array( 'live_acceptance_global_verdict_not_ready' ),
+			);
+			$blocked[] = 'live_acceptance_verdict_blocked';
+		}
+		return array(
+			'included' => true,
+			'ready' => $ready && ! $blocked,
+			'gate_count' => $count,
+			'blockers' => $blocked,
+			'gates' => $staging_gates,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 	}
 
 	/**
@@ -561,7 +651,9 @@ final class MAD4B_SCP_Staging_Certification {
 				'evidence_blockers' => array_values( array_slice(
 					is_array( $gate['blockers'] ?? null ) ? $gate['blockers'] : array(), 0, 12
 				) ),
-				'readback_ability' => $readbacks[ $gate_id ] ?? 'mad4b/staging-certification-status',
+				'readback_ability' => $readbacks[ $gate_id ] ??
+					( 0 === strpos( $gate_id, 'live_acceptance_' )
+						? 'mad4b/live-acceptance-status' : 'mad4b/staging-certification-status' ),
 				'instruction' => 'Inspect this exact live gate, resolve missing provider/host/owner evidence in its own governed lane, then rerun Staging certification.',
 				'no_automatic_remediation_available' => true,
 				'read_only_plan' => true,
