@@ -140,10 +140,13 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             empty( $profile['activity_contract']['enabled'] ) )
             return self::error( 'mad4b_import_profile_not_enabled', 'Enabled Activity facet required.' );
+        $policy_result = MAD4B_SCP_Activity_Import_Authority::resolve( $profile, $input );
+        if ( is_wp_error( $policy_result ) ) return $policy_result;
+        $policy = $policy_result['policy'];
         $rows = isset( $input['rows'] ) ? $input['rows'] : array();
         $headers = isset( $input['headers'] ) ? $input['headers'] : array();
         if ( ! is_array( $rows ) || ! is_array( $headers ) ||
-            count( $rows ) > self::MAX_ROWS || count( $headers ) < 1 ||
+            count( $rows ) > min( self::MAX_ROWS, $policy['max_rows'] ) || count( $headers ) < 1 ||
             count( $headers ) > self::MAX_COLUMNS )
             return self::error( 'mad4b_import_bounds', 'Bounded spreadsheet preview required.' );
         $seen = array();
@@ -153,10 +156,10 @@ final class MAD4B_SCP_Activity_Import_Review {
                 return self::error( 'mad4b_import_column_invalid', 'Column labels must be unique safe identifiers.' );
             $seen[ $h ] = true;
         }
-        $identity = isset( $input['identity_field'] ) ? (string) $input['identity_field'] : '';
+        $identity = $policy['identity_field'];
         if ( ! isset( $seen[ $identity ] ) )
             return self::error( 'mad4b_import_identity_missing', 'Explicit unique identifier field required.' );
-        $mapping = isset( $input['field_mapping'] ) ? $input['field_mapping'] : array();
+        $mapping = $policy['field_mapping'];
         if ( ! is_array( $mapping ) || count( $mapping ) > self::MAX_COLUMNS )
             return self::error( 'mad4b_import_mapping_invalid', 'Bounded field mapping required.' );
         $allow = array_fill_keys( (array) $profile['meta_keys'], true );
@@ -169,7 +172,7 @@ final class MAD4B_SCP_Activity_Import_Review {
                 ( ! isset( $allow[ $to ] ) && ! in_array( $to, $allowed_wpml, true ) ) )
                 return self::error( 'mad4b_import_field_not_allowed', 'Mapping target must be declared by exact parent profile or governed WPML metadata.' );
         }
-        $allowed_currencies = isset( $input['allowed_currencies'] ) ? $input['allowed_currencies'] : array();
+        $allowed_currencies = $policy['allowed_currencies'];
         if ( ! is_array( $allowed_currencies ) || count( $allowed_currencies ) > 20 )
             return self::error( 'mad4b_import_currency_policy_invalid', 'Explicit bounded currency allowlist required.' );
         $allowed_currencies = array_values( array_unique( array_map( 'strval', $allowed_currencies ) ) );
@@ -181,12 +184,13 @@ final class MAD4B_SCP_Activity_Import_Review {
                 return self::error( 'mad4b_import_currency_code_invalid',
                     'Approved currency codes must use the exact three-letter uppercase contract.' );
         }
-        $price_policy = isset( $input['price_tier_policy'] ) ? (string) $input['price_tier_policy'] : 'none';
+        $price_policy = $policy['price_tier_policy'];
         if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
             return self::error( 'mad4b_import_price_policy_invalid', 'Only configured price review policy is permitted.' );
-        $flag_expired = ! empty( $input['review_past_intervals'] );
+        $flag_expired = $policy['review_past_intervals'];
         $issues = array(); $issue_total = 0; $issue_counts = array();
-        $ids = array(); $groups = array(); $row_hashes = array();
+        $block_count = 0; $review_count = 0;
+        $ids = array(); $groups = array(); $group_languages = array(); $row_hashes = array();
         foreach ( $rows as $i => $row ) {
             if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
                 array_diff( $headers, array_keys( $row ) ) )
@@ -196,12 +200,22 @@ final class MAD4B_SCP_Activity_Import_Review {
                     return self::error( 'mad4b_import_value_type', 'Nested structures/formulas/executable data cannot be imported by the preview lane.' );
                 if ( strlen( (string) $value ) > 4096 )
                     return self::error( 'mad4b_import_cell_unbounded', 'Spreadsheet cell exceeds bounded length.' );
+                if ( is_string( $value ) &&
+                    ( preg_match( '/^[=+@]/', ltrim( $value ) ) ||
+                      preg_match( '/^-(?!\\d+(?:\\.\\d+)?$)/', ltrim( $value ) ) ||
+                      preg_match( '/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/', $value ) ) )
+                    return self::error( 'mad4b_import_formula_or_control_denied',
+                        'Executable spreadsheet formula or control data is not a valid import value.' );
             }
             $id = (string) $row[ $identity ];
             $row_hashes[] = self::digest( $row );
             $errors = array();
             if ( '' === $id || isset( $ids[ $id ] ) ) $errors[] = 'identity_missing_or_duplicate';
             $ids[ $id ] = true;
+            foreach ( $policy['required_relationships'] as $relation ) {
+                if ( ! isset( $row[ $relation ] ) || '' === trim( (string) $row[ $relation ] ) )
+                    $errors[] = 'required_relationship_unresolved';
+            }
             if ( isset( $row['base_currency'] ) && $allowed_currencies &&
                 ! in_array( (string) $row['base_currency'], $allowed_currencies, true ) )
                 $errors[] = 'currency_not_in_approved_allowlist';
@@ -237,9 +251,19 @@ final class MAD4B_SCP_Activity_Import_Review {
                 $pair = (string) $row[ $group_col ] . '|' . (string) $row[ $lang_col ];
                 if ( isset( $groups[ $pair ] ) ) $errors[] = 'duplicate_translation_group_language';
                 $groups[ $pair ] = true;
+                $group_name = (string) $row[ $group_col ];
+                if ( ! isset( $group_languages[ $group_name ] ) ) $group_languages[ $group_name ] = array();
+                $group_languages[ $group_name ][ (string) $row[ $lang_col ] ] = true;
+                if ( $policy['wpml_languages'] && ! in_array(
+                    (string) $row[ $lang_col ], $policy['wpml_languages'], true ) )
+                    $errors[] = 'wpml_language_not_allowed';
             }
             foreach ( $errors as $reason ) {
                 $issue_total++;
+                if ( in_array( $reason, array(
+                    'price_tier_order_requires_commercial_review',
+                    'historical_rate_period_requires_review'
+                ), true ) ) $review_count++; else $block_count++;
                 $issue_counts[ $reason ] = isset( $issue_counts[ $reason ] ) ?
                     $issue_counts[ $reason ] + 1 : 1;
                 if ( count( $issues ) < self::MAX_ISSUES )
@@ -252,6 +276,22 @@ final class MAD4B_SCP_Activity_Import_Review {
                             ), true ) ? 'review' : 'block' );
             }
         }
+        if ( ! empty( $policy['require_complete_wpml_groups'] ) ) {
+            foreach ( $group_languages as $group_name => $observed_languages ) {
+                foreach ( $policy['wpml_languages'] as $language ) {
+                    if ( ! isset( $observed_languages[ $language ] ) ) {
+                        $issue_total++; $block_count++;
+                        $reason = 'wpml_group_missing_required_language';
+                        $issue_counts[ $reason ] = isset( $issue_counts[ $reason ] ) ?
+                            $issue_counts[ $reason ] + 1 : 1;
+                        if ( count( $issues ) < self::MAX_ISSUES )
+                            $issues[] = array( 'row' => 0,
+                                'identity_sha256' => hash( 'sha256', $group_name ),
+                                'reason' => $reason, 'severity' => 'block' );
+                    }
+                }
+            }
+        }
         $plan = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
             'authority_sha256' => $profile['authority_sha256'],
@@ -259,10 +299,16 @@ final class MAD4B_SCP_Activity_Import_Review {
             'headers' => $headers, 'row_hashes' => $row_hashes,
             'allowed_currencies' => $allowed_currencies,
             'price_tier_policy' => $price_policy,
-            'review_past_intervals' => $flag_expired );
+            'review_past_intervals' => $flag_expired,
+            'policy_sha256' => $policy_result['policy_sha256'] );
         return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
-            'profile_slug' => $slug, 'row_count' => count( $rows ),
+            'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
+            'authority_sha256' => $profile['authority_sha256'],
+            'policy_sha256' => $policy_result['policy_sha256'],
+            'row_count' => count( $rows ),
             'issue_count_observed' => $issue_total,
+            'block_issue_count' => $block_count,
+            'review_issue_count' => $review_count,
             'issue_counts_by_reason' => $issue_counts,
             'issues' => $issues, 'issues_truncated' => $issue_total > count( $issues ),
             'ready_for_import_execution' => false,
