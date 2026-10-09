@@ -614,6 +614,25 @@ final class MAD4B_SCP_Staging_Certification {
 			$google_connection = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'public_connection_status' )
 				? MAD4B_SCP_Google_Drive_Context::public_connection_status()
 				: array();
+			// A refresh-required credential is not a failed/revoked Google
+			// connection. Surface a distinct read-only token health check
+			// rather than forcing OAuth reconsent or an unbounded rescan.
+			$google_refresh_pending = ! empty( $google_connection['refresh_required'] )
+				&& empty( $google_connection['refresh_failed'] )
+				&& empty( $google_connection['reconnect_required'] );
+			if ( $google_refresh_pending ) {
+				$append( $actions, $seen, 'google_drive_token_health_review', array(
+					'kind' => 'external_oauth_health_check',
+					'executor' => 'authorized_google_context_operator',
+					'human_decision_required' => false,
+					'automatic_execution_allowed' => false,
+					'readback_ability' => 'context/google-drive-status',
+					'credential_fresh' => false,
+					'reconnect_automatically_required' => false,
+					'instruction' => 'Check managed token refresh using the existing consent flow and exact current Google connection. Do not expose tokens or force reconnection unless provider evidence requires it.',
+					'production_policy' => 'deny',
+				) );
+			}
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) {
 				$append( $actions, $seen, 'google_drive_reconnect', array(
 					'kind' => 'external_oauth_reauthorization',
@@ -636,6 +655,7 @@ final class MAD4B_SCP_Staging_Certification {
 				: new WP_Error( 'mad4b_brand_convergence_plan_unavailable', 'Brand Core convergence planner is unavailable.' );
 			$depends_on = array();
 			if ( ! empty( $google_connection['refresh_failed'] ) || ! empty( $google_connection['reconnect_required'] ) ) $depends_on[] = 'google_drive_reconnect';
+			if ( $google_refresh_pending ) $depends_on[] = 'google_drive_token_health_review';
 			$append( $actions, $seen, 'brand_core_convergence', array(
 				'kind' => 'hybrid_creation',
 				'executor' => 'managed_skill_or_agent_plus_wordpress',
@@ -1087,6 +1107,7 @@ final class MAD4B_SCP_Staging_Certification {
 		$links = array(
 			'external_mcp_handshake_refresh' => array( 'safe_boot' ),
 			'google_drive_reconnect' => array( 'google_provider_connection', 'brand_core_context_coverage' ),
+			'google_drive_token_health_review' => array( 'brand_core_context_coverage' ),
 			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
 			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
 			'managed_skills_runtime_refresh' => array( 'skills_runtime' ),
