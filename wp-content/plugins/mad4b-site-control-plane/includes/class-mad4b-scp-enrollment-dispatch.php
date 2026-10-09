@@ -194,9 +194,16 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		foreach ( $ready_map as $key => $reason ) {
 			if ( true !== ( isset( $signals[ $key ] ) ? $signals[ $key ] : null ) ) $blockers[] = $reason;
 		}
+		$next = 'confirm_exact_plan_then_verify_target_permission';
+		if ( in_array( 'site_profile_not_authoritative_staging', $blockers, true ) ) $next = 'review_exact_staging_site_profile';
+		elseif ( in_array( 'managed_skills_editor_disabled', $blockers, true ) ) $next = 'authorize_host_to_enable_staging_skills_editor';
+		elseif ( in_array( 'managed_skills_operation_in_progress', $blockers, true ) ) $next = 'read_existing_operation_checkpoint_no_retry';
+		elseif ( in_array( 'exact_build_identity_unverified', $blockers, true ) ) $next = 'repair_exact_build_provenance_not_bypass';
+		elseif ( ! empty( $blockers ) ) $next = 'resolve_structural_skills_prerequisites';
 		return array(
 			'contract' => 'mad4b.enrollment-skills-preflight.v1',
 			'operation_id' => 'managed_skills_reconciliation',
+			'next_safe_action' => $next,
 			'state' => empty( $blockers ) ? 'structurally_ready' : 'blocked',
 			'structurally_ready' => empty( $blockers ),
 			'blockers' => $blockers,
@@ -217,8 +224,14 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			? MAD4B_SCP_Site_Profile::status() : array();
 		$profile = is_array( $profile ) ? $profile : array();
 		$skills_available = class_exists( 'MAD4B_SCP_Skill_Registry', false );
-		$runtime = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
-			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		$runtime = array();
+		try {
+			$runtime = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+				? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		} catch ( Throwable $error ) {
+			// A failed read may block a plan; it must not crash discovery.
+			$runtime = array();
+		}
 		$runtime = is_array( $runtime ) ? $runtime : array();
 		// Inspect only the bounded persisted lease, never file scanning,
 		// recursive provider discovery, or a write on tools/list.
