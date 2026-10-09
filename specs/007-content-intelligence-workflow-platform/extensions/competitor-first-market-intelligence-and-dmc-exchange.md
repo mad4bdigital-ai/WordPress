@@ -23,7 +23,7 @@
 6. Contract termination, expiry, privacy, localized product rules and tax/price conversion invalidate affected exchange plans; production transfers remain independently gated.
 
 ## Configurable registry
-`mad4b/market-growth-policy-status` returns a bounded, redacted registry view with exact revision and SHA-256. `mad4b/market-growth-policy-update` permits confirmed `manage_options` edits using the exact expected revision and hash, an atomic option writer lock, typed field allowlists and postwrite readback. Collections: `competitors`, `suppliers`, `dmc_connections`, `feed_mappings`, `pricing_rules`, `media_rules`, `assistant_roles`. Plugin extensions can evolve the schema through explicit reviewed versions; arbitrary properties cannot silently grant rights.
+`mad4b/market-growth-policy-status` returns a bounded, redacted registry view with exact revision and SHA-256. `mad4b/market-growth-admin-settings` returns full configuration to authenticated WordPress administrators for conversational/editable forms, never to general read principals. `mad4b/market-growth-policy-update` permits confirmed `manage_options` edits using the exact expected revision and hash, an atomic option writer lock, typed field allowlists and postwrite readback. Collections: `competitors`, `suppliers`, `dmc_connections`, `feed_mappings`, `pricing_rules`, `media_rules`, `assistant_roles`. Plugin extensions can evolve the schema through explicit reviewed versions; arbitrary properties cannot silently grant rights.
 
 `mad4b/market-assistant-route` picks configured research/writer/critic/reviewer/recovery Skill candidates using current external runtime evidence and defaults to human fallback. It **does not inherit exact Agent grant** and cannot authorize a write or its own independent review.
 
@@ -49,3 +49,7 @@ The existing governed Brand draft creation, materialization and reconciliation e
 
 ## Not yet claimed
 No remote crawler/scraper, licensed image downloader, remote DMC feed push, external contract authenticator, market quote feed, native PHP/WordPress/Staging integration or production publication has been executed or verified by this PR alone. This implementation establishes guarded configurable registries, actionable read-only competitor/DMC/assistant plans, bounded native CPT export payload, import candidates delegating writes to the already governed content adapter, and persistent guarded attempts in the existing Context write paths.
+
+
+## Controlled public observation follow-up
+A proposed live HTML observation module was deliberately **excluded** from this slice after the robots/user-agent parser needed further safety review. As shipped here, competitor research planning ingests externally gathered, source-attributed facts and candidate media URLs supplied by authorized research tools/users; it does **not** bypass robots.txt, fetch protected pages, crawl at scale or download competitor photos. A future first-party fetch adapter must pass robots-group precedence, redirects, SSRF, authentication walls, personal-data scrubbing, source terms and rate-limit tests before it is mounted.
