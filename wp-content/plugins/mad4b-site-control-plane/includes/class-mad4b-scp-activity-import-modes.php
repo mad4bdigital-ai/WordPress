@@ -58,12 +58,18 @@ final class MAD4B_SCP_Activity_Import_Modes {
         $cli = defined( 'WP_CLI' ) && WP_CLI;
         $staging = method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
             MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
+        $encrypted_storage = defined( 'MAD4B_ACTIVITY_IMPORT_DATA_KEY' ) &&
+            is_string( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) &&
+            strlen( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) >= 32 &&
+            function_exists( 'openssl_encrypt' ) && function_exists( 'openssl_decrypt' ) &&
+            in_array( 'aes-256-gcm', openssl_get_cipher_methods(), true );
+        $stage_ready = $staging && $encrypted_storage;
         $files = array();
         // Each source mode deliberately reports its actual capability:
         // "detected" never means a source URL or credential is authorized.
         $files[] = self::mode( 'admin_csv_upload', 'file', 'csv_tsv',
             'wp_admin_nonce_upload', 'review_inbox', 'native_review',
-            array( 'admin', 'staging', 'approved_profile' ), $staging, $staging );
+            array( 'admin', 'staging', 'approved_profile', 'encrypted_snapshot' ), $stage_ready, $stage_ready );
         $files[] = self::mode( 'admin_xlsx_convert', 'file', 'xlsx_xls_ods',
             'admin_upload_converter', 'review_inbox', 'converter_required',
             array( 'controlled_parser', 'zip_limits', 'no_formulas' ), false, false );
@@ -90,10 +96,10 @@ final class MAD4B_SCP_Activity_Import_Modes {
             array( 'site_bound_oauth', 'file_id', 'snapshot_hash' ), $google, false );
         $files[] = self::mode( 'google_apps_script', 'push', 'google_sheet',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $has_script_key && $staging, $has_script_key && $staging );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json', 'encrypted_snapshot' ), $has_script_key && $stage_ready, $has_script_key && $stage_ready );
         $files[] = self::mode( 'signed_generic_webhook', 'push', 'make_n8n_zapier_pabbly_bitflows_custom',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $has_generic_key && $staging, $has_generic_key && $staging );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json', 'encrypted_snapshot' ), $has_generic_key && $stage_ready, $has_generic_key && $stage_ready );
         $files[] = self::mode( 'wordpress_authenticated_rest', 'push', 'rest_api',
             'wp_rest_auth', 'review_inbox', 'adapter_required',
             array( 'administrator', 'nonce_or_app_password', 'profile_scope' ), false, false );
@@ -216,6 +222,25 @@ final class MAD4B_SCP_Activity_Import_Modes {
             ! in_array( $id, $policy['enabled_modes'], true ) )
             return self::err( 'mad4b_import_mode_disabled_for_profile',
                 'This transport is not enabled by the governed site Activity Profile.' );
+        $profile_scoped_key_ready = true;
+        if ( in_array( $id, array( 'google_apps_script', 'signed_generic_webhook' ), true ) ) {
+            $profile_scoped_key_ready = false;
+            $keys = defined( 'MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS' ) &&
+                is_array( MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS ) ?
+                MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS : array();
+            foreach ( $keys as $key_id => $key ) {
+                if ( is_string( $key_id ) && is_array( $key ) &&
+                    ! empty( $key['enabled'] ) &&
+                    isset( $key['mode'], $key['profile_slugs'], $key['secret'] ) &&
+                    $key['mode'] === $id &&
+                    is_array( $key['profile_slugs'] ) &&
+                    in_array( $slug, $key['profile_slugs'], true ) &&
+                    is_string( $key['secret'] ) &&
+                    strlen( $key['secret'] ) >= 32 ) {
+                    $profile_scoped_key_ready = true; break;
+                }
+            }
+        }
         foreach ( $catalog['modes'] as $mode ) {
             if ( $mode['id'] !== $id ) continue;
             $staging = method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) &&
@@ -230,7 +255,9 @@ final class MAD4B_SCP_Activity_Import_Modes {
             return array( 'contract' => self::CONTRACT, 'mode' => $mode,
                 'plan_sha256' => self::digest( $fingerprint ),
                 'eligible_for_staging_review' => $staging &&
+                    $profile_scoped_key_ready &&
                     $mode['detected'] && $mode['review_intake_implemented'],
+                'source_key_bound_to_profile' => $profile_scoped_key_ready,
                 'site_staging_verified' => $staging,
                 'required_setup' => $mode['requirements'],
                 'profile_preferred_mode' => isset( $policy['preferred_mode'] ) ? $policy['preferred_mode'] : '',
