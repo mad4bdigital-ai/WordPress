@@ -135,6 +135,13 @@ native_expect( $passed['verdict'] === 'PASS' &&
     'valid independent browser signature permits PASS' );
 native_expect( $passed['authorizing'] === false && $passed['receipt_authorizing'] === false,
     'PASS cannot grant authority' );
+native_expect( $passed['release_ready'] === false &&
+    $passed['globally_unique_consumption_proven'] === false &&
+    $passed['consumption_authority'] === 'separate_governed_authority_required',
+    'a repeatable read-only WordPress PASS cannot claim global one-time release authorization' );
+native_expect( $c::result( $request )['verdict'] === 'PASS' &&
+    $c::result( $request )['release_ready'] === false,
+    'replayed same signed observation remains observable but cannot issue a release certificate' );
 native_expect( strlen( $passed['receipt_signature'] ) === 64, 'server receipt signed' );
 $changed = $request;
 $changed['evidence']['cases'][0]['observed']['path'] = '/other/';
