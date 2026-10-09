@@ -71,7 +71,8 @@ for contract in (
     "complete_governed_scan_verified",
 ):
     check(contract in machine, "Missing adversarial fail-closed contract: " + contract)
-check("'context_preflight' => $preflight" not in skill,
+blocked_skill_error = skill.split("if ( empty( $preflight['ready'] ) ) {", 1)[1].split("\n\t\treturn array(", 1)[0]
+check("'context_preflight' => $preflight" not in blocked_skill_error,
       "Blocked Skill WP_Error still leaks complete Context envelope/receipt")
 check("'context_envelope_exposed' => false" in skill,
       "Blocked Skill does not explicitly deny envelope exposure")
