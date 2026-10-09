@@ -28,6 +28,20 @@ function wp_has_ability($a){ return false; }
 
 final class MAD4B_SCP_Site_Profile {
 	public static function site_uuid(){ return '11111111-2222-4333-8444-555555555555'; }
+	public static $mode='profile_only';
+	public static $bound=false;
+	public static $rev=3;
+	public static function deployment_binding_digest(){ return self::$bound ? str_repeat('b',64) : ''; }
+	public static function status(){ return array(
+		'authority_ready'=>true,'origin_match'=>true,'environment_match'=>true,
+		'deployment_binding_configured'=>self::$bound,'deployment_binding_bound'=>self::$bound,
+		'deployment_binding_match'=>self::$bound,'same_origin_clone_protection'=>self::$bound,
+		'environment_sync_mode'=>self::$mode,
+		'environment_sync_state'=>self::$bound ? 'awaiting_host_bootstrap' : 'blocked_missing_deployment_binding',
+		'configured_environment'=>'staging','environment'=>'staging',
+		'site_uuid'=>self::site_uuid(),'wordpress_environment'=>'production',
+		'wordpress_environment_explicit'=>false,'profile_digest'=>str_repeat('a',64),'revision'=>self::$rev
+	); }
 }
 final class MAD4B_SCP_Policy {
 	public static function can_read(){ return true; }
