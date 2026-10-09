@@ -521,6 +521,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'covered_gate_count' => $coverage['covered_gate_count'],
 			'blocked_gate_count' => $coverage['blocked_gate_count'],
 			'dispatch_allowed' => false,
+			'verification_ability' => 'mad4b/staging-convergence-verify',
+			'verification_requires_exact_source_and_plan' => true,
 			'live_acceptance_overlay' => $live_overlay,
 			'coverage_contract' => $coverage['contract'],
 			'gate_action_coverage' => $coverage['gate_action_coverage'],
