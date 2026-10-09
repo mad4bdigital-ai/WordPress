@@ -935,6 +935,18 @@ final class MAD4B_SCP_Self_Update {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed upload plan is required.' );
+		// Defense in depth: even direct internal callers must present the same
+		// enrolled administrator OAuth step-up required by the Ability gate.
+		if ( isset( $input['channel'] ) && 'staging_candidate_upload' === $input['channel'] ) {
+			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Staging candidate apply requires enrolled owner/admin OAuth step-up.' );
+			}
+		}
+
 
 		$plan_input = $input;
 		unset( $plan_input['package_base64'], $plan_input['expected_plan_sha256'], $plan_input['candidate_confirmation'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
