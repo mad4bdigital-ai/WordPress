@@ -149,4 +149,13 @@ $empty['current_ready'] = true;
 $ok( MAD4B_SCP_Operational_Remediation::reduce(
 	array( 'ready' => true, 'gates' => array( 'exact_build' => array( 'ready' => true ) ) ), $empty
 )['full_release_certified'] === false, 'even green Staging cannot self-certify release' );
+$native_aggregate_blocked = array( 'ready' => false, 'gates' => array(
+	'exact_build' => array( 'ready' => true ),
+) );
+$native_not_ready_result = MAD4B_SCP_Operational_Remediation::reduce( $native_aggregate_blocked, $empty );
+$ok( $native_not_ready_result['diagnostic_integrity_ready'] === true,
+	'aggregate native readiness test uses an otherwise valid empty plan' );
+$ok( $native_not_ready_result['native_staging_ready'] === false
+	&& $native_not_ready_result['staging_release_gates_ready'] === false,
+	'green convergence plan cannot override blocked native staging readiness' );
 echo 'OPERATIONAL_REMEDIATION_RUNTIME: PASS ' . $tests . PHP_EOL;

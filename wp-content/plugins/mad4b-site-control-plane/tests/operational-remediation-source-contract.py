@@ -16,7 +16,7 @@ needed = [
     "public static function register_menu()",
     "public static function render_page()",
     "current_user_can( 'manage_options' )",
-    "Mad4B_SCP_THIS_MARKER_NEVER_EXISTS",
+    "'staging_release_gates_ready' => $verified && ! $items && ! empty( $native['ready'] )",
     "public static function status( $input = array() )",
     "public static function prepare( $input = array() )",
     "public static function reduce( array $native, array $plan, $live_requested = false )",
@@ -70,6 +70,11 @@ for term in (
     '"operational-remediation-control-runtime.php"',
     '"class-mad4b-scp-staging-certification.php"',
     '"class-mad4b-scp-operational-remediation.php"',
+    '"class-mad4b-scp-host-bridge.php"',
+    '"host-bridge-contract.php"',
+    '"host-runner-kernel-contract.py"',
+    '"host-environment-sync-runner-contract.py"',
+    "POSIX_HOST_RUNNER_REQUIRED",
     "sorted(owners) != paths",
 ):
     if term not in preflight:

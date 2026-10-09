@@ -50,6 +50,7 @@ LINT = (
     "class-mad4b-scp-content-intelligence-pipeline.php",
     "class-mad4b-scp-staging-certification.php",
     "class-mad4b-scp-operational-remediation.php",
+    "class-mad4b-scp-host-bridge.php",
     "adapters/class-mad4b-scp-aci01-read-adapter.php",
 )
 FIXTURES = (
@@ -64,6 +65,7 @@ FIXTURES = (
     "staging-write-authority-postcondition-runtime.php",
     "staging-convergence-coverage-runtime.php",
     "operational-remediation-control-runtime.php",
+    "host-bridge-contract.php",
     "browser-acceptance-admin-setup-contract.php",
     "staging-browser-site-selection-contract.php",
     "assistant-read-work-runtime.php",
@@ -94,6 +96,8 @@ PY_CHECKS = (
     "staging-write-authority-convergence-contract.py",
     "staging-certification-contract.py",
     "operational-remediation-source-contract.py",
+    "host-runner-kernel-contract.py",
+    "host-environment-sync-runner-contract.py",
     "g6-delivery-integrity.py",
     "g9-delivery-contract.py",
     "g9-security-source-contract.py",
@@ -163,6 +167,10 @@ def integrity(root, base, head):
 
 def python_check(root, filename, env):
     case = "python:" + filename
+    if filename in ("host-runner-kernel-contract.py",
+                    "host-environment-sync-runner-contract.py") and os.name != "posix":
+        return {"case": case, "result": "BLOCKED",
+                "reason": "POSIX_HOST_RUNNER_REQUIRED"}
     dependencies = {
         "oauth-consent-script-syntax.py": ("node", "NODE_RUNTIME_UNAVAILABLE"),
         # This contract invokes generic `php -l` itself, independently of the
