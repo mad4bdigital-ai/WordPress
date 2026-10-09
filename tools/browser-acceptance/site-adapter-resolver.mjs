@@ -198,7 +198,10 @@ export function assertSitePlanBound(selection, plan) {
       plan.contract !== "mad4b.browser-acceptance-plan.v1" ||
       plan.state !== "ready" || plan.read_only !== true || plan.authorizing !== false ||
       !valid(plan.plan_digest, SHA) || !valid(plan.plan_signature, SHA) ||
-      !Array.isArray(plan.cases) || !plan.cases.length || plan.cases.length > 8) fail("plan_binding_mismatch");
+      !Array.isArray(plan.cases) || !plan.cases.length || plan.cases.length > 8 ||
+      (plan.provider_contract === "mad4b.capability-browser-provider.v1" &&
+        (plan.source_snapshot_sha256 !== selection.discoverySha256 ||
+         plan.configuration_revision !== selection.configurationRevision))) fail("plan_binding_mismatch");
   return true;
 }
 
