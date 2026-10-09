@@ -29,9 +29,10 @@ function link(href) {
   let u;
   try { u = new URL(href, origin); } catch (_) { return null; }
   const slug = u.searchParams.get('page') || '';
+  const permittedKeys = new Set(['page','tab','section','view']);
   if (u.origin !== origin || u.pathname !== adminPath ||
       !/^mad4b-[a-z0-9-]{1,100}$/.test(slug) ||
-      u.searchParams.has('action') || u.searchParams.has('_wpnonce')) return null;
+      [...u.searchParams.keys()].some(key => !permittedKeys.has(key))) return null;
   return { slug, url: u.href };
 }
 (async () => {
