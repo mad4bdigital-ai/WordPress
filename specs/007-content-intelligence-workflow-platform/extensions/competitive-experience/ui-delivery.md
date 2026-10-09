@@ -239,3 +239,52 @@ WordPress site, Arabic and English localized renders, live Staging route/browser
 evidence, native PHP 7.4 and 8.3 plus MariaDB/MySQL, impact-readback/rollback,
 and signed Provider/Host certification. CI being stalled does not waive these
 independent evidence requirements.
+
+
+## Supported WordPress environment synchronization modes (2026-10-09)
+
+The exact Site Profile and WordPress bootstrap environment remain distinct
+security and lifecycle authorities. WordPress **defaults to production** when
+\`WP_ENVIRONMENT_TYPE\` is unset; its reader uses a request-local cached value
+and checks the constant ahead of the OS environment variable. Updating an
+ordinary plugin setting cannot rewrite the authoritative WordPress environment
+for the already booted request.
+
+The Site Profile administrator can explicitly choose:
+
+| Mode | Behavior | Authoritative readback |
+|---|---|---|
+| \`profile_only\` (default, including historical profiles) | Existing per-origin MAD4B effective environment, with explicit attestation for the implicit WordPress Production default | Site Profile and WordPress raw values shown separately; no claim that WP was changed |
+| \`host_managed\` (opt-in, non-Production only) | Persist a reviewed intent for a trusted Host operation to set \`WP_ENVIRONMENT_TYPE\` during bootstrap, before \`wp-settings.php\` | \`host_aligned\` only after a fresh WordPress request reports an **explicit** exact match AND an exact external Deployment Binding is present |
+
+Other machine-readable states: \`blocked_profile_identity\`,
+\`blocked_invalid_mode\`, \`blocked_production_or_invalid_target\`,
+\`blocked_missing_deployment_binding\`, \`blocked_explicit_host_conflict\`,
+and \`awaiting_host_bootstrap\`. These are not interchangeable with
+release-certification statuses or write grants. The same-origin host must
+provide a host-only, unique \`MAD4B_SCP_DEPLOYMENT_BINDING\` first.
+The plugin never stores or exposes the raw binding.
+
+The plugin **never** changes a WP Environment constant via \`putenv\` or
+file rewriting during admin POST. The WordPress admin view supplies only
+a bounded, reviewed config directive for local/development/staging after exact
+identity and independent host binding are ready. The host executor (when
+available and explicitly authorized) must own backup, safe atomic write,
+syntax/restart validation, host identity/secret isolation, post-boot readback,
+and rollback. This change does not implement that Host executor, imply a Host
+connection, or certify Production.
+
+Negative native acceptance cases include invalid mode, historical default,
+explicit Host Production conflict, Production opt-in refusal, foreign/clone
+profile, missing host binding, failed bootstrap readback and multi-tab revision
+conflicts. The existing native Site Profile lifecycle matrix contains 12
+isolated state-reducer cases plus save-path refusal and preservation assertions;
+execute them on supported native PHP versions before release.
+
+**All Royal Staging migration:** its installed rc.96 still reports
+\`production\` implicitly and lacks deployment binding. Until the new exact
+artifact is validated and deployed, the new mode does not exist at runtime.
+After certified deployment, selecting Host-Managed Sync is still **pending**
+until trusted Host bootstrap, unique binding and new-request readback are
+proven; setting the Site Profile to staging alone must never be reported as
+changing \`wp_get_environment_type()\`.
