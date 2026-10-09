@@ -55,6 +55,10 @@ export function consumeLocalBrowserPlanOnce({
       result.suite !== plan.suite ||
       evidence.contract !== "mad4b.capability-browser-evidence.v1" ||
       evidence.origin !== plan.origin ||
+      !plan.build_identity || typeof plan.build_identity !== "object" ||
+      Array.isArray(plan.build_identity) ||
+      !evidence.build_identity || typeof evidence.build_identity !== "object" ||
+      Array.isArray(evidence.build_identity) ||
       canonicalSha256(evidence.build_identity) !== canonicalSha256(plan.build_identity) ||
       result.verdict !== "PASS" ||
       result.verification?.browser_runtime_parity_verified !== true ||
