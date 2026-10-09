@@ -68,7 +68,7 @@ if (count($recoveryProcedure)!==3 || $recoveryProcedure[0]['lane']!=='read' ||
 // Independent live-evidence planning: a caller flag never certifies an agent.
 function wp_json_encode($v,$flags=0) { return json_encode($v,$flags); }
 class MAD4B_SCP_Skill_Runtime_Certification {
- static function current_status(){ return array('ready'=>false,'historical_evidence_only'=>true); }
+ static function current_status(){ return isset($GLOBALS['skills_cert_fixture']) ? $GLOBALS['skills_cert_fixture'] : array('ready'=>false,'historical_evidence_only'=>true); }
 }
 class MAD4B_SCP_Brand_Context_Builder {
  static function expected_categories(){ return array('brand_strategy'=>'Brand Strategy','tone_of_voice'=>'Tone of Voice','editorial_guidelines'=>'Editorial Guidelines'); }
@@ -84,7 +84,7 @@ class MAD4B_SCP_Brand_Context_Builder {
 }
 class MAD4B_SCP_Context_Authority {
  static function brand_core_coverage(){
-   return array('ready'=>false,'registry_revision'=>4,'authority_manifest_fingerprint'=>str_repeat('a',64),'coverage'=>array(
+   return array('ready'=>false,'registry_revision'=>isset($GLOBALS['context_revision_fixture']) ? $GLOBALS['context_revision_fixture'] : 4,'authority_manifest_fingerprint'=>str_repeat('a',64),'coverage'=>array(
      'brand_strategy'=>array('ready'=>true,'conflict'=>false,'observed_assets'=>array()),
      'tone_of_voice'=>array('ready'=>false,'conflict'=>false,
        'observed_assets'=>array(array('reasons'=>array('content_incomplete')))),
@@ -127,4 +127,26 @@ if(is_wp_error($simulation)||$simulation['state']!=='simulation_only'||
    empty($simulation['scenario_is_hypothetical'])||!empty($simulation['authorizing'])) {
   throw new RuntimeException('Hypothetical provider timeout became authorization');
 }
+$GLOBALS['context_revision_fixture']=5;
+$drift=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if (!is_wp_error($drift) || $drift->get_error_code()!=='mad4b_brand_reconstruction_evidence_drift') {
+  throw new RuntimeException('Plan admitted inconsistent authority revision');
+}
+unset($GLOBALS['context_revision_fixture']);
+$GLOBALS['skills_cert_fixture']=array('ready'=>true,'historical_evidence_only'=>false,
+  'build_identity_current'=>true,'external_client_snapshot_verified'=>false,'local_runtime_only'=>false);
+$partialCert=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if(is_wp_error($partialCert)||!empty($partialCert['assistant_effectively_available']) ||
+   !empty($partialCert['assistant_can_execute_writes'])) {
+  throw new RuntimeException('Incomplete external snapshot incorrectly authorized assistant');
+}
+$GLOBALS['skills_cert_fixture']['external_client_snapshot_verified']=true;
+$completeCert=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if(is_wp_error($completeCert)||empty($completeCert['assistant_certification_verified']) ||
+   empty($completeCert['assistant_effectively_available']) ||
+   !empty($completeCert['assistant_exact_mutation_grant_verified']) ||
+   !empty($completeCert['assistant_can_execute_writes'])) {
+  throw new RuntimeException('Full external runtime incorrectly conflated assistant authoring and write grants');
+}
+unset($GLOBALS['skills_cert_fixture']);
 echo "PASS ".$count." Brand reconstruction scenarios, retries, no automatic authority\n";
