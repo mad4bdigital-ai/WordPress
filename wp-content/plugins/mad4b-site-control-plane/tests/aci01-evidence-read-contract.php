@@ -142,4 +142,46 @@ check($service::preview(array('job_id'=>$job,'artifact_ids'=>array($art)))['stat
     'read grant revoked midway through evidence retrieval denied');
 MAD4B_SCP_Artifacts::$revoke_during_read=false;
 MAD4B_SCP_Policy::$read=true;
+
+// G2: one provider request at one observation time counts once even if
+// the immutable Artifact registry contains multiple separately versioned IDs.
+$scope['binding']=MAD4B_SCP_ACI01_Runtime_Binding::current();
+$a=MAD4B_SCP_Artifacts::get_artifact(array('artifact_id'=>$art))['artifact'];
+$a['payload']['source_refs']=array('site:page');
+$b=$a;
+$b['artifact_id']='44444444-4444-4444-8444-444444444444';
+$duplicate=$service::project($job,$jobRow,$ctx,array($a,$b),604800,$scope,
+    strtotime('2026-10-01T11:00:00Z'));
+check($duplicate['status']==='NEEDS_EVIDENCE','duplicate receipt cannot certify');
+check($duplicate['provenance_observation']['distinct_request_observations']===1 &&
+    $duplicate['provenance_observation']['duplicate_request_count']===1,
+    'logical request deduplicated');
+check($duplicate['provenance_observation']['excluded_duplicate_artifact_ids']===array(
+    '44444444-4444-4444-8444-444444444444'),
+    'excluded immutable duplicate points to second artifact');
+check(in_array('duplicate_research_request_observed',$duplicate['reason_codes'],true),
+    'duplicate fact not counted as fresh independent evidence');
+$b['payload']['normalized_data']=array('different_competitor_facts'=>true);
+$contradiction=$service::project($job,$jobRow,$ctx,array($a,$b),604800,$scope,
+    strtotime('2026-10-01T11:00:00Z'));
+check(count($contradiction['provenance_observation']['conflicting_response_group_sha256'])===1 &&
+    in_array('conflicting_research_response_observed',$contradiction['reason_codes'],true),
+    'same request at same observation time with contradictory data requires review');
+check($contradiction['authorizing']===false &&
+    $contradiction['provenance_observation']['independently_reviewed']===false,
+    'contradictory provider response cannot grant rights or publication');
+$b['payload']['collected_at']='2026-10-02T10:00:00Z';
+$recrawl=$service::project($job,$jobRow,$ctx,array($a,$b),604800,$scope,
+    strtotime('2026-10-02T11:00:00Z'));
+check($recrawl['provenance_observation']['distinct_request_observations']===2 &&
+    $recrawl['provenance_observation']['duplicate_request_count']===0,
+    'distinct observation timestamps not conflated as duplicates');
+$a['payload']['source_refs']=array('site:page','site:page');
+$repeated_source=$service::project($job,$jobRow,$ctx,array($a),604800,$scope,
+    strtotime('2026-10-01T11:00:00Z'));
+check($repeated_source['provenance_observation']['duplicated_source_locator_count']===1 &&
+    in_array('duplicate_source_locator_observed',$repeated_source['reason_codes'],true),
+    'one repeated source locator is not two independent citations');
+check(strpos(json_encode($contradiction),'different_competitor_facts')===false,
+    'underlying conflicting research body never disclosed');
 echo "ACI01_EVIDENCE_READ_CONTRACT: PASS\n";
