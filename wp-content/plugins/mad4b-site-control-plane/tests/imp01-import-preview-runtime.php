@@ -78,6 +78,14 @@ ck( !is_wp_error( $p ) && $p['row_count'] === 2, 'Bounded preview failed' );
 ck( $p['issue_count_observed'] === 2 &&
     $p['ready_for_import_execution'] === false &&
     $p['source_values_persisted'] === false, 'Currency/status issues were autoaccepted' );
+$commercial = $input;
+$commercial['price_tier_policy'] = 'review_monotonic';
+$commercial['rows'][0]['single_price'] = 60;
+$commercialPreview = MAD4B_SCP_Activity_Import_Review::plan( $commercial );
+ck( !is_wp_error( $commercialPreview ) &&
+    isset( $commercialPreview['issue_counts_by_reason']['price_tier_order_requires_commercial_review'] ) &&
+    $commercialPreview['issue_counts_by_reason']['price_tier_order_requires_commercial_review'] === 1,
+    'Configured commercial price review policy was ignored' );
 $duplicated = $input;
 $duplicated['rows'][1]['ID'] = 1;
 $d = MAD4B_SCP_Activity_Import_Review::plan( $duplicated );
