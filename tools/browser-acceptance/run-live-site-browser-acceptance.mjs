@@ -6,6 +6,7 @@ import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
+import { signerKeyId } from "./browser-attestation.mjs";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
@@ -62,6 +63,15 @@ const approvedDrivers = approvedSiteDrivers();
 const configured = resolveSiteBrowserAdapter(capabilities, {
   requestedProfile: profileId, requestedExecutor: browserProvider, approvedDrivers
 });
+if (configured.siteProviderContract === "mad4b.capability-browser-provider.v1") {
+  const nativeProvider = capabilities.providers.find(row => row.provider_id === configured.siteProviderId);
+  const expectedKeyId = nativeProvider?.capabilities?.browser_attestation_key_id;
+  if (typeof expectedKeyId !== "string" ||
+      !/^rsa-spki-sha256:[a-f0-9]{64}$/.test(expectedKeyId) ||
+      signerKeyId(process.env) !== expectedKeyId) {
+    throw new Error("mcp_browser_attestation_public_private_key_mismatch");
+  }
+}
 const plan = await requestBrowserPlan(session, { providerId: configured.siteProviderId, profileId: configured.profileId });
 assertSitePlanBound(configured, plan);
 // Selection could have changed while the signed plan was being generated.
