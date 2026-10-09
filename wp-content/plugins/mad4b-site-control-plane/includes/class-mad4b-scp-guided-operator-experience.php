@@ -124,7 +124,16 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			if ( '' === $url ) continue;
 			$is_next = $step['id'] === $model['next_step'];
 			echo '<li class="mad4b-guided-step' . ( $is_next ? ' is-next' : '' ) . '"' . ( $is_next ? ' aria-current="step"' : '' ) . '>';
-			echo '<div><strong>' . esc_html( $step['title'] ) . '</strong> <span class="mad4b-guided-state">' . esc_html( str_replace( '_', ' ', $step['state'] ) ) . '</span></div>';
+			$state_labels = array(
+				'OBSERVED_READY' => __( 'Ready', 'mad4b-site-control-plane' ),
+				'NEEDS_ACTION' => __( 'Needs attention', 'mad4b-site-control-plane' ),
+				'NOT_CHECKED' => __( 'Not checked', 'mad4b-site-control-plane' ),
+				'NOT_APPLICABLE' => __( 'Not applicable', 'mad4b-site-control-plane' ),
+				'WAITING_FOR_SITE' => __( 'Complete site identification first', 'mad4b-site-control-plane' ),
+				'OBSERVED_NO_ACTION' => __( 'No action currently reported', 'mad4b-site-control-plane' ),
+				'EXTERNAL_ACTION' => __( 'External action required', 'mad4b-site-control-plane' ),
+			);
+			echo '<div><strong>' . esc_html( $step['title'] ) . '</strong> <span class="mad4b-guided-state">' . esc_html( isset( $state_labels[ $step['state'] ] ) ? $state_labels[ $step['state'] ] : __( 'Not checked', 'mad4b-site-control-plane' ) ) . '</span></div>';
 			echo '<p>' . esc_html( $step['summary'] ) . '</p>';
 			echo '<p class="description"><strong>' . esc_html__( 'Responsible:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( str_replace( '_', ' ', $step['owner'] ) ) . '</p>';
 			echo '<a class="button ' . ( $is_next ? 'button-primary' : 'button-secondary' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $is_next ? __( 'Continue with this step', 'mad4b-site-control-plane' ) : __( 'Open this step', 'mad4b-site-control-plane' ) ) . '</a>';
