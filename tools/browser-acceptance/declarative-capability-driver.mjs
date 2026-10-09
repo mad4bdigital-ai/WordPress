@@ -101,9 +101,12 @@ async function observePage(page, plan, item) {
     if (canonical.origin !== new URL(plan.origin).origin) deny("canonical_cross_origin");
     observed = { path: canonical.pathname + canonical.search };
   } else {
-    // No arbitrary XPath, CSS, JavaScript or click supplied from the site.
-    const count = await page.locator("[data-mad4b-capability-key]")
-      .evaluateAll((items, key) => items.filter(el => el.getAttribute("data-mad4b-capability-key") === key).length, item.expected.marker_key);
+    // The marker key has already passed a strict identifier grammar. Build
+    // only one fixed attribute-selector template and use Playwright's native
+    // locator.count() (no page.evaluate / site JavaScript required).
+    const count = await page.locator(
+      `[data-mad4b-capability-key="${item.expected.marker_key}"]`
+    ).count();
     if (!Number.isSafeInteger(count) || count > 5000) deny("marker_count_invalid");
     observed = { marker_key: item.expected.marker_key, count };
   }
