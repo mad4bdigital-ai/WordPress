@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 454,
+  "changed_file_count": 457,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -842,8 +842,19 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-intelligence-pipeline.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-intelligence-pipeline-contract.php"
       ]
+    },
+    {
+      "id": "feature007-source-artifact-certification-boundary-20261009",
+      "semantic_unit": "Distinguish installed runtime files from repository-only test evidence, fail closed on missing executable code and unsafe paths, and require independent source certification",
+      "revert_boundary": "Revert source-vs-artifact evidence classifier, declarative evidence policy and adversarial regression fixture as a single non-authorizing slice",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-workstream-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/workstream-certification-contract.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "85f72668544ef918ce01d5bd20cab20e9eb3e3d36a9643982e65ddf499898a3a",
+  "changed_paths_sha256": "0df9c873acfa4edb8211929039a680ca889c430642f457238c555eae8a64c929",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
