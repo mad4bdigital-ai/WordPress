@@ -14,8 +14,12 @@ final class MAD4B_SCP_Recovery_Lifecycle {
 	/** Capture twice, before and after the deep Staging plan is assembled. */
 	public static function capture_identity() {
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
-		$runtime = class_exists( 'MAD4B_SCP_Runtime_Convergence', false )
-			? MAD4B_SCP_Runtime_Convergence::current_identity() : array();
+		// Runtime Convergence::current_identity() is intentionally private.
+		// Reuse the established, public provenance observer and require its
+		// validated identity instead of bypassing Runtime Convergence internals.
+		$runtime = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status() : array();
+		if ( empty( $runtime['identity_ready'] ) ) $runtime = array();
 		$env = class_exists( 'MAD4B_SCP_Site_Profile', false )
 			? MAD4B_SCP_Site_Profile::environment_resolution() : array();
 		// Cheap event-generation read detects a plugin/provider update racing
