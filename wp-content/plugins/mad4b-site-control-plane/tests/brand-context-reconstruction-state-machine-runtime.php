@@ -73,6 +73,7 @@ class MAD4B_SCP_Skill_Runtime_Certification {
 class MAD4B_SCP_Brand_Context_Builder {
  static function expected_categories(){ return array('brand_strategy'=>'Brand Strategy','tone_of_voice'=>'Tone of Voice','editorial_guidelines'=>'Editorial Guidelines'); }
  static function convergence_plan($args=array()) {
+   if (!empty($GLOBALS['provider_down_fixture'])) return new WP_Error('mad4b_brand_builder_context_unavailable');
    return array('registry_revision'=>4,'authority_manifest_fingerprint'=>str_repeat('a',64),'plan_sha256'=>str_repeat('b',64),
      'writable_sources'=>array(array('source_id'=>'managed')),
      'actions'=>array(
@@ -83,11 +84,12 @@ class MAD4B_SCP_Brand_Context_Builder {
  }
 }
 class MAD4B_SCP_Context_Authority {
+ static function sources(){ return isset($GLOBALS['source_scan_fixture']) ? $GLOBALS['source_scan_fixture'] : array(); }
  static function brand_core_coverage(){
    return array('ready'=>false,'registry_revision'=>isset($GLOBALS['context_revision_fixture']) ? $GLOBALS['context_revision_fixture'] : 4,'authority_manifest_fingerprint'=>str_repeat('a',64),'coverage'=>array(
      'brand_strategy'=>array('ready'=>true,'conflict'=>false,'observed_assets'=>array()),
      'tone_of_voice'=>array('ready'=>false,'conflict'=>false,
-       'observed_assets'=>array(array('reasons'=>array('content_incomplete')))),
+       'observed_assets'=>!empty($GLOBALS['tone_asset_absent_fixture']) ? array() : array(array('reasons'=>array('content_incomplete')))),
      'editorial_guidelines'=>array('ready'=>false,'conflict'=>false,'observed_assets'=>array()),
    ));
  }
@@ -149,4 +151,30 @@ if(is_wp_error($completeCert)||empty($completeCert['assistant_certification_veri
   throw new RuntimeException('Full external runtime incorrectly conflated assistant authoring and write grants');
 }
 unset($GLOBALS['skills_cert_fixture']);
+$GLOBALS['provider_down_fixture']=true;
+$degraded=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if(is_wp_error($degraded)||$degraded['state']!=='degraded_read_only'||
+   !empty($degraded['writes_allowed_from_plan']) || !empty($degraded['plan_sha256']) ||
+   !empty($degraded['authorizing'])) {
+  throw new RuntimeException('Missing Context provider did not produce nonauthorizing diagnostics');
+}
+unset($GLOBALS['provider_down_fixture']);
+$GLOBALS['tone_asset_absent_fixture']=true;
+$GLOBALS['source_scan_fixture']=array(array('mode'=>'governed','status'=>'ready',
+  'last_scan_complete'=>true,'last_complete_scan_at'=>gmdate('c',time()-900000)));
+$staleScan=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if(is_wp_error($staleScan)||!empty($staleScan['governed_source_scan_complete'])) {
+  throw new RuntimeException('Stale provider scan was treated as fresh absence proof');
+}
+$byCategory=array();
+foreach($staleScan['states'] as $r) $byCategory[$r['category']]=$r;
+if($byCategory['tone_of_voice']['state']!=='SOURCE_DISCOVERY') {
+  throw new RuntimeException('Missing asset was recreated after stale scan');
+}
+$GLOBALS['source_scan_fixture'][0]['last_complete_scan_at']=gmdate('c');
+$freshScan=MAD4B_SCP_Brand_Context_Reconstruction::plan(array('scenario'=>'live'));
+if(is_wp_error($freshScan)||empty($freshScan['governed_source_scan_complete'])) {
+  throw new RuntimeException('Complete current governed scan not recognized');
+}
+unset($GLOBALS['tone_asset_absent_fixture'],$GLOBALS['source_scan_fixture']);
 echo "PASS ".$count." Brand reconstruction scenarios, retries, no automatic authority\n";
