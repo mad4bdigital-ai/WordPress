@@ -44,4 +44,51 @@ assert_recovery( 'OBSERVED_READY' === MAD4B_SCP_Runtime_Recovery_Workspace::mode
 $truncated = $valid;
 $truncated['actions'] = array_fill( 0, 100, array( 'action_id' => 'candidate_binding_only' ));
 assert_recovery( 1 === MAD4B_SCP_Runtime_Recovery_Workspace::model( $truncated )['action_count'], 'workspace must bound and deduplicate untrusted action lists' );
+
+$mapped = $valid;
+$mapped['blocking_gates'] = array( 'skills_runtime', 'write_authority', 'browser_runtime' );
+$mapped['actions'][0]['target_gates'] = array( 'skills_runtime', 'skills_runtime', '../untrusted_gate' );
+$mapped['actions'][1]['target_gates'] = array( 'write_authority' );
+$mapped['actions'][2]['target_gates'] = array( 'browser_runtime' );
+$mapped_model = MAD4B_SCP_Runtime_Recovery_Workspace::model( $mapped );
+assert_recovery( 3 === $mapped_model['blocked_gate_count'], 'blocked gate count must match current plan' );
+assert_recovery( array( 'browser_runtime' ) === $mapped_model['unmapped_blocking_gates'], 'duplicate action must not fabricate gate closure' );
+assert_recovery( 'UNMAPPED_GATE_REQUIRES_REVIEW' === $mapped_model['plan_gate_coverage'], 'unmapped blocked gate must be explicit' );
+assert_recovery( array( 'skills_runtime' ) === $mapped_model['actions'][0]['target_gates'], 'unsafe or duplicate target was accepted' );
+assert_recovery( ! $mapped_model['actions'][0]['readback_verified'] && ! $mapped_model['actions'][0]['retry_authorized']
+ && ! $mapped_model['actions'][0]['approval_granted'], 'plan must not create verification or authority' );
+$mapped['blocking_gates'] = array( 'skills_runtime', 'write_authority' );
+assert_recovery( 'MAPPED_FOR_REVIEW' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $mapped )['plan_gate_coverage'], 'mapping is not acceptance' );
+$malformed = $mapped;
+$malformed['blocking_gates'][] = str_repeat( 'x', 2048 );
+$malformed['blocking_gates'][] = '<script>unsafe</script>';
+assert_recovery( 2 === MAD4B_SCP_Runtime_Recovery_Workspace::model( $malformed )['blocked_gate_count'], 'unsafe gate text leaked' );
+
+if ( ! function_exists( '__' ) ) { function __( $text, $domain = '' ) { return $text; } }
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-operator-workspace.php';
+$scope_by_id = function ( $snapshot ) {
+ $rows = array();
+ foreach ( MAD4B_SCP_Operator_Workspace::readiness_scopes( $snapshot ) as $row ) $rows[ $row['id'] ] = $row;
+ return $rows;
+};
+$unknown = $scope_by_id( array( 'state' => 'HEALTHY' ) );
+assert_recovery( 'NOT_VERIFIED' === $unknown['governed_write']['state'] && 'NOT_VERIFIED' === $unknown['host_execution']['state'], 'unavailable observation fabricated readiness' );
+$ready = $scope_by_id( array(
+ 'state' => 'HEALTHY',
+ 'signals' => array( 'write_authority_ready' => true, 'candidate_binding_match' => true, 'database_topology_ready' => true, 'governed_write_lane_ready' => true ),
+ 'operational' => array( 'lanes' => array( 'developer_execution' => array( 'execution_ready' => false ) ) ),
+) );
+assert_recovery( 'OBSERVED_READY' === $ready['governed_write']['state'], 'all local write observations should suffice for local scope' );
+assert_recovery( 'BLOCKED' === $ready['host_execution']['state'], 'authority never implies Host sandbox execution' );
+assert_recovery( 'INDEPENDENT_ACCEPTANCE_REQUIRED' === $ready['staging_release']['state'], 'local HEALTHY is not Staging release' );
+assert_recovery( 'NOT_AUTHORIZED_HERE' === $ready['production_promotion']['state'], 'operator cannot grant Production promotion' );
+$partial = $scope_by_id( array( 'signals' => array( 'write_authority_ready' => false ) ) );
+assert_recovery( 'BLOCKED' === $partial['governed_write']['state'], 'explicit failed gate must override unknown gates' );
+$forged = $scope_by_id( array( 'state' => 'HEALTHY', 'signals' => array(
+ 'write_authority_ready' => 1, 'candidate_binding_match' => 1, 'database_topology_ready' => 1, 'governed_write_lane_ready' => 1 ),
+ 'production_authorized' => true, 'release_certified' => true ) );
+assert_recovery( 'NOT_VERIFIED' === $forged['governed_write']['state']
+ && 'INDEPENDENT_ACCEPTANCE_REQUIRED' === $forged['staging_release']['state']
+ && 'NOT_AUTHORIZED_HERE' === $forged['production_promotion']['state'], 'truthy or forged success accepted' );
+
 echo "MAD4B native runtime recovery workspace PASS\\n";
