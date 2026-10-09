@@ -432,6 +432,17 @@ final class MAD4B_SCP_Self_Update {
 		$admin = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
+		if ( is_array( $input ) && isset( $input['channel'] ) && 'staging_candidate_upload' === $input['channel'] ) {
+			// A generic admin grant is not sufficient for an unpromoted PR build.
+			// Require an enrolled owner/admin's same-app OAuth step-up authority.
+			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Exact Staging candidate upload requires enrolled owner/admin OAuth step-up authority.' );
+			}
+		}
 		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_staging_only', 'Remote Control Plane file upload is Staging-only.' );
 		if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 		return MAD4B_SCP_Authorization::authorize_mutation(
