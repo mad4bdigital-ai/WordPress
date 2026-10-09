@@ -25,3 +25,6 @@
 | Signed plan snapshot derived from empty or stale provider registry | Reject, require actual registry-bound fingerprint and operator revision |
 | Public GET probe attempts POST/REST/admin/blob script | Blocked by passive-only network mode, without changing ETG specialist policy |
 | Capability Atlas inventory_complete=true | All external/semantic/replay/release evidence gates remain NOT_PROVEN |
+| Generic passive browser attempts WebSocket | Independent WebSocket route closes it before connecting to server |
+| External browser adapter lacks WebSocket route support | Block the generic browser run; never downgrade to HTTP-only proof |
+| WebRTC or DNS/IP egress not audited | Release gate remains blocked regardless of passive-only source checks |
