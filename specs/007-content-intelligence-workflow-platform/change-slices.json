@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 447,
+  "changed_file_count": 451,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -819,8 +819,20 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php"
       ]
+    },
+    {
+      "id": "browser-local-consumption-ledger-20261009",
+      "semantic_unit": "Atomic single-host Browser Acceptance plan claim; local result receipt replay semantics and adversarial native Node tests",
+      "revert_boundary": "Revert local plan consumption and receipt code plus tests as one non-authorizing unit",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/browser-acceptance/plan-consumption-ledger.mjs",
+        "tools/browser-acceptance/receipt.mjs",
+        "tools/browser-acceptance/test-plan-consumption-ledger.mjs",
+        "tools/browser-acceptance/test-receipt.mjs"
+      ]
     }
   ],
-  "changed_paths_sha256": "879cb1828ce040210a962df2f05c3b21e99deede10dbd8e54566ae50e997a25f",
+  "changed_paths_sha256": "1e95f8ca88d92bcf020733d69ecf54fae3e772984e26fab0dfd6fa2899225771",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
