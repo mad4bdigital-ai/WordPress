@@ -38,7 +38,7 @@ The source can be XLSX, CSV/TSV, Google Sheets, Drive, FTP/SFTP, HTTP, object st
 | woocommerce_product_csv | Native WooCommerce importer | Product-specific UI; not generic travel price importer |
 | governed_profile_apply | Content Experience Profile plan/apply | One-row approved native action; bulk/relations driver needs acceptance |
 
-**Twenty-three built-ins**; trusted WordPress-installed code can add up to 37 more manifest-only entries through `mad4b_activity_import_mode_manifests`. Extension declarations are validated, deduplicated, bound to the enrolled site, and **cannot declare automated WordPress writes certified** through a manifest alone. Any actual custom driver must separately satisfy permission, source provenance, request authentication, CAS/readback and staging operational acceptance.
+**Twenty-three built-ins**; trusted WordPress-installed code can add up to 37 more manifest-only entries through `mad4b_activity_import_mode_manifests`. Extension declarations are validated, deduplicated, bound to the enrolled site, and **cannot declare automated WordPress writes certified** through a manifest alone. They also cannot override the state of a built-in Mode; new mode IDs are classified as `adapter_required` until a separately verified driver exists. Any actual custom driver must separately satisfy permission, source provenance, request authentication, CAS/readback and staging operational acceptance.
 
 ## Dynamic profile configuration
 
