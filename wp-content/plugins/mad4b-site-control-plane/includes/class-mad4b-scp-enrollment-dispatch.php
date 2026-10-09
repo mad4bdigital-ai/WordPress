@@ -231,11 +231,21 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$code = '';
 		if ( $evaluated && ! $allowed ) {
 			$code = preg_replace( '/[^a-z0-9_]/', '', strtolower( (string) $error_code ) );
-			// Unknown WP_Error codes may originate in third-party plugins.
-			// Return a generic code rather than echoing potential secrets.
-			if ( ! preg_match( '/^mad4b_remote_operation_[a-z0-9_]+$/', $code ) ) {
-				$code = 'request_permission_denied_unclassified';
-			}
+			// Return known guard codes ONLY. Unknown third-party WP_Error
+			// identifiers can contain private data even after sanitization.
+			$known = array(
+				'mad4b_remote_operation_admin_required',
+				'mad4b_remote_operation_bearer_required',
+				'mad4b_remote_operation_profile_missing',
+				'mad4b_remote_operation_staging_only',
+				'mad4b_remote_operation_origin_mismatch',
+				'mad4b_remote_operation_subject_not_enrolled',
+				'mad4b_remote_operation_step_up_scope_required',
+				'mad4b_remote_operation_chatgpt_client_required',
+				'request_guard_unavailable',
+				'request_guard_failed',
+			);
+			if ( ! in_array( $code, $known, true ) ) $code = 'request_permission_denied_unclassified';
 			$code = substr( $code, 0, 96 );
 		}
 		$next = 'inspect_current_transport_and_oauth_step_up';
@@ -245,6 +255,9 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		elseif ( 'mad4b_remote_operation_subject_not_enrolled' === $code ) $next = 'review_site_profile_subject_enrollment';
 		elseif ( 'mad4b_remote_operation_bearer_required' === $code ) $next = 'reauthorize_oauth_bearer';
 		elseif ( 'mad4b_remote_operation_admin_required' === $code ) $next = 'review_enrolled_wordpress_administrator';
+		elseif ( 'mad4b_remote_operation_profile_missing' === $code ) $next = 'review_exact_site_enrollment';
+		elseif ( 'mad4b_remote_operation_origin_mismatch' === $code ) $next = 'review_site_profile_origin_binding';
+		elseif ( 'mad4b_remote_operation_staging_only' === $code ) $next = 'verify_exact_staging_environment_not_production';
 		return array(
 			'contract' => 'mad4b.enrollment-request-permission-preflight.v1',
 			'state' => ! $evaluated ? 'not_evaluated' : ( $allowed ? 'request_permission_observed' : 'request_permission_blocked' ),
