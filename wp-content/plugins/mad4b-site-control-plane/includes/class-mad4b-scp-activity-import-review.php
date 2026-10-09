@@ -178,7 +178,8 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
             return self::error( 'mad4b_import_price_policy_invalid', 'Only configured price review policy is permitted.' );
         $flag_expired = ! empty( $input['review_past_intervals'] );
-        $issues = array(); $ids = array(); $groups = array(); $row_hashes = array();
+        $issues = array(); $issue_total = 0; $issue_counts = array();
+        $ids = array(); $groups = array(); $row_hashes = array();
         foreach ( $rows as $i => $row ) {
             if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
                 array_diff( $headers, array_keys( $row ) ) )
@@ -231,6 +232,9 @@ final class MAD4B_SCP_Activity_Import_Review {
                 $groups[ $pair ] = true;
             }
             foreach ( $errors as $reason ) {
+                $issue_total++;
+                $issue_counts[ $reason ] = isset( $issue_counts[ $reason ] ) ?
+                    $issue_counts[ $reason ] + 1 : 1;
                 if ( count( $issues ) < self::MAX_ISSUES )
                     $issues[] = array( 'row' => (int) $i + 1,
                         'identity_sha256' => hash( 'sha256', $id ),
@@ -251,8 +255,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'review_past_intervals' => $flag_expired );
         return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
             'profile_slug' => $slug, 'row_count' => count( $rows ),
-            'issue_count_observed' => array_sum( array_map( static function( $x ) { return 1; }, $issues ) ),
-            'issues' => $issues, 'issues_truncated' => count( $issues ) >= self::MAX_ISSUES,
+            'issue_count_observed' => $issue_total,
+            'issue_counts_by_reason' => $issue_counts,
+            'issues' => $issues, 'issues_truncated' => $issue_total > count( $issues ),
             'ready_for_import_execution' => false,
             'requires_human_review' => true, 'source_values_persisted' => false,
             'read_only' => true, 'mutation_performed' => false );
