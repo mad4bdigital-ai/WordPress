@@ -44,6 +44,7 @@ final class MAD4B_SCP_Host_Bridge {
 		self::register( 'mad4b/host-operation-repair-plan', 'Plan Host Operation Repair', 'repair_plan', true );
 		self::register( 'mad4b/host-operation-requeue', 'Requeue Host Operation', 'requeue', false );
 		self::register( 'mad4b/host-operation-receipt', 'Read Host Operation Receipt', 'receipt', true );
+		self::register( 'mad4b/host-environment-sync-verification', 'Verify Fresh Host Environment Synchronization', 'environment_sync_verification', true );
 		self::register( 'mad4b/host-doctor', 'Host Runner Doctor', 'doctor', true );
 	}
 
@@ -269,6 +270,89 @@ final class MAD4B_SCP_Host_Bridge {
 		$row = self::read_json( $path );
 		if ( is_wp_error( $row ) ) return $row;
 		return array( 'contract' => 'mad4b.host-operation-receipt-read.v1', 'receipt' => $row, 'mutation_performed' => false );
+	}
+
+	/**
+	 * Independently join the durable Runner receipt to a NEW WordPress request.
+	 * File readback alone is not evidence of a working Staging bootstrap.
+	 * Never returns wp-config contents, binding secret or Host credentials.
+	 */
+	public static function environment_sync_verification( $input ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'job_id' ) ) )
+			return new WP_Error( 'mad4b_host_environment_verification_input_invalid', 'Only an exact Host job ID may be inspected.' );
+		$job_id = self::job_id_from_input( $input );
+		if ( is_wp_error( $job_id ) ) return $job_id;
+		$spool = self::spool_root( false );
+		if ( is_wp_error( $spool ) ) return $spool;
+		$receipt_path = $spool . '/receipts/' . $job_id . '.json';
+		if ( is_link( $receipt_path ) || ! is_file( $receipt_path ) )
+			return new WP_Error( 'mad4b_host_environment_receipt_missing', 'Independent Host Runner execution receipt is not yet available.' );
+		$receipt = self::read_json( $receipt_path );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_host_environment_profile_unavailable', 'Exact Site Profile is unavailable.' );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$target = self::target_identity();
+		if ( is_wp_error( $target ) ) return $target;
+		$details = isset( $receipt['result'] ) && is_array( $receipt['result'] ) ? $receipt['result'] : array();
+		$blocking = array();
+		$receipt_ok = 'mad4b.tool-execution-receipt.v1' === (string) ( $receipt['contract'] ?? '' )
+			&& 'mad4b.host-bridge-execution.v1' === (string) ( $receipt['bridge_contract'] ?? '' )
+			&& 'wordpress_environment_sync' === (string) ( $receipt['operation_id'] ?? '' )
+			&& hash_equals( $job_id, (string) ( $receipt['job_id'] ?? '' ) )
+			&& 'staging' === (string) ( $receipt['environment'] ?? '' )
+			&& hash_equals( (string) $target['site_uuid'], (string) ( $receipt['site_uuid'] ?? '' ) )
+			&& true === ( $receipt['mutation_performed'] ?? false )
+			&& 'PASS' === (string) ( $receipt['readback_verdict'] ?? '' )
+			&& true === ( $details['host_file_readback_verified'] ?? false )
+			&& false === ( $details['fresh_wordpress_bootstrap_verified'] ?? true )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['runner_source_sha256'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['plan_sha256'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['authority_ref'] ?? '' ) )
+			&& '' !== (string) ( $receipt['approval_ref'] ?? '' );
+		if ( ! $receipt_ok ) $blocking[] = 'host_receipt_untrusted_or_incomplete';
+		$profile_ok = ! empty( $status['authority_ready'] ) && ! empty( $status['origin_match'] )
+			&& ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] )
+			&& ! empty( $status['same_origin_clone_protection'] )
+			&& 'staging' === (string) ( $status['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $status['environment'] ?? '' )
+			&& 'host_managed' === (string) ( $status['environment_sync_mode'] ?? '' )
+			&& 'host_aligned' === (string) ( $status['environment_sync_state'] ?? '' )
+			&& hash_equals( (string) ( $status['profile_digest'] ?? '' ), (string) ( $details['expected_site_profile_digest'] ?? '' ) )
+			&& (int) ( $status['revision'] ?? 0 ) > 0
+			&& (int) ( $status['revision'] ?? 0 ) === (int) ( $details['expected_site_profile_revision'] ?? 0 )
+			&& hash_equals( (string) MAD4B_SCP_Site_Profile::deployment_binding_digest(),
+				(string) ( $details['expected_deployment_binding_digest'] ?? '' ) );
+		if ( ! $profile_ok ) $blocking[] = 'current_profile_or_host_binding_not_equal_to_receipt';
+		$bootstrap_ok = ! empty( $status['wordpress_environment_explicit'] )
+			&& 'staging' === (string) ( $status['wordpress_environment'] ?? '' );
+		if ( ! $bootstrap_ok ) $blocking[] = 'wordpress_explicit_staging_not_observed';
+		$config_sha = (string) ( $details['after_sha256'] ?? '' );
+		$config_ok = 1 === preg_match( '/^[a-f0-9]{64}$/D', $config_sha )
+			&& hash_equals( $config_sha, (string) ( $target['wp_config_sha256'] ?? '' ) );
+		if ( ! $config_ok ) $blocking[] = 'wp_config_changed_since_host_receipt';
+		// A call in the SAME PHP request that queued a Host mutation cannot
+		// substitute for independent post-commit WordPress bootstrap evidence.
+		$finished = strtotime( (string) ( $receipt['completed_at'] ?? '' ) );
+		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && is_numeric( $_SERVER['REQUEST_TIME_FLOAT'] )
+			? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0.0;
+		$fresh = false !== $finished && $finished > 0 && $started > (float) $finished + 1.0;
+		if ( ! $fresh ) $blocking[] = 'fresh_wordpress_request_after_host_receipt_required';
+		return array(
+			'contract' => 'mad4b.host-environment-sync-verification.v1',
+			'job_id' => $job_id,
+			'ready' => empty( $blocking ),
+			'state' => empty( $blocking ) ? 'VERIFIED_STAGING_HOST_ALIGNED' : 'BLOCKED',
+			'host_file_receipt_verified' => $receipt_ok,
+			'site_profile_and_binding_verified' => $profile_ok,
+			'wordpress_explicit_staging_verified' => $bootstrap_ok,
+			'wp_config_receipt_hash_verified' => $config_ok,
+			'fresh_wordpress_bootstrap_observed' => $fresh,
+			'blocking_reasons' => $blocking,
+			'mutation_performed' => false,
+			'release_certified' => false,
+			'production_authorized' => false,
+		);
 	}
 
 	public static function cancel( $input ) {
