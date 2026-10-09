@@ -70,6 +70,9 @@ class MAD4B_SCP_Content_Experience_Profiles {
                         'single_price', 'double_price',
                         '_wpml_import_after_process_post_status' ),
                     'allowed_currencies' => array( 'USD', 'EUR' ),
+                    'currency_field' => 'base_currency',
+                    'price_fields' => array( 'single_price', 'double_price' ),
+                    'decimal_scale' => 4,
                     'field_mapping' => array( 'single_price' => 'single_price' ),
                     'price_tier_policy' => ! empty( $GLOBALS['imp03_price_rule'] ) ?
                         'review_monotonic' : 'none',
@@ -122,10 +125,12 @@ $commercial = $input;
 $GLOBALS['imp03_price_rule'] = true;
 unset( $commercial['price_tier_policy'] );
 $commercial['rows'][0]['single_price'] = 60;
+$commercial['rows'][1]['single_price'] = '1e9000';
 $commercialPreview = MAD4B_SCP_Activity_Import_Review::plan( $commercial );
 ck( !is_wp_error( $commercialPreview ) &&
     isset( $commercialPreview['issue_counts_by_reason']['price_tier_order_requires_commercial_review'] ) &&
-    $commercialPreview['issue_counts_by_reason']['price_tier_order_requires_commercial_review'] === 1,
+    $commercialPreview['issue_counts_by_reason']['price_tier_order_requires_commercial_review'] === 1 &&
+    isset( $commercialPreview['issue_counts_by_reason']['price_not_approved_decimal'] ),
     'Configured commercial price review policy was ignored' );
 unset( $GLOBALS['imp03_price_rule'] );
 $missingStatus = $input;
