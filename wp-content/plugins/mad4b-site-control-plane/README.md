@@ -8,6 +8,19 @@ Current plugin version: **0.4.0-rc.96**.
 
 The administrator workspace includes a shared page/setup directory, direct search API credential links, Arabic/RTL presentation and an Action Center with explicit observed/unknown checks and prerequisite handoffs. These UI views use existing services and do not create new execution authority.
 
+### WordPress-native runtime recovery routing (Feature 007)
+
+Open **MAD4B Control Plane → Operator Control (Action Center) → WordPress recovery plan** after a package update or when the site reports stale authority, Skills, Provider or Host evidence. The view derives an exact, non-authorizing recovery DAG from the installed WordPress runtime and enrolled Site Profile. Each row includes a responsible executor, approval/external-work classification, prerequisites, readback Ability and local settings link. A status view never executes the remediation by opening.
+
+- **WordPress environment:** compare the explicit host `WP_ENVIRONMENT_TYPE`, the implicit WordPress default and the exact-origin Site Profile. For Production or a non-exact/unconfigured profile, offer diagnosis only; never relabel Production as Staging. A confirmed implicit default mismatch produces a separate authorized host-alignment action, not a Site Profile override.
+- **Managed Skills:** inspect the live current-build certificate, route stale evidence into the existing bounded Runtime Convergence safe-phase worker, and require persisted exact-build readback. Automatic execution continues to require the native worker's ticket, lock and site identity gates. The UI is not the dispatcher.
+- **Governed Write:** use the existing grant reconciliation plan for real inventory/grant changes. Consider candidate-binding-only only when its separate exact plan is execution-eligible and binding is missing/stale; it is never a substitute for grant approval. The existing ZERO_DELTA Continuation path remains the only bounded automatic rebind route.
+- **Developer Host:** show host isolation remediation only on sites that actually request Developer. Presence of `prlimit` or a network-isolation binary is prerequisite evidence, not proof of OS-enforced execution; never enable Developer/Breakglass from this screen.
+- **Providers / Browser:** derive current gated capability counts and downstream acceptance work from existing runtime inventories. Per-capability behavioral evidence, undo/restore and external browser receipts remain separate certified outcomes.
+
+No arbitrary SSH, `wp-config.php` edits, grant writes, plugin activation, Developer execution, browser certification or Production mutations are introduced. To run the focused native model test on an authorized checkout with PHP installed: `php wp-content/plugins/mad4b-site-control-plane/tests/runtime-recovery-workspace-runtime.php`. Static checks chain through the existing `staging-certification-contract.py` entrypoint. This branch has not by itself reissued package fingerprints, Staging runtime certificates or external acceptance.
+
+
 rc.95 repairs administrator submenu ordering, verifies refreshed settings against each exact form's persisted values, respects the selected Google connection method, and provides sealed scope-rejection diagnostics without storing rejected tokens. Background convergence can renew an existing healthy authority observation only while its site, actor, grants, transport and write contracts still match. Provider status is paged against an exact registry receipt, and Import/Export versions are attributed to their main plugin files rather than add-ons. Runtime certification and external acceptance still require observed evidence.
 
 ### rc.92 WordPress-native governed update UX
