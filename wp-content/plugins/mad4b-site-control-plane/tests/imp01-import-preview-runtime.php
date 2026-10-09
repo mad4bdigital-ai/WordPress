@@ -32,6 +32,7 @@ class MAD4B_SCP_Site_Profile {
     static function origin_enrolled() { return true; }
     static function site_urls_match_enrollment() { return true; }
     static function site_uuid() { return '10000000-2000-4000-8000-000000000000'; }
+    static function environment_allowed( $environments, $feature = '' ) { return in_array( 'staging', $environments, true ); }
 }
 class MAD4B_SCP_Content_Experience_Profiles {
     static function profile( $slug ) {
@@ -50,6 +51,7 @@ class MAD4B_SCP_Context_Authority {
     static function review_queue() { return array( array( 'category' => 'tone_of_voice' ) ); }
 }
 require __DIR__ . '/../includes/class-mad4b-scp-activity-import-review.php';
+require __DIR__ . '/../includes/class-mad4b-scp-activity-import-modes.php';
 function ck( $condition, $description ) {
     if ( !$condition ) throw new RuntimeException( $description );
 }
@@ -145,4 +147,21 @@ ck( is_wp_error( $badSig ) &&
     $badSig->get_error_code() === 'mad4b_import_webhook_signature',
     'Tampered body inherited trusted HMAC signature' );
 echo "PASS IMP01 signed REST review intake, redacted persistence, replay and HMAC tamper denials\n";
+$modes = MAD4B_SCP_Activity_Import_Modes::catalog();
+ck( !is_wp_error( $modes ) && $modes['mode_count'] >= 20, 'Multi-mode registry did not load' );
+$ids = array_column( $modes['modes'], 'id' );
+foreach ( array( 'admin_csv_upload', 'google_apps_script', 'signed_generic_webhook',
+    'wp_all_import_wizard', 'wp_all_import_cron', 'wp_all_import_wpcli',
+    'google_sheets_oauth', 'sftp_ftp_pull', 'action_scheduler_worker' ) as $id )
+    ck( in_array( $id, $ids, true ), 'Missing alternative mode: ' . $id );
+$mode = MAD4B_SCP_Activity_Import_Modes::plan( array( 'profile_slug' => 'pricing',
+    'mode_id' => 'admin_csv_upload' ) );
+ck( !is_wp_error( $mode ) && $mode['eligible_for_staging_review'] &&
+    !$mode['ready_to_mutate_posts'] && $mode['no_automatic_fallback_for_import_writes'],
+    'Mode plan leaked post mutation or auto-fallback authority' );
+$badMode = MAD4B_SCP_Activity_Import_Modes::plan( array( 'profile_slug' => 'pricing',
+    'mode_id' => 'user_invented_exec' ) );
+ck( is_wp_error( $badMode ) && $badMode->get_error_code() === 'mad4b_import_mode_unknown',
+    'Unregistered arbitrary execution mode accepted' );
+echo "PASS IMP02 dynamic mode registry, exact profile authorization and write-safe selection\n";
 echo "PASS IMP01 bounded dynamic meta mapping, currency/status exceptions, duplicate IDs, preview limits and governed Brand Core review\n";
