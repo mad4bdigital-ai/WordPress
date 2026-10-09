@@ -138,3 +138,36 @@ negative disposable native scenario and an exact-build Staging readback.
 Browser/Host/provider actions additionally require independent execution
 and rollback attestations. Keep the PR Hub Draft until those live gates are
 actually met.
+
+### Exact Staging admin browser survey (opt-in; not a release certificate)
+
+\`tests/admin-live-readonly-browser.cjs\` discovers capability-authorized
+wp-admin pages and bounded tab/section/view links from the *current installed*
+directory, rather than hardcoding All Royal or ETG provider names. It refuses
+non-HTTPS origins, unsafe WP admin paths, mismatched site origins and
+non-GET/HEAD requests; all external requests are blocked. It records bounded
+page/route, active-page, H1, duplicate ID, field label, raw WordPress environment
+drift, JavaScript exception and 375/768/1024/1440px overflow findings.
+The test never submits, clicks, grants, uploads or modifies provider/business
+state. No screenshots, credentials, cookies, origin or HTML are logged.
+
+An already-authorized **Staging-only** operator may run, on an isolated
+external browser runner with a reviewed Playwright installation:
+
+\`\`\`bash
+MAD4B_UI_STAGING_ORIGIN=https://staging.example.com \
+MAD4B_UI_ADMIN_PATH=/wp-admin/admin.php \
+MAD4B_UI_AUTH_STATE_FILE=/secured/staging-storage-state.json \
+MAD4B_UI_NODE_MODULES=/opt/audited-node-modules \
+MAD4B_UI_EXPECTED_COUNT=<verified-visible-route-count> \
+node tests/admin-live-readonly-browser.cjs
+\`\`\`
+
+Never create \`storageState\` from Production. Do not commit state, tokens or
+screenshots. A result of OBSERVED_UNCERTIFIED is only a navigation observation:
+the script explicitly returns release_certified=false,
+source_manifest_verified=false and browser_attestation_verified=false, and
+requires separate native PHP/DB, Host, Browser signed oracle, deployment identity
+and rollback evidence. Exit 2 means blocked. Unknown expected route count also
+blocks, rather than fabricating coverage. Run the static fail-closed contract
+with \`python3 tests/admin-live-readonly-browser-contract.py\`.
