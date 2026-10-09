@@ -80,7 +80,6 @@ $check(false===$testMissing['ready'] && count($testMissing['source_only_missing'
 $check(true===$testMissing['source_repository_evidence_required'] && false===$testMissing['source_repository_evidence_certified'],'undistributed source test silently certified');
 $runtimeMissing=$repositoryProbe->invoke(null,array('includes/feature007-runtime-absent.php'),array('tests/'));
 $check(false===$runtimeMissing['ready'] && count($runtimeMissing['missing'])===1 && empty($runtimeMissing['source_only_missing']),'missing executable runtime artifact was downgraded to external evidence');
-foreach(array('../tests/x.php','tests/../includes/x.php','/tests/x.php','tests//x.php','tests/./x.php','tests/feature007-test-never-in-package.php','tests/feature007-test-never-in-package.php') as $unused){ /* fixture paths are checked below */ }
 $unsafe=$repositoryProbe->invoke(null,array('../tests/x.php','tests/../includes/x.php','/tests/x.php','tests//x.php','tests/./x.php'),array('tests/'));
 $check(false===$unsafe['ready'] && count($unsafe['invalid'])===5 && empty($unsafe['source_only_missing']),'unsafe paths were misclassified as source-only tests');
 $duplicate=$repositoryProbe->invoke(null,array('tests/feature007-test-never-in-package.php','tests/feature007-test-never-in-package.php'),array('tests/'));
