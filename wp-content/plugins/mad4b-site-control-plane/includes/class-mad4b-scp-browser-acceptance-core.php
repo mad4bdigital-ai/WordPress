@@ -269,6 +269,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'state' => 'blocked',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 		);
 	}
@@ -282,6 +284,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'suite' => 'browser_runtime',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'verification' => array( 'browser_runtime_parity_verified' => false ),
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 			'infrastructure_failures' => array(),
