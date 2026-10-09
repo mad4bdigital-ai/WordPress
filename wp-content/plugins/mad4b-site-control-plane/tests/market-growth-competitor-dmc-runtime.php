@@ -53,6 +53,20 @@ ok(!is_wp_error($import)&&$import['draft_candidates'][0]['post']['post_status']=
  !empty($import['draft_candidates'][0]['operation_key'])&&!$import['import_written'],'DMC must prepare drafts only');
 $export=MAD4B_SCP_Market_Content_Exchange::export_preview(array('connection_id'=>'conn_one','mapping_id'=>'mapping_one'));
 ok(!is_wp_error($export)&&$export['count']===1&&!isset($export['items'][0]['post_content'])&&!$export['remote_transfer_executed'],'DMC exported a forbidden field or performed an external transfer');
+$redacted=MAD4B_SCP_Market_Growth_Policies::status();
+ok(!isset($redacted['suppliers']['dmc_one']['agreement_ref'])&&
+   !isset($redacted['pricing_rules']['competitive']['cost_minor']),'Read-only market status leaked contract/cost metadata');
+$assistant=MAD4B_SCP_Market_Content_Exchange::assistant_route(array('role'=>'writer'));
+ok(!is_wp_error($assistant)&&!empty($assistant['configured_candidates'])&&
+   empty($assistant['selected_for_research_or_draft'])&&
+   !$assistant['exact_write_grant_verified'],'Configured writer became authorized without certified live Skill');
+$dup=MAD4B_SCP_Market_Content_Exchange::import_prepare(array(
+ 'connection_id'=>'conn_one','mapping_id'=>'mapping_one',
+ 'items'=>array(
+   array('external_id'=>'duplicate','post_title'=>'First'),
+   array('external_id'=>'duplicate','post_title'=>'Second')
+ )));
+ok(is_wp_error($dup)&&$dup->get_error_code()==='mad4b_dmc_import_duplicate','DMC duplicate ID accepted');
 $unlicensed=MAD4B_SCP_Market_Growth_Policies::inspect(array('media_id'=>'image_one'));
 ok(!$unlicensed['checks']['media_ingest_preflight_eligible']&&!$unlicensed['publication_ready'],'Competitor image gained implicit license');
 $attempt=array('category'=>'tone_of_voice','expected_plan_sha256'=>str_repeat('a',64));
