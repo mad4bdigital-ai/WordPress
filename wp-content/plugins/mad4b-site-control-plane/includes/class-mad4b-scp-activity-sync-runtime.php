@@ -165,6 +165,17 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 array_diff( array_keys( $read['fields'] ), $field_keys ) ||
                 ! isset( $read['state'] ) || 'present' !== $read['state'] )
                 return self::err( 'mad4b_sync_provider_observation_invalid', 'Provider returned incomplete, missing or deleted source fields.' );
+            if ( ! is_string( $read['revision'] ) ||
+                ! preg_match( '/^[A-Za-z0-9._:-]{1,160}$/D', $read['revision'] ) ||
+                ! is_string( $read['observed_at'] ) ||
+                false === strtotime( $read['observed_at'] ) ||
+                strtotime( $read['observed_at'] ) > time() + 60 ||
+                time() - strtotime( $read['observed_at'] ) > 3600 )
+                return self::err( 'mad4b_sync_provider_revision_stale',
+                    'Provider must return a fresh, bounded exact resource revision.' );
+            foreach ( $read['fields'] as $field_value )
+                if ( ! is_scalar( $field_value ) || strlen( (string) $field_value ) > 4000 )
+                    return self::err( 'mad4b_sync_provider_field_unbounded', 'Provider returned an unsafe field value.' );
             $expect = (string) $source['source_ref'];
             if ( (string) $read['resource_id'] !== $expect )
                 return self::err( 'mad4b_sync_provider_resource_swapped', 'Provider resource identity differs from configured exact source.' );
@@ -224,8 +235,22 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         if ( is_wp_error( $binding ) ) return $binding;
         $cp = get_option( self::key( $binding, 'checkpoint' ), false );
         $op = get_option( self::key( $binding, 'operation' ), false );
+        $adapters = self::adapters( $binding );
+        $provider_status = array();
+        foreach ( $binding['sources'] as $source_id => $source ) {
+            $id = $source['provider'];
+            $a = isset( $adapters[ $id ] ) ? $adapters[ $id ] : array();
+            $provider_status[ $source_id ] = array(
+                'provider' => $id, 'resource_kind' => $source['resource_kind'],
+                'reader_registered' => isset( $a['read'] ) && is_callable( $a['read'] ),
+                'conditional_writer_registered' => isset( $a['write'] ) && is_callable( $a['write'] ) &&
+                    ! empty( $a['conditional_write'] ) && ! empty( $a['readback'] ),
+                'authenticated_readback_proven' => false,
+            );
+        }
         return array( 'contract' => self::CONTRACT, 'checkpoint_present' => is_array( $cp ),
             'checkpoint_sha256' => is_array( $cp ) ? self::digest( $cp ) : null,
+            'provider_status' => $provider_status,
             'operation_state' => is_array( $op ) && isset( $op['state'] ) ? $op['state'] : 'none',
             'operation_sha256' => is_array( $op ) ? self::digest( $op ) : null,
             'read_only' => true, 'mutation_performed' => false );
