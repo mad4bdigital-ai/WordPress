@@ -96,7 +96,7 @@ final class MAD4B_SCP_Recovery_Attempt_Budget {
     }
 
     public static function finish( $reservation, $outcome ) {
-        if ( ! is_array( $reservation ) || ! in_array( $outcome, array( 'failed', 'succeeded' ), true ) )
+        if ( ! is_array( $reservation ) || ! in_array( $outcome, array( 'failed', 'succeeded', 'uncertain' ), true ) )
             return self::error( 'mad4b_retry_outcome_invalid', 'Retry completion requires exact reservation and outcome.' );
         $hash = isset( $reservation['scope_sha256'] ) ? $reservation['scope_sha256'] : '';
         $at = isset( $reservation['attempt'] ) ? (int) $reservation['attempt'] : 0;
