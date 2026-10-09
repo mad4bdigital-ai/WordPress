@@ -94,6 +94,23 @@ for (const req of [
  {url:"blob:https://staging.egypttourgates.com/code",method:"GET",resourceType:"script"},
  {url:"https://staging.egypttourgates.com/socket",method:"GET",resourceType:"websocket"}
 ]) assert.equal(requestBoundaryDecision({...req,origin,env,passiveOnly:true}).allow,false);
+// A passive canonical/DOM probe must not issue subresource GETs; images,
+// stylesheets, fonts, favicons and preloads can have server-side effects.
+for (const testCase of [
+  {url:origin+"delete-booking?id=42",resourceType:"image",method:"GET"},
+  {url:origin+"public/?trigger=1",resourceType:"stylesheet",method:"GET"},
+  {url:origin+"public/",resourceType:"font",method:"GET"},
+  {url:"https://cdn.example.com/logo.png",resourceType:"image",method:"GET"},
+  {url:"data:image/svg+xml,hello",resourceType:"image",method:"GET"},
+  {url:"about:blank",resourceType:"document",method:"GET"}
+]) {
+  const decision=requestBoundaryDecision({...testCase,origin,env,passiveOnly:true,
+    allowedDocumentPaths:["/public/"]});
+  assert.equal(decision.allow,false,"passive subresource/URL cannot reach network");
+}
+assert.equal(requestBoundaryDecision({
+  url:origin+"public/",resourceType:"image",method:"GET",origin,env,passiveOnly:true
+}).reason,"passive_subresource_denied");
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/public/",method:"GET",
   resourceType:"document",origin,env,passiveOnly:true,
@@ -137,6 +154,23 @@ assert.equal(requestBoundaryDecision({
   url:origin+"public/",resourceType:"document",method:"GET",origin,env,
   passiveOnly:true,allowedDocumentPaths:["/public/"]
 }).allow,true);
+// Signed paths cannot be replay-loaded as nested iframe documents.
+let blockedSubframe=false;
+await rules[1].handler({
+  request:()=>({url:()=>origin+"public/",resourceType:()=>"document",
+    method:()=>"GET",frame:()=>({parentFrame:()=>({})})}),
+  abort:async()=>{blockedSubframe=true;},
+  continue:async()=>{throw Error("subframe_was_allowed");}
+});
+assert.equal(blockedSubframe,true);
+let continuedMainframe=false;
+await rules[1].handler({
+  request:()=>({url:()=>origin+"public/",resourceType:()=>"document",
+    method:()=>"GET",frame:()=>({parentFrame:()=>null})}),
+  abort:async()=>{throw Error("mainframe_was_blocked");},
+  continue:async()=>{continuedMainframe=true;}
+});
+assert.equal(continuedMainframe,true);
 assert.equal(report.exact_signed_document_paths,1);
 await assert.rejects(installContextNetworkBoundary(fakeContext,origin,env,{
   passiveOnly:true,allowedDocumentPaths:[]

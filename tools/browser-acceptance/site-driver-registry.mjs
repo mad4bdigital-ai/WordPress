@@ -11,6 +11,14 @@ const DRIVERS = Object.freeze([
     provider_contract: "etg.dfsb.browser-acceptance-provider.v2",
     driver_id: "etg-dfsb",
     evidence_contract: "etg.dfsb.browser-acceptance-evidence.v1",
+    // Reviewed observable Oracles; this does not certify booking or payment.
+    approved_oracles: Object.freeze([
+      "browser.ajax_round_trip", "browser.event_stream", "browser.dom_result_count",
+      "browser.dataset_id_parity", "browser.dataset_digest_parity",
+      "browser.order_parity", "browser.url_state", "browser.seo_non_authority",
+      "browser.reset_behavior", "browser.performance_baseline",
+      "browser.async_digest_snapshot"
+    ]),
     validatePlan: etgValidatePlan,
     runBrowserPlan: etgRunBrowserPlan
   }),
@@ -18,6 +26,7 @@ const DRIVERS = Object.freeze([
     provider_contract: DECLARATIVE_PROVIDER_CONTRACT,
     driver_id: "mad4b-declarative-capabilities",
     evidence_contract: DECLARATIVE_EVIDENCE_CONTRACT,
+    approved_oracles: Object.freeze(["browser.canonical_path"]),
     validatePlan: validateDeclarativePlan,
     runBrowserPlan: runDeclarativeBrowserPlan
   })
@@ -25,8 +34,9 @@ const DRIVERS = Object.freeze([
 
 export function approvedSiteDrivers() {
   // JSON-compatible public declarations only: never export runtime callbacks via MCP.
-  return DRIVERS.map(({ provider_contract, driver_id, evidence_contract }) =>
-    Object.freeze({ provider_contract, driver_id, evidence_contract }));
+  return DRIVERS.map(({ provider_contract, driver_id, evidence_contract, approved_oracles }) =>
+    Object.freeze({ provider_contract, driver_id, evidence_contract,
+      approved_oracles: Object.freeze([...approved_oracles]) }));
 }
 
 export function resolveSiteDriverForPlan(plan) {

@@ -64,10 +64,14 @@ export function requestBoundaryDecision({
       "worker", "sharedworker", "serviceworker"].includes(kind)) {
       return { allow: false, reason: "passive_active_resource_denied" };
     }
-    if (/^(?:blob|data):/i.test(raw) &&
-        ["script", "document", "worker", "sharedworker", "serviceworker"].includes(
-          String(resourceType || "").toLowerCase())) {
-      return { allow: false, reason: "passive_active_local_scheme_denied" };
+    // In generic signed-document probes, even GET images/stylesheets/fonts
+    // can hit same-origin endpoints with side effects (e.g. an img GET
+    // triggering a legacy action). No subresource is needed to inspect the
+    // server-rendered title/canonical/DOM markers. Fail closed for ALL kinds
+    // other than document. ETG's specialized active workflow is unchanged.
+    if (kind !== "document") return { allow: false, reason: "passive_subresource_denied" };
+    if (/^(?:blob|data|about):/i.test(raw)) {
+      return { allow: false, reason: "passive_document_scheme_denied" };
     }
   }
   if (/^(?:data|blob|about):/i.test(raw)) return { allow: true, reason: "local_scheme" };
@@ -128,6 +132,18 @@ export async function installContextNetworkBoundary(context, origin, env = proce
   }
   await context.route("**/*", async (route) => {
     const request = route.request();
+    if (passiveOnly && request.resourceType() === "document") {
+      // A signed page-path allowlist is not permission for nested iframe
+      // documents or meta-initiated subframes to generate extra GETs.
+      // Use the browser's actual frame ancestry; no URL string heuristic.
+      let mainFrameRequest = false;
+      try {
+        const frame = request.frame();
+        mainFrameRequest = !!frame && typeof frame.parentFrame === "function" &&
+          frame.parentFrame() === null;
+      } catch { /* network requests without a Frame fail closed */ }
+      if (!mainFrameRequest) return route.abort("blockedbyclient");
+    }
     const decision = requestBoundaryDecision({
       url: request.url(),
       resourceType: request.resourceType(),

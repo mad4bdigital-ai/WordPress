@@ -4,6 +4,7 @@ const ID = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const CONTRACT = /^[a-z0-9][a-z0-9._-]{0,159}$/;
 const SHA = /^[a-f0-9]{64}$/;
 const REV = /^[a-f0-9]{32}$/;
+const ORACLE_ID = /^[a-z][a-z0-9._-]{2,79}$/;
 const HOST = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?::[0-9]{2,5})?(?:\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,63})*\/?$/;
 const EXECUTORS = new Set(["auto", "cloudflare", "browserbase", "browserless", "steel"]);
 
@@ -17,8 +18,14 @@ const valid = (value, pattern) => typeof value === "string" && pattern.test(valu
 export function resolveSiteBrowserAdapter(caps, {
   requestedProfile = "",
   requestedExecutor = "auto",
+  requestedOracles = [],
   approvedDrivers = []
 } = {}) {
+  if (!Array.isArray(requestedOracles) || requestedOracles.length > 16 ||
+      requestedOracles.some(id => !valid(id, ORACLE_ID)) ||
+      new Set(requestedOracles).size !== requestedOracles.length) fail("requested_oracles_invalid");
+  // Discovery may locate an integration, but cannot certify its Oracles.
+  const mandatoryOracles = [...requestedOracles].sort();
   if (!caps || caps.contract !== "mad4b.browser-acceptance-capabilities.v1" ||
       caps.read_only !== true || caps.authorizing !== false) fail("capabilities_invalid");
   const siteOrigin = origin(caps.site_origin);
@@ -134,6 +141,12 @@ export function resolveSiteBrowserAdapter(caps, {
   for (const driver of approvedDrivers) {
     if (!driver || !valid(driver.provider_contract, CONTRACT) || !valid(driver.driver_id, ID) ||
         !valid(driver.evidence_contract, CONTRACT) || candidates.has(driver.provider_contract)) fail("driver_registry_invalid");
+    if (mandatoryOracles.length && (!Array.isArray(driver.approved_oracles) ||
+        driver.approved_oracles.length > 64 ||
+        driver.approved_oracles.some(id => !valid(id, ORACLE_ID)) ||
+        new Set(driver.approved_oracles).size !== driver.approved_oracles.length)) {
+      fail("driver_oracle_manifest_invalid");
+    }
     candidates.set(driver.provider_contract, driver);
   }
   const pref = caps.operator_preference;
@@ -149,12 +162,23 @@ export function resolveSiteBrowserAdapter(caps, {
   if (pref.executor !== "auto" && requestedExecutor !== "auto" && pref.executor !== requestedExecutor) fail("executor_conflict");
   // A discovered provider without a reviewed driver is visible but not executable.
   // Never silently replace it with a different installed provider.
-  const eligible = [...recognized].sort();
+  const eligible = [...recognized].sort().filter(id => {
+    if (!mandatoryOracles.length) return true;
+    const row = providers.get(id);
+    const reviewed = candidates.get(row.contract)?.approved_oracles || [];
+    const declared = row.capabilities.capabilities;
+    if (!Array.isArray(declared) || declared.length > 64 ||
+        declared.some(x => !valid(x, ORACLE_ID)) ||
+        new Set(declared).size !== declared.length) fail("provider_oracle_claim_invalid");
+    return mandatoryOracles.every(id => reviewed.includes(id) && declared.includes(id));
+  });
   let providerId = pref.site_provider_id;
   if (providerId && !providers.has(providerId)) fail("selected_provider_unregistered");
   if (providerId && !recognized.has(providerId)) fail("selected_provider_not_discovered");
+  if (providerId && !eligible.includes(providerId)) fail("selected_provider_oracle_scope_unapproved");
   if (!providerId) {
-    if (!eligible.length) fail("site_adapter_missing");
+    if (!eligible.length) fail(mandatoryOracles.length ?
+      "requested_oracle_not_approved" : "site_adapter_missing");
     // Provider profile selection is a *declared contract*, not site-name
     // inference. Only an explicit requested profile can disambiguate it.
     let possible = eligible;
@@ -188,6 +212,7 @@ export function resolveSiteBrowserAdapter(caps, {
     executor: requestedExecutor === "auto" ? pref.executor : requestedExecutor,
     configuredExecutor: pref.executor, configurationRevision: pref.configuration_revision,
     discoverySha256: observed.snapshot_sha256, authorizing: false,
+    requestedOracles: Object.freeze(mandatoryOracles), oracleScopeCertified: false,
     externallyCertified: false, unmappedPlugins: observed.unmapped_plugins || []
   });
 }
@@ -197,6 +222,8 @@ export function assertSiteBindingUnchanged(initial, next) {
     "evidenceContract", "profileId", "executor", "configuredExecutor", "configurationRevision", "discoverySha256"]) {
     if (!initial || !next || initial[key] !== next[key]) fail("binding_changed:" + key);
   }
+  if (JSON.stringify(initial?.requestedOracles || []) !==
+      JSON.stringify(next?.requestedOracles || [])) fail("binding_changed:requestedOracles");
   return true;
 }
 
@@ -209,6 +236,10 @@ export function assertSitePlanBound(selection, plan) {
       plan.state !== "ready" || plan.read_only !== true || plan.authorizing !== false ||
       !valid(plan.plan_digest, SHA) || !valid(plan.plan_signature, SHA) ||
       !Array.isArray(plan.cases) || !plan.cases.length || plan.cases.length > 8 ||
+      ((selection?.requestedOracles || []).length > 0 &&
+        (!Array.isArray(plan.required_oracles) ||
+         JSON.stringify([...plan.required_oracles].sort()) !==
+           JSON.stringify(selection.requestedOracles))) ||
       (plan.provider_contract === "mad4b.capability-browser-provider.v1" &&
         (plan.source_snapshot_sha256 !== selection.discoverySha256 ||
          plan.configuration_revision !== selection.configurationRevision))) fail("plan_binding_mismatch");
