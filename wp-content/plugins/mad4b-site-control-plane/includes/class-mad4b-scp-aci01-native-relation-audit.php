@@ -57,16 +57,41 @@ final class MAD4B_SCP_ACI01_Native_Relation_Audit {
         $binding = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $binding ) || ! is_array( $binding ) ) return self::deny( 'binding_unverified' );
         if ( ! current_user_can( 'read_post', $id ) ) return self::deny( 'post_read_denied' );
-        $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'translation-bridge' );
-        if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'translation_get_post' )
-            || ! $adapter->is_available() ) return self::deny( 'translation_provider_not_available' );
-        $before = $adapter->translation_get_post( array( 'post_id' => $id, 'provider' => $provider ) );
-        if ( is_wp_error( $before ) ) return self::deny( 'translation_observation_failed' );
-        $after = $adapter->translation_get_post( array( 'post_id' => $id, 'provider' => $provider ) );
+        // The underlying bridge defaults to WPML when two translation plugins
+        // coexist. An ACI01 native identity audit must never silently choose.
+        try {
+            $adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'translation-bridge' );
+            if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'translation_get_post' )
+                || ! method_exists( $adapter, 'translation_status' )
+                || ! method_exists( $adapter, 'is_available' ) || ! $adapter->is_available() )
+                return self::deny( 'translation_provider_not_available' );
+            $provider_before = $adapter->translation_status();
+            if ( ! is_array( $provider_before )
+                || ! is_bool( $provider_before['wpml'] ?? null )
+                || ! is_bool( $provider_before['polylang'] ?? null )
+                || ( ! $provider_before['wpml'] && ! $provider_before['polylang'] ) )
+                return self::deny( 'translation_provider_inventory_invalid' );
+            if ( 'auto' === $provider && $provider_before['wpml'] && $provider_before['polylang'] )
+                return self::deny( 'translation_provider_ambiguous' );
+            if ( 'auto' !== $provider && ! $provider_before[$provider] )
+                return self::deny( 'translation_provider_not_available' );
+            $before = $adapter->translation_get_post( array( 'post_id' => $id, 'provider' => $provider ) );
+            if ( is_wp_error( $before ) ) return self::deny( 'translation_observation_failed' );
+            $after = $adapter->translation_get_post( array( 'post_id' => $id, 'provider' => $provider ) );
+            $provider_after = $adapter->translation_status();
+        } catch ( \Throwable $e ) {
+            // Third-party translation filters may throw. Never leak provider
+            // details, certify partial reads, or turn a read into a crash.
+            return self::deny( 'translation_provider_exception' );
+        }
         $nextBinding = MAD4B_SCP_ACI01_Runtime_Binding::current();
         if ( is_wp_error( $after ) || is_wp_error( $nextBinding )
-            || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $nextBinding ) )
+            || ! MAD4B_SCP_ACI01_Runtime_Binding::same( $binding, $nextBinding )
+            || $provider_before !== $provider_after )
             return self::deny( 'snapshot_changed' );
+        if ( ! is_array( $before )
+            || ( 'auto' !== $provider && ( $before['provider'] ?? null ) !== $provider ) )
+            return self::deny( 'translation_provider_identity_mismatch' );
         return self::assess( $before, $after, $id, $type, $locale, $binding );
     }
 
@@ -80,7 +105,8 @@ final class MAD4B_SCP_ACI01_Native_Relation_Audit {
             || $before !== $after ) return self::deny( 'observation_inconsistent' );
         if ( ! in_array( $before['provider'] ?? '', array( 'wpml', 'polylang' ), true )
             || ! isset( $before['post_id'], $before['post_type'], $before['language'], $before['group'], $before['translations'] )
-            || (int) $before['post_id'] !== $id || (string) $before['post_type'] !== $type
+            || ! is_int( $before['post_id'] ) || $before['post_id'] !== $id
+            || ! is_string( $before['post_type'] ) || $before['post_type'] !== $type
             || (string) $before['language'] !== $locale
             || ! is_string( $before['group'] ) || '' === $before['group']
             || ! is_array( $before['translations'] )
