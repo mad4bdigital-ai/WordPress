@@ -43,7 +43,7 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
 }
 class MAD4B_SCP_Site_Capability_Discovery {
     public static function observe( $origin ) {
-        return array( 'discovery_complete' => true, 'origin' => $origin, 'plugins' => array(),
+        return array( 'discovery_complete' => ! isset( $GLOBALS['inventory_ready'] ) || $GLOBALS['inventory_ready'], 'origin' => $origin, 'plugins' => array(),
             'post_types' => array( 'post' ), 'taxonomies' => array( 'category' ),
             'provider_matches' => array(), 'certification_issued' => false, 'authorizing' => false );
     }
@@ -81,6 +81,13 @@ foreach ( array( 'cso/discover', 'cso/form-schema', 'cso/form-validate', 'cso/fo
 $discovered = MAD4B_SCP_CSO01_Read_Foundation::discover();
 mad4b_test( ! is_wp_error( $discovered ) && false === $discovered['writes_enabled']
     && false === $discovered['provider_certification_issued'], 'discovery incorrectly authorized' );
+$GLOBALS['inventory_ready'] = false;
+$incomplete = MAD4B_SCP_CSO01_Read_Foundation::discover();
+mad4b_test( ! is_wp_error( $incomplete ) && false === $incomplete['discovery_complete']
+    && false === $incomplete['writes_enabled'] && false === $incomplete['authorizing']
+    && 'reconcile_inventory_evidence_before_any_certification' === $incomplete['next_safe_action'],
+    'partial inventory falsely authorized or hidden' );
+unset( $GLOBALS['inventory_ready'] );
 $form = MAD4B_SCP_CSO01_Read_Foundation::form_schema( array( 'ability_name' => $target ) );
 mad4b_test( ! is_wp_error( $form ) && false === $form['editable']
     && 64 === strlen( $form['descriptor_sha256'] ) && 3 === count( $form['fields'] ),
