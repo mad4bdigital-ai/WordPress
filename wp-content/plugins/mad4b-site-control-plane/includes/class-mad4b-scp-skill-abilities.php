@@ -172,7 +172,15 @@ final class MAD4B_SCP_Skill_Abilities {
 				'This Skill requires governed Brand Context that is not currently ready.',
 				array(
 					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
-					'context_preflight' => $preflight,
+					// Deliberately redact the raw Context envelope and signed
+					// receipt. Even a blocked preflight may contain eligible
+					// optional assets unrelated to the missing required set.
+					'context_ready' => false,
+					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
+					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
+					'next_read_ability' => 'mad4b/skill-context-preflight',
+					'context_envelope_exposed' => false,
+					'context_receipt_exposed' => false,
 				)
 			);
 		}
