@@ -7,10 +7,15 @@ function wp_register_ability($n,$d){$GLOBALS['aci03_registered'][$n]=$d;}
 function is_wp_error($v){return $v instanceof WP_Error;}
 class WP_Error{function __construct($code=''){ } }
 final class MAD4B_SCP_ACI01_Runtime_Binding{
-    public static function current(){return array('contract'=>'mad4b.aci01.runtime-binding.v1',
+    public static $reads=0;
+    public static $epoch_flip_after=0;
+    public static function current(){
+        self::$reads++;
+        $epoch=(self::$epoch_flip_after>0 && self::$reads>self::$epoch_flip_after)?2:1;
+        return array('contract'=>'mad4b.aci01.runtime-binding.v1',
         'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
         'origin'=>'https://example.org','environment'=>'staging',
-        'runtime_generation'=>str_repeat('f',64),'restore_epoch'=>1);}
+        'runtime_generation'=>str_repeat('f',64),'restore_epoch'=>$epoch);}
     public static function is_valid($b){return is_array($b)&&isset($b['restore_epoch']);}
     public static function same($a,$b){return self::is_valid($a)&&self::is_valid($b)&&$a===$b;}
 }
@@ -19,6 +24,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
     public static $status_calls=0;
     public static $drift=false;
     public static $authority_current=true;
+    public static $revoke_grant_during_read=false;
     public static function profile_status($input=array()){
         self::$status_calls++;
         $revision=self::$drift && self::$status_calls % 3===0 ? 2 : 1;
@@ -30,6 +36,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
         ));
     }
     public static function profile($slug) {
+        if (self::$revoke_grant_during_read) MAD4B_SCP_Policy::$read=false;
         return array('slug'=>$slug,'post_type'=>'post','revision'=>1,
             'authority_sha256'=>str_repeat('d',64),
             'aci01_recipe_variants'=>self::$variants);
@@ -38,6 +45,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 final class MAD4B_SCP_Policy { public static $read=true;public static function can_read(){return self::$read;} }
 final class MAD4B_SCP_ACI01_Evidence_Preview {
     public static $denied=false;
+    public static $job_override='';
     public static function preview($input) {
         if(self::$denied)return array('status'=>'DENIED');
         return array('contract'=>'mad4b.aci01.evidence-preview.v1','authorizing'=>false,'mutation_performed'=>false,'status'=>'NEEDS_EVIDENCE','scope'=>array(
@@ -46,7 +54,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             'brand_id'=>'b1','locale'=>'ar','market'=>'EG',
             'content_type'=>'article', 'binding'=>MAD4B_SCP_ACI01_Runtime_Binding::current()),
             'preview_sha256'=>str_repeat('a',64),
-            'job_id'=>$input['job_id'],
+            'job_id'=>self::$job_override!==''?self::$job_override:$input['job_id'],
             'evidence_summaries'=>array(),
             'reason_codes'=>array('context_not_ready','research_evidence_required'));
     }
@@ -211,5 +219,56 @@ MAD4B_SCP_Content_Experience_Profiles::$drift=true;
 check($cls::preview($input)['status']==='DENIED',
     'profile revision drift during recipe read denied');
 MAD4B_SCP_Content_Experience_Profiles::$drift=false;
+MAD4B_SCP_Content_Experience_Profiles::$variants=array();
+
+// Compiler is pure: changing the global profile store must not change a
+// compile replay when the exact observed snapshot is pinned as an argument.
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant);
+$observed=MAD4B_SCP_ACI01_Recipe_Gap::resolve_current($semantic,$evidence['scope']);
+check($observed['status']==='FOUND','fixture obtains exact observed recipe');
+$first=$cls::compile($intake,$evidence,$input['goal'],$semantic,$observed);
+$profile_reads=MAD4B_SCP_Content_Experience_Profiles::$status_calls;
+MAD4B_SCP_Content_Experience_Profiles::$variants=array();
+$again=$cls::compile($intake,$evidence,$input['goal'],$semantic,$observed);
+check($first['candidate_sha256']===$again['candidate_sha256'],
+    'compiler replay stable despite live profile changes');
+check($profile_reads===MAD4B_SCP_Content_Experience_Profiles::$status_calls,
+    'pure compiler does not perform hidden profile IO');
+check($again['authorizing']===false &&
+    $again['blueprint_handoff']['dispatch_allowed']===false,
+    'even pinned positive recipe does not grant execution');
+$invalid=$observed;
+$invalid['reason_codes']=array('../untrusted');
+check($cls::compile($intake,$evidence,$input['goal'],$semantic,$invalid)['status']==='DENIED',
+    'untrusted recipe reason denied');
+$invalid=$observed;
+$invalid['status']='MISSING';
+check($cls::compile($intake,$evidence,$input['goal'],$semantic,$invalid)['status']==='DENIED',
+    'missing recipe cannot carry non-null declaration');
+$invalid=$observed;
+$invalid['recipe']['profile_revision']=99;
+check($cls::compile($intake,$evidence,$input['goal'],$semantic,$invalid)['status']==='DENIED',
+    'forged recipe revision denied by pure evaluator');
+$invalid=$observed;
+$invalid['status']='READY';
+check($cls::compile($intake,$evidence,$input['goal'],$semantic,$invalid)['status']==='DENIED',
+    'recipe ready state cannot self-certify');
+MAD4B_SCP_ACI01_Evidence_Preview::$job_override=
+    '33333333-3333-4333-8333-333333333333';
+check($cls::preview($input)['status']==='DENIED',
+    'wrong job returned by evidence provider denied');
+MAD4B_SCP_ACI01_Evidence_Preview::$job_override='';
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant);
+MAD4B_SCP_Content_Experience_Profiles::$revoke_grant_during_read=true;
+check($cls::preview($input)['status']==='DENIED',
+    'read grant revoked during recipe lookup denied');
+MAD4B_SCP_Content_Experience_Profiles::$revoke_grant_during_read=false;
+MAD4B_SCP_Policy::$read=true;
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant);
+MAD4B_SCP_ACI01_Runtime_Binding::$reads=0;
+MAD4B_SCP_ACI01_Runtime_Binding::$epoch_flip_after=2;
+check($cls::preview($input)['status']==='DENIED',
+    'restore epoch changed during recipe lookup denied');
+MAD4B_SCP_ACI01_Runtime_Binding::$epoch_flip_after=0;
 MAD4B_SCP_Content_Experience_Profiles::$variants=array();
 echo "ACI01_OPPORTUNITY_CANDIDATE: PASS\n";
