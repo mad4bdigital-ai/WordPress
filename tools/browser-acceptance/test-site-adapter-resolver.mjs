@@ -211,6 +211,24 @@ assert.throws(()=>assertSitePlanBound(etgResult,{...plan,origin:"https://another
 const result={contract:"mad4b.browser-acceptance-result.v1",provider_id:plan.provider_id,
  provider_contract:plan.provider_contract,profile_id:plan.profile_id,suite:plan.suite,
  plan_digest:plan.plan_digest,read_only:true,authorizing:false};
-assertSiteResultBound(plan,result);
-assert.throws(()=>assertSiteResultBound(plan,{...result,provider_id:"other"}),/site_browser_result_binding_mismatch/);
+assertSiteResultBound(plan,{...result,
+  release_ready:false,globally_unique_consumption_proven:false});
+assert.throws(()=>assertSiteResultBound(plan,{...result,provider_id:"other"}),
+  /site_browser_result_binding_mismatch/);
+for(const forged of [
+  {...result,release_ready:true,globally_unique_consumption_proven:false},
+  {...result,release_ready:false,globally_unique_consumption_proven:true}
+]) assert.throws(()=>assertSiteResultBound(plan,forged),/site_browser_result_binding_mismatch/);
+const observedPass={...result,verdict:"PASS",
+  release_ready:false,globally_unique_consumption_proven:false,receipt_authorizing:false,
+  evidence_digest:"1".repeat(64),receipt_signature:"2".repeat(64),
+  verification:{browser_runtime_parity_verified:true,verified_through:"live_browser_runtime"}};
+assertSiteResultBound(plan,observedPass);
+for(const forged of [
+  {...observedPass,receipt_signature:"tampered"},
+  {...observedPass,evidence_digest:""},
+  {...observedPass,receipt_authorizing:true},
+  {...observedPass,verification:{...observedPass.verification,verified_through:"inferred"}}
+]) assert.throws(()=>assertSiteResultBound(plan,forged),
+  /site_browser_(pass_observation_receipt_invalid|result_binding_mismatch)/);
 console.log("MAD4B_SITE_ADAPTER_RESOLVER: PASS");
