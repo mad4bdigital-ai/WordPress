@@ -25,3 +25,6 @@ x markers are source deliverables, NOT live runtime certification.
 - [x] N020 Capability Atlas never maps source inventory completeness to release readiness
 - [ ] N021 Independent single-use replay ledger with exact run-ID, server-enforced atomic consumption
 - [ ] N022 External browser provider session/network attestation and site-local exact-run receipts
+
+- [x] N023 Register explicit WebSocket interception before generic page creation; deny if unsupported
+- [ ] N024 Remote-browser WebSocket/WebRTC/DNS-IP egress acceptance with provider-level packet-proof receipts

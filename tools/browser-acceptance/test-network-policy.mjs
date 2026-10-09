@@ -3,7 +3,8 @@ import {
   allowedHostSet,
   configuredAllowedHosts,
   originHostname,
-  requestBoundaryDecision
+  requestBoundaryDecision,
+  installContextNetworkBoundary
 } from "./network-policy.mjs";
 
 const origin = "https://staging.egypttourgates.com/";
@@ -101,4 +102,19 @@ assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/wp-admin/admin-ajax.php",method:"POST",
   resourceType:"xhr",origin,env,passiveOnly:false
 }).allow,true); // Legacy ETG AJAX parity retains its own reviewed policy.
+const rules=[];
+const fakeContext={
+  async routeWebSocket(pattern, handler) { rules.push({type:"ws",pattern,handler}); },
+  async route(pattern,handler) { rules.push({type:"http",pattern,handler}); }
+};
+const report=await installContextNetworkBoundary(fakeContext,origin,env,{passiveOnly:true});
+assert.equal(report.websocket_network_denied,true);
+assert.deepEqual(rules.map(r=>r.type),["ws","http"]); // Must arm socket denial first.
+let closed=false;
+await rules[0].handler({ close:async()=>{closed=true;} });
+assert.equal(closed,true);
+await assert.rejects(
+  installContextNetworkBoundary({route:async()=>{}},origin,env,{passiveOnly:true}),
+  /browser_websocket_boundary_unavailable/
+);
 console.log("MAD4B browser network boundary PASS");

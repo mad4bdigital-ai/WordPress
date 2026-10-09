@@ -73,6 +73,7 @@ const browser={
   assert.equal(opts.serviceWorkers,"block");
   const ctx={
    route:async()=>{},
+   routeWebSocket:async()=>{},
    async newPage(){return page;},
    async close(){ctx.closed=true;}
   };
