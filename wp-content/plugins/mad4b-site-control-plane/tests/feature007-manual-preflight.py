@@ -50,6 +50,7 @@ LINT = (
     "class-mad4b-scp-content-intelligence-pipeline.php",
     "class-mad4b-scp-staging-certification.php",
     "class-mad4b-scp-operational-remediation.php",
+    "class-mad4b-scp-chatgpt-tool-projection.php",
     "class-mad4b-scp-host-bridge.php",
     "adapters/class-mad4b-scp-aci01-read-adapter.php",
 )
@@ -65,6 +66,7 @@ FIXTURES = (
     "staging-write-authority-postcondition-runtime.php",
     "staging-convergence-coverage-runtime.php",
     "operational-remediation-control-runtime.php",
+    "projection-registration-lifecycle.php",
     "host-bridge-contract.php",
     "browser-acceptance-admin-setup-contract.php",
     "staging-browser-site-selection-contract.php",
@@ -96,6 +98,7 @@ PY_CHECKS = (
     "staging-write-authority-convergence-contract.py",
     "staging-certification-contract.py",
     "operational-remediation-source-contract.py",
+    "chatgpt-dynamic-tool-projection-contract.py",
     "host-runner-kernel-contract.py",
     "host-environment-sync-runner-contract.py",
     "g6-delivery-integrity.py",
