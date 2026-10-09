@@ -96,7 +96,8 @@ for (const req of [
 ]) assert.equal(requestBoundaryDecision({...req,origin,env,passiveOnly:true}).allow,false);
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/public/",method:"GET",
-  resourceType:"document",origin,env,passiveOnly:true
+  resourceType:"document",origin,env,passiveOnly:true,
+  allowedDocumentPaths:["/public/"]
 }).allow,true);
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com/wp-admin/admin-ajax.php",method:"POST",
