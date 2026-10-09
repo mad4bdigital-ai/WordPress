@@ -165,12 +165,18 @@ $pass_qa=MAD4B_SCP_Content_Intelligence_Pipeline::blueprint_qa(array(
 	'hard_blockers'=>array(),'warnings'=>array(),
 ));
 $pass_qa_id=$pass_qa['artifact']['artifact_id'];
+$check($pass_qa['artifact']['payload']['independent_review_certified']===false
+    &&$pass_qa['artifact']['payload']['publication_authorized']===false,
+    'Passing Blueprint hard-blocker check cannot self-certify independent review');
 $draft=MAD4B_SCP_Content_Intelligence_Pipeline::append_draft(array(
 	'job_id'=>$job,'blueprint_artifact_id'=>$blueprint_id,'blueprint_qa_artifact_id'=>$pass_qa_id,
 	'context_artifact_id'=>$context_id,'writer_profile_id'=>'writer-1','writer_profile_version'=>'3',
 	'content'=>'Evidence-backed article draft.','section_count'=>2,
 ));
 $check(is_array($draft) && true===$draft['artifact']['payload']['can_write'],'Approved draft append failed');
+$check($draft['artifact']['payload']['draft_only']===true
+    &&$draft['artifact']['payload']['publication_authorized']===false,
+    'A provisional draft may never grant publication');
 $check('writer-1'===$draft['artifact']['payload']['writer_profile_id'],'Draft did not bind WriterProfile id from ContentJob');
 $check('3'===$draft['artifact']['payload']['writer_profile_version'],'Draft did not bind WriterProfile version from ContentJob');
 $check($writer_profile_fingerprint===$draft['artifact']['payload']['writer_profile_fingerprint'],'Draft WriterProfile fingerprint mismatch');
@@ -226,10 +232,37 @@ $qa=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
 ));
 $check(is_array($qa) && false===$qa['pass'],'FinalQA averaged away a hard blocker');
 $check(false===$qa['can_publish'] && false===$qa['publication_authorized'],'QA bundle created publish authority');
+$check($qa['quality_evidence_status']==='NEEDS_INDEPENDENT_REVIEW'
+    &&$qa['independent_review_certified']===false,
+    'FinalQA source-only quality pass cannot impersonate independent evidence');
 $final=MAD4B_SCP_Artifacts::$rows[$qa['final_qa_artifact_id']];
 $check(false===$final['payload']['pass'],'FinalQA artifact pass mismatch');
 $check(false===$final['payload']['can_publish'],'FinalQA artifact unexpectedly publishable');
+$check($final['payload']['independent_review_certified']===false
+    &&$final['payload']['quality_evidence_status']==='NEEDS_INDEPENDENT_REVIEW',
+    'FinalQA payload carries explicit independent review blocker');
 $check($writer_profile_fingerprint===$final['payload']['writer_profile_fingerprint'],'FinalQA lost WriterProfile lineage');
+
+// An input caller may not turn a self-reported QA component into a
+// licensed, independently reviewed or publication-authorizing attestation.
+$forged=MAD4B_SCP_Content_Intelligence_Pipeline::append_qa_bundle(array(
+    'job_id'=>$job,'draft_artifact_id'=>$draft_id,
+    'fact_ledger'=>array('claims'=>array(),'hard_blockers'=>array(),
+        'independent_review_certified'=>true,'publication_authorized'=>true),
+    'editorial_qa'=>array('findings'=>array(),'hard_blockers'=>array(),
+        'quality_evidence_status'=>'CERTIFIED','independent_review_certified'=>true),
+    'seo_qa'=>array('findings'=>array(),'hard_blockers'=>array(),
+        'independent_review_certified'=>true),
+));
+$check($forged['independent_review_certified']===false
+    &&$forged['publication_authorized']===false,
+    'Forged QA self-approval rejected in final aggregate');
+foreach($forged['qa_artifact_ids'] as $id){
+    $component=MAD4B_SCP_Artifacts::$rows[$id]['payload'];
+    $check($component['independent_review_certified']===false
+        &&$component['publication_authorized']===false,
+        'QA component must override caller-forged approval flags');
+}
 
 // Changing the ContentJob WriterProfile after Context/Draft creation must fail closed.
 MAD4B_SCP_Content_Jobs::$writer_profile_version='4';
