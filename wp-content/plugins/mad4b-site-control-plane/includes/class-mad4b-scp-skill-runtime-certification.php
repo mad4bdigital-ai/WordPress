@@ -127,6 +127,17 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 			: array();
 
 		$stale_reasons = array();
+		// A certificate from a prior ZIP may look live-ready but cannot be
+		// admitted as current-build evidence until its persisted seal matches
+		// the entrypoint's already-computed provenance-file digest.
+		$current_boot_digest = defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' )
+			? strtolower( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ) : '';
+		if ( 1 === preg_match( '/^[a-f0-9]{64}$/D', $current_boot_digest ) ) {
+			$stored_boot_digest = isset( $stored['boot_provenance_sha256'] ) && is_string( $stored['boot_provenance_sha256'] )
+				? strtolower( trim( $stored['boot_provenance_sha256'] ) ) : '';
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $stored_boot_digest )
+				|| ! hash_equals( $current_boot_digest, $stored_boot_digest ) ) $stale_reasons[] = 'boot_provenance_sha256_mismatch';
+		}
 		if ( empty( $current['identity_ready'] ) ) {
 			$stale_reasons[] = 'current_build_identity_unavailable';
 		} else {
