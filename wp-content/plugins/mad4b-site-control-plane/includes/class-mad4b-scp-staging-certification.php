@@ -410,7 +410,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'executor' => 'external_mcp_client',
 				'human_decision_required' => false,
 				'automatic_execution_allowed' => false,
-				'depends_on' => array( 'external_mcp_handshake_refresh' ),
+				'depends_on' => in_array( 'safe_boot', $blocking, true ) ? array( 'external_mcp_handshake_refresh' ) : array(),
 				'instruction' => 'Export a fresh exact-build snapshot token and finalize it from the same verified external subject/session after tools/list.',
 				'readback_ability' => 'mad4b/live-acceptance-status',
 			) );
@@ -458,6 +458,22 @@ final class MAD4B_SCP_Staging_Certification {
 				$candidate_plan = class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) && method_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'plan' )
 					? MAD4B_SCP_Staging_Write_Candidate_Binding::plan()
 					: array();
+				$binding = is_array( $candidate_plan ) && isset( $candidate_plan['candidate_binding'] ) && is_array( $candidate_plan['candidate_binding'] )
+					? $candidate_plan['candidate_binding'] : array();
+				if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) || empty( $candidate_plan['execution_eligible'] ) ) {
+					$append( $actions, $seen, 'write_runtime_evidence_review', array(
+						'kind' => 'read_only_blocker',
+						'executor' => 'wordpress_native',
+						'human_decision_required' => false,
+						'automatic_execution_allowed' => false,
+						'depends_on' => $recovery_dependencies,
+						'plan_ability' => 'mad4b/staging-write-candidate-binding-plan',
+						'blockers' => isset( $candidate_plan['blockers'] ) && is_array( $candidate_plan['blockers'] ) ? $candidate_plan['blockers'] : array( 'binding_plan_not_eligible' ),
+						'instruction' => 'Review the exact current Write runtime evidence. Never request a candidate-binding mutation when it is already current or the underlying plan is ineligible.',
+						'readback_ability' => 'mad4b/write-runtime-certification',
+						'production_policy' => 'deny',
+					) );
+				} else {
 				$append( $actions, $seen, 'candidate_binding_only', array(
 					'kind' => 'governed_mutation',
 					'executor' => 'wordpress_native',
@@ -473,6 +489,7 @@ final class MAD4B_SCP_Staging_Certification {
 					'production_policy' => 'deny',
 					'breakglass' => false,
 				) );
+				}
 			}
 		}
 		if ( in_array( 'browser_runtime', $blocking, true ) ) {
