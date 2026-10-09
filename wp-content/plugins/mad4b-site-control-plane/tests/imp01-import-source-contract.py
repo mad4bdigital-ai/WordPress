@@ -12,7 +12,7 @@ script=(R/"tools/feature007/google-apps-script/mad4b-activity-import-push.gs").r
 def check(value, reason):
     if not value: raise AssertionError(reason)
 for name in ("capabilities","plan","review","brand_core_plan","receive_signed",
-             "authorize_signed","register_rest","admin_page","expire_nonce"):
+             "authorize_signed","register_rest","admin_page","expire_nonce","wp_all_import_plan"):
     check("function "+name+"(" in code,"Missing bounded import ability: "+name)
 for marker in ("MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET","hash_hmac( 'sha256'",
     "hash_equals( $expected, $provided )","abs( time() - $data['issued_at'] ) > 300",
@@ -21,10 +21,12 @@ for marker in ("MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET","hash_hmac( 'sha256'",
     "mad4b_import_field_not_allowed","$profile['meta_keys']",
     "source_values_persisted","ready_for_import_execution' => false",
     "add_management_page","MAD4B_SCP_Context_Authority::brand_core_coverage()",
-    "MAD4B_SCP_Context_Authority::review_queue()"):
+    "MAD4B_SCP_Context_Authority::review_queue()",
+    "mad4b_wpai_update_not_allowed","requires_native_wpai_wizard_or_certified_adapter",
+    "'ready_for_import_execution' => false"):
     check(marker in code,"Unsafe/incomplete IMP01 boundary: "+marker)
 for suffix in ("business-activity-import-capabilities","business-activity-import-plan",
-               "business-activity-import-review","brand-core-acceptance-plan"):
+               "business-activity-import-review","business-activity-wp-all-import-plan","brand-core-acceptance-plan"):
     check(profile.count("'mad4b/"+suffix+"'")>=2,
           "MCP Ability missing from inventory/definitions: "+suffix)
 for marker in ("computeHmacSha256Signature","PropertiesService.getScriptProperties",
