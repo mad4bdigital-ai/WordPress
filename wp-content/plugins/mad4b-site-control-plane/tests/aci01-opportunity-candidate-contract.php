@@ -15,13 +15,25 @@ final class MAD4B_SCP_ACI01_Runtime_Binding{
     public static function same($a,$b){return self::is_valid($a)&&self::is_valid($b)&&$a===$b;}
 }
 final class MAD4B_SCP_Content_Experience_Profiles {
-    public static function profile_status($input=array()){return array(
-        'contract'=>'mad4b.content-experience-profiles.v1','profiles'=>array(
+    public static $variants=array();
+    public static $status_calls=0;
+    public static $drift=false;
+    public static $authority_current=true;
+    public static function profile_status($input=array()){
+        self::$status_calls++;
+        $revision=self::$drift && self::$status_calls % 3===0 ? 2 : 1;
+        return array('contract'=>'mad4b.content-experience-profiles.v1','profiles'=>array(
             array('slug'=>'article','post_type'=>'post','enabled'=>true,
                 'runtime_post_type_ready'=>true,'helper_catalog_match'=>true,
-                'authority_current'=>true,'migration_required'=>false,
-                'revision'=>1,'authority_sha256'=>str_repeat('d',64)),
-        ));}
+                'authority_current'=>self::$authority_current,'migration_required'=>false,
+                'revision'=>$revision,'authority_sha256'=>str_repeat('d',64)),
+        ));
+    }
+    public static function profile($slug) {
+        return array('slug'=>$slug,'post_type'=>'post','revision'=>1,
+            'authority_sha256'=>str_repeat('d',64),
+            'aci01_recipe_variants'=>self::$variants);
+    }
 }
 final class MAD4B_SCP_Policy { public static $read=true;public static function can_read(){return self::$read;} }
 final class MAD4B_SCP_ACI01_Evidence_Preview {
@@ -149,4 +161,55 @@ $bad['evidence_summaries']=array_fill(0,13,array('artifact_id'=>$research_id,
     'artifact_type'=>'serp_research'));
 check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
     'handoff remains bounded under volume pressure');
+
+// A bounded, governed local profile declaration must be selected by exact
+// site/brand/locale/market; never supplied by caller input or auto-approved.
+$basevariant=array('site_uuid'=>'123e4567-e89b-42d3-a456-426614174000',
+    'brand_id'=>'b1','locale'=>'ar','market'=>'EG',
+    'requirements'=>array('approved_brand_context','verified_commercial_facts'));
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant);
+$scoped=$cls::preview($input);
+check($scoped['recipe_binding_status']==='FOUND', 'exact-scope recipe selected');
+check(in_array('verified_commercial_facts',$scoped['required_blueprint_sections'],true),
+    'recipe-specific field obligations integrated');
+check(!in_array('reviewed_domain_recipe',$scoped['required_blueprint_sections'],true),
+    'reviewed profile declaration removes missing-declaration placeholder');
+check($scoped['candidate_sha256']!==$out['candidate_sha256'],
+    'recipe declaration affects candidate lineage fingerprint');
+check($scoped['authorizing']===false &&
+    $scoped['blueprint_handoff']['dispatch_allowed']===false,
+    'governed declaration still never authorizes execution');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array(array_merge($basevariant,
+    array('locale'=>'fr')));
+$unmatched=$cls::preview($input);
+check($unmatched['recipe_binding_status']==='MISSING',
+    'no automatic fallback from other locale');
+check(in_array('reviewed_domain_recipe',$unmatched['required_blueprint_sections'],true),
+    'cross-locale variant does not count as reviewed recipe');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array(array_merge($basevariant,
+    array('brand_id'=>'another-brand')));
+check($cls::preview($input)['recipe_binding_status']==='MISSING',
+    'other brand cannot supply active recipe');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array(array_merge($basevariant,
+    array('market'=>'SA')));
+check($cls::preview($input)['recipe_binding_status']==='MISSING',
+    'other market cannot supply active recipe');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant,$basevariant);
+check($cls::preview($input)['status']==='DENIED',
+    'duplicate exact recipe scope denied');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array(array_merge($basevariant,
+    array('requirements'=>array('good_fact','good_fact'))));
+check($cls::preview($input)['status']==='DENIED',
+    'duplicate fact obligations denied');
+MAD4B_SCP_Content_Experience_Profiles::$variants=array($basevariant);
+MAD4B_SCP_Content_Experience_Profiles::$authority_current=false;
+check($cls::preview($input)['status']==='DENIED',
+    'revoked profile authority denied');
+MAD4B_SCP_Content_Experience_Profiles::$authority_current=true;
+MAD4B_SCP_Content_Experience_Profiles::$status_calls=0;
+MAD4B_SCP_Content_Experience_Profiles::$drift=true;
+check($cls::preview($input)['status']==='DENIED',
+    'profile revision drift during recipe read denied');
+MAD4B_SCP_Content_Experience_Profiles::$drift=false;
+MAD4B_SCP_Content_Experience_Profiles::$variants=array();
 echo "ACI01_OPPORTUNITY_CANDIDATE: PASS\n";
