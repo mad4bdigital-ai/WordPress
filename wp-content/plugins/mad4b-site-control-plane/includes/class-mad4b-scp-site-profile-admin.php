@@ -282,7 +282,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					<tr><th><label for="mad4b-environment-sync-mode"><?php esc_html_e( 'WordPress environment synchronization', 'mad4b-site-control-plane' ); ?></label></th><td>
 						<select id="mad4b-environment-sync-mode" name="environment_sync_mode">
 							<option value="profile_only" <?php selected( $sync_mode, 'profile_only' ); ?>><?php esc_html_e( 'Profile Only (MAD4B governance)', 'mad4b-site-control-plane' ); ?></option>
-							<option value="host_managed" <?php selected( $sync_mode, 'host_managed' ); ?>><?php esc_html_e( 'Host-Managed Sync (host applies, WordPress verifies)', 'mad4b-site-control-plane' ); ?></option>
+							<option value="host_managed" <?php selected( $sync_mode, 'host_managed' ); ?>><?php esc_html_e( 'Host-Managed Sync (non-Production; Host applies, WordPress verifies)', 'mad4b-site-control-plane' ); ?></option>
 						</select>
 						<p class="description"><?php esc_html_e( 'Host-Managed Sync records the requested mode only. It does not modify WordPress bootstrap in this request. A separate authorized host deployment must set WP_ENVIRONMENT_TYPE and the unique deployment binding; a fresh boot must read them back.', 'mad4b-site-control-plane' ); ?></p>
 					</td></tr>
