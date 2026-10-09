@@ -70,6 +70,11 @@ for term in (
     '"operational-remediation-control-runtime.php"',
     '"class-mad4b-scp-staging-certification.php"',
     '"class-mad4b-scp-operational-remediation.php"',
+    '"class-mad4b-scp-host-bridge.php"',
+    '"host-bridge-contract.php"',
+    '"host-runner-kernel-contract.py"',
+    '"host-environment-sync-runner-contract.py"',
+    "POSIX_HOST_RUNNER_REQUIRED",
     "sorted(owners) != paths",
 ):
     if term not in preflight:
