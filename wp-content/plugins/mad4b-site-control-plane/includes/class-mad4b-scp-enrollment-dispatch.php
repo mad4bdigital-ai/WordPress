@@ -222,7 +222,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$runtime = is_array( $runtime ) ? $runtime : array();
 		// Inspect only the bounded persisted lease, never file scanning,
 		// recursive provider discovery, or a write on tools/list.
-		$lock = get_option( 'mad4b_scp_remote_skills_lock_v1', array() );
+		$lock = get_option( 'mad4b_scp_remote_skills_reconciliation_lock_v1', array() );
 		$lock = is_array( $lock ) ? $lock : array();
 		$lock_active = ! empty( $lock['owner'] )
 			&& (int) ( isset( $lock['expires_at_epoch'] ) ? $lock['expires_at_epoch'] : 0 ) > time();
