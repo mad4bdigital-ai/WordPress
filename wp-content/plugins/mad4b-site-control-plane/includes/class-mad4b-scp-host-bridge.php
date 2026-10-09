@@ -223,6 +223,8 @@ final class MAD4B_SCP_Host_Bridge {
 				return new WP_Error( 'mad4b_host_job_replay_conflict', 'Host job id already exists with different semantic submission.' );
 			}
 			$existing['replayed'] = true;
+			$existing['host_mutation_performed'] = false;
+			$existing['host_verification_pending'] = true;
 			return $existing;
 		}
 		$write = self::atomic_write( $path, $submission );
