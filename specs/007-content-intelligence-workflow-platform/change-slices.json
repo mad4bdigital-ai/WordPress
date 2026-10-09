@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 444,
+  "changed_file_count": 447,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -137,6 +137,7 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-remote-media-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-bootstrap.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-governance.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-binding.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-manifest.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media-planning.php",
@@ -682,6 +683,8 @@
       "revert_boundary": "Revert universal discovery, GA gap router, tests and docs together; do not alter independent approval/grant or Production authority",
       "certification": "existing_source_only_separate_owner_runtime_acceptance",
       "path_globs": [
+        "tools/solution-discovery/source-evidence.mjs",
+        "tools/solution-discovery/test-source-evidence.mjs",
         "wp-content/plugins/mad4b-site-control-plane/docs/ASSISTANT-SOLUTION-ROUTER.md",
         "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-SOLUTION-DISCOVERY.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-assistant-solution-router.php",
@@ -818,6 +821,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "5bfe9f0242cae119524e5bdd7c2f7289c5ea5acf87514dc346a34c5c0f17562c",
+  "changed_paths_sha256": "879cb1828ce040210a962df2f05c3b21e99deede10dbd8e54566ae50e997a25f",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
