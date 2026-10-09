@@ -571,8 +571,23 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY, self::MEDIA_BINDING_PLAN_ABILITY, 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
-		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
+		$read = array(
+            'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY,
+            self::MEDIA_BINDING_PLAN_ABILITY, 'mad4b/content-experience-profile-status',
+            'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan',
+            'mad4b/content-experience-profile-delete-plan',
+            'mad4b/business-activity-status', 'mad4b/business-activity-link-plan',
+            'mad4b/business-activity-sync-plan', 'mad4b/business-activity-reconcile-plan',
+            'mad4b/business-activity-context-impact-plan',
+            'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
+        );
+        $content = array(
+            self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
+            'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
+            'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
+            'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
+        );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::routes_for_profile( $profile );
