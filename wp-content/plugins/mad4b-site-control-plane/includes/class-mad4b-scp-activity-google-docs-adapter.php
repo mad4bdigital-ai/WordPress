@@ -12,46 +12,33 @@ final class MAD4B_SCP_Activity_Google_Docs_Adapter {
     private static function error( $id, $message ) { return new WP_Error( $id, $message ); }
     public static function register( $adapters, $profile ) {
         if ( ! is_array( $adapters ) ) $adapters = array();
-        $access = self::token( $profile );
-        if ( '' !== $access ) $adapters['google_drive'] = array(
-            'read' => array( __CLASS__, 'read' ),
-            'write' => array( __CLASS__, 'write' ),
-            'conditional_write' => true, 'readback' => true,
-            'scope' => 'google_docs_single_run_named_fields_v1',
-        );
+        if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ) return $adapters;
+        $connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+        if ( empty( $connection['read_available'] ) ) return $adapters;
+        $adapter = array( 'read' => array( __CLASS__, 'read' ),
+            'conditional_write' => false, 'readback' => true,
+            'scope' => 'managed_google_docs_single_run_named_fields_v1' );
+        if ( ! empty( $connection['write_available'] ) ) {
+            $adapter['write'] = array( __CLASS__, 'write' );
+            $adapter['conditional_write'] = true;
+        }
+        // OAuth custody, encryption, refresh and provider scope detection are
+        // entirely owned by the preexisting MAD4B Google Drive Context.
+        $adapters['google_drive'] = $adapter;
         return $adapters;
     }
-    private static function token( $profile ) {
-        // Never accept OAuth tokens from conversation inputs, URLs, options,
-        // documents or profile mappings; use trusted server integration.
-        $token = function_exists( 'apply_filters' )
-            ? apply_filters( 'mad4b_activity_google_oauth_access_token', '', $profile ) : '';
-        return is_string( $token ) && 1 === preg_match( '/^[A-Za-z0-9._~-]{30,2048}$/D', $token ) ? $token : '';
-    }
-    private static function request( $method, $url, $token, $payload = null ) {
-        if ( 0 !== strpos( $url, 'https://docs.googleapis.com/v1/documents/' ) )
-            return self::error( 'mad4b_drive_endpoint_denied', 'Only fixed Google Docs API endpoints may be used.' );
-        $args = array( 'timeout' => 12, 'redirection' => 0, 'limit_response_size' => self::MAX_RESPONSE_BYTES,
-            'headers' => array( 'Authorization' => 'Bearer ' . $token,
-                'Accept' => 'application/json', 'Content-Type' => 'application/json' ) );
-        if ( 'GET' === $method ) $response = wp_safe_remote_get( $url, $args );
-        else {
-            $args['method'] = $method;
-            $args['body'] = wp_json_encode( $payload );
-            $response = wp_safe_remote_request( $url, $args );
-        }
-        if ( is_wp_error( $response ) ) return self::error( 'mad4b_drive_transport_failed', 'Google Docs request failed; credentials are not logged.' );
-        $code = wp_remote_retrieve_response_code( $response );
-        if ( 200 !== $code ) {
-            if ( 409 === $code || 412 === $code || 400 === $code )
-                return self::error( 'mad4b_drive_revision_or_write_rejected', 'Docs conditional revision/write was rejected. Re-read and reconcile.' );
-            return self::error( 'mad4b_drive_provider_unavailable', 'Google Docs response not successful: HTTP ' . (int) $code );
-        }
-        $raw = wp_remote_retrieve_body( $response );
-        if ( ! is_string( $raw ) || strlen( $raw ) >= self::MAX_RESPONSE_BYTES )
-            return self::error( 'mad4b_drive_response_truncated', 'Docs response exceeds a safe bound.' );
-        $json = json_decode( $raw, true );
-        return is_array( $json ) ? $json : self::error( 'mad4b_drive_response_invalid', 'Google Docs response is not a JSON document.' );
+    private static function request( $method, $source, $binding, $payload = null ) {
+        if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) ||
+            ! method_exists( 'MAD4B_SCP_Google_Drive_Context', 'activity_docs_request' ) )
+            return self::error( 'mad4b_drive_managed_transport_unavailable',
+                'Existing MAD4B managed Google Drive OAuth transport is not available.' );
+        $json = MAD4B_SCP_Google_Drive_Context::activity_docs_request(
+            $method, $source, $binding, $payload );
+        if ( is_wp_error( $json ) ) return $json;
+        $bytes = wp_json_encode( $json );
+        if ( ! is_array( $json ) || ! is_string( $bytes ) || strlen( $bytes ) >= self::MAX_RESPONSE_BYTES )
+            return self::error( 'mad4b_drive_response_invalid', 'Managed Google Docs response exceeds a safe bound.' );
+        return $json;
     }
     private static function document( $source, $binding ) {
         if ( ! isset( $source['resource_kind'], $source['source_ref'] ) ||
@@ -59,17 +46,14 @@ final class MAD4B_SCP_Activity_Google_Docs_Adapter {
             ! preg_match( '/^[A-Za-z0-9_-]{8,180}$/D', (string) $source['source_ref'] ) ||
             ! isset( $source['purpose'] ) || 'record_data' !== $source['purpose'] )
             return self::error( 'mad4b_drive_document_mapping_denied', 'Only explicitly mapped record-data Docs with exact file IDs are supported.' );
-        $token = self::token( $binding['profile'] );
-        if ( '' === $token )
-            return self::error( 'mad4b_drive_oauth_not_connected', 'No enrolled Google Docs OAuth provider for this WordPress runtime.' );
         $id = $source['source_ref'];
-        $doc = self::request( 'GET', 'https://docs.googleapis.com/v1/documents/' . rawurlencode( $id ), $token );
+        $doc = self::request( 'GET', $source, $binding );
         if ( is_wp_error( $doc ) ) return $doc;
         if ( ! isset( $doc['documentId'], $doc['revisionId'], $doc['body']['content'] ) ||
             $doc['documentId'] !== $id || ! is_array( $doc['body']['content'] ) ||
             isset( $doc['tabs'] ) )
             return self::error( 'mad4b_drive_multitab_or_identity_denied', 'Unsupported Docs structure, tabs or mismatched file identity.' );
-        return array( 'doc' => $doc, 'token' => $token );
+        return array( 'doc' => $doc );
     }
     private static function utf16_length( $s ) {
         if ( ! function_exists( 'mb_convert_encoding' ) ) return false;
@@ -148,8 +132,7 @@ final class MAD4B_SCP_Activity_Google_Docs_Adapter {
         if ( '' !== $value ) $requests[] = array( 'insertText' =>
             array( 'location' => array( 'index' => $start ), 'text' => $value ) );
         if ( !$requests ) return self::error( 'mad4b_drive_docs_noop_ambiguous', 'Nothing to write.' );
-        $response = self::request( 'POST', 'https://docs.googleapis.com/v1/documents/' .
-            rawurlencode( $source['source_ref'] ) . ':batchUpdate', $bundle['token'],
+        $response = self::request( 'POST', $source, $binding,
             array( 'requests' => $requests,
                 'writeControl' => array( 'requiredRevisionId' => $doc['revisionId'] ) ) );
         if ( is_wp_error( $response ) ) return $response;
