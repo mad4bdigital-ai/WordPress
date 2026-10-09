@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -1945,7 +1946,10 @@ def _wp_environment_receipt_signing_key(profile: dict[str, Any]):
         public = private.public_key().public_bytes(
             encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
         )
-        pinned = base64.b64decode(key_b64, validate=True)
+        try:
+            pinned = base64.b64decode(key_b64, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise ValueError("Host environment pinned public key is not valid Base64") from exc
         if len(pinned) != 32 or not hmac.compare_digest(public, pinned):
             raise ValueError("Host receipt signer does not match the pinned public key")
         return private
@@ -2004,12 +2008,18 @@ def _wp_environment_verify_signed_receipt(profile: dict[str, Any], receipt: dict
         or evidence.get("algorithm") != "Ed25519"
         or evidence.get("payload_contract") != "mad4b.host-environment-receipt-payload.v1"):
         raise ValueError("Host source receipt signature metadata is invalid")
-    pinned = base64.b64decode(profile["host_environment_receipt_signing_public_key_b64"], validate=True)
+    try:
+        pinned = base64.b64decode(profile["host_environment_receipt_signing_public_key_b64"], validate=True)
+    except (ValueError, binascii.Error, KeyError) as exc:
+        raise ValueError("Host receipt verification pinned public key invalid") from exc
     if (len(pinned) != 32 or not hmac.compare_digest(
         sha256_bytes(pinned), str(evidence.get("pinned_public_key_sha256") or "")
     )):
         raise ValueError("Host source receipt signing key identity is invalid")
-    signature = base64.b64decode(str(evidence.get("signature_b64") or ""), validate=True)
+    try:
+        signature = base64.b64decode(str(evidence.get("signature_b64") or ""), validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise ValueError("Host source receipt signature is not valid Base64") from exc
     if len(signature) != 64:
         raise ValueError("Host source receipt signature length invalid")
     try:
