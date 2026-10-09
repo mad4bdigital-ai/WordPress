@@ -39,4 +39,48 @@ $receipt['requirement']='unrelated';
 check($c::evaluate($s,$d,array($receipt))['status']==='DENIED','injected requirement');
 $bad=$s;$bad['status']='READY';
 check($c::evaluate($bad,$d,array())['status']==='DENIED','caller forged semantic readiness');
+
+// Exercise the real private governed profile normalizer on bounded fixtures.
+// This is a hermetic contract fixture; it does not apply any WordPress changes.
+class WP_Error { public function __construct($code='', $message=''){} }
+class MAD4B_SCP_Site_Profile {
+    public static function site_uuid(){return '123e4567-e89b-42d3-a456-426614174000';}
+}
+require __DIR__.'/../includes/class-mad4b-scp-content-experience-profiles.php';
+$normalizer=new ReflectionMethod('MAD4B_SCP_Content_Experience_Profiles',
+    'normalize_aci01_recipe_variants');
+$normalizer->setAccessible(true);
+$variant=array('site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(),
+    'brand_id'=>'brand-1','locale'=>'ar-EG','market'=>'eg',
+    'requirements'=>array('verified_price_source','approved_brand_context'));
+$normalized=$normalizer->invoke(null,array($variant));
+check(is_array($normalized)&&$normalized[0]['market']==='EG',
+    'normalizer canonicalizes exact market only');
+check($normalized[0]['requirements']===array('approved_brand_context','verified_price_source'),
+    'normalizer sorts fact obligations deterministically');
+check($normalizer->invoke(null,array($variant,$variant)) instanceof WP_Error,
+    'duplicate site brand locale market denied at profile plan');
+$foreign=$variant;$foreign['site_uuid']='123e4567-e89b-42d3-a456-426614174999';
+check($normalizer->invoke(null,array($foreign)) instanceof WP_Error,
+    'cross-site profile write denied');
+$wild=$variant;$wild['locale']='*';
+check($normalizer->invoke(null,array($wild)) instanceof WP_Error,
+    'no wildcard locale fallback');
+$extra=$variant;$extra['unknown_permission']='write';
+check($normalizer->invoke(null,array($extra)) instanceof WP_Error,
+    'unrecognized recipe field denied');
+$dupe=$variant;$dupe['requirements']=array('fact_qa','fact_qa');
+check($normalizer->invoke(null,array($dupe)) instanceof WP_Error,
+    'duplicate fact requirement denied at profile apply');
+$large=array_fill(0,25,$variant);
+check($normalizer->invoke(null,$large) instanceof WP_Error,
+    'variant count bounded');
+$bad=$variant;$bad['requirements']=array_fill(0,41,'fact_qa');
+check($normalizer->invoke(null,array($bad)) instanceof WP_Error,
+    'requirement count bounded');
+$empty=$variant;$empty['requirements']=array();
+check($normalizer->invoke(null,array($empty)) instanceof WP_Error,
+    'empty recipe never approved');
+check($normalizer->invoke(null,array())===array(),
+    'legacy profiles with no recipes retain no-default behavior');
 echo "ACI01_RECIPE_GAP: PASS\n";
