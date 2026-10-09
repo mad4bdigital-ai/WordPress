@@ -78,7 +78,16 @@ export async function verifySourceCatalogReceipt({
   const b=Buffer.from(receipt.signature_b64url,"base64url");
   if(b.length!==64||b.toString("base64url")!==receipt.signature_b64url)
     return fail("INVALID_SIGNATURE_ENCODING");
-  const key=createPublicKey(trustedPublicKeys[receipt.kid]);
+  // A valid signature is insufficient unless its independently enrolled key
+  // is authorized for this exact issuer, site, environment and generation.
+  const trust=trustedPublicKeys[receipt.kid];
+  if(!isRecord(trust)||trust.issuer!==raw.issuer||!sameSite(trust.site,site)||
+     trust.revoked!==false||typeof trust.public_key_pem!=="string"||
+     !Number.isSafeInteger(trust.not_before)||!Number.isSafeInteger(trust.not_after)||
+     trust.not_before>raw.issued_at||trust.not_after<raw.expires_at||
+     nowEpochSeconds<trust.not_before||nowEpochSeconds>trust.not_after)
+    return fail("KEY_SCOPE_OR_ROTATION_INVALID");
+  const key=createPublicKey(trust.public_key_pem);
   if(key.asymmetricKeyType!=="ed25519"||
      !verifySignature(null,Buffer.from(receipt.body,"utf8"),key,b))
     return fail("INVALID_SIGNATURE");

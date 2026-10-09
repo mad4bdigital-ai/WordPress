@@ -9,7 +9,7 @@ const catalog={contract:"mad4b.site-source-catalog.v1",binding:site,complete:tru
  read_only:true,authorizing:false,sources:[{id:"source-aa",kind:"connector",...site,lane:"read",connected:true,read_authorized:true}]};
 const now=2000000000;
 const keys=generateKeyPairSync("ed25519");
-const trusted={"release-key":keys.publicKey.export({type:"spki",format:"pem"})};
+const trusted={"release-key":{public_key_pem:keys.publicKey.export({type:"spki",format:"pem"}),issuer:"platform-registry",site,not_before:now-60,not_after:now+300,revoked:false}};
 const body={contract:RECEIPT_CONTRACT,issuer:"platform-registry",site,
  source_ids:["source-aa"],complete:true,catalog_sha256:catalogDigest(catalog),
  nonce:"opaque-nonce-0123456789",issued_at:now-10,expires_at:now+120,lane:"read"};
@@ -37,6 +37,12 @@ const noLedger=await verifySourceCatalogReceipt({...options,receipt:receipt({...
 yes(noLedger.code==="INVALID_OR_UNAVAILABLE_PROOF","ledger unavailable");
 const envChanged=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"environment-nonce-123",site:{...site,environment:"production"}})});
 yes(envChanged.code==="INVALID_RECEIPT_SCOPE","environment cannot cross");
+const revoked=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"revocation-check-nonce123"}),trustedPublicKeys:{"release-key":{...trusted["release-key"],revoked:true}}});
+yes(revoked.code==="KEY_SCOPE_OR_ROTATION_INVALID","revoked key rejected");
+const wrongTenant=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"tenant-binding-nonce123"}),trustedPublicKeys:{"release-key":{...trusted["release-key"],site:{...site,site_id:"other-site"}}}});
+yes(wrongTenant.code==="KEY_SCOPE_OR_ROTATION_INVALID","wrong key tenancy rejected");
+const wrongIssuer=await verifySourceCatalogReceipt({...options,receipt:receipt({...body,nonce:"issuer-binding-nonce123"}),trustedPublicKeys:{"release-key":{...trusted["release-key"],issuer:"other-issuer"}}});
+yes(wrongIssuer.code==="KEY_SCOPE_OR_ROTATION_INVALID","wrong key issuer rejected");
 const verifier=createTrustedCatalogVerifier({getReceipt:async()=>receipt({...body,nonce:"trusted-bridge-12345"}),trustedPublicKeys:trusted,consumeNonce,clock:()=>now});
 yes(await verifier({site,catalog,contract:"mad4b.site-source-catalog.v1",claimed_complete:true,expected_source_ids:["source-aa"]}),"host verifier");
 yes(!(await verifier({site,catalog,contract:"mad4b.site-source-catalog.v1",claimed_complete:true,expected_source_ids:["source-aa"]})),"bridge replay denied");
