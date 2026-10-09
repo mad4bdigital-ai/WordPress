@@ -1,0 +1,100 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "operation_id",
+    "site_uuid",
+    "source_sha",
+    "state",
+    "verified",
+    "postcondition_digest",
+    "mutation_performed",
+    "secret_values_present"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "enum": [
+        "mad4b.cso01.operation-receipt.v1"
+      ]
+    },
+    "operation_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 8
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "PLANNED",
+        "DENIED",
+        "EXPIRED",
+        "AUTHORIZED",
+        "RUNNING",
+        "VERIFYING",
+        "SUCCEEDED",
+        "PARTIAL",
+        "UNCERTAIN",
+        "FAILED",
+        "COMPENSATING",
+        "COMPENSATED"
+      ]
+    },
+    "verified": {
+      "type": "boolean"
+    },
+    "postcondition_digest": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "mutation_performed": {
+      "type": "boolean"
+    },
+    "secret_values_present": {
+      "type": "boolean",
+      "enum": [
+        false
+      ]
+    },
+    "independent_verifier": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "approval_ref": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "item_results": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object",
+        "required": [
+          "target_ref",
+          "state"
+        ],
+        "properties": {
+          "target_ref": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "receipt_ref": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "CSO01 operation-receipt design schema; NOT an automatically registered WordPress Ability"
+}
