@@ -35,3 +35,11 @@ The fixture asserts read-only Ability registration, deterministic projection, re
 - Slice 03: a pure, never-authorizing EvidencePack/Opportunity/Blueprint candidate compiler, with goal, source citations and context-bound review inputs; real artifact append uses already-governed Feature 007 registries only after independent write authorization.
 
 All Spec Kit task states remain OPEN until each applicable runtime/certification gate has readback evidence.
+
+## P0 follow-on hardening — source reference integrity
+
+The bounded ACI01 Evidence read projection now rechecks the **existing** actor read grant after ContentJob, ContextPack and Artifact reads, in addition to the runtime-generation/restore-epoch fence. A revoked permission during the read denies the response; it cannot produce a stale, apparently current evidence preview.
+
+Research artifact source references remain untrusted **locators**, not fetched source text. A locator may be a bounded opaque string or a flat typed map containing a recognized URI/native-ID locator field; nested raw HTML/array graphs, missing locator identity, control characters, oversized source/provider identifiers and overly large metadata are refused. Locators and raw normalized research are never exposed in the return payload, which reports counts and digests only.
+
+The original Feature 007 `append_research` input is untouched. Such upstream receipts remain **unlicensed and unverified** until independent provider, rights and fact authority checks. Existing evidence QA fixtures are extended with valid typed refs, negative malformed/nested/oversized refs and midflight read grant revocation. Native PHP/Staging tests remain **NOT_RUN** until an exact-head runtime is available.
