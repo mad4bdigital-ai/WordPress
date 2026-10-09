@@ -319,6 +319,17 @@ final class MAD4B_SCP_Staging_Certification {
 			// enrolled Staging profile; host alignment is an independent review,
 			// not a reason to deadlock already-authorized native safe phases.
 		}
+		if ( empty( $profile['deployment_binding_configured'] ) ) {
+			$append( $actions, $seen, 'deployment_identity_review', array(
+				'kind' => 'host_bootstrap_review',
+				'executor' => 'authorized_host_operator',
+				'human_decision_required' => true,
+				'automatic_execution_allowed' => false,
+				'readback_ability' => 'mad4b/site-profile-status',
+				'instruction' => 'Enroll an independent host-bound deployment identity to detect copied environments. Do not infer site identity from hostname or auto-clone existing credentials.',
+				'production_policy' => 'deny',
+			) );
+		}
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
 		$skills_record = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
@@ -389,8 +400,15 @@ final class MAD4B_SCP_Staging_Certification {
 				'production_policy' => 'deny',
 			) );
 		}
-		$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
-			? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
+		$provider_matrix = array();
+		try {
+			$provider_matrix = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix', false )
+				? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
+		} catch ( Throwable $error ) {
+			// Failure to read a provider catalog is NOT proof of no pending
+			// capabilities. Preserve an explicit non-authorizing blocker.
+			$provider_matrix = array();
+		}
 		$provider_gated = isset( $provider_matrix['provider_gated_count'] ) ? max( 0, (int) $provider_matrix['provider_gated_count'] ) : 0;
 		if ( 'mad4b.provider-closure-matrix.v1' !== ( isset( $provider_matrix['contract'] ) ? $provider_matrix['contract'] : '' )
 			|| empty( $provider_matrix['read_only'] ) || ! empty( $provider_matrix['mutation_performed'] ) ) {
@@ -414,7 +432,7 @@ final class MAD4B_SCP_Staging_Certification {
 				// Host, Browser and write actions assembled further below.
 				if ( $provider_actions >= 40 ) continue;
 				$ability = isset( $provider_item['ability'] ) && is_string( $provider_item['ability'] ) ? $provider_item['ability'] : '';
-				$id = 'provider_' . substr( hash( 'sha256', $ability ), 0, 24 );
+				$id = 'provider_' . substr( hash( 'sha256', $ability . '|' . ( isset( $provider_item['catalog_provider_id'] ) ? (string) $provider_item['catalog_provider_id'] : '' ) . '|' . ( isset( $provider_item['capability_id'] ) ? (string) $provider_item['capability_id'] : '' ) ), 0, 24 );
 				$provider_id = isset( $provider_item['catalog_provider_id'] ) ? sanitize_key( (string) $provider_item['catalog_provider_id'] ) : '';
 				$capability_id = isset( $provider_item['capability_id'] ) ? sanitize_key( (string) $provider_item['capability_id'] ) : '';
 				$resolved = 1 === preg_match( '/^[a-z0-9_-]{1,64}$/D', $provider_id )
