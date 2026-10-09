@@ -40,3 +40,11 @@
 | First public page entries password protected, duplicate ID/path | Scan bounded additional published pages and select unique public candidates |
 | Static marker count with site JavaScript disabled | Use fixed validated attribute locator and count(); never run evaluateAll or site JavaScript |
 | WordPress site has pages but no installed plugin mapped to the generic capability | Recognize by `source_post_types: ['page']`, no ETG/brand fallback |
+
+| Generic native PASS but no explicitly provisioned local consumption ledger | Local acceptance runner fails closed; does not emit a new signed PASS receipt |
+| Same signed plan replayed by multiple processes on same trusted host | Exactly one exclusive claim succeeds; all others fail replay_detected |
+| Local ledger directory symlink/world-writable/wrong owner | Fail closed before creating a claim |
+| Native signed result has mismatched evidence digest or stale nonce | No consumption; infrastructure error |
+| Single-host ledger claim succeeds but no distributed DB ledger | Local receipt must say globally_unique_consumption_proven=false and release_ready=false |
+| Direct WordPress read-only result call repeats signed Evidence | Observation can repeat; cannot become release-ready or globally certified without separate trusted consumption authority |
+| Multi-host failover restores an old local filesystem snapshot | Block global certification; validate external authoritative uniqueness/fencing before release |
