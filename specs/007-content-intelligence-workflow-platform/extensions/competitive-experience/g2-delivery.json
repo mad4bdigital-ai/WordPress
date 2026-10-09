@@ -55,11 +55,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
-      "sha256": "8d6318eaaa24406a9f3cce80c898e87cf52feec39811b700fc8738577e256f8d"
+      "sha256": "58bbdce5d9b79f07fac8ccf12759d8c0ccf05981d2609970e9807c5db69cea74"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php",
-      "sha256": "a3a6044013a974529586108a75303c99ea104a590b4171c6536abb694dd8d370"
+      "sha256": "18ed434c4834b23a85ceec9a2a4f8adea20a6fb1a280383688a476ff5045bef6"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
@@ -67,7 +67,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "667c4f28680e50e03b895a31272e3ab6edf8468d9f873adf5e71a295a500f2af"
+      "sha256": "5e8ac0422a08d113b6c7afd14b183ba408df02b854b950ecefafac0c3a4c7474"
     }
   ],
   "test_paths": [
