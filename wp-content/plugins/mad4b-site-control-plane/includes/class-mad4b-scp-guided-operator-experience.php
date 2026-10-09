@@ -32,6 +32,7 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			&& true === ( isset( $skills['build_identity_current'] ) ? $skills['build_identity_current'] : null );
 		$needs_skills = $site_ready && ! $skills_ready && ! empty( $profile['skills_enabled'] );
 		$write_blocked = isset( $write['ready'] ) && false === $write['ready'];
+		$browser_invalid = isset( $browser['preference_valid'] ) && false === $browser['preference_valid'];
 		$provider_blocked = isset( $provider['action_required_count'] ) && (int) $provider['action_required_count'] > 0;
 		$uncertain = count( array_intersect( $reasons, array( 'mutation_state_uncertain', 'recovery_required' ) ) ) > 0;
 		$host_blocked = count( array_intersect( $reasons, array( 'developer_lane_not_ready', 'developer_breakglass_lane_not_ready' ) ) ) > 0;
@@ -47,21 +48,24 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 				'mad4b-control-plane-connection', array( 'tab' => 'readiness' ), 'site_administrator', 'mad4b/connection-status', 30 ),
 			self::step( 'skills', __( 'Restore Managed Skills', 'mad4b-site-control-plane' ),
 				__( 'Reconcile managed seeds and providers, then verify the certificate for this exact build.', 'mad4b-site-control-plane' ),
-				empty( $profile['skills_enabled'] ) && $site_ready ? 'NOT_APPLICABLE'
+				isset( $profile['skills_enabled'] ) && false === $profile['skills_enabled'] && $site_ready ? 'NOT_APPLICABLE'
 				: ( $needs_skills ? 'NEEDS_ACTION' : ( $skills_ready ? 'OBSERVED_READY' : 'NOT_CHECKED' ) ),
 				'mad4b-control-plane-skills', array(), 'site_administrator', 'mad4b/skill-runtime-certification', 20 ),
 			self::step( 'providers', __( 'Review affected provider capabilities', 'mad4b-site-control-plane' ),
 				__( 'Inspect installed capabilities and certify only the specific missing provider evidence.', 'mad4b-site-control-plane' ),
-				$provider_blocked ? 'NEEDS_ACTION' : ( isset( $provider['action_required_count'] ) ? 'OBSERVED_NO_ACTION' : 'NOT_CHECKED' ),
+				$provider_blocked ? 'NEEDS_ACTION' : ( isset( $provider['action_required_count'] ) && 'unavailable' !== ( $provider['state'] ?? 'unavailable' ) ? 'OBSERVED_NO_ACTION' : 'NOT_CHECKED' ),
 				'mad4b-adapter-coverage', array( 'tab' => 'functional' ), 'provider_operator', 'mad4b/provider-closure-matrix', 35 ),
 			self::step( 'browser', __( 'Configure browser acceptance', 'mad4b-site-control-plane' ),
 				__( 'Choose a registered site adapter and external runner. A saved preference does not certify a test.', 'mad4b-site-control-plane' ),
-				'NOT_CHECKED', 'mad4b-browser-acceptance', array(), 'browser_operator', 'mad4b/browser-acceptance-result', 50 ),
+				$browser_invalid ? 'NEEDS_ACTION' : 'NOT_CHECKED', 'mad4b-browser-acceptance', array(), 'browser_operator', 'mad4b/browser-acceptance-result', 50 ),
 			self::step( 'approvals', __( 'Review pending change approvals', 'mad4b-site-control-plane' ),
 				__( 'Inspect the exact affected scope and existing ticket before approving or rejecting.', 'mad4b-site-control-plane' ),
 				$needs_authority ? 'NEEDS_ACTION' : 'NOT_CHECKED',
 				'mad4b-approval-decisions', array( 'view' => 'actionable' ), 'authorized_approver', 'mad4b/approval-ticket-status', 40 ),
 		);
+		if ( $write_blocked ) $steps[] = self::step( 'write', __( 'Review exact write readiness', 'mad4b-site-control-plane' ),
+			__( 'The write runtime is not ready. Verify grants and candidate binding before seeking approval; no grants are created here.', 'mad4b-site-control-plane' ),
+			'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'overview' ), 'governed_operator', 'mad4b/staging-write-readiness', 15 );
 		if ( $uncertain ) array_unshift( $steps, self::step( 'recovery', __( 'Resolve an uncertain previous change', 'mad4b-site-control-plane' ),
 			__( 'Review the last receipt and independently read back the affected object before any retry.', 'mad4b-site-control-plane' ),
 			'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'mutations' ), 'governed_operator', 'mad4b/mutation-status', 0 ) );
