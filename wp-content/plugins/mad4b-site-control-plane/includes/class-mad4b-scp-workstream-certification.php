@@ -55,13 +55,14 @@ final class MAD4B_SCP_Workstream_Certification {
 		$identity = self::candidate_identity();
 		if ( is_wp_error( $identity ) ) return $identity;
 
+		$source_only_prefixes = $policy['rules']['source_only_path_prefixes'];
 		$rows = array();
 		foreach ( isset( $policy['workstreams'] ) && is_array( $policy['workstreams'] ) ? $policy['workstreams'] : array() as $definition ) {
 			if ( ! is_array( $definition ) ) continue;
 			$id = sanitize_key( isset( $definition['id'] ) ? (string) $definition['id'] : '' );
 			if ( '' === $id ) continue;
 			if ( '' !== $requested && ! hash_equals( $requested, $id ) ) continue;
-			$rows[] = self::evaluate( $definition, $identity );
+			$rows[] = self::evaluate( $definition, $identity, $source_only_prefixes );
 		}
 		if ( '' !== $requested && empty( $rows ) ) return new WP_Error( 'mad4b_feature007_workstream_unknown', 'Requested Feature 007 workstream is not registered in certification policy.' );
 
@@ -92,11 +93,11 @@ final class MAD4B_SCP_Workstream_Certification {
 		);
 	}
 
-	private static function evaluate( array $definition, array $identity ) {
+	private static function evaluate( array $definition, array $identity, array $source_only_prefixes ) {
 		$id = sanitize_key( isset( $definition['id'] ) ? (string) $definition['id'] : '' );
 		$gate = sanitize_key( isset( $definition['gate'] ) ? (string) $definition['gate'] : '' );
 		$repo_paths = isset( $definition['repository_paths'] ) && is_array( $definition['repository_paths'] ) ? $definition['repository_paths'] : array();
-		$repo = self::repository_evidence( $repo_paths );
+		$repo = self::repository_evidence( $repo_paths, $source_only_prefixes );
 
 		$live = isset( $definition['live_evidence'] ) && is_array( $definition['live_evidence'] ) ? $definition['live_evidence'] : array();
 		$live_required = ! empty( $live['required'] );
@@ -132,6 +133,14 @@ final class MAD4B_SCP_Workstream_Certification {
 		}
 
 		$external = array();
+		foreach ( isset( $repo['source_only_missing'] ) ? $repo['source_only_missing'] : array() as $path ) {
+			$external[] = array(
+				'requirement' => 'certified_source_repository_evidence',
+				'path' => $path,
+				'state' => 'EXTERNAL_EVIDENCE_REQUIRED',
+				'caller_evidence_accepted' => false,
+			);
+		}
 		foreach ( $additional as $requirement ) {
 			$external[] = array(
 				'requirement' => $requirement,
@@ -143,13 +152,15 @@ final class MAD4B_SCP_Workstream_Certification {
 		$blockers = array();
 		foreach ( isset( $repo['missing'] ) ? $repo['missing'] : array() as $path ) $blockers[] = 'repository_path_missing:' . $path;
 		foreach ( isset( $repo['symlinks'] ) ? $repo['symlinks'] : array() as $path ) $blockers[] = 'repository_path_symlink:' . $path;
+		foreach ( isset( $repo['invalid'] ) ? $repo['invalid'] : array() as $path ) $blockers[] = 'repository_path_invalid:' . $path;
+		foreach ( isset( $repo['source_only_missing'] ) ? $repo['source_only_missing'] : array() as $path ) $blockers[] = 'certified_source_repository_evidence_required:' . $path;
 		foreach ( isset( $stage_evidence['blockers'] ) ? $stage_evidence['blockers'] : array() as $blocker ) $blockers[] = 'live_stage:' . sanitize_key( (string) $blocker );
 		foreach ( $additional as $requirement ) $blockers[] = 'external_requirement:' . $requirement;
 
 		$state = 'READY';
-		if ( empty( $repo['ready'] ) ) {
+		if ( ! empty( $repo['missing'] ) || ! empty( $repo['symlinks'] ) || ! empty( $repo['invalid'] ) ) {
 			$state = 'REPOSITORY_BLOCKED';
-		} elseif ( ! empty( $additional ) ) {
+		} elseif ( ! empty( $repo['source_only_missing'] ) || ! empty( $additional ) ) {
 			$state = 'EXTERNAL_EVIDENCE_REQUIRED';
 		} elseif ( $live_required && ! empty( $stage_evidence['applicable'] ) && empty( $stage_evidence['ready'] ) ) {
 			$state = 'LIVE_BLOCKED';
@@ -176,44 +187,85 @@ final class MAD4B_SCP_Workstream_Certification {
 		);
 	}
 
-	private static function repository_evidence( array $paths ) {
-		$root = dirname( __DIR__ );
+	/**
+	 * Installed artifact checks are not a substitute for source-only test receipts.
+	 * A policy-declared source-only path absent from a distributable ZIP remains
+	 * EXTERNAL_EVIDENCE_REQUIRED, never READY and never repository_path_missing.
+	 */
+	private static function repository_evidence( array $paths, array $source_only_prefixes ) {
+		$root = realpath( dirname( __DIR__ ) );
 		$present = array();
 		$missing = array();
+		$source_only_missing = array();
 		$symlinks = array();
+		$invalid = array();
 		$digests = array();
-		foreach ( $paths as $relative ) {
-			$relative = ltrim( str_replace( '\\', '/', (string) $relative ), '/' );
-			if ( '' === $relative || false !== strpos( $relative, '../' ) ) {
-				$missing[] = $relative;
+		$seen = array();
+		if ( false === $root || ! is_dir( $root ) ) $invalid[] = 'plugin_root_unavailable';
+		if ( empty( $paths ) ) $invalid[] = 'empty_repository_evidence_policy';
+		foreach ( $paths as $raw ) {
+			$relative = str_replace( '\\\\', '/', (string) $raw );
+			$parts = explode( '/', $relative );
+			if ( '' === $relative || 1 !== preg_match( '~^[A-Za-z0-9._/-]+$~D', $relative )
+				|| in_array( '', $parts, true ) || in_array( '.', $parts, true ) || in_array( '..', $parts, true )
+				|| isset( $seen[ $relative ] ) ) {
+				$invalid[] = $relative;
 				continue;
 			}
-			$path = $root . '/' . $relative;
-			if ( ! file_exists( $path ) ) {
-				$missing[] = $relative;
+			$seen[ $relative ] = true;
+			if ( false === $root ) {
+				$invalid[] = $relative;
 				continue;
 			}
-			if ( is_link( $path ) ) {
+			$path = $root;
+			$linked = false;
+			foreach ( $parts as $part ) {
+				$path .= DIRECTORY_SEPARATOR . $part;
+				if ( is_link( $path ) ) { $linked = true; break; }
+			}
+			if ( $linked ) {
 				$symlinks[] = $relative;
 				continue;
 			}
+			$source_only = false;
+			foreach ( $source_only_prefixes as $prefix ) {
+				if ( 0 === strpos( $relative, $prefix ) ) { $source_only = true; break; }
+			}
 			if ( ! is_file( $path ) || ! is_readable( $path ) ) {
-				$missing[] = $relative;
+				if ( $source_only ) $source_only_missing[] = $relative;
+				else $missing[] = $relative;
+				continue;
+			}
+			$resolved = realpath( $path );
+			if ( false === $resolved || 0 !== strpos( $resolved, $root . DIRECTORY_SEPARATOR ) ) {
+				$invalid[] = $relative;
+				continue;
+			}
+			$sha = hash_file( 'sha256', $path );
+			if ( ! is_string( $sha ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $sha ) ) {
+				$invalid[] = $relative;
 				continue;
 			}
 			$present[] = $relative;
-			$sha = hash_file( 'sha256', $path );
-			$digests[ $relative ] = is_string( $sha ) ? strtolower( $sha ) : '';
+			$digests[ $relative ] = $sha;
 		}
 		ksort( $digests, SORT_STRING );
 		return array(
-			'ready' => empty( $missing ) && empty( $symlinks ) && count( $present ) === count( $paths ),
+			'ready' => empty( $missing ) && empty( $source_only_missing ) && empty( $symlinks ) && empty( $invalid ) && count( $present ) === count( $paths ) && ! empty( $paths ),
 			'declared_path_count' => count( $paths ),
 			'present' => $present,
 			'missing' => $missing,
+			'source_only_missing' => $source_only_missing,
 			'symlinks' => $symlinks,
+			'invalid' => $invalid,
+			'source_repository_evidence_required' => ! empty( $source_only_missing ),
+			'source_repository_evidence_certified' => false,
 			'path_sha256' => $digests,
-			'evidence_sha256' => self::digest( $digests ),
+			'evidence_sha256' => self::digest( array(
+				'path_sha256' => $digests, 'missing' => $missing,
+				'source_only_missing' => $source_only_missing,
+				'symlinks' => $symlinks, 'invalid' => $invalid,
+			) ),
 			'live_certification' => false,
 		);
 	}
@@ -248,8 +300,17 @@ final class MAD4B_SCP_Workstream_Certification {
 			|| ! array_key_exists( 'caller_live_evidence_accepted', $rules )
 			|| false !== $rules['caller_live_evidence_accepted']
 			|| empty( $rules['repository_structure_is_not_live_certification'] )
-			|| empty( $rules['unknown_live_evidence_fails_closed'] ) ) {
+			|| empty( $rules['unknown_live_evidence_fails_closed'] )
+			|| ! isset( $rules['source_only_path_prefixes'] )
+			|| ! is_array( $rules['source_only_path_prefixes'] )
+			|| count( $rules['source_only_path_prefixes'] ) > 16 ) {
 			return new WP_Error( 'mad4b_feature007_workstream_policy_not_fail_closed', 'Feature 007 workstream certification policy does not satisfy fail-closed invariants.' );
+		}
+		foreach ( $rules['source_only_path_prefixes'] as $prefix ) {
+			if ( ! is_string( $prefix ) || strlen( $prefix ) > 96
+				|| 1 !== preg_match( '~^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*/$~D', $prefix ) ) {
+				return new WP_Error( 'mad4b_feature007_source_path_policy_invalid', 'Source-only evidence prefixes must be bounded relative directory paths.' );
+			}
 		}
 		return $decoded;
 	}

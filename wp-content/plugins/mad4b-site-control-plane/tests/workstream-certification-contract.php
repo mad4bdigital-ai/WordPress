@@ -71,4 +71,29 @@ foreach(array('update_option(','add_option(','delete_option(','wp_remote_get(','
  $check(false===strpos($source,$forbidden),'read-only certification evaluator contains forbidden primitive: '.$forbidden);
 }
 
+
+// Absent source-only test files must never masquerade as absent runtime code.
+$repositoryProbe=new ReflectionMethod('MAD4B_SCP_Workstream_Certification','repository_evidence');
+$repositoryProbe->setAccessible(true);
+$testMissing=$repositoryProbe->invoke(null,array('tests/feature007-test-never-in-package.php'),array('tests/'));
+$check(false===$testMissing['ready'] && count($testMissing['source_only_missing'])===1 && empty($testMissing['missing']),'undistributed source test incorrectly classified as runtime file missing');
+$check(true===$testMissing['source_repository_evidence_required'] && false===$testMissing['source_repository_evidence_certified'],'undistributed source test silently certified');
+$runtimeMissing=$repositoryProbe->invoke(null,array('includes/feature007-runtime-absent.php'),array('tests/'));
+$check(false===$runtimeMissing['ready'] && count($runtimeMissing['missing'])===1 && empty($runtimeMissing['source_only_missing']),'missing executable runtime artifact was downgraded to external evidence');
+foreach(array('../tests/x.php','tests/../includes/x.php','/tests/x.php','tests//x.php','tests/./x.php','tests/feature007-test-never-in-package.php','tests/feature007-test-never-in-package.php') as $unused){ /* fixture paths are checked below */ }
+$unsafe=$repositoryProbe->invoke(null,array('../tests/x.php','tests/../includes/x.php','/tests/x.php','tests//x.php','tests/./x.php'),array('tests/'));
+$check(false===$unsafe['ready'] && count($unsafe['invalid'])===5 && empty($unsafe['source_only_missing']),'unsafe paths were misclassified as source-only tests');
+$duplicate=$repositoryProbe->invoke(null,array('tests/feature007-test-never-in-package.php','tests/feature007-test-never-in-package.php'),array('tests/'));
+$check(false===$duplicate['ready'] && count($duplicate['invalid'])===1,'duplicate repository evidence path bypassed fail-closed rules');
+$empty=$repositoryProbe->invoke(null,array(),array('tests/'));
+$check(false===$empty['ready'] && !empty($empty['invalid']),'empty repository evidence was considered READY');
+
+$evaluateProbe=new ReflectionMethod('MAD4B_SCP_Workstream_Certification','evaluate');
+$evaluateProbe->setAccessible(true);
+$sourceOnly=$evaluateProbe->invoke(null,array('id'=>'fixture_source_only','gate'=>'fixture','repository_paths'=>array('tests/feature007-test-never-in-package.php'),'live_evidence'=>array('required'=>true)), $all['candidate_identity'], array('tests/'));
+$check('EXTERNAL_EVIDENCE_REQUIRED'===$sourceOnly['state'] && false===$sourceOnly['production_authorized'],'missing test elevated to READY or incorrectly blocked runtime');
+$runtimeOnly=$evaluateProbe->invoke(null,array('id'=>'fixture_runtime','gate'=>'fixture','repository_paths'=>array('includes/feature007-runtime-absent.php'),'live_evidence'=>array('required'=>true)), $all['candidate_identity'], array('tests/'));
+$check('REPOSITORY_BLOCKED'===$runtimeOnly['state'],'runtime file missing not blocked');
+
+
 echo "mad4b.feature007-workstream-certification-status.v1: PASS\n";
