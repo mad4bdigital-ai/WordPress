@@ -14,3 +14,14 @@
 - [ ] N013 Production release gates, owner attestation and rollback/exact package acceptance
 
 x markers are source deliverables, NOT live runtime certification.
+
+## Additional proof hardening
+- [x] N014 Verify RSA type and minimum key size on WordPress side, derive matching SPKI key ID
+- [x] N015 Orchestrator preflights actual public/private signer key ID before plan/billable browser
+- [x] N016 Unique cryptographic challenge nonce per issued plan; no write from read-only MCP
+- [x] N017 Native oracle uses current registered Providers rather than empty recognition fingerprint
+- [x] N018 Plan readback checks current discovery digest and operator configuration revision
+- [x] N019 Strict passive-only network policy for generic capability observations
+- [x] N020 Capability Atlas never maps source inventory completeness to release readiness
+- [ ] N021 Independent single-use replay ledger with exact run-ID, server-enforced atomic consumption
+- [ ] N022 External browser provider session/network attestation and site-local exact-run receipts

@@ -58,7 +58,8 @@ final class MAD4B_SCP_Capability_Atlas {
         return array(
             'contract' => self::CONTRACT, 'read_only' => true,
             'authorizing' => false, 'execution_allowed' => false,
-            'complete' => false, 'capabilities' => array(), 'count' => 0,
+            'complete' => false, 'inventory_complete' => false, 'capabilities' => array(), 'count' => 0,
+            'functional_certification_count' => 0, 'release_ready' => false,
             'blocking_reasons' => $reasons
         );
     }
@@ -170,18 +171,37 @@ final class MAD4B_SCP_Capability_Atlas {
                 'candidate_count' => count( $providers ),
                 'candidate_ambiguous' => count( $providers ) > 1,
                 'candidates' => $providers,
-                'state' => 'unverified',
+                'state' => 'INVENTORIED_NOT_PROVEN',
                 'execution_allowed' => false,
                 'certification_issued' => false,
-                'next_required_evidence' => array( 'provider_contract', 'semantic_oracle',
-                    'approved_execution_adapter', 'independent_reducer' ),
+                // A provider declaring an oracle/reducer is NOT proof that the
+                // runner used it on the exact deployed source. None of these
+                // later gates can be inferred from plugin-family presence.
+                'evidence_gates' => array(
+                    'inventory' => $complete ? 'OBSERVED' : 'PARTIAL',
+                    'contract_claims' => count( $providers ) ? 'DECLARED' : 'MISSING',
+                    'semantic_oracle' => 'NOT_PROVEN',
+                    'browser_execution_attestation' => 'NOT_PROVEN',
+                    'independent_reduction' => 'NOT_PROVEN',
+                    'replay_and_freshness' => 'NOT_PROVEN',
+                    'cross_site_parity' => 'NOT_PROVEN',
+                    'release_approval' => 'NOT_PROVEN',
+                ),
+                'next_required_evidence' => array(
+                    'trusted_build', 'semantic_oracle', 'approved_execution_adapter',
+                    'signed_live_observation', 'independent_reducer',
+                    'replay_and_freshness_attestation', 'cross_site_parity',
+                    'release_approval'
+                ),
             );
         }
         return array(
             'contract' => self::CONTRACT, 'read_only' => true,
             'authorizing' => false, 'execution_allowed' => false,
-            'complete' => $complete, 'partial' => ! $complete, 'capabilities' => $items,
-            'count' => count( $items ),
+            'complete' => $complete, 'inventory_complete' => $complete,
+            'partial' => ! $complete, 'capabilities' => $items,
+            'count' => count( $items ), 'functional_certification_count' => 0,
+            'release_ready' => false,
             'candidate_count' => array_sum( array_map( static function ( $x ) {
                 return $x['candidate_count'];
             }, $items ) ),

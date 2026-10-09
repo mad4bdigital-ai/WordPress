@@ -12,6 +12,9 @@ native_expect( $key_pair !== false, 'generate independent browser test signer' )
 openssl_pkey_export( $key_pair, $private_pem );
 $details = openssl_pkey_get_details( $key_pair );
 define( 'MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM', $details['key'] );
+$der = base64_decode( preg_replace(
+    '/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\\s+/', '', $details['key'] ), true );
+$GLOBALS['native_test_key_id'] = 'rsa-spki-sha256:' . hash( 'sha256', $der );
 $GLOBALS['native_build'] = array(
     'runtime_manifest_match' => true, 'stale' => false,
     'source_commit_sha' => str_repeat( 'a', 40 ),
@@ -25,7 +28,18 @@ class MAD4B_SCP_Live_Acceptance_Observer {
 }
 class MAD4B_SCP_Site_Capability_Discovery {
     public static function observe( $origin, $providers ) {
+        native_expect( isset( $providers[ MAD4B_SCP_Native_Capability_Browser_Provider::ID ] ),
+            'semantic fingerprint uses live registered providers, never empty registry' );
         return array( 'discovery_complete' => true, 'snapshot_sha256' => str_repeat( 'd', 64 ) );
+    }
+}
+class MAD4B_SCP_Browser_Acceptance_Provider_Registry {
+    public function all() {
+        return array(
+            MAD4B_SCP_Native_Capability_Browser_Provider::ID => array(
+                'descriptor' => MAD4B_SCP_Native_Capability_Browser_Provider::descriptor()
+            )
+        );
     }
 }
 class MAD4B_SCP_Browser_Acceptance_Admin_UI {
@@ -56,12 +70,23 @@ $registered = $c::register( array() );
 native_expect( isset( $registered[ $c::ID ] ) && $registered[ $c::ID ]['authorizing'] === false,
     'registered safely' );
 native_expect( $c::capabilities()['independent_reducer'] === true, 'reducer declared' );
+native_expect( $c::capabilities()['browser_attestation_key_id'] === $GLOBALS['native_test_key_id'],
+    'native trusted public key fingerprint readback matches external signer' );
+native_expect( $c::capabilities()['browser_attestation_public_key_valid'] === true &&
+    $c::capabilities()['browser_attestation_ready'] === false &&
+    $c::capabilities()['release_ready'] === false &&
+    $c::capabilities()['replay_prevention_verified'] === false,
+    'public trust anchor never masquerades as live browser or anti-replay proof' );
 $plan = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
 native_expect( $plan['state'] === 'ready' && $plan['case_count'] === 1,
     'native read oracle generates signed plan' );
 native_expect( $plan['cases'][0]['expected']['path'] === '/public/' &&
     $plan['cases'][0]['case_id'] === 'page-42', 'password pages and nonpublished post records excluded' );
 native_expect( strlen( $plan['plan_signature'] ) === 64, 'HMAC plan signature produced' );
+$another = $c::plan( array( 'profile_id' => $c::PROFILE, 'suite' => 'browser_runtime' ) );
+native_expect( $another['plan_digest'] !== $plan['plan_digest'] &&
+    $another['challenge']['nonce'] !== $plan['challenge']['nonce'],
+    'two issued plans even within one second must have unique nonces and HMAC digests' );
 $evidence = array(
     'contract' => $c::EVIDENCE, 'plan_digest' => $plan['plan_digest'],
     'plan_signature' => $plan['plan_signature'], 'origin' => $plan['origin'],
@@ -88,7 +113,7 @@ function native_sign( $evidence, $method, $private_pem ) {
     $material = $method->invoke( null, $evidence );
     openssl_sign( $material, $signed_bytes, $private_pem, OPENSSL_ALGO_SHA256 );
     $evidence['attestation'] = array(
-        'algorithm' => 'rsa-sha256', 'key_id' => 'mad4b-browser-v1',
+        'algorithm' => 'rsa-sha256', 'key_id' => $GLOBALS['native_test_key_id'],
         'signature' => base64_encode( $signed_bytes )
     );
     return $evidence;
@@ -113,6 +138,13 @@ native_expect( $c::result( $changed )['verdict'] === 'BLOCKED',
 $changed['evidence'] = native_sign( array_diff_key( $changed['evidence'], array( 'attestation' => true ) ), $method, $private_pem );
 native_expect( $c::result( $changed )['verdict'] === 'FAIL',
     'genuinely observed different canonical classified as FAIL' );
+$bad_key_id = $request;
+$bad_key_id['evidence']['attestation']['key_id'] = 'rsa-spki-sha256:' . str_repeat( 'e', 64 );
+native_expect( $c::result( $bad_key_id )['verdict'] === 'BLOCKED',
+    'RSA signature from correct key with forged identity denied' );
+$changed = $request; $changed['evidence']['cases'][0]['challenge_nonce'] = str_repeat( '0', 32 );
+native_expect( $c::result( $changed )['verdict'] === 'BLOCKED',
+    'challenge nonce tampering rejects stateless plan reconstruction' );
 $changed = $request; $changed['plan_signature'] = str_repeat( '0', 64 );
 native_expect( $c::result( $changed )['verdict'] === 'BLOCKED', 'forged plan signature denied' );
 $changed = $request; $changed['evidence']['observer']['plan_issued_at'] -= 2000;

@@ -56,8 +56,15 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             'capabilities' => array( 'browser.canonical_path' ),
             'semantic_oracle' => 'wp_get_canonical_url_published_page',
             'browser_attestation' => 'trusted_rsa_sha256',
-            'browser_attestation_ready' => self::trusted_key() !== '',
+            // A valid public key alone never proves a browser session or
+            // matching private-key ownership by the remote worker.
+            'browser_attestation_public_key_valid' => self::trusted_key() !== '',
+            'browser_attestation_key_id' => self::trusted_key_id(),
+            'browser_attestation_ready' => false,
+            'external_agent_identity_verified' => false,
+            'replay_prevention_verified' => false,
             'independent_reducer' => true,
+            'release_ready' => false,
         );
     }
 
@@ -67,7 +74,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! in_array( $request['suite'] ?? '', array( 'browser_runtime', 'browser' ), true ) ) {
             return self::blocked( 'plan', array( 'profile_or_input_invalid' ) );
         }
-        return self::prepare( time() );
+        try { $nonce = bin2hex( random_bytes( 16 ) ); }
+        catch ( Throwable $error ) { return self::blocked( 'plan', array( 'secure_nonce_unavailable' ) ); }
+        return self::prepare( time(), $nonce );
     }
 
     private static function blocked( $kind, $reasons ) {
@@ -91,15 +100,34 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
 
     private static function trusted_key() {
         if ( ! defined( 'MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM' ) ||
-            ! is_string( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM ) ) return '';
-        $key = trim( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM );
-        return strlen( $key ) <= 8192 && strpos( $key, '-----BEGIN PUBLIC KEY-----' ) === 0 ? $key : '';
+            ! is_string( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM ) ||
+            ! function_exists( 'openssl_pkey_get_public' ) ||
+            ! function_exists( 'openssl_pkey_get_details' ) ) return '';
+        $pem = trim( MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM );
+        if ( strlen( $pem ) > 8192 ||
+            strpos( $pem, '-----BEGIN PUBLIC KEY-----' ) !== 0 ) return '';
+        $parsed = openssl_pkey_get_public( $pem );
+        $details = $parsed ? openssl_pkey_get_details( $parsed ) : false;
+        if ( ! is_array( $details ) || ( $details['type'] ?? null ) !== OPENSSL_KEYTYPE_RSA ||
+            (int) ( $details['bits'] ?? 0 ) < 2048 ||
+            ! is_string( $details['key'] ?? null ) ) return '';
+        return $details['key'];
+    }
+
+    private static function trusted_key_id() {
+        $pem = self::trusted_key();
+        if ( '' === $pem ) return '';
+        $base64 = preg_replace( '/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\\s+/', '', $pem );
+        $der = is_string( $base64 ) ? base64_decode( $base64, true ) : false;
+        return false === $der || strlen( $der ) < 200
+            ? '' : 'rsa-spki-sha256:' . hash( 'sha256', $der );
     }
 
     private static function binding() {
         if ( ! function_exists( 'home_url' ) || ! function_exists( 'wp_salt' ) ||
             ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false ) ||
             ! class_exists( 'MAD4B_SCP_Site_Capability_Discovery', false ) ||
+            ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Provider_Registry', false ) ||
             ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', false ) ) return null;
         $origin = rtrim( (string) home_url( '/' ), '/' ) . '/';
         $parsed = parse_url( $origin );
@@ -114,7 +142,12 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! empty( $provenance['stale'] ) ||
             ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $provenance['source_commit_sha'] ?? '' ) ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $provenance['build_fingerprint'] ?? '' ) ) ) return null;
-        $discovery = MAD4B_SCP_Site_Capability_Discovery::observe( rtrim( $origin, '/' ), array() );
+        // Use the exact live registry also projected by Browser Acceptance
+        // Core. Empty provider inventories produce a different SHA and allow
+        // signed plans to silently drift from selected provider recognition.
+        $registered = ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all();
+        if ( ! is_array( $registered ) || ! isset( $registered[ self::ID ] ) ) return null;
+        $discovery = MAD4B_SCP_Site_Capability_Discovery::observe( rtrim( $origin, '/' ), $registered );
         if ( empty( $discovery['discovery_complete'] ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $discovery['snapshot_sha256'] ?? '' ) ) ) return null;
         $operator = MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection();
@@ -172,7 +205,7 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         return $cases;
     }
 
-    private static function prepare( $issued_at ) {
+    private static function prepare( $issued_at, $nonce ) {
         $context = self::binding();
         if ( ! $context ) return self::blocked( 'plan', array( 'build_or_discovery_or_preference_unverified' ) );
         if ( ! self::trusted_key() ) return self::blocked( 'plan', array( 'trusted_browser_attestation_key_missing' ) );
@@ -180,10 +213,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             $issued_at + self::VALID_SECONDS <= time() ) return self::blocked( 'plan', array( 'challenge_expired' ) );
         $cases = self::page_cases( $context['origin'] );
         if ( ! $cases ) return self::blocked( 'plan', array( 'published_public_page_oracle_unavailable' ) );
-        $nonce = substr( hash_hmac( 'sha256',
-            'nonce|' . $context['origin'] . '|' . $context['source_snapshot_sha256'] . '|' .
-            $context['configuration_revision'] . '|' . (string) $issued_at,
-            $context['secret'] ), 0, 32 );
+        if ( ! is_string( $nonce ) || ! preg_match( '/^[a-f0-9]{32}$/D', $nonce ) ) {
+            return self::blocked( 'plan', array( 'nonce_invalid' ) );
+        }
         $expires = $issued_at + self::VALID_SECONDS;
         $challenge = array(
             'nonce' => $nonce, 'issued_at' => $issued_at, 'expires_at' => $expires,
@@ -224,7 +256,8 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
             ! is_int( $evidence['observer']['plan_issued_at'] ) ) {
             return self::blocked( 'result', array( 'signed_plan_epoch_missing' ) );
         }
-        $plan = self::prepare( $evidence['observer']['plan_issued_at'] );
+        $nonce = $evidence['cases'][0]['challenge_nonce'] ?? null;
+        $plan = self::prepare( $evidence['observer']['plan_issued_at'], $nonce );
         if ( ( $plan['state'] ?? '' ) !== 'ready' ) return self::blocked( 'result', $plan['blocking_reasons'] ?? array( 'plan_unavailable' ) );
         foreach ( array( 'plan_digest', 'plan_signature' ) as $field ) {
             if ( ! is_string( $request[ $field ] ?? null ) || ! is_string( $evidence[ $field ] ?? null ) ||
@@ -301,7 +334,9 @@ final class MAD4B_SCP_Native_Capability_Browser_Provider {
         if ( ! function_exists( 'openssl_verify' ) || ! is_array( $evidence['attestation'] ?? null ) ||
             array_keys( $evidence['attestation'] ) !== array( 'algorithm', 'key_id', 'signature' ) ||
             ( $evidence['attestation']['algorithm'] ?? '' ) !== 'rsa-sha256' ||
-            ( $evidence['attestation']['key_id'] ?? '' ) !== 'mad4b-browser-v1' ) return false;
+            ! is_string( $evidence['attestation']['key_id'] ?? null ) ||
+            '' === self::trusted_key_id() ||
+            ! hash_equals( self::trusted_key_id(), $evidence['attestation']['key_id'] ) ) return false;
         $signature = base64_decode( (string) ( $evidence['attestation']['signature'] ?? '' ), true );
         if ( false === $signature || strlen( $signature ) > 1024 || strlen( $signature ) < 32 ) return false;
         $copy = $evidence;

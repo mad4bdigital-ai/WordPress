@@ -118,6 +118,20 @@ const plan={contract:"mad4b.browser-acceptance-plan.v1",state:"ready",origin:etg
  profile_id:etgResult.profileId,suite:"browser_runtime",read_only:true,authorizing:false,
  plan_digest:"f".repeat(64),plan_signature:"a".repeat(64),cases:[{case_id:"case-a"}]};
 assertSitePlanBound(etgResult,plan);
+const genericSelection=resolve(mixed,{...mixedOptions,requestedProfile:"public-canonical"});
+const nativePlan={...plan,origin:genericSelection.siteOrigin+"/",
+ provider_id:genericSelection.siteProviderId,
+ provider_contract:genericSelection.siteProviderContract,
+ profile_id:genericSelection.profileId,
+ source_snapshot_sha256:genericSelection.discoverySha256,
+ configuration_revision:genericSelection.configurationRevision};
+assertSitePlanBound(genericSelection,nativePlan);
+assert.throws(()=>assertSitePlanBound(genericSelection,{
+ ...nativePlan,source_snapshot_sha256:"e".repeat(64)
+}),/site_browser_plan_binding_mismatch/);
+assert.throws(()=>assertSitePlanBound(genericSelection,{
+ ...nativePlan,configuration_revision:"0".repeat(32)
+}),/site_browser_plan_binding_mismatch/);
 assert.throws(()=>assertSitePlanBound(etgResult,{...plan,origin:"https://another.example"}),/site_browser_plan_binding_mismatch/);
 const result={contract:"mad4b.browser-acceptance-result.v1",provider_id:plan.provider_id,
  provider_contract:plan.provider_contract,profile_id:plan.profile_id,suite:plan.suite,
