@@ -45,6 +45,15 @@ for k in ("checkpoint_initialized","Divergent initial sources lack exact owner-r
  "Unapproved external Drive edit overwritten","Uncertain write not journaled",
  "Recovered write did not converge checkpoint"):
  ck(k in tests,"Native recovery/transaction scenario missing "+k)
+inventory=profile.split("public static function ability_names( $surface )",1)[1].split("public static function high_impact_abilities",1)[0]
+definitions=profile.split("public static function ability_definitions()",1)[1].split("private static function route_definition",1)[0]
+for suffix in ("status","plan","begin","advance","recover","finalize-reconciled","cancel","archive"):
+ ability="mad4b/business-activity-sync-"+suffix
+ ck(ability in inventory and ability in definitions,
+    "Sync ability must exist in both discoverable inventory and callable definition: "+ability)
+for ability in ("mad4b/business-activity-link-apply","mad4b/business-activity-sync-advance"):
+ ck(ability in profile.split("public static function high_impact_abilities()",1)[1].split("public static function reversible_contracts()",1)[0],
+    "High-impact write gate must include "+ability)
 ck("allroyal" not in runtime.lower() and "'dmcs'" not in facet,
  "Site-specific tourism logic leaked into generic MSR02")
 print("PASS MSR02 persisted checkpoints, exact owner-approved arbitration, provider CAS, Drive Docs UTF16 and unsafe-write recovery")
