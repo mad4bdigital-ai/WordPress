@@ -330,6 +330,7 @@ for regression_contract in (
     "portable-readonly-reconnect-contract.py",
     "dependency-certified-runtime-contract.py",
     "upgrade-continuity-implicit-staging-contract.py",
+    "wordpress-recovery-lifecycle-contract.py",
 ):
     runpy.run_path(str(ROOT / "tests" / regression_contract), run_name="__main__")
 
