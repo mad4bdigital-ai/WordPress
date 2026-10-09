@@ -104,6 +104,14 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! is_array( $allowed_currencies ) || count( $allowed_currencies ) > 20 )
             return self::error( 'mad4b_import_currency_policy_invalid', 'Explicit bounded currency allowlist required.' );
         $allowed_currencies = array_values( array_unique( array_map( 'strval', $allowed_currencies ) ) );
+        if ( isset( $seen['base_currency'] ) && empty( $allowed_currencies ) )
+            return self::error( 'mad4b_import_currency_allowlist_required',
+                'Commercial currency fields require an explicit site-approved currency list.' );
+        foreach ( $allowed_currencies as $currency ) {
+            if ( ! preg_match( '/^[A-Z]{3}$/D', $currency ) )
+                return self::error( 'mad4b_import_currency_code_invalid',
+                    'Approved currency codes must use the exact three-letter uppercase contract.' );
+        }
         $issues = array(); $ids = array(); $groups = array(); $row_hashes = array();
         foreach ( $rows as $i => $row ) {
             if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
