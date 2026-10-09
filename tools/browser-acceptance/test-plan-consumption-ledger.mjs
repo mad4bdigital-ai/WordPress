@@ -55,6 +55,26 @@ try {
   assert.equal(entry.evidence_digest,result.evidence_digest);
   assert.equal(entry.globally_unique_consumption_proven,false);
 
+  // Simulate a short write that returns zero bytes but does not throw.
+  // The local claim must be burned rather than returning an alleged PASS.
+  const partialDir=fs.mkdtempSync(path.join(os.tmpdir(),"mad4b-ledger-shortwrite-"));
+  fs.chmodSync(partialDir,0o700);
+  const originalWrite=fs.writeSync;
+  let attempted=0;
+  try {
+    fs.writeSync=(fd,buffer,offset,length,position)=>{
+      attempted++;
+      if(attempted===1)return originalWrite(fd,buffer,offset,Math.min(length,7),position);
+      return 0;
+    };
+    assert.throws(()=>consumeLocalBrowserPlanOnce({...args,ledgerDir:partialDir}),
+      /persistence_not_confirmed/);
+  } finally {fs.writeSync=originalWrite;}
+  assert.equal(fs.readdirSync(partialDir).length,1);
+  assert.throws(()=>consumeLocalBrowserPlanOnce({...args,ledgerDir:partialDir}),
+    /replay_detected/);
+  fs.rmSync(partialDir,{recursive:true,force:true});
+
   const dir2=fs.mkdtempSync(path.join(os.tmpdir(),"mad4b-ledger-parallel-"));
   fs.chmodSync(dir2,0o700);
   try {
