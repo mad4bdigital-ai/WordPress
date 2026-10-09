@@ -1,0 +1,248 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * IMP01: bounded spreadsheet/import preflight and human conflict review.
+ * Deliberately NOT a silent WP All Import executor or a Sheets CAS writer.
+ */
+final class MAD4B_SCP_Activity_Import_Review {
+    const CONTRACT = 'mad4b.activity-import-review.v1';
+    const MAX_ROWS = 500;
+    const MAX_COLUMNS = 80;
+    const MAX_ISSUES = 200;
+    private static function error( $code, $message ) { return new WP_Error( $code, $message ); }
+    private static function digest( $v ) {
+        $json = wp_json_encode( $v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
+    }
+    private static function enrolled() {
+        return class_exists( 'MAD4B_SCP_Site_Profile' ) &&
+            MAD4B_SCP_Site_Profile::configured() &&
+            MAD4B_SCP_Site_Profile::origin_enrolled() &&
+            MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+    }
+    private static function option_key( $profile_slug ) {
+        return 'mad4b_activity_import_review_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $profile_slug );
+    }
+    public static function capabilities( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
+            return self::error( 'mad4b_import_authority_denied', 'Enrolled administrator required.' );
+        return array(
+            'contract' => self::CONTRACT, 'read_only' => true,
+            'wp_all_import_detected' => class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' ),
+            'available_sources' => array( 'xlsx_via_bounded_csv_handoff', 'csv_upload', 'google_sheet_managed', 'apps_script_signed_webhook' ),
+            'available_destinations' => array( 'wp_all_import_existing_template', 'governed_content_experience_profile' ),
+            'wp_all_import_execution_certified' => false,
+            'google_sheets_atomic_cas_certified' => false,
+            'generic_importer_options' => array(
+                'unique_identifier', 'match_existing', 'create', 'update', 'delete',
+                'update_only_selected_fields', 'custom_fields', 'taxonomies',
+                'relations', 'images', 'wpml_translation_group', 'schedule',
+                'batch_limit', 'skip_unchanged', 'dry_run', 'error_policy', 'rollback_policy'
+            ),
+            'max_preview_rows' => self::MAX_ROWS,
+            'staging_only' => true
+        );
+    }
+    private static function inspect( $input ) {
+        if ( ! is_array( $input ) ) return self::error( 'mad4b_import_payload_invalid', 'Object required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            ! class_exists( 'MAD4B_SCP_Content_Experience_Profiles' ) )
+            return self::error( 'mad4b_import_profile_invalid', 'Exact Experience Profile required.' );
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
+            empty( $profile['activity_contract']['enabled'] ) )
+            return self::error( 'mad4b_import_profile_not_enabled', 'Enabled Activity facet required.' );
+        $rows = isset( $input['rows'] ) ? $input['rows'] : array();
+        $headers = isset( $input['headers'] ) ? $input['headers'] : array();
+        if ( ! is_array( $rows ) || ! is_array( $headers ) ||
+            count( $rows ) > self::MAX_ROWS || count( $headers ) < 1 ||
+            count( $headers ) > self::MAX_COLUMNS )
+            return self::error( 'mad4b_import_bounds', 'Bounded spreadsheet preview required.' );
+        $seen = array();
+        foreach ( $headers as $h ) {
+            if ( ! is_string( $h ) || ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $h ) ||
+                isset( $seen[ $h ] ) )
+                return self::error( 'mad4b_import_column_invalid', 'Column labels must be unique safe identifiers.' );
+            $seen[ $h ] = true;
+        }
+        $identity = isset( $input['identity_field'] ) ? (string) $input['identity_field'] : '';
+        if ( ! isset( $seen[ $identity ] ) )
+            return self::error( 'mad4b_import_identity_missing', 'Explicit unique identifier field required.' );
+        $mapping = isset( $input['field_mapping'] ) ? $input['field_mapping'] : array();
+        if ( ! is_array( $mapping ) || count( $mapping ) > self::MAX_COLUMNS )
+            return self::error( 'mad4b_import_mapping_invalid', 'Bounded field mapping required.' );
+        $allow = array_fill_keys( (array) $profile['meta_keys'], true );
+        $allowed_wpml = array(
+            '_wpml_import_language_code', '_wpml_import_source_language_code',
+            '_wpml_import_translation_group', '_wpml_import_after_process_post_status'
+        );
+        foreach ( $mapping as $from => $to ) {
+            if ( ! isset( $seen[ $from ] ) || ! is_string( $to ) ||
+                ( ! isset( $allow[ $to ] ) && ! in_array( $to, $allowed_wpml, true ) ) )
+                return self::error( 'mad4b_import_field_not_allowed', 'Mapping target must be declared by exact parent profile or governed WPML metadata.' );
+        }
+        $allowed_currencies = isset( $input['allowed_currencies'] ) ? $input['allowed_currencies'] : array();
+        if ( ! is_array( $allowed_currencies ) || count( $allowed_currencies ) > 20 )
+            return self::error( 'mad4b_import_currency_policy_invalid', 'Explicit bounded currency allowlist required.' );
+        $allowed_currencies = array_values( array_unique( array_map( 'strval', $allowed_currencies ) ) );
+        $issues = array(); $ids = array(); $groups = array(); $row_hashes = array();
+        foreach ( $rows as $i => $row ) {
+            if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
+                array_diff( $headers, array_keys( $row ) ) )
+                return self::error( 'mad4b_import_row_shape', 'All rows must contain precisely the declared columns.' );
+            foreach ( $row as $value ) {
+                if ( ! is_scalar( $value ) && null !== $value )
+                    return self::error( 'mad4b_import_value_type', 'Nested structures/formulas/executable data cannot be imported by the preview lane.' );
+                if ( strlen( (string) $value ) > 4096 )
+                    return self::error( 'mad4b_import_cell_unbounded', 'Spreadsheet cell exceeds bounded length.' );
+            }
+            $id = (string) $row[ $identity ];
+            $row_hashes[] = self::digest( $row );
+            $errors = array();
+            if ( '' === $id || isset( $ids[ $id ] ) ) $errors[] = 'identity_missing_or_duplicate';
+            $ids[ $id ] = true;
+            if ( isset( $row['base_currency'] ) && $allowed_currencies &&
+                ! in_array( (string) $row['base_currency'], $allowed_currencies, true ) )
+                $errors[] = 'currency_not_in_approved_allowlist';
+            if ( isset( $row['_wpml_import_after_process_post_status'] ) &&
+                ! in_array( (string) $row['_wpml_import_after_process_post_status'],
+                    array( 'draft', 'pending', 'private', 'publish' ), true ) )
+                $errors[] = 'invalid_wordpress_post_status';
+            if ( isset( $row['tour_rate_start_date'], $row['tour_rate_end_date'] ) &&
+                is_numeric( $row['tour_rate_start_date'] ) &&
+                is_numeric( $row['tour_rate_end_date'] ) &&
+                (float) $row['tour_rate_start_date'] > (float) $row['tour_rate_end_date'] )
+                $errors[] = 'date_interval_reversed';
+            if ( isset( $row['single_price'], $row['double_price'], $row['triple_price'] ) ) {
+                foreach ( array( 'single_price', 'double_price', 'triple_price' ) as $price_key ) {
+                    if ( ! is_numeric( $row[ $price_key ] ) || (float) $row[ $price_key ] < 0 )
+                        $errors[] = 'price_not_nonnegative_number';
+                }
+            }
+            $group_col = '_wpml_import_translation_group';
+            $lang_col = '_wpml_import_language_code';
+            if ( isset( $row[ $group_col ], $row[ $lang_col ] ) ) {
+                $pair = (string) $row[ $group_col ] . '|' . (string) $row[ $lang_col ];
+                if ( isset( $groups[ $pair ] ) ) $errors[] = 'duplicate_translation_group_language';
+                $groups[ $pair ] = true;
+            }
+            foreach ( $errors as $reason ) {
+                if ( count( $issues ) < self::MAX_ISSUES )
+                    $issues[] = array( 'row' => (int) $i + 1,
+                        'identity_sha256' => hash( 'sha256', $id ),
+                        'reason' => $reason, 'severity' => 'block' );
+            }
+        }
+        $plan = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
+            'authority_sha256' => $profile['authority_sha256'],
+            'identity_field' => $identity, 'field_mapping' => $mapping,
+            'headers' => $headers, 'row_hashes' => $row_hashes,
+            'allowed_currencies' => $allowed_currencies );
+        return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
+            'profile_slug' => $slug, 'row_count' => count( $rows ),
+            'issue_count_observed' => array_sum( array_map( static function( $x ) { return 1; }, $issues ) ),
+            'issues' => $issues, 'issues_truncated' => count( $issues ) >= self::MAX_ISSUES,
+            'ready_for_import_execution' => false,
+            'requires_human_review' => true, 'source_values_persisted' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+    public static function plan( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
+            return self::error( 'mad4b_import_plan_denied', 'Enrolled administrator required.' );
+        return self::inspect( $input );
+    }
+    public static function review( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
+            return self::error( 'mad4b_import_review_denied', 'Enrolled administrator required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            return self::error( 'mad4b_import_review_profile_invalid', 'Exact site profile required.' );
+        $stage = get_option( self::option_key( $slug ), false );
+        if ( ! is_array( $stage ) ) return array( 'contract' => self::CONTRACT, 'state' => 'no_staged_feed', 'read_only' => true );
+        return array( 'contract' => self::CONTRACT, 'state' => 'requires_review',
+            'source' => $stage['source'], 'payload_sha256' => $stage['payload_sha256'],
+            'received_at' => $stage['received_at'], 'plan' => $stage['plan'],
+            'write_performed' => false, 'read_only' => true );
+    }
+    public static function register_rest() {
+        register_rest_route( 'mad4b/v1', '/activity-import/intake', array(
+            'methods' => 'POST', 'callback' => array( __CLASS__, 'receive_signed' ),
+            'permission_callback' => array( __CLASS__, 'authorize_signed' ) ) );
+    }
+    public static function authorize_signed( $request ) {
+        if ( ! self::enrolled() || ! defined( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET' ) ||
+            ! is_string( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) ||
+            strlen( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) < 32 )
+            return self::error( 'mad4b_import_webhook_disabled', 'Webhook disabled until site-scoped host secret is provisioned.' );
+        $raw = $request->get_body();
+        if ( ! is_string( $raw ) || strlen( $raw ) > 1048576 )
+            return self::error( 'mad4b_import_webhook_size', 'Signed payload must be below 1 MiB.' );
+        $provided = (string) $request->get_header( 'x-mad4b-signature' );
+        $expected = hash_hmac( 'sha256', $raw, MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $provided ) ||
+            ! hash_equals( $expected, $provided ) )
+            return self::error( 'mad4b_import_webhook_signature', 'Valid request signature required.' );
+        return true;
+    }
+    public static function receive_signed( $request ) {
+        $data = json_decode( $request->get_body(), true );
+        if ( ! is_array( $data ) || ! isset( $data['issued_at'], $data['nonce'], $data['input'], $data['site_uuid'] ) ||
+            ! is_int( $data['issued_at'] ) || abs( time() - $data['issued_at'] ) > 300 ||
+            ! is_string( $data['nonce'] ) || ! preg_match( '/^[A-Za-z0-9_-]{16,100}$/D', $data['nonce'] ) ||
+            (string) $data['site_uuid'] !== (string) MAD4B_SCP_Site_Profile::site_uuid() )
+            return self::error( 'mad4b_import_webhook_replay_or_site', 'Fresh site-bound signed request required.' );
+        // Reuse the same profile validator; inbound HMAC carries data authority
+        // only for STAGING, never a WordPress-post mutation or approval.
+        $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256', $data['site_uuid'] . '|' . $data['nonce'] );
+        if ( ! add_option( $nonce_key, time(), '', false ) )
+            return self::error( 'mad4b_import_webhook_replay', 'Webhook nonce already accepted.' );
+        $input = $data['input'];
+        if ( ! is_array( $input ) ) return self::error( 'mad4b_import_webhook_input', 'Invalid import input.' );
+        $preview = self::inspect( $input );
+        if ( is_wp_error( $preview ) ) return $preview;
+        $record = array( 'source' => 'google_apps_script', 'received_at' => gmdate( 'c' ),
+            'payload_sha256' => hash( 'sha256', $request->get_body() ), 'plan' => $preview );
+        $key = self::option_key( $preview['profile_slug'] );
+        // One inbox snapshot at a time: no implicit overwrites or auto-import.
+        if ( ! add_option( $key, $record, '', false ) )
+            return self::error( 'mad4b_import_review_pending', 'Resolve existing staged import review before accepting new data.' );
+        if ( self::digest( get_option( $key, false ) ) !== self::digest( $record ) )
+            return self::error( 'mad4b_import_stage_unverified', 'Staged review could not be independently read back.' );
+        return array( 'contract' => self::CONTRACT, 'staged' => true,
+            'plan_sha256' => $preview['plan_sha256'],
+            'issue_count' => $preview['issue_count_observed'], 'post_writes' => 0 );
+    }
+    public static function register_admin() {
+        add_management_page( 'MAD4B Import Review', 'MAD4B Import Review',
+            'manage_options', 'mad4b-import-review', array( __CLASS__, 'admin_page' ) );
+    }
+    public static function admin_page() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Permission denied.' );
+        echo '<div class="wrap"><h1>MAD4B Activity Import Review</h1>';
+        echo '<p>Read-only review. No WP All Import job or Google Sheets write is executed here.</p>';
+        $slug = isset( $_GET['profile_slug'] ) ? sanitize_key( wp_unslash( $_GET['profile_slug'] ) ) : '';
+        echo '<form method="get"><input type="hidden" name="page" value="mad4b-import-review" />';
+        echo '<label>Content Experience Profile <input name="profile_slug" value="' . esc_attr( $slug ) . '" /></label>';
+        submit_button( 'Inspect staged conflicts', 'secondary', '', false );
+        echo '</form>';
+        if ( $slug ) {
+            $review = self::review( array( 'profile_slug' => $slug ) );
+            if ( is_wp_error( $review ) ) echo '<p>' . esc_html( $review->get_error_message() ) . '</p>';
+            elseif ( isset( $review['plan']['issues'] ) ) {
+                echo '<p>Plan: <code>' . esc_html( $review['plan']['plan_sha256'] ) . '</code></p><table class="widefat striped"><thead><tr><th>Row</th><th>Reason</th><th>Severity</th></tr></thead><tbody>';
+                foreach ( $review['plan']['issues'] as $issue )
+                    echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' . esc_html( $issue['reason'] ) . '</td><td>' . esc_html( $issue['severity'] ) . '</td></tr>';
+                echo '</tbody></table>';
+            } else echo '<p>No staged feed for this profile.</p>';
+        }
+        echo '</div>';
+    }
+}
+if ( function_exists( 'add_action' ) ) {
+    add_action( 'rest_api_init', array( 'MAD4B_SCP_Activity_Import_Review', 'register_rest' ) );
+    add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
+}
