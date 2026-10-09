@@ -34,6 +34,8 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
             'brand_id'=>'b1','locale'=>'ar','market'=>'EG',
             'content_type'=>'article', 'binding'=>MAD4B_SCP_ACI01_Runtime_Binding::current()),
             'preview_sha256'=>str_repeat('a',64),
+            'job_id'=>$input['job_id'],
+            'evidence_summaries'=>array(),
             'reason_codes'=>array('context_not_ready','research_evidence_required'));
     }
 }
@@ -97,4 +99,54 @@ $badtype['scope']['content_type']='comparison';
 check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input), $badtype, $input['goal'],
     MAD4B_SCP_ACI01_Semantic_Recipe::current(array('content_type'=>'article'),
         MAD4B_SCP_ACI01_Intake_Preview::preview($input)))['status']==='DENIED', 'job content type mismatch');
+
+$handoff=$out['blueprint_handoff'];
+check($handoff['contract']==='mad4b.aci01.blueprint-handoff.v1',
+    'typed handoff registered');
+check($handoff['target_ability']==='mad4b/blueprint-build',
+    'reuses actual Feature 007 Blueprint ability');
+check($handoff['job_id']===$input['job_id'],
+    'bound to source ContentJob');
+check($handoff['dispatch_allowed']===false&&$handoff['artifact_created']===false
+    &&$handoff['authorizing']===false,
+    'Blueprint handoff must never execute or create');
+check(in_array('context_artifact_id',$handoff['required_input_keys'],true)
+    &&in_array('section_objectives',$handoff['required_input_keys'],true),
+    'handoff lists required native pipeline fields');
+check(in_array('research_rights_and_freshness',$handoff['unverified_prerequisites'],true),
+    'observed research is not provider rights');
+$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($input);
+$semantic=MAD4B_SCP_ACI01_Semantic_Recipe::current(
+    array('content_type'=>'article'),$intake);
+$evidence=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
+$research_id='22222222-2222-4222-8222-222222222222';
+$evidence['evidence_summaries']=array(
+    array('artifact_id'=>$research_id,'artifact_type'=>'serp_research'));
+$rich=$cls::compile($intake,$evidence,$input['goal'],$semantic);
+check($rich['status']==='NEEDS_EVIDENCE' &&
+    $rich['blueprint_handoff']['observed_research_artifact_ids']===array($research_id),
+    'bounded research receipts stay observable, not authorized');
+check($rich['blueprint_handoff']['dispatch_allowed']===false,
+    'research presence cannot self-authorize Blueprint build');
+$bad=$evidence;
+$bad['evidence_summaries'][]=$bad['evidence_summaries'][0];
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'duplicate native research identity denied');
+$bad=$evidence;
+$bad['evidence_summaries'][0]['artifact_type']='content_recipe';
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'nonresearch artifacts are never admitted');
+$bad=$evidence;
+$bad['evidence_summaries'][0]['artifact_id']='../../wrong';
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'malformed native artifact ID denied');
+$bad=$evidence;
+$bad['job_id']='another-job';
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'malformed job ID cannot enter the handoff');
+$bad=$evidence;
+$bad['evidence_summaries']=array_fill(0,13,array('artifact_id'=>$research_id,
+    'artifact_type'=>'serp_research'));
+check($cls::compile($intake,$bad,$input['goal'],$semantic)['status']==='DENIED',
+    'handoff remains bounded under volume pressure');
 echo "ACI01_OPPORTUNITY_CANDIDATE: PASS\n";

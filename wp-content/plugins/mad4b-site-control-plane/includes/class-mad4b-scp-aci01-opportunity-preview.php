@@ -123,6 +123,40 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
         }
         $post_type = isset( $intake['candidate']['post_type'] ) ? $intake['candidate']['post_type'] : '';
         if ( ! is_string( $post_type ) || '' === $post_type ) return self::denied( 'exact_content_type_required' );
+        // Match the actual Feature 007 mad4b/blueprint-build artifact contract.
+        // These observed IDs are never elevated into certified/licensed inputs.
+        $job_id = $evidence['job_id'] ?? null;
+        $research_rows = $evidence['evidence_summaries'] ?? null;
+        if ( ! is_string( $job_id )
+            || ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $job_id )
+            || ! is_array( $research_rows ) || count( $research_rows ) > 12 )
+            return self::denied( 'blueprint_handoff_source_invalid' );
+        $research_ids = array();
+        foreach ( $research_rows as $row ) {
+            if ( ! is_array( $row ) || ! is_string( $row['artifact_id'] ?? null )
+                || ! preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iD', $row['artifact_id'] )
+                || ! in_array( $row['artifact_type'] ?? null, array( 'keyword_research', 'serp_research' ), true )
+                || in_array( strtolower( $row['artifact_id'] ), $research_ids, true ) )
+                return self::denied( 'blueprint_handoff_research_invalid' );
+            $research_ids[] = strtolower( $row['artifact_id'] );
+        }
+        sort( $research_ids, SORT_STRING );
+        $handoff = array(
+            'contract' => 'mad4b.aci01.blueprint-handoff.v1',
+            'target_ability' => 'mad4b/blueprint-build',
+            'job_id' => strtolower( $job_id ),
+            'observed_research_artifact_ids' => $research_ids,
+            'required_input_keys' => array( 'job_id', 'context_artifact_id',
+                'research_artifact_ids', 'search_intent', 'audience', 'goals',
+                'outline', 'section_objectives', 'evidence_requirements' ),
+            'unverified_prerequisites' => array( 'approved_context_artifact',
+                'current_writer_profile', 'research_rights_and_freshness',
+                'editor_approved_blueprint_fields', 'governed_write_authority' ),
+            'review_status' => 'NEEDS_REVIEW',
+            'dispatch_allowed' => false,
+            'artifact_created' => false,
+            'authorizing' => false,
+        );
         $relation_review = ! empty( $intake['candidate']['requires_native_relation_review'] );
         $required = array( 'business_goal', 'audience_intent', 'evidence_source_rights',
                            'approved_brand_context', 'factual_claims', 'editorial_qa' );
@@ -167,7 +201,8 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'source_previews' => array( $intake['plan_fingerprint_sha256'], $evidence['preview_sha256'] ),
             'required_sections' => $required, 'reason_codes' => $reasons,
             'semantic_sha256' => $semantic['semantic_fingerprint_sha256'],
-            'recipe_gap_sha256' => hash( 'sha256', json_encode( $recipe_gap ) ) );
+            'recipe_gap_sha256' => hash( 'sha256', json_encode( $recipe_gap ) ),
+            'blueprint_handoff' => $handoff );
         return array( 'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
             'review_status' => 'NEEDS_REVIEW',
             'candidate_kind' => 'OpportunityHypothesis_BlueprintCandidate',
@@ -180,6 +215,7 @@ final class MAD4B_SCP_ACI01_Opportunity_Preview {
             'required_blueprint_sections' => $required,
             'reason_codes' => $reasons,
             'handoff' => 'EXISTING_MAD4B_CONTENT_INTELLIGENCE_AFTER_APPROVAL',
+            'blueprint_handoff' => $handoff,
             'candidate_sha256' => hash( 'sha256', json_encode( $material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
             'synthetic_candidate_only' => true,
             'trusted_authority_verified' => false, 'authorizing' => false,
