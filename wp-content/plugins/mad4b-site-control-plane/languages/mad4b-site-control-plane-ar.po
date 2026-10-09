@@ -768,3 +768,9 @@ msgstr "يجب أن يراجع مسؤول الخادم المخوّل إعداد
 
 msgid "Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry."
 msgstr "تخزين المهارات المُدارة غير قابل للكتابة. راجع صلاحيات مجلد التخزين الخاص بالموقع دون تجاوز سجل المهارات المحكوم."
+
+msgid "Required independent evidence"
+msgstr "الأدلة المستقلة المطلوبة"
+
+msgid "No evidence is certified by this checklist. Verify the actual external receipt and exact current build."
+msgstr "هذه القائمة لا تعتمد أي دليل تلقائيًا. تحقق من إيصال الفحص الخارجي الفعلي ومطابقته للإصدار الحالي."
