@@ -32,9 +32,26 @@ final class MAD4B_SCP_Activity_Import_Modes {
     }
     private static function builtins() {
         $wpai = class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' );
-        $signed = defined( 'MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET' ) &&
-            is_string( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) &&
-            strlen( MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET ) >= 32;
+        $signed_keys = defined( 'MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS' ) &&
+            is_array( MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS ) ?
+            MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS : array();
+        $has_script_key = false; $has_generic_key = false;
+        foreach ( $signed_keys as $key_id => $source ) {
+            if ( ! is_string( $key_id ) ||
+                ! preg_match( '/^[a-z][a-z0-9_-]{2,60}$/D', $key_id ) ||
+                ! is_array( $source ) || empty( $source['enabled'] ) ||
+                empty( $source['secret'] ) || ! is_string( $source['secret'] ) ||
+                strlen( $source['secret'] ) < 32 ||
+                ! isset( $source['site_uuid'], $source['profile_slugs'] ) ||
+                ! is_string( $source['site_uuid'] ) ||
+                $source['site_uuid'] !== MAD4B_SCP_Site_Profile::site_uuid() ||
+                ! is_array( $source['profile_slugs'] ) ||
+                ! $source['profile_slugs'] ) continue;
+            if ( isset( $source['mode'] ) && 'google_apps_script' === $source['mode'] )
+                $has_script_key = true;
+            if ( isset( $source['mode'] ) && 'signed_generic_webhook' === $source['mode'] )
+                $has_generic_key = true;
+        }
         $https = function_exists( 'wp_safe_remote_get' );
         $google = class_exists( 'MAD4B_SCP_Google_Drive_Context' ) &&
             method_exists( 'MAD4B_SCP_Google_Drive_Context', 'connection_status' );
@@ -73,10 +90,10 @@ final class MAD4B_SCP_Activity_Import_Modes {
             array( 'site_bound_oauth', 'file_id', 'snapshot_hash' ), $google, false );
         $files[] = self::mode( 'google_apps_script', 'push', 'google_sheet',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed && $staging, $signed && $staging );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $has_script_key && $staging, $has_script_key && $staging );
         $files[] = self::mode( 'signed_generic_webhook', 'push', 'make_n8n_zapier_pabbly_bitflows_custom',
             'signed_hmac_webhook', 'review_inbox', 'native_review',
-            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $signed && $staging, $signed && $staging );
+            array( 'site_secret', 'nonce', 'timestamp', 'exact_json' ), $has_generic_key && $staging, $has_generic_key && $staging );
         $files[] = self::mode( 'wordpress_authenticated_rest', 'push', 'rest_api',
             'wp_rest_auth', 'review_inbox', 'adapter_required',
             array( 'administrator', 'nonce_or_app_password', 'profile_scope' ), false, false );
