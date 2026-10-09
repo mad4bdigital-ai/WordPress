@@ -198,6 +198,13 @@ $repeated_source=$service::project($job,$jobRow,$ctx,array($a),604800,$scope,
 check($repeated_source['provenance_observation']['duplicated_source_locator_count']===1 &&
     in_array('duplicate_source_locator_observed',$repeated_source['reason_codes'],true),
     'one repeated source locator is not two independent citations');
+$a['payload']['source_refs']=array('site:shared');
+$b['payload']['source_refs']=array('site:shared');
+$b['payload']['collected_at']='2026-10-02T10:00:00Z';
+$cross_artifact_repeat=$service::project($job,$jobRow,$ctx,array($a,$b),
+    604800,$scope,strtotime('2026-10-02T11:00:00Z'));
+check($cross_artifact_repeat['provenance_observation']['duplicated_source_locator_count']===1,
+    'same source reused by two research requests does not become independent');
 check(strpos(json_encode($contradiction),'different_competitor_facts')===false,
     'underlying conflicting research body never disclosed');
 echo "ACI01_EVIDENCE_READ_CONTRACT: PASS\n";
