@@ -244,6 +244,20 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
         if ( is_wp_error( $convergence ) ) return $convergence;
         $coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
         if ( is_wp_error( $coverage ) ) return $coverage;
+        // Two independent live reads must agree on the exact registry and
+        // authority manifest before suggesting any operator action. Returning
+        // a stale repair recipe could target the wrong file or version.
+        $expected_revision = isset( $convergence['registry_revision'] ) ? (int) $convergence['registry_revision'] : -1;
+        $observed_revision = isset( $coverage['registry_revision'] ) ? (int) $coverage['registry_revision'] : -1;
+        $expected_manifest = isset( $convergence['authority_manifest_fingerprint'] ) ? (string) $convergence['authority_manifest_fingerprint'] : '';
+        $observed_manifest = isset( $coverage['authority_manifest_fingerprint'] ) ? (string) $coverage['authority_manifest_fingerprint'] : '';
+        if ( $expected_revision < 0 || $observed_revision < 0 || $expected_revision !== $observed_revision
+            || 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected_manifest )
+            || 1 !== preg_match( '/^[a-f0-9]{64}$/', $observed_manifest )
+            || ! hash_equals( $expected_manifest, $observed_manifest ) ) {
+            return new WP_Error( 'mad4b_brand_reconstruction_evidence_drift',
+                'Context registry/authority changed during reconstruction planning. Re-read the exact current evidence.' );
+        }
         $actions = isset( $convergence['actions'] ) && is_array( $convergence['actions'] ) ? $convergence['actions'] : array();
         $by_category = array();
         foreach ( $actions as $item ) {
@@ -314,6 +328,7 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'assistant_declared_available' => $assistant_requested,
             'assistant_certification_verified' => $assistant_certified,
             'assistant_effectively_available' => $assistant_available,
+            'assistant_scope' => 'non_authorizing_research_and_draft_only',
             // Managed Skills readiness proves the catalog/runtime; it does
             // not prove exact Agent/ability authorization or role separation.
             'assistant_exact_mutation_grant_verified' => false,
@@ -353,7 +368,11 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             'authorizing' => false,
             'mutation_performed' => false,
         );
-        $basis['plan_sha256'] = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        $encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( ! is_string( $encoded ) || '' === $encoded ) {
+            return new WP_Error( 'mad4b_brand_reconstruction_plan_encoding_failed', 'Reconstruction plan could not be safely encoded.' );
+        }
+        $basis['plan_sha256'] = hash( 'sha256', $encoded );
         return $basis;
     }
 }
