@@ -351,4 +351,73 @@ unlink( $manifest_path );
 rmdir( $manifest_dir );
 $check( MAD4B_SCP_Staging_Certification::convergence_manifest_file_sha256() === '',
 	'Missing manifest never supplies a valid build fingerprint' );
+
+// An enrolled Site Profile without an independent host deployment binding
+// must not be counted as complete release-grade Staging acceptance.
+$host_profile = array(
+	'deployment_binding_configured' => false,
+	'deployment_binding_bound' => false,
+	'deployment_binding_match' => true,
+	'same_origin_clone_protection' => false,
+);
+$not_bound = MAD4B_SCP_Staging_Certification::deployment_host_binding_evidence( $host_profile );
+$check( $not_bound['ready'] === false &&
+	in_array( 'deployment_binding_configured_not_verified', $not_bound['blockers'], true ),
+	'locally enrolled Staging without host binding is not release-ready' );
+$check( in_array( 'same_origin_clone_protection_not_verified', $not_bound['blockers'], true ),
+	'copy-prone same-origin installation cannot self-certify' );
+$host_profile['deployment_binding_configured'] = true;
+$host_profile['deployment_binding_bound'] = true;
+$host_profile['same_origin_clone_protection'] = true;
+$host_profile['deployment_binding_match'] = false;
+$foreign = MAD4B_SCP_Staging_Certification::deployment_host_binding_evidence( $host_profile );
+$check( $foreign['ready'] === false &&
+	in_array( 'deployment_binding_match_not_verified', $foreign['blockers'], true ),
+	'host binding mismatch rejects cloned or moved installation' );
+$host_profile['deployment_binding_match'] = true;
+$bound = MAD4B_SCP_Staging_Certification::deployment_host_binding_evidence( $host_profile );
+$check( $bound['ready'] === true && $bound['blockers'] === array(),
+	'complete independently bound deployment is observable' );
+$missing_host = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array() );
+$check( $missing_host['ready'] === false &&
+	in_array( 'developer_host_isolation_not_verified', $missing_host['blockers'], true ),
+	'Developer grant does not mint process isolation' );
+$capabilities = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array(
+	'normal_no_network_execution_ready' => false,
+	'normal_no_network_execution_blockers' => array(
+		'resource_limiter_unavailable', 'network_isolation_unavailable'
+	),
+) );
+$check( $capabilities['ready'] === false && count( $capabilities['blockers'] ) === 2,
+	'actual host isolation blockers preserved without Breakglass' );
+$contradictory_host = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array(
+	'normal_no_network_execution_ready' => true,
+	'normal_no_network_execution_blockers' => array( 'network_isolation_unavailable' ),
+) );
+$check( $contradictory_host['ready'] === false &&
+	in_array( 'network_isolation_unavailable', $contradictory_host['blockers'], true ),
+	'false-green Developer attestation with an explicit blocker is denied' );
+$isolated = MAD4B_SCP_Staging_Certification::developer_host_execution_gate( array(
+	'normal_no_network_execution_ready' => true,
+	'normal_no_network_execution_blockers' => array(),
+) );
+$check( $isolated['ready'] === true && $isolated['authorizing'] === false,
+	'host isolation status is evidence, not Developer execution authority' );
+$proof_plan = MAD4B_SCP_Staging_Certification::complete_convergence_coverage( array(
+	'deployment_host_binding' => $not_bound,
+	'developer_host_execution' => $missing_host,
+), array(
+	array( 'action_id' => 'deployment_identity_review', 'kind' => 'host_bootstrap_review',
+		'automatic_execution_allowed' => true ),
+	array( 'action_id' => 'developer_host_isolation_preflight', 'kind' => 'host_isolation_review',
+		'automatic_execution_allowed' => true ),
+) );
+$check( $proof_plan['coverage_complete'] === true &&
+	count( $proof_plan['gate_action_coverage']['deployment_host_binding'] ) === 1 &&
+	count( $proof_plan['gate_action_coverage']['developer_host_execution'] ) === 1,
+	'host binding and Developer isolation receive independent remediation routes' );
+foreach ( $proof_plan['actions'] as $step ) {
+	$check( $step['automatic_execution_allowed'] === false,
+	'missing host security evidence never triggers automatic host changes' );
+}
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;

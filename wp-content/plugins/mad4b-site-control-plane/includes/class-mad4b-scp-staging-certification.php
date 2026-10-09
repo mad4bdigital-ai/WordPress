@@ -373,6 +373,13 @@ final class MAD4B_SCP_Staging_Certification {
 			? MAD4B_SCP_Site_Profile::status() : array();
 		$effective = isset( $environment['effective_environment'] ) ? sanitize_key( (string) $environment['effective_environment'] ) : 'unknown';
 		$not_staging_site = 'staging' !== $effective;
+		// A locally enrolled Site Profile does not prove the runtime is
+		// bound to this host: copied same-origin Staging clones are possible.
+		// Keep read/write governance independent while treating release-grade
+		// deployment attestation as a distinct Staging acceptance gate.
+		$host_binding = self::deployment_host_binding_evidence( $profile );
+		$plan_gates['deployment_host_binding'] = $host_binding;
+		if ( ! $host_binding['ready'] ) $blocking[] = 'deployment_host_binding';
 		// The same read ability can be queried from any site. Never return a
 		// runnable Staging remediation graph for an unbound/Production target.
 		if ( 'staging' !== $effective || empty( $profile['authority_ready'] ) ) {
@@ -435,13 +442,14 @@ final class MAD4B_SCP_Staging_Certification {
 			// enrolled Staging profile; host alignment is an independent review,
 			// not a reason to deadlock already-authorized native safe phases.
 		}
-		if ( empty( $profile['deployment_binding_configured'] ) ) {
+		if ( ! $host_binding['ready'] ) {
 			$append( $actions, $seen, 'deployment_identity_review', array(
 				'kind' => 'host_bootstrap_review',
 				'executor' => 'authorized_host_operator',
 				'human_decision_required' => true,
 				'automatic_execution_allowed' => false,
 				'readback_ability' => 'mad4b/site-profile-status',
+				'host_binding_blockers' => $host_binding['blockers'],
 				'instruction' => 'Enroll an independent host-bound deployment identity to detect copied environments. Do not infer site identity from hostname or auto-clone existing credentials.',
 				'production_policy' => 'deny',
 			) );
@@ -474,6 +482,11 @@ final class MAD4B_SCP_Staging_Certification {
 		$developer_requested = ! empty( $developer['developer_enabled'] ) || ! empty( $developer['direct_execution_enabled'] );
 		$host = $developer_requested && class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
 			? MAD4B_SCP_Developer_Host_Capabilities::snapshot() : array();
+		if ( $developer_requested ) {
+			$developer_gate = self::developer_host_execution_gate( $host );
+			$plan_gates['developer_host_execution'] = $developer_gate;
+			if ( ! $developer_gate['ready'] ) $blocking[] = 'developer_host_execution';
+		}
 		if ( $developer_requested && empty( $host['normal_no_network_execution_ready'] ) ) {
 			$append( $actions, $seen, 'developer_host_isolation_preflight', array(
 				'kind' => 'host_isolation_review',
@@ -483,7 +496,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'blockers' => isset( $host['normal_no_network_execution_blockers'] ) && is_array( $host['normal_no_network_execution_blockers'] )
 					? array_values( $host['normal_no_network_execution_blockers'] ) : array( 'host_capability_evidence_unavailable' ),
 				'host_capability_fingerprint' => isset( $host['capability_fingerprint'] ) ? (string) $host['capability_fingerprint'] : '',
-				'readback_ability' => 'mad4b/developer-runtime-status',
+				'readback_ability' => 'mad4b/full-staging-authority-status',
 				'instruction' => 'Provision and independently test non-root resource limiting and no-network isolation on the authorized host. Binary presence or Developer authority alone does not certify executable isolation.',
 				'developer_execution_allowed' => false,
 				'breakglass_allowed' => false,
@@ -754,8 +767,9 @@ final class MAD4B_SCP_Staging_Certification {
 			'package_and_mcp' => array( 'exact_build', 'safe_boot' ),
 			'governed_write' => array( 'write_authority', 'write_runtime' ),
 			'managed_skills_runtime' => array( 'skills_runtime' ),
+			'developer_host_execution' => array( 'developer_host_execution' ),
 			'optional_integrations' => array( 'context_authority', 'brand_core_context_coverage', 'google_provider_connection', 'managed_google_broker', 'wp_import_export_exact_artifact' ),
-			'release_acceptance' => array( 'external_skill_snapshot', 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
+			'release_acceptance' => array( 'deployment_host_binding', 'external_skill_snapshot', 'browser_runtime', 'performance_budget', 'admin_query_performance', 'query_monitor_db_attribution', 'oauth_live_authority_projection', 'rollback_candidate' ),
 		);
 		$readiness_domains = array();
 		foreach ( $domain_keys as $domain => $requirements ) {
@@ -865,6 +879,51 @@ final class MAD4B_SCP_Staging_Certification {
 		$encoded = wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$basis['plan_sha256'] = false === $encoded ? '' : hash( 'sha256', $encoded );
 		return $basis;
+	}
+
+	/**
+	 * Host binding is independent of the stored Site Profile enrollment.
+	 * Fail closed for copied Staging instances even when origin and UUID match.
+	 * Never provision credentials, host proofs or authority during this read.
+	 */
+	public static function deployment_host_binding_evidence( array $profile ) {
+		$required = array(
+			'deployment_binding_configured',
+			'deployment_binding_bound',
+			'deployment_binding_match',
+			'same_origin_clone_protection',
+		);
+		$missing = array();
+		foreach ( $required as $field ) {
+			if ( empty( $profile[ $field ] ) ) $missing[] = $field . '_not_verified';
+		}
+		return array(
+			'ready' => empty( $missing ),
+			'state' => empty( $missing ) ? 'host_deployment_bound' : 'host_deployment_unverified',
+			'source' => 'mad4b.site-profile.v2',
+			'remediation_owner' => 'authorized_host_operator',
+			'blockers' => $missing,
+			'authorizing' => false,
+		);
+	}
+
+	/** Developer credentials do not prove host process/network isolation. */
+	public static function developer_host_execution_gate( array $host ) {
+		$ready_flag = ! empty( $host['normal_no_network_execution_ready'] );
+		$blockers = is_array( $host['normal_no_network_execution_blockers'] ?? null )
+			? array_values( array_slice( $host['normal_no_network_execution_blockers'], 0, 20 ) ) : array();
+		// Contradictory host attestations fail closed, never prefer a true
+		// summary field over an explicit resource/network isolation blocker.
+		$ready = $ready_flag && empty( $blockers );
+		if ( ! $ready && ! $blockers ) $blockers[] = 'developer_host_isolation_not_verified';
+		return array(
+			'ready' => $ready,
+			'state' => $ready ? 'isolated_executor_ready' : 'isolated_executor_unavailable',
+			'source' => 'mad4b.developer-host-capabilities',
+			'remediation_owner' => 'authorized_host_operator',
+			'blockers' => $blockers,
+			'authorizing' => false,
+		);
 	}
 
 	/**
@@ -1021,6 +1080,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'brand_core_convergence' => array( 'context_authority', 'brand_core_context_coverage' ),
 			'external_snapshot_refresh' => array( 'external_skill_snapshot' ),
 			'managed_skills_runtime_refresh' => array( 'skills_runtime' ),
+			'deployment_identity_review' => array( 'deployment_host_binding' ),
+			'developer_host_isolation_preflight' => array( 'developer_host_execution' ),
 			'write_runtime_evidence_review' => array( 'write_authority', 'write_runtime' ),
 			'write_authority_plan_blocked' => array( 'write_authority', 'write_runtime' ),
 			'write_authority_reconcile' => array( 'write_authority', 'write_runtime' ),
@@ -1046,6 +1107,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'oauth_live_authority_projection' => 'mad4b/staging-certification-status',
 			'rollback_candidate' => 'mad4b/staging-certification-status',
 			'wp_import_export_exact_artifact' => 'mad4b/provider-closure-matrix',
+			'deployment_host_binding' => 'mad4b/site-profile-status',
+			'developer_host_execution' => 'mad4b/full-staging-authority-status',
 		);
 		$blocked = array();
 		$coverage = array();
