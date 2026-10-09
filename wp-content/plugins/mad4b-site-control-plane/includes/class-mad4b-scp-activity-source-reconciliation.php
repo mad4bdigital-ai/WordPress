@@ -104,7 +104,7 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
         $max_age = isset( $input['max_snapshot_age_seconds'] ) ? (int) $input['max_snapshot_age_seconds'] : 3600;
         if ( $max_age < 60 || $max_age > self::MAX_SNAPSHOT_AGE )
             return self::fail( 'mad4b_activity_reconcile_freshness_invalid', 'Snapshot freshness must be within supported limits.' );
-        $snapshots = array(); $checkpoints = array(); $errors = array();
+        $snapshots = array(); $checkpoints = array(); $errors = array(); $seen_resource_ids = array();
         // Every source participating in a profile requires a snapshot and a
         // checkpoint. Never treat absent data as an empty/deleted record.
         foreach ( $sources as $id => $t ) {
@@ -113,6 +113,20 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
                 continue;
             }
             $item = $observed[ $id ];
+            $expected_resource = 'wordpress' === $id && 'post_id' === $identity
+                ? $entity_id : ( isset( $t['source_ref'] ) ? (string) $t['source_ref'] : '' );
+            if ( '' !== $expected_resource && $item['resource_id'] !== $expected_resource ) {
+                $errors[] = array( 'source' => $id, 'code' => 'configured_source_resource_mismatch' );
+                continue;
+            }
+            $resource_domain = isset( $t['provider'] ) ? (string) $t['provider'] : 'wordpress';
+            $resource_key = $resource_domain . ':' . $item['resource_id'];
+            if ( isset( $seen_resource_ids[ $resource_key ] ) ) {
+                $errors[] = array( 'source' => $id, 'code' => 'source_resource_duplicate',
+                    'other_source' => $seen_resource_ids[ $resource_key ] );
+                continue;
+            }
+            $seen_resource_ids[ $resource_key ] = $id;
             if ( 'present' !== $item['state'] ) {
                 $errors[] = array( 'source' => $id, 'code' => 'missing_or_deleted_requires_reconciliation' );
                 continue;
@@ -168,6 +182,12 @@ final class MAD4B_SCP_Activity_Source_Reconciliation {
                 $prev = $checkpoints[ $id ]['field_hashes'][ $field ];
                 $values[ $id ] = $current;
                 if ( ! hash_equals( $current, $prev ) ) $changed[] = $id;
+            }
+            $previous_hashes = array();
+            foreach ( $involved as $id ) $previous_hashes[] = $checkpoints[ $id ]['field_hashes'][ $field ];
+            if ( count( array_unique( $previous_hashes ) ) > 1 ) {
+                $conflicts[] = array( 'field' => $field, 'code' => 'baseline_already_divergent' );
+                continue;
             }
             if ( ! $changed ) {
                 if ( count( array_unique( array_values( $values ) ) ) > 1 )
