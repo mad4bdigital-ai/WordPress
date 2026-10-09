@@ -239,6 +239,28 @@ mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote exp
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
 mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
 
+$sensitive_target = new MAD4B_Test_Ability(
+    mad4b_test_meta(),
+    $schema,
+    new WP_Error( 'mad4b_remote_skill_editor_disabled', 'INTERNAL_SECRET_MESSAGE', array( 'secret' => 'DO_NOT_DISCLOSE' ) )
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $sensitive_target;
+$failure_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$failure_input = $execute_input;
+$failure_input['expected_registration_digest'] = $failure_info['registration_digest'];
+$failure_input['expected_dispatch_policy_digest'] = $failure_info['dispatch_policy_digest'];
+$failure_input['expected_input_schema_sha256'] = $failure_info['input_schema_sha256'];
+$blocked = MAD4B_SCP_Enrollment_Dispatch::execute( $failure_input );
+mad4b_assert( is_array( $blocked ) && true === $blocked['failed'] && false === $blocked['ready'], 'failed managed Skills unexpectedly reported success' );
+mad4b_assert( 'target_error_reconciliation_required' === $blocked['state'], 'failed managed Skills omitted reconciliation state' );
+mad4b_assert( 'mad4b_remote_skill_editor_disabled' === $blocked['target_error_code'], 'bounded managed Skills target failure code missing' );
+mad4b_assert( true === $blocked['reconciliation_required'] && false === $blocked['blind_retry_allowed'], 'managed Skills target error permitted blind retry' );
+mad4b_assert( null === $blocked['mutation_performed'] && 'unknown_after_target_error' === $blocked['mutation_evidence_source'], 'unknown target side-effects were fabricated' );
+mad4b_assert( ! array_key_exists( 'result', $blocked ) && ! array_key_exists( 'target_error_data', $blocked ) && ! array_key_exists( 'target_error_message', $blocked ), 'managed Skills failure disclosed sensitive target material' );
+mad4b_assert( false === strpos( wp_json_encode( $blocked ), 'DO_NOT_DISCLOSE' ) && false === strpos( wp_json_encode( $blocked ), 'INTERNAL_SECRET_MESSAGE' ), 'sensitive target message/data leaked' );
+mad4b_assert( 1 === $sensitive_target->calls && 1 === $skills->calls, 'bounded target invocation count drifted' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $skills;
+
 $bad = $execute_input;
 $bad['expected_registration_digest'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Enrollment_Dispatch::execute( $bad );

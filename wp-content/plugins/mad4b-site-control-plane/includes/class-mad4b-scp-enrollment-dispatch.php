@@ -278,7 +278,34 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		if ( ( null === $target_schema || empty( $target_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
 		$result = $ability->execute( $params );
-		if ( is_wp_error( $result ) ) return $result;
+		if ( is_wp_error( $result ) ) {
+			// Only the bounded managed-Skills operation returns a non-authorizing
+			// diagnostic envelope. The generic dispatcher otherwise preserves WP_Error.
+			// Do not lose the target code behind a transport-level error or report
+			// a failed/uncertain checkpoint as a successful reconciliation.
+			if ( 'managed_skills_reconciliation' !== $operation_id ) return $result;
+			return array(
+				'contract' => self::CONTRACT,
+				'operation_id' => $row['operation_id'],
+				'remote_ability' => $row['remote_ability'],
+				'registration_digest' => $row['registration_digest'],
+				'dispatch_policy_digest' => $row['dispatch_policy_digest'],
+				'input_schema_sha256' => $row['input_schema_sha256'],
+				'state' => 'target_error_reconciliation_required',
+				'ready' => false,
+				'failed' => true,
+				'target_error_code' => substr( sanitize_key( (string) $result->get_error_code() ), 0, 96 ),
+				'target_error_details_redacted' => true,
+				'reconciliation_required' => true,
+				'blind_retry_allowed' => false,
+				'operation_invoked' => true,
+				'operation_succeeded' => false,
+				'production_mutation' => false,
+				'breakglass_included' => false,
+				'mutation_performed' => null,
+				'mutation_evidence_source' => 'unknown_after_target_error',
+			);
+		}
 
 		$target_reported_mutation = is_array( $result ) && array_key_exists( 'mutation_performed', $result );
 		return array(
