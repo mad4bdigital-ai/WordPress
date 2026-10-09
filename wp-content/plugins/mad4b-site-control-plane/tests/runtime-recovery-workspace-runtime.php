@@ -39,7 +39,7 @@ assert_recovery( 'UNAVAILABLE' === MAD4B_SCP_Runtime_Recovery_Workspace::model( 
 $production = $valid;
 $production['production_mutation_performed'] = true;
 assert_recovery( 'UNAVAILABLE' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $production )['state'], 'production mutation must fail closed' );
-$empty = array( 'contract' => 'mad4b.staging-convergence-plan.v1', 'read_only' => true, 'current_ready' => true, 'blocking_gates' => array(), 'actions' => array() );
+$empty = array( 'contract' => 'mad4b.staging-convergence-plan.v1', 'read_only' => true, 'mutation_performed' => false, 'production_mutation_performed' => false, 'current_ready' => true, 'blocking_gates' => array(), 'actions' => array(), 'gate_coverage_complete' => true, 'plan_integrity_blockers' => array(), 'plan_sha256' => str_repeat( 'b', 64 ), 'plan_binding' => array( 'source_commit_sha' => str_repeat( 'a', 40 ) ) );
 assert_recovery( 'OBSERVED_READY' === MAD4B_SCP_Runtime_Recovery_Workspace::model( $empty )['state'], 'explicit ready plan should show its observed state' );
 $truncated = $valid;
 $truncated['actions'] = array_fill( 0, 100, array( 'action_id' => 'candidate_binding_only' ));
