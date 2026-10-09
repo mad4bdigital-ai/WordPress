@@ -170,9 +170,21 @@ final class MAD4B_SCP_Brand_Context_Reconstruction {
             case 'READY':
                 return array( $read( 'context/brand-core-coverage', 'verify_exact_approved_content_before_use' ) );
             case 'OWNER_AUTHORITY_REQUIRED':
+                return array(
+                    $read( 'context/provider-capabilities', 'restore_existing_owner_source_before_creating_new_strategy' ),
+                    $read( 'context/source-scan-plan', 'look_for_verified_owner_strategy_not_random_web_content' ),
+                    $read( 'context/review-queue', 'exact_human_owner_approval_still_required' ),
+                );
             case 'HUMAN_ARBITRATION':
+                return array(
+                    $read( 'context/conflicts', 'identify_competing_exact_approved_authorities' ),
+                    $read( 'context/review-queue', 'independent_owner_arbitration' ),
+                );
             case 'HUMAN_REVIEW':
-                return array( $read( 'context/review-queue', 'owner_or_independent_review_decision' ) );
+                return array(
+                    $read( 'context/review-audit', 'inspect_previous_review_rejection_without_reusing_approval' ),
+                    $read( 'context/review-queue', 'owner_or_independent_review_decision' ),
+                );
             case 'RIGHTS_REVIEW':
                 return array( $read( 'mad4b/external-source-rights-preflight', 'independent_signed_rights_evidence_needed' ) );
             case 'SOURCE_RECOVERY':
