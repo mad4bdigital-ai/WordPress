@@ -5,7 +5,7 @@
   "activation": "example_only_not_applied",
   "proposed_meta_keys": true,
   "proposed_roles": true,
-  "notes": "Meta link keys are proposed, not observed JetEngine field definitions. Existing roles and live mappings require operator review before creating an exact governed profile.",
+  "notes": "Meta link keys are proposed, not observed JetEngine definitions. Existing roles, provider bindings, field ownership, Drive revisions, and live content permissions require operator review before a governed profile is applied.",
   "profiles": [
     {
       "slug": "allroyal-dmc",
@@ -31,15 +31,20 @@
         "create_user": true,
         "create_profile": true,
         "sync_targets": {
-          "wordpress_products": {
-            "provider": "wordpress",
-            "direction": "bidirectional",
+          "editorial_policy_reference": {
+            "provider": "google_drive",
+            "purpose": "editorial_policy",
+            "resource_kind": "drive_document",
+            "direction": "import",
+            "source_ref": "needs_reviewed_drive_binding",
             "field_keys": [],
-            "source_ref": "local_catalog",
             "conflict_policy": "manual_review"
           }
-        }
-      }
+        },
+        "field_owners": {},
+        "sync_identity_key": "post_id"
+      },
+      "source_role_note": "Editorial instructions are contextual rules, never imported as DMC profile attribute values; DMC catalog exchange is a separate business workflow."
     },
     {
       "slug": "allroyal-driver",
@@ -64,7 +69,9 @@
         ],
         "create_user": true,
         "create_profile": true,
-        "sync_targets": {}
+        "sync_targets": {},
+        "field_owners": {},
+        "sync_identity_key": "post_id"
       }
     },
     {
@@ -92,8 +99,11 @@
         ],
         "create_user": true,
         "create_profile": true,
-        "sync_targets": {}
+        "sync_targets": {},
+        "field_owners": {},
+        "sync_identity_key": "post_id"
       }
     }
-  ]
+  ],
+  "source_sync_design": "WordPress profile fields and content-policy Drive documents have distinct source purposes, not last-write-wins. No live Google Drive document ID or credentials are stored in this public example."
 }
