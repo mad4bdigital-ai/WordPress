@@ -100,6 +100,9 @@ final class MAD4B_SCP_Staging_Certification {
 		$skills = self::safe_read( 'skills_runtime', static function () {
 			return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::status() : array();
 		} );
+		$skills_persisted = self::safe_read( 'skills_runtime_persisted', static function () {
+			return class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' ) ? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		} );
 		$snapshot = self::safe_read( 'external_skill_snapshot', static function () use ( $client_snapshot_token ) {
 			if ( ! class_exists( 'MAD4B_SCP_External_Snapshot_Finalizer' ) ) return array();
 			return '' !== $client_snapshot_token
@@ -149,7 +152,10 @@ final class MAD4B_SCP_Staging_Certification {
 			'brand_core_context_coverage' => self::gate( ! empty( $context_coverage['ready'] ), 'brand_core_context_coverage', $context_coverage, 'human_review' ),
 			'google_provider_connection' => self::gate( ! empty( $google['connected'] ) && ! empty( $google['read_available'] ), 'google_provider_connection', $google, 'operator' ),
 			'managed_google_broker' => self::gate( ! empty( $managed_gate['ready'] ), 'managed_google_broker', $managed_gate, 'server_secret' ),
-			'skills_runtime' => self::gate( ! empty( $skills['ready'] ), 'skills_runtime', $skills, 'runtime' ),
+			'skills_runtime' => self::gate(
+				! empty( $skills['ready'] ) && ! empty( $skills_persisted['ready'] ) && ! empty( $skills_persisted['build_identity_current'] ),
+				'skills_runtime_current_and_persisted', array( 'live' => $skills, 'persisted' => $skills_persisted ), 'runtime'
+			),
 			'external_skill_snapshot' => self::gate( ! empty( $snapshot['verified'] ) || ! empty( $snapshot['exact_match'] ), 'external_skill_snapshot', $snapshot, 'external_client' ),
 			'write_authority' => self::gate( ! empty( $authority['ready'] ) && ! empty( $authority['runtime_reconciled'] ), 'write_authority', $authority, 'operator_reconcile' ),
 			'write_runtime' => self::gate( ! empty( $write_runtime['ready'] ), 'write_runtime_certification', $write_runtime, 'operator_reconcile' ),
@@ -313,8 +319,10 @@ final class MAD4B_SCP_Staging_Certification {
 		}
 		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
 			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		$skills_record = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
 		$skills_required = class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::skills_enabled();
-		if ( $skills_required && empty( $skills['ready'] ) ) {
+		if ( $skills_required && ( empty( $skills['ready'] ) || empty( $skills_record['ready'] ) || empty( $skills_record['build_identity_current'] ) ) ) {
 			$append( $actions, $seen, 'managed_skills_runtime_refresh', array(
 				'kind' => 'bounded_native_convergence',
 				'executor' => 'existing_runtime_convergence_worker',
@@ -323,7 +331,10 @@ final class MAD4B_SCP_Staging_Certification {
 				'depends_on' => $recovery_dependencies,
 				'plan_ability' => 'mad4b/runtime-convergence-plan',
 				'readback_ability' => 'mad4b/skill-runtime-certification',
-				'blockers' => isset( $skills['blockers'] ) && is_array( $skills['blockers'] ) ? array_values( $skills['blockers'] ) : array( 'skills_runtime_not_ready' ),
+				'blockers' => array_values( array_unique( array_merge(
+					isset( $skills['blockers'] ) && is_array( $skills['blockers'] ) ? $skills['blockers'] : array(),
+					isset( $skills_record['stale_reasons'] ) && is_array( $skills_record['stale_reasons'] ) ? $skills_record['stale_reasons'] : array()
+				) ) ),
 				'instruction' => 'Resume only the existing governed safe-phase worker with an exact runtime identity, then require persisted and live build-bound Skills readback. This plan alone does not dispatch it.',
 				'production_policy' => 'deny',
 			) );
