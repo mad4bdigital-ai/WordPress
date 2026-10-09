@@ -750,6 +750,14 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'expected_operation_sha256' => self::sha_schema(),
             ), array( 'profile_slug', 'entity_id', 'confirmed', 'operation_key', 'expected_operation_sha256' ) ),
 				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
+			array( 'name' => 'mad4b/business-activity-sync-cancel', 'label' => 'Cancel Verified Prewrite Activity Sync', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'cancel' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
+				'schema' => self::schema( array(
+                'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                'entity_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 180 ),
+                'confirmed' => array( 'type' => 'boolean' ),
+                'expected_operation_sha256' => self::sha_schema(),
+            ), array( 'profile_slug', 'entity_id', 'confirmed', 'expected_operation_sha256' ) ),
+				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false ),
 			array( 'name' => 'mad4b/business-activity-sync-archive', 'label' => 'Archive Verified Activity Sync Receipt', 'callback' => array( 'MAD4B_SCP_Activity_Sync_Runtime', 'archive' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
 				'schema' => self::schema( array(
                 'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
