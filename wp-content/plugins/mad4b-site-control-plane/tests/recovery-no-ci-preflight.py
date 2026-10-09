@@ -69,6 +69,8 @@ def main():
         ["php:guided-operator", [php, str(ROOT / "tests/guided-operator-experience-runtime.php")]],
         ["lint:enrollment-skills-preflight", [php, "-l", str(ROOT / "includes/class-mad4b-scp-enrollment-dispatch.php")]],
         ["php:enrollment-skills-preflight", [php, str(ROOT / "tests/enrollment-skills-preflight-runtime.php")]],
+        ["php:enrollment-request-permission", [php, str(ROOT / "tests/enrollment-request-permission-runtime.php")]],
+        ["python:enrollment-request-permission", [sys.executable, str(ROOT / "tests/enrollment-request-permission-contract.py")]],
         ["python:enrollment-skills-preflight", [sys.executable, str(ROOT / "tests/enrollment-skills-preflight-contract.py")]],
         ["python:guided-contract", [sys.executable, str(ROOT / "tests/guided-operator-experience-contract.py")]],
         ["php:scenario-registry", [php, str(ROOT / "tests/auto-reconcile-scenario-registry-runtime.php")]],
