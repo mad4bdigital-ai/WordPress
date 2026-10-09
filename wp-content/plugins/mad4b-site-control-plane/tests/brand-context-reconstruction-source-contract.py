@@ -53,6 +53,30 @@ check("! $named_authority && $operational_title" in authority,
       "Technical operations title must not imply any Brand Core authority")
 check("mad4b_context_ai_brand_core_operational_human_review_required" in authority,
       "AI cannot self-approve technical files as Voice or Editorial Guidelines")
+for contract in (
+    "mad4b_brand_reconstruction_evidence_drift",
+    "mad4b_brand_reconstruction_plan_encoding_failed",
+    "source_scan_incomplete",
+    "governed_source_scan_complete",
+    "assistant_exact_mutation_grant_verified",
+    "assistant_can_execute_writes",
+    "external_client_snapshot_verified",
+    "build_identity_current",
+    "retry_counter_source",
+    "retry_counter_persisted",
+    "retry_budget_enforced_by_planner",
+    "execution_requires_authoritative_retry_journal",
+    "context/conflicts",
+    "context/review-audit",
+    "complete_governed_scan_verified",
+):
+    check(contract in machine, "Missing adversarial fail-closed contract: " + contract)
+check("'context_preflight' => $preflight" not in skill,
+      "Blocked Skill WP_Error still leaks complete Context envelope/receipt")
+check("'context_envelope_exposed' => false" in skill,
+      "Blocked Skill does not explicitly deny envelope exposure")
+check("mad4b_context_ai_brand_core_operational_human_review_required" in authority,
+      "Operational documents can be AI-approved as Voice or Editorial authority")
 check("Scenario mismatch" in tests and "Retry breaker failed" in tests,
       "Missing scenario and retry negative regression coverage")
 for function in ('private static function add(', 'public static function skill_get(',
