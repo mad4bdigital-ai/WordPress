@@ -18,6 +18,7 @@ function mad4b_recovery_identity() {
 		'build_fingerprint' => str_repeat( 'c', 64 ),
 		'package_manifest_digest' => str_repeat( 'd', 64 ),
 		'boot_provenance_sha256' => str_repeat( 'e', 64 ),
+		'provider_event_generation_sha256' => str_repeat( 'f', 64 ),
 	);
 }
 function mad4b_recovery_plan( $actions = array() ) {
@@ -38,6 +39,8 @@ mad4b_recovery_assert( $good['identity_bound'] && 2 === $good['action_count'], '
 mad4b_recovery_assert( 'phase_a' === $good['ordered_actions'][0]['id'] && 'phase_b' === $good['ordered_actions'][1]['id'], 'topological dependency order' );
 mad4b_recovery_assert( ! $good['authorizing'] && ! $good['execution_performed'] && ! $good['certification_issued'], 'never converts plan to authority or receipt' );
 $changed = $id; $changed['build_fingerprint'] = str_repeat( 'f', 64 );
+$changed_provider = $id; $changed_provider['provider_event_generation_sha256'] = str_repeat( '1', 64 );
+mad4b_recovery_assert( 'STALE' === MAD4B_SCP_Recovery_Lifecycle::compile( $plan, $id, $changed_provider )['state'], 'provider changed without MAD4B build change' );
 mad4b_recovery_assert( 'STALE' === MAD4B_SCP_Recovery_Lifecycle::compile( $plan, $id, $changed )['state'], 'race between plan captures' );
 $production = $id; $production['environment'] = 'production';
 mad4b_recovery_assert( 'BLOCKED' === MAD4B_SCP_Recovery_Lifecycle::compile( $plan, $production, $production )['state'], 'production never admitted' );
@@ -55,4 +58,4 @@ $mutated = $plan; $mutated['mutation_performed'] = true;
 mad4b_recovery_assert( 'BLOCKED' === MAD4B_SCP_Recovery_Lifecycle::compile( $mutated, $id, $id )['state'], 'mutating source plan refused' );
 $empty_ready = mad4b_recovery_plan(); $empty_ready['blocking_gates'] = array(); $empty_ready['current_ready'] = true;
 mad4b_recovery_assert( 'OBSERVED_READY' === MAD4B_SCP_Recovery_Lifecycle::compile( $empty_ready, $id, $id )['state'], 'ready requires no gates or actions' );
-fwrite( STDOUT, "PASS: lifecycle identity/DAG/denial invariants (11 scenarios)\n" );
+fwrite( STDOUT, "PASS: lifecycle identity/DAG/denial invariants (12 scenarios)\n" );
