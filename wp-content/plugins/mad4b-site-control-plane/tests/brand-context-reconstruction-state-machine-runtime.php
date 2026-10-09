@@ -45,4 +45,24 @@ $bad=MAD4B_SCP_Brand_Context_Reconstruction::classify('unsupported',array(),'liv
 if(!is_wp_error($bad)||$bad->get_error_code()!=='mad4b_brand_reconstruction_category_invalid')throw new RuntimeException('Unsupported brand context category');
 $bad=MAD4B_SCP_Brand_Context_Reconstruction::classify('tone_of_voice',array(),'unknown_scenario');
 if(!is_wp_error($bad)||$bad->get_error_code()!=='mad4b_brand_reconstruction_scenario_invalid')throw new RuntimeException('Unsupported scenario');
+$draftProcedure=MAD4B_SCP_Brand_Context_Reconstruction::procedure_for_state('DRAFT_PREPARATION');
+$writeCount=0;
+foreach ($draftProcedure as $step) {
+  if ($step['lane']==='write') {
+    ++$writeCount;
+    if (empty($step['approval_required']) || empty($step['fresh_context_and_site_binding_required']) ||
+        empty($step['independent_readback_required'])) throw new RuntimeException('Unbound draft write step');
+  }
+}
+if ($writeCount!==2) throw new RuntimeException('Missing two separately governed Brand draft writes');
+foreach (array('OWNER_AUTHORITY_REQUIRED','HUMAN_ARBITRATION','RIGHTS_REVIEW','CIRCUIT_OPEN') as $state) {
+  foreach (MAD4B_SCP_Brand_Context_Reconstruction::procedure_for_state($state) as $step)
+    if ($step['lane']!=='read') throw new RuntimeException('Human authority gate exposed an automated write');
+}
+$recoveryProcedure=MAD4B_SCP_Brand_Context_Reconstruction::procedure_for_state('MATERIALIZATION_RECONCILE');
+if (count($recoveryProcedure)!==3 || $recoveryProcedure[0]['lane']!=='read' ||
+    $recoveryProcedure[1]['ability']!=='context/reconcile-brand-materialization' ||
+    empty($recoveryProcedure[1]['exact_new_ticket_required'])) {
+  throw new RuntimeException('Unverified provider re-creation may duplicate a draft');
+}
 echo "PASS ".$count." Brand reconstruction scenarios, retries, no automatic authority\n";
