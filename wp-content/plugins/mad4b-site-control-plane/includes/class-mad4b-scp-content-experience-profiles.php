@@ -585,7 +585,13 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	}
 
 	public static function high_impact_abilities() {
-		$abilities = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
+		$abilities = array(
+            self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
+            'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
+            'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
+            'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
+        );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::routes_for_profile( $profile );
