@@ -34,6 +34,21 @@ final class MAD4B_SCP_Content_Experience_Profiles {
         array('post_type'=>'private_internal','show_ui'=>false,'can_create'=>false,'can_publish'=>false,'taxonomies'=>array()),
     ));}
 }
+$GLOBALS['translation_status'] = array( 'wpml'=>false, 'polylang'=>false );
+$GLOBALS['translation_status_reads'] = 0;
+$GLOBALS['translation_flip'] = false;
+class ACI01_Test_Translation_Bridge {
+    public function translation_status() {
+        $GLOBALS['translation_status_reads']++;
+        if ( $GLOBALS['translation_flip'] && $GLOBALS['translation_status_reads'] > 1 )
+            return array( 'wpml'=>true, 'polylang'=>false );
+        return $GLOBALS['translation_status'];
+    }
+}
+final class MAD4B_SCP_Adapter_Registry {
+    public static function instance() { return new self(); }
+    public function get( $id ) { return 'translation-bridge' === $id ? new ACI01_Test_Translation_Bridge() : null; }
+}
 require_once __DIR__.'/../includes/class-mad4b-scp-aci01-intake-preview.php';
 function check($truth,$msg){if(!$truth){fwrite(STDERR,"FAIL: $msg\n");exit(1);}}
 $cls='MAD4B_SCP_ACI01_Intake_Preview';
@@ -86,4 +101,35 @@ check(in_array('runtime_binding_unverified',$multi['reason_codes'],true),
       'unbound synthetic preview is not certified');
 check($cls::preview($input)['scope']['binding']['restore_epoch']===1,
       'live preview carries exact restore epoch');
-echo "ACI01_READONLY_INTAKE_CONTRACT: PASS (20+ assertions; no native writes)\n";
+
+/** The taxonomy-free article must still require native QA on a Polylang site. */
+$GLOBALS['translation_status'] = array( 'wpml'=>false, 'polylang'=>true );
+$pl = $cls::preview($input);
+check($pl['candidate']['requires_native_relation_review']===true,
+    'Polylang detected even without taxonomies');
+check(in_array('native_relation_review',array_column($pl['stages'],'id'),true),
+    'Polylang relation review stage is required');
+$GLOBALS['translation_status'] = array( 'wpml'=>true, 'polylang'=>true );
+check($cls::preview($input)['candidate']['requires_native_relation_review']===true,
+    'dual multilingual provider is never monolingual');
+$GLOBALS['translation_status'] = array( 'wpml'=>false, 'polylang'=>false );
+check($cls::preview($input)['candidate']['requires_native_relation_review']===false,
+    'certified bridge with no plugins retains monolingual path');
+$GLOBALS['translation_status'] = array( 'malformed'=>true );
+check($cls::preview($input)['candidate']['requires_native_relation_review']===true,
+    'malformed provider inventory fails closed');
+$GLOBALS['translation_status'] = array( 'wpml'=>false, 'polylang'=>false );
+$GLOBALS['translation_status_reads'] = 0;
+$GLOBALS['translation_flip'] = true;
+check(in_array('translation_provider_state_changed',$cls::preview($input)['reason_codes'],true),
+    'translation provider drift between native reads denied');
+$GLOBALS['translation_flip'] = false;
+$GLOBALS['translation_status_reads'] = 0;
+check($cls::translation_provider_state(null,array('wpml'=>false,'polylang'=>false))['requires_review']===true,
+    'unavailable translation bridge cannot certify absence');
+check($cls::translation_provider_state(array('wpml'=>false,'polylang'=>false),
+    array('wpml'=>false,'polylang'=>true))['requires_review']===true,
+    'legacy Polylang signal cannot be hidden by a stale bridge');
+check($cls::translation_provider_state(array('wpml'=>false,'polylang'=>false),array())['requires_review']===true,
+    'malformed fallback state fails closed');
+echo "ACI01_READONLY_INTAKE_CONTRACT: PASS (30+ assertions; no native writes)\n";
