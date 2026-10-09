@@ -16,7 +16,7 @@ final class MAD4B_SCP_External_Media_Ingest {
         if ( ! is_string( $url ) || strlen( $url ) > 2048 ) return false;
         $parts = wp_parse_url( $url );
         if ( ! is_array( $parts ) || ! isset( $parts['host'], $parts['scheme'] )
-            || 'https' !== strtolower( (string) $parts['scheme'] ) || isset( $parts['user'], $parts['pass'] ) ) return false;
+            || 'https' !== strtolower( (string) $parts['scheme'] ) || isset( $parts['user'] ) || isset( $parts['pass'] ) ) return false;
         if ( ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) || isset( $parts['port'] ) && 443 !== (int) $parts['port'] ) return false;
         if ( preg_match( '/[?&](?:token|secret|api_?key|signature|password|access_token)=/i', $url ) ) return false;
         return function_exists( 'wp_http_validate_url' ) && false !== wp_http_validate_url( $url );
@@ -67,7 +67,9 @@ final class MAD4B_SCP_External_Media_Ingest {
             return self::fail( 'mad4b_media_source_size_invalid', 'Source image is absent or exceeds the permitted upload size.' );
         }
         $info = function_exists( 'getimagesize' ) ? @getimagesize( $tmp ) : false;
-        if ( ! is_array( $info ) || ! isset( $info['mime'] ) ||
+        if ( ! is_array( $info ) || ! isset( $info['mime'], $info[0], $info[1] ) ||
+            (int) $info[0] < 1 || (int) $info[1] < 1 || (int) $info[0] > 10000 || (int) $info[1] > 10000 ||
+            (int) $info[0] * (int) $info[1] > 40000000 ||
             ! in_array( $info['mime'], array( 'image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif' ), true ) ) {
             @unlink( $tmp );
             return self::fail( 'mad4b_media_source_mime_invalid', 'Remote content is not a supported image.' );
