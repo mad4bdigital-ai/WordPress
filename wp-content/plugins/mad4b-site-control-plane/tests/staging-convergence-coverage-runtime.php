@@ -115,4 +115,61 @@ $empty = MAD4B_SCP_Staging_Certification::complete_convergence_coverage( array()
 $check( $empty['coverage_complete'] === true &&
 	$empty['blocked_gate_count'] === 0 &&
 	$empty['actions'] === array(), 'empty ready site yields clean no-op plan' );
+
+// Independent release acceptance is opt-in and must never be filled from
+// Staging-only certificate booleans.
+$release = MAD4B_SCP_Staging_Certification::merge_live_acceptance_gates(
+	array( 'safe_boot' => array( 'ready' => true ) ),
+	array( 'ready' => false, 'gates' => array(
+		'environment_guard' => array( 'ready' => true, 'effective_ready' => true,
+			'freshness_required' => true, 'fresh' => true ),
+		'external_wpml' => array( 'ready' => false, 'effective_ready' => false,
+			'state' => 'route_not_registered', 'source_contract' => 'external-wpml',
+			'blockers' => array( 'route_not_registered' ) ),
+		'browser_attestation' => array( 'ready' => true, 'effective_ready' => true,
+			'freshness_required' => true, 'fresh' => false ),
+	) )
+);
+$check( $release['included'] === true && $release['ready'] === false,
+	'live acceptance cannot be self-certified' );
+$check( $release['gate_count'] === 3, 'independent acceptance families preserved' );
+$check( $release['gates']['live_acceptance_environment_guard']['ready'] === true,
+	'fresh external success remains success' );
+$check( $release['gates']['live_acceptance_external_wpml']['ready'] === false,
+	'missing external WPML remains blocked' );
+$check( $release['gates']['live_acceptance_browser_attestation']['ready'] === false,
+	'stale signed browser evidence never becomes ready' );
+$expanded = MAD4B_SCP_Staging_Certification::complete_convergence_coverage(
+	$release['gates'], array()
+);
+$check( $expanded['coverage_complete'] === true &&
+	isset( $expanded['gate_action_coverage']['live_acceptance_external_wpml'] ),
+	'live acceptance blocker gets safe generic review' );
+$check( $expanded['actions'][0]['authorizing'] === false,
+	'live acceptance gate cannot mint authority' );
+$empty_external = MAD4B_SCP_Staging_Certification::merge_live_acceptance_gates(
+	array(), array( 'ready' => true, 'gates' => array() )
+);
+$check( $empty_external['ready'] === false &&
+	isset( $empty_external['gates']['live_acceptance_evidence_unavailable'] ),
+	'absent independent evidence cannot be accepted as ready' );
+$invalid = MAD4B_SCP_Staging_Certification::complete_convergence_coverage(
+	array( 'bad/name' => array( 'ready' => false ) ), array()
+);
+$check( $invalid['coverage_complete'] === false &&
+	! empty( $invalid['plan_integrity_blockers'] ),
+	'invalid gate identity cannot silently disappear' );
+$mutating = MAD4B_SCP_Staging_Certification::complete_convergence_coverage(
+	array(), array(
+		array( 'action_id' => 'governed_write', 'kind' => 'governed_mutation',
+			'automatic_execution_allowed' => true ),
+		array( 'action_id' => 'external_reconnect', 'kind' => 'external_oauth_reauthorization',
+			'automatic_execution_allowed' => true ),
+	)
+);
+foreach ( $mutating['actions'] as $action ) {
+	$check( $action['automatic_execution_allowed'] === false &&
+		$action['independent_governed_preflight_required'] === true,
+		'no effectful action may inherit automatic authority' );
+}
 echo 'STAGING_CONVERGENCE_COVERAGE_RUNTIME: PASS ' . $checks . PHP_EOL;
