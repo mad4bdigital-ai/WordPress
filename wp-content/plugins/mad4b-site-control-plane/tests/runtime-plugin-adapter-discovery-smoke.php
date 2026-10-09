@@ -202,6 +202,21 @@ try {
 	$check( is_array( $risky ) && 'excluded_high_risk' === $risky['coverage_state'], 'High-risk code execution plugin was not excluded from normal writer support.' );
 	$check( 'normal_writer_excluded_by_risk' === $risky['support_request']['reason_code'], 'High-risk support request reason is incorrect.' );
 	$check( 'dangerous-code-execution' === $risky['adapter_id'] && ! empty( $risky['adapter_registered'] ), 'High-risk plugin lost its read-only inspection adapter.' );
+	$check( 'dedicated_high_risk_path' === MAD4B_SCP_Plugin_Discovery::candidate_risk_gate( 'read_only_supported', 'exceptional' ),
+		'Exceptional plugin must not pass through a normal coverage state.' );
+	$check( 'risk_classification_required' === MAD4B_SCP_Plugin_Discovery::candidate_risk_gate( 'read_only_supported', 'unknown' ),
+		'Unknown plugin risk must never imply reader eligibility.' );
+	$check( '' === MAD4B_SCP_Plugin_Discovery::candidate_risk_gate( 'read_only_supported', 'low' ),
+		'Low-risk reader metadata remains discoverable but not self-authorizing.' );
+	$risk_matrix = MAD4B_SCP_Plugin_Discovery::provider_candidate_matrix();
+	$restricted_row = null;
+	foreach ( (array) ( $risk_matrix['items'] ?? array() ) as $risk_item )
+		if ( 'code-snippets/code-snippets.php' === ( $risk_item['plugin_file'] ?? '' ) ) $restricted_row = $risk_item;
+	$check( is_array( $restricted_row ) && 'L0_inventory' === $restricted_row['support_level'] &&
+		'dedicated_high_risk_path' === $restricted_row['next_gate'] &&
+		! in_array( 'provider_read', $restricted_row['safe_actions'], true ) &&
+		! in_array( 'governed_reversible_write_plan', $restricted_row['safe_actions'], true ),
+		'High-risk plugin escaped its strict support tier through adapter readiness.' );
 	$check( is_array( $menu ) && ! empty( $menu['active'] ), 'Normalized Custom Mega Menu runtime fixture was not discovered.' );
 	$check( 'custom-mega-menu' === $menu['family'] && 'custom-mega-menu' === $menu['adapter_id'], 'Normalized Custom Mega Menu runtime slug did not resolve to its governed family.' );
 	$check( ! empty( $menu['adapter_registered'] ), 'Custom Mega Menu family adapter was not registered.' );
