@@ -9,7 +9,7 @@
 3. **Source impersonation (P1):** abandon one global `MAD4B_ACTIVITY_IMPORT_WEBHOOK_SECRET` for operational acceptance; each provider has its own host-managed `MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS[key_id]` entry binding source mode, secret, site UUID, enabled state and an explicit profile allowlist. Clients pass `x-mad4b-key-id` plus HMAC signature. The request's `source_mode` must exactly match the trusted key; nonce uniqueness is scoped by key ID. Invalid/unknown key, cross-profile spoof, different mode or wrong environment fail closed.
 4. **Raw source after review (P0):** no more content-free redacted-only receipt. The original reviewed JSON snapshot is available **only to an enrolled staging admin**, with authenticated decryption, matching hash and a separate explicit immutable approval record. A controlled CSV download exports that approved snapshot to a human-mediated existing WP All Import wizard. **No automatic WP post write.**
 5. **Business Activity coupling (P1):** `Content Experience Profile.import_contract` is optional and independent of user account role/identity binding. Previously configured `activity_contract.import_modes.validation` may serve as an explicit transition fallback until migrated. Future CCT/JetEngine/E-commerce profiles do not require per-record WordPress user account links.
-6. **WPML and price bypass (P1):** complete-group policies require the group/language columns and check configured language coverage; missing related IDs can be flagged when declared required. Price-tier review supports 2-column and 3-column occupancy levels, without silent correction.
+6. **WPML and price bypass (P1):** complete-group policies require the group/language columns and check configured language coverage; missing related IDs can be flagged when declared required. Price-tier review uses an *ordered site-configured list* of arbitrary price columns, works with 2 or more tiers, and refuses scientific-notation/oversized/negative monetary amounts via a bounded fixed-point decimal schema; no automatic repricing. Currency column is also chosen by the profile rather than hardcoded to a tour-specific name.
 
 ### New configuration sample (generic, **not automatically applied**)
 ```json
@@ -24,6 +24,9 @@
       "identity_field": "ID",
       "required_columns": ["ID", "base_currency", "single_price", "double_price", "_wpml_import_after_process_post_status", "_wpml_import_translation_group", "_wpml_import_language_code"],
       "allowed_currencies": ["USD", "EUR"],
+      "currency_field": "base_currency",
+      "price_fields": ["single_price", "double_price"],
+      "decimal_scale": 4,
       "field_mapping": {
         "base_currency": "base_currency",
         "single_price": "single_price",
