@@ -38,6 +38,7 @@ final class MAD4B_SCP_Business_Activity_Contracts {
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ), array(
             'enabled', 'user_role', 'post_user_meta_key', 'user_post_meta_key',
             'attribute_meta_keys', 'taxonomy_slugs', 'create_user', 'create_profile', 'sync_targets',
+            'field_owners', 'sync_identity_key',
         ) ) ) return self::err( 'mad4b_activity_contract_unknown_field', 'Activity facet has unrecognized fields.' );
         if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
         $role = isset( $raw['user_role'] ) ? sanitize_key( $raw['user_role'] ) : '';
@@ -88,6 +89,26 @@ final class MAD4B_SCP_Business_Activity_Contracts {
                 'field_keys' => array_values( array_unique( $field_keys ) ), 'source_ref' => $source_ref,
                 'conflict_policy' => $policy );
         }
+        // Exactly one field owner per canonical field. An owner's ability
+        // to author a field must be declared explicitly and independently
+        // of "last updated" or source precedence.
+        $owners_raw = isset( $raw['field_owners'] ) ? $raw['field_owners'] : array();
+        if ( ! is_array( $owners_raw ) || count( $owners_raw ) > self::MAX_FIELDS ||
+            array_diff( array_keys( $owners_raw ), array_keys( $allow ) ) )
+            return self::err( 'mad4b_activity_field_owner_keys_invalid', 'Field owners must reference the activity attribute allowlist.' );
+        $owners = array();
+        foreach ( array_keys( $allow ) as $field ) {
+            $owner = isset( $owners_raw[ $field ] ) ? (string) $owners_raw[ $field ] : 'manual_review';
+            if ( 'wordpress' !== $owner && 'manual_review' !== $owner &&
+                ( ! isset( $sync[ $owner ] ) || ! in_array( $field, $sync[ $owner ]['field_keys'], true ) ) )
+                return self::err( 'mad4b_activity_field_owner_invalid', 'Field owner must be WordPress, manual review or configured source containing the exact field.' );
+            if ( isset( $sync[ $owner ] ) && 'export' === $sync[ $owner ]['direction'] )
+                return self::err( 'mad4b_activity_field_owner_direction_invalid', 'Outbound-only target cannot be canonical field owner.' );
+            $owners[ $field ] = $owner;
+        }
+        $identity_key = isset( $raw['sync_identity_key'] ) ? (string) $raw['sync_identity_key'] : 'post_id';
+        if ( ! in_array( $identity_key, array( 'post_id', 'external_stable_id' ), true ) )
+            return self::err( 'mad4b_activity_sync_identity_invalid', 'Sync entity identity must be stable, never based on title or display name.' );
         return array( 'enabled' => true, 'user_role' => $role,
             'post_user_meta_key' => $post_key, 'user_post_meta_key' => $user_key,
             'attribute_meta_keys' => array_keys( $allow ),
@@ -95,6 +116,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'create_user' => ! empty( $raw['create_user'] ),
             'create_profile' => ! empty( $raw['create_profile'] ),
             'sync_targets' => $sync,
+            'field_owners' => $owners,
+            'sync_identity_key' => $identity_key,
         );
     }
 
@@ -125,6 +148,8 @@ final class MAD4B_SCP_Business_Activity_Contracts {
             'allowed_attribute_meta_keys' => $binding['contract']['attribute_meta_keys'],
             'attached_taxonomies' => $binding['contract']['taxonomy_slugs'],
             'configured_sync_targets' => isset( $binding['contract']['sync_targets'] ) ? $binding['contract']['sync_targets'] : array(),
+            'field_owners' => isset( $binding['contract']['field_owners'] ) ? $binding['contract']['field_owners'] : array(),
+            'sync_identity_key' => isset( $binding['contract']['sync_identity_key'] ) ? $binding['contract']['sync_identity_key'] : 'post_id',
             'site_uuid' => $binding['site_uuid'],
             'read_only' => true, 'mutation_performed' => false );
     }
