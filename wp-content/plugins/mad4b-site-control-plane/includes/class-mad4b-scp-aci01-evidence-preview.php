@@ -204,6 +204,25 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         if ( empty( $summaries ) ) $reasons[] = 'research_evidence_required';
         $reasons = array_values( array_unique( $reasons ) );
         sort( $reasons, SORT_STRING );
+        // Candidate-only handoff to the existing immutable Artifact Registry
+        // type. Actual append requires an independent review and governed write
+        // permission, never implicit in this read preview.
+        $eligible_ids = array();
+        foreach ( $summaries as $summary ) {
+            if ( ! in_array( $summary['artifact_id'], $duplicate_artifact_ids, true ) )
+                $eligible_ids[] = $summary['artifact_id'];
+        }
+        sort( $eligible_ids, SORT_STRING );
+        $coverage_candidate = array(
+            'contract' => 'mad4b.aci01.evidence-coverage-candidate.v1',
+            'target_artifact_type' => 'evidence_coverage_matrix',
+            'existing_append_ability' => 'mad4b/artifact-append',
+            'job_id' => strtolower( $job_id ),
+            'observed_research_artifact_ids' => $eligible_ids,
+            'excluded_duplicate_artifact_ids' => $duplicate_artifact_ids,
+            'source_rights_verified' => false,
+            'editor_reviewed' => false, 'artifact_created' => false,
+            'dispatch_allowed' => false, 'authorizing' => false );
         // Return identifiers and digests, never raw brand extracts or scraper HTML.
         $output = array(
             'contract' => self::CONTRACT, 'status' => 'NEEDS_EVIDENCE',
@@ -218,6 +237,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
                 'context_digest' => isset( $context['context_pack_sha256'] ) ? (string) $context['context_pack_sha256'] : '',
                 'reviewed_coverage_observed' => ! empty( $context['ready'] ) ),
             'evidence_summaries' => $summaries,
+            'evidence_coverage_handoff' => $coverage_candidate,
             'provenance_observation' => array(
                 'contract' => 'mad4b.aci01.provenance-observation.v1',
                 'distinct_request_observations' => count( $groups ),
@@ -236,7 +256,7 @@ final class MAD4B_SCP_ACI01_Evidence_Preview {
         );
         $output['preview_sha256'] = hash( 'sha256', json_encode( array(
             $output['job_id'], $output['scope'], $output['context'], $summaries,
-            $output['provenance_observation'], $reasons
+            $output['provenance_observation'], $output['evidence_coverage_handoff'], $reasons
         ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         return $output;
     }
