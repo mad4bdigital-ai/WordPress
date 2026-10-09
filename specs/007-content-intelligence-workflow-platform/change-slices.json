@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 498,
+  "changed_file_count": 502,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -982,8 +982,20 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-independent-evidence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-independent-evidence-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-governed-tour-publication-handoff-20261009",
+      "semantic_unit": "Safe two-stage tour publication handoff and redacted blocked Brand Core authoring preflight, with native and static regression evidence",
+      "revert_boundary": "Revert dynamic planner handoff, new skill-context-preflight ability, static contract and PHP fixture as a single capability slice; retain independent Context approvals, exact staging Write and publication acceptance fences.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-dynamic-content-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-abilities.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-tour-publication-handoff-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-context-preflight-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "01008e3cb46e18a6ea9b9aa56465d5331b4f0baaacd589241890ef1fb0308ac5",
+  "changed_paths_sha256": "e4fab306141f7ba78b8093b03eaf7c448d6c97bb493e1ab1c7f6e96b7078bfd0",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
