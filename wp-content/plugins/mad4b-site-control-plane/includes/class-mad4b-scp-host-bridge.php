@@ -38,6 +38,7 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::register( 'mad4b/host-operation-capabilities', 'Host Operation Capabilities', 'capabilities', true );
 		self::register( 'mad4b/host-operation-plan', 'Plan Host Operation', 'plan', true );
+		self::register( 'mad4b/site-profile-environment-reconcile-plan', 'Plan Profile Environment Reconciliation', 'profile_environment_reconcile_plan', true );
 		self::register( 'mad4b/host-operation-apply', 'Apply Host Operation Plan', 'apply', false );
 		self::register( 'mad4b/host-operation-status', 'Host Operation Status', 'status', true );
 		self::register( 'mad4b/host-operation-cancel', 'Cancel Queued Host Operation', 'cancel', false );
@@ -97,6 +98,53 @@ final class MAD4B_SCP_Host_Bridge {
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	/** Profile drives the desired environment; no caller-supplied host values. */
+	public static function profile_environment_reconcile_readiness( array $status ) {
+		if ( 'staging' !== (string) ( $status['configured_environment'] ?? '' ) ) return 'blocked_non_staging_profile';
+		if ( 'host_managed' !== (string) ( $status['environment_sync_mode'] ?? '' ) ) return 'blocked_host_managed_mode_disabled';
+		if ( 'host_aligned' === (string) ( $status['environment_sync_state'] ?? '' ) ) return 'already_aligned';
+		if ( ! empty( $status['wordpress_environment_explicit'] ) ) return 'blocked_explicit_host_conflict';
+		if ( empty( $status['authority_ready'] ) || empty( $status['origin_match'] )
+			|| empty( $status['environment_match'] ) || empty( $status['profile_environment_authoritative'] ) ) return 'blocked_site_identity';
+		if ( empty( $status['deployment_binding_configured'] ) || empty( $status['deployment_binding_bound'] )
+			|| empty( $status['deployment_binding_match'] ) || empty( $status['same_origin_clone_protection'] ) ) return 'blocked_host_binding';
+		if ( 'production' !== (string) ( $status['wordpress_environment'] ?? '' )
+			|| 'awaiting_host_bootstrap' !== (string) ( $status['environment_sync_state'] ?? '' ) )
+			return 'blocked_host_environment_conflict';
+		return 'ready_for_host_plan';
+	}
+
+	public static function profile_environment_reconcile_plan( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'runner_profile_id', 'reason' ) ) )
+			return new WP_Error( 'mad4b_host_profile_reconcile_input_invalid', 'Only exact Host Runner profile and reason are accepted.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_host_profile_reconcile_profile_missing', 'Site Profile unavailable.' );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$decision = is_array( $status ) ? self::profile_environment_reconcile_readiness( $status ) : 'blocked_profile_unavailable';
+		$result = array(
+			'contract' => 'mad4b.site-profile-host-environment-reconcile.v1',
+			'state' => $decision,
+			'desired_wordpress_environment' => 'ready_for_host_plan' === $decision ? 'staging' : '',
+			'host_plan' => array(), 'eligible' => false, 'approval_required' => true,
+			'fresh_wordpress_request_verification_required' => true,
+			'authorizing' => false, 'host_mutation_performed' => false, 'production_authorized' => false,
+		);
+		if ( 'ready_for_host_plan' !== $decision ) return $result;
+		$id = isset( $input['runner_profile_id'] ) ? sanitize_key( (string) $input['runner_profile_id'] ) : '';
+		$reason = isset( $input['reason'] ) ? trim( sanitize_text_field( (string) $input['reason'] ) ) : '';
+		if ( '' === $id || strlen( $reason ) < 3 || strlen( $reason ) > 500 ) {
+			$result['state'] = 'blocked_runner_profile_or_reason_required';
+			return $result;
+		}
+		$plan = self::plan( array( 'operation_id' => 'wordpress_environment_sync',
+			'runner_profile_id' => $id, 'arguments' => array( 'reason' => $reason ) ) );
+		if ( is_wp_error( $plan ) ) { $result['state'] = $plan->get_error_code(); return $result; }
+		$result['state'] = 'host_plan_ready_for_separate_approval';
+		$result['host_plan'] = $plan;
+		$result['eligible'] = true;
+		return $result;
 	}
 
 	public static function plan( $input ) {

@@ -830,7 +830,8 @@ final class MAD4B_SCP_Site_Profile {
 		$sync_mode = array_key_exists( 'environment_sync_mode', $input )
 			? ( is_string( $input['environment_sync_mode'] ) ? sanitize_key( $input['environment_sync_mode'] ) : '' )
 			: ( $existing_identity_matches && isset( $existing_normalized['environment_sync_mode'] )
-				? $existing_normalized['environment_sync_mode'] : self::ENV_SYNC_PROFILE_ONLY );
+				? $existing_normalized['environment_sync_mode']
+				: ( 'staging' === $environment ? self::ENV_SYNC_HOST_MANAGED : self::ENV_SYNC_PROFILE_ONLY ) );
 		if ( ! in_array( $sync_mode, array( self::ENV_SYNC_PROFILE_ONLY, self::ENV_SYNC_HOST_MANAGED ), true ) ) {
 			return new WP_Error( 'mad4b_site_profile_environment_sync_mode_invalid', 'Unsupported environment synchronization mode.' );
 		}
