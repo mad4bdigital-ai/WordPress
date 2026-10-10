@@ -96,3 +96,20 @@ blocked and stop.
 on PHP 7.4 and 8.3 with an isolated Python host-canary mock. Passing these
 fixtures **cannot** replace live Staging, host privilege, external evidence,
 or GitHub release certification.
+
+## Single-source dynamic Host proof (new)
+
+The preferred non-duplicating design is documented in
+`docs/runbooks/single-source-live-host-identity.md`. It captures a fresh,
+single-use Host identity attestation using the **existing enrolled Host
+Runner's Ed25519 signer** over an OS-permissioned Unix Socket. It does not
+generate a new WordPress secret or copy the Host's credential into the
+Site Profile.
+
+`mad4b/site-autopilot-status` now exposes a bounded
+`host_identity` observation, including `fresh_host_identity_verified`
+only for a cryptographically valid response. The legacy HMAC-backed Host
+operations remain independently blocked until migrated and accepted; both
+sources being active yields `blocked_multiple_host_identity_roots`.
+The local signer service has not been deployed or accepted on the live
+All Royal Egypt Staging host by this source change.
