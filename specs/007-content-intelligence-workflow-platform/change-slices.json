@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 605,
+  "changed_file_count": 610,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1217,8 +1217,21 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp10-mapping-wpml-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp10-wpml-readback-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-imp11-imp12-batch-recovery-and-bootstrap-20261010",
+      "semantic_unit": "IMP11 serializes four site-profile source-inbox mutators using a non-expiring durable option lock, exposes lock diagnostics and audited archival through intake policy drift; hardens mapping maturation from removing identity/currency/required field or WPML guards. IMP12 adds safe read-only zero-Profile WordPress CPT/REST Meta/taxonomy discovery and lexical-only candidate mappings, with negative tests and operational acceptance runbook.",
+      "revert_boundary": "Preserve durable encrypted batch options and lock/audit state when removing IMP11 code; requires explicit governed cleanup. Remove IMP12 read-only discovery without mutating WordPress content. No production grant, third-party writer, automatic mapping apply or cross-provider fence is implemented.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp11-imp12-safe-batches-and-onboarding.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-schema-onboarding.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp11-batch-mapping-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-source-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "5305d9a124509e5f5bc69ee451ad88fa18594fbf71cc6ad84f1bca6192e61077",
+  "changed_paths_sha256": "32add12e636a1632138cc8a8272558e553c719dc6ce401a3fa41600159f8ac5d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
