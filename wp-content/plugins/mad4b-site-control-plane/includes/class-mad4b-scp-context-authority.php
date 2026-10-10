@@ -302,6 +302,41 @@ final class MAD4B_SCP_Context_Authority {
     }
 
 
+	/**
+	 * Privileged read-only candidate discovery. Unbound is not owned:
+	 * visibility of an old folder does not grant migration rights.
+	 */
+	public static function legacy_owner_transfer_discover( $input = array() ) {
+		if ( ! is_array( $input ) || $input )
+			return new WP_Error( 'mad4b_legacy_transfer_discover_input_invalid', 'Only empty read-only inventory requests are accepted.' );
+		if ( ! current_user_can( 'manage_options' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_discover_admin_required', 'Exact administrator review required.' );
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$rows = array();
+		$foreign_or_conflicted = 0;
+		foreach ( self::raw_sources() as $key => $source ) {
+			if ( ! is_array( $source ) ) { ++$foreign_or_conflicted; continue; }
+			$id = (string) ( $source['source_id'] ?? '' );
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id ) ) { ++$foreign_or_conflicted; continue; }
+			$review = self::legacy_owner_transfer_plan( array( 'source_id' => $id ) );
+			if ( is_wp_error( $review ) ) { ++$foreign_or_conflicted; continue; }
+			$rows[] = array(
+				'source_id' => $id,
+				'external_root_id' => (string) $review['external_root_id'],
+				'asset_count' => (int) $review['asset_count'],
+				'plan_sha256' => (string) $review['plan_sha256'],
+				'status' => 'owner_and_external_folder_review_required',
+			);
+		}
+		return array( 'contract' => 'mad4b.context-legacy-owner-transfer-discovery.v1',
+			'eligible_unbound_candidates' => $rows,
+			'candidate_count' => count( $rows ),
+			'foreign_or_conflicted_records' => $foreign_or_conflicted,
+			'brand_ownership_asserted' => false, 'migration_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false );
+	}
+
 	/** Test optional tenancy metadata WITHOUT treating a missing brand as owned. */
 	private static function legacy_metadata_compatible( array $record, array $scope ) {
 		$fields = array(
@@ -416,6 +451,15 @@ final class MAD4B_SCP_Context_Authority {
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) || strlen( $evidence ) < 12 ||
 			strlen( $evidence ) > 500 || '' === $reviewed_root )
 			return new WP_Error( 'mad4b_legacy_transfer_evidence_invalid', 'An exact source plan and independently reviewed evidence reference are required.' );
+		// Independent real provider read: an operator-supplied folder string is
+		// never enough to convert unbound records into Brand-owned records.
+		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_unavailable', 'Existing enrolled Google Drive provider is not available.' );
+		$folder = MAD4B_SCP_Google_Drive_Context::get_folder( $reviewed_root );
+		if ( is_wp_error( $folder ) ) return $folder;
+		if ( ! is_array( $folder ) || ! hash_equals( $reviewed_root, (string) ( $folder['id'] ?? '' ) )
+			|| 'application/vnd.google-apps.folder' !== (string) ( $folder['mimeType'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_folder_mismatch', 'Independent Google Drive folder identity could not be verified.' );
 		return self::with_registry_lock( 'legacy_owner_transfer_apply',
 			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence ) {
 				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
