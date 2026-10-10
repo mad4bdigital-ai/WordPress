@@ -62,16 +62,20 @@ final class MAD4B_SCP_Preview_Matrix {
         if ( ! in_array( $mode, array( 'all', 'browser', 'customizer', 'native' ), true ) ) {
             return self::blocked( 'unsupported_mode' );
         }
-        $environment = function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '';
         $origin = self::runtime_origin();
-        if ( 'staging' !== $environment || '' === $origin ) {
-            return self::blocked( 'exact_staging_origin_required' );
-        }
+        if ( '' === $origin ) return self::blocked( 'exact_staging_origin_required' );
         $profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+        // Read the canonical Site Profile status fields, not the separate
+        // environment_resolution() contract. All are required for read planning.
         if ( ! is_array( $profile ) || empty( $profile['configured'] )
-            || ! isset( $profile['environment'] ) || 'staging' !== $profile['environment']
+            || ! isset( $profile['environment'], $profile['configured_environment'] )
+            || 'staging' !== $profile['environment']
+            || 'staging' !== $profile['configured_environment']
             || empty( $profile['environment_match'] ) || empty( $profile['origin_match'] )
-            || empty( $profile['exact_profile_bound'] ) ) {
+            || empty( $profile['deployment_binding_match'] )
+            || empty( $profile['authority_ready'] )
+            || ! isset( $profile['canonical_origin'] )
+            || ! hash_equals( $origin, (string) $profile['canonical_origin'] ) ) {
             return self::blocked( 'site_profile_staging_binding_required' );
         }
         $build = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
@@ -97,11 +101,18 @@ final class MAD4B_SCP_Preview_Matrix {
             ? (int) $frontend['evaluation_window']['min_samples'] : 3;
         $lanes = array(
             'browser' => array(
-                'engine' => 'external_chromium',
-                'artifact' => 'tools/mad4b-preview-matrix.py',
+                'engine' => 'mad4b_managed_browser_execution_providers_v2',
+                'approved_runner' => 'tools/browser-acceptance/run-live-site-browser-acceptance.mjs',
+                'managed_provider_preflight' => 'tools/browser-acceptance/provider-preflight.mjs',
+                'managed_provider_workflow' => '.github/workflows/mad4b-managed-browser-providers.yml',
+                'local_diagnostic_only' => 'tools/mad4b-preview-matrix.py',
                 'runtime' => 'real_browser',
-                'transport' => 'https_same_origin',
-                'acceptance_requires' => array( 'exact_claimed_external_work', 'independently_observed_probe_hash', 'signed_runner_receipt' ),
+                'transport' => 'governed_mcp_plan_plus_provider_browser',
+                'browser_provider_families' => array( 'cloudflare', 'browserbase', 'browserless', 'steel' ),
+                'site_provider_status_ability' => 'mad4b/browser-acceptance-capabilities',
+                'approved_plan_ability' => 'mad4b/browser-acceptance-plan',
+                'authoritative_result_ability' => 'mad4b/browser-acceptance-result',
+                'acceptance_requires' => array( 'fresh_signed_browser_plan', 'site_provider_attestation', 'dual_deadline', 'independent_mcp_reducer_receipt' ),
                 'source_identity_recheck_required' => true,
             ),
             'customizer' => array(
