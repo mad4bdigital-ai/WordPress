@@ -191,8 +191,13 @@ final class MAD4B_SCP_Site_Profile {
 		if ( self::ENV_SYNC_HOST_MANAGED !== $mode ) return 'blocked_invalid_mode';
 		if ( ! $identity_ready ) return 'blocked_profile_identity';
 		if ( 'production' === $desired || ! in_array( $desired, array( 'local', 'development', 'staging' ), true ) ) return 'blocked_production_or_invalid_target';
-		if ( ! $binding_ready ) return 'blocked_missing_deployment_binding';
+		// Reporting explicit WordPress alignment is a read-only fact. A
+		// previously configured host binding is needed to AUTHORIZE a host
+		// mutation, not to recognize a bootstrap already running as Staging.
+		// The separate clone-protection/status fields remain false when no
+		// trusted host identity exists; do not infer Host write eligibility.
 		if ( $explicit ) return hash_equals( $desired, (string) $wordpress ) ? 'host_aligned' : 'blocked_explicit_host_conflict';
+		if ( ! $binding_ready ) return 'blocked_missing_deployment_binding';
 		return 'awaiting_host_bootstrap';
 	}
 
