@@ -30,7 +30,7 @@ for token in ("php://temp/maxmemory:2097152", "rewind( $out )",
     ensure(token in snapshot, "Missing complete preflight-before-download: "+token)
 ensure(snapshot.index("fputcsv( $out, $headers )") < snapshot.index("nocache_headers();"),
        "CSV response header leaked before the whole file was validated")
-for token in ("is_uploaded_file", "ZipArchive::RDONLY", "MAX_UNCOMPRESSED",
+for token in ("MAD4B_IMPORT_XLSX_PARSER_APPROVED", "is_uploaded_file", "ZipArchive::RDONLY", "MAX_UNCOMPRESSED",
               "MAX_CELLS", "TargetMode", "External", "TYPE_FORMULA",
               "setReadDataOnly( true )", "listWorksheetNames",
               "count( $names ) !== 1", "PhpSpreadsheet",
