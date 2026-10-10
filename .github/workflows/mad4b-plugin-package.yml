@@ -65,6 +65,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-ci-outage-attestation.php"
           php -l "$root/tests/ci-outage-attestation-runtime.php"
           php "$root/tests/ci-outage-attestation-runtime.php"
+          php -l "$root/tests/ci-outage-selected-head-runtime.php"
+          php "$root/tests/ci-outage-selected-head-runtime.php"
           python3 -m py_compile tools/mad4b_publish_offline_staging_candidate.py
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
