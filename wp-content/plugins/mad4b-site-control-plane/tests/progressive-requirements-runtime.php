@@ -129,6 +129,23 @@ MAD4B_SCP_Progressive_Requirements::register_abilities();
 check(isset($GLOBALS['abilities'][MAD4B_SCP_Progressive_Requirements::PLAN_ABILITY]) &&
 	isset($GLOBALS['abilities'][MAD4B_SCP_Progressive_Requirements::LINK_ABILITY]),
 	'read and governed link abilities must both register');
+$third_party=MAD4B_SCP_Progressive_Requirements::discover(array(
+	'intent'=>'ability.vendor.create-cruise'));
+check(!is_wp_error($third_party) && 1===$third_party['match_count'] &&
+	$third_party['auto_selection']['target_ability_name']==='vendor/create-cruise' &&
+	!$third_party['auto_selection']['capability_verified'],
+	'Uncertified third-party Ability was not dynamically inventoried or was considered approved');
+check($third_party['results'][0]['planner_inputs']['schema_available'] &&
+	$third_party['results'][0]['planner_inputs']['variables'][0]['name']==='itinerary',
+	'Registered provider input schema failed to materialize variable names safely');
+$third_plan=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'auto','mode'=>'detached','intent'=>'ability.vendor.create-cruise'));
+check(!is_wp_error($third_plan) &&
+	$third_plan['resolved_provider']==='registry.ability' &&
+	$third_plan['resolved_target_ability_name']==='vendor/create-cruise' &&
+	!$third_plan['authorization_granted'] &&
+	count($third_plan['remaining_hard_requirements'])===3,
+	'Third-party Ability auto-plan bypassed original permission or exact approval');
 $inventory=MAD4B_SCP_Progressive_Requirements::discover(array('intent'=>'content.create_draft'));
 check(!is_wp_error($inventory) && 1===$inventory['match_count'] &&
 	'content.create_draft'===$inventory['auto_selection']['id'],
