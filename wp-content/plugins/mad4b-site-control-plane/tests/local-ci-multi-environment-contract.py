@@ -78,6 +78,34 @@ class MultiEnvironmentCITest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 runner.inspect_site_evidence(p, "https://expected.example.test", self.sha)
 
+    def test_hosted_site_probe_refuses_plain_http_or_injected_paths(self):
+        for target_url in ("http://example.com", "https://user:pass@example.com",
+                           "https://example.com/admin", "https://example.com/?token=secret",
+                           "https://127.0.0.1"):
+            with self.assertRaises(ValueError, msg=target_url):
+                runner.probe_wordpress_rest(target_url, "hostinger")
+
+    def test_hosted_site_probe_accepts_only_bounded_readonly_origin(self):
+        from unittest.mock import patch
+        class FakeResponse:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+            def read(self, maximum):
+                return b'{"name":"Example WP","routes":{}}'
+        class FakeOpener:
+            def open(self, request, timeout=8):
+                self.requested = request.full_url
+                return FakeResponse()
+        opener = FakeOpener()
+        with patch.object(runner.urllib.request, "build_opener", return_value=opener):
+            result = runner.probe_wordpress_rest("https://wp.example.com", "wordpress_hosted")
+        self.assertEqual("REACHABLE_NOT_CERTIFIED", result["state"])
+        self.assertEqual("https://wp.example.com/wp-json/", result["endpoint"])
+        self.assertTrue(result["read_only"])
+
     def test_no_silent_ci_or_production_promotion(self):
         text = MODULE.read_text(encoding="utf-8")
         for token in ('"github_ci_certified": False', '"staging_certified": False',
