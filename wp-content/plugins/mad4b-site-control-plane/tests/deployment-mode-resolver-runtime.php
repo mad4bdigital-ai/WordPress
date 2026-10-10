@@ -29,12 +29,13 @@ $uuid = '11111111-2222-4333-8444-555555555555';
 MAD4B_SCP_Site_Profile::$status = array(
     'configured' => true, 'site_uuid' => $uuid,
     'origin_match' => true, 'environment_match' => true,
-    'deployment_binding_match' => true, 'authority_ready' => true,
+    'deployment_binding_match' => true, 'deployment_binding_bound' => true,
+    'deployment_binding_configured' => true, 'authority_ready' => true, 'revision' => 7,
     'environment' => 'staging',
 );
 MAD4B_SCP_Context_Authority::$profile = array(
     'site_uuid' => $uuid,
-    'brand_id' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'brand_id' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'revision' => 3,
 );
 MAD4B_SCP_Deployment_Mode_Resolver::boot();
 MAD4B_SCP_Deployment_Mode_Resolver::register_ability();
@@ -44,6 +45,10 @@ expect( $GLOBALS['mad4b_mock_abilities'][MAD4B_SCP_Deployment_Mode_Resolver::ABI
 $a = MAD4B_SCP_Deployment_Mode_Resolver::resolve();
 expect( $a['status'] === 'RESOLVED_FOR_REVIEW_ONLY', 'dedicated recognized' );
 expect( $a['active_mode'] === 'wordpress_dedicated', 'wp mode active' );
+expect( $a['common_contract'] === 'mad4b.context-deployment-mode.v1', 'common contract aligned' );
+expect( $a['adapter_version'] === '1.1.0', 'adapter version present' );
+expect( $a['portable_state'] === 'BOUND_FOR_REVIEW_ONLY', 'portable status projection' );
+expect( $a['dependency_revision'] === array( 'site_profile' => 7, 'brand_profile' => 3 ), 'source revisions recorded' );
 expect( count( $a['supported_modes'] ) === 4, 'all common modes kept' );
 expect( $a['scope']['tenant_ref'] === 'wp-site:' . $uuid, 'tenant from site only' );
 expect( $a['scope']['brand_ref'] === str_repeat( 'a', 32 ), 'brand from profile only' );
@@ -54,6 +59,15 @@ expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'tenant_ref' => 'cli
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'deployment_mode' => 'shared_multi_tenant' ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'mode spoof rejected' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'brand_ref' => str_repeat( 'b', 32 ) ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'brand spoof rejected' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'unapproved' => 'x' ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'unknown scope rejected' );
+MAD4B_SCP_Site_Profile::$status['deployment_binding_bound'] = false;
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'unbound legacy profile blocked even when match is true' );
+MAD4B_SCP_Site_Profile::$status['deployment_binding_bound'] = true;
+MAD4B_SCP_Site_Profile::$status['deployment_binding_configured'] = false;
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'deployment binding missing blocked' );
+MAD4B_SCP_Site_Profile::$status['deployment_binding_configured'] = true;
+MAD4B_SCP_Context_Authority::$profile['revision'] = 0;
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'BRAND_PROFILE_REVISION_MISSING', 'unversioned brand context blocked' );
+MAD4B_SCP_Context_Authority::$profile['revision'] = 3;
 MAD4B_SCP_Site_Profile::$status['deployment_binding_match'] = false;
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_IDENTITY_NOT_READY', 'clone drift blocks' );
 MAD4B_SCP_Site_Profile::$status['deployment_binding_match'] = true;
