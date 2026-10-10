@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 664,
+  "changed_file_count": 672,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1348,8 +1348,32 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-forms-native-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-scope-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-cso-private-planning-adapters-20261010",
+      "semantic_unit": "Deploy-allowed typed storage-provider discovery, actor/site-scoped private nonsecret draft SQL CAS, immutable read-backed typed plans, synthetic denial fixtures; no native write callback.",
+      "revert_boundary": "Revert all private CSO planning/storage modules and fixtures together, without touching original CSO01 read-only baseline or granting arbitrary wp_options writes.",
+      "certification": "source_only_native_and_staging_required",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-changes.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-drafts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-storage-adapters.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-changes-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-drafts-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-cso-bulk-dag-planning-20261010",
+      "semantic_unit": "Scope-sealed canary bulk plan and deterministic cycle-safe workflow DAG compiler plus negative native fixture. Deliberately no executor.",
+      "revert_boundary": "Revert planner, compiler and fixture together; preserve fail-closed gated dispatch and future explicit native grant requirement.",
+      "certification": "source_only_native_and_staging_required",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-bulk.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-workflows.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-orchestration-plans-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "6d700feb14a1bb59c4c0d09a6c00aa74f55e84147a974a8f4bda820ab0bbd2b9",
+  "changed_paths_sha256": "a9d468a15e1c8db4ad09b6155295c67d213aab8ba4376303e659a75985f7b510",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
