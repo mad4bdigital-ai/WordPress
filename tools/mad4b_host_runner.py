@@ -2010,7 +2010,7 @@ def _wp_environment_receipt_payload(receipt: dict[str, Any]) -> dict[str, Any]:
 
 
 def sign_live_host_identity_challenge(
-    profile: dict[str, Any], challenge: dict[str, Any], now: int | None = None,
+    profile: dict[str, Any], challenge: dict[str, Any], now=None,
 ) -> dict[str, Any]:
     """Sign one fresh Staging challenge with the EXISTING enrolled Host key.
 
