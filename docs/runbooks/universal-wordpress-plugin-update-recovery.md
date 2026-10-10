@@ -66,6 +66,45 @@ authorization, owner consent, Staging admission and preexisting rollback
 procedures. Native evidence is accepted as separate validation rather than
 forging a successful GitHub CI result.
 
+## Generic signer for certified custom providers
+
+The source-controlled utility `tools/mad4b_sign_plugin_ci_outage.py` signs
+exact native test evidence for **any source-approved provider and component**
+whose certified provider contract contains
+`offline_update_attestor_public_key`. It is intentionally not a host runner
+and does not mutate WordPress or GitHub.
+
+A test report MUST bind source SHA, provider ID, component, exact plugin file,
+certified ZIP hash, evidence bundle digest and all five mandatory test gates.
+The tool independently hashes the referenced ZIP and evidence bundle, refuses
+unapproved source digests or signing-key mismatches, requires explicit owner
+approval, and emits an immutable signed receipt. The private Ed25519 key stays
+on the external trusted test machine.
+
+Example:
+
+```bash
+python3 tools/mad4b_sign_plugin_ci_outage.py \
+  --provider-contracts wp-content/plugins/mad4b-site-control-plane/config/certified-providers.json \
+  --provider-id PROVIDER_ID \
+  --source-commit-sha EXACT_SOURCE_SHA \
+  --archive EXACT_CERTIFIED_PLUGIN_ZIP \
+  --native-evidence-bundle REVIEWED_TEST_EVIDENCE_ARCHIVE \
+  --test-report REVIEWED_NATIVE_TEST_REPORT.json \
+  --site-uuid ENROLLED_STAGING_SITE_UUID \
+  --site-origin https://staging.example.com \
+  --signer-private-key PRIVATE_SIGNING_KEY.pem \
+  --output SIGNED_PLUGIN_CI_OUTAGE_RECEIPT.json \
+  --confirmation "I APPROVE THIS EXACT PLUGIN STAGING EVIDENCE"
+```
+
+The signer verifies submitted evidence bindings but is not a substitute for
+actually executing and reviewing the tests. A forged `PASS` report from an
+untrusted operator must never be signed. The generated envelope can be passed
+as `attestation={claims_b64,signature_b64}` to
+`mad4b/plugin-update-evidence-verify`. Verification remains read-only, and
+the actual installer still requires its original independently governed plan.
+
 ## Assistant routine
 
 1. Discover all plugins and current blockers via
