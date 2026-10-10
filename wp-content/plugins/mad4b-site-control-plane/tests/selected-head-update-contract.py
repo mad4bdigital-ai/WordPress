@@ -17,6 +17,11 @@ assert "MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED" in selected
 assert "'default_release_channel_unchanged' => true" in selected
 assert "'automatic_update' => false" in selected
 assert "'production_allowed' => false" in selected
+assert "'local_ci_multi_environment' => array(" in selected
+assert "'local_receipt_authorizing' => false" in selected
+assert "'github_ci_certified_by_local_runner' => false" in selected
+assert "'hosting_target_not_assumed_docker' => true" in selected
+assert "'staging_package_certification_still_required' => true" in selected
 assert "'public' => false" in selected
 assert "INSTALL SELECTED HEAD ON STAGING" in selected
 assert "MAD4B_SCP_Staging_Source_Selector::resolve" in selected

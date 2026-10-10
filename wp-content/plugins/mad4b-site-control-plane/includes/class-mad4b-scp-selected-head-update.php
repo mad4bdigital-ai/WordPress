@@ -176,7 +176,19 @@ final class MAD4B_SCP_Selected_Head_Update {
         $selected = array(
             'contract' => self::CONTRACT, 'mode' => 'explicit_opt_in_only',
             'default_release_channel_unchanged' => true, 'automatic_update' => false,
-            'production_allowed' => false, 'source' => $resolved,
+            'production_allowed' => false,
+            // Local CI may test the same exact source for Hostinger, managed
+            // hosting or a disposable container; it cannot sign a release.
+            'local_ci_multi_environment' => array(
+                'supported' => true,
+                'runner' => 'tools/mad4b-local-ci-parity.py',
+                'expected_source_sha' => $resolved['resolved_sha'],
+                'hosting_target_not_assumed_docker' => true,
+                'local_receipt_authorizing' => false,
+                'github_ci_certified_by_local_runner' => false,
+                'staging_package_certification_still_required' => true,
+            ),
+            'source' => $resolved,
             'package_identity' => is_wp_error( $package ) ? array() : $package['identity'],
             'manifest_sha256' => is_wp_error( $package ) ? '' : $package['manifest_sha256'],
             'release_verdict_run_id' => is_wp_error( $package ) ? 0 : $package['release_verdict_run_id'],
