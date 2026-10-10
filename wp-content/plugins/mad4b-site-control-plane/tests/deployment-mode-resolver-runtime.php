@@ -54,7 +54,9 @@ expect( $a['scope']['tenant_ref'] === 'wp-site:' . $uuid, 'tenant from site only
 expect( $a['scope']['brand_ref'] === str_repeat( 'a', 32 ), 'brand from profile only' );
 expect( $a['scope']['blog_id'] === 5 && $a['scope']['network_id'] === 2, 'multisite bound' );
 expect( $a['dependency_status']['provider_detection_grants_authority'] === false, 'provider presence no authority' );
-expect( $a['dependency_status']['mcp_discovery']['status'] === 'POTENTIALLY_AVAILABLE', 'mcp discovery separate from operation authority' );
+expect( $a['dependency_status']['mcp_discovery']['status'] === 'TRANSPORT_NOT_OBSERVED', 'abilities registered does not prove MCP runtime' );
+expect( $a['dependency_status']['mcp_discovery']['adapter_class_observed'] === false, 'unloaded official adapter must be reported' );
+expect( $a['dependency_status']['mcp_discovery']['transport_and_registration_independently_certified'] === false, 'MCP requires independent runtime acceptance' );
 expect( $a['host_binding_requires_independent_acceptance'] === true, 'runtime evidence still independent' );
 expect( $a['execution_authorized'] === false && $a['publication_authorized'] === false, 'no write privileges' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( $a['scope'] )['status'] === 'RESOLVED_FOR_REVIEW_ONLY', 'exact scope accepted' );
