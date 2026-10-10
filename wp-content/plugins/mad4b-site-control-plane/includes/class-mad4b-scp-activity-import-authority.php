@@ -162,6 +162,20 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'auto_execute' => false
         );
     }
+    /**
+     * Pure per-profile Mode authorization. Caller must separately authenticate
+     * either WordPress administrator or the signed site-bound source sender.
+     */
+    public static function mode_allowed( $profile, $mode_id ) {
+        if ( ! is_array( $profile ) || empty( $profile['enabled'] ) ||
+            ! is_string( $mode_id ) ||
+            ! preg_match( '/^[a-z][a-z0-9_]{2,64}$/D', $mode_id ) )
+            return false;
+        $policy = self::profile_contract( $profile );
+        return ! empty( $policy['enabled_modes'] ) &&
+            is_array( $policy['enabled_modes'] ) &&
+            in_array( $mode_id, $policy['enabled_modes'], true );
+    }
     public static function profile_contract( $profile ) {
         if ( ! empty( $profile['import_contract']['enabled'] ) )
             return $profile['import_contract'];
