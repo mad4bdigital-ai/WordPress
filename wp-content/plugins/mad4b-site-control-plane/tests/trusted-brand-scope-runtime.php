@@ -244,6 +244,11 @@ check( $a === $transferred_asset['brand_id'] &&
     'Legacy transfer reused previous authority or skipped mandatory rescan' );
 check( 'read_only' === $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $legacy_source_id ]['write_policy'],
     'Transfer carried forward old managed-write policy' );
+$verified_transfer = MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback(array('source_id' => $legacy_source_id));
+check(is_array($verified_transfer) && $verified_transfer['ready_for_fresh_source_scan']
+    && 1 === $verified_transfer['unreviewed_asset_count']
+    && empty($verified_transfer['content_ready_for_publication']),
+    'Independent readback accepted earlier Brand authority');
 check( is_wp_error( MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload ) ),
     'Old transfer approval silently replayed' );
 // Restore previous test data after completing the separate migration scenario.
