@@ -147,6 +147,37 @@ def verify_zip(archive: Path, receipt: dict, source: str) -> None:
                 "computed_manifest_digest_mismatch")
 
 
+def require_php_syntax(root: Path, php: str) -> dict:
+    """Fail closed before writing a WordPress-installable ZIP.
+
+    Python contract tests and ZIP hashing cannot detect PHP parse errors.
+    Exact PHP 8.3 syntax lint must complete over the entire shipped source,
+    even for the nominal build-only profile. Never replace this with a
+    filename/brace heuristic or mark unavailable PHP as a PASS.
+    """
+    php_bin = shutil.which(php)
+    require(php_bin is not None, "php83_cli_required_before_packaging")
+    try:
+        ver = command([php_bin, "-r", "echo PHP_MAJOR_VERSION,'.',PHP_MINOR_VERSION;"], root, 15)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise BuildBlocked("php83_cli_unavailable") from exc
+    require(ver.returncode == 0 and ver.stdout.strip() == "8.3",
+            "php83_cli_version_required")
+    source = root / PLUGIN
+    files = sorted(source.rglob("*.php"))
+    require(bool(files), "php_source_tree_empty")
+    for item in files:
+        require(item.is_file() and not item.is_symlink(), "php_source_file_unsafe")
+        try:
+            result = command([php_bin, "-l", str(item)], root, 30)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise BuildBlocked("php_syntax_lint_unavailable") from exc
+        require(result.returncode == 0,
+                "php_syntax_invalid:" + item.relative_to(root).as_posix())
+    return {"state": "PASS", "php_version": "8.3",
+            "files_checked": len(files), "complete_lint": True}
+
+
 def native_checks(root: Path, php: str) -> dict:
     """Observed local execution; never a signer-approved release certificate."""
     checks = []
@@ -208,6 +239,7 @@ def build(root: Path, output: Path, source: str, adapter: Path,
     require(hit is not None, "plugin_version_missing")
     plugin_version = hit.group(1)
     require((root / CANONICAL_BUILDER).is_file(), "canonical_builder_missing")
+    syntax_check = require_php_syntax(root, php)
     require(not output.exists() or not any(output.iterdir()), "output_must_be_empty")
     output.mkdir(parents=True, exist_ok=True)
     # The plugin source is never edited by the provenance producer.
@@ -244,6 +276,7 @@ def build(root: Path, output: Path, source: str, adapter: Path,
               "package_manifest_digest": receipt["package_manifest_digest"],
               "certified_adapter_version": version, "certified_adapter_sha256": adapter_sha,
               "canonical_package_receipt": receipt_file.name,
+              "php83_syntax_gate": syntax_check,
               "tests": native_checks(root, php) if run_tests else
                   {"checks": [], "local_tests_passed": False, "release_certified": False},
               "github_ci_certified": False, "staging_certified": False,
