@@ -8,10 +8,14 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $value ) ); }
-function get_current_blog_id() { return 1; }
-function get_current_network_id() { return 1; }
-function get_current_user_id() { return 7; }
+function get_current_blog_id() { return $GLOBALS['mock_blog_id'] ?? 1; }
+function get_current_network_id() { return $GLOBALS['mock_network_id'] ?? 1; }
+function get_current_user_id() { return $GLOBALS['mock_actor_id'] ?? 7; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
+class MAD4B_SCP_Policy {
+    public static $writes_allowed = true;
+    public static function can_mutate() { return self::$writes_allowed; }
+}
 function get_option( $name, $fallback = array() ) { return $GLOBALS['mad4b_options'][$name] ?? $fallback; }
 function check( $yes, $name ) { if ( ! $yes ) { fwrite( STDERR, "FAIL: " . $name . PHP_EOL ); exit( 1 ); } }
 class MAD4B_SCP_Site_Profile {
@@ -38,6 +42,31 @@ $GLOBALS['mad4b_options'] = array(
 );
 $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
 check( ! is_wp_error( $scope ) && $scope['brand_ref'] === $GLOBALS['brand_id'], 'trusted scope resolved' );
+$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+check( ! is_wp_error( $checkpoint ) && true === MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ),
+    'current actor, profile revisions and mutation policy accepted for unchanged checkpoint' );
+$GLOBALS['mock_blog_id'] = 2;
+check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
+    'switch_to_blog between approval and commit is rejected' );
+unset( $GLOBALS['mock_blog_id'] );
+$GLOBALS['mock_network_id'] = 2;
+check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
+    'network context drift is rejected' );
+unset( $GLOBALS['mock_network_id'] );
+$GLOBALS['mock_actor_id'] = 9;
+check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
+    'authorization actor switch is rejected' );
+unset( $GLOBALS['mock_actor_id'] );
+$GLOBALS['mock_mode_revision'] = $GLOBALS['mode_resolution']['dependency_revision'];
+$GLOBALS['mode_resolution']['dependency_revision']['brand_profile'] = 4;
+check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
+    'brand revision drift invalidates prior approval' );
+$GLOBALS['mode_resolution']['dependency_revision'] = $GLOBALS['mock_mode_revision'];
+MAD4B_SCP_Policy::$writes_allowed = false;
+$denied = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+check( is_wp_error( $denied ) && 'mad4b_integrity_authorization_revoked' === $denied->get_error_code(),
+    'revoked mutation policy blocks an otherwise unchanged checkpoint' );
+MAD4B_SCP_Policy::$writes_allowed = true;
 check( ! is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_brand( $GLOBALS['brand_id'], $scope ) ), 'own brand accepted' );
 $stale_scope = $scope;
 $stale_scope['brand_ref'] = str_repeat( 'b', 32 );
@@ -104,6 +133,17 @@ $source_filter = $ref->getMethod( 'authorized_sources_from_records' );
 $source_filter->setAccessible( true );
 $visible = $source_filter->invoke( null, $sources, array( 'site_uuid' => $GLOBALS['site_uuid'] ) );
 check( array_keys( $visible ) === array( 'own' ), 'only current brand source visible' );
+$tainted = $sources['own'];
+$tainted['source_id'] = 'tainted';
+$tainted['tenant_id'] = 'wp-site:foreign';
+$blog_tainted = $sources['own'];
+$blog_tainted['source_id'] = 'switched-blog';
+$blog_tainted['blog_id'] = 2;
+$extra_visible = $source_filter->invoke( null,
+    array( 'own' => $sources['own'], 'tainted' => $tainted, 'switched-blog' => $blog_tainted ),
+    array( 'site_uuid' => $GLOBALS['site_uuid'] ) );
+check( array_keys( $extra_visible ) === array( 'own' ),
+    'Context source filter refuses foreign persisted tenant and blog metadata' );
 $asset_filter = $ref->getMethod( 'authorized_assets_from_records' );
 $asset_filter->setAccessible( true );
 $mk_asset = static function ( $id, $src, $brand = '' ) {
