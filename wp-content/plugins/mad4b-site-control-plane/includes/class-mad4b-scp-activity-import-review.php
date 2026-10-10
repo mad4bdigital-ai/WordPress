@@ -584,7 +584,14 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) )
             wp_die( 'Exact immutable source snapshot ID required.' );
-        $approved = MAD4B_SCP_Activity_Import_Snapshot::approve( $slug, $sha, true );
+        $ack_checked = isset( $_POST['acknowledge_warnings'] ) &&
+            '1' === (string) wp_unslash( $_POST['acknowledge_warnings'] );
+        $warnings = isset( $_POST['acknowledged_warning_count'] ) ?
+            absint( wp_unslash( $_POST['acknowledged_warning_count'] ) ) : -1;
+        if ( ! $ack_checked || $warnings < 0 )
+            self::return_to_guide( $slug, 'mad4b_import_warning_ack_confirmation_missing', 4 );
+        $approved = MAD4B_SCP_Activity_Import_Snapshot::approve(
+            $slug, $sha, true, $warnings );
         if ( is_wp_error( $approved ) ) self::return_to_guide( $slug, $approved->get_error_code(), 4 );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'wizard_step' => 4, 'approved' => 1 ), admin_url( 'tools.php' ) ) );
