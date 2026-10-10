@@ -140,7 +140,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
                 'Profile or site-owned validation changed since intake.' );
         return true;
     }
-    public static function approve( $slug, $expected_sha, $confirmed ) {
+    public static function approve( $slug, $expected_sha, $confirmed, $acknowledged_warning_count = 0 ) {
         if ( ! current_user_can( 'manage_options' ) || ! self::environment_ready() ||
             true !== $confirmed )
             return self::err( 'mad4b_import_approval_denied', 'Exact administrator approval is required.' );
@@ -155,8 +155,15 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             isset( $fresh['plan_sha256'] ) ? $fresh['plan_sha256'] : '' ) )
             return self::err( 'mad4b_import_snapshot_review_stale', 'Validation output changed since staging.' );
         $block_count = isset( $fresh['block_issue_count'] ) ? (int) $fresh['block_issue_count'] : -1;
-        if ( $block_count !== 0 || ! empty( $fresh['issues_truncated'] ) )
-            return self::err( 'mad4b_import_approval_blocked', 'Resolve all blocking issues before acceptance.' );
+        if ( $block_count !== 0 )
+            return self::err( 'mad4b_import_approval_blocked',
+                'Resolve all blocking issues before acceptance.' );
+        $warning_count = isset( $fresh['review_issue_count'] ) ?
+            (int) $fresh['review_issue_count'] : -1;
+        if ( ! is_int( $acknowledged_warning_count ) ||
+            $warning_count !== $acknowledged_warning_count )
+            return self::err( 'mad4b_import_warning_acknowledgement_mismatch',
+                'Confirm the exact full count of business warnings, including those beyond the first page.' );
         $approval = array(
             'contract' => 'mad4b.import-approval.v1',
             'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
@@ -166,8 +173,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             'policy_sha256' => $record['policy_sha256'],
             'approved_at' => gmdate( 'c' ),
             'reviewer_user_id' => (int) get_current_user_id(),
-            'warning_count_acknowledged' => isset( $fresh['review_issue_count'] ) ?
-                (int) $fresh['review_issue_count'] : 0,
+            'warning_count_acknowledged' => $acknowledged_warning_count,
             'authorization_scope' => 'manual_approved_snapshot_export_only',
             'wordpress_post_writes' => 0
         );
@@ -220,7 +226,8 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             'review_list_truncated' => $fresh['issues_truncated'],
             'receipt_bound_exact' => $bound,
             'ready_for_manual_approval' => $bound &&
-                0 === $fresh['block_issue_count'] && ! $fresh['issues_truncated'],
+                0 === $fresh['block_issue_count'],
+            'explicit_full_warning_count_ack_required' => true,
             'approval_is_not_import_execution' => true,
             'read_only' => true, 'mutation_performed' => false );
     }
@@ -234,7 +241,13 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             ! is_string( $input['plan_sha256'] ) ||
             ! hash_equals( $plan['plan_sha256'], $input['plan_sha256'] ) )
             return self::err( 'mad4b_import_approve_plan_stale', 'Exact current approval plan required.' );
-        return self::approve( $plan['profile_slug'], $plan['snapshot_sha256'], true );
+        $ack = isset( $input['acknowledged_warning_count'] ) ?
+            $input['acknowledged_warning_count'] : null;
+        if ( ! is_int( $ack ) || $ack !== (int) $plan['review_issue_count'] )
+            return self::err( 'mad4b_import_warning_acknowledgement_mismatch',
+                'Provide the exact count of all business warnings as part of the reviewed plan.' );
+        return self::approve( $plan['profile_slug'], $plan['snapshot_sha256'],
+            true, $ack );
     }
     public static function approval_receipt( $input = array() ) {
         if ( ! is_array( $input ) || ! isset( $input['profile_slug'], $input['snapshot_sha256'] ) )
