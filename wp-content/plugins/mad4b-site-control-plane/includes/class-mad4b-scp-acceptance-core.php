@@ -100,6 +100,16 @@ final class MAD4B_SCP_Acceptance_Core {
 			'transport_authority' => false,
 			'provider_count' => count( $providers ),
 			'providers' => $providers,
+			// Provider discovery is not provider acceptance. A zero-provider
+			// registry must be an explicit operational blocker, not an empty
+			// capability list mistaken for a successful assessment.
+			'provider_discovery_state' => empty( $providers ) ? 'no_registered_providers' : 'providers_discovered_for_review',
+			'acceptance_execution_available' => ! empty( $providers ),
+			'provider_operationally_certified' => false,
+			'acceptance_blockers' => empty( $providers ) ? array( 'acceptance_provider_registry_empty' ) : array(),
+			'next_safe_action' => empty( $providers ) ?
+				'Register an independently verified, site-applicable acceptance provider; discovery alone grants no write or release authority.' :
+				'Select an exact provider and Profile; run non-authorizing acceptance with independent runtime evidence.',
 			'registry' => $inventory,
 		);
 	}
