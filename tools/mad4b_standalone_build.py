@@ -117,6 +117,32 @@ def verify_zip(archive: Path, receipt: dict, source: str) -> None:
                 provenance.get("build_fingerprint") == receipt.get("build_fingerprint") and
                 provenance.get("package_manifest_digest") == receipt.get("package_manifest_digest"),
                 "embedded_provenance_mismatch")
+        # Independently recompute every file hash and the producer's canonical
+        # manifest digest from ZIP bytes. A valid CRC is not source integrity.
+        rows = provenance.get("package_files")
+        require(isinstance(rows, list) and len(rows) == receipt.get("manifest_file_count"),
+                "embedded_manifest_count_mismatch")
+        expected_names = {"mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"}
+        canonical = []
+        for entry in rows:
+            require(isinstance(entry, dict), "embedded_manifest_row_invalid")
+            name, digest, size = entry.get("path"), entry.get("sha256"), entry.get("bytes")
+            require(isinstance(name, str) and name and
+                    not name.startswith("/") and ".." not in Path(name).parts and
+                    isinstance(digest, str) and len(digest) == 64 and
+                    isinstance(size, int) and size >= 0, "embedded_manifest_row_invalid")
+            member = "mad4b-site-control-plane/" + name
+            require(member not in expected_names and member in z.namelist(),
+                    "embedded_manifest_member_missing_or_duplicate")
+            raw = z.read(member)
+            require(len(raw) == size and hashlib.sha256(raw).hexdigest() == digest,
+                    "embedded_manifest_member_hash_mismatch")
+            expected_names.add(member)
+            canonical.append((name + "\\0" + str(size) + "\\0" + digest + "\\n").encode("utf-8"))
+        require(set(z.namelist()) == expected_names, "unexpected_archive_members")
+        manifest_sha = hashlib.sha256(b"".join(canonical)).hexdigest()
+        require(manifest_sha == receipt.get("package_manifest_digest"),
+                "computed_manifest_digest_mismatch")
 
 
 def native_checks(root: Path, php: str) -> dict:
@@ -205,6 +231,8 @@ def build(root: Path, output: Path, source: str, adapter: Path,
                 "canonical_builder_failed")
         receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
         verify_zip(archive, receipt, source)
+        require(archive.stat().st_size <= 16 * 1024 * 1024,
+                "package_exceeds_staging_upload_limit")
     source_identity(root, source)
     result = {"contract": CONTRACT, "source_commit_sha": source,
               "profile": "local-checks" if run_tests else "build-only",
