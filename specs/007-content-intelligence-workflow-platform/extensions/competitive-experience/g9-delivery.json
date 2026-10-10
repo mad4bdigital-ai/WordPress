@@ -78,8 +78,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "2da4c1deb8d34ea35744493b611c0f7a42df5ac6bffbefa29de35269f30bc156",
-      "bytes": 50281
+      "sha256": "d3002dfe68f48ae056e6ddd2dd306489a87954e8039f339b368073e7b45ddb6d",
+      "bytes": 52465
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
@@ -143,8 +143,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "d0090dab6727994df4770556b47b37c6fe0cc39dcf99881fa8f8638230318821",
-      "bytes": 45473
+      "sha256": "044e7483a74ef4c13d564694a67eba52b00ab3a96f5af81d80eef146f5984467",
+      "bytes": 45558
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
