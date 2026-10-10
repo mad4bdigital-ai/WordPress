@@ -72,6 +72,27 @@ class MatrixContracts(unittest.TestCase):
         self.assertFalse(summary["external_signed_receipt"])
         self.assertFalse(summary["production_unchanged_proven"])
 
+    def test_status_200_with_observation_error_never_passes(self):
+        browser = [{"mode": "browser", "http_status": 200, "observation_error": "TimeoutError"}]
+        customizer = [{"mode": "customizer", "iframe_same_origin": True,
+                       "observation_error": "CUSTOMIZER_PREVIEW_TARGET_DRIFT"}]
+        summary = preview.report_summary(browser + customizer)
+        self.assertFalse(summary["browser_http_200"])
+        self.assertFalse(summary["customizer_iframe_same_origin"])
+        self.assertFalse(summary["release_certified"])
+
+    def test_dataset_parity_is_advisory_not_a_certificate(self):
+        rows = [
+            {"mode": "browser", "path": "/", "listing_identity_digest": "a" * 64},
+            {"mode": "browser", "path": "/", "listing_identity_digest": "a" * 64},
+            {"mode": "customizer", "path": "/", "listing_identity_digest": "b" * 64},
+        ]
+        summary = preview.report_summary(rows)
+        comparison = summary["dataset_comparisons"][0]
+        self.assertTrue(comparison["browser_dataset_consistent"])
+        self.assertEqual(comparison["customizer_vs_browser"], "drift_advisory")
+        self.assertFalse(comparison["release_authorizing"])
+
     def test_cli_enforces_bounds(self):
         for extra in (["--samples", "99"], ["--paths", "/../escape"],
                       ["--timeout-ms", "3"], ["--expected-source-sha", "x"]):
