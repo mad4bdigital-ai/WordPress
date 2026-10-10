@@ -257,8 +257,11 @@ final class MAD4B_SCP_CSO_Native_Executor {
             $binding['provider'], $binding['target_fingerprint'],
             $binding['payload'], 'mutation' );
         if ( is_wp_error( $claimed ) ) {
-            self::transition( $key, $journal, 'claim_denied', 'CLAIM_FAILED' );
-            return self::error( 'NATIVE_APPROVAL_CLAIM_FAILED' );
+            // A claim error can follow a committed DB update whose acknowledgment
+            // was lost. The journal was already reserved, so NEVER treat this as
+            // a terminal pre-effect denial. Require independent recovery proof.
+            self::transition( $key, $journal, 'needs_reconcile', 'CLAIM_OUTCOME_UNCERTAIN' );
+            return self::error( 'NATIVE_APPROVAL_CLAIM_OUTCOME_UNCERTAIN' );
         }
         $inflight = self::transition( $key, $journal, 'inflight' );
         if ( is_wp_error( $inflight ) )
@@ -547,10 +550,21 @@ final class MAD4B_SCP_CSO_Native_Executor {
             $journal, $evidence, $allow_expired );
         if ( is_wp_error( $proof ) ) return $proof;
         $outcome = $proof['body']['outcome'];
-        if ( ! in_array( (string) ( $original['status'] ?? '' ),
+        $original_status = (string) ( $original['status'] ?? '' );
+        if ( ! in_array( $original_status,
             $outcome === 'applied' ? array( 'executing', 'used' ) :
-                array( 'executing', 'failed' ), true ) )
+                array( 'approved', 'executing', 'failed', 'revoked' ), true ) )
             return self::error( 'NATIVE_RECONCILE_ORIGINAL_STATUS_CONFLICT' );
+        // An approved ticket can survive a crash after the journal reservation
+        // but before the atomic claim. An independent ABSENT proof permits only
+        // revocation, never synthesizing a claim or replaying the write.
+        if ( 'approved' === $original_status &&
+            ! in_array( $journal['state'], array( 'reserved', 'needs_reconcile', 'reconciling' ), true ) )
+            return self::error( 'NATIVE_RECONCILE_UNCLAIMED_STATE_INVALID' );
+        // A previously revoked original is resumable only after this exact
+        // recovery proof and ticket have already been pinned by journal CAS.
+        if ( 'revoked' === $original_status && 'reconciling' !== $journal['state'] )
+            return self::error( 'NATIVE_RECONCILE_REVOCATION_NOT_PINNED' );
         return compact( 'agent', 'binding', 'journal', 'key', 'proof', 'original', 'outcome' );
     }
 
@@ -668,6 +682,13 @@ final class MAD4B_SCP_CSO_Native_Executor {
             $closed = MAD4B_SCP_Approval_Tickets::finalize_claim( $original_id,
                 $terminal, 'EXTERNALLY_RECONCILED' );
             if ( is_wp_error( $closed ) ) return $closed;
+        } elseif ( 'approved' === ( $ctx['original']['status'] ?? '' ) ) {
+            // No native effect is certified. Revoke the unused original ticket
+            // after the recovery ticket has been claimed; never claim it.
+            if ( 'absent' !== $ctx['outcome'] )
+                return self::error( 'NATIVE_RECONCILE_UNCLAIMED_EFFECT_CONFLICT' );
+            $closed = MAD4B_SCP_Approval_Tickets::revoke( $original_id );
+            if ( is_wp_error( $closed ) ) return $closed;
         }
         $recovery = MAD4B_SCP_Approval_Tickets::get( $recovery_ticket_id );
         if ( is_array( $recovery ) && ( $recovery['status'] ?? '' ) === 'executing' ) {
@@ -678,7 +699,9 @@ final class MAD4B_SCP_CSO_Native_Executor {
         $original = MAD4B_SCP_Approval_Tickets::get( $original_id );
         $recovery = MAD4B_SCP_Approval_Tickets::get( $recovery_ticket_id );
         if ( ! is_array( $original ) || ! is_array( $recovery ) ||
-            ( $original['status'] ?? '' ) !== ( $ctx['outcome'] === 'applied' ? 'used' : 'failed' ) ||
+            ! in_array( (string) ( $original['status'] ?? '' ),
+                $ctx['outcome'] === 'applied' ? array( 'used' ) :
+                    array( 'failed', 'revoked' ), true ) ||
             ( $recovery['status'] ?? '' ) !== 'used' )
             return self::error( 'NATIVE_RECONCILE_FINAL_READBACK_UNCERTAIN' );
         $next = $ctx['journal'];
