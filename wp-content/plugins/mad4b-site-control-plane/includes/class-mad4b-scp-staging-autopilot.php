@@ -370,6 +370,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 			? 'wordpress_native_candidate_upload' : 'staging_candidate_upload';
 		$report['site_profile_read_ability'] = 'mad4b/site-profile-status';
 		$report['environment_sync_verification_ability'] = 'mad4b/host-environment-sync-verification';
+		$report['host_identity_migration_plan_read_ability'] = 'mad4b/host-identity-migration-plan';
 		// File checks are on-demand only; normal requests and chat discovery
 		// never parse wp-config.php or expose its contents/absolute path.
 		if ( 'admin_reconcile_available' === $report['state'] ) {
