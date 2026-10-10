@@ -2037,7 +2037,7 @@ def sign_live_host_identity_challenge(
     if not isinstance(challenge["profile_digest"], str) or not re.fullmatch(r"[a-f0-9]{64}", challenge["profile_digest"]):
         raise ValueError("Host challenge profile digest invalid")
     if not isinstance(challenge["origin"], str) or not re.fullmatch(
-        r"https://[a-z0-9.-]+(?::[0-9]{2,5})?", challenge["origin"]
+        r"https://[a-z0-9.-]+(?::[0-9]{2,5})?(?:/[A-Za-z0-9._~%-]+)*/?", challenge["origin"]
     ):
         raise ValueError("Host challenge exact HTTPS origin invalid")
     if not re.fullmatch(r"[A-Za-z0-9._-]{3,120}", str(profile.get("profile_id") or "")):
