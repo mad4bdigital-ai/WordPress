@@ -614,6 +614,43 @@ final class MAD4B_SCP_Activity_Import_Review {
         }
         $headers[0] = preg_replace( '/^\\xEF\\xBB\\xBF/', '', $headers[0] );
         $headers = array_map( 'trim', $headers );
+        // A second, non-persisting action from the same CSV form evaluates
+        // schema drift BEFORE a source could pass commercial validation.
+        if ( isset( $_POST['mad4b_import_intent'] ) &&
+            'preview_mapping' === (string) wp_unslash(
+                $_POST['mad4b_import_intent'] ) ) {
+            fclose( $fh );
+            $report = MAD4B_SCP_Import_Mapping_Evolution::plan( array(
+                'profile_slug' => $slug, 'observed_headers' => $headers,
+                'expected_profile_authority_sha256' =>
+                    (string) $profile['authority_sha256'] ) );
+            if ( is_wp_error( $report ) )
+                self::return_to_guide( $slug, $report->get_error_code() );
+            $message = '<h2>Source mapping preflight — no import occurred</h2>';
+            $message .= '<p>Detected source columns: ' .
+                esc_html( (string) count( $headers ) ) . '. Mapping mutation: not authorized.</p>';
+            $message .= '<ul>';
+            foreach ( $report['rename_suggestions'] as $candidate ) {
+                $message .= '<li>Possible rename: <code>' .
+                    esc_html( $candidate['old_source_column'] ) . '</code> to <code>' .
+                    esc_html( $candidate['proposed_source_column'] ) .
+                    '</code>. Human validation required.</li>';
+            }
+            foreach ( $report['unresolved_conflicts'] as $issue ) {
+                $message .= '<li>Unresolved: <code>' .
+                    esc_html( $issue['field'] ) . '</code> — ' .
+                    esc_html( $issue['issue'] ) . '</li>';
+            }
+            $message .= '</ul><p>Source values were not staged, modified or published.</p>';
+            $message .= '<p><a href="' . esc_url( add_query_arg(
+                array( 'page' => 'mad4b-import-review',
+                    'profile_slug' => $slug, 'wizard_step' => 2 ),
+                admin_url( 'tools.php' ) ) ) .
+                '">Back to import review</a></p>';
+            wp_die( wp_kses_post( $message ),
+                'MAD4B schema mapping preflight',
+                array( 'response' => 200 ) );
+        }
         $rows = array();
         while ( ( $cells = fgetcsv( $fh, 16384, ',', '"', '\\' ) ) !== false ) {
             if ( count( $cells ) === 1 && ( null === $cells[0] || '' === trim( $cells[0] ) ) ) continue;
