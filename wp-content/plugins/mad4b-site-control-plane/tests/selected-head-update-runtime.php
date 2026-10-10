@@ -51,7 +51,7 @@ class MAD4B_SCP_Staging_Source_Selector {
             ! in_array( $input['type'] ?? '', array( 'pull_request', 'branch', 'commit' ), true ) ||
             empty( $input['reference'] ) ) return new WP_Error( 'invalid_source' );
         $sha = str_repeat( 'a', 40 );
-        if ( $GLOBALS['case'] === 'drift' && $GLOBALS['source_calls'] >= 3 )
+        if ( $GLOBALS['case'] === 'drift' && $GLOBALS['source_calls'] >= 4 )
             $sha = str_repeat( 'b', 40 );
         return array(
             'repository' => $input['repository'], 'type' => $input['type'],
@@ -93,7 +93,9 @@ function wp_safe_remote_get( $url, $options ) {
             'package_manifest_digest' => str_repeat( 'd', 64 ),
             'size_bytes' => strlen( 'CERTIFIED_ZIP_BYTES' ),
             'release_verdict_run_id' => 999, 'release_verdict_success' => true,
-            'staging_candidate_certified' => $GLOBALS['case'] !== 'uncertified',
+            'staging_candidate_certified' => !in_array( $GLOBALS['case'], array( 'uncertified', 'master' ), true ),
+            'published_from_master' => $GLOBALS['case'] === 'master',
+            'release_root_trust_verified' => $GLOBALS['case'] === 'master',
             'package_url' => 'https://github.com/mad4bdigital-ai/WordPress/releases/download/mad4b-site-control-plane-update-channel/mad4b-site-control-plane-' . $sha . '.zip',
         );
         return array( 'code' => 200, 'body' => json_encode( $m ) );
