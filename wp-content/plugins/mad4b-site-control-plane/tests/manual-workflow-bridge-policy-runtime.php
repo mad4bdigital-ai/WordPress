@@ -8,6 +8,7 @@ class WP_Error {
 }
 function is_wp_error($x){return $x instanceof WP_Error;}
 function get_current_user_id(){return 4;}
+function current_user_can($cap){return $cap==='manage_options';}
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
 class MAD4B_SCP_WordPress_Native_Opt_In {
  const OPTION='mad4b_scp_wp_native_candidate_opt_in_v1';
@@ -20,6 +21,7 @@ class MAD4B_SCP_WordPress_Native_Opt_In {
   return array('eligible'=>$ok,'blockers'=>$ok?array():array('exact_staging_required'));
  }
  public static function enabled(){return self::$enabled;}
+ public static function status(){return array('enabled'=>self::$enabled);} 
 }
 class MAD4B_SCP_Site_Profile {
  public static $site=array();
@@ -27,6 +29,16 @@ class MAD4B_SCP_Site_Profile {
 }
 class MAD4B_SCP_Self_Update {
  public static function installed_candidate_identity(){return array('source_commit_sha'=>str_repeat('a',40));}
+}
+class MAD4B_SCP_Operation_Registry {
+ public static function status(){return array('operations'=>array(
+  array('id'=>'wordpress.plugin.activate','risk'=>'high','planner'=>'mad4b/plugin-lifecycle-plan',
+   'executor'=>'mad4b/plugin-activate','planner_registered'=>true,'executor_registered'=>true)
+ ));}
+}
+class MAD4B_SCP_Admin_Route_Registry {
+ public static function routes(){return array('mad4b-site-profile'=>array('required_capability'=>'manage_options'),
+  'mad4b-foreign-area'=>array('required_capability'=>'unavailable_cap'));}
 }
 require_once dirname(__DIR__) . '/includes/class-mad4b-scp-manual-workflow-bridge.php';
 function assert_bridge($ok,$msg) {if(!$ok){fwrite(STDERR,"FAIL: $msg\n");exit(1);}}
@@ -62,4 +74,11 @@ MAD4B_SCP_WordPress_Native_Opt_In::$enabled=true;
 assert_bridge($cls::plan($input)['plan_sha256']!==$plan['plan_sha256'],'stale option plan');
 assert_bridge(is_wp_error($cls::apply(array('operation_id'=>'wordpress.plugin.activate'))),'reject unknown effectful executor');
 assert_bridge(is_wp_error($cls::apply(array('operation_id'=>$cls::ENABLE,'reason'=>'abc','confirmation'=>'wrong','expected_plan_sha256'=>str_repeat('a',64)))),'reject invalid confirmation');
-echo "PASS: 15 manual-workflow source-neutral admission, denial, idempotency and stale-plan cases\n";
+$discovered=$cls::discover(array('operation_filter'=>'', 'include_remediation'=>false));
+assert_bridge(!is_wp_error($discovered),'discovery succeeds');
+assert_bridge($discovered['operation_count']===3,'new canonical operation appears dynamically');
+assert_bridge($discovered['admin_route_count']===1,'enrolled administrator route visible but unregistered role hidden');
+assert_bridge(!$discovered['admin_routes_detected'][0]['mcp_generic_execution_allowed'],'manual route never executable');
+assert_bridge($discovered['operations'][2]['state']==='delegated_governed_executor','registry executor remains governed');
+assert_bridge(is_wp_error($cls::discover(array('operation_filter'=>'../../wp-config.php'))),'arbitrary path filter denied');
+echo "PASS: 21 manual-workflow policy, discovery, delegation and non-executable admin routes\n";
