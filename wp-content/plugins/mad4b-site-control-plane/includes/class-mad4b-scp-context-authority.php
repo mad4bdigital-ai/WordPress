@@ -288,14 +288,21 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_sources_from_records( array $records, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid || ! class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false ) ) return array();
-        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
-        if ( is_wp_error( $scope ) || ! hash_equals( $site_uuid, (string) $scope['site_uuid'] ) ) return array();
+		$profile = self::profile();
+		$brand_id = isset( $profile['brand_id'] ) ? strtolower( trim( (string) $profile['brand_id'] ) ) : '';
+		$verified_scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+			? MAD4B_SCP_Operational_Scope_Guard::require_current()
+			: new WP_Error( 'mad4b_scope_guard_missing', 'Verified identity unavailable.' );
+		if ( is_wp_error( $verified_scope ) || '' === $site_uuid ||
+			! hash_equals( $site_uuid, (string) $verified_scope['site_uuid'] ) ||
+			! hash_equals( $brand_id, (string) $verified_scope['brand_ref'] ) ||
+			! preg_match( '/^[a-f0-9]{32}$/', $brand_id ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
 			$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
 			if ( ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
-            if ( ! MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $record, $scope ) ) continue;
+			$record_brand_id = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+			if ( '' === $record_brand_id || ! hash_equals( $brand_id, $record_brand_id ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -308,17 +315,22 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_assets_from_records( array $records, array $sources, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid || ! class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false ) ) return array();
-        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
-        if ( is_wp_error( $scope ) || ! hash_equals( $site_uuid, (string) $scope['site_uuid'] ) ) return array();
+		$verified_scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+			? MAD4B_SCP_Operational_Scope_Guard::require_current()
+			: new WP_Error( 'mad4b_scope_guard_missing', 'Verified identity unavailable.' );
+		if ( is_wp_error( $verified_scope ) || '' === $site_uuid ||
+			! hash_equals( $site_uuid, (string) $verified_scope['site_uuid'] ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_asset( $record ) ) continue;
 			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
 			if ( '' === $record_site_uuid || ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$source_id = isset( $record['source_id'] ) ? (string) $record['source_id'] : '';
 			if ( '' === $source_id || ! isset( $sources[ $source_id ] ) ) continue;
-            if ( ! empty( $record['brand_id'] ) &&
-                 ! hash_equals( strtolower( (string) $scope['brand_ref'] ), strtolower( (string) $record['brand_id'] ) ) ) continue;
+			// Unbound legacy assets need reviewed ownership; never adopt by source ID alone.
+			$asset_brand_id = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+			if ( '' === $asset_brand_id ||
+				! hash_equals( strtolower( (string) $sources[ $source_id ]['brand_id'] ), $asset_brand_id ) ||
+				! hash_equals( strtolower( (string) $verified_scope['brand_ref'] ), $asset_brand_id ) ) continue;
 			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
 			$asset_mode = isset( $record['source_mode'] ) ? (string) $record['source_mode'] : '';
 			if ( '' === $source_mode || '' === $asset_mode || ! hash_equals( $source_mode, $asset_mode ) ) continue;
@@ -443,10 +455,10 @@ final class MAD4B_SCP_Context_Authority {
 		return $count;
 	}
 
-	public static function save_profile( $brand_name ){
+	public static function save_profile( $brand_name, array $options = array() ){
 		return self::with_registry_lock(
 			'save_profile',
-			static function () use ( $brand_name ) {
+			static function () use ( $brand_name, $options ) {
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
 			$audit_ready = self::audit_preflight();
@@ -454,12 +466,31 @@ final class MAD4B_SCP_Context_Authority {
 			$brand_name = trim( sanitize_text_field( (string) $brand_name ) );
 			if ( '' === $brand_name ) return new WP_Error( 'mad4b_brand_context_name_required', 'Brand name is required.' );
 			$current = self::profile();
+			$old_brand_id = isset( $current['brand_id'] ) ? strtolower( (string) $current['brand_id'] ) : '';
+			if ( '' !== $old_brand_id && ! preg_match( '/^[a-f0-9]{32}$/', $old_brand_id ) ) {
+				return new WP_Error( 'mad4b_brand_identity_invalid', 'Stored brand identity is invalid. Explicit recovery is required.' );
+			}
+			$renaming = ! empty( $current ) && ! hash_equals( (string) $current['brand_name'], $brand_name );
+			if ( $renaming ) {
+				$expected_id = isset( $options['expected_brand_id'] ) ? strtolower( trim( (string) $options['expected_brand_id'] ) ) : '';
+				$expected_revision = isset( $options['expected_revision'] ) ? absint( $options['expected_revision'] ) : 0;
+				if ( empty( $options['confirm_identity_preserving_rename'] ) || '' === $expected_id || ! hash_equals( $old_brand_id, $expected_id ) ) {
+					return new WP_Error( 'mad4b_brand_rename_confirmation_required', 'Confirm this is the same business under a new display name, with the current exact brand identity. Brand replacement requires separate reviewed migration.' );
+				}
+				if ( $expected_revision !== (int) $current['revision'] ) {
+					return new WP_Error( 'mad4b_brand_rename_revision_conflict', 'Brand Profile changed since the rename form was opened. Refresh and review before retrying.' );
+			}
+			}
+			// First enrollment uses an opaque ID, not a name-based alias able to
+			// re-adopt abandoned sources after profile removal / re-enrollment.
+			$brand_id = '' !== $old_brand_id ? $old_brand_id : strtolower( str_replace( '-', '', wp_generate_uuid4() ) );
+			if ( ! preg_match( '/^[a-f0-9]{32}$/', $brand_id ) ) return new WP_Error( 'mad4b_brand_identity_generation_failed', 'Unable to create a canonical brand identity.' );
 			$revision = isset( $current['revision'] ) ? max( 1, absint( $current['revision'] ) + 1 ) : 1;
 			$record = array(
 				'contract' => self::PROFILE_CONTRACT,
 				'site_uuid' => $site['site_uuid'],
-				'brand_id' => ! empty( $current['brand_id'] ) && preg_match( '/^[a-f0-9]{32}$/', (string) $current['brand_id'] )
-                    ? (string) $current['brand_id'] : self::brand_id( $site['site_uuid'], $brand_name ),
+				// Renaming is not a transfer of authority. Preserve the persisted identity.
+				'brand_id' => $brand_id,
 				'brand_name' => $brand_name,
 				'revision' => $revision,
 				'status' => 'configured',
@@ -479,6 +510,9 @@ final class MAD4B_SCP_Context_Authority {
 					'brand_id' => (string) $record['brand_id'],
 					'revision' => (int) $record['revision'],
 					'created' => empty( $current ),
+					'identity_preserved' => ! empty( $current ),
+					'identity_preserving_rename' => $renaming,
+					'brand_transfer_performed' => false,
 				),
 				'ok'
 			);
@@ -495,12 +529,6 @@ final class MAD4B_SCP_Context_Authority {
 				if ( is_wp_error( $site ) ) return $site;
 				$profile = self::profile();
 				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
-                $scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
-                    ? MAD4B_SCP_Operational_Scope_Guard::require_current()
-                    : new WP_Error( 'mad4b_scope_guard_missing', 'Operational scope guard unavailable.' );
-                if ( is_wp_error( $scope ) ) return $scope;
-                $brand_check = MAD4B_SCP_Operational_Scope_Guard::require_brand( $profile['brand_id'], $scope );
-                if ( is_wp_error( $brand_check ) ) return $brand_check;
 				$audit_ready = self::audit_preflight();
 				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 
@@ -520,15 +548,14 @@ final class MAD4B_SCP_Context_Authority {
 				$authorized_sources = self::sources();
 				$sources = self::raw_sources();
 				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
-                // Legacy key is shared across brand names: never transfer an
-                // existing record to another Brand as an accidental overwrite.
-                if ( isset( $sources[ $source_id ] ) &&
-                     ( empty( $sources[ $source_id ]['brand_id'] ) ||
-                       ! hash_equals( strtolower( (string) $profile['brand_id'] ),
-                           strtolower( (string) $sources[ $source_id ]['brand_id'] ) ) ) ) {
-                    return new WP_Error( 'mad4b_context_source_brand_conflict',
-                        'Existing source belongs to another or unverified Brand; governed migration required.' );
-                }
+				// Legacy IDs are site-scoped. Never overwrite an invisible source owned by
+				// another brand, even if the external folder and mode match.
+				if ( isset( $sources[ $source_id ] ) ) {
+					$stored_brand = isset( $sources[ $source_id ]['brand_id'] ) ? strtolower( trim( (string) $sources[ $source_id ]['brand_id'] ) ) : '';
+					if ( '' === $stored_brand || ! hash_equals( strtolower( (string) $profile['brand_id'] ), $stored_brand ) ) {
+						return new WP_Error( 'mad4b_context_source_brand_collision', 'This source belongs to another or unverified brand. Review its ownership before migration.' );
+					}
+				}
 				$current = isset( $authorized_sources[ $source_id ] ) ? $authorized_sources[ $source_id ] : array();
 				if ( ! isset( $sources[ $source_id ] ) && count( $sources ) >= self::MAX_SOURCES ) {
 					return new WP_Error(
@@ -615,7 +642,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records = self::raw_assets();
 				$previous = array();
 				foreach ( $records as $asset_id => $record ) {
-					if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) $previous[ (string) $asset_id ] = $record;
+					if ( ! isset( $record['source_id'] ) || ! hash_equals( $source_id, (string) $record['source_id'] ) ) continue;
+					// A scan can reuse prior approval evidence and mint absence decisions.
+					// A foreign or unbound asset must not participate in either operation.
+					$record_brand = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+					$record_site = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
+					if ( '' === $record_brand || ! hash_equals( strtolower( (string) $source['brand_id'] ), $record_brand ) ||
+						'' === $record_site || ! hash_equals( strtolower( (string) $source['site_uuid'] ), $record_site ) ) {
+						return new WP_Error( 'mad4b_context_scan_foreign_asset_quarantined', 'Scan halted: prior assets include unverified or different-brand ownership. Review registry lineage before an authorized rescan.' );
+					}
+					$previous[ (string) $asset_id ] = $record;
 				}
 
 				$scan_started_at = isset( $scan['started_at'] ) ? sanitize_text_field( (string) $scan['started_at'] ) : gmdate( 'c' );
@@ -887,6 +923,9 @@ final class MAD4B_SCP_Context_Authority {
 						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
 					);
 				}
+				if ( isset( $records[ $normalized['asset_id'] ] ) && empty( self::asset( $normalized['asset_id'] ) ) ) {
+					return new WP_Error( 'mad4b_context_asset_brand_collision', 'Asset identity is already reserved outside the current trusted brand scope.' );
+				}
 				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
 				$review_source = ! empty( $preserve ) ? $preserve : $existing;
 
@@ -952,12 +991,14 @@ final class MAD4B_SCP_Context_Authority {
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
 				$original = $records[ $old_asset_id ];
+				if ( empty( self::asset( $old_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_mismatch', 'Original Context asset is outside the current brand.' );
 				if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
 				if ( 'unavailable' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_original_not_unavailable', 'Only an unavailable Context asset can be atomically replaced.' );
 
 				$normalized = self::normalize_asset( $source, $provider_asset );
 				if ( is_wp_error( $normalized ) ) return $normalized;
 				if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+				if ( isset( $records[ $normalized['asset_id'] ] ) && empty( self::asset( $normalized['asset_id'] ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_collision', 'Replacement identity is reserved by another brand.' );
 				if ( ! isset( $records[ $normalized['asset_id'] ] ) && count( $records ) >= self::MAX_ASSETS ) {
 					return new WP_Error(
 						'mad4b_context_asset_registry_capacity_limit',
@@ -1020,6 +1061,7 @@ final class MAD4B_SCP_Context_Authority {
 				if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) return new WP_Error( 'mad4b_brand_generated_category_invalid', 'Generated Brand Context category is invalid.' );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_generated_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$records[ $asset_id ]['category'] = $category;
 				$records[ $asset_id ]['authority_class'] = 'brand_authority';
 				$records[ $asset_id ]['required'] = true;
@@ -1056,6 +1098,7 @@ final class MAD4B_SCP_Context_Authority {
 				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
 				if ( empty( $current['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $current['materialization_receipt_sha256'] ), $receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_rollback_receipt_binding_drift', 'Generated Brand Context receipt binding changed; rollback denied.' );
@@ -1103,6 +1146,7 @@ final class MAD4B_SCP_Context_Authority {
 				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( 'rollback_pending' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_state_drift', 'Generated Brand Context asset is not in rollback_pending state.' );
 				if ( empty( $current['rollback_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['rollback_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_artifact_drift', 'Rollback intent Artifact binding changed.' );
@@ -1129,6 +1173,7 @@ final class MAD4B_SCP_Context_Authority {
 				$asset_id = strtolower( trim( (string) $asset_id ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( ! $allow_unmarked ) {
 					if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), strtolower( (string) $artifact_id ) ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
@@ -1168,6 +1213,17 @@ final class MAD4B_SCP_Context_Authority {
 			}
 			if ( ! empty( $new_asset['asset_id'] ) ) {
 				$new_asset_id = (string) $new_asset['asset_id'];
+				$old_asset = self::asset( $old_asset_id );
+				$source_id = isset( $old_asset['source_id'] ) ? (string) $old_asset['source_id'] : '';
+				$source = self::source( $source_id );
+				$expected_id = ! empty( $new_asset['file_id'] ) ? hash( 'sha256', $source_id . '|' . (string) $new_asset['file_id'] ) : '';
+				if ( empty( $source ) || ! self::valid_asset( $new_asset ) || '' === $expected_id || ! hash_equals( $expected_id, $new_asset_id ) ||
+					! hash_equals( $source_id, (string) $new_asset['source_id'] ) ||
+					! hash_equals( (string) $source['site_uuid'], (string) ( isset( $new_asset['site_uuid'] ) ? $new_asset['site_uuid'] : '' ) ) ||
+					! hash_equals( (string) $source['brand_id'], (string) ( isset( $new_asset['brand_id'] ) ? $new_asset['brand_id'] : '' ) ) ) {
+					return new WP_Error( 'mad4b_context_recreate_scope_mismatch', 'Replacement asset identity and brand ownership must match the original source.' );
+				}
+				if ( isset( $records[ $new_asset_id ] ) && empty( self::asset( $new_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_collision', 'Replacement asset identity is held outside the current brand.' );
 				if ( ! isset( $records[ $new_asset_id ] ) && count( $records ) >= self::MAX_ASSETS ) {
 					return new WP_Error(
 						'mad4b_context_asset_registry_capacity_limit',
@@ -1377,6 +1433,17 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
 			$assets = self::raw_assets();
 			$removed_assets = 0;
+			// Refuse destructive deletion when historical asset ownership is not
+			// exact. Preserve the complete registry for a separate review/migration.
+			foreach ( $assets as $asset ) {
+				if ( ! isset( $asset['source_id'] ) || ! hash_equals( $source_id, (string) $asset['source_id'] ) ) continue;
+				$asset_site = isset( $asset['site_uuid'] ) ? strtolower( trim( (string) $asset['site_uuid'] ) ) : '';
+				$asset_brand = isset( $asset['brand_id'] ) ? strtolower( trim( (string) $asset['brand_id'] ) ) : '';
+				if ( '' === $asset_site || ! hash_equals( strtolower( (string) $source['site_uuid'] ), $asset_site ) ||
+					'' === $asset_brand || ! hash_equals( strtolower( (string) $source['brand_id'] ), $asset_brand ) ) {
+					return new WP_Error( 'mad4b_context_remove_foreign_asset_quarantined', 'Source removal blocked: an asset has unverified or foreign brand ownership. Inspect lineage before a governed migration.' );
+				}
+			}
 			foreach ( $assets as $asset_id => $asset ) {
 				if ( isset( $asset['source_id'] ) && hash_equals( $source_id, (string) $asset['source_id'] ) ) {
 					unset( $assets[ $asset_id ] );
@@ -1994,6 +2061,11 @@ final class MAD4B_SCP_Context_Authority {
 			'registry_revision' => self::registry_revision(),
 			'raw_source_count' => count( $raw_sources ),
 			'raw_asset_count' => count( $raw_assets ),
+			// Counts only; never expose foreign record identities through the status API.
+			'quarantined_source_record_count' => max( 0, count( $raw_sources ) - count( $sources ) ),
+			'quarantined_asset_record_count' => max( 0, count( $raw_assets ) - count( $assets ) ),
+			'ownership_review_required' => count( $raw_sources ) > count( $sources ) || count( $raw_assets ) > count( $assets ),
+			'ownership_migration_automatic' => false,
 			'source_registry_capacity_exceeded' => count( $raw_sources ) > self::MAX_SOURCES,
 			'asset_registry_capacity_exceeded' => count( $raw_assets ) > self::MAX_ASSETS,
 			'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
@@ -2376,10 +2448,6 @@ final class MAD4B_SCP_Context_Authority {
 		return ! empty( $record['asset_id'] ) && ! empty( $record['source_id'] ) && ! empty( $record['file_id'] );
 	}
 
-	private static function brand_id( $site_uuid, $brand_name ) {
-		return substr( hash( 'sha256', strtolower( trim( (string) $site_uuid ) ) . '|' . strtolower( trim( (string) $brand_name ) ) ), 0, 32 );
-	}
-
 	private static function bounded_external_id( $value ) {
 		$value = trim( sanitize_text_field( (string) $value ) );
 		if ( '' === $value || strlen( $value ) > 255 || ! preg_match( '/^[A-Za-z0-9_\-\.]+$/', $value ) ) return '';
@@ -2420,21 +2488,29 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function with_registry_lock( $operation, $callback ) {
-        // All operational Context Authority mutations share this site+brand
-        // fence. Only initial Brand Profile enrollment/rename is exempt so
-        // operators can configure the profile before it has an active scope.
-        if ( 'save_profile' !== (string) $operation ) {
-            $scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
-                ? MAD4B_SCP_Operational_Scope_Guard::require_current()
-                : new WP_Error( 'mad4b_scope_guard_missing', 'Operational scope guard is unavailable.' );
-            if ( is_wp_error( $scope ) ) return $scope;
-        }
+		// Initial Brand enrollment/rename establishes identity. All other
+		// registry writes require the same exact revision-bound scope as jobs.
+		$checkpoint = null;
+		if ( 'save_profile' !== (string) $operation ) {
+			$checkpoint = class_exists( 'MAD4B_SCP_Operational_Integrity', false )
+				? MAD4B_SCP_Operational_Integrity::capture()
+				: new WP_Error( 'mad4b_scope_integrity_missing', 'Verified operational scope is unavailable.' );
+			if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		}
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
 		$snapshot = self::registry_option_snapshot();
 		try {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) return self::compensate_registry_error( $snapshot, $operation, $result, 'callback' );
+			// Recheck site, brand, revision and actor before registry revision/audit.
+			// A drift forces the existing registry snapshot compensation path.
+			if ( null !== $checkpoint ) {
+				$rechecked = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint );
+				if ( is_wp_error( $rechecked ) ) {
+					return self::compensate_registry_error( $snapshot, $operation, $rechecked, 'scope_drift' );
+				}
+			}
 
 			$wrapped = self::is_audited_registry_result( $result );
 			$public_result = $wrapped ? $result['result'] : $result;

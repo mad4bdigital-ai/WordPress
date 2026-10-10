@@ -7,6 +7,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	const PAGE_SLUG = 'mad4b-control-plane-site-profile';
 	const ACTION_SAVE = 'mad4b_site_profile_save';
 	const ACTION_DISABLE = 'mad4b_site_profile_disable_authority';
+	const ACTION_LEGACY_MIGRATE = 'mad4b_site_profile_explicit_legacy_migrate';
 	private static $booted = false;
 
 	public static function boot() {
@@ -16,6 +17,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );
+		add_action( 'admin_post_' . self::ACTION_LEGACY_MIGRATE, array( __CLASS__, 'handle_legacy_migrate' ) );
 	}
 
 	public static function register_page() {
@@ -27,6 +29,17 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
 		);
+	}
+
+	public static function handle_legacy_migrate() {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator permission required.', '', array( 'response' => 403 ) );
+		check_admin_referer( self::ACTION_LEGACY_MIGRATE );
+		$confirmation = isset( $_POST['legacy_migration_confirmation'] ) ? sanitize_text_field( wp_unslash( $_POST['legacy_migration_confirmation'] ) ) : '';
+		if ( 'MIGRATE IDENTITY WITHOUT AUTHORITY' !== $confirmation ) self::redirect( 'migration_confirmation_required' );
+		$uuid = isset( $_POST['expected_site_uuid'] ) ? sanitize_text_field( wp_unslash( $_POST['expected_site_uuid'] ) ) : '';
+		$revision = isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : 0;
+		$result = MAD4B_SCP_Site_Profile::apply_legacy_migration( $uuid, $revision );
+		self::redirect( is_wp_error( $result ) ? sanitize_key( $result->get_error_code() ) : 'legacy_migration_requires_reenrollment' );
 	}
 
 	public static function handle_save() {
@@ -223,6 +236,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) return;
 		$status = MAD4B_SCP_Site_Profile::status();
+		$legacy_migration = MAD4B_SCP_Site_Profile::legacy_migration_plan();
 		$profile = MAD4B_SCP_Site_Profile::profile();
 		$resolution = MAD4B_SCP_Site_Profile::environment_resolution();
 		$suggested_environment = isset( $resolution['suggested_environment'] ) ? sanitize_key( (string) $resolution['suggested_environment'] ) : 'production';
@@ -247,6 +261,20 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
 			<?php if ( '' !== $state ) : ?><div class="notice notice-info"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
+			<?php if ( 'REVIEW_REQUIRED' === ( $legacy_migration['status'] ?? '' ) ) : ?>
+			<div class="notice notice-warning" style="max-width:950px;padding:1em">
+				<p><strong><?php esc_html_e( 'Legacy Site Profile identity detected — not imported', 'mad4b-site-control-plane' ); ?></strong></p>
+				<p><?php esc_html_e( 'Status reads never import legacy identity or grant access. Administrators may migrate this exact identity, then reenroll features independently.', 'mad4b-site-control-plane' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_LEGACY_MIGRATE ); ?>">
+					<input type="hidden" name="expected_site_uuid" value="<?php echo esc_attr( (string) $legacy_migration['site_uuid'] ); ?>">
+					<input type="hidden" name="expected_revision" value="<?php echo esc_attr( (string) $legacy_migration['revision'] ); ?>">
+					<?php wp_nonce_field( self::ACTION_LEGACY_MIGRATE ); ?>
+					<label><strong><?php esc_html_e( 'Type MIGRATE IDENTITY WITHOUT AUTHORITY to confirm', 'mad4b-site-control-plane' ); ?></strong><input type="text" name="legacy_migration_confirmation" autocomplete="off" class="regular-text" required></label>
+					<?php submit_button( __( 'Migrate legacy identity (no grants)', 'mad4b-site-control-plane' ), 'secondary', 'submit', false ); ?>
+				</form>
+			</div>
+			<?php endif; ?>
 			<table class="widefat striped" style="max-width:1000px;margin:1em 0">
 				<tbody>
 				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> · <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. Host-Managed Sync is an explicit, restart-verified host configuration workflow; saving the profile never edits wp-config.php or grants host write authority.', 'mad4b-site-control-plane' ); ?></p>

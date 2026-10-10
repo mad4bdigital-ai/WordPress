@@ -46,7 +46,7 @@ final class MAD4B_SCP_Servers {
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
-				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status', 'mad4b/deployment-mode-status',
+				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/provider-execution-binding', 'mad4b/provider-execution-binding-revalidate', 'mad4b/addon-registry-status',
@@ -113,6 +113,12 @@ final class MAD4B_SCP_Servers {
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		// Mount only the resolver registration created by this plugin. Never
+		// widen meta.mcp.public for the default server or trust a name collision.
+		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {
+			$binding = MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status();
+			if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
+		}
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $tools = array_merge( $tools, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'read' ) );
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Context_Authority' )
@@ -504,6 +510,10 @@ final class MAD4B_SCP_Servers {
 			'mad4b/provider-closure-matrix',
 			'mad4b/staging-write-candidate-binding-audit',
 		);
+		if ( class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {
+			$binding = MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status();
+			if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
+		}
 		// Keep the low-level grant-reconciliation plan behind governed discovery/read-execute.
 		// The direct catalog reserves one slot for dynamic schema-pinned projection; adding
 		// the write-only convergence apply must not consume that extensibility budget.

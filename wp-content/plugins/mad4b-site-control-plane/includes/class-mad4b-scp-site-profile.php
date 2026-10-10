@@ -63,19 +63,16 @@ final class MAD4B_SCP_Site_Profile {
 		$source = 'stored';
 		$has_current_record = null !== $record && false !== $record;
 		if ( ! self::valid_record( $record ) ) {
-			if ( $has_current_record ) {
-				$record = array();
-				$source = 'stored_invalid';
-			} else {
+			// Status is a read boundary. Never persist a migration or preset here:
+			// an unattended MCP/REST/Cron read must not change site identity.
+			$record = array();
+			$source = $has_current_record ? 'stored_invalid' : 'none';
+			if ( ! $has_current_record ) {
 				$legacy = get_option( self::LEGACY_OPTION, array() );
-				$migrated = self::migrate_legacy_record( $legacy );
-				if ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
-					$record = $migrated;
-					$source = 'legacy_v1_migrated';
-				} else {
-					$record = self::matching_preset();
-					$source = ! empty( $record ) ? 'preset' : 'none';
-					if ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
+				if ( ! empty( self::migrate_legacy_record( $legacy ) ) ) {
+					$source = 'legacy_v1_migration_available';
+				} elseif ( ! empty( self::matching_preset() ) ) {
+					$source = 'preset_enrollment_available';
 				}
 			}
 		}
@@ -83,6 +80,48 @@ final class MAD4B_SCP_Site_Profile {
 		self::$status = self::build_status( self::$profile, $source );
 		self::$bootstrapping = false;
 		return self::$status;
+	}
+
+	/**
+	 * Plan only: show whether a legacy identity can be considered for enrollment.
+	 * No Option writes, authority creation or automatic adoption are possible.
+	 */
+	public static function legacy_migration_plan() {
+		$exists = get_option( self::OPTION, null );
+		if ( null !== $exists && false !== $exists ) return array( 'status' => 'CURRENT_PROFILE_PRESENT', 'write_authorized' => false, 'migration_applied' => false );
+		$candidate = self::migrate_legacy_record( get_option( self::LEGACY_OPTION, array() ) );
+		if ( empty( $candidate ) || ! self::valid_record( $candidate ) ) return array( 'status' => 'NO_ELIGIBLE_LEGACY_PROFILE', 'write_authorized' => false, 'migration_applied' => false );
+		return array( 'status' => 'REVIEW_REQUIRED', 'site_uuid' => (string) $candidate['site_uuid'], 'revision' => (int) $candidate['revision'], 'environment' => (string) $candidate['environment'], 'requires_reenrollment' => true, 'write_authorized' => false, 'migration_applied' => false );
+	}
+
+	/**
+	 * Explicit, admin-only legacy migration with a pending-audit quarantine.
+	 * A preview is never enough to authorize mutation or feature activation.
+	 */
+	public static function apply_legacy_migration( $expected_site_uuid, $expected_revision ) {
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_migration_admin_required', 'Administrator permission is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_site_profile_migration_audit_unavailable', 'Append-only audit must be ready before migration.' );
+		if ( null !== get_option( self::OPTION, null ) ) return new WP_Error( 'mad4b_site_profile_migration_destination_exists', 'A current Site Profile already exists.' );
+		$candidate = self::migrate_legacy_record( get_option( self::LEGACY_OPTION, array() ) );
+		if ( empty( $candidate ) || ! self::valid_record( $candidate ) ) return new WP_Error( 'mad4b_site_profile_migration_ineligible', 'No matching legacy identity is eligible for explicit migration.' );
+		if ( ! hash_equals( (string) $candidate['site_uuid'], (string) $expected_site_uuid ) || (int) $candidate['revision'] !== (int) $expected_revision ) return new WP_Error( 'mad4b_site_profile_migration_plan_stale', 'Legacy migration request does not match the current plan.' );
+		// Reuse the exact pending-record reconciliation contract: unknown
+		// finalization must be recoverable using independent audit evidence.
+		$pending = self::build_pending_record( $candidate, null, 'mad4b/site-profile-legacy-migration' );
+		if ( ! self::persist_record_compare_and_swap( null, $pending ) ) return new WP_Error( 'mad4b_site_profile_migration_conflict', 'Site Profile was enrolled concurrently; migration was not applied.' );
+		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-legacy-migration', array(
+			'site_uuid' => $candidate['site_uuid'],
+			'revision' => (int) $candidate['revision'],
+			'mutation_id' => $pending['mutation_id'],
+			'profile_digest' => self::digest_record( self::normalize_record( $candidate ) ),
+			'migration_requires_reenrollment' => true,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			if ( ! self::restore_record_compare_and_swap( $pending, null ) ) return new WP_Error( 'mad4b_site_profile_migration_recovery_required', 'Audit failed; migration remains quarantined for reconciliation.' );
+			return new WP_Error( 'mad4b_site_profile_migration_audit_failed', 'Migration was compensated because audit failed.' );
+		}
+		if ( ! self::persist_record_compare_and_swap( $pending, $candidate ) ) return new WP_Error( 'mad4b_site_profile_migration_finalize_required', 'Migration audit succeeded; pending state requires exact reconciliation.' );
+		return array( 'status' => 'MIGRATED_REENROLLMENT_REQUIRED', 'site_uuid' => $candidate['site_uuid'], 'revision' => (int) $candidate['revision'], 'mutation_applied' => true, 'authority_granted' => false );
 	}
 
 	public static function status() {

@@ -58,6 +58,7 @@ expect( isset( $GLOBALS['mad4b_mock_abilities'][MAD4B_SCP_Deployment_Mode_Resolv
 expect( $GLOBALS['mad4b_mock_abilities'][MAD4B_SCP_Deployment_Mode_Resolver::ABILITY]['permission_callback'] === array( 'MAD4B_SCP_Policy', 'can_read' ), 'uses existing policy' );
 $a = MAD4B_SCP_Deployment_Mode_Resolver::resolve();
 expect( $a['status'] === 'RESOLVED_FOR_REVIEW_ONLY', 'dedicated recognized' );
+expect( $a['operator_state'] === 'partial' && $a['next_safe_action']['automatic_mutation_allowed'] === false, 'resolved status does not claim certification or mutation' );
 expect( $a['active_mode'] === 'wordpress_dedicated', 'wp mode active' );
 expect( $a['common_contract'] === 'mad4b.context-deployment-mode.v1', 'common contract aligned' );
 expect( $a['adapter_version'] === '1.1.0', 'adapter version present' );
@@ -78,6 +79,8 @@ expect( $a['host_binding_requires_independent_acceptance'] === true, 'runtime ev
 expect( $a['execution_authorized'] === false && $a['publication_authorized'] === false, 'no write privileges' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( $a['scope'] )['status'] === 'RESOLVED_FOR_REVIEW_ONLY', 'exact scope accepted' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'tenant_ref' => 'client-chosen' ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'tenant spoof rejected' );
+$blocked = MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'brand_ref' => str_repeat( 'c', 32 ) ) );
+expect( $blocked['operator_state'] === 'blocked' && $blocked['next_safe_action']['code'] === 'remove_untrusted_scope' && ! $blocked['next_safe_action']['automatic_mutation_allowed'], 'blocked status gives safe actionable recovery' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'deployment_mode' => 'shared_multi_tenant' ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'mode spoof rejected' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'brand_ref' => str_repeat( 'b', 32 ) ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'brand spoof rejected' );
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'unapproved' => 'x' ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'unknown scope rejected' );
