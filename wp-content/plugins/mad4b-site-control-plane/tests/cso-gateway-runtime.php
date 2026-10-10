@@ -37,13 +37,21 @@ if('normal'!==$GLOBALS['mode']){
     if('collision'===$GLOBALS['mode'])ok(1===count($GLOBALS['registered']),'foreign namespace untouched');
     echo 'CSO GATEWAY '.$GLOBALS['mode'].': '.$checks." PASS\n";exit;
 }
-ok(count(MAD4B_SCP_CSO_Gateway::read_tools())>15,'read and plan catalog registered');
+ok(count(MAD4B_SCP_CSO_Gateway::read_tools())===7,'only implemented, non-authorizing read contracts registered');
 foreach($GLOBALS['registered']as$name=>$args){
     ok(!preg_match('/commit|workflow-run|secret-session|draft$/',$name),'private actions excluded');
     ok(false===$args['input_schema']['additionalProperties'],'closed argument contract');
     ok(true===$args['meta']['annotations']['readonly'],'read annotation');
 }
 ok(true===MAD4B_SCP_CSO_Gateway::can_read(),'complete set permission');
+foreach(array('change_plan','change_commit','bulk_plan','workflow_compile','workflow_run','draft','monitor_plan','field_suggest','promotion_plan')as$unsupported){
+ $denied=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$unsupported,'arguments'=>array()));
+ ok(is_wp_error($denied)&&'IMPLEMENTATION_NOT_CERTIFIED'===reason($denied),
+    'unsupported operational action may not run or be advertised: '.$unsupported);
+}
+$private=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>'secret_session','arguments'=>array()));
+ok(is_wp_error($private)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($private),
+  'secret handoff cannot be entered from MCP/public dispatch');
 $v=MAD4B_SCP_CSO_Gateway::dispatch($request);ok('CATALOG'===$v['status'],'valid dispatch');ok(1===$GLOBALS['calls'],'exactly one service entry');
 foreach(array(null,array('action'=>'missing','arguments'=>array()),array_merge($request,array('trusted'=>true)),array('action'=>'capability_catalog','arguments'=>array('grant'=>true)),array('action'=>'capability_catalog','arguments'=>array('query'=>'api_key')))as$bad){ok(is_wp_error(MAD4B_SCP_CSO_Gateway::dispatch($bad)),'malformed/secret denied');}
 ok(1===$GLOBALS['calls'],'invalid input cannot enter service');
