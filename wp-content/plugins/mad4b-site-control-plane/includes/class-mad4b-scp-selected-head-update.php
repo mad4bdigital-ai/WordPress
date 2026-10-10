@@ -148,6 +148,64 @@ final class MAD4B_SCP_Selected_Head_Update {
             'release_verdict_run_id' => (int) $m['release_verdict_run_id'] );
     }
 
+    /** Pure assistant handoff; action metadata does not grant any authority. */
+    public static function blocker_recovery( $blockers ) {
+        $catalog = array(
+            'selected_head_opt_in_disabled' => array(
+                'step_id' => 'enable_selected_head_host_opt_in',
+                'actor' => 'staging_host_operator',
+                'surface' => 'one_time_host_bootstrap',
+                'tool' => 'tools/mad4b_staging_host_provision.py',
+                'requires_explicit_consent' => true,
+                'remote_mcp_auto_apply_allowed' => false,
+            ),
+            'exact_staging_binding_required' => array(
+                'step_id' => 'align_exact_staging_host_and_profile_binding',
+                'actor' => 'staging_host_operator',
+                'surface' => 'wp_config_then_fresh_wordpress_request_and_profile_save',
+                'tool' => 'tools/mad4b_staging_host_provision.py',
+                'requires_explicit_consent' => true,
+                'remote_mcp_auto_apply_allowed' => false,
+            ),
+            'mad4b_selected_head_certified_artifact_unavailable' => array(
+                'step_id' => 'publish_exact_certified_staging_candidate',
+                'actor' => 'trusted_repository_release_operator',
+                'surface' => 'exact_head_ci_verdict_then_immutable_github_release_assets',
+                'tool' => 'mad4b-control-plane-package.yml',
+                'requires_explicit_consent' => true,
+                'remote_mcp_auto_apply_allowed' => false,
+            ),
+            'candidate_not_certified' => array(
+                'step_id' => 'repair_candidate_ci_and_attestation',
+                'actor' => 'trusted_repository_release_operator',
+                'surface' => 'exact_head_ci_and_trust_review',
+                'requires_explicit_consent' => true,
+                'remote_mcp_auto_apply_allowed' => false,
+            ),
+            'already_on_exact_source_commit' => array(
+                'step_id' => 'verify_installed_candidate',
+                'actor' => 'staging_operator',
+                'surface' => 'read_only_package_identity_and_fresh_wordpress_request',
+                'requires_explicit_consent' => false,
+                'remote_mcp_auto_apply_allowed' => false,
+            ),
+        );
+        $steps = array();
+        foreach ( array_values( array_unique( (array) $blockers ) ) as $blocker ) {
+            if ( ! is_string( $blocker ) || '' === $blocker ) continue;
+            $entry = isset( $catalog[ $blocker ] ) ? $catalog[ $blocker ] : array(
+                'step_id' => 'inspect_exact_governed_preflight',
+                'actor' => 'staging_operator',
+                'surface' => 'read_only_diagnostics_and_explicit_plan_review',
+                'requires_explicit_consent' => true,
+                'remote_mcp_auto_apply_allowed' => false,
+            );
+            $entry['blocker'] = $blocker;
+            $steps[] = $entry;
+        }
+        return $steps;
+    }
+
     public static function plan( $input ) {
         $input = is_array( $input ) ? $input : array();
         $candidate = isset( $input['candidate_source'] ) ? $input['candidate_source'] : null;
@@ -194,6 +252,10 @@ final class MAD4B_SCP_Selected_Head_Update {
             'release_verdict_run_id' => is_wp_error( $package ) ? 0 : $package['release_verdict_run_id'],
             'underlying_upload_plan_sha256' => is_array( $upload_plan ) ? ( $upload_plan['plan_sha256'] ?? '' ) : '',
             'eligible' => empty( $blockers ), 'blockers' => $blockers,
+            'assistant_recovery' => self::blocker_recovery( $blockers ),
+            'unattended_host_bootstrap' => false,
+            'candidate_release_manifest_required' => true,
+            'default_release_channel_unchanged' => true,
             'reason' => $reason, 'mutation_performed' => false, 'authorizing' => false,
         );
         $selected['plan_sha256'] = hash( 'sha256', wp_json_encode( $selected ) );
