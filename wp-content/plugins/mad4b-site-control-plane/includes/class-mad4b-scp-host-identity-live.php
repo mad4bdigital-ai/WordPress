@@ -38,7 +38,7 @@ final class MAD4B_SCP_Host_Identity_Live {
 			|| 'staging' !== (string) ( $site['configured_environment'] ?? '' )
 			|| 'staging' !== (string) ( $site['wordpress_environment'] ?? '' )
 			|| 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $uuid )
-			|| 1 !== preg_match( '/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?$/D', $origin )
+			|| 1 !== preg_match( '/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?(?:\/[A-Za-z0-9._~%-]+)*\/?$/D', $origin )
 			|| $rev < 1 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $digest ) ) return array();
 		return array(
 			'contract' => 'mad4b.host-identity-challenge.v1',
@@ -163,7 +163,8 @@ final class MAD4B_SCP_Host_Identity_Live {
 		} else {
 			// Compatibility adapter for an already trusted enrolled Host
 			// provider. Never a second signer or a source of public keys.
-			$evidence = apply_filters( self::PROVIDER_FILTER, null, $challenge );
+			try { $evidence = apply_filters( self::PROVIDER_FILTER, null, $challenge ); }
+			catch ( Throwable $error ) { $evidence = null; }
 		}
 		if ( ! self::verify( $challenge, $evidence ) ) {
 			$out['state'] = 'fresh_host_signature_missing_or_invalid';
