@@ -16,6 +16,11 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
  const CONFIRM_DISABLE = 'DISABLE WORDPRESS NATIVE STAGING CANDIDATES VIA MCP';
  const LOCK = 'mad4b_scp_manual_workflow_native_lock_v1';
  public static function boot() {
+  // Keep the generic plugin recovery lane; admin workflow profiles extend
+  // it with source-registered typed operation variables, not another installer.
+  if ( ! class_exists( 'MAD4B_SCP_Admin_Operation_Profiles', false ) )
+   require_once __DIR__ . '/class-mad4b-scp-admin-operation-profiles.php';
+  MAD4B_SCP_Admin_Operation_Profiles::boot();
   add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
  }
  public static function register_abilities() {
@@ -43,6 +48,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
   return array( 'type' => 'object', 'additionalProperties' => false, 'properties' => array(
    'include_remediation' => array( 'type' => 'boolean' ),
    'include_plugin_updates' => array( 'type' => 'boolean' ),
+   'include_admin_operation_profiles' => array( 'type' => 'boolean' ),
    'operation_filter' => array( 'type' => 'string', 'maxLength' => 100 ),
   ) );
  }
@@ -81,7 +87,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'host_runner_required' => false, 'production_allowed' => false );
  }
  public static function discover( $input = array() ) {
-  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter', 'include_plugin_updates' ) ) )
+  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter', 'include_plugin_updates', 'include_admin_operation_profiles' ) ) )
    return new WP_Error( 'mad4b_manual_discovery_input_invalid', 'Only bounded discovery filters supported.' );
   $filter = (string) ( $input['operation_filter'] ?? '' );
   if ( strlen( $filter ) > 100 || ( '' !== $filter && ! preg_match( '/^[A-Za-z0-9._-]+$/D', $filter ) ) )
@@ -150,6 +156,15 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
     );
    }
   }
+  $admin_workflow_profiles = array( 'state' => 'not_requested',
+   'discovery_ability' => 'mad4b/admin-operation-profiles-discover' );
+  if ( ! empty( $input['include_admin_operation_profiles'] ) &&
+   class_exists( 'MAD4B_SCP_Admin_Operation_Profiles' ) ) {
+   $snapshot = MAD4B_SCP_Admin_Operation_Profiles::discover(
+    array( 'operation_filter' => $filter ) );
+   $admin_workflow_profiles = is_array( $snapshot ) ? $snapshot :
+    array( 'state' => 'unavailable', 'operations' => array() );
+  }
   $remediation = array( 'state' => 'not_requested', 'work_items' => array() );
   if ( ! empty( $input['include_remediation'] ) && class_exists( 'MAD4B_SCP_Operational_Remediation' ) ) {
    $r = MAD4B_SCP_Operational_Remediation::status( array( 'include_live_acceptance' => false ) );
@@ -165,6 +180,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'operations' => $entries, 'operation_count' => count( $entries ),
    'admin_routes_detected' => $manual_routes, 'admin_route_count' => count( $manual_routes ),
    'remediation' => $remediation, 'plugin_update_routes' => $plugin_update_routes,
+   'admin_workflow_profiles' => $admin_workflow_profiles,
    'unregistered_manual_actions_auto_executable' => false, 'unknown_executor_policy' => 'deny_and_propose_adapter',
    'read_only' => true, 'authorizing' => false, 'mutation_performed' => false );
  }
