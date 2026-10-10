@@ -1488,7 +1488,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( 'standalone_source_build' === $operation_id ) {
 			if ( ! class_exists( 'MAD4B_SCP_Standalone_Build_Control', false ) )
 				return new WP_Error( 'mad4b_build_verifier_unavailable', 'Signed build verifier is not loaded.' );
-			return MAD4B_SCP_Standalone_Build_Control::complete_signed_job( $input, $job );
+			$verified = MAD4B_SCP_Standalone_Build_Control::complete_signed_job( $input, $job );
+			if ( is_wp_error( $verified ) ) return $verified;
+			$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
+				'operation_id' => 'standalone_source_build',
+				'job_id' => (string) $input['job_id'],
+				'verification' => 'pinned_ed25519_job_bound_runner_receipt',
+				'release_certified' => false, 'production_mutation' => false,
+			) );
+			return is_wp_error( $audit ) ? $audit : $verified;
 		}
 		if ( 'frontend_performance_sampling' !== $operation_id ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
 
