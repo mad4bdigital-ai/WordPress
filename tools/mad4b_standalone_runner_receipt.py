@@ -107,8 +107,7 @@ def make_claims(claim: dict, policy: dict, report: dict, now: int | None = None)
     require(policy.get("contract") == "mad4b.standalone-build-runner-enrollment.v1" and
             policy.get("environment") == "staging" and
             policy.get("owner_approval") == "EXACT STAGING SOURCE BUILD" and
-            policy.get("executor_id") == job.get("executor_id") and
-            policy.get("executor_id") == claim.get("executor_id"),
+            policy.get("executor_id") == job.get("executor_id"),
             "trusted_runner_policy_mismatch")
     require(job.get("operation_id") == "standalone_source_build" and
             job.get("status") == "claimed" and
@@ -150,7 +149,7 @@ def make_claims(claim: dict, policy: dict, report: dict, now: int | None = None)
         "build_fingerprint": report["build_fingerprint"],
         "package_manifest_digest": report["package_manifest_digest"],
         "build_state": "BUILT_UNVERIFIED", "issued_at_epoch": now,
-        "expires_at_epoch": now + 300, "production_authorized": False,
+        "expires_at_epoch": min(now + 300, int(job["lease_expires_at_epoch"])), "production_authorized": False,
     }
 
 
