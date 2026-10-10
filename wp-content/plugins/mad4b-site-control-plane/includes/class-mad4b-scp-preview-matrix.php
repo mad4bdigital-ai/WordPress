@@ -67,6 +67,13 @@ final class MAD4B_SCP_Preview_Matrix {
         if ( 'staging' !== $environment || '' === $origin ) {
             return self::blocked( 'exact_staging_origin_required' );
         }
+        $profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+        if ( ! is_array( $profile ) || empty( $profile['configured'] )
+            || ! isset( $profile['environment'] ) || 'staging' !== $profile['environment']
+            || empty( $profile['environment_match'] ) || empty( $profile['origin_match'] )
+            || empty( $profile['exact_profile_bound'] ) ) {
+            return self::blocked( 'site_profile_staging_binding_required' );
+        }
         $build = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
             ? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status() : array();
         if ( ! is_array( $build ) || empty( $build['manifest_valid'] )
