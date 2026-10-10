@@ -70,9 +70,13 @@ final class MAD4B_SCP_Activity_Import_Modes {
         $files[] = self::mode( 'admin_csv_upload', 'file', 'csv_tsv',
             'wp_admin_nonce_upload', 'review_inbox', 'native_review',
             array( 'admin', 'staging', 'approved_profile', 'encrypted_snapshot' ), $stage_ready, $stage_ready );
-        $files[] = self::mode( 'admin_xlsx_convert', 'file', 'xlsx_xls_ods',
-            'admin_upload_converter', 'review_inbox', 'converter_required',
-            array( 'controlled_parser', 'zip_limits', 'no_formulas' ), false, false );
+        $xlsx_ready = $stage_ready &&
+            class_exists( 'MAD4B_SCP_Activity_Import_Xlsx' ) &&
+            MAD4B_SCP_Activity_Import_Xlsx::available();
+        $files[] = self::mode( 'admin_xlsx_convert', 'file', 'xlsx',
+            'admin_upload_converter', 'review_inbox', 'native_review',
+            array( 'controlled_parser', 'zip_limits', 'no_formulas',
+                'encrypted_snapshot', 'single_sheet' ), $xlsx_ready, $xlsx_ready );
         $files[] = self::mode( 'wp_media_csv', 'file', 'media_library',
             'attachment_read', 'review_inbox', 'adapter_required',
             array( 'attachment_identity', 'mime', 'file_size', 'site_grant' ), false, false );
