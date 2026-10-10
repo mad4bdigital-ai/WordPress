@@ -16,6 +16,18 @@ function add_option($name,$value,$unused='',$autoload=false){
 }
 function get_option($name,$default=array()){return $GLOBALS['options'][$name]??$default;}
 function delete_option($name){unset($GLOBALS['options'][$name]);return true;}
+class MAD4B_SCP_Test_Ability {
+	public function get_name(){return 'vendor/create-cruise';}
+	public function get_input_schema(){return array('type'=>'object',
+		'properties'=>array(
+			'itinerary'=>array('type'=>'string'),
+			'post_status'=>array('type'=>'string')),
+		'required'=>array('itinerary'));}
+	public function get_meta(){return array('annotations'=>array('readonly'=>false));}
+}
+function wp_get_abilities(){return array('vendor/create-cruise'=>new MAD4B_SCP_Test_Ability());}
+function wp_get_ability($name){return $name==='vendor/create-cruise'
+	?new MAD4B_SCP_Test_Ability():null;}
 class MAD4B_SCP_Policy {
 	public static function can_admin(){return true;}
 	public static function can_mutate(){return true;}
