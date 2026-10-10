@@ -94,11 +94,11 @@ final class MAD4B_SCP_CSO_Changes {
      * execute under the original native callback/Execution Fence.
      */
     public static function commit( $plan, $governance ) {
-        return MAD4B_SCP_CSO_Scope::error( 'NATIVE_WRITE_EXECUTOR_NOT_CERTIFIED' );
+        return MAD4B_SCP_CSO_Native_Executor::commit( $plan, $governance );
     }
 
-    public static function approval_plan( $plan, $reason ) {
-        return MAD4B_SCP_CSO_Scope::error( 'NATIVE_APPROVAL_PROVIDER_NOT_CERTIFIED' );
+    public static function approval_plan( $plan, $reason, $agent_public_id = '' ) {
+        return MAD4B_SCP_CSO_Native_Executor::approval_plan( $plan, $reason, $agent_public_id );
     }
 
     public static function verify( $plan ) {

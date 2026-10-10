@@ -28,7 +28,7 @@ final class MAD4B_SCP_CSO_Gateway {
             'form_presentation' => array( 'forms', 'read', array( 'ability_name','target' ) ),
             'draft' => array( 'forms', 'private', array( 'operation','id','expected_revision','form','values' ) ),
             'change_plan' => array( 'single_write', 'private', array( 'form','values','target_revision' ) ),
-            'approval_plan' => array( 'single_write', 'plan', array( 'plan','reason' ) ),
+            'approval_plan' => array( 'single_write', 'private', array( 'plan','reason','agent_public_id' ) ),
             'change_commit' => array( 'single_write', 'private', array( 'plan','governance' ) ),
             'change_verify' => array( 'single_write', 'private', array( 'plan' ) ),
             'change_history' => array( 'single_write', 'read', array( 'operation_id','limit','offset' ) ),
@@ -63,7 +63,7 @@ final class MAD4B_SCP_CSO_Gateway {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
             'field_help', 'field_suggest', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify', 'bulk_plan', 'workflow_compile', 'doctor_plan', 'template_plan'
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'approval_plan', 'change_commit', 'change_verify', 'bulk_plan', 'workflow_compile', 'doctor_plan', 'template_plan'
         );
     }
 
@@ -179,7 +179,7 @@ final class MAD4B_SCP_CSO_Gateway {
             case 'form_presentation': return MAD4B_SCP_CSO_Form_UI::presentation($a);
             case 'draft': return self::draft($a);
             case 'change_plan': return MAD4B_SCP_CSO_Changes::plan($a['form']??array(),$a['values']??array(),$a['target_revision']??'');
-            case 'approval_plan': return MAD4B_SCP_CSO_Changes::approval_plan($a['plan']??array(),$a['reason']??'');
+            case 'approval_plan': return MAD4B_SCP_CSO_Changes::approval_plan($a['plan']??array(),$a['reason']??'',$a['agent_public_id']??'');
             case 'change_commit': return MAD4B_SCP_CSO_Changes::commit($a['plan']??array(),$a['governance']??array());
             case 'change_verify': return MAD4B_SCP_CSO_Changes::verify($a['plan']??array());
             case 'change_history': return MAD4B_SCP_CSO_Changes::history($a);

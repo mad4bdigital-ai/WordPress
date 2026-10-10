@@ -46,7 +46,7 @@ foreach($GLOBALS['registered']as$name=>$args){
     ok(true===$args['meta']['annotations']['readonly'],'read annotation');
 }
 ok(true===MAD4B_SCP_CSO_Gateway::can_read(),'complete set permission');
-foreach(array('change_commit','workflow_run','monitor_plan','promotion_plan')as$unsupported){
+foreach(array('workflow_run','monitor_plan','promotion_plan')as$unsupported){
  $denied=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$unsupported,'arguments'=>array()));
  ok(is_wp_error($denied)&&'IMPLEMENTATION_NOT_CERTIFIED'===reason($denied),
     'unsupported operational action may not run or be advertised: '.$unsupported);
@@ -54,7 +54,7 @@ foreach(array('change_commit','workflow_run','monitor_plan','promotion_plan')as$
 $private=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>'secret_session','arguments'=>array()));
 ok(is_wp_error($private)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($private),
   'secret handoff cannot be entered from MCP/public dispatch');
-foreach(array('draft','change_plan','change_verify','bulk_plan','workflow_compile','doctor_plan','template_plan') as $private_name) {
+foreach(array('draft','change_plan','approval_plan','change_commit','change_verify','bulk_plan','workflow_compile','doctor_plan','template_plan') as $private_name) {
  $result=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$private_name,'arguments'=>array()));
  ok(is_wp_error($result)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($result),
    'private write-state route never callable from MCP: '.$private_name);
