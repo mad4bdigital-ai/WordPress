@@ -94,10 +94,16 @@ final class MAD4B_SCP_CSO_Changes {
      * execute under the original native callback/Execution Fence.
      */
     public static function commit( $plan, $governance ) {
+        if ( ! class_exists( 'MAD4B_SCP_CSO_Native_Executor', false ) ||
+            ! is_callable( array( 'MAD4B_SCP_CSO_Native_Executor', 'commit' ) ) )
+            return MAD4B_SCP_CSO_Scope::error( 'NATIVE_EXECUTOR_UNAVAILABLE' );
         return MAD4B_SCP_CSO_Native_Executor::commit( $plan, $governance );
     }
 
     public static function approval_plan( $plan, $reason, $agent_public_id = '' ) {
+        if ( ! class_exists( 'MAD4B_SCP_CSO_Native_Executor', false ) ||
+            ! is_callable( array( 'MAD4B_SCP_CSO_Native_Executor', 'approval_plan' ) ) )
+            return MAD4B_SCP_CSO_Scope::error( 'NATIVE_EXECUTOR_UNAVAILABLE' );
         return MAD4B_SCP_CSO_Native_Executor::approval_plan( $plan, $reason, $agent_public_id );
     }
 

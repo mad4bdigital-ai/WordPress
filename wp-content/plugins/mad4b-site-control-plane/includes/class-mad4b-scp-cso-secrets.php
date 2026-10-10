@@ -21,11 +21,15 @@ final class MAD4B_SCP_CSO_Secrets {
 	const PURPOSE = 'mad4b.cso01.secret-handoff';
 	const ACTION = 'mad4b_cso_secret_handoff';
 	const TTL_MAX = 300;
+	const SLOT_COUNT = 64;
+	const USER_SLOT_COUNT = 8;
+	const CLEANUP_MAX = 16;
+	const RECEIPT_RETENTION = 86400;
 	private static $booted = false;
 	private static $pending = null;
 
 	public static function boot() {
-		if ( self::$booted ) return;
+		if ( self::$booted || ! class_exists( 'MAD4B_SCP_CSO_Scope' ) || true !== MAD4B_SCP_CSO_Scope::enabled( 'secrets' ) ) return;
 		self::$booted = true;
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handoff' ) );
 	}
@@ -45,7 +49,9 @@ final class MAD4B_SCP_CSO_Secrets {
 		$guard = self::authorize( $provider, 'store', self::target( $input['field_ref'], '', 'store' ), $scope ); if ( is_wp_error( $guard ) ) return $guard;
 		$initial = self::inspect( $provider, $input['field_ref'], '', 'current', $scope ); if ( is_wp_error( $initial ) ) return $initial;
 		if ( $initial['configured'] !== ( 'rotate' === $mode ) ) return self::error( 'lifecycle_mode_conflict' );
-		try { $ref = 'csoh.' . bin2hex( random_bytes( 32 ) ); $token = bin2hex( random_bytes( 32 ) ); }
+		$cleanup = self::cleanup( $scope ); if ( is_wp_error( $cleanup ) ) return $cleanup;
+		$slot = self::allocation( $identity['user_id'] ); if ( is_wp_error( $slot ) ) return $slot;
+		try { $ref = 'csoh.' . sprintf( '%02x', $slot ) . bin2hex( random_bytes( 31 ) ); $token = bin2hex( random_bytes( 32 ) ); }
 		catch ( Throwable $error ) { return self::error( 'randomness_unavailable' ); }
 		$record = array(
 			'contract'=>self::CONTRACT, 'session_ref'=>$ref, 'state'=>'PREPARED', 'phase'=>'prepare',
@@ -69,12 +75,10 @@ final class MAD4B_SCP_CSO_Secrets {
 		$scope = self::scope(); if ( is_wp_error( $scope ) ) return $scope;
 		$loaded = self::load( $input['session_ref'] ); if ( is_wp_error( $loaded ) ) return $loaded;
 		$record = $loaded['record']; $bound = self::bound( $record, $scope ); if ( is_wp_error( $bound ) ) return $bound;
-        // This is a read Ability. Project expiry without mutating the
-        // durable handoff record; explicit owner-governed retention cleanup
-        // handles storage separately. Never perform CAS from a status read.
-        if ( $record['expires_at'] <= time() && in_array( $record['state'], array('PREPARED','OPENED'), true ) ) {
-            $record['state'] = 'EXPIRED'; $record['phase'] = 'expired';
-        }
+		// Status is projection only; allocation cleanup owns persistence separately.
+		if ( $record['expires_at'] <= time() && in_array( $record['state'], array('PREPARED','OPENED'), true ) ) {
+			$record['state']='EXPIRED'; $record['phase']='expired';
+		}
 		return self::projection( $record );
 	}
 
@@ -83,7 +87,9 @@ final class MAD4B_SCP_CSO_Secrets {
 		$valid=self::metadata($input,array('provider_id','field_ref')); if(is_wp_error($valid)) return $valid;
 		$scope=self::scope(); if(is_wp_error($scope)) return $scope;
 		$provider=self::provider($input,$scope,'rotate'); $ready=!is_wp_error($provider);
-		return array('contract'=>'mad4b.cso01.secret-rotation-plan.v1','state'=>$ready?'PLANNED':'UNSUPPORTED','provider_id'=>$input['provider_id'],'field_ref'=>$input['field_ref'],'site_uuid'=>$scope['site_uuid'],'steps'=>array('stage_without_replacing_active','verify_new_with_provider','independent_candidate_readback','cutover','independent_active_readback','revoke_old','independent_revocation_readback'),'blockers'=>$ready?array():array($provider->get_error_code()),'collection_allowed'=>false,'execution_allowed'=>false,'authorizing'=>false,'plaintext_in_chat'=>false,'automatic_environment_transfer'=>false);
+		$out=array('contract'=>'mad4b.cso01.secret-rotation-plan.v1','state'=>$ready?'PLANNED':'UNSUPPORTED','site_uuid'=>$scope['site_uuid'],'steps'=>array('stage_without_replacing_active','verify_new_with_provider','independent_candidate_readback','cutover','independent_active_readback','revoke_old','independent_revocation_readback'),'blockers'=>$ready?array():array($provider->get_error_code()),'collection_allowed'=>false,'execution_allowed'=>false,'authorizing'=>false,'plaintext_in_chat'=>false,'automatic_environment_transfer'=>false);
+		if($ready) {$out['provider_id']=$provider['provider_id'];$out['field_ref']=$input['field_ref'];}
+		return $out;
 	}
 
 	/**
@@ -149,7 +155,7 @@ final class MAD4B_SCP_CSO_Secrets {
 
 	private static function open( $input, array $server ) {
 		if(!is_array($input)||array_diff(array_keys($input),array('action','session_ref','open_token','_wpnonce'))||self::ACTION!==($input['action']??null)||!self::ref($input['session_ref']??null)) return self::error('open_input_invalid');
-		if(!empty($server['HTTP_PURPOSE'])||!empty($server['HTTP_SEC_PURPOSE'])||(isset($server['HTTP_SEC_FETCH_MODE'])&&'navigate'!==$server['HTTP_SEC_FETCH_MODE'])||(isset($server['HTTP_SEC_FETCH_USER'])&&'?1'!==$server['HTTP_SEC_FETCH_USER'])||(isset($server['HTTP_SEC_FETCH_SITE'])&&!in_array($server['HTTP_SEC_FETCH_SITE'],array('same-origin','none'),true)&&'?1'!==($server['HTTP_SEC_FETCH_USER']??null))) return self::error('deliberate_navigation_required');
+		if(!empty($server['HTTP_PURPOSE'])||!empty($server['HTTP_SEC_PURPOSE'])||'navigate'!==($server['HTTP_SEC_FETCH_MODE']??null)||'?1'!==($server['HTTP_SEC_FETCH_USER']??null)) return self::error('deliberate_navigation_required');
 		$scope=self::scope(); if(is_wp_error($scope)) return $scope;
 		$http=self::http_origin($scope,$server,false); if(is_wp_error($http)) return $http;
 		$loaded=self::load($input['session_ref']); if(is_wp_error($loaded)) return $loaded;
@@ -179,7 +185,7 @@ final class MAD4B_SCP_CSO_Secrets {
 		$initial=self::inspect($p,$r['field_ref'],'','current',$scope);
 		if(is_wp_error($initial)||$initial['revision']!==$r['initial_revision']||$initial['configured']!==$r['initial_configured']) return self::error('native_state_changed');
 		$length=$server['CONTENT_LENGTH']??null;
-		if(!is_string($length)||!preg_match('/^[1-9][0-9]{0,5}$/D',$length)||(int)$length>12288||!is_string($server['CONTENT_TYPE']??null)||0!==strpos($server['CONTENT_TYPE'],'application/x-www-form-urlencoded')) return self::error('submit_size_or_type_invalid');
+		if(!is_string($length)||!preg_match('/^[1-9][0-9]{0,5}$/D',$length)||(int)$length>12288||!is_string($server['CONTENT_TYPE']??null)||1!==preg_match('/^application\/x-www-form-urlencoded(?:;[ \t]*charset=utf-8)?$/iD',$server['CONTENT_TYPE'])) return self::error('submit_size_or_type_invalid');
 		// No plaintext is read until managed storage and current authority are admitted.
 		$plaintext=isset($post['secret'])&&is_string($post['secret'])?wp_unslash($post['secret']):null; unset($post['secret'],$_POST['secret']);
 		if(!is_string($plaintext)||''===$plaintext||strlen($plaintext)>$p['field']['max_bytes']||false!==strpos($plaintext,"\0")||1!==preg_match('//u',$plaintext)) return self::error('secret_value_invalid');
@@ -245,7 +251,7 @@ final class MAD4B_SCP_CSO_Secrets {
 			$a=function_exists('wp_get_ability')?wp_get_ability($name):null;
 			if(!is_object($a)||!method_exists($a,'execute')||!method_exists($a,'get_meta')||!method_exists($a,'check_permissions')||!MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified($name)) return self::error('native_execution_wrapper_unavailable');
 			$meta=$a->get_meta(); $readonly=is_array($meta)&&true===($meta['annotations']['readonly']??null);
-			if(('readback'===$role)!==$readonly||true===($meta['public']??null)||true===($meta['mcp']['public']??null)||('readback'!==$role&&!MAD4B_SCP_Authorization::execution_boundary_verified($a))) return self::error('native_secret_ability_surface_unsafe');
+			if(('readback'===$role)!==$readonly||true===($meta['public']??null)||true===($meta['mcp']['public']??null)||('readback'!==$role&&(!in_array($meta['mcp']['surface']??null,array('content','admin','write'),true)||!MAD4B_SCP_Authorization::execution_boundary_verified($a)))) return self::error('native_secret_ability_surface_unsafe');
 			$status=MAD4B_SCP_Provider_Compatibility_Certification::ability_status($input['provider_id'],$name,$adapter);
 			if(!is_array($status)||('readback'===$role?true!==($status['read_eligible']??null):(true!==($status['write_eligible']??null)||true!==($status['artifact_authority_bound']??null)||true!==($status['behavioral_evidence']['behavioral_verified']??null)||'active'!==($status['activation_stage']??null)))) return self::error('native_secret_capability_uncertified');
 			$certificates[$role]=array('ability'=>$name,'contract'=>$status['capability_contract_digest']??'','receipt'=>$status['behavioral_evidence']['receipt_sha256']??'','level'=>$status['certification_level']??'');
@@ -260,7 +266,19 @@ final class MAD4B_SCP_CSO_Secrets {
 		$fresh=self::provider(array('provider_id'=>$p['provider_id'],'field_ref'=>$target['field_ref']),$scope,$p['mode']);
 		if(is_wp_error($fresh)||!hash_equals($p['binding'],$fresh['binding'])) return self::error('provider_binding_changed');
 		if(!current_user_can('manage_options')||!class_exists('MAD4B_SCP_Policy')||!('readback'===$role?MAD4B_SCP_Policy::can_read():MAD4B_SCP_Policy::can_mutate())) return self::error('current_authority_denied');
-		try {$allowed=wp_get_ability($p['field'][$role.'_ability'])->check_permissions($target);} catch(Throwable $error){return self::error('native_permission_denied');}
+		try {
+			$a=wp_get_ability($p['field'][$role.'_ability']);
+			if('readback'===$role) $allowed=$a->check_permissions($target);
+			else {
+				// Native permission callbacks run only inside the final Ability execution.
+				// This established central probe cannot claim a ticket or budget.
+				if(!method_exists('MAD4B_SCP_Authorization','probe_mutation')||!method_exists('MAD4B_SCP_Authorization','permission_result_from_authorization')) return self::error('nonconsuming_authorization_unavailable');
+				$meta=$a->get_meta();$surface=$meta['mcp']['surface']??null;
+				if(!in_array($surface,array('content','admin','write'),true)) return self::error('native_secret_ability_surface_unsafe');
+				$probe=MAD4B_SCP_Authorization::probe_mutation($p['field'][$role.'_ability'],'mad4b-'.$surface,$p['provider_id'],$target);
+				$allowed=MAD4B_SCP_Authorization::permission_result_from_authorization($probe);
+			}
+		} catch(Throwable $error){return self::error('native_permission_denied');}
 		return true===$allowed?MAD4B_SCP_CSO_Scope::assert_current($scope):self::error('native_permission_denied');
 	}
 	private static function inspect( array $p, $field, $candidate, $phase, array $scope ) {
@@ -294,6 +312,7 @@ final class MAD4B_SCP_CSO_Secrets {
 		return $scope;
 	}
 	private static function identity(array $scope) {
+		if(''!==trim((string)($_SERVER['HTTP_AUTHORIZATION']??''))||''!==trim((string)($_SERVER['REDIRECT_HTTP_AUTHORIZATION']??''))) return self::error('conflicting_authorization_header');
 		$user=get_current_user_id(); $token=function_exists('wp_get_session_token')?wp_get_session_token():'';
 		if(!is_int($user)||$user<1||!is_string($token)||strlen($token)<32||!function_exists('is_user_logged_in')||!is_user_logged_in()||!current_user_can('manage_options')) return self::error('first_party_session_required');
 		$identity=class_exists('MAD4B_SCP_Identity_Context')?MAD4B_SCP_Identity_Context::current():array(); if(is_wp_error($identity)||!is_array($identity)) return self::error('issuer_identity_invalid');
@@ -322,33 +341,94 @@ final class MAD4B_SCP_CSO_Secrets {
 		if($selector) foreach(array('provider_id','field_ref') as $key) if(!is_string($input[$key]??null)||!preg_match('/^[a-z0-9][a-z0-9._:-]{0,95}$/D',$input[$key])) return self::error('selector_invalid');
 		return true;
 	}
-	private static function key($ref){return 'mad4b_cso_handoff_'.hash('sha256',$ref);}
+	private static function slot_key($slot){return 'mad4b_cso_handoff_slot_'.sprintf('%02x',$slot);}
+	private static function key($ref){return self::slot_key(hexdec(substr($ref,5,2)));}
+	/** Fixed partitions make both the global and per-user bounds atomic without a lease. */
+	private static function allocation($user) {
+		global $wpdb;
+		if(!is_object($wpdb)||!isset($wpdb->options)||!is_int($user)||$user<1) return self::error('handoff_store_unavailable');
+		$start=($user%intdiv(self::SLOT_COUNT,self::USER_SLOT_COUNT))*self::USER_SLOT_COUNT;
+		for($i=0;$i<self::USER_SLOT_COUNT;++$i) {
+			$slot=$start+$i;
+			$raw=$wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",self::slot_key($slot)));
+			if(!empty($wpdb->last_error)) return self::error('handoff_store_unavailable');
+			if(null===$raw) return $slot;
+		}
+		// Colliding user IDs share capacity. Unknown native effects retain their slot.
+		return self::error('handoff_creation_quota_exhausted');
+	}
+	/** Creation-only metadata cleanup; read tools never expire or delete persisted state. */
+	private static function cleanup(array $scope) {
+		global $wpdb;
+		$guard=MAD4B_SCP_CSO_Scope::assert_current($scope); if(is_wp_error($guard)) return $guard;
+		if(!is_object($wpdb)||!isset($wpdb->options)) return self::error('handoff_store_unavailable');
+		$deleted=0;
+		for($slot=0;$slot<self::SLOT_COUNT&&$deleted<self::CLEANUP_MAX;++$slot) {
+			$key=self::slot_key($slot);
+			$raw=$wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",$key));
+			if(!empty($wpdb->last_error)) return self::error('handoff_store_unavailable');
+			if(null===$raw) continue;
+			$loaded=self::decode($raw); if(is_wp_error($loaded)) continue;
+			$r=$loaded['record'];
+			if(self::key($r['session_ref'])!==$key) continue;
+			$site_match=true;
+			foreach(array('site_uuid','origin','environment','blog_id') as $k) if(($r['scope'][$k]??null)!==($scope[$k]??null)) {$site_match=false;break;}
+			if(!$site_match) continue;
+			$pending=in_array($r['state'],array('PREPARED','OPENED','EXPIRED'),true)&&$r['expires_at']<=time();
+			$completed='VERIFIED'===$r['state']&&is_int($r['completed_at']??null)&&$r['completed_at']<=time()-self::RECEIPT_RETENTION;
+			if(!$pending&&!$completed) continue;
+			$guard=MAD4B_SCP_CSO_Scope::assert_current($scope); if(is_wp_error($guard)) return $guard;
+			// A fresh full-value CAS cannot erase a claim or replacement that won the race.
+			$changed=$wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name = %s AND BINARY option_value = BINARY %s",$key,$raw));
+			wp_cache_delete($key,'options');
+			if(!empty($wpdb->last_error)) return self::error('handoff_store_unavailable');
+			if(1===$changed) ++$deleted;
+			$guard=MAD4B_SCP_CSO_Scope::assert_current($scope); if(is_wp_error($guard)) return $guard;
+		}
+		return true;
+	}
+	private static function decode($raw) {
+		if(!is_string($raw)||strlen($raw)>65536) return self::error('handoff_record_invalid');
+		// No database value may instantiate PHP objects before its MAC is verified.
+		$sealed=@unserialize($raw,array('allowed_classes'=>false));
+		if(!is_array($sealed)) return self::error('handoff_record_invalid');
+		$r=MAD4B_SCP_CSO_Scope::unseal($sealed,self::PURPOSE);
+		$keys=array('contract','session_ref','state','phase','provider_id','field_ref','mode','scope','identity','provider_binding','expires_at','created_at','initial_revision','initial_configured','configured','verified','active_new','old_revoked','owner_recovery_required');
+		if(is_wp_error($r)||!is_array($r)||array_diff($keys,array_keys($r))||self::CONTRACT!==$r['contract']||!self::ref($r['session_ref'])||!is_array($r['scope'])||!is_array($r['identity'])||!self::sha($r['provider_binding'])||!is_int($r['expires_at'])||!is_int($r['created_at'])||$r['created_at']>time()+5||$r['expires_at']<=$r['created_at']||$r['expires_at']>$r['created_at']+self::TTL_MAX||!in_array($r['state'],array('PREPARED','OPENED','CONSUMED','STORED','PARTIAL','UNCERTAIN','VERIFIED','EXPIRED'),true)) return self::error('handoff_record_invalid');
+		return array('record'=>$r,'sealed'=>$sealed);
+	}
 	private static function load($ref) {
 		global $wpdb; if(!self::ref($ref)||!is_object($wpdb)||!isset($wpdb->options)) return self::error('handoff_store_unavailable');
 		$raw=$wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",self::key($ref)));
-		if(null===$raw||!empty($wpdb->last_error)) return self::error('handoff_record_unavailable'); $sealed=maybe_unserialize($raw);
-		if(!is_array($sealed)) return self::error('handoff_record_invalid'); $r=MAD4B_SCP_CSO_Scope::unseal($sealed,self::PURPOSE);
-		if(is_wp_error($r)||!is_array($r)||self::CONTRACT!==($r['contract']??null)||$ref!==($r['session_ref']??null)||!is_array($r['scope']??null)||!is_array($r['identity']??null)||!self::sha($r['provider_binding']??null)||!is_int($r['expires_at']??null)) return self::error('handoff_record_invalid');
-		return array('record'=>$r,'sealed'=>$sealed);
+		if(null===$raw||!empty($wpdb->last_error)) return self::error('handoff_record_unavailable');
+		$loaded=self::decode($raw);
+		return is_wp_error($loaded)||$ref!==$loaded['record']['session_ref']?self::error('handoff_record_invalid'):$loaded;
 	}
 	private static function persist($ref,$expected,array $record) {
 		global $wpdb; $guard=MAD4B_SCP_CSO_Scope::assert_current($record['scope']); if(is_wp_error($guard)) return $guard;
+		if(!self::ref($ref)||$ref!==($record['session_ref']??null)) return self::error('session_ref_invalid');
 		$sealed=MAD4B_SCP_CSO_Scope::seal($record,self::PURPOSE); if(is_wp_error($sealed)) return $sealed;
 		if(!is_object($wpdb)||!isset($wpdb->options)) return self::error('handoff_store_unavailable'); $key=self::key($ref);
-		if(null===$expected) $changed=add_option($key,$sealed,'',false);
-		else {$changed=1===$wpdb->query($wpdb->prepare("UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",maybe_serialize($sealed),$key,maybe_serialize($expected)));wp_cache_delete($key,'options');}
+		// WordPress add_option() uses an upsert; a racing creator must never replace
+		// another handoff. Only an insert with an untouched unique key may succeed.
+		if(null===$expected) $changed=1===$wpdb->query($wpdb->prepare("INSERT IGNORE INTO {$wpdb->options} (option_name, option_value, autoload) VALUES (%s, %s, %s)",$key,maybe_serialize($sealed),'no'));
+		else $changed=1===$wpdb->query($wpdb->prepare("UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",maybe_serialize($sealed),$key,maybe_serialize($expected)));
+		wp_cache_delete($key,'options');
 		if(!$changed||!empty($wpdb->last_error)) return self::error('handoff_compare_exchange_conflict');
 		$guard=MAD4B_SCP_CSO_Scope::assert_current($record['scope']); return is_wp_error($guard)?$guard:$sealed;
 	}
 	private static function uncertain(array $r,$sealed,$reason) {$r['state']=!empty($r['active_new'])?'PARTIAL':'UNCERTAIN';$r['owner_recovery_required']=true;$r['reason']=$reason;$next=self::persist($r['session_ref'],$sealed,$r);return is_wp_error($next)?self::error('state_uncertain_owner_recovery_required'):self::projection($r);}
 	private static function projection(array $r) {
-		$out=array('contract'=>self::CONTRACT,'state'=>$r['state'],'session_ref'=>$r['session_ref'],'site_uuid'=>$r['scope']['site_uuid'],'origin'=>$r['scope']['origin'],'provider_id'=>$r['provider_id'],'field_ref'=>$r['field_ref'],'expires_at'=>gmdate('c',$r['expires_at']),'configured'=>(bool)$r['configured'],'verified'=>(bool)$r['verified'],'phase'=>$r['phase'],'owner_recovery_required'=>(bool)$r['owner_recovery_required'],'plaintext_in_chat'=>false,'authorizing'=>false,'signed_receipt_ref'=>$r['session_ref']);
+		// An interrupted one-use claim needs reconciliation, never a blind replay.
+		$state='CONSUMED'===$r['state']?'UNCERTAIN':$r['state'];
+		$recovery=(bool)$r['owner_recovery_required']||in_array($r['state'],array('CONSUMED','STORED','PARTIAL','UNCERTAIN'),true);
+		$out=array('contract'=>self::CONTRACT,'state'=>$state,'session_ref'=>$r['session_ref'],'site_uuid'=>$r['scope']['site_uuid'],'origin'=>$r['scope']['origin'],'provider_id'=>$r['provider_id'],'field_ref'=>$r['field_ref'],'expires_at'=>gmdate('c',$r['expires_at']),'configured'=>(bool)$r['configured'],'verified'=>(bool)$r['verified'],'phase'=>$r['phase'],'owner_recovery_required'=>$recovery,'plaintext_in_chat'=>false,'authorizing'=>false,'blind_retry_allowed'=>false,'signed_receipt_ref'=>$r['session_ref']);
 		if(isset($r['observed_at'])) $out['observed_at']=gmdate('c',$r['observed_at']); if(isset($r['reason'])) $out['reason']=$r['reason']; return $out;
 	}
-	private static function unsupported(array $input,$reason){return array('contract'=>self::CONTRACT,'state'=>'UNSUPPORTED','provider_id'=>$input['provider_id'],'field_ref'=>$input['field_ref'],'reason'=>$reason,'collection_allowed'=>false,'plaintext_in_chat'=>false,'authorizing'=>false);}
+	private static function unsupported(array $input,$reason){return array('contract'=>self::CONTRACT,'state'=>'UNSUPPORTED','reason'=>$reason,'collection_allowed'=>false,'plaintext_in_chat'=>false,'authorizing'=>false);}
 	private static function cookie_name($ref){return 'mad4b_csoh_'.substr(hash('sha256',$ref),0,16);}
 	private static function sha($v){return is_string($v)&&1===preg_match('/^[a-f0-9]{64}$/D',$v);}
-	private static function ref($v){return is_string($v)&&1===preg_match('/^csoh\.[a-f0-9]{64}$/D',$v);}
+	private static function ref($v){return is_string($v)&&1===preg_match('/^csoh\.[a-f0-9]{64}$/D',$v)&&hexdec(substr($v,5,2))<self::SLOT_COUNT;}
 	private static function error($reason){return new WP_Error('mad4b_cso_secret_'.$reason,'Secure handoff requires current first-party identity, certified managed storage and existing authority.',array('reason'=>$reason,'plaintext_in_chat'=>false,'authorizing'=>false,'blind_retry_allowed'=>false));}
 	private static function headers() {if(headers_sent()) return;header('Content-Type: text/html; charset=UTF-8');header("Content-Security-Policy: default-src 'none'; script-src 'none'; style-src 'none'; connect-src 'none'; img-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");header('Cache-Control: no-store, private, max-age=0');header('Pragma: no-cache');header('Referrer-Policy: no-referrer');header('X-Frame-Options: DENY');header('X-Content-Type-Options: nosniff');header('Permissions-Policy: camera=(), microphone=(), geolocation=()');}
 	private static function finish($result) {$error=is_wp_error($result);status_header($error?403:200);$state=$error?'DENIED':($result['state']??'UNCERTAIN');echo '<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Secure handoff status</title></head><body><main><h1>Secure handoff status</h1><p>'.esc_html($state).'</p><p>'.esc_html('VERIFIED'===$state?'Independent readback verified the credential lifecycle. No credential value is returned.':'Review the handoff state with the provider owner before any retry. An unconfirmed provider effect must be reconciled.').'</p></main></body></html>';exit;}
