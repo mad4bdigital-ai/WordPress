@@ -79,8 +79,70 @@ final class MAD4B_SCP_Activity_Import_Batches {
                 'Active batch is missing or governed Profile revision changed.' );
         return array( 'manifest' => $m, 'names' => $names );
     }
-    /** Writes only a bounded, non-autoloaded staging manifest. */
+    /**
+     * Serialize own WordPress-option mutations per enrolled site and Profile.
+     * add_option() enforces a unique key across concurrent PHP workers.
+     * A crash deliberately leaves the lock held until an audited recovery.
+     * This is NOT a cross-provider write lease.
+     */
+    private static function locked_mutation( $operation, $input ) {
+        if ( ! is_array( $input ) ||
+            ! in_array( $operation, array(
+                'begin', 'append', 'approve', 'archive' ), true ) )
+            return self::err( 'mad4b_batch_invalid_mutation',
+                'A recognized batch operation and object are required.' );
+        $slug = isset( $input['profile_slug'] ) ?
+            (string) $input['profile_slug'] : '';
+        $ctx = self::context( $slug );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $lock_key = 'mad4b_batch_mutex_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
+        $token = bin2hex( random_bytes( 16 ) );
+        $receipt = array( 'token_sha256' => hash( 'sha256', $token ),
+            'operation' => $operation, 'created_at' => gmdate( 'c' ) );
+        if ( ! add_option( $lock_key, $receipt, '', false ) )
+            return self::err( 'mad4b_batch_mutation_locked',
+                'Another active or interrupted mutation holds the exact Profile. Do not blindly retry.' );
+        $stored = get_option( $lock_key, false );
+        if ( self::hash( $stored ) !== self::hash( $receipt ) )
+            return self::err( 'mad4b_batch_lock_readback_failed',
+                'Mutation lock ownership cannot be verified; manual recovery required.' );
+        try {
+            $callee = $operation . '_unlocked';
+            $result = call_user_func( array( __CLASS__, $callee ), $input );
+        } catch ( \\Throwable $unexpected ) {
+            // An exception can happen after a partial durable mutation. Never
+            // release a lock if the commit outcome is unknown.
+            return self::err( 'mad4b_batch_mutation_interrupted',
+                'Unexpected interruption. Inspect the exact source state before a governed recovery.' );
+        }
+        $check = get_option( $lock_key, false );
+        if ( ! is_array( $check ) ||
+            ! isset( $check['token_sha256'] ) ||
+            ! hash_equals( $receipt['token_sha256'],
+                (string) $check['token_sha256'] ) )
+            return self::err( 'mad4b_batch_lock_stolen',
+                'Lock ownership changed unexpectedly; manual recovery required.' );
+        delete_option( $lock_key );
+        if ( false !== get_option( $lock_key, false ) )
+            return self::err( 'mad4b_batch_unlock_unverified',
+                'Operation completed but Profile mutation lock could not be released.' );
+        return $result;
+    }
     public static function begin( $input = array() ) {
+        return self::locked_mutation( 'begin', $input );
+    }
+    public static function append( $input = array() ) {
+        return self::locked_mutation( 'append', $input );
+    }
+    public static function approve( $input = array() ) {
+        return self::locked_mutation( 'approve', $input );
+    }
+    public static function archive( $input = array() ) {
+        return self::locked_mutation( 'archive', $input );
+    }
+    /** Writes only a bounded, non-autoloaded staging manifest. */
+    private static function begin_unlocked( $input = array() ) {
         if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) ||
             ! isset( $input['expected_chunks'] ) ||
             ! is_int( $input['expected_chunks'] ) ||
@@ -117,7 +179,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
             'state' => $manifest['state'], 'post_writes' => 0 );
     }
     /** Append immutable, individually authenticated source rows, not content. */
-    public static function append( $input = array() ) {
+    private static function append_unlocked( $input = array() ) {
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
         $id = isset( $input['batch_id'] ) ? (string) $input['batch_id'] : '';
         $index = isset( $input['chunk_index'] ) ? $input['chunk_index'] : null;
@@ -261,7 +323,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
      * Manual-only batch approval: binds every immutable page and complete
      * nonblocking warning count. Never authorizes WP All Import execution.
      */
-    public static function approve( $input = array() ) {
+    private static function approve_unlocked( $input = array() ) {
         if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) ||
             ! is_int( $input['acknowledged_warning_count'] ?? null ) ||
             ! is_string( $input['plan_sha256'] ?? null ) ||
@@ -413,7 +475,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
      * Explicit archival creates a nonautoloaded audit tombstone before
      * releasing the per-Profile active slot. An archived approval cannot run.
      */
-    public static function archive( $input = array() ) {
+    private static function archive_unlocked( $input = array() ) {
         if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) )
             return self::err( 'mad4b_batch_archive_confirmation',
                 'Explicit administrative archive confirmation required.' );
