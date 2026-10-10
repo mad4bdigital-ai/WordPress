@@ -162,7 +162,7 @@ def browser_observations(args, base):
                         "peak_memory_bytes": None, "listing_item_count": None,
                         "listing_identity_digest": None, "heading_present": None,
                         "accepted_as_frontend_http": mode == "browser",
-                        "accepted_as_external_signed_receipt": False,
+                        "accepted_as_external_signed_receipt": False, "source_identity_verified": False,
                     }
                     try:
                         request_url = (base + "/wp-admin/customize.php?" +
@@ -242,7 +242,7 @@ def native_observation(args, base):
         "peak_memory_bytes": observation["peak_memory_bytes"],
         "theme_slug": observation["theme_slug"], "theme_mod_count": observation["theme_mod_count"],
         "rest": observation["rest"], "accepted_as_frontend_http": False,
-        "accepted_as_external_signed_receipt": False,
+        "accepted_as_external_signed_receipt": False, "source_identity_verified": True,
     }]
 
 
@@ -292,8 +292,11 @@ def main(argv=None):
         "origin": base, "expected_source_sha": args.expected_source_sha,
         "modes": args.modes, "viewport": args.viewport, "rows": rows, "summary": report_summary(rows),
         "evidence_class": "LOCAL_READ_ONLY_NON_AUTHORIZING",
+        "browser_source_sha_claim_verified": False,
+        "source_identity_verification": "wp_cli_provenance_checked_for_native_only",
         "remote_queue_completion_performed": False, "external_mcp_attestation_performed": False,
         "limitations": [
+            "Browser mode source SHA is a caller-supplied claim, not a proven site build receipt",
             "WordPress CLI startup and REST dispatch differ from a real HTTP frontend",
             "Customizer preview uses authenticated iframe and is not a visitor performance sample",
             "Browser navigation timing is not PHP server_elapsed_ms or TTFB",
