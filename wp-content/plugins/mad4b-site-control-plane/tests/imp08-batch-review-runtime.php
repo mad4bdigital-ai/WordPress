@@ -101,8 +101,12 @@ ck( !is_wp_error( $approved ) &&
 $status = MAD4B_SCP_Activity_Import_Batches::status( $base );
 ck( !is_wp_error( $status ) && $status['approved_for_manual_chunk_export'],
     'Manual-only batch approval could not be independently read back.' );
+// Business policy was disabled after staging; cleanup must remain possible,
+// but all NEW ingestion continues to be denied.
+$GLOBALS['imp02_enabled_modes'] = array();
 $archived = MAD4B_SCP_Activity_Import_Batches::archive( array_merge(
     $base, array( 'confirmed' => true ) ) );
+unset( $GLOBALS['imp02_enabled_modes'] );
 ck( !is_wp_error( $archived ) && $archived['audit_recorded'],
     'Batch archival did not persist immutable audit.' );
 $stale = MAD4B_SCP_Activity_Import_Batches::status( $base );
