@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 592,
+  "changed_file_count": 599,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1188,8 +1188,23 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp07-import-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp07-import-source-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-imp08-imp09-encrypted-batch-acceptance-20261010",
+      "semantic_unit": "Encrypted immutable multi-part 5000-row review and manual-only bound CSV export; per-profile and per-chunk consistency, WPML group safeguards, cross-chunk source identity, explicit approval, durable audited archival recovery; live provider readiness matrix and exact-head independent acceptance tests.",
+      "revert_boundary": "Remove IMP08/09 code and review-only MCP abilities without changing third-party provider business content. Because encrypted batches may be staged, migrating/archiving their durable option records requires exact source and owner authority before code removal. No importer writes or Production authority are bundled.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp08-imp09-batch-review-runtime-acceptance.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-batches.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-acceptance-gates.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp08-batch-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp08-batch-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-source-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "7777223d57262cda21347337e53f103151c6cb073dadc545d9e1953a4a172a88",
+  "changed_paths_sha256": "f12500b815476ae0716c676cebc59ed9d6d01c1066d25f3f431879f130cbe36d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
