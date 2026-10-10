@@ -628,6 +628,59 @@ final class MAD4B_SCP_Activity_Import_Experience {
     }
     private static function step_handoff( $view, $slug, $review ) {
         echo '<h2>' . self::e( self::title( 'Approve a fixed snapshot and hand it off' ) ) . '</h2>';
+        $batch_id = isset( $_GET['batch_id'] ) ?
+            sanitize_text_field( wp_unslash( $_GET['batch_id'] ) ) : '';
+        if ( preg_match( '/^[a-f0-9]{32}$/D', $batch_id ) &&
+            class_exists( 'MAD4B_SCP_Activity_Import_Batches' ) ) {
+            $batch = MAD4B_SCP_Activity_Import_Batches::status( array(
+                'profile_slug' => $slug, 'batch_id' => $batch_id ) );
+            if ( is_wp_error( $batch ) ) {
+                self::explanation( self::title( 'Batch is not available for this Profile.' ),
+                    $batch->get_error_message(), 'warning' );
+            } else {
+                echo '<h3>' . self::e( self::title( 'Encrypted bulk source review' ) ) . '</h3>';
+                echo '<p>' . self::e( sprintf( self::title(
+                    '%d of %d source rows currently staged; %d blockers; %d business warnings; %d duplicate IDs; %d split translation groups.' ),
+                    $batch['total_rows'], $batch['expected_chunks'] * 500,
+                    $batch['blocks'], $batch['warnings'],
+                    $batch['cross_chunk_duplicate_id_count'],
+                    $batch['cross_chunk_wpml_group_split_count'] ) ) . '</p>';
+                if ( ! $batch['ready_for_manual_batch_review'] )
+                    self::explanation( self::title( 'Not ready for approval.' ),
+                        self::title( 'All parts must be present, without blocking source issues, duplicate external IDs or split translation groups.' ),
+                        'warning' );
+                elseif ( empty( $batch['approved_for_manual_chunk_export'] ) )
+                    self::explanation( self::title( 'Awaiting explicit complete-batch approval.' ),
+                        self::title( 'Use the governed conversational approval action with the exact full-batch plan hash and warning count. This does not run WP All Import.' ),
+                        'info' );
+                else {
+                    self::explanation( self::title( 'Approved for manual CSV part downloads.' ),
+                        self::title( 'Each part is independently revalidated before download. Selecting and running a provider job remains a separate manual action.' ),
+                        'success' );
+                    foreach ( $batch['chunks'] as $chunk ) {
+                        if ( 'staged' !== $chunk['state'] ) continue;
+                        echo '<form method="post" action="' .
+                            esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                        echo '<input type="hidden" name="action" value="mad4b_activity_batch_export" />';
+                        echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+                        echo '<input type="hidden" name="batch_id" value="' . esc_attr( $batch_id ) . '" />';
+                        echo '<input type="hidden" name="chunk_index" value="' .
+                            esc_attr( $chunk['index'] ) . '" />';
+                        wp_nonce_field( 'mad4b_batch_export_' . $slug . '_' . $batch_id,
+                            'mad4b_batch_export_nonce' );
+                        submit_button( sprintf( self::title(
+                            'Download approved part %d (%d rows)' ),
+                            $chunk['index'] + 1, $chunk['row_count'] ),
+                            'secondary', 'submit', false );
+                        echo '</form>';
+                    }
+                }
+                echo '<p>' . self::e( self::title(
+                    'A reviewed batch is not a running queue. External writes, provider locking, WPML link verification and rollback require separate certified adapters.' ) ) .
+                    '</p>';
+            }
+            return;
+        }
         if ( !$view['review_pending'] ) {
             self::explanation( self::title( 'Nothing to approve.' ),
                 self::title( 'A source review must be completed first.' ), 'warning' );
