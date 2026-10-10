@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+import urllib.parse
 
 CONTRACT = "mad4b.local-ci-multi-environment.v1"
 REPO = "mad4bdigital-ai/WordPress"
@@ -229,7 +230,26 @@ def main(argv=None):
                 raise ValueError("isolated checkout failed: " + output)
             code, output = run(["git", "checkout", "--quiet", "--detach", args.expected_sha], cwd=checkout)
             if code:
-                raise ValueError("exact commit not present in local Git: " + output)
+                # V7 fetched its PR into a disposable checkout, not necessarily
+                # into the user's local repository. Fetch only into THIS clone.
+                origin_code, origin = run(["git", "remote", "get-url", "origin"], cwd=repo, timeout=10)
+                if origin_code:
+                    raise ValueError("cannot resolve trusted Git remote")
+                upstream = origin.strip()
+                if not re.fullmatch(r"(?:https://github[.]com/|git@github[.]com:)" +
+                                    r"mad4bdigital-ai/WordPress(?:[.]git)?", upstream):
+                    raise ValueError("origin does not match the allowlisted repository")
+                selected_ref = ("refs/pull/" + args.source_reference + "/head"
+                                if args.source_type == "pull_request" else
+                                "refs/heads/" + args.source_reference
+                                if args.source_type == "branch" else args.expected_sha)
+                code, output = run(["git", "fetch", "--no-tags", "--depth=1",
+                                    upstream, selected_ref], cwd=checkout, timeout=150)
+                if code:
+                    raise ValueError("cannot fetch exact candidate into isolated checkout: " + output)
+                code, output = run(["git", "checkout", "--quiet", "--detach", args.expected_sha], cwd=checkout)
+                if code:
+                    raise ValueError("fetched source differs from reviewed SHA: " + output)
             code, output = run(["git", "rev-parse", "HEAD"], cwd=checkout)
             if code or output.strip() != args.expected_sha:
                 raise ValueError("isolated commit identity mismatch")
