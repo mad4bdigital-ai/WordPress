@@ -31,6 +31,31 @@ DOCKER_IMAGES = {
 # Named gates, not the complete GitHub Actions job graph. Fail closed on coverage.
 # Test selection is exclusively the reviewed gates manifest in the exact SHA.
 # No site type or PR number is hard-coded into test enrollment.
+# Baseline gates are pinned outside the candidate-controlled manifest.
+# Extensions remain dynamic, but an altered manifest cannot silently drop or
+# rename an established gate while still reporting a fully passed target set.
+BASELINE_GATE_SPECS = (
+    ("g9-delivery", "python", "g9-delivery-contract.py", (), ("core", "extended")),
+    ("g9-source", "python", "g9-security-source-contract.py", (), ("core", "extended")),
+    ("g9-resilience", "php", "g9-resilience-gates-runtime.php", (), ("extended",)),
+    ("g9-restore", "php", "g9-resilience-state-runtime.php", (), ("extended",)),
+    ("g9-fleet", "php", "g9-fleet-rollout-runtime.php", (), ("extended",)),
+    ("selected-head-contract", "python", "selected-head-update-contract.py", (), ("core", "extended")),
+    ("selected-head-disabled", "php", "selected-head-update-runtime.php", ("disabled",), ("extended",)),
+    ("selected-head-normal", "php", "selected-head-update-runtime.php", ("normal",), ("core", "extended")),
+    ("selected-head-master", "php", "selected-head-update-runtime.php", ("master",), ("extended",)),
+    ("selected-head-missing", "php", "selected-head-update-runtime.php", ("missing",), ("extended",)),
+    ("selected-head-uncertified", "php", "selected-head-update-runtime.php", ("uncertified",), ("extended",)),
+    ("selected-head-drift", "php", "selected-head-update-runtime.php", ("drift",), ("core", "extended")),
+    ("selected-head-bad-archive", "php", "selected-head-update-runtime.php", ("bad-archive",), ("core", "extended")),
+    ("staging-selector", "php", "staging-source-selector-runtime.php", (), ("core", "extended")),
+    ("staging-upload-contract", "python", "self-update-staging-candidate-contract.py", (), ("core", "extended")),
+    ("release-channel-contract", "python", "self-update-dual-channel-contract.py", (), ("core", "extended")),
+    ("runtime-release-set", "python", "runtime-release-set-contract.py", (), ("extended",)),
+    ("imp07-source", "python", "imp07-import-source-contract.py", (), ("core", "extended")),
+    ("imp07-runtime", "php", "imp07-import-source-runtime.php", (), ("extended",)),
+    ("enrollment-dispatch", "php", "enrollment-dispatch-runtime.php", (), ("core", "extended")),
+)
 
 
 def sha256(data):
@@ -117,6 +142,7 @@ def load_manifest(checkout, profile):
         raise ValueError("local CI gate manifest contract invalid")
     ids = set()
     rows = []
+    specs = {}
     for gate in obj["gates"]:
         if not isinstance(gate, dict):
             raise ValueError("malformed CI gate")
@@ -134,8 +160,12 @@ def load_manifest(checkout, profile):
                 or not profiles):
             raise ValueError("unsafe or malformed CI gate declaration")
         ids.add(name)
+        specs[name] = (kind, filename, tuple(params), frozenset(profiles))
         if profile in profiles:
             rows.append((name, kind, filename, *params))
+    for name, kind, filename, params, profiles in BASELINE_GATE_SPECS:
+        if specs.get(name) != (kind, filename, params, frozenset(profiles)):
+            raise ValueError("required local CI baseline gate missing or changed: " + name)
     if not rows:
         raise ValueError("selected CI profile has no gates")
     return rows, sha256(raw)
