@@ -11,13 +11,87 @@ final class MAD4B_SCP_CSO_Bulk_Runtime {
 
     private static function error( $v ) { return MAD4B_SCP_CSO_Scope::error( $v ); }
 
+    private static function table( $key ) {
+        global $wpdb;
+        if ( ! is_string( $key ) || ! preg_match( '/^mad4b_cso_batch_[a-f0-9]{64}$/D', $key ) ||
+            ! is_object( $wpdb ) || ! function_exists( 'get_current_blog_id' ) ||
+            ! method_exists( $wpdb, 'get_blog_prefix' ) ||
+            ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'query' ) ||
+            ! method_exists( $wpdb, 'get_var' ) )
+            return self::error( 'BULK_JOURNAL_STORAGE_UNVERIFIED' );
+        $blog = get_current_blog_id();
+        $table = $wpdb->get_blog_prefix( $blog ) . 'options';
+        return is_int( $blog ) && $blog > 0 &&
+            preg_match( '/^[a-zA-Z0-9_]+$/D', $table ) &&
+            isset( $wpdb->options ) && $table === $wpdb->options ?
+            $table : self::error( 'BULK_JOURNAL_STORAGE_UNVERIFIED' );
+    }
+
+    private static function storage_query( $sql, $args ) {
+        global $wpdb;
+        $errors = method_exists( $wpdb, 'suppress_errors' ) ? $wpdb->suppress_errors( true ) : null;
+        try { return $wpdb->query( $wpdb->prepare( $sql, $args ) ); }
+        finally { if ( is_bool( $errors ) ) $wpdb->suppress_errors( $errors ); }
+    }
+
+    private static function cache( $key ) {
+        wp_cache_delete( $key, 'options' );
+        wp_cache_delete( 'alloptions', 'options' );
+        wp_cache_delete( 'notoptions', 'options' );
+    }
+
+    private static function raw( $key ) {
+        global $wpdb;
+        $table = self::table( $key );
+        if ( is_wp_error( $table ) ) return $table;
+        $raw = $wpdb->get_var( $wpdb->prepare(
+            "SELECT CASE WHEN OCTET_LENGTH(option_value) <= 16384 THEN option_value ELSE '' END FROM `{$table}` WHERE option_name = %s", $key ) );
+        return empty( $wpdb->last_error ) ? $raw :
+            self::error( 'BULK_JOURNAL_READBACK_UNCERTAIN' );
+    }
+
+    private static function read( $key ) {
+        $raw = self::raw( $key );
+        if ( is_wp_error( $raw ) || null === $raw ) return $raw;
+        if ( ! is_string( $raw ) || strlen( $raw ) > 16384 )
+            return self::error( 'BULK_JOURNAL_RECORD_INVALID' );
+        $record = @unserialize( $raw, array( 'allowed_classes' => false, 'max_depth' => 12 ) );
+        return is_array( $record ) &&
+            true === MAD4B_SCP_CSO_Scope::safe_data( $record ) &&
+            ( $record['contract'] ?? '' ) === self::CONTRACT . '.journal.v1' ?
+            $record : self::error( 'BULK_JOURNAL_RECORD_INVALID' );
+    }
+
+    private static function reserve( $key, $journal ) {
+        global $wpdb;
+        $table = self::table( $key );
+        if ( is_wp_error( $table ) ) return $table;
+        $raw = maybe_serialize( $journal );
+        // add_option() has an UPSERT path; it is not an insert-only lock.
+        $inserted = self::storage_query(
+            "INSERT INTO `{$table}` (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            array( $key, $raw ) );
+        self::cache( $key );
+        if ( 1 !== $inserted || ! empty( $wpdb->last_error ) )
+            return self::error( 'BULK_RACE_OR_UNKNOWN_EFFECT' );
+        $readback = self::raw( $key );
+        return is_string( $readback ) && hash_equals( $raw, $readback ) ?
+            true : self::error( 'BULK_RESERVATION_READBACK_UNCERTAIN' );
+    }
+
     private static function persist( $key, &$old, $next ) {
         global $wpdb;
-        $result = $wpdb->query( $wpdb->prepare(
-            "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
-            maybe_serialize( $next ), $key, maybe_serialize( $old ) ) );
-        wp_cache_delete( $key, 'options' );
-        if ( 1 !== (int) $result || ! empty( $wpdb->last_error ) )
+        $table = self::table( $key );
+        if ( is_wp_error( $table ) ) return $table;
+        $raw = maybe_serialize( $next );
+        $result = self::storage_query(
+            "UPDATE `{$table}` SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+            array( $raw, $key, maybe_serialize( $old ) ) );
+        self::cache( $key );
+        if ( 1 !== $result || ! empty( $wpdb->last_error ) )
+            return self::error( 'BULK_JOURNAL_COMMIT_UNCERTAIN' );
+        $readback = self::raw( $key );
+        if ( ! is_string( $readback ) || ! hash_equals( $raw, $readback ) )
             return self::error( 'BULK_JOURNAL_COMMIT_UNCERTAIN' );
         $old = $next;
         return true;
@@ -43,6 +117,7 @@ final class MAD4B_SCP_CSO_Bulk_Runtime {
             ! is_bool( $governance['canary_reviewed'] ?? null ) ||
             ! is_array( $checkpoint ) ||
             ! is_int( $limit ) || $limit < 1 || $limit > 5 ||
+            ! class_exists( 'MAD4B_SCP_CSO_Native_Executor', false ) ||
             ! class_exists( 'MAD4B_SCP_Database_Topology', false ) ||
             ! class_exists( 'MAD4B_SCP_Operational_Integrity', false ) )
             return self::error( 'BULK_RUN_INPUT_OR_AUTHORITY_INVALID' );
@@ -71,7 +146,8 @@ final class MAD4B_SCP_CSO_Bulk_Runtime {
         if ( is_wp_error( $identity ) ||
             is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $identity, true ) ) )
             return self::error( 'BULK_CURRENT_GRANT_REQUIRED' );
-        $journal = get_option( $key, null );
+        $journal = self::read( $key );
+        if ( is_wp_error( $journal ) ) return $journal;
         if ( null === $journal ) {
             if ( $checkpoint || $limit > $batch['canary_size'] )
                 return self::error( 'BULK_INITIAL_CANARY_REQUIRED' );
@@ -81,10 +157,8 @@ final class MAD4B_SCP_CSO_Bulk_Runtime {
                 'scope_sha256' => MAD4B_SCP_CSO_Scope::digest( $scope ),
                 'cursor' => 0, 'status' => 'ready',
                 'effect_ticket_sha256' => '', 'created_at' => time() );
-            if ( ! add_option( $key, $journal, '', false ) )
-                return self::error( 'BULK_RACE_OR_UNKNOWN_EFFECT' );
-            if ( get_option( $key, null ) !== $journal )
-                return self::error( 'BULK_RESERVATION_READBACK_UNCERTAIN' );
+            $reserved = self::reserve( $key, $journal );
+            if ( is_wp_error( $reserved ) ) return $reserved;
         } else {
             if ( ! is_array( $journal ) ||
                 ( $journal['contract'] ?? '' ) !== self::CONTRACT . '.journal.v1' ||

@@ -172,14 +172,91 @@ final class MAD4B_SCP_CSO_Native_Executor {
         return 'mad4b_cso_write_' . hash( 'sha256', $ticket_id . '|' . $plan_digest );
     }
 
+    private static function journal_table( $key ) {
+        global $wpdb;
+        if ( ! is_string( $key ) || ! preg_match( '/^mad4b_cso_write_[a-f0-9]{64}$/D', $key ) ||
+            ! is_object( $wpdb ) || ! function_exists( 'get_current_blog_id' ) ||
+            ! method_exists( $wpdb, 'get_blog_prefix' ) ||
+            ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'query' ) ||
+            ! method_exists( $wpdb, 'get_var' ) )
+            return self::error( 'NATIVE_JOURNAL_STORAGE_UNVERIFIED' );
+        $blog = get_current_blog_id();
+        $table = $wpdb->get_blog_prefix( $blog ) . 'options';
+        if ( ! is_int( $blog ) || $blog < 1 ||
+            ! preg_match( '/^[a-zA-Z0-9_]+$/D', $table ) ||
+            ! isset( $wpdb->options ) || $table !== $wpdb->options )
+            return self::error( 'NATIVE_JOURNAL_STORAGE_UNVERIFIED' );
+        return $table;
+    }
+
+    private static function journal_query( $sql, $args ) {
+        global $wpdb;
+        $errors = method_exists( $wpdb, 'suppress_errors' ) ? $wpdb->suppress_errors( true ) : null;
+        try { return $wpdb->query( $wpdb->prepare( $sql, $args ) ); }
+        finally { if ( is_bool( $errors ) ) $wpdb->suppress_errors( $errors ); }
+    }
+
+    private static function journal_cache( $key ) {
+        wp_cache_delete( $key, 'options' );
+        wp_cache_delete( 'alloptions', 'options' );
+        wp_cache_delete( 'notoptions', 'options' );
+    }
+
+    private static function journal_raw( $key ) {
+        global $wpdb;
+        $table = self::journal_table( $key );
+        if ( is_wp_error( $table ) ) return $table;
+        $raw = $wpdb->get_var( $wpdb->prepare(
+            "SELECT CASE WHEN OCTET_LENGTH(option_value) <= 16384 THEN option_value ELSE '' END FROM `{$table}` WHERE option_name = %s", $key ) );
+        return empty( $wpdb->last_error ) ? $raw :
+            self::error( 'NATIVE_JOURNAL_READBACK_UNCERTAIN' );
+    }
+
+    private static function journal_read( $key ) {
+        $raw = self::journal_raw( $key );
+        if ( is_wp_error( $raw ) || null === $raw ) return $raw;
+        if ( ! is_string( $raw ) || strlen( $raw ) > 16384 )
+            return self::error( 'NATIVE_JOURNAL_RECORD_INVALID' );
+        // Never invoke an object wakeup from a private persistence row.
+        $record = @unserialize( $raw, array( 'allowed_classes' => false, 'max_depth' => 12 ) );
+        return is_array( $record ) &&
+            true === MAD4B_SCP_CSO_Scope::safe_data( $record ) &&
+            ( $record['contract'] ?? '' ) === self::CONTRACT . '.journal.v1' ?
+            $record : self::error( 'NATIVE_JOURNAL_RECORD_INVALID' );
+    }
+
+    private static function journal_insert( $key, $journal ) {
+        global $wpdb;
+        $table = self::journal_table( $key );
+        if ( is_wp_error( $table ) ) return $table;
+        $raw = maybe_serialize( $journal );
+        // WordPress add_option() can UPSERT after a stale existence check.
+        // An INSERT ONLY duplicate must leave the first reservation intact.
+        $inserted = self::journal_query(
+            "INSERT INTO `{$table}` (option_name, option_value, autoload) VALUES (%s, %s, 'no')",
+            array( $key, $raw ) );
+        self::journal_cache( $key );
+        if ( 1 !== $inserted || ! empty( $wpdb->last_error ) )
+            return self::error( 'NATIVE_REPLAY_OR_UNKNOWN_EFFECT' );
+        $readback = self::journal_raw( $key );
+        return is_string( $readback ) && hash_equals( $raw, $readback ) ?
+            true : self::error( 'NATIVE_JOURNAL_READBACK_UNCERTAIN' );
+    }
+
     private static function journal_cas( $key, $previous, $next ) {
         global $wpdb;
+        $table = self::journal_table( $key );
+        if ( is_wp_error( $table ) ) return $table;
         $prev = maybe_serialize( $previous );
-        $updated = $wpdb->query( $wpdb->prepare(
-            "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
-            maybe_serialize( $next ), $key, $prev ) );
-        wp_cache_delete( $key, 'options' );
-        return 1 === (int) $updated && empty( $wpdb->last_error ) ?
+        $raw = maybe_serialize( $next );
+        $updated = self::journal_query(
+            "UPDATE `{$table}` SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+            array( $raw, $key, $prev ) );
+        self::journal_cache( $key );
+        if ( 1 !== $updated || ! empty( $wpdb->last_error ) )
+            return self::error( 'NATIVE_JOURNAL_PERSISTENCE_UNCERTAIN' );
+        $readback = self::journal_raw( $key );
+        return is_string( $readback ) && hash_equals( $raw, $readback ) ?
             true : self::error( 'NATIVE_JOURNAL_PERSISTENCE_UNCERTAIN' );
     }
 
@@ -246,12 +323,8 @@ final class MAD4B_SCP_CSO_Native_Executor {
             'state' => 'reserved', 'reason_code' => '',
             'created_at' => time(), 'updated_at' => time() );
         $key = self::journal_key( $ticket_id, $payload['plan_sha256'] );
-        // Atomic unique key prevents concurrent replay even before ticket claim.
-        if ( ! add_option( $key, $journal, '', false ) )
-            return self::error( 'NATIVE_REPLAY_OR_UNKNOWN_EFFECT' );
-        $readback = get_option( $key, null );
-        if ( $readback !== $journal )
-            return self::error( 'NATIVE_JOURNAL_READBACK_UNCERTAIN' );
+        $reserved = self::journal_insert( $key, $journal );
+        if ( is_wp_error( $reserved ) ) return $reserved;
         $claimed = MAD4B_SCP_Approval_Tickets::claim_exact(
             $ticket_id, $agent, $binding['server'], $binding['ability'],
             $binding['provider'], $binding['target_fingerprint'],
@@ -332,7 +405,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
             return self::error( 'NATIVE_STATUS_SCOPE_INVALID' );
         $plan_sha = MAD4B_SCP_CSO_Scope::digest( $material );
         $key = self::journal_key( $ticket_id, $plan_sha );
-        $record = get_option( $key, null );
+        $record = self::journal_read( $key );
         if ( ! is_array( $record ) ||
             ( $record['contract'] ?? '' ) !== self::CONTRACT . '.journal.v1' ||
             ! hash_equals( (string) ( $record['scope_sha256'] ?? '' ),
@@ -542,7 +615,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
                 (string) $expected_hash ) )
             return self::error( 'NATIVE_RECONCILE_ORIGINAL_TICKET_MISMATCH' );
         $key = self::journal_key( $original_id, $payload['plan_sha256'] );
-        $journal = get_option( $key, null );
+        $journal = self::journal_read( $key );
         if ( ! is_array( $journal ) || ! in_array( $journal['state'] ?? '',
             array( 'reserved', 'inflight', 'needs_reconcile', 'reconciling' ), true ) )
             return self::error( 'NATIVE_RECONCILE_JOURNAL_NOT_OPEN' );

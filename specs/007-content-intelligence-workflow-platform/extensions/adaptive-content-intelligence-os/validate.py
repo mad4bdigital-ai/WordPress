@@ -127,12 +127,18 @@ def validate(root=ROOT):
     scenarios = cases.get('use_cases', [])
     scenario_ids = [x.get('id') for x in scenarios if isinstance(x, dict)]
     allowed_states = set(policy.get('plan_states', []))
-    if (cases.get('contract') != 'mad4b.aci-os.use-case-acceptance.v1'
+    if (cases.get('contract') != 'mad4b.aci-os.use-case-acceptance.v2'
+            or cases.get('status') != 'SPEC_BACKLOG_ONLY'
             or cases.get('authorizing') is not False
             or len(scenarios) < 25 or len(scenario_ids) != len(scenarios)
             or len(set(scenario_ids)) != len(scenario_ids)
             or any(x.get('recipe_id') not in recipe_ids or x.get('expected_state') not in allowed_states
                    or x.get('authorizing') is not False
+                   or x.get('execution_state') != 'NOT_RUN'
+                   or x.get('trust_source') != 'SYNTHETIC_NOT_CERTIFIED'
+                   or x.get('test_level') != 'PURE_FIXTURE'
+                   or x.get('evidence_level') != 'TEST_FIXTURE_NOT_LIVE'
+                   or x.get('effect_class') != 'NONE_SPEC_SIMULATION'
                    or not x.get('negative_case') for x in scenarios)):
         faults.append('use_case_coverage_invalid')
     req_ids = manifest.get('requirement_ids')

@@ -84,6 +84,10 @@ fails(lambda: m.check_contracts(scenario), "ledger_uncontrolled_write")
 
 scenario = deepcopy(bundle)
 scenario["release"]["profiles"][3]["required_gates"].append("ACI-G9")
+fails(lambda: m.check_contracts(scenario), "premature_growth_dependency")
+
+scenario = deepcopy(bundle)
+scenario["release"]["growth_not_needed_to_certify_first_publish"] = False
 fails(lambda: m.check_contracts(scenario), "growth_cycle_as_release_dependency")
 
 scenario = deepcopy(bundle)

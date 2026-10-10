@@ -35,9 +35,31 @@ with TemporaryDirectory() as temp:
     mutate_manifest(lambda d: d['task_ids'].append('ACI-T9999'), 'task_inventory_invalid')
     mutate_manifest(lambda d: d['requirement_ids'].pop(), 'requirements_inventory_invalid')
     mutate_manifest(lambda d: d['gate_ids'].pop(), 'gate_inventory_invalid')
+    # v2 adds explicit fixture trust and execution state. Accepting the current
+    # version must never turn a design scenario into an acceptance receipt.
+    cases_path = root / 'use-cases.json'
+    cases_source = cases_path.read_text(encoding='utf-8')
+    def mutate_cases(fn):
+        data = json.loads(cases_source)
+        fn(data)
+        cases_path.write_text(json.dumps(data), encoding='utf-8')
+        assert 'use_case_coverage_invalid' in m.validate(root), m.validate(root)
+        cases_path.write_text(cases_source, encoding='utf-8')
+    mutate_cases(lambda d: d.update(contract='mad4b.aci-os.use-case-acceptance.v1'))
+    mutate_cases(lambda d: d.update(contract='mad4b.aci-os.use-case-acceptance.v99'))
+    mutate_cases(lambda d: d.update(status='ACCEPTED'))
+    mutate_cases(lambda d: d['use_cases'][0].update(authorizing=True))
+    mutate_cases(lambda d: d['use_cases'][0].update(execution_state='PASS'))
+    mutate_cases(lambda d: d['use_cases'][0].update(trust_source='LIVE_CERTIFIED'))
+    mutate_cases(lambda d: d['use_cases'][0].update(test_level='LIVE'))
+    mutate_cases(lambda d: d['use_cases'][0].update(evidence_level='LIVE_ACCEPTED'))
+    mutate_cases(lambda d: d['use_cases'][0].update(effect_class='WORDPRESS_MUTATION'))
     source = (root / 'tasks.md').read_text(encoding='utf-8')
     (root / 'tasks.md').write_text(source.replace('[OPEN]', '[DONE]', 1), encoding='utf-8')
-    assert 'task_status_or_count_invalid' in m.validate(root)
+    task_faults = m.validate(root)
+    assert any(error == 'task_status_or_count_invalid'
+               or error.startswith('task_status_or_count_invalid:')
+               for error in task_faults), task_faults
     (root / 'tasks.md').write_text(source, encoding='utf-8')
     req = json.loads((root / 'requirements.json').read_text(encoding='utf-8'))
     req['requirements'][0]['state'] = 'DONE'

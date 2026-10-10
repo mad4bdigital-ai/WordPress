@@ -5,27 +5,56 @@ class WP_Error {private $code;public function __construct($c,$m='',$d=null){$thi
 function is_wp_error($x){return $x instanceof WP_Error;}
 function maybe_serialize($x){return serialize($x);}
 function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
-function get_option($key,$default=null){return $GLOBALS['dbrows'][$key]??$default;}
-function add_option($key,$value,$unused='',$autoload=false){
- if(array_key_exists($key,$GLOBALS['dbrows']))return false;
- $GLOBALS['dbrows'][$key]=$value;return true;
+function get_current_blog_id(){return $GLOBALS['blog_id']??1;}
+function get_option($key,$default=null){
+ $GLOBALS['option_reads']=($GLOBALS['option_reads']??0)+1;
+ if(array_key_exists('option_override',$GLOBALS))return $GLOBALS['option_override'];
+ return isset($GLOBALS['dbrows'][$key])?unserialize($GLOBALS['dbrows'][$key],array('allowed_classes'=>false)):$default;
 }
-function wp_cache_delete($key,$group){return true;}
+function add_option($key,$value,$unused='',$autoload=false){
+ // Faithful WordPress stale-precheck UPSERT path: this can replace a winner.
+ $GLOBALS['option_adds']=($GLOBALS['option_adds']??0)+1;
+ $GLOBALS['dbrows'][$key]=serialize($value);return true;
+}
+function wp_cache_delete($key,$group){$GLOBALS['cache_deletes'][]=array($key,$group);return true;}
 class FakeDB {
  public $options='wp_options';public $last_error='';
- public function prepare($sql,...$args){return array($sql,$args);}
+ public function get_blog_prefix($blog){return $blog===1?'wp_':'wp_'.$blog.'_';}
+ public function prepare($sql,...$args){if(count($args)===1&&is_array($args[0]))$args=$args[0];return array($sql,$args);}
+ public function get_var($packed){
+  $this->last_error='';$key=$packed[1][0];$raw=$GLOBALS['dbrows'][$key]??null;
+  return is_string($raw)&&strlen($raw)>16384?'':$raw;
+ }
  public function query($packed){
   if(!is_array($packed))throw new RuntimeException('bad SQL');
-  list($sql,$args)=$packed;
+  list($sql,$args)=$packed;$this->last_error='';
+  if(strpos($sql,'INSERT INTO ')===0){
+   ck(strpos($sql,'ON DUPLICATE')===false&&strpos($sql,'IGNORE')===false,'INSERT ONLY SQL');
+   list($key,$raw)=$args;
+   if(!empty($GLOBALS['inject_race_winner'])){
+    unset($GLOBALS['inject_race_winner']);$winner=unserialize($raw);
+    $winner['state']='needs_reconcile';$winner['reason_code']='RACE_WINNER';
+    $GLOBALS['dbrows'][$key]=serialize($winner);
+    $GLOBALS['race_key']=$key;$GLOBALS['race_raw']=$GLOBALS['dbrows'][$key];
+   }
+   if(isset($GLOBALS['dbrows'][$key])){$this->last_error='duplicate key';return false;}
+   $GLOBALS['dbrows'][$key]=$raw;
+   if(!empty($GLOBALS['insert_ack_lost'])){unset($GLOBALS['insert_ack_lost']);$this->last_error='lost insert acknowledgment';return false;}
+   return 1;
+  }
   if(strpos($sql,'UPDATE ')!==0)throw new RuntimeException('unexpected SQL');
   list($next,$key,$old)=$args;
-  if(!isset($GLOBALS['dbrows'][$key])||serialize($GLOBALS['dbrows'][$key])!==$old)return 0;
+  if(!isset($GLOBALS['dbrows'][$key])||$GLOBALS['dbrows'][$key]!==$old)return 0;
   $next_row=unserialize($next);
   if(!empty($GLOBALS['fail_terminal_cas_once'])&&
    ($next_row['state']??'')==='reconciled_applied'){
    unset($GLOBALS['fail_terminal_cas_once']);return 0;
   }
-  $GLOBALS['dbrows'][$key]=$next_row;return 1;
+  $GLOBALS['dbrows'][$key]=$next;
+  if(!empty($GLOBALS['inflight_ack_lost'])&&($next_row['state']??'')==='inflight'){
+   unset($GLOBALS['inflight_ack_lost']);$this->last_error='lost CAS acknowledgment';return false;
+  }
+  return 1;
  }
 }
 $GLOBALS['wpdb']=new FakeDB();$GLOBALS['dbrows']=array();
@@ -40,7 +69,10 @@ class MAD4B_SCP_CSO_Scope {
  static function first_party_session(){return $GLOBALS['session'];}
  static function current(){return $GLOBALS['scope'];}
  static function assert_current($s){return $s===$GLOBALS['scope']?true:self::error('DRIFT');}
- static function safe_data($v){return is_array($v)&&!isset($v['api_key']);}
+ static function safe_data($v){
+  if(is_array($v)){foreach($v as $k=>$x){if($k==='api_key'||!self::safe_data($x))return false;}return true;}
+  return is_scalar($v)||$v===null;
+ }
  static function digest($x){return hash('sha256',json_encode($x));}
  static function error($code){return new WP_Error($code);}
  static function seal($m,$c){return array('material'=>$m,'proof'=>hash_hmac('sha256',$c.json_encode($m),'testkey'));}
@@ -313,6 +345,61 @@ $final5=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
 ck(!is_wp_error($final5)&&$GLOBALS['ticket'][$id5]==='failed'&&
  $final5['status']==='reconciled_absent','executing ticket closed failed without replay');
 ck($GLOBALS['executions']===3,'all reconciliation paths perform zero extra writes');
+
+// A second admission arriving after a stale existence check must not replace
+// the winner's durable journal or claim/execute its own native ticket.
+$m['expected_revision']=$GLOBALS['revision'];$m['values']['title']='Race admission';
+$race=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$race_plan=MAD4B_SCP_CSO_Native_Executor::approval_plan($race,'review concurrent admission','agent-demo');
+$race_id=$race_plan['ticket_id'];$GLOBALS['ticket'][$race_id]='approved';
+$GLOBALS['inject_race_winner']=true;
+$before_effects=$GLOBALS['executions'];
+$denied=MAD4B_SCP_CSO_Native_Executor::commit($race,array('ticket_id'=>$race_id,'agent_public_id'=>'agent-demo'));
+ck(is_wp_error($denied)&&$GLOBALS['executions']===$before_effects&&$GLOBALS['ticket'][$race_id]==='approved',
+ 'duplicate insertion denies before claim/native effect');
+ck($GLOBALS['dbrows'][$GLOBALS['race_key']]===$GLOBALS['race_raw'],'race winner bytes never overwritten');
+$GLOBALS['option_override']=array('state'=>'verified');
+$raw_status=MAD4B_SCP_CSO_Native_Executor::status($race,$race_id);
+ck(!is_wp_error($raw_status)&&$raw_status['status']==='needs_reconcile','status bypasses forged Option API/cache');
+unset($GLOBALS['option_override']);
+$denied_again=MAD4B_SCP_CSO_Native_Executor::commit($race,array('ticket_id'=>$race_id,'agent_public_id'=>'agent-demo'));
+ck(is_wp_error($denied_again)&&$GLOBALS['dbrows'][$GLOBALS['race_key']]===$GLOBALS['race_raw'],
+ 'repeated admission preserves unknown winner');
+$GLOBALS['wpdb']->options='wp_2_options';
+$foreign=MAD4B_SCP_CSO_Native_Executor::commit($race,array('ticket_id'=>$race_id,'agent_public_id'=>'agent-demo'));
+ck(is_wp_error($foreign)&&$GLOBALS['executions']===$before_effects,'current blog table mismatch denied');
+$GLOBALS['wpdb']->options='wp_options';
+$m['values']['title']='Reservation ACK lost';
+$ack=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$ack_plan=MAD4B_SCP_CSO_Native_Executor::approval_plan($ack,'review lost insert ack','agent-demo');
+$ack_id=$ack_plan['ticket_id'];$GLOBALS['ticket'][$ack_id]='approved';$GLOBALS['insert_ack_lost']=true;
+$ack_error=MAD4B_SCP_CSO_Native_Executor::commit($ack,array('ticket_id'=>$ack_id,'agent_public_id'=>'agent-demo'));
+$ack_state=MAD4B_SCP_CSO_Native_Executor::status($ack,$ack_id);
+ck(is_wp_error($ack_error)&&!is_wp_error($ack_state)&&$ack_state['status']==='reserved'&&
+ $GLOBALS['ticket'][$ack_id]==='approved'&&$GLOBALS['executions']===$before_effects,
+ 'committed reservation with lost ACK remains owner-visible and nonexecuted');
+$m['values']['title']='Inflight CAS ACK lost';
+$inflight=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$inflight_plan=MAD4B_SCP_CSO_Native_Executor::approval_plan($inflight,'review lost journal ack','agent-demo');
+$inflight_id=$inflight_plan['ticket_id'];$GLOBALS['ticket'][$inflight_id]='approved';$GLOBALS['inflight_ack_lost']=true;
+$inflight_error=MAD4B_SCP_CSO_Native_Executor::commit($inflight,array('ticket_id'=>$inflight_id,'agent_public_id'=>'agent-demo'));
+$inflight_state=MAD4B_SCP_CSO_Native_Executor::status($inflight,$inflight_id);
+ck(is_wp_error($inflight_error)&&!is_wp_error($inflight_state)&&$inflight_state['status']==='inflight'&&
+ $GLOBALS['ticket'][$inflight_id]==='executing'&&$GLOBALS['executions']===$before_effects,
+ 'lost inflight ACK preserves claimed ticket and durable uncertainty');
+class JournalWakeup {function __wakeup(){$GLOBALS['journal_woke']=true;}}
+$key=$GLOBALS['race_key'];$original=$GLOBALS['dbrows'][$key];
+$corrupt=unserialize($original);$corrupt['extra']=new JournalWakeup();
+$GLOBALS['dbrows'][$key]=serialize($corrupt);
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::status($race,$race_id))&&empty($GLOBALS['journal_woke']),
+ 'journal object deserialization denied without wakeup');
+$GLOBALS['dbrows'][$key]=str_repeat('x',16385);
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::status($race,$race_id)),'oversize raw journal denied');
+$GLOBALS['dbrows'][$key]=$original;
+ck(empty($GLOBALS['option_adds']),'native reservation never calls upserting add_option');
+ck(in_array(array('notoptions','options'),$GLOBALS['cache_deletes'],true)&&
+ in_array(array('alloptions','options'),$GLOBALS['cache_deletes'],true),'all WordPress option caches invalidated');
+
 $GLOBALS['policy']=false;
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::approval_plan($second,'again','agent-demo')),'revoked policy');
 echo "PASS CSO native exact ticket / journal / permit / uncertain effect / replay\n";

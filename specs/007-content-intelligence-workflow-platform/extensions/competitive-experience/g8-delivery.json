@@ -115,13 +115,13 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
-      "sha256": "3628f102282e1bb6f41d29a535912822f1f5c5a231a4ca5b297b1f24a57d4ebc",
-      "bytes": 111473
+      "sha256": "380b916c7f5b1e242a3d8e1b4193447368038d18316a90612bcd9310e1257884",
+      "bytes": 114143
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "6ac40e70a981579d8375689bae62db78c8c85ed41f80cfd5698b2841ae86e754",
-      "bytes": 17344
+      "sha256": "9b205909fbcd47780d5c614400e62be8753ac07d21060afd978e34318bd40d49",
+      "bytes": 23479
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-restore-convergence.php",
@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "5e8ac0422a08d113b6c7afd14b183ba408df02b854b950ecefafac0c3a4c7474",
-      "bytes": 43062
+      "sha256": "2a2a8c7aa4b5cbe99b5470367bfc92c8460468497a0dadc72acb070f86baacd7",
+      "bytes": 45148
     }
   ],
   "test_paths": [
@@ -177,8 +177,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php",
-      "sha256": "16defe1f0526f19def74c22179ad2e9b1d17fa54cdcbc2825dfaf7bc65f48f84",
-      "bytes": 10179
+      "sha256": "6d873a92f719d3185e04acc4b70e4cf470edee3593a4f3786190c7ef7af17c53",
+      "bytes": 23090
     }
   ],
   "spec_paths": [
@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "fe315ef7283b0a932bf66a0b9429804a0c818a5f696509769f2489a7606402cb",
-      "bytes": 41654
+      "sha256": "f4741d9d03129468e7e65765876ae6d9da60d100c8f288948b341a23898afe72",
+      "bytes": 42142
     }
   ],
   "repository_foundations": [
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",

@@ -180,16 +180,21 @@ rules = read('disposition-rules.json')
 case_model = deepcopy(model)
 case_model['disposition_rules'] = rules
 for state_expected, finding in [
-    ('NEEDS_REVIEW', 'existing_editor_modified_copy'),
-    ('QUARANTINED', 'SERP_source_injection'),
+    ('NEEDS_REVIEW', 'edit_conflict'),
+    ('QUARANTINED', 'poisoned_scrape'),
     ('DENIED', 'unapproved_cross_site_identity'),
 ]:
+    # Scenario labels are not finding identifiers. Use the versioned rule
+    # codes also declared by use-cases.json; unknown labels must quarantine.
+    declared_rule = next(row for row in rules['rules'] if row['code'] == finding)
+    check(declared_rule['state'] == state_expected, 'declared_rule_' + finding)
     result = m.compile_candidate(
         {'task_ids':['ACI-T0001']}, scope,
         {'capabilities':{'spec_integrity':{'certified':True,'runtime_generation':'f'*64}},
          'completed_tasks':[], 'certified_gates':['ACI-G0'], 'observed_findings':[finding]},
         case_model, policy)
     check(result['status'] == state_expected, 'restrictive_disposition_' + state_expected)
+    check(result['operational_disposition'] == state_expected, 'classified_' + finding)
     check(result['trusted_authority_verified'] is False and
           result['mutation_performed'] is False, 'never_trusted_' + state_expected)
 
@@ -199,5 +204,17 @@ unknown = m.compile_candidate(
      'completed_tasks':[], 'certified_gates':['ACI-G0'],
      'observed_findings':['UNRECOGNIZED_EXTERNAL_EFFECT']}, case_model, policy)
 check(unknown['status'] == 'QUARANTINED', 'unknown issue never silently accepted')
+
+no_promotion = m.compile_candidate(
+    {'task_ids':['ACI-T0001']}, scope,
+    {'capabilities':{}, 'completed_tasks':[], 'certified_gates':[],
+     'observed_findings':['NO_FINDING']}, case_model, policy)
+check(no_promotion['status'] == 'NEEDS_EVIDENCE'
+      and 'capability_not_certified' in no_promotion['reason_codes'],
+      'clean incident disposition cannot invent missing capability evidence')
+check(no_promotion['trusted_authority_verified'] is False
+      and no_promotion['authorizing'] is False
+      and no_promotion['mutation_performed'] is False,
+      'clean disposition never grants acceptance or authority')
 
 print('mad4b.aci-os.dynamic-core.tests.v1: PASS', checks)

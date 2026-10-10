@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.feature007-task-ledger.v1",
-  "source_tasks_git_blob_sha": "e5daa9148f07504821f3319413648510bd465f77",
+  "source_tasks_git_blob_sha": "b297c930cccb85ce46bbb047ad76dcabb193aa7c",
   "override_git_blob_sha": "b653e4f7afadff3364e67c26436ede00be10f303",
   "classification_policy": {
     "default_unchecked": "OPEN",
