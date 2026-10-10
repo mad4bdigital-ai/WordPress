@@ -49,6 +49,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'include_remediation' => array( 'type' => 'boolean' ),
    'include_plugin_updates' => array( 'type' => 'boolean' ),
    'include_admin_operation_profiles' => array( 'type' => 'boolean' ),
+   'include_admin_surface_coverage' => array( 'type' => 'boolean' ),
    'operation_filter' => array( 'type' => 'string', 'maxLength' => 100 ),
   ) );
  }
@@ -87,7 +88,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'host_runner_required' => false, 'production_allowed' => false );
  }
  public static function discover( $input = array() ) {
-  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter', 'include_plugin_updates', 'include_admin_operation_profiles' ) ) )
+  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter', 'include_plugin_updates', 'include_admin_operation_profiles', 'include_admin_surface_coverage' ) ) )
    return new WP_Error( 'mad4b_manual_discovery_input_invalid', 'Only bounded discovery filters supported.' );
   $filter = (string) ( $input['operation_filter'] ?? '' );
   if ( strlen( $filter ) > 100 || ( '' !== $filter && ! preg_match( '/^[A-Za-z0-9._-]+$/D', $filter ) ) )
@@ -165,6 +166,17 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    $admin_workflow_profiles = is_array( $snapshot ) ? $snapshot :
     array( 'state' => 'unavailable', 'operations' => array() );
   }
+  $admin_surface_coverage = array(
+   'state' => 'not_requested',
+   'inventory_ability' => 'mad4b/admin-surface-coverage',
+   'blueprint_ability' => 'mad4b/admin-adapter-blueprint'
+  );
+  if ( ! empty( $input['include_admin_surface_coverage'] ) &&
+   class_exists( 'MAD4B_SCP_Admin_Surface_Coverage' ) ) {
+   $coverage = MAD4B_SCP_Admin_Surface_Coverage::inventory();
+   $admin_surface_coverage = is_array( $coverage ) ? $coverage :
+    array( 'state' => 'unavailable', 'inventory_ability' => 'mad4b/admin-surface-coverage' );
+  }
   $remediation = array( 'state' => 'not_requested', 'work_items' => array() );
   if ( ! empty( $input['include_remediation'] ) && class_exists( 'MAD4B_SCP_Operational_Remediation' ) ) {
    $r = MAD4B_SCP_Operational_Remediation::status( array( 'include_live_acceptance' => false ) );
@@ -181,6 +193,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'admin_routes_detected' => $manual_routes, 'admin_route_count' => count( $manual_routes ),
    'remediation' => $remediation, 'plugin_update_routes' => $plugin_update_routes,
    'admin_workflow_profiles' => $admin_workflow_profiles,
+   'admin_surface_coverage' => $admin_surface_coverage,
    'unregistered_manual_actions_auto_executable' => false, 'unknown_executor_policy' => 'deny_and_propose_adapter',
    'read_only' => true, 'authorizing' => false, 'mutation_performed' => false );
  }
