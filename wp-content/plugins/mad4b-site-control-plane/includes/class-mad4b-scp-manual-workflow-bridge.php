@@ -21,7 +21,8 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
   if ( ! class_exists( 'MAD4B_SCP_Admin_Operation_Profiles', false ) )
    require_once __DIR__ . '/class-mad4b-scp-admin-operation-profiles.php';
   MAD4B_SCP_Admin_Operation_Profiles::boot();
-  // Standalone builds run only on a trusted external runner. MCP is read-only.
+  // ZIP creation remains external. MCP discovery/plan are read-only;
+  // bounded queue requests require separate owner Staging authorization.
   if ( ! class_exists( 'MAD4B_SCP_Standalone_Build_Control', false ) )
    require_once __DIR__ . '/class-mad4b-scp-standalone-build-control.php';
   MAD4B_SCP_Standalone_Build_Control::boot();
