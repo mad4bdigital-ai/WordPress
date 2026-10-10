@@ -139,6 +139,14 @@ They **cannot** change the source owner, invent a new executor, add grants,
 relax a native security gate, reinterpret a failed CI check as PASS or
 read the plaintext of a protected secret.
 
+A stored profile is **sealed to the semantic operation ABI**, including
+registered planner/executor names, source-owned risk classification and
+capability descriptor bindings. Changing the original provider ABI invalidates
+that profile and requires fresh owner-approved enrollment; a legacy unsealed
+profile is not silently migrated to executable trust. `manual_only` does not
+produce an MCP execution handoff. The existing original WordPress Ability
+input validator is still applied to final variable values on every resolve.
+
 ### Testable acceptance categories
 
 1. **Identity:** same site UUID, origin, WP environment, runtime HEAD,
