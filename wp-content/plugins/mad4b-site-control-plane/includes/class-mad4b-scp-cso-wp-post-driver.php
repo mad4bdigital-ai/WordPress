@@ -110,6 +110,11 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
             MAD4B_SCP_CSO_Scope::enabled( 'single_write' ) &&
             MAD4B_SCP_CSO_Scope::first_party_session() &&
             is_array( $input ) && ( $input['provider_id'] ?? '' ) === self::PROVIDER &&
+            // Recheck physical WP environment at effect, not just enrolled profile.
+            function_exists( 'wp_get_environment_type' ) &&
+            is_string( $scope['environment'] ?? null ) &&
+            in_array( $scope['environment'], array( 'local','development','staging' ), true ) &&
+            hash_equals( $scope['environment'], (string) wp_get_environment_type() ) &&
             self::allowed( $input['target'] ?? null, $scope, true ) &&
             class_exists( 'MAD4B_SCP_CSO_Native_Executor', false ) &&
             MAD4B_SCP_CSO_Native_Executor::native_permit_matches( $input );
