@@ -107,7 +107,23 @@ ck( !is_wp_error( $collision ) &&
     $collision['cross_chunk_duplicate_id_count'] >= 2 &&
     !$collision['ready_for_manual_batch_review'],
     'Cross-chunk stable source IDs collided without rejection.' );
+// Simulate a crash just after the manifest disappeared but before the
+// Profile's active slot was released. Only the exact immutable tombstone
+// may authorize bounded cleanup recovery.
+$site_id = MAD4B_SCP_Site_Profile::site_uuid();
+$manifest_base = hash( 'sha256', $site_id . '|pricing' );
+$manifest_key = 'mad4b_batch_manifest_' . hash( 'sha256',
+    $manifest_base . '|' . $b2['batch_id'] );
+$tombstone = 'mad4b_batch_archive_' . hash( 'sha256',
+    $site_id . '|pricing|' . $b2['batch_id'] );
+add_option( $tombstone, array(
+    'batch_id_sha256' => hash( 'sha256', $b2['batch_id'] ),
+    'expected_chunks' => 2, 'manifest_sha256' => str_repeat( 'a', 64 )
+), '', false );
+delete_option( $manifest_key );
 $closed = MAD4B_SCP_Activity_Import_Batches::archive(
     array_merge( $base2, array( 'confirmed' => true ) ) );
-ck( !is_wp_error( $closed ), 'Failed to archive collision test batch.' );
+ck( !is_wp_error( $closed ) &&
+    $closed['state'] === 'archived_after_interrupted_cleanup',
+    'Interrupted archive could not recover exact tombstoned batch.' );
 echo "PASS IMP08 encrypted bounded chunk intake, replay denial, exact complete plan, manual approval, archival and cross-chunk identity collision (ISOLATED PHP)\n";
