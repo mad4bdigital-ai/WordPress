@@ -70,10 +70,10 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
         $snapshot = $this->read( $target, $scope );
         if ( is_wp_error( $snapshot ) ) return $snapshot;
         $fields = array(
-            array( 'key'=>'title', 'type'=>'string', 'required'=>true,
-                'max_length'=>200, 'min_length'=>1 ),
+            array( 'key'=>'title', 'type'=>'string', 'required'=>false,
+                'max_length'=>200, 'min_length'=>1, 'enum'=>null, 'minimum'=>null, 'maximum'=>null ),
             array( 'key'=>'excerpt', 'type'=>'string', 'required'=>false,
-                'max_length'=>500, 'min_length'=>0 ),
+                'max_length'=>500, 'min_length'=>0, 'enum'=>null, 'minimum'=>null, 'maximum'=>null ),
         );
         return array( 'provider_id'=>self::PROVIDER, 'target'=>$target,
             'fields'=>$fields, 'native_read_ability'=>self::READ,
