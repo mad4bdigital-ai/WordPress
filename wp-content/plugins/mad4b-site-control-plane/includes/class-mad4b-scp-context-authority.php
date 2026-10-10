@@ -458,6 +458,17 @@ final class MAD4B_SCP_Context_Authority {
 	public static function legacy_owner_transfer_apply( $input ) {
 		if ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) || true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required', 'Legacy ownership writes remain disabled until independent rollback and Host acceptance are certified.' );
+		// An operator-set flag is not proof of the current physical Host.
+		// Verify the nonce-bound existing enrolled Host Runner independently
+		// for THIS mutation, with no alternate key or source of authority.
+		if ( ! class_exists( 'MAD4B_SCP_Host_Identity_Live' ) ||
+			! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_host_proof_unavailable',
+				'The enrolled Host identity verifier is unavailable.' );
+		$host_identity = MAD4B_SCP_Host_Identity_Live::observe( MAD4B_SCP_Site_Profile::status() );
+		if ( ! is_array( $host_identity ) || empty( $host_identity['verified'] ) )
+			return new WP_Error( 'mad4b_legacy_transfer_host_proof_required',
+				'A fresh independently verified enrolled Host Runner proof is required, in addition to rollback certification.' );
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_legacy_transfer_input_invalid', 'Exact transfer input required.' );
 		if ( 'APPROVE EXACT UNBOUND BRAND TRANSFER' !== (string) ( $input['confirmation'] ?? '' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_owner_confirmation_required', 'The exact owner transfer confirmation was not given.' );
