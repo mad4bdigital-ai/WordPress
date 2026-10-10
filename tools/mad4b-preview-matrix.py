@@ -67,19 +67,45 @@ def checked_auth_state(path, base):
             raise ValueError("CROSS_SITE_LOCAL_STORAGE")
 
 
+def compare_dataset_identity(rows):
+    """Advisory parity, never an authorizing or green release verdict."""
+    paths = sorted(set(row.get("path") for row in rows if row.get("mode") in ("browser", "customizer")))
+    results = []
+    for path in paths:
+        browser = [r for r in rows if r.get("mode") == "browser" and r.get("path") == path]
+        customizer = [r for r in rows if r.get("mode") == "customizer" and r.get("path") == path]
+        real = [r.get("listing_identity_digest") for r in browser
+                if not r.get("observation_error") and r.get("listing_identity_digest")]
+        previews = [r.get("listing_identity_digest") for r in customizer
+                    if not r.get("observation_error") and r.get("listing_identity_digest")]
+        results.append({
+            "path": path,
+            "browser_samples_comparable": len(real) >= 2,
+            "browser_dataset_consistent": len(set(real)) == 1 if len(real) >= 2 else None,
+            "customizer_vs_browser": ("match" if set(real) == set(previews)
+                                      else "drift_advisory") if real and previews
+                                      else "not_comparable",
+            "release_authorizing": False,
+        })
+    return results
+
+
 def report_summary(rows):
     groups = {mode: [row for row in rows if row["mode"] == mode] for mode in MODES}
     return {
         "observed_by_mode": {key: len(value) for key, value in groups.items()},
         "browser_http_200": bool(groups["browser"]) and all(
-            row.get("http_status") == 200 for row in groups["browser"]),
+            row.get("http_status") == 200 and not row.get("observation_error") for row in groups["browser"]),
         "customizer_iframe_same_origin": bool(groups["customizer"]) and all(
-            row.get("iframe_same_origin") is True for row in groups["customizer"]),
+            row.get("iframe_same_origin") is True and not row.get("observation_error") for row in groups["customizer"]),
         "native_cli_observed": bool(groups["native"]) and all(
             row.get("native_state") == "observed" for row in groups["native"]),
         "external_signed_receipt": False,
         "production_unchanged_proven": False,
         "release_certified": False,
+        "observed_javascript_errors": sum(row.get("js_error_count") or 0 for row in rows),
+        "observed_ajax_5xx": sum(row.get("ajax_5xx_count") or 0 for row in rows),
+        "dataset_comparisons": compare_dataset_identity(rows),
     }
 
 
