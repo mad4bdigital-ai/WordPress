@@ -39,7 +39,7 @@ for token in ("admin_upload_csv", "check_admin_referer( 'mad4b_activity_csv_inta
               "is_uploaded_file(", "UPLOAD_ERR_OK", "wp_safe_redirect(",
               "archive_preview", "check_admin_referer( 'mad4b_activity_archive_review'",
               "mad4b_activity_import_archive", "ready_for_import_execution' => false",
-              "wp_json_encode( $input )", "'source_mode'",
+              "MAD4B_SCP_Activity_Import_Snapshot::stage", "'source_mode'",
               "array( 'staging' )", "$source_mode = $sender['mode']"):
     demand(token in review, "Alternative review intake gate missing: "+token)
 for token in ("createHmac", "randomBytes", "MAD4B_INTAKE_SECRET",
