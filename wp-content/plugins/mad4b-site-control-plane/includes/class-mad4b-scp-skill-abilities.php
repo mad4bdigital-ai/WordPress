@@ -85,6 +85,16 @@ final class MAD4B_SCP_Skill_Abilities {
 
 
 		self::add(
+			'mad4b/brand-content-gate-triage',
+			'Discover Exact Skill and Brand Recovery Route Without Guessing Target',
+			array( 'type' => 'object', 'properties' => array(
+				'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+			), 'additionalProperties' => false ),
+			array( __CLASS__, 'brand_content_gate_triage' )
+		);
+
+		self::add(
 			'mad4b/external-source-rights-preflight',
 			'Inspect External Supplier and Media Reuse Rights',
 			array( 'type'=>'object','properties'=>array(
@@ -248,6 +258,7 @@ final class MAD4B_SCP_Skill_Abilities {
 			'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( $preflight['missing_context_sets'] ) : array(),
 			'blockers' => $blockers,
 			'next_action' => $ready ? 'request_skill_get_for_exact_signed_context_receipt' : 'reconcile_and_approve_required_brand_context',
+			'next_ability' => $ready ? 'mad4b/skill-get' : 'context/brand-core-control-loop',
 			'skill_body_exposed' => false,
 			'context_assets_exposed' => false,
 			'context_receipt_issued' => false,
@@ -257,6 +268,48 @@ final class MAD4B_SCP_Skill_Abilities {
 		);
 	}
 
+
+	/**
+	 * A non-authorizing content-gate diagnostic independent of caller-supplied
+	 * Skill name/target. Recover from the exact live Skill registry instead
+	 * of an opaque WP_Error when users do not know a logical Skill identifier.
+	 */
+	public static function brand_content_gate_triage( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'task_scope', 'intended_ability' ) ) )
+			return new WP_Error( 'mad4b_brand_gate_triage_input_invalid', 'Only a bounded task and intended Ability are supported.' );
+		$ability = substr( trim( (string) ( $input['intended_ability'] ?? '' ) ), 0, 191 );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' )
+			? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		$ready = is_array( $coverage ) && ! empty( $coverage['ready'] );
+		$skills = class_exists( 'MAD4B_SCP_Skill_Registry' )
+			? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+		$candidates = array();
+		foreach ( is_array( $skills ) ? $skills : array() as $skill ) {
+			if ( ! is_array( $skill ) || empty( $skill['enabled'] ) ) continue;
+			$policy = $skill['context_policy'] ?? array();
+			if ( empty( $policy['brand_context_required'] ) ) continue;
+			$candidates[] = array(
+				'level' => (string) ( $skill['level'] ?? '' ),
+				'target' => (string) ( $skill['target'] ?? '' ),
+				'name' => (string) ( $skill['name'] ?? '' ),
+				'logical_id' => (string) ( $skill['logical_id'] ?? '' ),
+			);
+			if ( count( $candidates ) >= 25 ) break;
+		}
+		return array(
+			'contract' => 'mad4b.brand-content-gate-triage.v1',
+			'state' => $ready ? 'brand_core_ready_skill_selection_required' : 'brand_core_recovery_required',
+			'brand_core_ready' => $ready,
+			'missing_context_sets' => is_array( $coverage ) ? array_values( $coverage['missing_required_context_sets'] ?? array() ) : array(),
+			'next_ability' => $ready ? 'mad4b/skill-context-preflight' : 'context/brand-core-control-loop',
+			'candidate_skills' => $candidates,
+			'intended_ability' => $ability,
+			'exact_skill_selection_required' => true,
+			'skill_body_exposed' => false, 'signed_receipt_exposed' => false,
+			'owner_approval_automatically_created' => false,
+			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
 
 	/** External source references alone do not provide licensing or resale rights. */
 	public static function external_source_rights_preflight( $input = array() ) {
