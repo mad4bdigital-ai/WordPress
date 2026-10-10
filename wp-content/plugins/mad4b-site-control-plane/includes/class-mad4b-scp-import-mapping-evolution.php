@@ -243,4 +243,111 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
         $report['plan_sha256'] = self::digest( $report );
         return $report;
     }
+    /**
+     * Read-only what-if mutation simulation. Rejects unauthorized destinations,
+     * missing critical fields and stale source evidence, but does not save a
+     * profile or grant import/apply rights.
+     */
+    public static function simulate( $input = array() ) {
+        if ( ! is_array( $input ) || ! current_user_can( 'manage_options' ) ||
+            ! isset( $input['proposal_plan_sha256'], $input['candidate_validation'] ) ||
+            ! is_array( $input['candidate_validation'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D',
+                (string) $input['proposal_plan_sha256'] ) )
+            return self::err( 'mad4b_mapping_simulation_invalid',
+                'Exact drift plan and complete candidate validation contract required.' );
+        $plan_input = $input;
+        unset( $plan_input['candidate_validation'], $plan_input['proposal_plan_sha256'] );
+        $before = self::plan( $plan_input );
+        if ( is_wp_error( $before ) ) return $before;
+        if ( ! hash_equals( $before['plan_sha256'],
+            (string) $input['proposal_plan_sha256'] ) )
+            return self::err( 'mad4b_mapping_proposal_stale',
+                'A new exact source/Profile drift plan must be inspected.' );
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile(
+            $before['profile_slug'] );
+        if ( is_wp_error( $profile ) ) return $profile;
+        $contract = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        $current = $contract['validation'];
+        $candidate = MAD4B_SCP_Activity_Import_Authority::normalize(
+            $input['candidate_validation'], $profile['meta_keys'] );
+        if ( is_wp_error( $candidate ) ) return $candidate;
+        // A different destination identity registry is a NEW business
+        // identity strategy, never a trivial rename of source headers.
+        if ( $candidate['destination_identity_meta_key'] !==
+            $current['destination_identity_meta_key'] )
+            return self::err( 'mad4b_mapping_identity_registry_mutation_denied',
+                'Identity registry migrations require a separately approved driver.' );
+        $columns = array();
+        if ( array_key_exists( 'observed_headers', $plan_input ) )
+            $columns = $plan_input['observed_headers'];
+        else {
+            $snapshot = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot(
+                $before['profile_slug'], $before['snapshot_sha256'] );
+            if ( is_wp_error( $snapshot ) ) return $snapshot;
+            $columns = $snapshot['input']['headers'];
+        }
+        $needed = array_merge(
+            array( $candidate['identity_field'] ),
+            $candidate['required_columns'], array_keys( $candidate['field_mapping'] ),
+            $candidate['price_fields'], $candidate['required_relationships'] );
+        if ( $candidate['currency_field'] )
+            $needed[] = $candidate['currency_field'];
+        if ( $candidate['period_start_field'] ) {
+            $needed[] = $candidate['period_start_field'];
+            $needed[] = $candidate['period_end_field'];
+        }
+        if ( $candidate['require_complete_wpml_groups'] ) {
+            $needed[] = '_wpml_import_translation_group';
+            $needed[] = '_wpml_import_language_code';
+        }
+        $missing = array_values( array_unique( array_diff( $needed, $columns ) ) );
+        $diff = array();
+        foreach ( $candidate as $field => $value ) {
+            if ( self::digest( $value ) !== self::digest( $current[ $field ] ) )
+                $diff[] = $field;
+        }
+        $critical = array_values( array_intersect( $diff, array(
+            'identity_field', 'field_mapping', 'price_fields',
+            'currency_field', 'allowed_currencies', 'wpml_languages',
+            'require_complete_wpml_groups', 'required_relationships',
+            'period_start_field', 'period_end_field', 'period_format',
+            'destination_identity_meta_key'
+        ) ) );
+        $result = array(
+            'contract' => 'mad4b.import-mapping-migration-simulation.v1',
+            'profile_slug' => $before['profile_slug'],
+            'source_evidence_kind' => $before['source_evidence_kind'],
+            'observed_header_sha256' => $before['observed_header_sha256'],
+            'source_plan_sha256' => $before['plan_sha256'],
+            'current_profile_revision' => $before['profile_revision'],
+            'current_profile_authority_sha256' =>
+                $before['profile_authority_sha256'],
+            'old_validation_sha256' => $before['policy_sha256'],
+            'candidate_validation_sha256' => self::digest( $candidate ),
+            'candidate_validation_normalized' => true,
+            'changed_policy_fields' => $diff,
+            'high_impact_changes' => $critical,
+            'candidate_source_fields_missing' => $missing,
+            'schema_preview_passed' => !$missing,
+            'semantic_business_validation_completed' => false,
+            'existing_source_approvals_remain_valid_after_mutation' => false,
+            'candidate_profile_apply_authorized' => false,
+            'candidate_live_import_authorized' => false,
+            'requires_independent_provider_readback' => true,
+            'required_process' => array(
+                'review_domain_meaning_and_source_rights',
+                'test_proposed_mapping_against_staging_sample',
+                'prove_google_sheets_or_provider_cas_and_external_write_fences',
+                'archive_or_revalidate_old_snapshots',
+                'create_a_new_governed_profile_plan',
+                'apply_via_existing_profile_authority_only_after_explicit_approval',
+                'independently_verify_destination_wpml_and_jetengine'
+            ),
+            'read_only' => true, 'mutation_performed' => false
+        );
+        $result['simulation_sha256'] = self::digest( $result );
+        return $result;
+    }
+
 }
