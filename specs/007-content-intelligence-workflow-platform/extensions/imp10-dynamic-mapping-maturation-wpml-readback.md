@@ -26,6 +26,15 @@ The response contains:
 - Current Profile and source hashes, proposed changes, missing/stale destination allowlist checks, explicit provider gaps, and stable deterministic `plan_sha256`.
 - `mapping_mutation_authorized=false`, `third_party_write_authorized=false`, `ready_for_production=false`.
 
+### WordPress guided UI: CSV mapping check before staging
+
+The existing Staging administrator CSV form now has two explicit actions against the **same file picker**:
+
+- **Check dynamic mapping before upload**: reads only the CSV header row after the existing genuine 1 MiB uploaded-file, site-enrollment, nonce and Profile Mode checks; calls the header-only evolution plan; shows redacted rename candidates and blockers without persisting supplier rows, modifying data or approving an import.
+- **Upload and inspect (no import)**: preserves the original bounded full-file review → encrypted snapshot → source warnings → manual approval route.
+
+A new field-name mismatch can therefore be explained *before* the normal content validator rejects staging. This fixes the UX deadlock where invalid sources had no eligible encrypted review receipt. The analysis is intentionally a non-persistent diagnostics page; it does not save draft mappings or automatically rewrite a supplier spreadsheet.
+
 ### B. `mad4b/business-activity-import-mapping-mutation-simulate` (read-only)
 
 Input is the exact previous drift evidence + `proposal_plan_sha256` + *complete candidate* `candidate_validation`.
