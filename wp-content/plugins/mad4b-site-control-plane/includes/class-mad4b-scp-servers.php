@@ -50,7 +50,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
-				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
+				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/provider-execution-binding', 'mad4b/provider-execution-binding-revalidate', 'mad4b/addon-registry-status',
 				'mad4b/data-processing-evaluate', 'mad4b/rights-record-plan', 'mad4b/data-processing-profile-plan', 'mad4b/rights-takedown-plan',
@@ -73,7 +73,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
-				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
+				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
 				'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status, $cso_read ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
@@ -106,7 +106,7 @@ final class MAD4B_SCP_Servers {
 			),
 			'mad4b-admin' => array(
 				'mad4b/provider-deep-diagnostic',
-				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
+				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 				'mad4b/recovery-preview', 'mad4b/agent-access-workspace', 'mad4b/consent-profile-status', 'mad4b/change-history-search', 'mad4b/agent-permission-plan', 'mad4b/agent-permission-apply',
 			),
@@ -140,7 +140,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply', 'mad4b/portability-import-quarantine-apply',
 			),
 			array(
-				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
+				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
 		);
@@ -508,7 +508,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b/plugin-package-plan',
 			'mad4b/plugin-remote-update-plan',
 			'mad4b/control-plane-upload-plan',
-			'mad4b/control-plane-native-plan',
+			'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
 			'mad4b/operation-discover',
 			'mad4b/provider-closure-matrix',
 			'mad4b/staging-write-candidate-binding-audit',
