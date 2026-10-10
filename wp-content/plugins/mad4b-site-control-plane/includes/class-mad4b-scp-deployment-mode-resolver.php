@@ -103,7 +103,8 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'SITE_UUID_INVALID',
             'BRAND_CONTEXT_UNAVAILABLE', 'BRAND_PROFILE_UNRESOLVED',
             'BRAND_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_INVALID',
-            'SITE_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_UNAVAILABLE',
+            'SITE_PROFILE_REVISION_MISSING', 'SITE_BLOG_LOCAL_BINDING_MISMATCH',
+            'WORDPRESS_SITE_CONTEXT_UNAVAILABLE',
             'WORDPRESS_ENVIRONMENT_UNSUPPORTED'
         );
         return in_array( $reason, $known, true ) ? array( $reason ) : array();
@@ -140,6 +141,25 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         $uuid = strtolower( trim( isset( $site['site_uuid'] ) ? (string) $site['site_uuid'] : '' ) );
         if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $uuid ) ) {
             return self::blocked( 'SITE_UUID_INVALID' );
+        }
+        // WordPress can switch blogs within one PHP request while Site Profile
+        // retains static per-request caches. Cross-check the current blog's own
+        // enrolled option, not only a possibly stale cached Site Profile status.
+        if ( ! function_exists( 'get_option' ) ||
+             ! method_exists( 'MAD4B_SCP_Site_Profile', 'current_origin' ) ) {
+            return self::blocked( 'SITE_BLOG_LOCAL_BINDING_MISMATCH' );
+        }
+        $blog_record = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+        $current_origin = MAD4B_SCP_Site_Profile::current_origin();
+        if ( ! is_array( $blog_record ) ||
+             empty( $blog_record['site_uuid'] ) ||
+             ! hash_equals( $uuid, strtolower( trim( (string) $blog_record['site_uuid'] ) ) ) ||
+             ! isset( $blog_record['revision'] ) ||
+             (int) $blog_record['revision'] !== (int) $site['revision'] ||
+             empty( $blog_record['canonical_origin'] ) ||
+             '' === $current_origin ||
+             ! hash_equals( (string) $blog_record['canonical_origin'], $current_origin ) ) {
+            return self::blocked( 'SITE_BLOG_LOCAL_BINDING_MISMATCH' );
         }
         if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return self::blocked( 'BRAND_CONTEXT_UNAVAILABLE' );
         $brand = MAD4B_SCP_Context_Authority::profile();
