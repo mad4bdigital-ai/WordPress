@@ -536,6 +536,42 @@ final class MAD4B_SCP_Activity_Import_Review {
         ), admin_url( 'tools.php' ) ) );
         exit;
     }
+    /** Optional XLSX source input, with exactly the same site-owned policy. */
+    public static function admin_upload_xlsx() {
+        if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
+            ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
+            ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
+            wp_die( 'An enrolled Staging site administrator is required.' );
+        check_admin_referer( 'mad4b_activity_xlsx_intake', 'mad4b_import_xlsx_nonce' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            wp_die( 'Select the approved import Profile first.' );
+        $mode = MAD4B_SCP_Activity_Import_Modes::plan( array(
+            'profile_slug' => $slug, 'mode_id' => 'admin_xlsx_convert' ) );
+        if ( is_wp_error( $mode ) || empty( $mode['eligible_for_staging_review'] ) )
+            self::return_to_guide( $slug, 'mad4b_xlsx_parser_unavailable' );
+        $parsed = class_exists( 'MAD4B_SCP_Activity_Import_Xlsx' ) ?
+            MAD4B_SCP_Activity_Import_Xlsx::parse(
+                isset( $_FILES['import_xlsx'] ) ? $_FILES['import_xlsx'] : array() ) :
+            self::error( 'mad4b_xlsx_parser_unavailable', 'XLSX converter not configured.' );
+        if ( is_wp_error( $parsed ) )
+            self::return_to_guide( $slug, $parsed->get_error_code() );
+        $input = array( 'profile_slug' => $slug,
+            'headers' => $parsed['headers'], 'rows' => $parsed['rows'] );
+        $preview = self::inspect( $input );
+        if ( is_wp_error( $preview ) )
+            self::return_to_guide( $slug, $preview->get_error_code() );
+        $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
+            $slug, $input, $preview, 'admin_xlsx_convert',
+            (string) get_current_user_id() );
+        if ( is_wp_error( $receipt ) )
+            self::return_to_guide( $slug, $receipt->get_error_code() );
+        wp_safe_redirect( add_query_arg( array(
+            'page' => 'mad4b-import-review', 'profile_slug' => $slug,
+            'wizard_step' => 3, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
+        exit;
+    }
     public static function admin_upload_csv() {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
             ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
@@ -863,6 +899,7 @@ if ( function_exists( 'add_action' ) ) {
     add_action( 'rest_api_init', array( 'MAD4B_SCP_Activity_Import_Review', 'register_rest' ) );
     add_action( 'admin_menu', array( 'MAD4B_SCP_Activity_Import_Review', 'register_admin' ) );
     add_action( 'admin_post_mad4b_activity_import_csv', array( 'MAD4B_SCP_Activity_Import_Review', 'admin_upload_csv' ) );
+    add_action( 'admin_post_mad4b_activity_import_xlsx', array( 'MAD4B_SCP_Activity_Import_Review', 'admin_upload_xlsx' ) );
     add_action( 'admin_post_mad4b_activity_import_archive', array( 'MAD4B_SCP_Activity_Import_Review', 'archive_preview' ) );
     add_action( 'admin_post_mad4b_activity_import_approve', array( 'MAD4B_SCP_Activity_Import_Review', 'approve_preview' ) );
     add_action( 'admin_post_mad4b_activity_import_export', array( 'MAD4B_SCP_Activity_Import_Review', 'approved_csv_download' ) );
