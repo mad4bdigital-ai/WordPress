@@ -145,6 +145,10 @@ jobs:
           php "$root/tests/manual-workflow-bridge-policy-runtime.php"
           php -l "$root/tests/manual-workflow-bridge-apply-runtime.php"
           php "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-ci-outage-attestation.php"
+          php -l "$root/tests/ci-outage-attestation-runtime.php"
+          php "$root/tests/ci-outage-attestation-runtime.php"
+          python3 -m py_compile tools/mad4b_publish_offline_staging_candidate.py
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
       - name: Verify Feature 007 release root-trust contract
