@@ -146,6 +146,16 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             return self::invalid( 'canonical_planner_or_executor_unavailable' );
         return $operation;
     }
+    /** Binds profile consent to the source-owned semantic operation ABI. */
+    private static function operation_binding_sha( array $operation ) {
+        $keys = array( 'id', 'planner', 'executor', 'risk', 'target_kind',
+            'capability_descriptor_contract', 'capability_descriptor_bindings',
+            'pipeline_profile', 'side_effect_class' );
+        $facts = array();
+        foreach ( $keys as $key ) $facts[ $key ] = $operation[ $key ] ?? null;
+        return hash( 'sha256', (string) wp_json_encode(
+            $facts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+    }
     private static function routes() {
         return class_exists( 'MAD4B_SCP_Admin_Route_Registry' ) ?
             MAD4B_SCP_Admin_Route_Registry::routes() : array();
@@ -231,13 +241,20 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             if ( ! is_array( $row ) || ! is_string( $row['id'] ?? null ) ) continue;
             $id = $row['id'];
             if ( '' !== $filter && false === stripos( $id, $filter ) ) continue;
-            $profile = $stored[ $id ] ?? null;
+            $entry = $stored[ $id ] ?? null;
+            $profile = is_array( $entry ) && is_array( $entry['profile'] ?? null ) ?
+                $entry['profile'] : null;
+            $binding_current = is_array( $entry ) && is_string( $entry['operation_binding_sha256'] ?? null ) &&
+                hash_equals( (string) $entry['operation_binding_sha256'], self::operation_binding_sha( $row ) );
             $route = is_array( $profile ) ? (string) ( $profile['route_slug'] ?? '' ) : '';
             $rows[] = array( 'operation_id' => $id, 'target_kind' => $row['target_kind'] ?? '',
                 'planner' => $row['planner'] ?? '', 'executor' => $row['executor'] ?? '',
                 'route_slug' => $route,
                 'route_registered' => '' !== $route && isset( $registered_routes[ $route ] ),
-                'customized' => is_array( $profile ), 'enabled' => ! empty( $profile['enabled'] ),
+                'customized' => is_array( $profile ),
+                'enabled' => $binding_current && ! empty( $profile['enabled'] ),
+                'operation_binding_current' => $binding_current,
+                'stale_profile_requires_reapproval' => is_array( $entry ) && ! $binding_current,
                 'risk' => $row['risk'] ?? 'unknown',
                 'profile_resolve_ability' => self::RESOLVE,
                 'execution' => 'original_governed_ability_only' );
@@ -280,6 +297,7 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             'origin' => (string) ( $site['canonical_origin'] ?? '' ),
             'actor' => get_current_user_id(), 'stored_snapshot_sha256' => $snapshot,
             'planner' => $operation['planner'], 'executor' => $operation['executor'],
+            'operation_binding_sha256' => self::operation_binding_sha( $operation ),
             'approval_required' => true, 'additional_authority_created' => false,
             'auto_write_allowed' => false, 'production_allowed' => false );
         $plan['plan_sha256'] = hash( 'sha256', wp_json_encode( $plan, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
@@ -325,7 +343,10 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             $profiles = self::stored( $site );
             if ( count( $profiles ) >= self::MAX_PROFILES && ! isset( $profiles[ $plan['operation_id'] ] ) )
                 return self::invalid( 'capacity_reached' );
-            $profiles[ $plan['operation_id'] ] = $plan['profile'];
+            $profiles[ $plan['operation_id'] ] = array(
+                'profile' => $plan['profile'],
+                'operation_binding_sha256' => $plan['operation_binding_sha256'],
+            );
             ksort( $profiles, SORT_STRING );
             $next = array( 'site_uuid' => $plan['site_uuid'],
                 'profile_digest' => $plan['site_digest'],
@@ -374,16 +395,26 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
         if ( ! is_array( $site ) ) return self::invalid( 'site_unavailable' );
         if ( 'staging' !== (string) ( $site['configured_environment'] ?? '' ) ||
             'staging' !== (string) ( $site['environment'] ?? '' ) ||
+            ( ! empty( $site['wordpress_environment_explicit'] ) &&
+              'staging' !== (string) ( $site['wordpress_environment'] ?? '' ) ) ||
             empty( $site['authority_ready'] ) || empty( $site['origin_match'] ) )
             return self::invalid( 'site_no_longer_staging' );
         $profiles = self::stored( $site );
         $id = (string) ( $input['operation_id'] ?? '' );
-        if ( ! isset( $profiles[ $id ] ) || empty( $profiles[ $id ]['enabled'] ) )
-            return self::invalid( 'profile_not_enabled' );
+        $entry = $profiles[ $id ] ?? null;
+        if ( ! is_array( $entry ) || ! is_array( $entry['profile'] ?? null ) )
+            return self::invalid( 'profile_missing_or_legacy_requires_reapproval' );
         $operation = self::authorized_operation( $id );
         if ( is_wp_error( $operation ) ) return $operation;
-        $profile = self::normalize( $profiles[ $id ] );
+        if ( ! is_string( $entry['operation_binding_sha256'] ?? null ) ||
+            ! hash_equals( (string) $entry['operation_binding_sha256'],
+                self::operation_binding_sha( $operation ) ) )
+            return self::invalid( 'source_operation_changed_reapproval_required' );
+        $profile = self::normalize( $entry['profile'] );
         if ( is_wp_error( $profile ) ) return $profile;
+        if ( ! $profile['enabled'] ) return self::invalid( 'profile_not_enabled' );
+        if ( 'manual_only' === $profile['approval_mode'] )
+            return self::invalid( 'manual_only_profile_not_remotely_executable' );
         if ( ! isset( self::routes()[ $profile['route_slug'] ] ) ) return self::invalid( 'route_disappeared' );
         $values = $profile['defaults'];
         foreach ( $input['values'] as $key => $value ) {
