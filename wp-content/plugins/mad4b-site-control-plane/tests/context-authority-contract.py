@@ -785,4 +785,13 @@ subprocess.run([sys.executable, str(brand_contract)], check=True)
 brand_runtime = root / "tests/brand-context-builder-runtime.php"
 subprocess.run(["php", str(brand_runtime)], check=True)
 
+# Fail-closed regression covering source/asset brand isolation and scoped ContentJob reads.
+trust_runtime = root / "tests/trusted-brand-scope-runtime.php"
+subprocess.run(["php", str(trust_runtime)], check=True)
+
+operational_runtime = root / "tests/operational-integrity-local-runtime.php"
+subprocess.run(["php", str(operational_runtime)], check=True)
+transaction_fault_runtime = root / "tests/content-job-transaction-fault-runtime.php"
+subprocess.run(["php", str(transaction_fault_runtime)], check=True)
+
 print("mad4b.site-control-plane.context-authority-contract.v73: PASS")

@@ -156,8 +156,15 @@ reset_state();
 $origin='https://staging.legacy-default.test';
 $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']=$origin.'/';
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('staging',$origin,2);
+$read_only=MAD4B_SCP_Site_Profile::status();
+ok(empty($read_only['configured'])&&'legacy_v1_migration_available'===($read_only['source']??''),'status exposes migration plan without writing');
+ok(!array_key_exists(MAD4B_SCP_Site_Profile::OPTION,$GLOBALS['mad4b_test_options']),'status performs no legacy migration write');
+$plan=MAD4B_SCP_Site_Profile::legacy_migration_plan();
+ok('REVIEW_REQUIRED'===$plan['status']&&!$plan['write_authorized'],'read-only migration plan has no grant');
+$migration=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],$plan['revision']);
+ok(!is_wp_error($migration)&&!$migration['authority_granted'],'explicit audited migration is non-authorizing');
 $legacy_default=MAD4B_SCP_Site_Profile::status();
-ok(!empty($legacy_default['configured'])&&'legacy_v1_migrated'===($legacy_default['source']??''),'exact legacy staging identity migrates across implicit WordPress Production default');
+ok(!empty($legacy_default['configured'])&&'stored'===($legacy_default['source']??''),'explicit legacy staging migration across implicit WordPress Production default');
 ok('production'===($legacy_default['environment']??'')&&'staging'===($legacy_default['configured_environment']??'')&&'production'===($legacy_default['wordpress_environment']??''),'legacy migration remains on implicit Production until non-production override is confirmed');
 ok('nonproduction_override_unconfirmed'===($legacy_default['binding_state']??'')&&!empty($legacy_default['profile_authority_quarantined']),'legacy implicit non-production override is quarantined pending exact attestation');
 ok(empty($legacy_default['write_enabled'])&&empty($legacy_default['oauth_enabled'])&&empty($legacy_default['skills_enabled']),'legacy environment continuity restores no authority');
@@ -166,9 +173,26 @@ ok(empty($legacy_default['write_enabled'])&&empty($legacy_default['oauth_enabled
 reset_state();
 $origin='https://legacy.client.test/subdir';$GLOBALS['mad4b_test_home']=$origin.'/';$GLOBALS['mad4b_test_environment']='staging';
 $legacy=legacy_record('staging',$origin,4);$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=$legacy;
+$read_only=MAD4B_SCP_Site_Profile::status();
+ok(empty($read_only['configured']),'legacy profile must remain unconfigured on read');
+ok(!array_key_exists(MAD4B_SCP_Site_Profile::OPTION,$GLOBALS['mad4b_test_options']),'second status read never writes');
+$plan=MAD4B_SCP_Site_Profile::legacy_migration_plan();
+$GLOBALS['mad4b_test_audit_fail']=true;
+$audit_denied=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],$plan['revision']);
+ok(is_wp_error($audit_denied)&&'mad4b_site_profile_migration_audit_failed'===$audit_denied->get_error_code(),'legacy migration compensates audit failure');
+ok(!array_key_exists(MAD4B_SCP_Site_Profile::OPTION,$GLOBALS['mad4b_test_options']),'failed migration does not leave persisted identity');
+$GLOBALS['mad4b_test_audit_fail']=false;
+$GLOBALS['mad4b_test_is_admin']=false;
+$unauthorized=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],$plan['revision']);
+ok(is_wp_error($unauthorized)&&'mad4b_site_profile_migration_admin_required'===$unauthorized->get_error_code(),'unprivileged migration denied');
+$GLOBALS['mad4b_test_is_admin']=true;
+$stale=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],999);
+ok(is_wp_error($stale)&&'mad4b_site_profile_migration_plan_stale'===$stale->get_error_code(),'migration exact revision enforced');
+$applied=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],$plan['revision']);
+ok(!is_wp_error($applied)&&!$applied['authority_granted'],'explicit legacy migration applied without grants');
 $s=MAD4B_SCP_Site_Profile::status();
-ok(!empty($s['configured']),'exact legacy identity migrates');
-ok('legacy_v1_migrated'===$s['source'],'legacy migration has explicit source');
+ok(!empty($s['configured']),'exact legacy identity migrates explicitly');
+ok('stored'===$s['source'],'explicit migration has stored source');
 ok($s['site_uuid']===$legacy['site_uuid'],'migration preserves site UUID');
 ok(5===(int)$s['revision'],'migration increments revision');
 ok(!empty($s['reenrollment_required']),'migration requires explicit reenrollment');
@@ -277,6 +301,10 @@ ok(empty(MAD4B_SCP_Site_Profile::status()['configured']),'nested OAuth user id s
 reset_state();
 $GLOBALS['mad4b_test_environment']='production';$GLOBALS['mad4b_test_home']='https://client.example/';
 $GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('production','https://client.example',2);
+$plan=MAD4B_SCP_Site_Profile::legacy_migration_plan();
+ok('REVIEW_REQUIRED'===$plan['status'],'production legacy identity requires review');
+$applied=MAD4B_SCP_Site_Profile::apply_legacy_migration($plan['site_uuid'],$plan['revision']);
+ok(!is_wp_error($applied),'production identity migrates only via explicit audit');
 $s=MAD4B_SCP_Site_Profile::status();
 ok(!empty($s['configured'])&&3===(int)$s['revision'],'production identity migrates');
 ok(empty($s['write_enabled']),'legacy production write is disabled during migration');
@@ -522,6 +550,28 @@ ok(is_wp_error($ff_stale)&&'mad4b_site_profile_reconciliation_plan_stale'===$ff_
 $ff_done=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($ff_mutation_id,'finalize',$ff_plan['pending_record_sha256']);
 ok(!is_wp_error($ff_done)&&!empty($ff_done['reconciliation_applied'])&&2===MAD4B_SCP_Site_Profile::revision()&&MAD4B_SCP_Site_Profile::skills_enabled(),'audited pending mutation did not finalize exact target');
 
+
+// Explicit legacy migration reuses the same audit-backed pending
+// reconciliation path as normal Site Profile changes after uncertain finalize.
+reset_state();
+$GLOBALS['mad4b_test_environment']='staging';$GLOBALS['mad4b_test_home']='https://legacy-recovery.test/';
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy_record('staging','https://legacy-recovery.test',3);
+$legacy_plan=MAD4B_SCP_Site_Profile::legacy_migration_plan();
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=true;
+$legacy_pending=MAD4B_SCP_Site_Profile::apply_legacy_migration($legacy_plan['site_uuid'],$legacy_plan['revision']);
+ok(is_wp_error($legacy_pending)&&'mad4b_site_profile_migration_finalize_required'===$legacy_pending->get_error_code(),'legacy finalize uncertainty must remain quarantined');
+$pending_record=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok('pending_audit'===($pending_record['mutation_state']??'')&&'mad4b/site-profile-legacy-migration'===($pending_record['mutation_audit_action']??''),'legacy pending record preserves recovery identity');
+ok(!empty($pending_record['mutation_target_digest'])&&'delete'===($pending_record['mutation_previous_mode']??''),'legacy pending record includes authoritative target and rollback identity');
+$GLOBALS['mad4b_test_fail_profile_writes_after_audit']=false;
+$GLOBALS['mad4b_test_drop_profile_writes']=false;
+$pending_record['mutation_started_at']=gmdate('c',time()-90);
+$GLOBALS['mad4b_test_options'][MAD4B_SCP_Site_Profile::OPTION]=$pending_record;
+MAD4B_SCP_Site_Profile::reset_cache();
+$recovery=MAD4B_SCP_Site_Profile::pending_mutation_reconciliation_plan($pending_record['mutation_id']);
+ok('audit_committed_finalize_ready'===($recovery['state']??'')&&'finalize'===($recovery['recommended_action']??''),'audited legacy migration is independently recognizable for recovery');
+$reconciled=MAD4B_SCP_Site_Profile::reconcile_pending_mutation($pending_record['mutation_id'],'finalize',$recovery['pending_record_sha256']);
+ok(!is_wp_error($reconciled)&&empty(MAD4B_SCP_Site_Profile::status()['write_enabled']),'legacy recovery finalizes identity without write authority');
 
 // Legacy preset migration is opt-in and validates raw data before any coercion.
 reset_state();

@@ -66,7 +66,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 	public static function handle_save_profile() {
 		self::require_admin_request( self::ACTION_SAVE_PROFILE );
 		$brand_name = isset( $_POST['brand_name'] ) ? wp_unslash( $_POST['brand_name'] ) : '';
-		$result = MAD4B_SCP_Context_Authority::save_profile( $brand_name );
+		$result = MAD4B_SCP_Context_Authority::save_profile(
+			$brand_name,
+			array(
+				'expected_brand_id' => isset( $_POST['expected_brand_id'] ) ? wp_unslash( $_POST['expected_brand_id'] ) : '',
+				'expected_revision' => isset( $_POST['expected_brand_revision'] ) ? absint( $_POST['expected_brand_revision'] ) : 0,
+				'confirm_identity_preserving_rename' => ! empty( $_POST['confirm_identity_preserving_rename'] ),
+			)
+		);
 		if ( self::is_ajax_request() ) {
 			if ( is_wp_error( $result ) ) wp_send_json_error( array( 'code' => sanitize_key( $result->get_error_code() ), 'message' => $result->get_error_message(), 'data' => $result->get_error_data() ), 422 );
 			$profile = MAD4B_SCP_Context_Authority::profile();
@@ -538,6 +545,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 			array( 'label' => 'Assets', 'value' => (string) $status['asset_count'], 'help' => $status['required_asset_count'] . ' mandatory · ' . ( isset( $status['unavailable_asset_count'] ) ? $status['unavailable_asset_count'] : 0 ) . ' unavailable.', 'state' => ! empty( $status['unavailable_asset_count'] ) ? 'attention' : ( $status['asset_count'] ? 'complete' : 'pending' ) ),
 			array( 'label' => 'Average Quality', 'value' => $quality, 'help' => $status['quality_scored_asset_count'] . ' asset(s) scored.', 'state' => null === $status['average_quality_score'] ? 'pending' : 'complete' ),
 		);
+		if ( ! empty( $status['ownership_review_required'] ) ) {
+			$quarantined_sources = isset( $status['quarantined_source_record_count'] ) ? (int) $status['quarantined_source_record_count'] : 0;
+			$quarantined_assets = isset( $status['quarantined_asset_record_count'] ) ? (int) $status['quarantined_asset_record_count'] : 0;
+			$cards[] = array(
+				'label' => 'Ownership Review',
+				'value' => (string) ( $quarantined_sources + $quarantined_assets ),
+				'help' => 'Non-current or unbound records are quarantined. Review lineage and ownership; do not auto-transfer.',
+				'state' => 'attention',
+			);
+		}
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::cards( $cards );
 		self::render_brand_core_gaps();
 
@@ -551,6 +568,14 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<label for="mad4b-brand-name"><strong>' . esc_html__( 'Brand name', 'mad4b-site-control-plane' ) . '</strong></label><br>';
 		$value = isset( $profile['brand_name'] ) ? (string) $profile['brand_name'] : get_bloginfo( 'name' );
 		echo '<input id="mad4b-brand-name" name="brand_name" type="text" class="regular-text" value="' . esc_attr( $value ) . '" required> ';
+		if ( ! empty( $profile ) ) {
+			echo '<input type="hidden" name="expected_brand_id" value="' . esc_attr( (string) $profile['brand_id'] ) . '">';
+			echo '<input type="hidden" name="expected_brand_revision" value="' . esc_attr( (string) $profile['revision'] ) . '">';
+			echo '<p><label><input type="checkbox" name="confirm_identity_preserving_rename" value="1"> '
+				. esc_html__( 'I confirm any name change is a rename of the same business, not a replacement of the brand or its sources.', 'mad4b-site-control-plane' )
+				. '</label></p>';
+			echo '<p class="description">' . esc_html__( 'Keep this unchecked for ordinary saves. To replace the business, use a separate reviewed brand-ownership migration; renaming cannot transfer its source approvals.', 'mad4b-site-control-plane' ) . '</p>';
+		}
 		echo '<div class="mad4b-settings-feedback" data-mad4b-settings-feedback aria-live="polite"></div>';
 		submit_button( empty( $profile ) ? __( 'Create Brand Context', 'mad4b-site-control-plane' ) : __( 'Update Brand Context', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
 		echo '</form></div>';

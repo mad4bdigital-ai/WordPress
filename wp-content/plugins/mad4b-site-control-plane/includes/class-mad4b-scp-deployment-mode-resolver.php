@@ -61,14 +61,46 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         return array( 'shared_multi_tenant', 'dedicated_isolated', 'dedicated_autonomous', 'wordpress_dedicated' );
     }
 
+    private static $registered_ability = null;
+    private static $registration_collision = false;
+
+    /**
+     * Registration ownership is a local mount guard, not MCP discovery evidence.
+     * Only our returned WP_Ability instance may be projected to a custom server.
+     */
+    public static function mcp_registration_status() {
+        if ( self::$registration_collision ) return array( 'ready' => false, 'code' => 'ABILITY_REGISTRATION_COLLISION', 'mounted' => false, 'authorizing' => false );
+        if ( ! function_exists( 'wp_get_ability' ) || ! is_object( self::$registered_ability ) ) {
+            return array( 'ready' => false, 'code' => 'REGISTERED_NOT_MOUNTED', 'mounted' => false, 'authorizing' => false );
+        }
+        $ability = wp_get_ability( self::ABILITY );
+        if ( ! is_object( $ability ) || $ability !== self::$registered_ability ||
+            ! method_exists( $ability, 'get_category' ) || 'mad4b-read' !== $ability->get_category() ||
+            ! method_exists( $ability, 'get_meta' ) ) {
+            return array( 'ready' => false, 'code' => 'ABILITY_REGISTRATION_COLLISION', 'mounted' => false, 'authorizing' => false );
+        }
+        $meta = $ability->get_meta();
+        if ( ! is_array( $meta ) || ! isset( $meta['mcp'] ) || ! is_array( $meta['mcp'] ) ||
+            ! array_key_exists( 'public', $meta['mcp'] ) || false !== $meta['mcp']['public'] ) {
+            return array( 'ready' => false, 'code' => 'ABILITY_METADATA_DRIFT', 'mounted' => false, 'authorizing' => false );
+        }
+        return array( 'ready' => true, 'code' => 'ELIGIBLE_FOR_EXPLICIT_CUSTOM_SERVER', 'mounted' => false, 'authorizing' => false );
+    }
+
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 9 );
     }
 
     public static function register_ability() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
-        if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) return;
-        wp_register_ability( self::ABILITY, array(
+        if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) {
+            // Repeated own registration is harmless. Any other object, including
+            // a callback replaced during the request, must fail closed.
+            $existing = function_exists( 'wp_get_ability' ) ? wp_get_ability( self::ABILITY ) : null;
+            if ( ! is_object( self::$registered_ability ) || $existing !== self::$registered_ability ) self::$registration_collision = true;
+            return;
+        }
+        self::$registered_ability = wp_register_ability( self::ABILITY, array(
             'label' => 'MAD4B Deployment Mode Status',
             'description' => 'Read-only, site-bound deployment mode and scoped identity resolution.',
             'category' => 'mad4b-read',
@@ -85,6 +117,37 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         ) );
     }
 
+    /**
+     * Non-authorizing operator guidance. A suggested recovery is never an approval
+     * ticket, never changes WP/Host configuration, and never certifies a provider.
+     */
+    private static function recovery_for( $reason ) {
+        $actions = array(
+            'SITE_PROFILE_UNAVAILABLE' => array( 'inspect_installation', 'Verify the Site Profile component is loaded.' ),
+            'SITE_NOT_ENROLLED' => array( 'enroll_site_profile', 'Enroll the current site with its true canonical origin and environment.' ),
+            'SITE_IDENTITY_NOT_READY' => array( 'repair_site_identity', 'Compare host environment and origin to Site Profile; repair the host or enrollment through authorized setup.' ),
+            'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED' => array( 'enroll_deployment_binding', 'Complete the existing deployment binding in an authorized setup flow; do not infer authority from the site name.' ),
+            'SITE_PROFILE_REVISION_MISSING' => array( 'repair_site_revision', 'Re-enroll or reconcile the Site Profile revision without rewriting its identity.' ),
+            'SITE_UUID_INVALID' => array( 'repair_site_uuid', 'Inspect the enrolled Site Profile identity; do not mint a replacement ID on read.' ),
+            'BRAND_CONTEXT_UNAVAILABLE' => array( 'inspect_brand_service', 'Verify Context Authority is loaded and initialized.' ),
+            'BRAND_PROFILE_UNRESOLVED' => array( 'configure_brand_profile', 'Review the current site brand and its source ownership before configuring it.' ),
+            'BRAND_PROFILE_REVISION_MISSING' => array( 'review_brand_revision', 'Review and persist the approved brand revision; do not transfer old sources automatically.' ),
+            'SITE_BLOG_LOCAL_BINDING_MISMATCH' => array( 'inspect_multisite_binding', 'Verify current blog, canonical origin, and persisted Site Profile; rebind only after operator review.' ),
+            'WORDPRESS_SITE_CONTEXT_UNAVAILABLE' => array( 'inspect_wordpress_site', 'Check WordPress blog and network context.' ),
+            'WORDPRESS_SITE_CONTEXT_INVALID' => array( 'inspect_wordpress_network', 'Verify current WordPress blog/network IDs before retrying.' ),
+            'WORDPRESS_ENVIRONMENT_UNSUPPORTED' => array( 'repair_environment_taxonomy', 'Use a supported WordPress environment and preserve its distinct acceptance gates.' ),
+            'REQUEST_SCOPE_INVALID' => array( 'correct_scope_input', 'Send an object containing only supported scope assertions.' ),
+            'REQUEST_SCOPE_MISMATCH' => array( 'remove_untrusted_scope', 'Use the server-resolved scope; do not override tenant, site, mode, or brand from the conversation.' ),
+        );
+        $known = isset( $actions[ $reason ] ) ? $actions[ $reason ] : array( 'inspect_scope', 'Inspect the deployment scope and underlying enrollment without widening access.' );
+        return array(
+            'code' => $known[0],
+            'instruction' => $known[1],
+            'automatic_mutation_allowed' => false,
+            'requires_independent_readback' => true,
+        );
+    }
+
     private static function blocked( $reason ) {
         return array(
             'contract' => self::CONTRACT,
@@ -94,6 +157,9 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'candidate_mode' => self::MODE,
             'active_mode' => 'unresolved',
             'status' => 'BLOCKED',
+            'operator_state' => 'blocked',
+            'mcp_registration' => self::mcp_registration_status(),
+            'next_safe_action' => self::recovery_for( $reason ),
             'portable_state' => 'BLOCKED',
             'reason' => $reason,
             'missing_dependencies' => self::dependency_codes( $reason ),
@@ -127,11 +193,8 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
     public static function resolve( $untrusted_request_scope = array() ) {
         if ( ! is_array( $untrusted_request_scope ) ) return self::blocked( 'REQUEST_SCOPE_INVALID' );
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return self::blocked( 'SITE_PROFILE_UNAVAILABLE' );
-        // Prevent this read-only ability from causing legacy migration writes.
-        if ( ! function_exists( 'get_option' ) ||
-             ! is_array( get_option( MAD4B_SCP_Site_Profile::OPTION, null ) ) ) {
-            return self::blocked( 'SITE_NOT_ENROLLED' );
-        }
+        // Defense-in-depth: the resolver must never create a Site Profile.
+        if ( ! function_exists( 'get_option' ) || ! is_array( get_option( MAD4B_SCP_Site_Profile::OPTION, null ) ) ) return self::blocked( 'SITE_NOT_ENROLLED' );
         $site = MAD4B_SCP_Site_Profile::status();
         if ( ! is_array( $site ) || empty( $site['configured'] ) ) return self::blocked( 'SITE_NOT_ENROLLED' );
         foreach ( array( 'origin_match', 'environment_match', 'authority_ready' ) as $check ) {
@@ -214,6 +277,9 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'supported_modes' => self::supported_modes(),
             'active_mode' => self::MODE,
             'status' => 'RESOLVED_FOR_REVIEW_ONLY',
+            'operator_state' => 'partial',
+            'mcp_registration' => self::mcp_registration_status(),
+            'next_safe_action' => array( 'code' => 'certify_runtime_pair', 'instruction' => 'Verify MCP discovery, effective authorization, execution, and independent Staging readback before declaring operational readiness.', 'automatic_mutation_allowed' => false, 'requires_independent_readback' => true ),
             'portable_state' => 'BOUND_FOR_REVIEW_ONLY',
             'scope' => $scope,
             'dependency_revision' => array(

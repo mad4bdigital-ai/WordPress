@@ -7,22 +7,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Operational_Scope_Guard {
     const CONTRACT = 'mad4b.wordpress-operational-scope.v1';
 
+    /**
+     * Compatibility façade. All enforcement shares the strong, revision-bound
+     * Operational Integrity checkpoint; never fall back to weaker identity.
+     */
     public static function require_current() {
-        if ( ! class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver', false ) )
-            return new WP_Error( 'mad4b_scope_resolver_missing', 'WordPress scope resolver is unavailable.' );
-        $resolved = MAD4B_SCP_Deployment_Mode_Resolver::resolve();
-        if ( ! is_array( $resolved ) || 'RESOLVED_FOR_REVIEW_ONLY' !== ( $resolved['status'] ?? '' ) ||
-             'wordpress_dedicated' !== ( $resolved['active_mode'] ?? '' ) ||
-             ! isset( $resolved['scope'] ) || ! is_array( $resolved['scope'] ) ) {
-            return new WP_Error( 'mad4b_scope_not_bound',
-                'Site and Brand identity must be enrolled and verified before this operation.',
-                array( 'reason' => is_array( $resolved ) ? sanitize_key( (string) ( $resolved['reason'] ?? 'not_bound' ) ) : 'resolver_invalid' ) );
+        if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity', false ) ) {
+            return new WP_Error( 'mad4b_scope_integrity_missing', 'Shared trusted scope is unavailable.' );
         }
-        $scope = $resolved['scope'];
-        if ( empty( $scope['site_uuid'] ) || empty( $scope['brand_ref'] ) ||
-             empty( $scope['tenant_ref'] ) || empty( $scope['blog_id'] ) || empty( $scope['network_id'] ) )
-            return new WP_Error( 'mad4b_scope_incomplete', 'Verified operational scope is incomplete.' );
-        return $scope;
+        $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+        return is_wp_error( $checkpoint ) ? $checkpoint : $checkpoint['scope'];
     }
 
     public static function require_brand( $candidate, $scope = null ) {
