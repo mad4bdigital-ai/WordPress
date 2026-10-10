@@ -64,8 +64,19 @@ class MAD4B_SCP_External_Handshake_Evidence {
 	}
 }
 class MAD4B_SCP_Operation_Registry {
+	public static function status() {
+		$a=array('id'=>'content.create_draft',
+			'planner'=>'mad4b/content-orchestration-plan',
+			'executor'=>'mad4b/content-apply-bundle',
+			'planner_registered'=>true,'executor_registered'=>true,
+			'descriptor_binding_ready'=>true,'supports'=>array('content','draft'));
+		$operations=array($a);
+		if(!empty($GLOBALS['extra_operation']))
+			$operations[]=array_merge($a,array('id'=>'content.update_draft'));
+		return array('operations'=>$operations,'catalog_sha256'=>str_repeat('d',64));
+	}
 	public static function operation($id) {
-		if ('content.create_draft'!==$id)
+		if (!in_array($id,array('content.create_draft','content.update_draft'),true))
 			return new WP_Error('mad4b_operation_not_registered');
 		return array('id'=>$id,'planner'=>'mad4b/content-orchestration-plan',
 			'executor'=>'mad4b/content-apply-bundle',
