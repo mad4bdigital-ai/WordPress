@@ -159,6 +159,144 @@ final class MAD4B_SCP_Staging_Autopilot {
 		);
 	}
 
+
+	/**
+	 * Combine independent read-only observations into an ordered, fail-closed
+	 * assistant handoff. This cannot create host secrets, grants or approvals.
+	 * Any stale Site Profile revision invalidates an earlier apply envelope.
+	 */
+	public static function automation_plan( array $site, array $write = array(), array $skills = array(), array $developer = array() ) {
+		$decision = self::decision( $site );
+		$environment_aligned = 'staging' === (string) ( $site['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
+			&& ! empty( $site['wordpress_environment_explicit'] )
+			&& empty( $site['wordpress_profile_mismatch'] )
+			&& ! empty( $site['origin_match'] ) && ! empty( $site['environment_match'] );
+		$profile_valid = ! empty( $site['configured'] ) && ! empty( $site['authority_ready'] )
+			&& ! empty( $site['profile_environment_authoritative'] )
+			&& empty( $site['mutation_pending_audit'] );
+		$binding_configured = ! empty( $site['deployment_binding_configured'] );
+		$binding_bound = ! empty( $site['deployment_binding_bound'] );
+		$binding_match = ! empty( $site['deployment_binding_match'] );
+		$binding_ready = $binding_configured && $binding_bound && $binding_match
+			&& ! empty( $site['same_origin_clone_protection'] );
+		$write_observed = array_key_exists( 'ready', $write );
+		$write_ready = $write_observed && ! empty( $write['ready'] );
+		$skills_observed = array_key_exists( 'ready', $skills );
+		$skills_ready = $skills_observed && ! empty( $skills['ready'] );
+		$execution = isset( $developer['execution'] ) && is_array( $developer['execution'] ) ? $developer['execution'] : array();
+		$developer_observed = array_key_exists( 'execution_ready', $execution );
+		$developer_ready = $developer_observed && ! empty( $execution['execution_ready'] );
+		$host_blockers = isset( $execution['blockers'] ) && is_array( $execution['blockers'] ) ? array_values( $execution['blockers'] ) : array();
+		$write_blockers = isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] )
+			? array_values( $write['current_readiness_blockers'] ) : array();
+		$next = 'none';
+		$actor = 'none';
+		$state = 'awaiting_exact_head_native_acceptance';
+		if ( ! $environment_aligned || ! $profile_valid ) {
+			$next = (string) $decision['next_action_id'];
+			$actor = (string) $decision['responsible_actor'];
+			$state = 'blocked_site_environment_or_identity';
+			if ( 'none' === $next ) {
+				$next = 'review_site_environment_identity';
+				$actor = 'site_administrator';
+			}
+		} elseif ( ! $binding_ready ) {
+			$actor = 'host_operator';
+			$state = 'blocked_host_deployment_binding';
+			$next = ! $binding_configured ? 'provision_unique_host_deployment_binding'
+				: ( ! $binding_match ? 'stop_and_review_deployment_binding_drift'
+					: 'save_exact_site_profile_to_bind_host_secret' );
+			if ( $binding_configured && ! $binding_bound && $binding_match ) $actor = 'site_administrator';
+		} elseif ( ! $write_ready ) {
+			$next = 'review_exact_write_only_convergence_handshake';
+			$actor = 'site_owner';
+			$state = $write_observed ? 'blocked_write_authority_not_current' : 'write_authority_not_evaluated';
+		} elseif ( ! $skills_ready ) {
+			$next = 'review_exact_managed_skills_reconciliation';
+			$actor = 'staging_operator';
+			$state = $skills_observed ? 'blocked_managed_skills_not_current' : 'managed_skills_not_evaluated';
+		} elseif ( ! $developer_ready ) {
+			$next = 'inspect_staging_host_sandbox_and_process_limits';
+			$actor = 'host_operator';
+			$state = $developer_observed ? 'blocked_developer_host_prerequisites' : 'developer_execution_not_evaluated';
+		}
+		$lanes = $decision['assistant_workflow'];
+		$lanes[0]['state'] = $environment_aligned ? 'explicit_staging_aligned' : (string) $decision['state'];
+		$lanes[0]['ready'] = $environment_aligned && $profile_valid;
+		$lanes[1]['state'] = $binding_ready ? 'bound_to_exact_host'
+			: ( ! $binding_configured ? 'missing_host_secret' : ( ! $binding_match ? 'binding_drift' : 'host_secret_not_bound_to_profile' ) );
+		$lanes[1]['ready'] = $binding_ready;
+		$lanes[1]['next_action_id'] = $binding_ready ? 'none' : ( ! $binding_configured ? 'provision_unique_host_deployment_binding' : ( ! $binding_match ? 'stop_and_review_deployment_binding_drift' : 'save_exact_site_profile_to_bind_host_secret' ) );
+		$lanes[1]['host_secret_generated_by_wordpress'] = false;
+		$lanes[2]['state'] = ! $write_observed ? 'not_evaluated' : ( $write_ready ? 'exact_current_authority_ready' : 'exact_current_authority_blocked' );
+		$lanes[2]['ready'] = $write_ready;
+		$lanes[2]['observed'] = $write_observed;
+		$lanes[2]['blockers'] = $write_blockers;
+		$lanes[2]['next_action_id'] = $write_ready ? 'none' : 'review_exact_write_only_convergence_handshake';
+		$lanes[2]['skills_state'] = ! $skills_observed ? 'not_evaluated' : ( $skills_ready ? 'ready' : 'blocked' );
+		$lanes[2]['skills_next_action'] = $skills_ready ? 'none' : 'review_exact_managed_skills_reconciliation';
+		$lanes[3]['state'] = ! $developer_observed ? 'not_evaluated' : ( $developer_ready ? 'sandbox_execution_ready' : 'sandbox_execution_blocked' );
+		$lanes[3]['ready'] = $developer_ready;
+		$lanes[3]['observed'] = $developer_observed;
+		$lanes[3]['blockers'] = $host_blockers;
+		$lanes[3]['next_action_id'] = $developer_ready ? 'none' : 'inspect_staging_host_sandbox_and_process_limits';
+		$lanes[4]['state'] = 'native_live_acceptance_not_evaluated';
+		$lanes[4]['ready'] = false;
+		// Never interpret read-time projection as a release certificate.
+		return array(
+			'contract' => 'mad4b.staging-autopilot-automation-plan.v1',
+			'state' => $state,
+			'next_action_id' => $next,
+			'responsible_actor' => $actor,
+			'profile_identity' => array(
+				'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
+				'revision' => (int) ( $site['revision'] ?? 0 ),
+				'profile_digest' => (string) ( $site['profile_digest'] ?? '' ),
+			),
+			'environment' => array(
+				'wordpress_explicit_staging_aligned' => $environment_aligned,
+				'profile_identity_ready' => $profile_valid,
+				'host_sync_state' => (string) ( $site['environment_sync_state'] ?? 'unknown' ),
+				'host_sync_blocker_is_independent_of_wordpress_environment' => $environment_aligned && ! $binding_ready,
+			),
+			'host_binding' => array(
+				'configured' => $binding_configured,
+				'bound' => $binding_bound,
+				'match' => $binding_match,
+				'clone_protection_ready' => $binding_ready,
+				'secret_read_or_generated' => false,
+			),
+			'observations' => array(
+				'write_observed' => $write_observed,
+				'write_ready' => $write_ready,
+				'skills_observed' => $skills_observed,
+				'skills_ready' => $skills_ready,
+				'developer_host_observed' => $developer_observed,
+				'developer_execution_ready' => $developer_ready,
+				'host_blockers' => $host_blockers,
+			),
+			'assistant_workflow' => $lanes,
+			'execution_policy' => array(
+				'read_observation_automatic' => true,
+				'wp_config_mutation_requires_local_admin_save' => true,
+				'host_secret_provisioning_requires_host_operator' => true,
+				'write_only_convergence_requires_exact_owner_approval' => true,
+				'managed_skills_remote_reconcile_requires_step_up' => true,
+				'developer_isolation_requires_independent_host_acceptance' => true,
+				'fresh_plan_required_after_profile_save' => true,
+				'unattended_host_install_allowed' => false,
+				'unattended_write_grant_allowed' => false,
+				'developer_or_breakglass_auto_enable_allowed' => false,
+				'production_mutation_allowed' => false,
+			),
+			'completion_certified' => false,
+			'read_only' => true,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function status( $input = array() ) {
 		if ( null === $input ) $input = array();
 		if ( ! is_array( $input ) || ! empty( $input ) ) {
@@ -169,6 +307,23 @@ final class MAD4B_SCP_Staging_Autopilot {
 		}
 		$site = MAD4B_SCP_Site_Profile::status();
 		$report = self::decision( is_array( $site ) ? $site : array() );
+
+		// Explicit on-demand observations: local, read-only, exact-current truth.
+		// If a component is absent, show NOT_EVALUATED instead of a false PASS.
+		$write = class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
+			? MAD4B_SCP_Staging_Write_Authority_Convergence::status() : array();
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		$full = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
+			? MAD4B_SCP_Full_Staging_Authority::status() : array();
+		$developer = is_array( $full ) && isset( $full['developer'] ) && is_array( $full['developer'] )
+			? $full['developer'] : array();
+		$report['automation_plan'] = self::automation_plan(
+			is_array( $site ) ? $site : array(),
+			is_array( $write ) ? $write : array(),
+			is_array( $skills ) ? $skills : array(),
+			$developer
+		);
 		$report['site_profile_read_ability'] = 'mad4b/site-profile-status';
 		$report['environment_sync_verification_ability'] = 'mad4b/host-environment-sync-verification';
 		// File checks are on-demand only; normal requests and chat discovery
