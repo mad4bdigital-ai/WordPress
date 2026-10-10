@@ -29,33 +29,8 @@ DOCKER_IMAGES = {
     "python": "python:3.11-slim",
 }
 # Named gates, not the complete GitHub Actions job graph. Fail closed on coverage.
-GATES = [
-    ("g9-delivery", "python", "g9-delivery-contract.py"),
-    ("g9-source", "python", "g9-security-source-contract.py"),
-    ("g9-resilience", "php", "g9-resilience-gates-runtime.php"),
-    ("g9-restore", "php", "g9-resilience-state-runtime.php"),
-    ("g9-fleet", "php", "g9-fleet-rollout-runtime.php"),
-    ("selected-head-contract", "python", "selected-head-update-contract.py"),
-    ("selected-head-disabled", "php", "selected-head-update-runtime.php", "disabled"),
-    ("selected-head-normal", "php", "selected-head-update-runtime.php", "normal"),
-    ("selected-head-master", "php", "selected-head-update-runtime.php", "master"),
-    ("selected-head-missing", "php", "selected-head-update-runtime.php", "missing"),
-    ("selected-head-uncertified", "php", "selected-head-update-runtime.php", "uncertified"),
-    ("selected-head-drift", "php", "selected-head-update-runtime.php", "drift"),
-    ("selected-head-bad-archive", "php", "selected-head-update-runtime.php", "bad-archive"),
-    ("staging-selector", "php", "staging-source-selector-runtime.php"),
-    ("staging-upload-contract", "python", "self-update-staging-candidate-contract.py"),
-    ("release-channel-contract", "python", "self-update-dual-channel-contract.py"),
-    ("runtime-release-set", "python", "runtime-release-set-contract.py"),
-    ("imp07-source", "python", "imp07-import-source-contract.py"),
-    ("imp07-runtime", "php", "imp07-import-source-runtime.php"),
-    ("enrollment-dispatch", "php", "enrollment-dispatch-runtime.php"),
-]
-CORE_NAMES = frozenset(("g9-delivery", "g9-source", "selected-head-contract",
-                        "selected-head-normal", "selected-head-drift",
-                        "selected-head-bad-archive", "staging-selector",
-                        "staging-upload-contract", "release-channel-contract",
-                        "imp07-source", "enrollment-dispatch"))
+# Test selection is exclusively the reviewed gates manifest in the exact SHA.
+# No site type or PR number is hard-coded into test enrollment.
 
 
 def sha256(data):
