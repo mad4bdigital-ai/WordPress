@@ -19,6 +19,11 @@ final class MAD4B_SCP_Selected_Head_Update {
     const MAX_ZIP_BYTES = 16777216;
 
     public static function boot() {
+        // Register scoped WordPress-only attestation trust enrollment without
+        // touching the plugin bootstrap or its G9 delivery fingerprints.
+        if ( ! class_exists( 'MAD4B_SCP_CI_Outage_Attestation', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-ci-outage-attestation.php';
+        MAD4B_SCP_CI_Outage_Attestation::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 35 );
     }
 
