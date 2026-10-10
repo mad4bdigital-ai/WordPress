@@ -222,7 +222,8 @@ final class MAD4B_SCP_Activity_Import_Modes {
             ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             return self::err( 'mad4b_import_mode_profile_not_ready', 'Business Activity facet must be enabled.' );
         $policy = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
-        if ( ! empty( $policy['enabled_modes'] ) &&
+        if ( empty( $policy['enabled_modes'] ) ||
+            ! is_array( $policy['enabled_modes'] ) ||
             ! in_array( $id, $policy['enabled_modes'], true ) )
             return self::err( 'mad4b_import_mode_disabled_for_profile',
                 'This transport is not enabled by the governed site Activity Profile.' );
