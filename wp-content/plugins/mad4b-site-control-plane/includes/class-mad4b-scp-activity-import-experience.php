@@ -375,6 +375,35 @@ final class MAD4B_SCP_Activity_Import_Experience {
         if ( !$selected ) {
             self::explanation( self::title( 'Choose where the data belongs.' ),
                 self::title( 'Select an existing configured Profile above. There is no need to enter a technical slug.' ) );
+            if ( ! $view['profiles'] &&
+                class_exists( 'MAD4B_SCP_Import_Schema_Onboarding' ) ) {
+                echo '<h2>' . self::e( self::title(
+                    'No Content Experience Profile is configured yet' ) ) . '</h2>';
+                echo '<p>' . self::e( self::title(
+                    'Start by identifying the real WordPress content type. The list below does not create a Profile or approve an import.' ) ) . '</p>';
+                $discovery = MAD4B_SCP_Import_Schema_Onboarding::plan( array() );
+                if ( is_wp_error( $discovery ) )
+                    self::explanation( self::title( 'Staging discovery is unavailable.' ),
+                        $discovery->get_error_message(), 'warning' );
+                elseif ( ! empty( $discovery['available_post_types'] ) ) {
+                    echo '<table class="widefat striped"><thead><tr><th>' .
+                        self::e( self::title( 'WordPress content type' ) ) .
+                        '</th><th>' . self::e( self::title( 'Technical key' ) ) .
+                        '</th><th>' . self::e( self::title( 'Edit access' ) ) .
+                        '</th></tr></thead><tbody>';
+                    foreach ( $discovery['available_post_types'] as $type ) {
+                        echo '<tr><td>' . self::e( $type['label'] ) .
+                            '</td><td><code>' . self::e( $type['post_type'] ) .
+                            '</code></td><td>' .
+                            self::e( empty( $type['editable_by_current_operator'] ) ?
+                                'Not confirmed' : 'Available for review' ) .
+                            '</td></tr>';
+                    }
+                    echo '</tbody></table>';
+                }
+                self::explanation( self::title( 'Next safe step.' ),
+                    self::title( 'Use the read-only Content Experience schema onboarding plan to inspect one content type, then have a site administrator review a new Profile, its stable source identity, mapping, currencies, translations and enabled Modes. JetEngine CCT requires independent native discovery.' ) );
+            }
             echo '</div>'; return;
         }
         if ( !$view['has_import_policy'] ) {
