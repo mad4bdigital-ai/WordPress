@@ -62,7 +62,7 @@ The current PR branch additionally includes source-level modules, **not** operat
 | Storage adapters | Explicit deployment-owned provider registry, typed descriptor, exact target/site scope, registered native Ability identity and permission-checked nonsecret read snapshot | Real provider certification, atomic target revision enforcement, independent post-write readback |
 | Dynamic forms | Canonical descriptor, typed validation and bounded literal enum suggestions | Live CPT/taxonomy/user/relationship autocomplete, conditional mutations and rights-scoped search |
 | Private drafts | First-party create/load/save/delete using bounded nonsecret values, actor/site scope HMAC, fixed option names and SQL CAS | Retention worker, GDPR export/delete evidence, real two-writer concurrency proof |
-| Change plans | Scoped exact native Ability executor with pending/approved ticket claim, one-use execution permit, pre-effect journal and provider readback | Real provider acceptance, independent external attestation, durable reconciliation finalization and verified undo |
+| Change plans | Scoped exact native Ability executor with pending/approved ticket claim, one-use execution permit, pre-effect journal and provider readback | External auditor/key enrollment, executed native DB and Staging acceptance, conflict/undo verification |
 | Bulk execution | Exact owner/site, 32-item cap, per-item native tickets, durable CAS checkpoint and 1–5-item Canary; resume now checks current mutation-approver policy | Real concurrent-writer acceptance, independent Canary review receipt, unknown-effect reconciliation and compensation |
 | Workflows | Static cycle-safe DAG of sealed write-only intents may run via native-ticket bulk journal; mixed nodes cannot execute | Persisted cross-provider saga, signed triggers/webhooks, independent recovery and compensation |
 | Privacy and UI | First-party RTL/English forms, no credential value in conversation | Real accessibility/browser/privacy/retention acceptance |
@@ -114,3 +114,71 @@ hardening only, not a live Staging acceptance receipt.
 - An interrupted `inflight`, `reserved` or `needs_reconcile` journal is **not** permission to retry. Operator reconciliation must establish native/host result and separate grant evidence before any new operation.
 - Only explicitly tagged, permitted WordPress `post_title` and `post_excerpt` fields have a source-owned driver. CPT relationships, Meta, WPML, SEO, media and commerce remain unsupported until independently enrolled drivers and tests are added.
 - No claim of completed PHP 7.4/8.3 native test execution, Staging/Host/browser acceptance, deterministic ZIP, rollback or Production approval follows from source presence or queued GitHub Actions.
+
+## CSO claim-uncertainty and signed recovery hardening — 10 October 2026
+
+**Scope:** Feature 007 PR #258 only, not a runtime deployment. This replaces the
+older statement that only `reconcile_inspect` exists. The branch also has
+`reconcile_approval_plan` and `reconcile_finalize`; they are not self-authorizing
+and are disabled until an external auditor is independently enrolled.
+
+### Invariant and error windows
+
+1. The unique pre-effect Journal key is persisted before any approval claim.
+   If `claim_exact` reports an error, it may have committed its DB update
+   before an acknowledgment was lost. The Journal must remain
+   `needs_reconcile` or `reserved`, **never terminal `claim_denied`**.
+   There is no second native write attempt.
+2. If the original ticket remains `approved` after a reservation/interruption,
+   a signed **ABSENT** proof, current unchanged provider revision/values,
+   externally fenced writer and separate recovery approval may revoke that
+   unused original ticket. An `approved` original can never be declared
+   `used` or `applied` merely because recovery was requested.
+3. If the original ticket is `executing`, independent `APPLIED` proof may
+   finalize it as `used`; independently certified `ABSENT` proof may
+   finalize it as `failed`. An already-terminal original is accepted only
+   with a congruent signed outcome.
+4. The recovery ticket is separate, payload-bound, claimed once and finalized.
+   Journal CAS pins its identity, exact external proof digest and outcome
+   before terminalization. A retry may only resume those pinned identifiers
+   and must re-check signed proof, scope, provider values and ticket states.
+5. A lost ticket-finalization acknowledgment or terminal-Journal CAS conflict
+   must remain **nonreplayable**, with an idempotent same-proof recovery route.
+   Changed proof, mismatched actor/target/site, missing auditor key, invalid
+   signature and concurrent revision drift fail closed.
+
+### Source regression coverage
+
+The existing `tests/cso-native-executor-runtime.php` test now exercises:
+- a native callback throwing after effect, independently signed APPLIED proof,
+  pending recovery denial, separate approval, and both tickets finalizing;
+- a crash before the original approval claim, signed ABSENT proof and revocation
+  of the unused `approved` original without a native effect;
+- claim status committed but acknowledgment lost, signed ABSENT proof and
+  terminal `failed` original without write replay;
+- forged-signature denial, lost recovery-finalization acknowledgment,
+  terminal Journal CAS failure and exact-proof restart.
+
+The fixture generates an **ephemeral RSA key at test runtime**. It does not
+contain a production signer, assert that an independently operated auditor is
+live, or substitute for a real WordPress/MariaDB race/fault experiment.
+
+Existing `.github/workflows/feature-007-spec-ci.yml` runs PHP lint and the
+fixture on PHP 7.4 and 8.3. A queued job is still **NOT PASS**.
+
+### Non-waivable operational acceptance
+
+| Gate | Evidence required | Current classification |
+| --- | --- | --- |
+| Native language matrix | Executed PHP 7.4 and 8.3 lint/fixtures on exact candidate SHA | Pending external runner |
+| DB claim collision | Two connections, shared MariaDB/MySQL, one winner, no replay | Not witnessed |
+| Crash after durable reservation | Process termination before and after Claim COMMIT; final Journal/ticket readback | Not witnessed |
+| Crash after provider effect | Real WordPress write and hooks, lost COMMIT acknowledgment, independent readback | Not witnessed |
+| Independent signer | Private key outside WordPress/MCP, audited trust enrollment, rotation/revocation | Not enrolled by source alone |
+| Staging MCP | Exact build/site/environment bindings, read/approval/write/readback, rejection tests | Not witnessed |
+| Advanced connectors | CPT/Meta/SEO/WPML/media/commerce per-provider authority and rollback | Not certified |
+| Distribution | Exact-head ZIP, clean install, downgrade/rollback, independent hash match | Not certified |
+
+Never simulate an external auditor by signing inside WordPress itself. Never
+derive `WP_ENVIRONMENT_TYPE` from a Site Profile, replay an uncertain write,
+lift Production gates, or mark the whole PR ready based on this source patch.
