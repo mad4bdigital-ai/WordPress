@@ -23,9 +23,11 @@ class FakeDB {
  }
 }
 $GLOBALS['wpdb']=new FakeDB();$GLOBALS['dbrows']=array();
-$GLOBALS['scope']=array('binding_sha256'=>str_repeat('b',64),'actor_sha256'=>str_repeat('a',64));
+$GLOBALS['scope']=array('binding_sha256'=>str_repeat('b',64),'actor_sha256'=>str_repeat('a',64),'environment'=>'staging');
 $GLOBALS['write_enabled']=true;$GLOBALS['session']=true;$GLOBALS['policy']=true;
 $GLOBALS['ticket']=array();$GLOBALS['revision']='revision-old';
+$GLOBALS['wp_environment']='staging';
+function wp_get_environment_type(){return $GLOBALS['wp_environment'];}
 $GLOBALS['title']='Old';$GLOBALS['executions']=0;$GLOBALS['uncertain']=false;
 class MAD4B_SCP_CSO_Scope {
  static function enabled($k){return $GLOBALS['write_enabled'];}
@@ -112,6 +114,10 @@ $sealed=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
 $ability=wp_get_ability('mad4b-cso/fixture-write');
 ck(is_wp_error($ability->execute(array('values'=>array('title'=>'Injected')))),'direct bypass denied');
 ck(!MAD4B_SCP_CSO_Native_Executor::native_permit_matches(array()),'no permission outside executor');
+$GLOBALS['wp_environment']='production';
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::approval_plan($sealed,'Reviewed one post title','agent-demo')),'WP production default cannot inherit staging profile writes');
+ck($GLOBALS['executions']===0&&count($GLOBALS['dbrows'])===0,'environment mismatch leaves no effects');
+$GLOBALS['wp_environment']='staging';
 $p=MAD4B_SCP_CSO_Native_Executor::approval_plan($sealed,'Reviewed one post title','agent-demo');
 ck(!is_wp_error($p)&&$p['status']==='pending'&&$GLOBALS['executions']===0,'pending without write');
 $id=$p['ticket_id'];
