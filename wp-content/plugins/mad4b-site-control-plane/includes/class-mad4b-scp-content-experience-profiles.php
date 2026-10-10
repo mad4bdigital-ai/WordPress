@@ -730,6 +730,20 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
+                'name' => 'mad4b/business-activity-import-approve',
+                'label' => 'Confirm Exact Immutable Source for Manual-Only CSV Export',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Snapshot', 'approve_ability' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'plan_sha256' => self::sha_schema(),
+                    'confirmed' => array( 'type' => 'boolean' ),
+                ), array( 'profile_slug', 'snapshot_sha256', 'plan_sha256', 'confirmed' ) ),
+                'surface' => 'content', 'readonly' => false,
+                'destructive' => true, 'idempotent' => false,
+            ),
+            array(
                 'name' => 'mad4b/business-activity-import-approval-plan',
                 'label' => 'Inspect Exact Staged Source Approval Plan',
                 'callback' => array( 'MAD4B_SCP_Activity_Import_Snapshot', 'approval_plan' ),
