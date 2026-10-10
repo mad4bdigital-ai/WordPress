@@ -8,6 +8,7 @@ class WP_Error {
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $data ) { return json_encode( $data ); }
+function sanitize_key( $key ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) ); }
 $GLOBALS['can_read'] = true;
 $GLOBALS['enrolled'] = true;
 $GLOBALS['site_origin'] = 'https://staging.example.org';
