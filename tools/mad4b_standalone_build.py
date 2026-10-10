@@ -165,9 +165,12 @@ def native_checks(root: Path, php: str) -> dict:
 def build(root: Path, output: Path, source: str, adapter: Path,
           *, run_tests: bool = False, php: str = "php") -> dict:
     root = root.resolve(strict=True)
+    # Check symlinks BEFORE resolve(), otherwise it hides a redirected path.
+    require(not output.is_symlink() and not adapter.is_symlink(),
+            "symlinked_output_or_adapter_denied")
     output = output.resolve()
     adapter = adapter.resolve()
-    require(not output.is_symlink() and not output.is_relative_to(root),
+    require(not output.is_relative_to(root),
             "output_must_be_outside_source_checkout")
     source_identity(root, source)
     version, adapter_sha = certified_adapter(root, adapter)
