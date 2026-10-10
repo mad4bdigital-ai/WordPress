@@ -720,6 +720,20 @@ final class MAD4B_SCP_Self_Update {
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
 			),
+			'optional_selected_head_update' => array(
+				'supported' => class_exists( 'MAD4B_SCP_Selected_Head_Update' ),
+				'enabled' => defined( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' )
+					&& true === constant( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' ),
+				'default' => false,
+				'automatic_update' => false,
+				'production_allowed' => false,
+				'source_types' => array( 'pull_request', 'branch', 'commit' ),
+				'plan_ability' => 'mad4b/control-plane-selected-head-plan',
+				'apply_ability' => 'mad4b/control-plane-selected-head-apply',
+				'certified_package_required' => true,
+				'caller_package_url_allowed' => false,
+				'mutation_performed' => false,
+			),
 			'governed_file_upload' => array(
 				'ready' => (bool) $remote_ready,
 				'staging_only' => true,
