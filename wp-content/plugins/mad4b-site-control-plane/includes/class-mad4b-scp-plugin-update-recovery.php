@@ -147,7 +147,7 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
         foreach ( $plugins as $file => $info ) {
             if ( count( $items ) >= $limit ) break;
             if ( ! is_string( $file ) ||
-                ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $file ) ) continue;
+                ! preg_match( '#^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)?\\.php$#D', $file ) ) continue;
             if ( '' !== $filter && false === stripos( $file, $filter ) ) continue;
             $authority = $catalog[ $file ] ?? array();
             $certified = ! empty( $authority ) && empty( $authority['conflict'] );
@@ -205,7 +205,7 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
     public static function plan( $input = array() ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ),
             array( 'plugin_file', 'reason', 'source' ) ) )
-            return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only plugin ID, selected certified source, CI diagnostic and test evidence accepted.' );
+            return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only exact plugin ID, certified source and reason accepted.' );
         $plugin = (string) ( $input['plugin_file'] ?? '' );
         if ( ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $plugin ) )
             return new WP_Error( 'mad4b_plugin_update_file_invalid', 'Exact registered plugin file required.' );
@@ -226,8 +226,7 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
             return new WP_Error( 'mad4b_plugin_update_source_invalid', 'Unknown certified source type.' );
         $evidence = array(); // Never promote caller-supplied PASS flags into trust.
         $ci_policy = self::ci_policy( $ci, $evidence, true );
-        // Native-evidence flags supplied by callers are for diagnostics only.
-        // They never authorize a plugin write or certify source bytes.
+        // Missing independent server-side signature is a disclosure, not a grant.
         $ci_policy['caller_asserted_native_evidence_authoritative'] = false;
         if ( ! class_exists( 'MAD4B_SCP_Plugin_Package' ) )
             return new WP_Error( 'mad4b_plugin_update_backend_missing', 'Canonical governed plugin installer unavailable.' );
