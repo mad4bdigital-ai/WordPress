@@ -83,6 +83,16 @@ $reviewed = MAD4B_SCP_Activity_Import_Experience::journey(
 ux( $reviewed['approval_candidate'] && !$reviewed['can_start_import'] &&
     $reviewed['never_auto_execute_or_publish'],
     'Manual source approval was misrepresented as actual importer execution' );
+$allWarnings = array(
+    'state' => 'requires_review', 'snapshot_sha256' => str_repeat( 'c', 64 ),
+    'plan' => array( 'block_issue_count' => 0, 'review_issue_count' => 390,
+        'issue_count_observed' => 390, 'issues_truncated' => true )
+);
+$many = MAD4B_SCP_Activity_Import_Experience::journey(
+    $p, 'rates', $catalog, $allWarnings, '', 4 );
+ux( $many['approval_candidate'] && $many['review_issue_count'] === 390 &&
+    !$many['can_start_import'],
+    'Large warning-only import was permanently blocked by display pagination' );
 $corrupt = MAD4B_SCP_Activity_Import_Experience::journey(
     $p, 'rates', $catalog, new WP_Error( 'legacy' ), '', 2 );
 ux( $corrupt['review_unavailable'] && !$corrupt['can_upload_new'],
