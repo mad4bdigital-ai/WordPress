@@ -540,6 +540,18 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
+		if ( in_array( $ability_name, array( 'context/brand-profile-save', 'context/governed-source-upsert',
+			'context/legacy-owner-transfer-apply' ), true ) ) {
+			// These are audited WordPress registry mutations, not Drive file
+			// writes. Requiring an already selected Drive folder would deadlock
+			// first-time enrollment/legacy recovery. Independent permission,
+			// exact approval and scope checks still run for EVERY invocation.
+			$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+			return 'staging' === (string) ( $site['environment'] ?? '' )
+				&& ! empty( $site['origin_match'] ) && ! empty( $site['environment_match'] )
+				? true : new WP_Error( 'mad4b_brand_registry_write_staging_only',
+					'Brand recovery registry mutation is not eligible outside the exact enrolled Staging site.' );
+		}
 		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/brand-draft-create', 'context/source-scan-apply' ), true ) ) {
 			return true;
 		}
