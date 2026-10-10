@@ -344,6 +344,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wordpress-lifecycle-migra
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-package.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remote-plugin-update.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-self-update.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-selected-head-update.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-release-set.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-workflow-providers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operating-model.php';
@@ -572,6 +573,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Plugin_Package::boot();
 	MAD4B_SCP_Remote_Plugin_Update::boot();
 	MAD4B_SCP_Self_Update::boot();
+	MAD4B_SCP_Selected_Head_Update::boot();
 	MAD4B_SCP_Runtime_Release_Set::boot();
 	MAD4B_SCP_G9_Read_Surface::boot();
 	MAD4B_SCP_Functional_Gap_Runtime_Diagnostic::boot();
