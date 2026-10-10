@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 699,
+  "changed_file_count": 756,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1463,8 +1463,121 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-config-environment-sync.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-wp-config-auto-sync-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261010-release-workflow",
+      "semantic_unit": "Canonical plugin/package CI and immutable Staging candidate release workflows; no release grant",
+      "revert_boundary": "Revert audited release-workflow changes together; preserve master trust",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-control-plane-package.yml",
+        ".github/workflows/mad4b-plugin-package.yml",
+        ".github/workflows/mad4b-staging-candidate-publish.yml"
+      ]
+    },
+    {
+      "id": "feature007-20261010-standalone-build",
+      "semantic_unit": "Exact-head ZIP producer handoff, independent native evidence and MCP read-only planning",
+      "revert_boundary": "Revert standalone source builder, evidence scripts, MCP plan and tests as one slice",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/standalone-build-orchestrator.md",
+        "tools/mad4b_standalone_build.py",
+        "tools/mad4b_standalone_evidence.py",
+        "tools/test_mad4b_standalone_build.py",
+        "tools/test_mad4b_standalone_evidence.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261010-admin-workflow",
+      "semantic_unit": "Typed WordPress admin surface discovery, profiles, progressive requirements and original governed Ability handoff",
+      "revert_boundary": "Revert admin UI operation mappings, native policies, profile tests and docs together",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/admin-operations-to-mcp-dynamic-profiles.md",
+        "docs/runbooks/mcp-manual-workflow-autopilot.md",
+        "docs/runbooks/progressive-dynamic-operation-conditions.md",
+        "docs/runbooks/universal-admin-operation-coverage-matrix.md",
+        "docs/runbooks/wordpress-native-selected-head-update.md",
+        "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-operation-profiles.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-surface-coverage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-manual-workflow-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-progressive-operation-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-progressive-requirements.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-native-opt-in.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-operation-profiles-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-surface-coverage-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/manual-workflow-bridge-apply-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/manual-workflow-bridge-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/progressive-requirements-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-assistant-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-native-candidate-policy-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261010-plugin-recovery",
+      "semantic_unit": "Provider-neutral plugin update recovery and signed independent CI-outage Staging evidence",
+      "revert_boundary": "Revert offline recovery, package contracts and tests without Production promotion",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/ci-outage-selected-head-staging.md",
+        "docs/runbooks/universal-wordpress-plugin-update-recovery.md",
+        "tools/mad4b_publish_offline_staging_candidate.py",
+        "tools/mad4b_sign_plugin_ci_outage.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ci-outage-attestation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ci-outage-attestation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ci-outage-selected-head-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-recovery-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261010-brand-core",
+      "semantic_unit": "Brand Core canonical ownership and quarantine-first recovery",
+      "revert_boundary": "Revert Brand Core control loop and related tests and runbook without legacy adoption",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/brand-core-mcp-complete-recovery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-control-loop.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-control-loop-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261010-host-identity",
+      "semantic_unit": "Enrolled Host identity signatures, socket and exact Staging preflight provenance",
+      "revert_boundary": "Revert Host identity contract/test changes as one unit",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/single-source-live-host-identity.md",
+        "tools/mad4b_host_identity_socket.py",
+        "tools/mad4b_refresh_g9_fingerprints.py",
+        "tools/mad4b_staging_host_preflight.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-host-identity-live.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-identity-live-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-identity-signer-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-identity-socket-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/host-identity-socket-denial-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-host-preflight-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-20261010-staging-autopilot",
+      "semantic_unit": "Bounded Staging assistant remediation and native tests; no autonomous installation",
+      "revert_boundary": "Revert autopilot implementation, fixture and operator handoff together",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/staging-autopilot-assistant-handoff.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-autopilot.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-autopilot-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "1765ffff03732cba2b8a710e681d102a973569a02220e2c780659197567e009d",
+  "changed_paths_sha256": "cb3e024b8c88396e824b73ea9bb6dad65f9143d7e0b3c00e916e8097e1e8d987",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
