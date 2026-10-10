@@ -30,6 +30,7 @@ final class MAD4B_SCP_Activity_Import_Experience {
     public static function mode_label( $id ) {
         $labels = array(
             'admin_csv_upload' => 'Upload a CSV file here',
+            'admin_xlsx_convert' => 'Upload an Excel XLSX file here',
             'admin_xlsx_convert' => 'Convert Excel to CSV',
             'google_apps_script' => 'Google Sheets via Apps Script',
             'signed_generic_webhook' => 'Make / n8n / Zapier / signed webhook',
@@ -89,6 +90,17 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'mad4b_import_snapshot_size' => 'The source exceeds the secure review size limit. Use a separately certified batched mode.',
             'mad4b_import_warning_ack_confirmation_missing' => 'Check the acknowledgement box before approving the full business warning count.',
             'mad4b_import_warning_acknowledgement_mismatch' => 'The business warning totals changed. Refresh the source review and confirm the new exact count.',
+            'mad4b_xlsx_parser_unavailable' => 'This site has no approved XLSX parser or encryption key. Ask the administrator to configure PhpSpreadsheet, or upload CSV instead.',
+            'mad4b_xlsx_upload_invalid' => 'Choose a genuine .xlsx file no larger than 1 MiB. Old .xls or macro-enabled workbooks are not supported.',
+            'mad4b_xlsx_zip_invalid' => 'The uploaded Excel file cannot be opened safely. Export it again as XLSX or CSV.',
+            'mad4b_xlsx_zip_unsafe' => 'Excel contains unsafe/external components or exceeds decompressed size limits. Use a simple one-sheet literal source.',
+            'mad4b_xlsx_single_sheet_required' => 'Export the relevant sheet separately: only one sheet is reviewed at a time.',
+            'mad4b_xlsx_dimensions_invalid' => 'Excel must contain 1–500 data rows and no more than 80 columns.',
+            'mad4b_xlsx_formula_denied' => 'Excel formulas cannot be evaluated or imported automatically. Replace formulas with approved literal values.',
+            'mad4b_xlsx_parse_failed' => 'The installed XLSX reader could not read this workbook safely. Export a literal CSV as fallback.',
+            'mad4b_xlsx_cell_type_invalid' => 'Excel contains unsupported cell structures. Convert to literal values.',
+            'mad4b_xlsx_cell_oversized' => 'An Excel cell exceeds the allowed 4096 characters.',
+            'mad4b_xlsx_no_data' => 'Excel workbook has no reviewable data rows.',
         );
         return isset( $map[ $code ] ) ? $map[ $code ] :
             'Read the diagnostic, check the site configuration and retry only after the underlying issue is resolved.';
@@ -393,6 +405,19 @@ final class MAD4B_SCP_Activity_Import_Experience {
                 self::e( self::title( 'CSV file' ) ) .
                 '</strong></label> <input id="mad4b-source-file" type="file" name="import_csv" accept=".csv,text/csv" required /></p>';
             submit_button( self::title( 'Upload and inspect (no import)' ), 'primary' );
+            echo '</form>';
+        } elseif ( 'admin_xlsx_convert' === $mode ) {
+            echo '<p>' . self::e( self::title(
+                'Upload one XLSX worksheet as a bounded preview (up to 1 MiB, 500 data rows and 80 columns). All Excel formulas, macros and external links are rejected. No posts are written.' ) ) . '</p>';
+            echo '<form method="post" enctype="multipart/form-data" action="' .
+                esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_activity_import_xlsx" />';
+            echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+            wp_nonce_field( 'mad4b_activity_xlsx_intake', 'mad4b_import_xlsx_nonce' );
+            echo '<p><label for="mad4b-xlsx-source"><strong>' .
+                self::e( self::title( 'Excel XLSX workbook' ) ) .
+                '</strong></label> <input id="mad4b-xlsx-source" type="file" name="import_xlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required /></p>';
+            submit_button( self::title( 'Stage Excel for conflict review (no import)' ), 'primary' );
             echo '</form>';
         } else {
             self::explanation( self::title( 'Send the source using the selected connector.' ),
