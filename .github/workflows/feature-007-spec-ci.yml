@@ -829,8 +829,13 @@ jobs:
             php -l "$file"
           done
           php -l "$root/includes/class-mad4b-scp-host-identity-live.php"
+          php -l "$root/includes/class-mad4b-scp-host-bridge.php"
+          php -l "$root/tests/host-bridge-contract.php"
+          php -l "$root/tests/site-profile-lifecycle-matrix-runtime.php"
           php -l "$root/tests/host-identity-live-runtime.php"
           php -l "$root/tests/host-identity-socket-denial-runtime.php"
+          php "$root/tests/host-bridge-contract.php"
+          php "$root/tests/site-profile-lifecycle-matrix-runtime.php"
           php "$root/tests/staging-autopilot-runtime.php"
           php "$root/tests/host-identity-live-runtime.php"
           php "$root/tests/host-identity-socket-denial-runtime.php"
