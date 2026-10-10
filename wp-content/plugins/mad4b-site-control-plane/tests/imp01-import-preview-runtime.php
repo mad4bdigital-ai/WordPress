@@ -263,6 +263,30 @@ $approvedRead = MAD4B_SCP_Activity_Import_Snapshot::approval(
 ck( !is_wp_error( $approvedRead ) &&
     $approvedRead['plan_sha256'] === $cleanPreview['plan_sha256'],
     'Approved source receipt did not bind the exact policy and snapshot' );
+$previous_clean_record = get_option( $storeKey, false );
+$warn = $clean;
+$warn['rows'][0]['single_price'] = 60;
+$GLOBALS['imp03_price_rule'] = true;
+$warn_plan = MAD4B_SCP_Activity_Import_Review::plan( $warn );
+ck( !is_wp_error( $warn_plan ) && 0 === $warn_plan['block_issue_count'] &&
+    $warn_plan['review_issue_count'] === 1,
+    'Warning-only import was incorrectly classified as a blocking source' );
+delete_option( $storeKey ); // only inside deterministic PHP fixture.
+$warn_stage = MAD4B_SCP_Activity_Import_Snapshot::stage(
+    'pricing', $warn, $warn_plan, 'admin_csv_upload', 'test-operator' );
+ck( !is_wp_error( $warn_stage ), 'Warning-only source could not be reviewed' );
+$missing_ack = MAD4B_SCP_Activity_Import_Snapshot::approve(
+    'pricing', $warn_stage['snapshot_sha256'], true );
+ck( is_wp_error( $missing_ack ) &&
+    'mad4b_import_warning_acknowledgement_mismatch' === $missing_ack->get_error_code(),
+    'Unacknowledged business warning was silently approved' );
+$approved_warning = MAD4B_SCP_Activity_Import_Snapshot::approve(
+    'pricing', $warn_stage['snapshot_sha256'], true, 1 );
+ck( !is_wp_error( $approved_warning ) &&
+    1 === $approved_warning['warning_count_acknowledged'],
+    'Exact warning count confirmation was not persisted' );
+unset( $GLOBALS['imp03_price_rule'] );
+$GLOBALS['imp01_options'][ $storeKey ] = $previous_clean_record;
 echo "PASS IMP03 source authority, WPML completeness, GCM tamper denial, key isolation and approved immutable handoff\n";
 echo "PASS IMP01 signed REST review intake, redacted persistence, replay and HMAC tamper denials\n";
 $modes = MAD4B_SCP_Activity_Import_Modes::catalog();
