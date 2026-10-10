@@ -20,7 +20,12 @@ class FakeDB {
   if(strpos($sql,'UPDATE ')!==0)throw new RuntimeException('unexpected SQL');
   list($next,$key,$old)=$args;
   if(!isset($GLOBALS['dbrows'][$key])||serialize($GLOBALS['dbrows'][$key])!==$old)return 0;
-  $GLOBALS['dbrows'][$key]=unserialize($next);return 1;
+  $next_row=unserialize($next);
+  if(!empty($GLOBALS['fail_terminal_cas_once'])&&
+   ($next_row['state']??'')==='reconciled_applied'){
+   unset($GLOBALS['fail_terminal_cas_once']);return 0;
+  }
+  $GLOBALS['dbrows'][$key]=$next_row;return 1;
  }
 }
 $GLOBALS['wpdb']=new FakeDB();$GLOBALS['dbrows']=array();
@@ -92,7 +97,12 @@ class MAD4B_SCP_Approval_Tickets {
  }
  static function finalize_claim($id,$status,$reason=''){
   if(($GLOBALS['ticket'][$id]??'')!=='executing')return new WP_Error('BAD_TICKET_STATE');
-  $GLOBALS['ticket'][$id]=$status;return array('status'=>$status);
+  $GLOBALS['ticket'][$id]=$status;
+  if(($GLOBALS['fail_ticket_finalization_ack_once']??'')===$id){
+   unset($GLOBALS['fail_ticket_finalization_ack_once']);
+   return new WP_Error('FINALIZE_ACK_LOST');
+  }
+  return array('status'=>$status);
  }
  static function revoke($id){
   if(($GLOBALS['ticket'][$id]??'')!=='approved')return new WP_Error('REVOKE_NOT_APPROVED');
@@ -230,6 +240,24 @@ $recovery3id=$recovery3['ticket_id'];
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
  $third,$id3,$proof3,'agent-demo',$recovery3id)),'pending recovery cannot finalize');
 $GLOBALS['ticket'][$recovery3id]='approved';
+// Crash window A: recovery approval became USED but its DB acknowledgment was
+// lost. Journal must remain pinned, and the exact same proof can safely resume.
+$GLOBALS['fail_ticket_finalization_ack_once']=$recovery3id;
+$partial3=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $third,$id3,$proof3,'agent-demo',$recovery3id);
+ck(is_wp_error($partial3)&&$GLOBALS['ticket'][$id3]==='used'&&
+ $GLOBALS['ticket'][$recovery3id]==='used',
+ 'lost terminal-ticket ACK preserves both terminal results');
+$open3=MAD4B_SCP_CSO_Native_Executor::status($third,$id3);
+ck(!is_wp_error($open3)&&$open3['status']==='reconciling',
+ 'ticket ACK loss leaves durable pinned recovery');
+// Crash window B: both tickets already terminal, but final journal CAS fails.
+$GLOBALS['fail_terminal_cas_once']=true;
+$partial3b=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $third,$id3,$proof3,'agent-demo',$recovery3id);
+ck(is_wp_error($partial3b)&&$GLOBALS['ticket'][$id3]==='used'&&
+ $GLOBALS['ticket'][$recovery3id]==='used',
+ 'terminal journal CAS conflict remains recoverable');
 $final3=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
  $third,$id3,$proof3,'agent-demo',$recovery3id);
 ck(!is_wp_error($final3)&&$final3['status']==='reconciled_applied'&&
