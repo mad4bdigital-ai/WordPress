@@ -139,6 +139,8 @@ def execute_test(runtime, source, kind, args, timeout):
         if inspect:
             return {"state": "NOT_RUN", "reason": "docker_image_missing:" + image}
         cmd = ["docker", "run", "--rm", "--network", "none", "--read-only",
+               "--cap-drop=ALL", "--security-opt", "no-new-privileges",
+               "--pids-limit", "128", "--memory", "512m", "--cpus", "2",
                "--mount", "type=bind,source=" + str(source) + ",target=/source,readonly",
                "--tmpfs", "/tmp:rw,nosuid,size=64m", "--workdir", "/source",
                image, "php" if kind == "php" else "python3", *args]
