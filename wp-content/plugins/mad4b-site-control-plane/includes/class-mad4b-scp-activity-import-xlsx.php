@@ -11,7 +11,9 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
     const MAX_UNCOMPRESSED = 8388608;
     const MAX_CELLS = 40080;
     public static function available() {
-        return class_exists( 'ZipArchive' ) &&
+        return defined( 'MAD4B_IMPORT_XLSX_PARSER_APPROVED' ) &&
+            true === MAD4B_IMPORT_XLSX_PARSER_APPROVED &&
+            class_exists( 'ZipArchive' ) &&
             class_exists( '\PhpOffice\\PhpSpreadsheet\\IOFactory' ) &&
             class_exists( '\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate' ) &&
             class_exists( '\PhpOffice\\PhpSpreadsheet\\Cell\\DataType' );
@@ -35,7 +37,9 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             return self::err( 'mad4b_xlsx_upload_invalid',
                 'Only a genuine .xlsx file up to 1 MiB is accepted.' );
         $zip = new ZipArchive();
-        if ( true !== $zip->open( $file['tmp_name'], ZipArchive::RDONLY ) )
+        $readonly_flag = defined( 'ZipArchive::RDONLY' ) ?
+            ZipArchive::RDONLY : 0;
+        if ( true !== $zip->open( $file['tmp_name'], $readonly_flag ) )
             return self::err( 'mad4b_xlsx_zip_invalid', 'Excel ZIP container invalid.' );
         $total = 0;
         $has_workbook = false; $has_sheet = false;
