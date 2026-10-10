@@ -268,6 +268,17 @@ final class MAD4B_SCP_CSO_Secrets {
 		if(!class_exists('MAD4B_SCP_CSO_Scope')||!MAD4B_SCP_CSO_Scope::enabled('secrets')) return self::error('secrets_disabled');
 		$scope=MAD4B_SCP_CSO_Scope::current(); if(is_wp_error($scope)) return $scope;
 		if(!is_array($scope)||!in_array($scope['environment']??null,array('staging','development','local'),true)||!is_string($scope['origin']??null)||!preg_match('/^https:\/\/[a-z0-9.-]+(?::[0-9]{1,5})?$/D',$scope['origin'])||!self::sha($scope['actor_sha256']??null)) return self::error('first_party_staging_scope_required');
+        // No secret handoff without an exact release/runtime restore identity.
+        // A guessed source revision or a missing installed-package digest is
+        // not authority; operator provisioning must bind these values.
+        if ( ! is_string( $scope['source_sha'] ?? null ) ||
+            ! preg_match( '/^[a-f0-9]{40}$/D', $scope['source_sha'] ) ||
+            ! self::sha( $scope['package_sha256'] ?? null ) ||
+            ! self::sha( $scope['runtime_generation'] ?? null ) ||
+            ! self::sha( $scope['profile_sha256'] ?? null ) ||
+            ! is_int( $scope['restore_epoch'] ?? null ) ||
+            $scope['restore_epoch'] < 1 )
+            return self::error( 'exact_runtime_release_identity_required' );
 		return $scope;
 	}
 	private static function identity(array $scope) {
