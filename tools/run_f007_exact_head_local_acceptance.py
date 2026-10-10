@@ -17,6 +17,7 @@ from pathlib import Path
 PLUGIN = Path("wp-content/plugins/mad4b-site-control-plane")
 LINT = (
     "includes/class-mad4b-scp-operational-integrity.php",
+    "includes/class-mad4b-scp-operational-scope-guard.php",
     "includes/class-mad4b-scp-site-profile.php",
     "includes/class-mad4b-scp-site-profile-admin.php",
     "includes/class-mad4b-scp-deployment-mode-resolver.php",
@@ -24,20 +25,25 @@ LINT = (
     "includes/class-mad4b-scp-content-jobs.php",
     "includes/class-mad4b-scp-context-authority.php",
     "tests/trusted-brand-scope-runtime.php",
+    "tests/unified-operational-scope-runtime.php",
     "tests/operational-integrity-local-runtime.php",
     "tests/content-job-transaction-fault-runtime.php",
     "tests/site-profile-general-distribution-runtime.php",
 )
 RUNTIME = (
     "tests/operational-integrity-local-runtime.php",
+    "tests/unified-operational-scope-runtime.php",
     "tests/trusted-brand-scope-runtime.php",
     "tests/content-job-transaction-fault-runtime.php",
     "tests/deployment-mode-resolver-runtime.php",
     "tests/site-profile-general-distribution-runtime.php",
     "tests/site-profile-lifecycle-matrix-runtime.php",
+    "tests/content-job-domain-runtime.php",
 )
 CONTRACTS = (
     "tests/context-authority-contract.py",
+    "tests/unified-operational-scope-source-contract.py",
+    "tests/deployment-mode-dependencies-contract.py",
 )
 ALL = tuple(("php_lint", x) for x in LINT) + tuple(("php_runtime", x) for x in RUNTIME) + tuple(("python_contract", x) for x in CONTRACTS)
 
