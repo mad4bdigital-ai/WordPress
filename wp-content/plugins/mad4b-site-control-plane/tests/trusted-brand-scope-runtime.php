@@ -49,6 +49,13 @@ class MAD4B_SCP_Audit {
 }
 class MAD4B_SCP_Google_Drive_Context {
     public static $file_exists = true;
+    public static $scan_complete = true;
+    public static $scan_file_ids = array( 'file_one' );
+    public static function scan_folder( $folder, $recursive = true ) {
+        $assets = array();
+        foreach ( self::$scan_file_ids as $file_id ) $assets[] = array( 'file_id' => $file_id );
+        return array( 'complete' => self::$scan_complete, 'assets' => $assets );
+    }
     public static function get_folder( $folder ) {
         return self::$file_exists
             ? array( 'id' => $folder, 'mimeType' => 'application/vnd.google-apps.folder' )
@@ -241,6 +248,18 @@ $denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
 check( is_wp_error( $denied ) && 'mad4b_provider_folder_missing' === $denied->get_error_code(),
     'Transfer proceeded without independent provider folder read' );
 MAD4B_SCP_Google_Drive_Context::$file_exists = true;
+MAD4B_SCP_Google_Drive_Context::$scan_complete = false;
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
+check( is_wp_error( $denied ) &&
+    'mad4b_legacy_transfer_provider_scan_incomplete' === $denied->get_error_code(),
+    'Truncated Drive scan was incorrectly accepted as full source inventory' );
+MAD4B_SCP_Google_Drive_Context::$scan_complete = true;
+MAD4B_SCP_Google_Drive_Context::$scan_file_ids = array( 'some_unrelated_file' );
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
+check( is_wp_error( $denied ) &&
+    'mad4b_legacy_transfer_provider_asset_missing' === $denied->get_error_code(),
+    'Legacy file missing from the original provider folder was improperly adopted' );
+MAD4B_SCP_Google_Drive_Context::$scan_file_ids = array( 'file_one' );
 $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-foreign'] = array(
     'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
     'asset_id' => 'legacy-foreign', 'site_uuid' => $uuid, 'brand_id' => $b,
