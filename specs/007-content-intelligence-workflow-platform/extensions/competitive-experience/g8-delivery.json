@@ -211,13 +211,13 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "51aa339f7fbbc9246dd0692859f390b52ecd50e4a840a4ed5f6f1fa6120852f9",
-      "bytes": 36687
+      "sha256": "37ac846d195f8adb78d02ad016d7cdb6700a386562eb7e134cf797c2e60925eb",
+      "bytes": 42458
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "aaf4b4fa5857d5a15ee2875421289868d5456c7a3edf5f0588cf0d431c9d38de",
-      "bytes": 40666
+      "sha256": "fe315ef7283b0a932bf66a0b9429804a0c818a5f696509769f2489a7606402cb",
+      "bytes": 41654
     }
   ],
   "repository_foundations": [
