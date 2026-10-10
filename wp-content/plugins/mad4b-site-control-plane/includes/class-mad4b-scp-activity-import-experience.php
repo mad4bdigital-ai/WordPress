@@ -346,7 +346,8 @@ final class MAD4B_SCP_Activity_Import_Experience {
             echo '<li style="margin:0;list-style:none;">';
             if ( $selected )
                 echo '<a href="' . esc_url( self::url( $slug, $i,
-                    array( 'mode_id' => $view['selected_mode_id'] ) ) ) . '"' .
+                    array_merge( array( 'mode_id' => $view['selected_mode_id'] ),
+                        $bulk_id ? array( 'batch_id' => $bulk_id ) : array() ) ) ) . '"' .
                     ( $view['step'] === $i ? ' aria-current="step"' : '' ) . '>' .
                     self::e( self::title( $title ) ) . '</a>';
             else echo self::e( self::title( $title ) );
