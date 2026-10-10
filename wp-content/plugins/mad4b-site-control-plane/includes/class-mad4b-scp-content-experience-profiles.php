@@ -728,6 +728,28 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
+                'name' => 'mad4b/business-activity-import-approval-plan',
+                'label' => 'Inspect Exact Staged Source Approval Plan',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Snapshot', 'approval_plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                ), array( 'profile_slug', 'snapshot_sha256' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-approval-receipt',
+                'label' => 'Read Immutable Import Approval Receipt',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Snapshot', 'approval_receipt' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                ), array( 'profile_slug', 'snapshot_sha256' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
                 'name' => 'mad4b/business-activity-import-reconciliation-plan',
                 'label' => 'Compare Immutable Source IDs to WordPress CPT Meta in Safe Pages',
                 'callback' => array( 'MAD4B_SCP_Activity_Import_Reconciliation', 'plan' ),
