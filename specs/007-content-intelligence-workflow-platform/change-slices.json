@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 599,
+  "changed_file_count": 605,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1203,8 +1203,22 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-source-contract.py"
       ]
+    },
+    {
+      "id": "feature007-imp10-dynamic-mapping-maturation-wpml-20261010",
+      "semantic_unit": "IMP10: dynamic observed schema mapping drift (before/after source snapshot), exact authority-bound nonauthorizing mapping mutation simulation and field type insights, independent native WPML trid/language membership readback, post meta all-language identity match, isolated negative tests and acceptance spec.",
+      "revert_boundary": "Remove IMP10 read-only mapping/WPML audit and tests without changing any reviewed Profile revision, stored WordPress posts or provider import state. Do not disable existing source approval policies. External execution authority remains absent.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp10-dynamic-mapping-maturation-wpml-readback.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-mapping-evolution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-wpml-readback.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-mapping-evolution-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-mapping-wpml-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-wpml-readback-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "f12500b815476ae0716c676cebc59ed9d6d01c1066d25f3f431879f130cbe36d",
+  "changed_paths_sha256": "5305d9a124509e5f5bc69ee451ad88fa18594fbf71cc6ad84f1bca6192e61077",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
