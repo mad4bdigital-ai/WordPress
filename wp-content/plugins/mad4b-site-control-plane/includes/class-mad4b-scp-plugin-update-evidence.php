@@ -65,8 +65,10 @@ final class MAD4B_SCP_Plugin_Update_Evidence {
         if ( ! is_array( $contract ) || empty( $contract ) ) return self::denial( 'provider_uncertified' );
         $authority = '' === $component ? $contract : ( $contract['components'][ $component ] ?? array() );
         if ( ! is_array( $authority ) || empty( $authority ) ) return self::denial( 'component_uncertified' );
+        $site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $site ) ) return self::denial( 'site_unavailable' );
         return self::verify( $input['attestation'] ?? null, $authority,
-            MAD4B_SCP_Site_Profile::status(), $id, $component );
+            $site, $id, $component );
     }
 
     public static function verify( $signed, array $authority, array $site, $provider_id, $component = '', $now = null ) {
@@ -104,11 +106,21 @@ final class MAD4B_SCP_Plugin_Update_Evidence {
                 ! hash_equals( (string) ( $authority[ $field ] ?? '' ), $claims[ $field ] ) )
                 return self::denial( 'certified_package_mismatch' );
         }
+        if ( ! empty( $authority['source_commit_sha'] ) &&
+            ! hash_equals( (string) $authority['source_commit_sha'], (string) $claims['source_commit_sha'] ) )
+            return self::denial( 'source_commit_mismatch' );
         if ( ! preg_match( '/^[a-f0-9]{40}$/D', (string) $claims['source_commit_sha'] ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) $claims['archive_sha256'] ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', (string) $claims['evidence_bundle_sha256'] ) )
             return self::denial( 'digest_invalid' );
+        $wordpress_env = (string) ( $site['wordpress_environment'] ?? 'unknown' );
+        $explicit = ! empty( $site['wordpress_environment_explicit'] );
+        $staging_attested = 'staging' === $wordpress_env ||
+            ( 'production' === $wordpress_env && ! $explicit &&
+                ! empty( $site['implicit_nonproduction_override_confirmed'] ) );
         if ( 'staging' !== (string) ( $site['configured_environment'] ?? '' ) ||
+            'staging' !== (string) ( $site['environment'] ?? '' ) ||
+            ! $staging_attested || ( $explicit && 'staging' !== $wordpress_env ) ||
             empty( $site['authority_ready'] ) || empty( $site['origin_match'] ) ||
             empty( $site['site_uuid'] ) || empty( $site['canonical_origin'] ) ||
             ! hash_equals( (string) $site['site_uuid'], (string) $claims['site_uuid'] ) ||
