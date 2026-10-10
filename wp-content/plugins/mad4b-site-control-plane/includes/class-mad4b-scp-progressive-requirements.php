@@ -62,6 +62,15 @@ final class MAD4B_SCP_Progressive_Requirements {
 		) as $item ) {
 			if ( function_exists('wp_has_ability') && wp_has_ability($item[0]) ) continue;
 			$schema = self::schema();
+			if ( self::DISCOVER_ABILITY === $item[0] ) {
+				$schema['required'] = array();
+				$schema['properties'] = array(
+					'intent' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'operation_id' => array( 'type' => 'string', 'maxLength' => 120 ),
+					'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ),
+					'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 1000 ),
+				);
+			}
 			if ( ! $item[3] ) {
 				$schema['required'][] = 'expected_plan_sha256';
 				$schema['required'][] = 'confirmation';
