@@ -2009,6 +2009,64 @@ def _wp_environment_receipt_payload(receipt: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def sign_live_host_identity_challenge(
+    profile: dict[str, Any], challenge: dict[str, Any], now: int | None = None,
+) -> dict[str, Any]:
+    """Sign one fresh Staging challenge with the EXISTING enrolled Host key.
+
+    This pure signing adapter must be called by an authenticated local Host
+    transport bound to the physical Runner root. It is not a remote endpoint,
+    not WordPress authority and cannot issue Production/change grants.
+    """
+    expected = {
+        "contract", "nonce", "site_uuid", "origin", "environment",
+        "profile_revision", "profile_digest",
+    }
+    if not isinstance(challenge, dict) or set(challenge) != expected:
+        raise ValueError("Exact Host challenge shape required")
+    if profile.get("environment") != "staging" or challenge["environment"] != "staging":
+        raise ValueError("Only enrolled Staging Host Runner identity is eligible")
+    if challenge["contract"] != "mad4b.host-identity-challenge.v1":
+        raise ValueError("Host identity challenge protocol mismatch")
+    if challenge["site_uuid"] != profile.get("site_uuid"):
+        raise ValueError("Challenge and enrolled Host Runner site identity mismatch")
+    if not isinstance(challenge["nonce"], str) or not re.fullmatch(r"[a-f0-9]{64}", challenge["nonce"]):
+        raise ValueError("Host challenge nonce malformed")
+    if not isinstance(challenge["profile_revision"], int) or isinstance(challenge["profile_revision"], bool) or challenge["profile_revision"] <= 0:
+        raise ValueError("Host challenge Site Profile revision invalid")
+    if not isinstance(challenge["profile_digest"], str) or not re.fullmatch(r"[a-f0-9]{64}", challenge["profile_digest"]):
+        raise ValueError("Host challenge profile digest invalid")
+    if not isinstance(challenge["origin"], str) or not re.fullmatch(
+        r"https://[a-z0-9.-]+(?::[0-9]{2,5})?", challenge["origin"]
+    ):
+        raise ValueError("Host challenge exact HTTPS origin invalid")
+    if not re.fullmatch(r"[A-Za-z0-9._-]{3,120}", str(profile.get("profile_id") or "")):
+        raise ValueError("Enrolled Host Runner profile identity invalid")
+    if not re.fullmatch(r"[a-f0-9]{64}", str(profile.get("target_fingerprint") or "")):
+        raise ValueError("Enrolled Host Runner target fingerprint invalid")
+    issued = int(datetime.now(timezone.utc).timestamp()) if now is None else int(now)
+    payload = {
+        "contract": "mad4b.host-identity-challenge-proof.v1",
+        "nonce_sha256": sha256_bytes(challenge["nonce"].encode("ascii")),
+        "site_uuid": profile["site_uuid"],
+        "origin": challenge["origin"],
+        "environment": "staging",
+        "profile_revision": challenge["profile_revision"],
+        "profile_digest": challenge["profile_digest"],
+        "runner_profile_id": profile["profile_id"],
+        "target_fingerprint": profile["target_fingerprint"],
+        "issued_at": issued,
+        "expires_at": issued + 30,
+    }
+    private = _wp_environment_receipt_signing_key(profile)
+    return {
+        "contract": "mad4b.host-identity-live.v1",
+        "algorithm": "Ed25519",
+        "payload": payload,
+        "signature_b64": base64.b64encode(private.sign(canonical_json(payload))).decode("ascii"),
+    }
+
+
 def _wp_environment_sign_receipt(profile: dict[str, Any], receipt: dict[str, Any]) -> dict[str, str]:
     private = _wp_environment_receipt_signing_key(profile)
     payload = _wp_environment_receipt_payload(receipt)
