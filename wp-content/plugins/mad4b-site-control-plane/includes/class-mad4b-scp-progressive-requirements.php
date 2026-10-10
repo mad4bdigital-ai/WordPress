@@ -340,15 +340,36 @@ final class MAD4B_SCP_Progressive_Requirements {
 	}
 	public static function plan( $input=array() ) {
 		if(!is_array($input))return new WP_Error('mad4b_progressive_invalid_input','Object required.');
-		$allowed=array('operation_id','mode','attempt','candidate_source','reason','target_operation_id');
+		$allowed=array('operation_id','mode','attempt','candidate_source','reason','target_operation_id','intent','limit','offset');
 		if(array_diff(array_keys($input),$allowed))
 			return new WP_Error('mad4b_progressive_unknown_input','Unknown dynamic input is not executable.');
-		$operation=(string)($input['operation_id']??'');
-		$mode=(string)($input['mode']??'');
+		$operation=(string)($input['operation_id']??'auto');
+		$mode=(string)($input['mode']??'detached');
 		$attempt=(int)($input['attempt']??1);
+		if ( 'auto' === $operation ) {
+			$intent=trim((string)($input['intent']??''));
+			if ( '' === $intent )
+				return new WP_Error('mad4b_progressive_auto_intent_required',
+					'Describe an operation or use its exact registered identifier.');
+			$matched=self::discover(array('intent'=>$intent,'limit'=>50));
+			if(is_wp_error($matched))return $matched;
+			if(1!==(int)$matched['match_count'] ||
+				!is_array($matched['auto_selection']??null))
+				return new WP_Error('mad4b_progressive_auto_ambiguous',
+					'Automatic selection was not unique. Inspect discovered alternatives.',
+					array('candidate_count'=>$matched['match_count']));
+			$selected=$matched['auto_selection'];
+			if(empty($selected['available']))
+				return new WP_Error('mad4b_progressive_auto_unready',
+					'Registered planner and executor descriptors must first be proven.');
+			$operation=(string)$selected['selector'];
+			if('registry.operation'===$operation)
+				$input['target_operation_id']=(string)$selected['target_operation_id'];
+		}
 		if(!in_array($mode,array('detached','linked'),true)
 			||!isset(self::$providers[$operation])||$attempt<1||$attempt>self::MAX_ATTEMPT)
-			return new WP_Error('mad4b_progressive_unregistered_operation','Operation, mode or retry budget unavailable.');
+			return new WP_Error('mad4b_progressive_unregistered_operation',
+				'Operation, mode or retry budget unavailable.');
 		$site=self::exact_site_identity();
 		if(''===$site)
 			return new WP_Error('mad4b_progressive_staging_identity_required','Exact enrolled Staging required.');
@@ -356,7 +377,14 @@ final class MAD4B_SCP_Progressive_Requirements {
 		if(is_wp_error($observed))return $observed;
 		if(!is_array($observed))
 			return new WP_Error('mad4b_progressive_provider_invalid','Trusted source provider must return a structured observation.');
-		return self::decide($observed,$mode,$attempt,$site,$operation);
+		$decision=self::decide($observed,$mode,$attempt,$site,
+			'registry.operation'===$operation ?
+				$operation.':'.(string)($input['target_operation_id']??'') : $operation);
+		$decision['resolved_provider']=$operation;
+		$decision['resolved_operation_id']=(string)($input['target_operation_id']??$operation);
+		$decision['planner_inputs']=MAD4B_SCP_Progressive_Operation_Discovery::planner_variables(
+			(string)($observed['effect_ability']??''));
+		return $decision;
 	}
 	/** No arbitrary callback dispatch: linked mode only persists a governed handoff. */
 	public static function can_link( $input=null ) {
