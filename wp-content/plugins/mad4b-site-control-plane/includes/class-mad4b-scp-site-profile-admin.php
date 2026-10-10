@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Site_Profile_Admin {
 	const PAGE_SLUG = 'mad4b-control-plane-site-profile';
 	const ACTION_SAVE = 'mad4b_site_profile_save';
+	const ACTION_AUTOPILOT = 'mad4b_site_profile_enable_staging_autopilot';
 	const ACTION_DISABLE = 'mad4b_site_profile_disable_authority';
 	const ACTION_LEGACY_MIGRATE = 'mad4b_site_profile_explicit_legacy_migrate';
 	private static $booted = false;
@@ -15,6 +16,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		self::$booted = true;
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_page' ), 25 );
 		add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
+		add_action( 'admin_post_' . self::ACTION_AUTOPILOT, array( __CLASS__, 'handle_autopilot_enable' ) );
 		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );
 		add_action( 'admin_post_' . self::ACTION_LEGACY_MIGRATE, array( __CLASS__, 'handle_legacy_migrate' ) );
@@ -40,6 +42,65 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$revision = isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : 0;
 		$result = MAD4B_SCP_Site_Profile::apply_legacy_migration( $uuid, $revision );
 		self::redirect( is_wp_error( $result ) ? sanitize_key( $result->get_error_code() ) : 'legacy_migration_requires_reenrollment' );
+	}
+
+	/**
+	 * Single-action Staging onboarding. Reuse the existing audited Site
+	 * Profile save and guarded wp-config writer; never create a separate
+	 * authority path or expose this action over an MCP read/remote URL.
+	 */
+	public static function handle_autopilot_enable() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( 'POST required.', '', array( 'response' => 405 ) );
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Administrator permission required.', '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( self::ACTION_AUTOPILOT );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$profile = MAD4B_SCP_Site_Profile::profile();
+		$decision = MAD4B_SCP_Staging_Autopilot::decision( $status );
+		if ( empty( $decision['admin_autopilot_action_allowed'] ) ||
+			'staging' !== (string) ( $status['configured_environment'] ?? '' ) ||
+			! is_array( $profile ) || empty( $status['profile_digest'] ) ) {
+			self::redirect( 'autopilot_precondition_blocked' );
+		}
+		$features = isset( $profile['features'] ) && is_array( $profile['features'] ) ? $profile['features'] : array();
+		$related = isset( $profile['related_origins'] ) && is_array( $profile['related_origins'] ) ? $profile['related_origins'] : array();
+		$input = array(
+			'environment' => 'staging',
+			'environment_sync_mode' => MAD4B_SCP_Site_Profile::ENV_SYNC_HOST_MANAGED,
+			'display_name' => (string) ( $profile['display_name'] ?? '' ),
+			'chatgpt_app_id' => (string) ( $profile['chatgpt_app_id'] ?? '' ),
+			'oauth_user_ids' => implode( ',', (array) ( $profile['oauth_user_ids'] ?? array() ) ),
+			'development_origin' => (string) ( $related['development'] ?? '' ),
+			'staging_origin' => (string) ( $status['canonical_origin'] ?? '' ),
+			'production_origin' => (string) ( $related['production'] ?? '' ),
+			'oauth_enabled' => ! empty( $features['oauth'] ),
+			'skills_enabled' => ! empty( $features['skills'] ),
+			'write_enabled' => ! empty( $features['write'] ),
+			'production_write_confirmed' => false,
+			'provider_isolation_enabled' => ! empty( $features['provider_isolation'] ),
+			'managed_runtime_enabled' => ! empty( $features['managed_runtime'] ),
+			'acceptance_enabled' => ! empty( $features['acceptance'] ),
+			'expected_revision' => absint( $status['revision'] ),
+			'expected_profile_digest' => (string) $status['profile_digest'],
+		);
+		$result = MAD4B_SCP_Site_Profile::save_current_site( $input );
+		if ( is_wp_error( $result ) ) self::redirect( 'autopilot_profile_save_blocked' );
+		MAD4B_SCP_Site_Profile::reset_cache();
+		$after = MAD4B_SCP_Site_Profile::status();
+		$stored = MAD4B_SCP_Site_Profile::profile();
+		if ( ! self::persisted_readback_matches( $input, $result, $after, $stored ) ||
+			'host_managed' !== (string) ( $after['environment_sync_mode'] ?? '' ) ||
+			(string) $status['site_uuid'] !== (string) ( $after['site_uuid'] ?? '' ) ) {
+			self::redirect( 'autopilot_profile_readback_blocked' );
+		}
+		$sync = self::sync_wp_config_after_verified_save( $after );
+		$state = (string) ( $sync['state'] ?? 'unknown' );
+		self::redirect( 'config_written_verified_new_request_required' === $state
+			? 'autopilot_config_written'
+			: ( 'already_aligned' === $state ? 'autopilot_already_aligned' : 'autopilot_config_blocked' ) );
 	}
 
 	public static function handle_save() {
@@ -271,12 +332,37 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			&& in_array( $selected_environment, array( 'local', 'development', 'staging' ), true )
 			? "define( 'WP_ENVIRONMENT_TYPE', '" . $selected_environment . "' );" : '';
 
+		$autopilot = MAD4B_SCP_Staging_Autopilot::decision( $status );
+		if ( 'admin_reconcile_available' === $autopilot['state'] ) {
+			if ( ! class_exists( 'MAD4B_SCP_WP_Config_Environment_Sync' ) )
+				require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wp-config-environment-sync.php';
+			$autopilot['local_config_preflight'] = MAD4B_SCP_WP_Config_Environment_Sync::preflight_readonly( $status );
+		}
 		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_site_profile' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		?>
 		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
-			<?php if ( '' !== $state ) : ?><div class="notice <?php echo 'saved_environment_sync_blocked' === $state ? 'notice-warning' : 'notice-info'; ?>"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
+			<?php if ( '' !== $state ) : ?><div class="notice <?php echo false !== strpos( $state, 'blocked' ) ? 'notice-warning' : 'notice-info'; ?>"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
+			<div class="notice notice-info inline" style="max-width:950px;padding:12px 16px">
+				<p><strong><?php esc_html_e( 'Staging Autopilot / Assistant Handoff', 'mad4b-site-control-plane' ); ?></strong></p>
+				<p><?php echo esc_html( sprintf( 'State: %s | Next action: %s | Actor: %s', $autopilot['state'], $autopilot['next_action_id'], $autopilot['responsible_actor'] ) ); ?></p>
+				<?php if ( ! empty( $autopilot['local_config_preflight'] ) ) : ?>
+					<p><?php echo esc_html( 'Local wp-config preflight: ' . (string) $autopilot['local_config_preflight']['state'] ); ?></p>
+				<?php endif; ?>
+				<?php if ( ! empty( $autopilot['admin_autopilot_action_allowed'] ) ) : ?>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_AUTOPILOT ); ?>">
+						<?php wp_nonce_field( self::ACTION_AUTOPILOT ); ?>
+						<?php submit_button( __( 'Enable / Retry Staging Autopilot', 'mad4b-site-control-plane' ), 'primary', 'submit', false ); ?>
+					</form>
+					<p class="description"><?php esc_html_e( 'Uses your administrator session and existing explicit Staging attestation. Preserves the enrolled identity and settings, saves host_managed, then attempts only a guarded local wp-config edit. Check the WordPress environment again on a fresh request.', 'mad4b-site-control-plane' ); ?></p>
+				<?php endif; ?>
+				<?php if ( empty( $status['deployment_binding_configured'] ) ) : ?>
+					<p class="description"><?php esc_html_e( 'Host deployment binding missing: separately provision a unique host-private binding before clone-safe MCP selected-HEAD operations. This cannot be created from a Site Profile read.', 'mad4b-site-control-plane' ); ?></p>
+				<?php endif; ?>
+				<p class="description"><?php esc_html_e( 'Assistants: mad4b/site-autopilot-status (read-only), mad4b/staging-write-authority-convergence-handshake (review-only), mad4b/full-staging-authority-handshake (review-only). No authority or Production changes are automatic.', 'mad4b-site-control-plane' ); ?></p>
+			</div>
 			<?php if ( 'REVIEW_REQUIRED' === ( $legacy_migration['status'] ?? '' ) ) : ?>
 			<div class="notice notice-warning" style="max-width:950px;padding:1em">
 				<p><strong><?php esc_html_e( 'Legacy Site Profile identity detected — not imported', 'mad4b-site-control-plane' ); ?></strong></p>

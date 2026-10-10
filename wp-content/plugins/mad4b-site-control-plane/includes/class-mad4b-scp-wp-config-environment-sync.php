@@ -62,6 +62,40 @@ final class MAD4B_SCP_WP_Config_Environment_Sync {
 		return $candidate;
 	}
 
+	/** Bounded file eligibility check for admin/assistant diagnostics. Never return bytes or paths. */
+	public static function preflight_readonly( array $status ) {
+		if ( 'staging' !== (string) ( $status['configured_environment'] ?? '' ) ||
+			'host_managed' !== (string) ( $status['environment_sync_mode'] ?? '' ) )
+			return self::verdict( 'not_requested' );
+		if ( ! empty( $status['wordpress_environment_explicit'] ) )
+			return self::verdict( 'blocked_explicit_host_conflict' );
+		if ( 'production' !== (string) ( $status['wordpress_environment'] ?? '' ) )
+			return self::verdict( 'blocked_unknown_host_environment' );
+		if ( empty( $status['authority_ready'] ) || empty( $status['origin_match'] ) ||
+			empty( $status['environment_match'] ) || empty( $status['profile_environment_authoritative'] ) ||
+			empty( $status['implicit_nonproduction_override_confirmed'] ) ||
+			! empty( $status['mutation_pending_audit'] ) )
+			return self::verdict( 'blocked_unverified_site_profile' );
+		$path = self::installed_config_path();
+		if ( is_wp_error( $path ) ) return self::verdict( $path->get_error_code() );
+		if ( ! is_writable( $path ) || ! is_writable( dirname( $path ) ) )
+			return self::verdict( 'blocked_wp_config_not_writable' );
+		$stat = @stat( $path );
+		if ( ! is_array( $stat ) || ! isset( $stat['uid'] ) )
+			return self::verdict( 'blocked_wp_config_stat_missing' );
+		if ( function_exists( 'posix_geteuid' ) && posix_geteuid() !== (int) $stat['uid'] )
+			return self::verdict( 'blocked_wp_config_owner_mismatch' );
+		$fh = @fopen( $path, 'rb' );
+		if ( false === $fh ) return self::verdict( 'blocked_wp_config_unreadable' );
+		$bytes = stream_get_contents( $fh, self::MAX_CONFIG_BYTES + 1 );
+		fclose( $fh );
+		if ( ! is_string( $bytes ) || strlen( $bytes ) > self::MAX_CONFIG_BYTES )
+			return self::verdict( 'blocked_wp_config_bytes_invalid' );
+		$expected = self::insert_staging_bootstrap( $bytes );
+		if ( is_wp_error( $expected ) ) return self::verdict( $expected->get_error_code() );
+		return self::verdict( 'eligible_for_admin_save' );
+	}
+
 	/**
 	 * Save already passed capability + nonce + explicit non-Production
 	 * confirmation + persisted profile audit. No generic mutation endpoint.

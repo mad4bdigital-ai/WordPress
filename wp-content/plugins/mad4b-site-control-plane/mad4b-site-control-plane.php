@@ -475,6 +475,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-endpoint-diagnostic.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-autopilot.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-profile-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-connection-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
@@ -518,6 +519,7 @@ unset( $mad4b_upgrade_continuity );
 // request-serving work during the first reconnect after a package replacement.
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
+MAD4B_SCP_Staging_Autopilot::boot();
 MAD4B_SCP_Governed_Runtime_Gates::boot();
 MAD4B_SCP_Governed_Runtime_Gates::bootstrap_runtime();
 MAD4B_SCP_Upgrade_Continuity::boot();
