@@ -594,6 +594,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-import-modes',
             'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-reconciliation-plan',
+            'mad4b/business-activity-import-issues-page',
             'mad4b/business-activity-import-approval-plan',
             'mad4b/business-activity-import-approval-receipt',
             'mad4b/business-activity-import-plan', 'mad4b/business-activity-import-review',
@@ -764,6 +765,19 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                     'snapshot_sha256' => self::sha_schema(),
                 ), array( 'profile_slug', 'snapshot_sha256' ) ),
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-issues-page',
+                'label' => 'Read Paginated Immutable Import Issues and Category Totals',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'issues_page' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'issue_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 10000 ),
+                ), array( 'profile_slug', 'snapshot_sha256' ) ),
+                'surface' => 'read', 'readonly' => true,
+                'destructive' => false, 'idempotent' => true,
             ),
             array(
                 'name' => 'mad4b/business-activity-import-reconciliation-plan',
