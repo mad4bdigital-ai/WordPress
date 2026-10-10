@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 657,
+  "changed_file_count": 658,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1325,8 +1325,17 @@
         "wp-content/plugins/mad4b-site-control-plane/docs/unified-operational-integrity-slice1.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/deployment-mode-dependencies-contract.py"
       ]
+    },
+    {
+      "id": "feature007-deterministic-package-negative-regression-20261010",
+      "semantic_unit": "Release package builder negative tests prove symlink rejection from a complete valid CLI invocation, not incidental argument errors.",
+      "revert_boundary": "Revert only negative fixture; never relax the deterministic builder safety checks or claim release certification.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "905c3490c7b9df4bf395f484cccb2984a6da87a8e9bf83dd5ea250a1fa2157c3",
+  "changed_paths_sha256": "0acc75f9c803776ba5002246b854ca5af7963fcd1dfb8ba20d4487625c893469",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
