@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ) require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
 
 /**
  * IMP08 multi-chunk, encrypted source review inbox. Not a writer, scheduler,
@@ -95,15 +96,9 @@ final class MAD4B_SCP_Activity_Import_Batches {
             ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
             return self::err( 'mad4b_batch_mutex_status_denied',
                 'Enrolled Staging administrator and exact Profile required.' );
-        $key = 'mad4b_batch_mutex_' . hash( 'sha256',
-            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
-        $value = get_option( $key, false );
-        $held = false !== $value;
-        if ( $held && ( ! is_array( $value ) ||
-            ! isset( $value['token_sha256'], $value['operation'],
-                $value['created_at'] ) ) )
-            return self::err( 'mad4b_batch_mutex_corrupt',
-                'Stored lock cannot be safely interpreted. Manual diagnosis required.' );
+        $observed = MAD4B_SCP_Batch_Atomic_Mutex::observe( $slug );
+        if ( is_wp_error( $observed ) ) return $observed;
+        $held = $observed['held'];
         $base = hash( 'sha256', MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
         $active = get_option( 'mad4b_batch_active_' . $base, false );
         $active_valid = is_string( $active ) &&
@@ -115,13 +110,13 @@ final class MAD4B_SCP_Activity_Import_Batches {
             get_option( 'mad4b_batch_archive_' . hash( 'sha256',
                 MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
                     $active ), false ) : false;
-        $ts = $held ? strtotime( (string) $value['created_at'] ) : false;
+        $ts = $held ? $observed['started_at'] : false;
         return array(
             'contract' => 'mad4b.import-batch-lock-observation.v1',
             'profile_slug' => $slug,
             'mutation_lock_held' => $held,
-            'mutation_operation' => $held ? $value['operation'] : null,
-            'mutation_lock_sha256' => $held ? self::hash( $value ) : null,
+            'mutation_operation' => $held ? $observed['operation'] : null,
+            'mutation_lock_sha256' => $held ? $observed['sha256'] : null,
             'lock_age_seconds' => $held && false !== $ts ?
                 max( 0, time() - $ts ) : null,
             'active_batch_present' => $active_valid,
@@ -166,15 +161,13 @@ final class MAD4B_SCP_Activity_Import_Batches {
         return array( 'manifest' => $m, 'names' => $keys );
     }
     /**
-     * Serialize own WordPress-option mutations per enrolled site and Profile.
-     * add_option() enforces a unique key across concurrent PHP workers.
-     * A crash deliberately leaves the lock held until an audited recovery.
-     * This is NOT a cross-provider write lease.
+     * A UNIQUE-key SQL INSERT IGNORE mutex, not WordPress add_option().
+     * No automatic expiration: an interrupted mutation needs exact recovery.
+     * Does NOT fence WP All Import, MSR02 or third-party writers.
      */
     private static function locked_mutation( $operation, $input ) {
-        if ( ! is_array( $input ) ||
-            ! in_array( $operation, array(
-                'begin', 'append', 'approve', 'archive' ), true ) )
+        if ( ! is_array( $input ) || ! in_array( $operation,
+            array( 'begin', 'append', 'approve', 'archive' ), true ) )
             return self::err( 'mad4b_batch_invalid_mutation',
                 'A recognized batch operation and object are required.' );
         $slug = isset( $input['profile_slug'] ) ?
@@ -188,38 +181,19 @@ final class MAD4B_SCP_Activity_Import_Batches {
             $ctx = self::context( $slug );
             if ( is_wp_error( $ctx ) ) return $ctx;
         }
-        $lock_key = 'mad4b_batch_mutex_' . hash( 'sha256',
-            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
-        $token = bin2hex( random_bytes( 16 ) );
-        $receipt = array( 'token_sha256' => hash( 'sha256', $token ),
-            'operation' => $operation, 'created_at' => gmdate( 'c' ) );
-        if ( ! add_option( $lock_key, $receipt, '', false ) )
-            return self::err( 'mad4b_batch_mutation_locked',
-                'Another active or interrupted mutation holds the exact Profile. Do not blindly retry.' );
-        $stored = get_option( $lock_key, false );
-        if ( self::hash( $stored ) !== self::hash( $receipt ) )
-            return self::err( 'mad4b_batch_lock_readback_failed',
-                'Mutation lock ownership cannot be verified; manual recovery required.' );
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, $operation );
+        if ( is_wp_error( $lease ) ) return $lease;
         try {
             $callee = $operation . '_unlocked';
             $result = call_user_func( array( __CLASS__, $callee ), $input );
         } catch ( \Throwable $unexpected ) {
-            // An exception can happen after a partial durable mutation. Never
-            // release a lock if the commit outcome is unknown.
+            // Outcome may be unknown after a partial durable source write.
+            // Preserve the holder's lease for explicit incident investigation.
             return self::err( 'mad4b_batch_mutation_interrupted',
-                'Unexpected interruption. Inspect the exact source state before a governed recovery.' );
+                'Unexpected exception. Investigate exact source journal before recovery.' );
         }
-        $check = get_option( $lock_key, false );
-        if ( ! is_array( $check ) ||
-            ! isset( $check['token_sha256'] ) ||
-            ! hash_equals( $receipt['token_sha256'],
-                (string) $check['token_sha256'] ) )
-            return self::err( 'mad4b_batch_lock_stolen',
-                'Lock ownership changed unexpectedly; manual recovery required.' );
-        delete_option( $lock_key );
-        if ( false !== get_option( $lock_key, false ) )
-            return self::err( 'mad4b_batch_unlock_unverified',
-                'Operation completed but Profile mutation lock could not be released.' );
+        $released = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        if ( is_wp_error( $released ) ) return $released;
         return $result;
     }
     public static function begin( $input = array() ) {
@@ -454,7 +428,26 @@ final class MAD4B_SCP_Activity_Import_Batches {
      * Produce a validated bounded CSV page only after independent re-review,
      * exact manual approval and absence of blockers/cross-chunk duplicates.
      */
+    /**
+     * Reserve this Profile for the entire approval/readback/CSV handoff,
+     * preventing archive or append until the stream is completely written.
+     */
     public static function export_chunk( $slug, $id, $index ) {
+        if ( ! self::environment() ) return self::err( 'mad4b_batch_export_site_denied',
+            'An enrolled Staging administrator is required to export.' );
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, 'export' );
+        if ( is_wp_error( $lease ) ) return $lease;
+        try {
+            $result = self::export_chunk_unlocked( $slug, $id, $index );
+        } catch ( \Throwable $unexpected ) {
+            return self::err( 'mad4b_batch_export_interrupted',
+                'Download outcome is unknown. Lock retained for investigation.' );
+        }
+        $released = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        if ( is_wp_error( $released ) ) return $released;
+        return $result;
+    }
+    private static function export_chunk_unlocked( $slug, $id, $index ) {
         if ( ! is_int( $index ) || $index < 0 || $index >= self::MAX_CHUNKS )
             return self::err( 'mad4b_batch_export_index', 'Valid integer chunk required.' );
         $ctx = self::context( $slug );
@@ -527,9 +520,12 @@ final class MAD4B_SCP_Activity_Import_Batches {
             substr( $id, 0, 10 ) . '-part-' . ( $index + 1 ) . '.csv"' );
         header( 'X-Content-Type-Options: nosniff' );
         header( 'Content-Length: ' . $length );
-        fpassthru( $stream );
+        $written = fpassthru( $stream );
         fclose( $stream );
-        exit;
+        if ( ! is_int( $written ) || $written !== $length )
+            return self::err( 'mad4b_batch_export_partial_transfer',
+                'The stream was not delivered completely. Inspect transport logs.' );
+        return true;
     }
     public static function status( $input = array() ) {
         $v = self::verify( $input );
@@ -563,6 +559,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
         $exported = self::export_chunk( $slug, $id, $part );
         if ( is_wp_error( $exported ) )
             wp_die( esc_html( $exported->get_error_message() ) );
+        exit;
     }
     /**
      * Explicit archival creates a nonautoloaded audit tombstone before
