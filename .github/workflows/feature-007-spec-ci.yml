@@ -825,10 +825,10 @@ jobs:
         run: |
           set -euo pipefail
           root=wp-content/plugins/mad4b-site-control-plane
-          for src in class-mad4b-scp-cso01-read-foundation.php class-mad4b-scp-cso-scope.php class-mad4b-scp-cso-registry.php class-mad4b-scp-cso-forms.php class-mad4b-scp-cso-gateway.php class-mad4b-scp-cso-form-ui.php class-mad4b-scp-cso-secrets.php class-mad4b-scp-cso-storage-adapters.php class-mad4b-scp-cso-drafts.php class-mad4b-scp-cso-changes.php class-mad4b-scp-cso-bulk.php class-mad4b-scp-cso-workflows.php; do
+          for src in class-mad4b-scp-cso01-read-foundation.php class-mad4b-scp-cso-scope.php class-mad4b-scp-cso-registry.php class-mad4b-scp-cso-forms.php class-mad4b-scp-cso-gateway.php class-mad4b-scp-cso-form-ui.php class-mad4b-scp-cso-secrets.php class-mad4b-scp-cso-storage-adapters.php class-mad4b-scp-cso-drafts.php class-mad4b-scp-cso-changes.php class-mad4b-scp-cso-bulk.php class-mad4b-scp-cso-workflows.php class-mad4b-scp-cso-templates.php class-mad4b-scp-cso-operations.php; do
             php -l "$root/includes/$src"
           done
-          for fixture in cso-scope-runtime.php cso-forms-native-runtime.php cso-gateway-runtime.php cso-secrets-runtime.php cso-drafts-runtime.php cso-changes-runtime.php cso-orchestration-plans-runtime.php; do
+          for fixture in cso-scope-runtime.php cso-forms-native-runtime.php cso-gateway-runtime.php cso-secrets-runtime.php cso-drafts-runtime.php cso-changes-runtime.php cso-orchestration-plans-runtime.php cso-storage-adapters-runtime.php cso-template-doctor-runtime.php; do
             php -l "$root/tests/$fixture"
           done
       - name: Isolated authorization, form lifecycle and secret handoff
@@ -845,6 +845,8 @@ jobs:
           php "$root/tests/cso-drafts-runtime.php"
           php "$root/tests/cso-changes-runtime.php"
           php "$root/tests/cso-orchestration-plans-runtime.php"
+          php "$root/tests/cso-storage-adapters-runtime.php"
+          php "$root/tests/cso-template-doctor-runtime.php"
       - name: DOM, spec and dynamic acceptance contracts (not browser attestation)
         if: matrix.php == '8.3'
         shell: bash
