@@ -4,6 +4,7 @@ define('ABSPATH','/');
 class WP_Error {private $code;public function __construct($c,$m='',$d=null){$this->code=$c;}public function get_error_code(){return $this->code;}}
 function is_wp_error($x){return $x instanceof WP_Error;}
 function maybe_serialize($x){return serialize($x);}
+function wp_json_encode($x,$flags=0){return json_encode($x,$flags);}
 function get_option($key,$default=null){return $GLOBALS['dbrows'][$key]??$default;}
 function add_option($key,$value,$unused='',$autoload=false){
  if(array_key_exists($key,$GLOBALS['dbrows']))return false;
@@ -45,7 +46,10 @@ class MAD4B_SCP_CSO_Scope {
  }
 }
 class MAD4B_SCP_CSO_Changes {const CONTRACT='mad4b.cso.change-plan.v1';}
-class MAD4B_SCP_Policy {static function can_mutate(){return $GLOBALS['policy'];}}
+class MAD4B_SCP_Policy {
+ static function can_mutate(){return $GLOBALS['policy'];}
+ static function can_approve_mutations(){return $GLOBALS['policy'];}
+}
 class MAD4B_SCP_Operational_Integrity {
  static function capture(){return array('scope'=>$GLOBALS['scope']);}
  static function assert_unchanged($s,$write){return $GLOBALS['policy']?true:new WP_Error('REVOKED');}
@@ -61,20 +65,38 @@ class MAD4B_SCP_Agent_Registry {
   array('id'=>7,'public_id'=>$id,'status'=>'enabled'):null;}
 }
 class MAD4B_SCP_Approval_Tickets {
+ static function canonical_payload_hash($agent,$server,$ability,$provider,$fp,$input,$class){
+  return hash('sha256',json_encode(array($agent,$server,$ability,$provider,$fp,$input,$class)));
+ }
  static function create_pending($agent,$server,$ability,$provider,$fp,$input,$class,$reason,$ttl){
   $id=sprintf('123e4567-e89b-42d3-a456-%012d',426614174000+count($GLOBALS['ticket']));
-  $GLOBALS['ticket'][$id]='pending';return array('ticket_id'=>$id,'status'=>'pending');
+  $GLOBALS['ticket'][$id]='pending';
+  $GLOBALS['ticket_meta'][$id]=array('agent_id'=>7,'ticket_class'=>$class,'server_id'=>$server,
+   'ability_name'=>$ability,'provider'=>$provider,'target_fingerprint'=>$fp,
+   'payload_sha256'=>self::canonical_payload_hash($agent,$server,$ability,$provider,$fp,$input,$class));
+  return array('ticket_id'=>$id,'status'=>'pending');
+ }
+ static function get($id){
+  if(!isset($GLOBALS['ticket_meta'][$id]))return null;
+  return array_merge($GLOBALS['ticket_meta'][$id],array('status'=>$GLOBALS['ticket'][$id]));
  }
  static function authorize_exact($id,...$args){
   return ($GLOBALS['ticket'][$id]??'')==='approved'?array('ok'=>true):new WP_Error('NOT_APPROVED_OR_REPLAY');
  }
  static function claim_exact($id,...$args){
   if(($GLOBALS['ticket'][$id]??'')!=='approved')return new WP_Error('REPLAY');
-  $GLOBALS['ticket'][$id]='executing';return array('status'=>'executing');
+  if(($GLOBALS['claim_failure_mode']??'')==='before_claim')return new WP_Error('CLAIM_BEFORE_EFFECT');
+  $GLOBALS['ticket'][$id]='executing';
+  if(($GLOBALS['claim_failure_mode']??'')==='ack_lost')return new WP_Error('CLAIM_ACK_LOST');
+  return array('status'=>'executing');
  }
- static function finalize_claim($id,$status){
+ static function finalize_claim($id,$status,$reason=''){
   if(($GLOBALS['ticket'][$id]??'')!=='executing')return new WP_Error('BAD_TICKET_STATE');
   $GLOBALS['ticket'][$id]=$status;return array('status'=>$status);
+ }
+ static function revoke($id){
+  if(($GLOBALS['ticket'][$id]??'')!=='approved')return new WP_Error('REVOKE_NOT_APPROVED');
+  $GLOBALS['ticket'][$id]='revoked';return true;
  }
 }
 class FakeAbility {
@@ -161,6 +183,108 @@ ck(!is_wp_error($crash_status)&&$crash_status['status']==='needs_reconcile'&&!$c
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit($third,array('ticket_id'=>$id3,'agent_public_id'=>'agent-demo'))),
  'crashed native write cannot retry ticket');
 $GLOBALS['throw_after_effect']=false;
+// Recovery is authenticated by a separate ephemeral test auditor, not by
+// WordPress/MCP, and never grants the native execution permit.
+if (!function_exists('openssl_pkey_new')) {
+ fwrite(STDERR,"BLOCKED: OpenSSL extension required for signed recovery fixture\n");exit(2);
+}
+$audit_key=openssl_pkey_new(array('private_key_type'=>OPENSSL_KEYTYPE_RSA,'private_key_bits'=>2048));
+ck($audit_key!==false,'ephemeral auditor key generated');
+$audit_pub=openssl_pkey_get_details($audit_key);
+define('MAD4B_CSO_RECONCILE_TRUSTED_PUBLIC_KEY',$audit_pub['key']);
+define('MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID','fixture-independent-auditor');
+function signed_recovery_proof($material,$id,$outcome,$key){
+ $journal_key='mad4b_cso_write_'.hash('sha256',$id.'|'.MAD4B_SCP_CSO_Scope::digest($material));
+ $journal=get_option($journal_key,null);
+ ck(is_array($journal),'durable journal exists for proof');
+ $body=array(
+  'contract'=>MAD4B_SCP_CSO_Native_Executor::CONTRACT.'.external-proof.v1',
+  'issuer'=>MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID,
+  'ticket_sha256'=>hash('sha256',$id),
+  'plan_sha256'=>MAD4B_SCP_CSO_Scope::digest($material),
+  'scope_sha256'=>MAD4B_SCP_CSO_Scope::digest($GLOBALS['scope']),
+  'provider_id'=>$material['provider_id'],
+  'target_sha256'=>MAD4B_SCP_CSO_Scope::digest($material['target']),
+  'outcome'=>$outcome,
+  'observed_revision_sha256'=>hash('sha256',$GLOBALS['revision']),
+  'observed_values_sha256'=>MAD4B_SCP_CSO_Scope::digest(array('title'=>$GLOBALS['title'])),
+  'evidence_ref'=>'auditor:'.substr(hash('sha256',$id),0,24),
+  'writer_fenced'=>true,
+  'quiesced_at'=>max(time(),$journal['updated_at']),
+  'side_effects_excluded'=>$outcome==='absent',
+  'issued_at'=>time(),
+  'expires_at'=>time()+240
+ );
+ $sig='';ck(openssl_sign(wp_json_encode($body,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
+  $sig,$key,OPENSSL_ALGO_SHA256),'external proof signed');
+ return array('body'=>$body,'signature'=>base64_encode($sig));
+}
+$proof3=signed_recovery_proof($m,$id3,'applied',$audit_key);
+$bad3=$proof3;$bad3['signature']=base64_encode('not-a-signature');
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::reconcile_approval_plan(
+ $third,$id3,$bad3,'agent-demo','review proof')),'forged external recovery proof denied');
+$recovery3=MAD4B_SCP_CSO_Native_Executor::reconcile_approval_plan(
+ $third,$id3,$proof3,'agent-demo','externally observed post-effect crash');
+ck(!is_wp_error($recovery3)&&$recovery3['status']==='pending','signed applied proof plans second approval');
+$recovery3id=$recovery3['ticket_id'];
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $third,$id3,$proof3,'agent-demo',$recovery3id)),'pending recovery cannot finalize');
+$GLOBALS['ticket'][$recovery3id]='approved';
+$final3=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $third,$id3,$proof3,'agent-demo',$recovery3id);
+ck(!is_wp_error($final3)&&$final3['status']==='reconciled_applied'&&
+ $GLOBALS['ticket'][$id3]==='used'&&$GLOBALS['ticket'][$recovery3id]==='used',
+ 'post-effect crash journal and both approvals closed with signed proof');
+ck($GLOBALS['executions']===3,'recovery never replays native effect');
+// Crash after durable reservation but before claiming the approved ticket.
+$m['expected_revision']='revision-new-3';$m['values']['title']='Never executed';
+$fourth=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$p4=MAD4B_SCP_CSO_Native_Executor::approval_plan($fourth,'review reservation crash','agent-demo');
+ck(!is_wp_error($p4),'fourth plan approved for fixture');
+$id4=$p4['ticket_id'];$GLOBALS['ticket'][$id4]='approved';
+$GLOBALS['claim_failure_mode']='before_claim';
+$uncertain4=MAD4B_SCP_CSO_Native_Executor::commit($fourth,array('ticket_id'=>$id4,'agent_public_id'=>'agent-demo'));
+unset($GLOBALS['claim_failure_mode']);
+ck(is_wp_error($uncertain4)&&$GLOBALS['ticket'][$id4]==='approved'&&
+ $GLOBALS['executions']===3,'unclaimed journal crash has no native effect');
+$state4=MAD4B_SCP_CSO_Native_Executor::status($fourth,$id4);
+ck(!is_wp_error($state4)&&$state4['status']==='needs_reconcile',
+ 'claim failure remains reconcilable, never claim_denied');
+$proof4=signed_recovery_proof($m,$id4,'absent',$audit_key);
+$plan4=MAD4B_SCP_CSO_Native_Executor::reconcile_approval_plan(
+ $fourth,$id4,$proof4,'agent-demo','prove original claim never executed');
+ck(!is_wp_error($plan4),'approved original ticket can be recovered only as absent');
+$GLOBALS['ticket'][$plan4['ticket_id']]='approved';
+$final4=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $fourth,$id4,$proof4,'agent-demo',$plan4['ticket_id']);
+ck(!is_wp_error($final4)&&$final4['status']==='reconciled_absent'&&
+ $GLOBALS['ticket'][$id4]==='revoked','unclaimed ticket revoked after independent absent proof');
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit(
+ $fourth,array('ticket_id'=>$id4,'agent_public_id'=>'agent-demo'))),
+ 'original ticket never becomes replayable');
+// Database may commit the approval claim but lose its acknowledgment.
+$m['values']['title']='Claim may have committed';
+$fifth=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$p5=MAD4B_SCP_CSO_Native_Executor::approval_plan($fifth,'review lost claim ack','agent-demo');
+$id5=$p5['ticket_id'];$GLOBALS['ticket'][$id5]='approved';
+$GLOBALS['claim_failure_mode']='ack_lost';
+$uncertain5=MAD4B_SCP_CSO_Native_Executor::commit($fifth,array('ticket_id'=>$id5,'agent_public_id'=>'agent-demo'));
+unset($GLOBALS['claim_failure_mode']);
+ck(is_wp_error($uncertain5)&&$GLOBALS['ticket'][$id5]==='executing'&&
+ $GLOBALS['executions']===3,'lost claim ACK does not invoke provider');
+$state5=MAD4B_SCP_CSO_Native_Executor::status($fifth,$id5);
+ck(!is_wp_error($state5)&&$state5['status']==='needs_reconcile',
+ 'lost claim ACK remains in recoverable state');
+$proof5=signed_recovery_proof($m,$id5,'absent',$audit_key);
+$plan5=MAD4B_SCP_CSO_Native_Executor::reconcile_approval_plan(
+ $fifth,$id5,$proof5,'agent-demo','signed proof claim had no effect');
+ck(!is_wp_error($plan5),'post-commit lost-ACK can be planned safely');
+$GLOBALS['ticket'][$plan5['ticket_id']]='approved';
+$final5=MAD4B_SCP_CSO_Native_Executor::reconcile_finalize(
+ $fifth,$id5,$proof5,'agent-demo',$plan5['ticket_id']);
+ck(!is_wp_error($final5)&&$GLOBALS['ticket'][$id5]==='failed'&&
+ $final5['status']==='reconciled_absent','executing ticket closed failed without replay');
+ck($GLOBALS['executions']===3,'all reconciliation paths perform zero extra writes');
 $GLOBALS['policy']=false;
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::approval_plan($second,'again','agent-demo')),'revoked policy');
 echo "PASS CSO native exact ticket / journal / permit / uncertain effect / replay\n";
