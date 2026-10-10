@@ -2,6 +2,21 @@
 
 Source: `tools/mad4b-preview-matrix.py`; on-host WordPress observer: `tools/mad4b-preview-native-probe.php`.
 
+The plugin also registers **`mad4b/preview-matrix-plan`** as a
+read-only MCP Ability in the normal full bootstrap. It refuses missing Site
+Profile enrollment, origin/environment mismatch, malformed exact source
+provenance and unsafe paths. It returns the exact package identity, current
+minimum Frontend sample gap, optional mode-specific requirements and
+non-authorizing execution instructions. This plan neither queues jobs nor
+runs a browser, WP-CLI, REST request or Customizer mutation.
+
+Responsive browser observations support `--viewport desktop`, `tablet`
+or `mobile`. To compare devices, run separate bounded commands and
+retain separate evidence files. Browser/Customizer results also include
+bounded hashed `data-post-id` identities and advisory dataset comparisons,
+without storing page content or accepting a matching dataset as a release
+receipt. The plan does not manufacture missing Query Monitor attribution.
+
 Three independent lanes:
 
 * `browser`: actual Chromium navigation with browser timing, JavaScript error counts and AJAX/fetch status counts.
