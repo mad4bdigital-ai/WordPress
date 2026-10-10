@@ -42,6 +42,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/review-audit',
 				'context/brand-core-coverage',
 				'context/brand-core-convergence-plan',
+				'context/brand-core-control-loop',
 				'context/brand-reconstruction-plan',
 				'context/recovery-attempt-status',
 				'context/google-drive-status',
@@ -135,6 +136,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 				)
 			)
+		);
+		$this->add_ability(
+			'context/brand-core-control-loop',
+			'Recover, Update and Certify Existing Brand Core (Read-Only Guided Loop)',
+			'brand_core_control_loop',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/brand-reconstruction-plan',
@@ -895,6 +903,10 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function brand_core_convergence_plan( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Builder::convergence_plan( is_array( $input ) ? $input : array() );
+	}
+
+	public function brand_core_control_loop( $input = array() ) {
+		return MAD4B_SCP_Brand_Core_Control_Loop::status( $input );
 	}
 
 	public function brand_reconstruction_plan( $input = array() ) {
