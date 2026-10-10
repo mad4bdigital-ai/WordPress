@@ -340,6 +340,27 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
             (array) $candidate['required_relationships'] ) )
             return self::err( 'mad4b_mapping_relationship_downgrade_denied',
                 'Existing required relations cannot be removed by automatic schema maturation.' );
+        if ( 'review_monotonic' === $current['price_tier_policy'] &&
+            'review_monotonic' !== $candidate['price_tier_policy'] )
+            return self::err( 'mad4b_mapping_price_tier_safety_downgrade_denied',
+                'Commercial pricing comparison cannot be removed as a rename side effect.' );
+        if ( array_diff( (array) $current['allowed_currencies'],
+            (array) $candidate['allowed_currencies'] ) )
+            return self::err( 'mad4b_mapping_currency_removal_denied',
+                'Currency policy deletion requires separately approved commercial governance.' );
+        $alias_index = array();
+        foreach ( $before['rename_suggestions'] as $suggestion )
+            $alias_index[ $suggestion['old_source_column'] ] =
+                $suggestion['proposed_source_column'];
+        foreach ( $current['required_columns'] as $required ) {
+            if ( in_array( $required, $candidate['required_columns'], true ) )
+                continue;
+            if ( ! isset( $alias_index[ $required ] ) ||
+                ! in_array( $alias_index[ $required ],
+                    $candidate['required_columns'], true ) )
+                return self::err( 'mad4b_mapping_required_field_removed',
+                    'Required columns may only be renamed with an explicit unambiguous reviewed alias.' );
+        }
         $columns = array();
         if ( array_key_exists( 'observed_headers', $plan_input ) )
             $columns = $plan_input['observed_headers'];
@@ -374,7 +395,9 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
             'currency_field', 'allowed_currencies', 'wpml_languages',
             'require_complete_wpml_groups', 'required_relationships',
             'period_start_field', 'period_end_field', 'period_format',
-            'destination_identity_meta_key'
+            'destination_identity_meta_key', 'required_columns',
+            'price_tier_policy', 'decimal_scale', 'review_past_intervals',
+            'max_rows'
         ) ) );
         $result = array(
             'contract' => 'mad4b.import-mapping-migration-simulation.v1',
