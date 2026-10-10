@@ -106,6 +106,8 @@ $check('wordpress_request'===$plan['submission_location'], 'submission location 
 $check('host_runner'===$plan['execution_location'], 'execution location false');
 $check(false===$plan['mutation_performed'], 'planning mutated');
 $check(isset($plan['target']['wp_config_sha256']) && 64===strlen($plan['target']['wp_config_sha256']), 'target wp-config identity missing');
+$check($plan['target']['target_fingerprint'] === MAD4B_SCP_Host_Bridge::target_fingerprint_readonly(),
+ 'Read-only Host fingerprint must equal canonical Host Runner plan fingerprint');
 $target_material=$plan['target'];
 $target_fingerprint=$target_material['target_fingerprint'];
 unset($target_material['target_fingerprint']);
