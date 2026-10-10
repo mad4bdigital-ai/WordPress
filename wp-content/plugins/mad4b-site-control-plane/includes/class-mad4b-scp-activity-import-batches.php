@@ -77,6 +77,14 @@ final class MAD4B_SCP_Activity_Import_Batches {
                     $context['contract']['validation'] ) ) )
             return self::err( 'mad4b_batch_profile_changed',
                 'Active batch is missing or governed Profile revision changed.' );
+        // Once an immutable archival intent is written, no append,
+        // approval, verify or CSV export may resurrect the old batch.
+        // Only archive_unlocked may continue audited cleanup.
+        $tombstone = 'mad4b_batch_archive_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $id );
+        if ( false !== get_option( $tombstone, false ) )
+            return self::err( 'mad4b_batch_archival_in_progress',
+                'An archival tombstone exists. Only exact audited cleanup is permitted.' );
         return array( 'manifest' => $m, 'names' => $names );
     }
     /** Read-only visibility for an interrupted or concurrent Profile mutation. */
