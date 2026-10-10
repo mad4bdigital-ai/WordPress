@@ -106,7 +106,13 @@ final class MAD4B_SCP_Host_Identity_Live {
 		// Host-owned socket under a dedicated OS run directory, not webroot
 		// and not a path supplied through MCP, DB, browser or Site Profile.
 		if ( 1 !== preg_match( '#^/(?:var/run|run)/mad4b-host-runner/[a-zA-Z0-9._-]{1,80}\\.sock$#D', $path )
-			|| is_link( $path ) || ! function_exists( 'stream_socket_client' ) ) return null;
+			|| is_link( $path ) || is_link( dirname( $path ) )
+			|| ! function_exists( 'stream_socket_client' )
+			|| ! is_dir( dirname( $path ) ) || 'socket' !== @filetype( $path ) ) return null;
+		$dir_perms = @fileperms( dirname( $path ) );
+		$socket_perms = @fileperms( $path );
+		if ( ! is_int( $dir_perms ) || ! is_int( $socket_perms )
+			|| ( $dir_perms & 0022 ) || ( $socket_perms & 0007 ) ) return null;
 		$message = function_exists( 'wp_json_encode' )
 			? wp_json_encode( $challenge, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
 			: json_encode( $challenge, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -131,13 +137,15 @@ final class MAD4B_SCP_Host_Identity_Live {
 		$out = array(
 			'contract' => self::CONTRACT, 'state' => 'host_identity_not_proven',
 			'verified' => false, 'source' => 'existing_enrolled_host_runner',
+			'transport' => defined( 'MAD4B_SCP_HOST_IDENTITY_SOCKET' ) ? 'enrolled_local_unix_socket' : 'enrolled_host_adapter',
 			'one_authoritative_source' => true, 'new_secret_required' => false,
 			'copied_site_profile_is_insufficient' => true,
 			'host_private_signer_required' => true,
 			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
 			'production_authorized' => false, 'legacy_host_operations_automatically_unlocked' => false,
 		);
-		if ( ! function_exists( 'random_bytes' ) || ! function_exists( 'apply_filters' )
+		if ( ! function_exists( 'random_bytes' )
+			|| ( ! defined( 'MAD4B_SCP_HOST_IDENTITY_SOCKET' ) && ! function_exists( 'apply_filters' ) )
 			|| '' === self::pinned_public() || ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
 			$out['state'] = 'host_attestation_trust_or_adapter_unavailable';
 			return $out;
