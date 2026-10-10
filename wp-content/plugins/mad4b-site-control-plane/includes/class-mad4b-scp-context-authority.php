@@ -515,6 +515,28 @@ final class MAD4B_SCP_Context_Authority {
 					'mad4b_legacy_transfer_commit_failed', 'Could not atomically persist the reviewed legacy transfer.'
 				);
 				if ( is_wp_error( $committed ) ) return $committed;
+				$read_source = self::raw_sources();
+				$read_assets = self::raw_assets();
+				$selected_postcount = 0;
+				if ( ! isset( $read_source[ $source_id ] )
+					|| ! hash_equals( (string) $plan['brand_id'], (string) ( $read_source[ $source_id ]['brand_id'] ?? '' ) )
+					|| 'read_only' !== (string) ( $read_source[ $source_id ]['write_policy'] ?? '' ) )
+					return new WP_Error( 'mad4b_legacy_transfer_source_readback_failed',
+						'New registry binding could not be independently read back; compensate before accepting.' );
+				foreach ( $read_assets as $post_asset ) {
+					if ( ! is_array( $post_asset ) ||
+						$source_id !== (string) ( $post_asset['source_id'] ?? '' ) ) continue;
+					++$selected_postcount;
+					if ( ! hash_equals( (string) $plan['brand_id'], (string) ( $post_asset['brand_id'] ?? '' ) )
+						|| 'unreviewed' !== (string) ( $post_asset['review_status'] ?? '' )
+						|| '' !== (string) ( $post_asset['reviewed_content_hash'] ?? '' )
+						|| 'stale' !== (string) ( $post_asset['status'] ?? '' ) )
+						return new WP_Error( 'mad4b_legacy_transfer_assets_readback_failed',
+							'Exact newly transferred assets have not been independently verified as unapproved.' );
+				}
+				if ( $selected_postcount !== $count )
+					return new WP_Error( 'mad4b_legacy_transfer_asset_count_readback_failed',
+						'Source asset count changed before the transfer was accepted.' );
 				return self::audited_registry_result( array(
 					'contract' => 'mad4b.context-legacy-owner-transfer.v1',
 					'state' => 'transferred_unapproved_requires_fresh_scan',
@@ -536,6 +558,48 @@ final class MAD4B_SCP_Context_Authority {
 					'production_mutation' => false,
 				), 'ok' );
 			}
+		);
+	}
+
+	/** Independent postcondition read; never accepts a caller-supplied owner. */
+	public static function legacy_owner_transfer_readback( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		if ( ! current_user_can( 'manage_options' ) ||
+			1 !== preg_match( '/^[a-f0-9]{64}$/D', $id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_readback_denied',
+				'Administrator and exact SHA-bound legacy source ID required.' );
+		$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$source = self::raw_sources()[ $id ] ?? array();
+		$brand = strtolower( (string) ( $scope['brand_ref'] ?? '' ) );
+		$source_valid = is_array( $source ) && self::valid_source( $source )
+			&& 'read_only' === (string) ( $source['write_policy'] ?? '' )
+			&& hash_equals( $brand, strtolower( (string) ( $source['brand_id'] ?? '' ) ) )
+			&& MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $source, $scope );
+		$items = 0; $unreviewed = 0; $foreign = 0;
+		foreach ( self::raw_assets() as $asset ) {
+			if ( ! is_array( $asset ) || $id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			++$items;
+			if ( 'stale' === (string) ( $asset['status'] ?? '' ) &&
+				'unreviewed' === (string) ( $asset['review_status'] ?? '' ) &&
+				'' === (string) ( $asset['reviewed_content_hash'] ?? '' ) &&
+				MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $asset, $scope ) )
+				++$unreviewed;
+			else ++$foreign;
+		}
+		return array(
+			'contract' => 'mad4b.context-legacy-owner-transfer-readback.v1',
+			'state' => $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign
+				? 'transferred_unapproved_requires_fresh_scan' : 'blocked_or_changed',
+			'ready_for_fresh_source_scan' => $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign,
+			'existing_source_verified' => $source_valid,
+			'asset_count' => $items, 'unreviewed_asset_count' => $unreviewed,
+			'foreign_or_approved_asset_count' => $foreign,
+			'old_approvals_reused' => false,
+			'content_ready_for_publication' => false,
+			'supplier_rights_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false,
 		);
 	}
 
