@@ -52,8 +52,12 @@ independent authority index.
    data copy, supplier license or approval is created.
 5. On failure, do **not** blindly retry or delete. Re-read registry and
    append-only audit. The same-request registry snapshot can compensate
-   failed writes; a separately certified durable cross-request rollback and
-   crash/race test are still mandatory before production-like live migration.
+   failed writes, with an exact readback of source ownership, asset count
+   and discarded old reviews before reporting success. A separate
+   `context/legacy-owner-transfer-readback` ability independently confirms
+   the current source and its unreviewed assets on a later request.
+   A separately certified durable cross-request rollback and crash/race
+   test are still mandatory before production-like live migration.
 6. Once exactly bound, use `context/source-scan-plan`, then independent
    approval for `context/source-scan-apply` and source readback. Preserve
    provider IDs/revisions; incomplete or truncated scans cannot prove files
@@ -114,3 +118,9 @@ independent authority index.
   source and owned Editorial Guidelines still need ownership proof.
 - No actual new published tour or brand context mutation should be claimed.
 - PR #258 remains Draft. This is not a Production promotion authorization.
+
+The current GitHub source initially contained an accidental repeated-method
+suffix in Context Adapter. That suffix was removed on PR #258, and a new CI
+static refusal checks class uniqueness, unique method names, bounded source
+size, and exact registered recovery routes. Do not deploy any commit before
+that repair or without independent native PHP lint.
