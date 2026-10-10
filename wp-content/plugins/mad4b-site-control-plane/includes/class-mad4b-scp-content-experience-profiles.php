@@ -728,6 +728,19 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
+                'name' => 'mad4b/business-activity-import-reconciliation-plan',
+                'label' => 'Compare Immutable Source IDs to WordPress CPT Meta in Safe Pages',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Reconciliation', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'start_index' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500 ),
+                    'page_size' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 25 ),
+                ), array( 'profile_slug', 'snapshot_sha256' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
                 'name' => 'mad4b/business-activity-import-capabilities',
                 'label' => 'Discover Governed Spreadsheet Import Engines and Options',
                 'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'capabilities' ),
