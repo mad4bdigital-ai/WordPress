@@ -2020,7 +2020,7 @@ def sign_live_host_identity_challenge(
     """
     expected = {
         "contract", "nonce", "site_uuid", "origin", "environment",
-        "profile_revision", "profile_digest",
+        "profile_revision", "profile_digest", "target_fingerprint",
     }
     if not isinstance(challenge, dict) or set(challenge) != expected:
         raise ValueError("Exact Host challenge shape required")
@@ -2030,6 +2030,8 @@ def sign_live_host_identity_challenge(
         raise ValueError("Host identity challenge protocol mismatch")
     if challenge["site_uuid"] != profile.get("site_uuid"):
         raise ValueError("Challenge and enrolled Host Runner site identity mismatch")
+    if challenge["target_fingerprint"] != profile.get("target_fingerprint"):
+        raise ValueError("Challenge does not match enrolled physical WordPress install")
     if not isinstance(challenge["nonce"], str) or not re.fullmatch(r"[a-f0-9]{64}", challenge["nonce"]):
         raise ValueError("Host challenge nonce malformed")
     if not isinstance(challenge["profile_revision"], int) or isinstance(challenge["profile_revision"], bool) or challenge["profile_revision"] <= 0:
