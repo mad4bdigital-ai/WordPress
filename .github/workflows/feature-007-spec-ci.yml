@@ -794,6 +794,24 @@ jobs:
             php -l "$root/tests/$name"
             php "$root/tests/$name"
           done
+      - name: Detect duplicated Context Adapter code before Staging enrollment
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          p=pathlib.Path("wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php")
+          data=p.read_text()
+          methods=re.findall(r"(?:public|private|protected)\\s+(?:static\\s+)?function\\s+([A-Za-z0-9_]+)\\s*\\(", data)
+          assert 1000 < len(data) < 150000, "Context Adapter exceeds safe single-module size"
+          assert data.count("<?php") == 1
+          assert data.count("final class MAD4B_SCP_Context_Adapter") == 1
+          assert len(methods) == len(set(methods)), "PHP Context Adapter duplicate method definition"
+          for ability in ("context/brand-core-control-loop","context/legacy-owner-transfer-discover",
+              "context/legacy-owner-transfer-plan","context/legacy-owner-transfer-readback",
+              "context/legacy-owner-transfer-apply"):
+              assert ability in data, f"Missing governed Context ability: {ability}"
+          print("PASS: one Context Adapter class, unique methods, recovery routes")
+          PY
       - name: Deterministic package negative tests (no ZIP release)
         if: matrix.php == '8.3'
         shell: bash
