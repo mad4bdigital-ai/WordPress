@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ) require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
 
 /**
  * IMP03 review-only storage and approval of an exact source snapshot.
@@ -84,8 +85,10 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             'tag' => base64_encode( $tag )
         );
         $store = self::option_key( $slug );
-        if ( ! add_option( $store, $record, '', false ) )
-            return self::err( 'mad4b_import_review_pending', 'Another immutable review is already staged.' );
+        $inserted = MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $store, $record );
+        if ( is_wp_error( $inserted ) )
+            return self::err( 'mad4b_import_review_pending',
+                'Another immutable review is already staged or SQL readback failed.' );
         $persisted = get_option( $store, false );
         if ( ! is_array( $persisted ) || self::digest( $persisted ) !== self::digest( $record ) )
             return self::err( 'mad4b_import_snapshot_readback_failed', 'Staging receipt could not be independently read back.' );
@@ -178,8 +181,10 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             'wordpress_post_writes' => 0
         );
         $key = self::approval_key( $slug, $expected_sha );
-        if ( ! add_option( $key, $approval, '', false ) )
-            return self::err( 'mad4b_import_approval_already_exists', 'Approval already recorded; read existing receipt.' );
+        $inserted = MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $key, $approval );
+        if ( is_wp_error( $inserted ) )
+            return self::err( 'mad4b_import_approval_already_exists',
+                'Approval already exists or immutable SQL write was not independently verified.' );
         if ( self::digest( get_option( $key, false ) ) !== self::digest( $approval ) )
             return self::err( 'mad4b_import_approval_readback_failure', 'Independent approval readback failed.' );
         return $approval;
