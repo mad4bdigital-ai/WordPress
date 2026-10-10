@@ -594,6 +594,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-context-impact-plan',
             'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
             'mad4b/business-activity-import-capabilities',
+            'mad4b/business-activity-import-experience-plan',
             'mad4b/business-activity-import-modes',
             'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-reconciliation-plan',
@@ -811,6 +812,18 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'schema' => self::schema( array(
                     'import_id' => array( 'type' => 'integer', 'minimum' => 1 ),
                 ), array( 'import_id' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-experience-plan',
+                'label' => 'Plan Safe Import Operator Steps and Available Site Modes',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Experience', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'mode_id' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 64 ),
+                    'wizard_step' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 4 ),
+                ), array() ),
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
