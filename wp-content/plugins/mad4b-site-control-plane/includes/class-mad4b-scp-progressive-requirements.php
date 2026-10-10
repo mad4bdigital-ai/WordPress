@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Progressive_Requirements {
 	const CONTRACT = 'mad4b.progressive-requirements.v1';
 	const PLAN_ABILITY = 'mad4b/progressive-requirements-plan';
+	const DISCOVER_ABILITY = 'mad4b/progressive-requirements-discover';
 	const LINK_ABILITY = 'mad4b/progressive-requirements-link';
 	const MAX_GATES = 96;
 	const MAX_ATTEMPT = 12;
@@ -26,6 +27,8 @@ final class MAD4B_SCP_Progressive_Requirements {
 	}
 
 	public static function boot() {
+		if ( ! class_exists( 'MAD4B_SCP_Progressive_Operation_Discovery', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-progressive-operation-discovery.php';
 		self::register_provider( 'wordpress.selected_head', array( __CLASS__, 'selected_head' ) );
 		self::register_provider( 'context.brand_core', array( __CLASS__, 'brand_core' ) );
 		self::register_provider( 'registry.operation', array( __CLASS__, 'registered_operation' ) );
@@ -53,6 +56,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 	public static function register_abilities() {
 		if ( ! function_exists('wp_register_ability') ) return;
 		foreach ( array(
+			array( self::DISCOVER_ABILITY, 'Discover Canonical Operations and Planner Variables Automatically', 'discover', true ),
 			array( self::PLAN_ABILITY, 'Plan Adaptive Requirements Without Weakening Trust', 'plan', true ),
 			array( self::LINK_ABILITY, 'Create Governed Pending Linked Work Handoff', 'link', false ),
 		) as $item ) {
