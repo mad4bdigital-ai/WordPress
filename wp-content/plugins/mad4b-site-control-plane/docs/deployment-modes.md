@@ -87,3 +87,13 @@ The cross-repo checker is read-only and fails closed when files, versions, pinne
 ## Migration and recovery
 
 Keep existing `Site Profile` records; no automatic DB migration, rewrite of `wp-config.php` or change of `wp_get_environment_type()` is performed. A missing brand record, a stale version, origin drift or a clone must produce an actionable diagnostic and a governed re-enrollment path, not a silent fallback to another brand or a shared platform mode. Binding changes invalidate previously assembled Context Authority projections and trigger independent readback before any future writes.
+
+## Two additional readiness distinctions
+
+The WordPress Abilities API being present does not demonstrate that the official MCP Adapter class was loaded or registered for the request. The read-only dependency projection reports `TRANSPORT_NOT_OBSERVED` separately from `POTENTIALLY_AVAILABLE`; neither is runtime acceptance without independent endpoint readback.
+
+WordPress may call `switch_to_blog()` inside a single PHP request. Static Site Profile caches can then refer to an earlier blog. The WordPress Dedicated resolver independently reads the **current blog's enrolled Site Profile option**, confirms matching site UUID, revision and canonical origin, and blocks with `SITE_BLOG_LOCAL_BINDING_MISMATCH` if those differ. This check is read-only and adds no write path.
+
+## Exact ZIP dependency evidence
+
+The cross-repository dependency checker optionally accepts `--package-zip /path/to/certified-candidate.zip`. In that mode, it validates that the packaged entrypoint, dedicated resolver and dependency graph bytes match the pinned WordPress source. An absent ZIP is recorded as `NOT_SUPPLIED`, not a packaging success, and separate source/host acceptance remains required.
