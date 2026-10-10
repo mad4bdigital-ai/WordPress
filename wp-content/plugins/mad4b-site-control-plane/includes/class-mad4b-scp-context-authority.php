@@ -303,6 +303,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$record_brand_id = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
 			if ( '' === $record_brand_id || ! hash_equals( $brand_id, $record_brand_id ) ) continue;
+            if ( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $record, $verified_scope ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -331,6 +332,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( '' === $asset_brand_id ||
 				! hash_equals( strtolower( (string) $sources[ $source_id ]['brand_id'] ), $asset_brand_id ) ||
 				! hash_equals( strtolower( (string) $verified_scope['brand_ref'] ), $asset_brand_id ) ) continue;
+            if ( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $record, $verified_scope ) ) continue;
 			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
 			$asset_mode = isset( $record['source_mode'] ) ? (string) $record['source_mode'] : '';
 			if ( '' === $source_mode || '' === $asset_mode || ! hash_equals( $source_mode, $asset_mode ) ) continue;

@@ -58,6 +58,29 @@ $sources = array(
     'missing' => $source( 'missing', '' ),
 );
 check( MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $sources['own'], $scope ), 'owned source stays in bound scope' );
+$stored = $sources['own'];
+$stored['tenant_id'] = 'wp-site:' . $GLOBALS['site_uuid'];
+$stored['blog_id'] = 1;
+$stored['network_id'] = 1;
+$stored['environment'] = 'staging';
+check( MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $stored, $scope ), 'matching persisted tenant and blog evidence accepted' );
+foreach ( array(
+    'tenant_id' => 'wp-site:foreign',
+    'tenant_ref' => 'wp-site:foreign',
+    'blog_id' => 2,
+    'network_id' => 2,
+    'environment' => 'production',
+    'deployment_mode' => 'shared_multi_tenant'
+) as $field => $foreign ) {
+    $forged = $stored;
+    $forged[ $field ] = $foreign;
+    check( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $forged, $scope ),
+        'contradicting persisted metadata denied: ' . $field );
+}
+$legacy_unknown = $stored;
+unset( $legacy_unknown['brand_id'] );
+check( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $legacy_unknown, $scope ),
+    'unknown legacy brand is quarantined rather than adopted or deleted' );
 check( ! MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $sources['own'], $stale_scope ), 'stale asserted scope cannot authorize owned source' );
 $ref = new ReflectionClass( 'MAD4B_SCP_Context_Authority' );
 $source_filter = $ref->getMethod( 'authorized_sources_from_records' );

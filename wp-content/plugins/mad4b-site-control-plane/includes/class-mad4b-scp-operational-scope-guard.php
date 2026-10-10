@@ -48,7 +48,39 @@ final class MAD4B_SCP_Operational_Scope_Guard {
         foreach ( array( 'tenant_ref', 'site_uuid', 'brand_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $name ) {
             if ( ! isset( $scope[ $name ] ) || (string) $scope[ $name ] !== (string) $trusted[ $name ] ) return false;
         }
-        return hash_equals( strtolower( (string) $trusted['site_uuid'] ), strtolower( (string) $record['site_uuid'] ) )
-            && hash_equals( strtolower( (string) $trusted['brand_ref'] ), strtolower( (string) $record['brand_id'] ) );
+        return self::record_metadata_matches( $record, $trusted );
+    }
+
+    /**
+     * A pure assertion shared by Context sources, assets, and other bounded
+     * consumers. Legacy records lacking mandatory site/brand ownership remain
+     * quarantined; optional stored tenancy/multisite metadata may never
+     * contradict the trusted deployment binding. No database writes or grants.
+     */
+    public static function record_metadata_matches( $record, $trusted ) {
+        if ( ! is_array( $record ) || ! is_array( $trusted ) ) return false;
+        $required = array( 'site_uuid' => 'site_uuid', 'brand_id' => 'brand_ref' );
+        $optional = array(
+            'tenant_ref' => 'tenant_ref',
+            'tenant_id' => 'tenant_ref',
+            'blog_id' => 'blog_id',
+            'network_id' => 'network_id',
+            'environment' => 'environment',
+            'deployment_mode' => 'deployment_mode',
+        );
+        foreach ( $required + $optional as $record_key => $scope_key ) {
+            if ( ! array_key_exists( $record_key, $required ) &&
+                ! array_key_exists( $record_key, $record ) ) continue;
+            if ( ! isset( $record[ $record_key ], $trusted[ $scope_key ] ) ||
+                ! is_scalar( $record[ $record_key ] ) ) return false;
+            $actual = trim( (string) $record[ $record_key ] );
+            $expected = (string) $trusted[ $scope_key ];
+            if ( in_array( $record_key, array( 'site_uuid', 'brand_id' ), true ) ) {
+                $actual = strtolower( $actual );
+                $expected = strtolower( $expected );
+            }
+            if ( '' === $actual || ! hash_equals( $expected, $actual ) ) return false;
+        }
+        return true;
     }
 }
