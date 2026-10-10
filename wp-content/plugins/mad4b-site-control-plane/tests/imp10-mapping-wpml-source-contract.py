@@ -45,8 +45,11 @@ must("mad4b_import_intent" in review and
      "Check dynamic mapping before upload" in experience,
      "Header-only mapping preflight is not available in the guided CSV flow")
 must("sampled_mapped_column_type_counts" in mapping and
-     "commercial_price_semantic_type_drift" in mapping,
-     "Business-semantic drift was reduced to lexical name-only matching")
+     "commercial_price_semantic_type_drift" in mapping and
+     "serialized_source_requires_certified_typed_driver" in mapping and
+     "never_php_unserialize_from_untrusted_source" in mapping and
+     "unserialize(" not in mapping,
+     "Business-semantic drift or safe serialized relationship boundaries missing")
 for word in ("class-mad4b-scp-import-mapping-evolution.php",
              "class-mad4b-scp-import-wpml-readback.php",
              "business-activity-import-mapping-evolution-plan",
