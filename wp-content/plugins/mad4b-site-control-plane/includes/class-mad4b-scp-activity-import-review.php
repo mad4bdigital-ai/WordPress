@@ -510,11 +510,15 @@ final class MAD4B_SCP_Activity_Import_Review {
         $preview = self::inspect( $input );
         if ( is_wp_error( $preview ) ) return $preview;
         $source_mode = $sender['mode'];
-        $mode_plan = MAD4B_SCP_Activity_Import_Modes::plan( array(
-            'profile_slug' => $preview['profile_slug'], 'mode_id' => $source_mode ) );
-        if ( is_wp_error( $mode_plan ) || empty( $mode_plan['eligible_for_staging_review'] ) )
+        $source_profile = MAD4B_SCP_Content_Experience_Profiles::profile(
+            $preview['profile_slug'] );
+        if ( is_wp_error( $source_profile ) ||
+            ! MAD4B_SCP_Activity_Import_Authority::mode_allowed(
+                $source_profile, $source_mode ) )
             return self::error( 'mad4b_import_source_mode_policy_denied',
-                'The administrator has not enabled this intake transport for the exact Profile.' );
+                'This authenticated source is not permitted by the site-owned Profile.' );
+        // The sender was authenticated by scoped HMAC, not a WP user session.
+        // Never use an administrator-only read Plan to authorize webhooks.
         $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
             $preview['profile_slug'], $input, $preview, $source_mode, $sender['key_id'] );
         if ( is_wp_error( $receipt ) ) return $receipt;
