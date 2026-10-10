@@ -101,6 +101,53 @@ final class MAD4B_SCP_Staging_Autopilot {
 			'host_clone_protection_ready' => ! empty( $site['same_origin_clone_protection'] ),
 			'next_staging_write_authority_check' => 'mad4b/staging-write-authority-convergence-handshake',
 			'developer_host_prerequisite_check' => 'mad4b/full-staging-authority-handshake',
+			// Stable, ordered assistant workflow. Each lane is an independent
+			// evidence/approval boundary; a read MUST NOT become an apply.
+			'assistant_workflow' => array(
+				array(
+					'step_id' => 'site_profile_environment',
+					'state' => $state,
+					'actor' => $actor,
+					'next_action_id' => $next,
+					'local_admin_consent_required' => $admin_allowed,
+					'remote_write_allowed' => false,
+				),
+				array(
+					'step_id' => 'host_deployment_binding',
+					'state' => ! empty( $site['same_origin_clone_protection'] )
+						? 'exact_host_binding_present' : 'requires_host_operator_review',
+					'actor' => 'host_operator',
+					'next_action_id' => ! empty( $site['same_origin_clone_protection'] )
+						? 'none' : 'provision_unique_host_deployment_binding',
+					'remote_write_allowed' => false,
+				),
+				array(
+					'step_id' => 'staging_write_authority',
+					'state' => 'readiness_not_evaluated_in_autopilot',
+					'actor' => 'site_owner',
+					'read_ability' => 'mad4b/staging-write-authority-convergence-handshake',
+					'next_action_id' => 'review_exact_write_grants_and_candidate_binding',
+					'explicit_owner_approval_required' => true,
+					'remote_write_allowed' => false,
+				),
+				array(
+					'step_id' => 'developer_host_prerequisites',
+					'state' => 'readiness_not_evaluated_in_autopilot',
+					'actor' => 'host_operator',
+					'read_ability' => 'mad4b/full-staging-authority-handshake',
+					'next_action_id' => 'review_resource_and_network_isolation',
+					'host_prerequisites_auto_install' => false,
+					'remote_write_allowed' => false,
+				),
+				array(
+					'step_id' => 'release_and_staging_acceptance',
+					'state' => 'native_live_acceptance_not_evaluated',
+					'actor' => 'staging_operator',
+					'next_action_id' => 'run_fresh_staging_acceptance_for_exact_head',
+					'production_promotion_allowed' => false,
+					'remote_write_allowed' => false,
+				),
+			),
 			'write_grants_auto_apply' => false,
 			'host_prerequisites_auto_install' => false,
 			'plugin_updates_auto_apply' => false,

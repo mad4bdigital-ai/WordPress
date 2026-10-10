@@ -22,3 +22,6 @@ A correctly enrolled Staging Site Profile may still report `WP_ENVIRONMENT_TYPE=
 - Run existing `tests/site-profile-wp-config-auto-sync-runtime.php` and critical kernel tests on the exact HEAD.
 - Package using the canonical deterministic builder and MCP Adapter certification; check SHA-256 and provenance.
 - After deployment, call `mad4b/site-autopilot-status`, use the admin one-click action if eligible, and verify `wp_get_environment_type() === staging` in a new request. No release or Production authorization is implied by a green source fixture.
+
+## Ordered assistant workflow
+The `assistant_workflow` contains exactly five bounded lanes: (1) Site Profile and WordPress environment, (2) host-private deployment binding and clone protection, (3) explicit Staging Write-only convergence, (4) host-dependent Developer execution prerequisites, and (5) fresh exact-HEAD acceptance. Every lane has actor and next-action ID. Write/Developer lanes are marked **not evaluated**, not falsely healthy; agents must fetch their exact independent handshake. None authorizes unattended host mutations, automatic grants or Production promotion.

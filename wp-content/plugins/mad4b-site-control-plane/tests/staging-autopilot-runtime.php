@@ -25,7 +25,10 @@ foreach ( $cases as $index => $case ) {
 	if ( $case[1] !== $output['state'] ||
 		$case[2] !== $output['admin_autopilot_action_allowed'] ||
 		! $output['read_only'] || $output['mutation_performed'] ||
-		$output['production_mutation_allowed'] || $output['write_grants_auto_apply'] ) {
+		$output['production_mutation_allowed'] || $output['write_grants_auto_apply'] ||
+		count( $output['assistant_workflow'] ) !== 5 ||
+		$output['assistant_workflow'][2]['remote_write_allowed'] ||
+		$output['assistant_workflow'][3]['host_prerequisites_auto_install'] ) {
 		fwrite( STDERR, "FAIL case $index\n" );
 		exit( 1 );
 	}
