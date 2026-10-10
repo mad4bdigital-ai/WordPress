@@ -20,6 +20,10 @@ unreviewed privileges.
    executor, risk class, descriptor readiness and availability.
 3. Optionally the bounded `MAD4B_SCP_Operational_Remediation::status()`
    reducer of current Staging blockers and canonical remediation paths.
+4. Definition-only `MAD4B_SCP_Admin_Route_Registry::routes()` so newly registered
+   MAD4B admin screens are visible as *manual, non-executable* candidates to
+   enrolled administrators. A route URL, capability string or nonce form never
+   serves as an MCP execution credential.
 
 Unknown manual routes or capabilities are returned as **missing a certified
 adapter**, not opportunistically executed. Discovery itself never creates
