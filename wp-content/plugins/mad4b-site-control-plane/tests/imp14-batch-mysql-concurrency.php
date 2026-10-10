@@ -16,11 +16,29 @@ foreach ( array_slice( $argv, 1 ) as $part ) {
     if ( preg_match( '/^--([a-z-]+)=(.*)$/D', $part, $m ) )
         $args[ $m[1] ] = $m[2];
 }
+$expected_head = isset( $args['expected-head'] ) ? strtolower( trim( $args['expected-head'] ) ) : '';
+$expected_site = isset( $args['expected-site-uuid'] ) ? strtolower( trim( $args['expected-site-uuid'] ) ) : '';
+if ( ! preg_match( '/^[a-f0-9]{40}$/D', $expected_head ) ||
+    ! preg_match( '/^[a-f0-9-]{36}$/D', $expected_site ) ) {
+    fwrite( STDERR, "BLOCKED: --expected-head and --expected-site-uuid required\n" );
+    exit( 2 );
+}
 $root = isset( $args['wp-root'] ) ? realpath( $args['wp-root'] ) : false;
 if ( !$root || ! is_file( $root . '/wp-load.php' ) ) {
     fwrite( STDERR, "BLOCKED: explicit --wp-root required\n" ); exit( 2 );
 }
 require_once $root . '/wp-load.php';
+// A bundled identity is not itself an independent binary or Host attestation.
+$evidence_path = dirname( __DIR__ ) . '/config/functional-gap-contract-evidence.generated.json';
+$evidence = is_file( $evidence_path ) && is_readable( $evidence_path )
+    ? json_decode( (string) file_get_contents( $evidence_path ), true ) : null;
+$installed_head = is_array( $evidence ) && isset( $evidence['source_commit_sha'] )
+    ? strtolower( trim( (string) $evidence['source_commit_sha'] ) ) : '';
+if ( ! preg_match( '/^[a-f0-9]{40}$/D', $installed_head ) ||
+    ! hash_equals( $expected_head, $installed_head ) ) {
+    fwrite( STDERR, "BLOCKED: installed source evidence differs from requested HEAD\n" );
+    exit( 2 );
+}
 if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) )
     require_once __DIR__ . '/../includes/class-mad4b-scp-batch-atomic-mutex.php';
 if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
@@ -29,6 +47,10 @@ if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
     ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
     ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) ) {
     fwrite( STDERR, "BLOCKED: enrolled Staging Site Profile required\n" );
+    exit( 2 );
+}
+if ( ! hash_equals( $expected_site, strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) ) {
+    fwrite( STDERR, "BLOCKED: enrolled site differs from requested Site UUID\n" );
     exit( 2 );
 }
 if ( isset( $args['child'] ) ) {
@@ -61,6 +83,8 @@ $barrier = tempnam( sys_get_temp_dir(), 'mad4b_imp14_' );
 if ( false === $barrier ) exit( 2 );
 $jobs = array();
 $command = array( PHP_BINARY, __FILE__, '--wp-root=' . $root,
+    '--expected-head=' . $expected_head,
+    '--expected-site-uuid=' . $expected_site,
     '--child=1', '--slug=' . $slug, '--barrier=' . $barrier );
 for ( $i = 0; $i < 2; $i++ ) {
     $cmd = array_merge( $command, array( '--worker=' . $i ) );
@@ -102,5 +126,9 @@ echo json_encode( array( 'contract' => 'mad4b.imp14-mysql-concurrency.v1',
     'result' => $pass ? 'PASS' : 'FAIL', 'workers' => 2,
     'winners' => $winners, 'contenders_refused' => $losers,
     'lock_released' => $released, 'staging_only' => true,
+    'source_manifest_head_matches_requested' => true,
+    'host_attestation_certified' => false,
+    'plugin_filesystem_hash_verified' => false,
+    'site_identity_matches_requested' => true,
     'business_post_writes' => 0 ) ) . "\n";
 exit( $pass ? 0 : 1 );

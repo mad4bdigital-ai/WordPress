@@ -12,6 +12,8 @@ review = get("class-mad4b-scp-activity-import-review.php")
 fixture = (P/"tests"/"imp08-batch-review-runtime.php").read_text(encoding="utf8")
 preflight = (P/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")
 mysql_test = (P/"tests"/"imp14-batch-mysql-concurrency.php").read_text(encoding="utf8")
+observer = get("class-mad4b-scp-activity-wpai-observer.php")
+observer_fixture = (P/"tests"/"imp05-wpai-observer-runtime.php").read_text(encoding="utf8")
 def require(ok, msg):
     if not ok: raise AssertionError(msg)
 for guard in (
@@ -64,6 +66,20 @@ for guard in (
 section = batch.split("private static function export_chunk_unlocked(")[1].split(
     "public static function status(",1)[0]
 require("exit;" not in section, "CSV response exits before mutex release")
+require("function reserve_observation(" in atomic and
+        "MAD4B_SCP_Batch_Atomic_Mutex::reserve_observation( $key, $record )" in observer and
+        "add_option( $key, $record" not in observer and
+        "Stale Options cache cannot overwrite the observation SQL reservation" in observer_fixture,
+        "IMP05 observation arming still permits a racing Options UPSERT")
+for guard in (
+    "--expected-head", "--expected-site-uuid",
+    "source_manifest_head_matches_requested",
+    "host_attestation_certified' => false",
+    "plugin_filesystem_hash_verified' => false",
+    "'--expected-head=' . $expected_head",
+    "'--expected-site-uuid=' . $expected_site",
+):
+    require(guard in mysql_test, "Missing exact-identity Staging MySQL gate: "+guard)
 for guard in (
     "IMP14_SQL_Mutex_DB",
     "INSERT IGNORE INTO",
