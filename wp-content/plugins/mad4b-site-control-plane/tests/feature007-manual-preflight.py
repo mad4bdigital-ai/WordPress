@@ -133,6 +133,12 @@ FIXTURES = (
     "runtime-content-experience-smoke.php",
     "content-intelligence-pipeline-contract.php",
 )
+# Requires enrolled WordPress Staging plus two independent SQL clients.
+# This file is linted/retained for operational acceptance and MUST NOT be
+# executed as an isolated runtime fixture or auto-run on Production.
+STAGING_INTEGRATION_NOT_AUTORUN = (
+    "imp14-batch-mysql-concurrency.php",
+)
 NODE_FIXTURES = (
     "tools/solution-discovery/test-federation.mjs",
     "tools/solution-discovery/test-source-evidence.mjs",
