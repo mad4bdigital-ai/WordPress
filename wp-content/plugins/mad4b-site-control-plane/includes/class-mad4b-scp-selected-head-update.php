@@ -155,7 +155,7 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'step_id' => 'enable_selected_head_host_opt_in',
                 'actor' => 'staging_host_operator',
                 'surface' => 'one_time_host_bootstrap',
-                'tool' => 'tools/mad4b_staging_host_provision.py',
+                'tool' => 'host_owned_one_time_staging_provisioning',
                 'requires_explicit_consent' => true,
                 'remote_mcp_auto_apply_allowed' => false,
             ),
@@ -163,7 +163,7 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'step_id' => 'align_exact_staging_host_and_profile_binding',
                 'actor' => 'staging_host_operator',
                 'surface' => 'wp_config_then_fresh_wordpress_request_and_profile_save',
-                'tool' => 'tools/mad4b_staging_host_provision.py',
+                'tool' => 'host_owned_one_time_staging_provisioning',
                 'requires_explicit_consent' => true,
                 'remote_mcp_auto_apply_allowed' => false,
             ),
@@ -255,7 +255,6 @@ final class MAD4B_SCP_Selected_Head_Update {
             'assistant_recovery' => self::blocker_recovery( $blockers ),
             'unattended_host_bootstrap' => false,
             'candidate_release_manifest_required' => true,
-            'default_release_channel_unchanged' => true,
             'reason' => $reason, 'mutation_performed' => false, 'authorizing' => false,
         );
         $selected['plan_sha256'] = hash( 'sha256', wp_json_encode( $selected ) );
