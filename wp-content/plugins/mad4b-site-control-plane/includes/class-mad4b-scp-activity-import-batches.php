@@ -435,10 +435,21 @@ final class MAD4B_SCP_Activity_Import_Batches {
             self::hash( get_option( $tombstone_key, false ) ) !== self::hash( $audit ) )
             return self::err( 'mad4b_batch_archive_audit_failed',
                 'Audit could not be durably committed. Batch has not been released.' );
-        for ( $i = 0; $i < $read['manifest']['expected_chunks']; $i++ )
-            delete_option( $names['chunk_prefix'] . $i );
+        for ( $i = 0; $i < $read['manifest']['expected_chunks']; $i++ ) {
+            $chunk_key = $names['chunk_prefix'] . $i;
+            delete_option( $chunk_key );
+            if ( false !== get_option( $chunk_key, false ) )
+                return self::err( 'mad4b_batch_archive_chunk_cleanup_failed',
+                    'Archive audit exists, but encrypted chunk deletion is not verified. Active Profile remains blocked.' );
+        }
         delete_option( $names['approved'] );
+        if ( false !== get_option( $names['approved'], false ) )
+            return self::err( 'mad4b_batch_archive_approval_cleanup_failed',
+                'Manual approval could not be deleted. Batch remains blocked.' );
         delete_option( $names['manifest'] );
+        if ( false !== get_option( $names['manifest'], false ) )
+            return self::err( 'mad4b_batch_archive_manifest_cleanup_failed',
+                'Manifest cleanup not independently verified. Batch remains blocked.' );
         delete_option( $names['active'] );
         if ( false !== get_option( $names['active'], false ) )
             return self::err( 'mad4b_batch_archive_release_unverified',
