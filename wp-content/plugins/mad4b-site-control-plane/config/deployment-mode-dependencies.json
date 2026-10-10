@@ -30,7 +30,9 @@
         "deployment_binding_bound",
         "deployment_binding_configured",
         "deployment_binding_match",
-        "revision"
+        "revision",
+        "blog_local_site_option_uuid_revision_and_origin_match",
+        "site_profile_static_cache_not_authoritative_across_switch_to_blog"
       ]
     },
     {
@@ -67,7 +69,7 @@
     },
     {
       "id": "official_mcp_adapter_runtime",
-      "impact": "MCP transport only, not local identity derivation"
+      "impact": "Transport must be observed and independently accepted; Abilities API alone does not prove MCP readiness"
     }
   ],
   "optional_capabilities": [
@@ -100,7 +102,9 @@
     "no_cross_blog_context_leak": true,
     "no_production_mutation_without_separate_grant": true,
     "no_wp_plugin_dependency_for_platform_modes": true,
-    "no_credential_materialization": true
+    "no_credential_materialization": true,
+    "site_cache_cannot_cross_blog": true,
+    "optional_provider_detection_is_not_certification": true
   },
   "failure_classification": {
     "missing_required_identity": "BLOCKED",
@@ -115,6 +119,29 @@
     "native_python_contract": "tests/deployment-mode-dependencies-contract.py",
     "php_lint": "php -l includes/class-mad4b-scp-deployment-mode-resolver.php",
     "packaging": "tests/build-deterministic-control-plane-package.py",
-    "operational_acceptance": "PENDING"
-  }
+    "operational_acceptance": "PENDING",
+    "package_source_match": "optional --package-zip, exact three critical files compared"
+  },
+  "conditional_for_mutation": [
+    {
+      "id": "wordpress_role_capability",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "mad4b_existing_governed_write_authority",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "exact_host_environment_postcondition_readback",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "owner_or_delegated_approval",
+      "required_when": "sensitive_operation_requested"
+    },
+    {
+      "id": "production_promotion_separate_grant",
+      "required_when": "production_mutation_requested"
+    }
+  ]
 }
