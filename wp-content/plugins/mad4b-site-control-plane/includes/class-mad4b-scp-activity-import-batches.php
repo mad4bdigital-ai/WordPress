@@ -79,6 +79,57 @@ final class MAD4B_SCP_Activity_Import_Batches {
                 'Active batch is missing or governed Profile revision changed.' );
         return array( 'manifest' => $m, 'names' => $names );
     }
+    /** Read-only visibility for an interrupted or concurrent Profile mutation. */
+    public static function mutation_status( $input = array() ) {
+        $slug = is_array( $input ) && isset( $input['profile_slug'] ) ?
+            (string) $input['profile_slug'] : '';
+        if ( ! self::environment() ||
+            ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            return self::err( 'mad4b_batch_mutex_status_denied',
+                'Enrolled Staging administrator and exact Profile required.' );
+        $key = 'mad4b_batch_mutex_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
+        $value = get_option( $key, false );
+        $held = false !== $value;
+        if ( $held && ( ! is_array( $value ) ||
+            ! isset( $value['token_sha256'], $value['operation'],
+                $value['created_at'] ) ) )
+            return self::err( 'mad4b_batch_mutex_corrupt',
+                'Stored lock cannot be safely interpreted. Manual diagnosis required.' );
+        $base = hash( 'sha256', MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
+        $active = get_option( 'mad4b_batch_active_' . $base, false );
+        $active_valid = is_string( $active ) &&
+            preg_match( '/^[a-f0-9]{32}$/D', $active );
+        $names = $active_valid ? self::names( $slug, $active ) : array();
+        $manifest = $active_valid ?
+            get_option( $names['manifest'], false ) : false;
+        $audit = $active_valid ?
+            get_option( 'mad4b_batch_archive_' . hash( 'sha256',
+                MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+                    $active ), false ) : false;
+        $ts = $held ? strtotime( (string) $value['created_at'] ) : false;
+        return array(
+            'contract' => 'mad4b.import-batch-lock-observation.v1',
+            'profile_slug' => $slug,
+            'mutation_lock_held' => $held,
+            'mutation_operation' => $held ? $value['operation'] : null,
+            'mutation_lock_sha256' => $held ? self::hash( $value ) : null,
+            'lock_age_seconds' => $held && false !== $ts ?
+                max( 0, time() - $ts ) : null,
+            'active_batch_present' => $active_valid,
+            'active_batch_identity_sha256' => $active_valid ?
+                hash( 'sha256', $active ) : null,
+            'active_manifest_present' => is_array( $manifest ),
+            'archive_tombstone_present' => is_array( $audit ),
+            'safe_for_new_mutation' => !$held,
+            'automatic_lock_takeover_allowed' => false,
+            'automatic_source_import_allowed' => false,
+            'recovery_instruction' => $held ?
+                'Inspect server workers and durable exact batch/archival receipts with an authorized administrator. Never delete a lock solely because it is old.' :
+                'No batch mutation mutex blocks this Profile.',
+            'read_only' => true, 'mutation_performed' => false
+        );
+    }
     /** Clean up a prior exact, enrolled batch even after Profile policy drift.
      * This deliberately does not grant source preview or provider execution.
      */
