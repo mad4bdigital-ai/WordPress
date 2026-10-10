@@ -912,6 +912,18 @@ final class MAD4B_SCP_Host_Bridge {
 		return $parent;
 	}
 
+	/**
+	 * Canonical physical install fingerprint already used by Host Runner job
+	 * validation. Expose only the digest for a fresh, non-authorizing Host
+	 * identity challenge; never expose absolute filesystem paths to MCP.
+	 */
+	public static function target_fingerprint_readonly() {
+		$target = self::target_identity();
+		if ( is_wp_error( $target ) || ! is_array( $target ) ) return '';
+		$fp = (string) ( $target['target_fingerprint'] ?? '' );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/D', $fp ) ? $fp : '';
+	}
+
 	private static function target_identity() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return new WP_Error( 'mad4b_host_site_profile_unavailable', 'Site Profile is unavailable.' );
 		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
