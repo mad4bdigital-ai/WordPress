@@ -110,11 +110,14 @@ final class MAD4B_SCP_Activity_Import_Experience {
                     is_array( $mode['requirements'] ) ? $mode['requirements'] : array()
             );
         }
+        $requested_mode_invalid = '' !== $requested_mode &&
+            ! isset( $modes[ $requested_mode ] );
         $mode_id = isset( $modes[ $requested_mode ] ) ? $requested_mode : '';
-        if ( '' === $mode_id && $has_policy &&
+        if ( '' === $mode_id && !$requested_mode_invalid && $has_policy &&
             isset( $modes[ $selected['preferred_mode'] ] ) )
             $mode_id = $selected['preferred_mode'];
-        if ( '' === $mode_id && isset( $modes['admin_csv_upload'] ) )
+        if ( '' === $mode_id && !$requested_mode_invalid &&
+            isset( $modes['admin_csv_upload'] ) )
             $mode_id = 'admin_csv_upload';
         $active_review = is_array( $review ) && isset( $review['snapshot_sha256'] ) &&
             isset( $review['plan'] ) && is_array( $review['plan'] );
@@ -133,7 +136,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'contract' => self::CONTRACT, 'profiles' => array_values( $available ),
             'selected_profile' => $selected, 'has_import_policy' => (bool) $has_policy,
             'available_modes' => array_values( $modes ),
-            'selected_mode_id' => $mode_id, 'step' => $step,
+            'selected_mode_id' => $mode_id,
+            'requested_mode_invalid' => $requested_mode_invalid,
+            'step' => $step,
             'review_pending' => $active_review,
             'can_upload_new' => $has_policy && ! $active_review &&
                 isset( $modes['admin_csv_upload'] ) &&
@@ -182,6 +187,18 @@ final class MAD4B_SCP_Activity_Import_Experience {
         $step = isset( $_GET['wizard_step'] ) ?
             absint( $_GET['wizard_step'] ) : 1;
         $catalog = MAD4B_SCP_Activity_Import_Modes::catalog();
+        // A detected provider is not enough. UI readiness must also pass the
+        // chosen Profile's exact key, site and encrypted-source prerequisites.
+        if ( $slug && is_array( $catalog ) && ! empty( $catalog['modes'] ) ) {
+            foreach ( $catalog['modes'] as &$mode ) {
+                if ( empty( $mode['review_intake_implemented'] ) ) continue;
+                $preflight = MAD4B_SCP_Activity_Import_Modes::plan( array(
+                    'profile_slug' => $slug, 'mode_id' => $mode['id'] ) );
+                $mode['detected'] = ! is_wp_error( $preflight ) &&
+                    ! empty( $preflight['eligible_for_staging_review'] );
+            }
+            unset( $mode );
+        }
         $review = $slug ? MAD4B_SCP_Activity_Import_Review::review(
             array( 'profile_slug' => $slug ) ) : array();
         $view = self::journey( $profiles, $slug, $catalog, $review, $mode_id, $step );
@@ -283,6 +300,14 @@ final class MAD4B_SCP_Activity_Import_Experience {
             echo '<p><a class="button button-primary" href="' .
                 esc_url( self::url( $slug, 3 ) ) . '">' .
                 self::e( self::title( 'Open current review' ) ) . '</a></p>';
+            return;
+        }
+        if ( ! empty( $view['requested_mode_invalid'] ) ) {
+            self::explanation( self::title( 'That source method is not permitted for this Profile.' ),
+                self::title( 'Nothing was substituted automatically. Choose a method explicitly to avoid accidentally sending a source through a different connector.' ),
+                'warning' );
+            echo '<p><a class="button" href="' . esc_url( self::url( $slug, 1 ) ) . '">' .
+                self::e( self::title( 'Choose a permitted method' ) ) . '</a></p>';
             return;
         }
         if ( !$mode ) {
