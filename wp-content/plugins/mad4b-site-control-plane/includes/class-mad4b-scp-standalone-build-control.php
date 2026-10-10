@@ -362,4 +362,122 @@ final class MAD4B_SCP_Standalone_Build_Control {
             'read_only' => true,
         );
     }
+    /** Register only one fixed semantic work kind, not general remote execution. */
+    public static function work_definitions( $registered ) {
+        if ( ! isset( $registered[ self::OPERATION ] ) ) {
+            $registered[ self::OPERATION ] = array(
+                'executor' => 'enrolled_standalone_build_runner',
+                'authority_surface' => 'mad4b-enrollment',
+                'production_policy' => 'deny',
+                'validate_payload' => array( __CLASS__, 'valid_job_payload' ),
+            );
+        }
+        return $registered;
+    }
+
+    public static function valid_job_payload( $payload ) {
+        if ( ! is_array( $payload ) || array_diff( array_keys( $payload ),
+            array( 'contract', 'expected_head', 'profile', 'plan_sha256',
+                'site_uuid', 'profile_digest', 'origin' ) ) ||
+            ( $payload['contract'] ?? '' ) !== self::CONTRACT . '.job.v1' ||
+            ! preg_match( '/^[a-f0-9]{40}$/D', (string) ( $payload['expected_head'] ?? '' ) ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $payload['plan_sha256'] ?? '' ) ) ||
+            ! in_array( $payload['profile'] ?? '', array( 'build-only', 'local-checks' ), true ) )
+            return false;
+        foreach ( array( 'site_uuid', 'profile_digest', 'origin' ) as $key ) {
+            if ( ! is_string( $payload[ $key ] ?? null ) || '' === $payload[ $key ] ||
+                strlen( $payload[ $key ] ) > 256 ) return false;
+        }
+        return true;
+    }
+
+    private static function staging_ready() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+            ! function_exists( 'wp_get_environment_type' ) ||
+            'staging' !== wp_get_environment_type() ) return false;
+        $p = MAD4B_SCP_Site_Profile::status();
+        return is_array( $p ) && ( $p['environment'] ?? '' ) === 'staging' &&
+            ( $p['configured_environment'] ?? '' ) === 'staging' &&
+            ! empty( $p['authority_ready'] ) && ! empty( $p['origin_match'] ) &&
+            ! empty( $p['site_uuid'] ) && ! empty( $p['profile_digest'] ) &&
+            ! empty( $p['canonical_origin'] );
+    }
+
+    public static function can_request( $input = null ) {
+        if ( ! self::staging_ready() || ! function_exists( 'current_user_can' ) ||
+            ! current_user_can( 'manage_options' ) ||
+            ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) ||
+            ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() )
+            return new WP_Error( 'mad4b_build_staging_owner_required',
+                'Enrolled owner and real Staging Write authority are required.' );
+        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
+            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
+            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+                MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ||
+            ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ||
+            ! class_exists( 'MAD4B_SCP_Authorization' ) )
+            return new WP_Error( 'mad4b_build_owner_step_up_required',
+                'Enrolled ChatGPT owner OAuth authority Step-Up is required.' );
+        return MAD4B_SCP_Authorization::authorize_mutation(
+            self::REQUEST, 'mad4b-admin', 'core', is_array( $input ) ? $input : array() );
+    }
+
+    private static function installed_identity() {
+        if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) return false;
+        $p = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+        if ( ! is_array( $p ) || empty( $p['manifest_valid'] ) ||
+            empty( $p['runtime_manifest_match'] ) || ! empty( $p['stale'] ) ||
+            ! empty( $p['provenance_mismatch'] ) ) return false;
+        $id = array(
+            'source_commit_sha' => (string) ( $p['source_commit_sha'] ?? '' ),
+            'build_fingerprint' => (string) ( $p['build_fingerprint'] ?? '' ),
+            'package_manifest_digest' => (string) ( $p['package_manifest_digest'] ?? '' ),
+        );
+        foreach ( $id as $key => $value ) {
+            $length = 'source_commit_sha' === $key ? 40 : 64;
+            if ( ! preg_match( '/^[a-f0-9]{' . $length . '}$/D', $value ) ) return false;
+        }
+        return $id;
+    }
+
+    public static function request( $input = array() ) {
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+            array( 'expected_head', 'profile', 'expected_plan_sha256', 'confirmation' ) ) ||
+            ! hash_equals( self::CONFIRMATION, (string) ( $input['confirmation'] ?? '' ) ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $input['expected_plan_sha256'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_build_request_invalid', 'Exact approved request is required.' );
+        $auth = self::can_request( $input );
+        if ( is_wp_error( $auth ) || true !== $auth ) return $auth;
+        $plan = self::plan( array( 'expected_head' => $input['expected_head'] ?? '',
+            'profile' => $input['profile'] ?? 'build-only' ) );
+        if ( is_wp_error( $plan ) ||
+            ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ),
+                $input['expected_plan_sha256'] ) )
+            return new WP_Error( 'mad4b_build_plan_changed', 'Exact build plan is stale.' );
+        $installed = self::installed_identity();
+        if ( false === $installed || ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) )
+            return new WP_Error( 'mad4b_build_install_provenance_unavailable',
+                'Installed plugin provenance or queue is unavailable.' );
+        $site = $plan['site_binding'];
+        $payload = array( 'contract' => self::CONTRACT . '.job.v1',
+            'expected_head' => $plan['source_commit_sha'],
+            'profile' => $plan['build_profile'],
+            'plan_sha256' => $plan['plan_sha256'],
+            'site_uuid' => $site['site_uuid'],
+            'profile_digest' => $site['profile_digest'],
+            'origin' => $site['origin'] );
+        $result = MAD4B_SCP_Remote_Work_Queue::enqueue(
+            self::OPERATION, $payload, $installed, 3600 );
+        if ( is_wp_error( $result ) ) return $result;
+        return array( 'contract' => self::CONTRACT . '.request.v1',
+            'state' => $result['state'], 'job_id' => $result['job']['job_id'],
+            'expected_head' => $payload['expected_head'],
+            'worker_required' => true, 'worker_executed' => false,
+            'build_state' => 'QUEUED_UNVERIFIED',
+            'release_certified' => false, 'production_authorized' => false );
+    }
+
 }
