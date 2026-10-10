@@ -27,7 +27,8 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         foreach ( array(
             array( self::INVENTORY, 'Inventory WordPress Admin Operation Coverage', 'inventory',
                 array( 'type' => 'object', 'additionalProperties' => false,
-                    'properties' => array( 'include_details' => array( 'type' => 'boolean' ) ) ) ),
+                    'properties' => array( 'include_details' => array( 'type' => 'boolean' ),
+                        'scan_mode' => array( 'type' => 'string', 'enum' => array( 'fast', 'deep' ) ) ) ) ),
             array( self::BLUEPRINT, 'Propose Reviewed MCP Adapter for Missing Admin Operation', 'blueprint',
                 array( 'type' => 'object', 'additionalProperties' => false,
                     'required' => array( 'surface_id', 'snapshot_sha256', 'purpose' ),
@@ -35,6 +36,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                         'surface_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                         'snapshot_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                         'purpose' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 240 ),
+                        'scan_mode' => array( 'type' => 'string', 'enum' => array( 'fast', 'deep' ) ),
                     ) ) ),
         ) as $row ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $row[0] ) ) continue;
@@ -86,7 +88,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
     }
 
     /** Pure reducer for independently testable discovery and trust boundaries. */
-    public static function summarize( $observations, $site_identity = array() ) {
+    public static function summarize( $observations, $site_identity = array(), $scan_mode = 'deep' ) {
         if ( ! is_array( $observations ) ) $observations = array();
         $rows = array();
         $counts = array();
@@ -140,11 +142,15 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         $fingerprint = hash( 'sha256', (string) wp_json_encode(
             array( 'contract' => self::CONTRACT, 'identity' => $identity,
                 'actor_user_id' => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
+                'scan_mode' => $scan_mode,
                 'rows' => $rows, 'counts' => $counts ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
         ) );
         return array(
             'contract' => self::CONTRACT, 'snapshot_sha256' => $fingerprint,
             'counts_by_kind' => $counts, 'truncated_by_kind' => $truncated,
+            'scan_mode' => $scan_mode,
+            'not_scanned_kinds' => 'fast' === $scan_mode ?
+                array( 'rest_routes', 'ajax_actions', 'admin_post_actions', 'blocks', 'cron_hooks' ) : array(),
             'observed_count' => array_sum( $counts ), 'returned_count' => count( $rows ),
             'items' => $rows, 'highest_coverage_level' => $top_level,
             'ui_discovery_proves_execution' => false, 'arbitrary_admin_execution_supported' => false,
@@ -154,7 +160,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
     }
 
     /** No wp-admin bootstrap or execution of third-party registration hooks. */
-    public static function observations() {
+    public static function observations( $scan_mode = 'deep' ) {
         $sources = array_fill_keys( self::KINDS, array() );
         if ( ! current_user_can( 'manage_options' ) ) return $sources;
         if ( class_exists( 'MAD4B_SCP_Operation_Registry' ) ) {
@@ -201,12 +207,12 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                     $sources['taxonomies'][$name] = array(
                         'show_in_rest' => is_object( $tax ) && ! empty( $tax->show_in_rest ) );
         }
-        if ( class_exists( 'WP_Block_Type_Registry' ) ) {
+        if ( 'deep' === $scan_mode && class_exists( 'WP_Block_Type_Registry' ) ) {
             $blocks = WP_Block_Type_Registry::get_instance()->get_all_registered();
             foreach ( is_array( $blocks ) ? $blocks : array() as $name => $block )
                 if ( self::safe_key( $name ) ) $sources['blocks'][$name] = array();
         }
-        if ( is_array( $wp_filter ) ) foreach ( array_keys( $wp_filter ) as $hook ) {
+        if ( 'deep' === $scan_mode && is_array( $wp_filter ) ) foreach ( array_keys( $wp_filter ) as $hook ) {
             if ( ! is_string( $hook ) ) continue;
             // Anonymous AJAX endpoints are NOT authenticated admin actions.
             if ( 0 === strpos( $hook, 'wp_ajax_nopriv_' ) ) continue;
@@ -216,7 +222,8 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                 $sources['admin_post_actions'][substr( $hook, 11 )] = array();
         }
         // Do not instantiate a REST server or run rest_api_init in discovery.
-        if ( is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' ) ) {
+        if ( 'deep' === $scan_mode && is_object( $wp_rest_server ) &&
+            method_exists( $wp_rest_server, 'get_routes' ) ) {
             foreach ( $wp_rest_server->get_routes() as $route => $endpoints ) {
                 if ( ! self::safe_key( $route ) ) continue;
                 $has_schema = false;
@@ -228,7 +235,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
             }
         }
         // Cron is metadata only. Never run, reschedule, unschedule or reveal args.
-        if ( function_exists( '_get_cron_array' ) ) {
+        if ( 'deep' === $scan_mode && function_exists( '_get_cron_array' ) ) {
             $events = _get_cron_array();
             if ( is_array( $events ) ) foreach ( array_slice( $events, 0, 100, true ) as $hooks )
                 if ( is_array( $hooks ) ) foreach ( $hooks as $name => $events_by_hash )
@@ -239,10 +246,14 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
 
     public static function inventory( $input = array() ) {
         if ( ! is_array( $input ) ||
-            array_diff( array_keys( $input ), array( 'include_details' ) ) )
+            array_diff( array_keys( $input ), array( 'include_details', 'scan_mode' ) ) )
             return new WP_Error( 'mad4b_surface_input_invalid', 'Bounded inventory inputs only.' );
         $site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-        $summary = self::summarize( self::observations(), is_array( $site ) ? $site : array() );
+        $mode = (string) ( $input['scan_mode'] ?? 'deep' );
+        if ( ! in_array( $mode, array( 'fast', 'deep' ), true ) )
+            return new WP_Error( 'mad4b_surface_scan_mode_invalid', 'Supported scan modes: fast or deep.' );
+        $summary = self::summarize( self::observations( $mode ),
+            is_array( $site ) ? $site : array(), $mode );
         if ( empty( $input['include_details'] ) ) unset( $summary['items'] );
         $summary['visibility'] = 'registered_surfaces_only_not_all_rendered_buttons';
         $summary['operational_next_step'] = 'Use exact snapshot and surface id to request a reviewed adapter blueprint.';
@@ -251,17 +262,21 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
 
     public static function blueprint( $input = array() ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ),
-            array( 'surface_id', 'snapshot_sha256', 'purpose' ) ) )
+            array( 'surface_id', 'snapshot_sha256', 'purpose', 'scan_mode' ) ) )
             return new WP_Error( 'mad4b_surface_blueprint_input_invalid', 'Exact surface, snapshot and purpose required.' );
         $id = (string) ( $input['surface_id'] ?? '' );
         $expected = (string) ( $input['snapshot_sha256'] ?? '' );
         $purpose = trim( (string) ( $input['purpose'] ?? '' ) );
+        $mode = (string) ( $input['scan_mode'] ?? 'deep' );
         if ( ! preg_match( '/^[a-f0-9]{64}$/D', $id ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
-            strlen( $purpose ) < 3 || strlen( $purpose ) > 240 )
+            strlen( $purpose ) < 3 || strlen( $purpose ) > 240 ||
+            ! in_array( $mode, array( 'fast', 'deep' ), true ) ||
+            preg_match( '/[<>\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]/', $purpose ) )
             return new WP_Error( 'mad4b_surface_blueprint_invalid', 'Invalid blueprint intent or digest.' );
         $site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-        $sum = self::summarize( self::observations(), is_array( $site ) ? $site : array() );
+        $sum = self::summarize( self::observations( $mode ),
+            is_array( $site ) ? $site : array(), $mode );
         if ( ! hash_equals( $sum['snapshot_sha256'], $expected ) )
             return new WP_Error( 'mad4b_surface_snapshot_changed', 'Registered UI signals or site identity changed. Rediscover.' );
         foreach ( $sum['items'] as $row ) {
