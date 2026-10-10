@@ -55,6 +55,7 @@ BASELINE_GATE_SPECS = (
     ("imp07-source", "python", "imp07-import-source-contract.py", (), ("core", "extended")),
     ("imp07-runtime", "php", "imp07-import-source-runtime.php", (), ("extended",)),
     ("enrollment-dispatch", "php", "enrollment-dispatch-runtime.php", (), ("core", "extended")),
+    ("local-ci-contract", "python", "local-ci-multi-environment-contract.py", (), ("core", "extended")),
 )
 
 
