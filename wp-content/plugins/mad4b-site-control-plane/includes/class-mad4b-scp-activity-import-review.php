@@ -495,32 +495,44 @@ final class MAD4B_SCP_Activity_Import_Review {
      * Admin CSV upload is a second actual intake transport, separate from
      * Google Apps Script and HMAC webhooks. It stores no uploaded raw records.
      */
+    /** Return safe, non-secret diagnostics to the same WordPress wizard step. */
+    private static function return_to_guide( $slug, $error_code, $step = 2 ) {
+        $slug = sanitize_key( (string) $slug );
+        $code = sanitize_key( (string) $error_code );
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            wp_die( 'Select an enabled import Profile first.' );
+        wp_safe_redirect( add_query_arg( array(
+            'page' => 'mad4b-import-review', 'profile_slug' => $slug,
+            'wizard_step' => (int) $step, 'ui_error' => $code
+        ), admin_url( 'tools.php' ) ) );
+        exit;
+    }
     public static function admin_upload_csv() {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() ||
             ! method_exists( 'MAD4B_SCP_Site_Profile', 'environment_allowed' ) ||
             ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) ) )
             wp_die( 'Staging-only enrolled administrator required.' );
         check_admin_referer( 'mad4b_activity_csv_intake', 'mad4b_import_nonce' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
         $file = isset( $_FILES['import_csv'] ) ? $_FILES['import_csv'] : null;
         if ( ! is_array( $file ) || ! isset( $file['error'], $file['size'], $file['tmp_name'], $file['name'] ) ||
             UPLOAD_ERR_OK !== (int) $file['error'] || (int) $file['size'] < 1 ||
             (int) $file['size'] > 1048576 ||
             ! preg_match( '/\\.csv$/iD', (string) $file['name'] ) ||
             ! is_string( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) )
-            wp_die( 'A genuine CSV upload under 1 MiB is required.' );
-        $slug = isset( $_POST['profile_slug'] ) ?
-            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+            self::return_to_guide( $slug, 'mad4b_ui_csv_upload_invalid' );
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
-            wp_die( 'Exact enabled Content Experience Profile required.' );
+            self::return_to_guide( $slug, 'mad4b_import_site_validation_not_configured' );
         $fh = fopen( $file['tmp_name'], 'rb' );
-        if ( false === $fh ) wp_die( 'CSV open failed.' );
+        if ( false === $fh ) self::return_to_guide( $slug, 'mad4b_ui_csv_open_failed' );
         $headers = fgetcsv( $fh, 16384, ',', '"', '\\' );
         if ( ! is_array( $headers ) || count( $headers ) < 1 ||
             count( $headers ) > self::MAX_COLUMNS ) {
             fclose( $fh );
-            wp_die( 'CSV header is invalid.' );
+            self::return_to_guide( $slug, 'mad4b_ui_csv_header_invalid' );
         }
         $headers[0] = preg_replace( '/^\\xEF\\xBB\\xBF/', '', $headers[0] );
         $headers = array_map( 'trim', $headers );
@@ -529,7 +541,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             if ( count( $cells ) === 1 && ( null === $cells[0] || '' === trim( $cells[0] ) ) ) continue;
             if ( count( $cells ) !== count( $headers ) || count( $rows ) >= self::MAX_ROWS ) {
                 fclose( $fh );
-                wp_die( 'CSV row width or record count exceeds the bounded contract.' );
+                self::return_to_guide( $slug, 'mad4b_ui_csv_rows_invalid' );
             }
             foreach ( $cells as $cell ) {
                 if ( ! is_string( $cell ) || strlen( $cell ) > 4096 ||
@@ -537,7 +549,7 @@ final class MAD4B_SCP_Activity_Import_Review {
                     ( preg_match( '/^[=+@]/', ltrim( $cell ) ) ) )
                 {
                     fclose( $fh );
-                    wp_die( 'Unsafe spreadsheet formula, control character or oversized cell.' );
+                    self::return_to_guide( $slug, 'mad4b_ui_csv_unsafe_value' );
                 }
             }
             $rows[] = array_combine( $headers, $cells );
@@ -548,11 +560,11 @@ final class MAD4B_SCP_Activity_Import_Review {
         // Identity, currencies, WPML and field mapping are always taken from
         // the enrolled Profile policy. Uploaded source cannot redefine them.
         $preview = self::inspect( $input );
-        if ( is_wp_error( $preview ) ) wp_die( esc_html( $preview->get_error_message() ) );
+        if ( is_wp_error( $preview ) ) self::return_to_guide( $slug, $preview->get_error_code() );
         $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
             $slug, $input, $preview, 'admin_csv_upload',
             (string) get_current_user_id() );
-        if ( is_wp_error( $receipt ) ) wp_die( esc_html( $receipt->get_error_message() ) );
+        if ( is_wp_error( $receipt ) ) self::return_to_guide( $slug, $receipt->get_error_code() );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'wizard_step' => 3, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
@@ -573,7 +585,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) )
             wp_die( 'Exact immutable source snapshot ID required.' );
         $approved = MAD4B_SCP_Activity_Import_Snapshot::approve( $slug, $sha, true );
-        if ( is_wp_error( $approved ) ) wp_die( esc_html( $approved->get_error_message() ) );
+        if ( is_wp_error( $approved ) ) self::return_to_guide( $slug, $approved->get_error_code(), 4 );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'wizard_step' => 4, 'approved' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
