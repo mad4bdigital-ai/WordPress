@@ -1295,6 +1295,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
 		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
 		$properties['browser_evidence'] = array( 'type' => 'object', 'maxProperties' => 9, 'additionalProperties' => true );
+		$properties['build_receipt'] = array( 'type' => 'object', 'additionalProperties' => false,
+			'required' => array( 'claims_b64', 'signature_b64' ),
+			'properties' => array(
+				'claims_b64' => array( 'type' => 'string', 'maxLength' => 8192 ),
+				'signature_b64' => array( 'type' => 'string', 'maxLength' => 128 ),
+			),
+		);
 		return array(
 			'type' => 'object',
 			'properties' => $properties,
@@ -1478,6 +1485,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $job ) ) return $job;
 		$operation_id = isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '';
 		if ( 'browser_acceptance_execution' === $operation_id ) return self::complete_browser_acceptance_work( $input, $job );
+		if ( 'standalone_source_build' === $operation_id ) {
+			if ( ! class_exists( 'MAD4B_SCP_Standalone_Build_Control', false ) )
+				return new WP_Error( 'mad4b_build_verifier_unavailable', 'Signed build verifier is not loaded.' );
+			return MAD4B_SCP_Standalone_Build_Control::complete_signed_job( $input, $job );
+		}
 		if ( 'frontend_performance_sampling' !== $operation_id ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
 
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
