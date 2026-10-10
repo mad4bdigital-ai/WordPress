@@ -48,17 +48,26 @@ ck( is_wp_error( $duplicate ) &&
 unset( $GLOBALS['imp02_enabled_modes'] );
 $archived_source = $review['payload_sha256'];
 $archived_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
-    MAD4B_SCP_Site_Profile::site_uuid() . '|pricing|' . $archived_source );
-add_option( $archived_key, array( 'payload_sha256' => $archived_source ), '', false );
+    MAD4B_SCP_Site_Profile::site_uuid() . '|pricing|' .
+    $review['snapshot_sha256'] );
+add_option( $archived_key, array(
+    'snapshot_sha256' => $review['snapshot_sha256'],
+    'payload_sha256' => $archived_source
+), '', false );
 $approval_replay = MAD4B_SCP_Activity_Import_Snapshot::approval(
     'pricing', $review['snapshot_sha256'] );
 ck( is_wp_error( $approval_replay ) &&
     $approval_replay->get_error_code() === 'mad4b_import_snapshot_archived',
-    'Previously archived snapshot reused old approval' );
+    'Previously archived approval was replayed' );
 delete_option( MAD4B_SCP_Activity_Import_Snapshot::option_key( 'pricing' ) );
-$replayed_source = MAD4B_SCP_Activity_Import_Snapshot::stage(
+$restaged = MAD4B_SCP_Activity_Import_Snapshot::stage(
     'pricing', $clean, $cleanPreview, 'admin_csv_upload', 'test-admin' );
-ck( is_wp_error( $replayed_source ) &&
-    $replayed_source->get_error_code() === 'mad4b_import_snapshot_previously_archived',
-    'Identical source was restaged after archival without a new review revision' );
+ck( !is_wp_error( $restaged ) &&
+    $restaged['snapshot_sha256'] !== $review['snapshot_sha256'],
+    'Periodic identical source failed to create a new unique review receipt' );
+$freshApproval = MAD4B_SCP_Activity_Import_Snapshot::approval(
+    'pricing', $restaged['snapshot_sha256'] );
+ck( is_wp_error( $freshApproval ) &&
+    $freshApproval->get_error_code() === 'mad4b_import_not_approved',
+    'New review inherited approval from previous archived source' );
 echo "PASS IMP05 observed public hook lifecycle, exact approved arm, duplicate denial, no false provider provenance (PHP fixture only)\n";
