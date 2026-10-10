@@ -664,6 +664,41 @@ final class MAD4B_SCP_Activity_Import_Review {
                 foreach ( $review['plan']['issues'] as $issue )
                     echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' . esc_html( $issue['reason'] ) . '</td><td>' . esc_html( $issue['severity'] ) . '</td></tr>';
                 echo '</tbody></table>';
+                if ( isset( $review['snapshot_sha256'] ) &&
+                    class_exists( 'MAD4B_SCP_Activity_Import_Reconciliation' ) ) {
+                    $page_index = isset( $_GET['reconcile_start'] ) ?
+                        absint( $_GET['reconcile_start'] ) : 0;
+                    $diff = MAD4B_SCP_Activity_Import_Reconciliation::plan( array(
+                        'profile_slug' => $slug,
+                        'snapshot_sha256' => $review['snapshot_sha256'],
+                        'start_index' => $page_index, 'page_size' => 25
+                    ) );
+                    if ( is_wp_error( $diff ) ) {
+                        echo '<p>Independent destination comparison unavailable: ' .
+                            esc_html( $diff->get_error_message() ) . '</p>';
+                    } else {
+                        echo '<h3>WordPress destination comparison (no changes)</h3>';
+                        echo '<p>Matched: ' . esc_html( $diff['counts']['matched'] ) .
+                            ', Different: ' . esc_html( $diff['counts']['different'] ) .
+                            ', Missing: ' . esc_html( $diff['counts']['missing'] ) .
+                            ', Ambiguous: ' . esc_html( $diff['counts']['ambiguous'] ) . '</p>';
+                        echo '<table class="widefat striped"><thead><tr><th>Row</th><th>Match status</th><th>Field conflicts</th></tr></thead><tbody>';
+                        foreach ( $diff['items'] as $item ) {
+                            echo '<tr><td>' . esc_html( $item['row_index'] + 1 ) .
+                                '</td><td>' . esc_html( $item['status'] ) . '</td><td>';
+                            foreach ( $item['field_issues'] as $issue )
+                                echo '<p>' . esc_html( $issue['field'] . ': ' . $issue['reason'] ) . '</p>';
+                            echo '</td></tr>';
+                        }
+                        echo '</tbody></table>';
+                        if ( null !== $diff['next_index'] )
+                            echo '<p><a href="' . esc_url( add_query_arg( array(
+                                'page' => 'mad4b-import-review', 'profile_slug' => $slug,
+                                'reconcile_start' => $diff['next_index']
+                            ), admin_url( 'tools.php' ) ) ) .
+                            '">Review next 25 destination rows</a></p>';
+                    }
+                }
                 if ( isset( $review['snapshot_sha256'] ) ) {
                     $receipt = MAD4B_SCP_Activity_Import_Snapshot::approval(
                         $slug, $review['snapshot_sha256'] );
