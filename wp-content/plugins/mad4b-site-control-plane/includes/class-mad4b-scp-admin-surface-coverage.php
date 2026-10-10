@@ -204,6 +204,8 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         }
         if ( is_array( $wp_filter ) ) foreach ( array_keys( $wp_filter ) as $hook ) {
             if ( ! is_string( $hook ) ) continue;
+            // Anonymous AJAX endpoints are NOT authenticated admin actions.
+            if ( 0 === strpos( $hook, 'wp_ajax_nopriv_' ) ) continue;
             if ( 0 === strpos( $hook, 'wp_ajax_' ) && self::safe_key( substr( $hook, 8 ) ) )
                 $sources['ajax_actions'][substr( $hook, 8 )] = array();
             elseif ( 0 === strpos( $hook, 'admin_post_' ) && self::safe_key( substr( $hook, 11 ) ) )
