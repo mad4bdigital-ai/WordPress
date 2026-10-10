@@ -38,7 +38,7 @@ operation that still requires a legacy HMAC binding.
    WordPress root; no root/foreign users. The private signing key is owned by
    the signer OS user, outside WordPress, mode 0600 or stricter. The socket
    directory is owned by the signer and is not group/world writable. Socket
-   permissions are 0660 or stricter, with carefully enrolled shared group
+   permissions are 0660 (or stricter), with carefully enrolled shared group
    membership allowing the exact WordPress worker to connect.
 4. The Host Runner signs only the fixed `mad4b.host-identity-challenge-proof.v1`
    data: SHA-256(nonce), enrolled site UUID, exact HTTPS origin, Staging,
@@ -64,7 +64,7 @@ Host operator service command example (adjust secure profile path to this
 *already enrolled* Host Runner; do not paste secret contents):
 
 ```bash
-python3 tools/mad4b_host_identity_socket.py \
+python3 tools/mad4b_host_runner.py serve-identity \
   --profile /HOST-PRIVATE/EXISTING-STAGING-RUNNER-PROFILE.json \
   --socket /run/mad4b-host-runner/identity.sock
 ```
@@ -110,3 +110,5 @@ implicitly allowed.
   attestation, nor WordPress/MariaDB/browser/release acceptance.
 - If the Staging artifact is on an older source HEAD, do not claim that this
   functionality is deployed just because the PR code exists.
+
+The Host Runner source SHA changes when this feature is installed, so the existing profile's pinned `expected_runner_sha256` needs an independently reviewed exact-head update. Do not bypass the pin or let WordPress rewrite it. An existing Host Runner signer, its public trust pin and a distinct PHP pool UID are prerequisites, not automatically created by this source change.
