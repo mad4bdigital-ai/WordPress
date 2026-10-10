@@ -376,6 +376,39 @@ final class MAD4B_SCP_Activity_Import_Batches {
         fclose( $stream );
         exit;
     }
+    public static function status( $input = array() ) {
+        $v = self::verify( $input );
+        if ( is_wp_error( $v ) ) return $v;
+        $names = self::names( $v['profile_slug'], $v['batch_id'] );
+        $approval = get_option( $names['approved'], false );
+        $v['approved_for_manual_chunk_export'] =
+            is_array( $approval ) &&
+            isset( $approval['plan_sha256'], $approval['authorization_scope'],
+                $approval['warning_count_acknowledged'] ) &&
+            'manual_csv_chunk_export_only' === $approval['authorization_scope'] &&
+            hash_equals( $v['plan_sha256'], $approval['plan_sha256'] ) &&
+            $v['ready_for_manual_batch_review'] &&
+            $v['warnings'] === $approval['warning_count_acknowledged'];
+        return $v;
+    }
+    public static function download_admin() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Staging administrator access required.' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $id = isset( $_POST['batch_id'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['batch_id'] ) ) : '';
+        $part = isset( $_POST['chunk_index'] ) ?
+            absint( wp_unslash( $_POST['chunk_index'] ) ) : null;
+        if ( ! preg_match( '/^[a-f0-9]{32}$/D', $id ) ||
+            ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            wp_die( 'Exact batch identity and Profile required.' );
+        check_admin_referer( 'mad4b_batch_export_' . $slug . '_' . $id,
+            'mad4b_batch_export_nonce' );
+        $exported = self::export_chunk( $slug, $id, $part );
+        if ( is_wp_error( $exported ) )
+            wp_die( esc_html( $exported->get_error_message() ) );
+    }
     /**
      * Explicit archival creates a nonautoloaded audit tombstone before
      * releasing the per-Profile active slot. An archived approval cannot run.
@@ -416,3 +449,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
     }
 
 }
+
+if ( function_exists( 'add_action' ) )
+    add_action( 'admin_post_mad4b_activity_batch_export',
+        array( 'MAD4B_SCP_Activity_Import_Batches', 'download_admin' ) );
