@@ -39,9 +39,15 @@ final class MAD4B_SCP_Activity_WPAI_Observer {
         $receipt = MAD4B_SCP_Activity_Import_Snapshot::approval( $slug, $snapshot );
         if ( is_wp_error( $receipt ) ) return $receipt;
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
-        if ( is_wp_error( $profile ) ||
-            ! in_array( 'wp_all_import_wizard',
-                (array) MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile )['enabled_modes'], true ) )
+        if ( is_wp_error( $profile ) ) return $profile;
+        $governed = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        $permitted = isset( $governed['enabled_modes'] ) ?
+            (array) $governed['enabled_modes'] : array();
+        if ( ! ( class_exists( 'PMXI_Plugin' ) || defined( 'PMXI_VERSION' ) ) ||
+            ! array_intersect( $permitted, array(
+                'wp_all_import_wizard', 'wp_all_import_manual_rerun',
+                'wp_all_import_cron', 'wp_all_import_wpcli',
+                'wp_all_import_auto_schedule' ) ) )
             return self::err( 'mad4b_wpai_mode_denied', 'Site policy must enable WP All Import wizard handoff.' );
         $plan = array( 'contract' => self::CONTRACT,
             'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
@@ -144,4 +150,4 @@ final class MAD4B_SCP_Activity_WPAI_Observer {
     }
 }
 if ( function_exists( 'add_action' ) )
-    add_action( 'plugins_loaded', array( 'MAD4B_SCP_Activity_WPAI_Observer', 'register_hooks' ), 30 );
+    MAD4B_SCP_Activity_WPAI_Observer::register_hooks();
