@@ -63,6 +63,20 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			$approved = ! empty( $info['ready'] ) && empty( $info['conflict'] );
 			$conflict = ! empty( $info['conflict'] );
 			$action = $by_category[ $category ] ?? array();
+			// A recovered original Context asset may be stale or unreviewed.
+			// Presence must route to its original source/review, not to new creation.
+			$observed = isset( $info['observed_assets'] ) && is_array( $info['observed_assets'] )
+				? $info['observed_assets'] : array();
+			$needs_source_scan = false;
+			$needs_source_review = false;
+			foreach ( $observed as $item ) {
+				if ( ! is_array( $item ) ) { $needs_source_review = true; continue; }
+				$reasons = isset( $item['reasons'] ) && is_array( $item['reasons'] ) ? $item['reasons'] : array();
+				if ( array_intersect( $reasons, array( 'status_not_ready', 'content_incomplete',
+					'generation_evidence_stale' ) ) ) $needs_source_scan = true;
+				if ( in_array( 'source_not_governed', $reasons, true )
+					|| in_array( 'wrong_authority_class', $reasons, true ) ) $needs_source_review = true;
+			}
 			$deps = array();
 			if ( 'tone_of_voice' === $category && empty( $coverage['coverage']['brand_strategy']['ready'] ) ) $deps[] = 'brand_strategy';
 			if ( 'editorial_guidelines' === $category ) {
@@ -87,6 +101,17 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			} elseif ( $deps ) {
 				$state = 'WAIT_UPSTREAM_AUTHORITY';
 				$ability = 'context/brand-core-control-loop';
+			} elseif ( $observed ) {
+				if ( $needs_source_review ) {
+					$state = 'REVIEW_EXISTING_SOURCE_FIRST';
+					$ability = 'context/brand-core-convergence-plan';
+				} elseif ( $needs_source_scan ) {
+					$state = 'RESCAN_EXISTING_ASSET';
+					$ability = 'context/source-scan-plan';
+				} else {
+					$state = 'REVIEW_EXISTING_ASSET';
+					$ability = 'context/review-queue';
+				}
 			} elseif ( 'brand_strategy' === $category ) {
 				$state = 'OWNER_STRATEGY_REQUIRED';
 				$ability = 'context/review-queue';
@@ -111,7 +136,8 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 				'approved_current_content' => $approved,
 				'candidate_recreation_authorized' => false,
 				'existing_authority_priority' => true,
-				'operator_decision_required' => in_array( $state, array( 'OWNERSHIP_REVIEW_REQUIRED', 'AUTHORITY_CONFLICT', 'OWNER_STRATEGY_REQUIRED' ), true ),
+				'operator_decision_required' => in_array( $state, array( 'OWNERSHIP_REVIEW_REQUIRED', 'AUTHORITY_CONFLICT', 'OWNER_STRATEGY_REQUIRED',
+					'REVIEW_EXISTING_SOURCE_FIRST', 'REVIEW_EXISTING_ASSET' ), true ),
 				'blockers' => isset( $action['blockers'] ) && is_array( $action['blockers'] ) ? array_values( $action['blockers'] ) : array(),
 			);
 			$categories[] = $row;
