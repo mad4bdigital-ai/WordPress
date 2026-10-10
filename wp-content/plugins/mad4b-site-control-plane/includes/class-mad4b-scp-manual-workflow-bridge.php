@@ -112,6 +112,22 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
     'registered' => ! empty( $row['planner_registered'] ) && ! empty( $row['executor_registered'] ),
     'state' => 'delegated_governed_executor', 'auto_execute' => false );
   }
+  // Inspect definition-only WordPress admin routes, including paths without
+  // a certified executor. Admin routes are observations, never callbacks.
+  $manual_routes = array();
+  if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry' ) ) {
+   $routes = MAD4B_SCP_Admin_Route_Registry::routes();
+   foreach ( array_slice( is_array( $routes ) ? $routes : array(), 0, 96, true ) as $slug => $route ) {
+    if ( ! is_string( $slug ) || ! preg_match( '/^mad4b-[a-z0-9-]{1,100}$/D', $slug ) ||
+     ! is_array( $route ) ) continue;
+    $cap = (string) ( $route['required_capability'] ?? '' );
+    if ( '' === $cap || ! current_user_can( $cap ) ) continue;
+    if ( '' !== $filter && false === stripos( $slug, $filter ) ) continue;
+    $manual_routes[] = array( 'route_id' => $slug, 'required_capability' => $cap,
+     'state' => 'manual_route_detected', 'next_action' => 'find_certified_semantic_adapter',
+     'mcp_generic_execution_allowed' => false );
+   }
+  }
   $remediation = array( 'state' => 'not_requested', 'work_items' => array() );
   if ( ! empty( $input['include_remediation'] ) && class_exists( 'MAD4B_SCP_Operational_Remediation' ) ) {
    $r = MAD4B_SCP_Operational_Remediation::status( array( 'include_live_acceptance' => false ) );
@@ -124,7 +140,9 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
   return array( 'contract' => self::CONTRACT, 'native_update_enabled' => ! empty( $native['enabled'] ),
    'site_profile_staging' => 'staging' === (string) ( $site['configured_environment'] ?? '' ),
    'discovery_sources' => array( 'canonical_operation_registry', 'staging_remediation', 'site_profile' ),
-   'operations' => $entries, 'operation_count' => count( $entries ), 'remediation' => $remediation,
+   'operations' => $entries, 'operation_count' => count( $entries ),
+   'admin_routes_detected' => $manual_routes, 'admin_route_count' => count( $manual_routes ),
+   'remediation' => $remediation,
    'unregistered_manual_actions_auto_executable' => false, 'unknown_executor_policy' => 'deny_and_propose_adapter',
    'read_only' => true, 'authorizing' => false, 'mutation_performed' => false );
  }
