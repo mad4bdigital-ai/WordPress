@@ -555,6 +555,44 @@ final class MAD4B_SCP_Activity_Import_Experience {
             self::title( 'Return to issues, correct blocking rows, then stage a new source. Manual approval is never a shortcut around failed checks.' ), 'warning' );
         echo '<h3>' . self::e( self::title( 'After a manual provider import' ) ) . '</h3>';
         echo '<p>' . self::e( self::title( 'Use the existing provider interface to select the approved downloaded CSV. Independently compare destination fields and translation links on Staging before considering release.' ) ) . '</p>';
+        echo '<details style="margin-top:20px;"><summary>' .
+            self::e( self::title( 'Check an existing WP All Import job (advanced)' ) ) .
+            '</summary>';
+        echo '<p>' . self::e( self::title( 'Enter the ID of a previously configured job. The observer can show that hooks fired, but it cannot certify imported prices, WPML links or source-file identity.' ) ) . '</p>';
+        echo '<form method="get"><input type="hidden" name="page" value="mad4b-import-review" />';
+        echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
+        echo '<input type="hidden" name="wizard_step" value="4" />';
+        echo '<label for="mad4b-wpai-job">' .
+            self::e( self::title( 'Existing WP All Import job ID' ) ) . '</label> ';
+        echo '<input type="number" id="mad4b-wpai-job" name="observed_import_id" min="1" step="1" required /> ';
+        submit_button( self::title( 'Inspect observed job status' ), 'secondary', 'submit', false );
+        echo '</form>';
+        $observed_id = isset( $_GET['observed_import_id'] ) ?
+            absint( $_GET['observed_import_id'] ) : 0;
+        if ( $observed_id && class_exists( 'MAD4B_SCP_Activity_WPAI_Observer' ) ) {
+            $job = MAD4B_SCP_Activity_WPAI_Observer::status( array(
+                'import_id' => $observed_id ) );
+            if ( is_wp_error( $job ) )
+                self::explanation( self::title( 'Job observation unavailable.' ),
+                    self::error_guidance( $job->get_error_code() ), 'warning' );
+            else {
+                echo '<p><strong>' . self::e( self::title( 'Observed state:' ) ) .
+                    '</strong> ' . self::e( str_replace( '_', ' ', $job['state'] ) ) .
+                    '</p>';
+                if ( isset( $job['post_save_events_observed'] ) )
+                    echo '<p>' . self::e( sprintf( self::title(
+                        'Best-effort post-save events seen: %d (not a verified import count).' ),
+                        (int) $job['post_save_events_observed'] ) ) . '</p>';
+                self::explanation( self::title( 'Still needs independent verification.' ),
+                    self::title( 'Use the destination comparison and validate language links in the installed provider before accepting the run.' ),
+                    'warning' );
+                echo '<a class="button" href="' . esc_url( self::url( $slug, 3,
+                    array( 'compare_destination' => 1 ) ) ) . '">' .
+                    self::e( self::title( 'Verify WordPress destination fields' ) ) .
+                    '</a>';
+            }
+        }
+        echo '</details>';
         echo '<p><a class="button" href="' . esc_url( self::url( $slug, 3 ) ) . '">' .
             self::e( self::title( 'Back to issues' ) ) . '</a></p>';
         // Archival is always an explicit, independently nonced action.
