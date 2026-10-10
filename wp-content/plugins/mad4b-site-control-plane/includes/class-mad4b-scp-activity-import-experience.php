@@ -173,7 +173,10 @@ final class MAD4B_SCP_Activity_Import_Experience {
         return add_query_arg( $query, admin_url( 'tools.php' ) );
     }
     private static function explanation( $title, $detail, $type = 'info' ) {
-        echo '<div class="notice notice-' . esc_attr( $type ) .
+        $role = in_array( $type, array( 'error', 'warning' ), true ) ?
+            'alert' : 'status';
+        echo '<div role="' . esc_attr( $role ) .
+            '" class="notice notice-' . esc_attr( $type ) .
             ' inline"><p><strong>' . self::e( $title ) . '</strong> ' .
             self::e( $detail ) . '</p></div>';
     }
@@ -221,6 +224,21 @@ final class MAD4B_SCP_Activity_Import_Experience {
         $view = self::journey( $profiles, $slug, $catalog, $review, $mode_id, $step );
         $selected = $view['selected_profile'];
         echo '<div class="wrap mad4b-import-guide">';
+        echo '<style>
+            .mad4b-import-guide { max-width: 1080px; }
+            .mad4b-import-guide nav ol { padding: 10px 0; border-bottom: 1px solid #c3c4c7; }
+            .mad4b-import-guide nav a { display: inline-block; padding: 8px 12px; }
+            .mad4b-import-guide nav a[aria-current="step"] { font-weight: 700; border-bottom: 3px solid #2271b1; }
+            .mad4b-import-guide table { margin-top: 12px; }
+            .mad4b-import-guide th, .mad4b-import-guide td { vertical-align: top; }
+            .mad4b-import-guide .button { margin-inline-end: 6px; }
+            .mad4b-import-guide label { margin-inline-end: 8px; }
+            @media (max-width: 782px) {
+                .mad4b-import-guide nav ol { display: grid !important; grid-template-columns: 1fr 1fr; }
+                .mad4b-import-guide select { max-width: 100%; }
+                .mad4b-import-guide table { display: block; overflow-x: auto; }
+            }
+        </style>';
         echo '<h1>' . self::e( self::title( 'Import data — guided review' ) ) . '</h1>';
         self::explanation( self::title( 'Safety first.' ),
             self::title( 'This workspace reviews data on an enrolled Staging site. It does not run WP All Import, change prices, or publish records.' ) );
@@ -509,6 +527,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
             } else {
                 self::explanation( self::title( 'Review this decision carefully.' ),
                     self::title( 'You approve the exact source and accept any nonblocking business warnings. No automatic importing, publishing or rewriting will occur.' ) );
+                echo '<p><strong>' . self::e( sprintf(
+                    self::title( '%d nonblocking business warnings will be acknowledged by this approval.' ),
+                    $view['review_issue_count'] ) ) . '</strong></p>';
                 echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
                 echo '<input type="hidden" name="action" value="mad4b_activity_import_approve" />';
                 echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
