@@ -37,7 +37,8 @@ if('normal'!==$GLOBALS['mode']){
     if('collision'===$GLOBALS['mode'])ok(1===count($GLOBALS['registered']),'foreign namespace untouched');
     echo 'CSO GATEWAY '.$GLOBALS['mode'].': '.$checks." PASS\n";exit;
 }
-ok(count(MAD4B_SCP_CSO_Gateway::read_tools())===7,'only implemented, non-authorizing read contracts registered');
+ok(count(MAD4B_SCP_CSO_Gateway::read_tools())===6,'only implemented, non-authorizing MCP read contracts registered');
+ok(!isset($GLOBALS['registered']['cso/secret-status']),'browser-bound secret status cannot be advertised to OAuth-only MCP');
 foreach($GLOBALS['registered']as$name=>$args){
     ok(!preg_match('/commit|workflow-run|secret-session|draft$/',$name),'private actions excluded');
     ok(false===$args['input_schema']['additionalProperties'],'closed argument contract');

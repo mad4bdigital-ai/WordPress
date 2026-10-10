@@ -89,7 +89,9 @@ final class MAD4B_SCP_CSO_Gateway {
         self::$attempted = true;
         $candidates = array();
         foreach ( self::routes() as $action=>$route ) {
-            if ( ! in_array( $action, self::implemented(), true ) || 'private' === $route[1] || ! MAD4B_SCP_CSO_Scope::enabled($route[0]) ) continue;
+            if ( ! in_array( $action, self::implemented(), true ) ||
+                'private' === $route[1] || 'secret_status' === $action ||
+                ! MAD4B_SCP_CSO_Scope::enabled($route[0]) ) continue;
             $name = 'cso/' . str_replace('_','-',$action);
             if ( wp_has_ability($name) ) return; // Never adopt another registrar's callback.
             $candidates[$name] = array($action,$route);
@@ -169,7 +171,7 @@ final class MAD4B_SCP_CSO_Gateway {
 
     private static function invoke($action,array $a) {
         switch($action) {
-            case 'capability_catalog': return MAD4B_SCP_CSO_Registry::catalog($a['query']??'', $a['limit']??20, $a['offset']??0);
+            case 'capability_catalog': return MAD4B_SCP_CSO_Registry::catalog($a['query']??'', $a['limit']??12, $a['offset']??0);
             case 'form_prepare': return MAD4B_SCP_CSO_Forms::schema($a['ability_name']??'', $a['target']??array());
             case 'field_suggest': return MAD4B_SCP_CSO_Forms::suggest($a['form']??array(), $a['field']??'', $a['query']??'', $a['offset']??0);
             case 'typed_validate': return MAD4B_SCP_CSO_Forms::validate($a['form']??array(), $a['values']??array());
