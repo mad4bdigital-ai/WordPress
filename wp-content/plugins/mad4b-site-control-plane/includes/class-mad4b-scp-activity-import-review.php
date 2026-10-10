@@ -141,6 +141,21 @@ final class MAD4B_SCP_Activity_Import_Review {
             'ready_for_import_execution' => false, 'read_only' => true,
             'mutation_performed' => false );
     }
+    /** Bounded, strict, UTC-only period parsing (no locale guessing). */
+    private static function parse_period( $value, $format ) {
+        if ( ! is_scalar( $value ) ) return false;
+        $value = (string) $value;
+        if ( 'unix_seconds' === $format ) {
+            if ( ! preg_match( '/^\\d{1,10}$/D', $value ) ) return false;
+            return (int) $value;
+        }
+        if ( ! preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/D', $value ) ) return false;
+        $date = DateTimeImmutable::createFromFormat(
+            '!Y-m-d', $value, new DateTimeZone( 'UTC' ) );
+        if ( false === $date || $date->format( 'Y-m-d' ) !== $value )
+            return false;
+        return $date->setTime( 23, 59, 59 )->getTimestamp();
+    }
     private static function inspect( $input, $issue_offset = 0 ) {
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_payload_invalid', 'Object required.' );
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
@@ -237,11 +252,17 @@ final class MAD4B_SCP_Activity_Import_Review {
                 ! in_array( (string) $row['_wpml_import_after_process_post_status'],
                     array( 'draft', 'pending', 'private', 'publish' ), true ) )
                 $errors[] = 'invalid_wordpress_post_status';
-            if ( isset( $row['tour_rate_start_date'], $row['tour_rate_end_date'] ) &&
-                is_numeric( $row['tour_rate_start_date'] ) &&
-                is_numeric( $row['tour_rate_end_date'] ) &&
-                (float) $row['tour_rate_start_date'] > (float) $row['tour_rate_end_date'] )
-                $errors[] = 'date_interval_reversed';
+            $period_end = false;
+            if ( ! empty( $policy['period_start_field'] ) ) {
+                $period_start = self::parse_period(
+                    $row[ $policy['period_start_field'] ], $policy['period_format'] );
+                $period_end = self::parse_period(
+                    $row[ $policy['period_end_field'] ], $policy['period_format'] );
+                if ( false === $period_start || false === $period_end )
+                    $errors[] = 'date_period_invalid';
+                elseif ( $period_start > $period_end )
+                    $errors[] = 'date_interval_reversed';
+            }
             $decimal_scale = $policy['decimal_scale'];
             $number_pattern = 0 === $decimal_scale ? '/^\\d{1,14}$/D' :
                 '/^\\d{1,14}(?:\\.\\d{1,' . $decimal_scale . '})?$/D';
@@ -263,9 +284,8 @@ final class MAD4B_SCP_Activity_Import_Review {
                     }
                 }
             }
-            if ( $flag_expired && isset( $row['tour_rate_end_date'] ) &&
-                is_numeric( $row['tour_rate_end_date'] ) &&
-                (float) $row['tour_rate_end_date'] < time() )
+            if ( $flag_expired && false !== $period_end &&
+                $period_end < time() )
                 $errors[] = 'historical_rate_period_requires_review';
             $group_col = '_wpml_import_translation_group';
             $lang_col = '_wpml_import_language_code';
@@ -327,6 +347,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'decimal_scale' => $policy['decimal_scale'],
             'price_tier_policy' => $price_policy,
             'review_past_intervals' => $flag_expired,
+            'period_start_field' => $policy['period_start_field'],
+            'period_end_field' => $policy['period_end_field'],
+            'period_format' => $policy['period_format'],
             'policy_sha256' => $policy_result['policy_sha256'] );
         return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
             'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
