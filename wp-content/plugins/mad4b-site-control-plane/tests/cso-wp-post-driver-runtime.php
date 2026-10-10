@@ -123,7 +123,7 @@ $unicode_payload['values']=array('title'=>str_repeat('ع',201));
 $GLOBALS['permit']=true;
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload)),
  'overlong Unicode title rejected');
-$unicode_payload['values']=array('title'=>"\\xC3\\x28");
+$unicode_payload['values']=array('title'=>"\xC3\x28");
 $GLOBALS['permit']=true;
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload)),
  'malformed UTF-8 denied');
