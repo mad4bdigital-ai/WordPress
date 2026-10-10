@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 617,
+  "changed_file_count": 618,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1253,8 +1253,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp14-batch-atomic-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp14-batch-mysql-concurrency.php"
       ]
+    },
+    {
+      "id": "feature007-imp14-single-source-archive-exclusion-20261010",
+      "semantic_unit": "Single source Snapshot staged upload/approval/CSV stream and audit archival share exclusive SQL owner reservation; retry-safe exact immutable audit and negative fixture.",
+      "revert_boundary": "Preserve pending source/audit records and never relax archive-vs-export fencing without a reviewed migration.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp14-single-snapshot-atomic-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "c6c506522cd57fe212579f28183a33d1c023f75e216e8fa62254c380e9be585f",
+  "changed_paths_sha256": "ee936d445f4ee08a81a414f81e774d042ecbc121c0d1588eafd8b4e4cc43065b",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
