@@ -153,7 +153,8 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
         $state = get_option( self::OPTION, array() );
         if ( ! is_array( $state ) ||
             ! hash_equals( (string) ( $site['site_uuid'] ?? '' ), (string) ( $state['site_uuid'] ?? '' ) ) ||
-            ! hash_equals( (string) ( $site['profile_digest'] ?? '' ), (string) ( $state['profile_digest'] ?? '' ) ) )
+            ! hash_equals( (string) ( $site['profile_digest'] ?? '' ), (string) ( $state['profile_digest'] ?? '' ) ) ||
+            ! hash_equals( (string) ( $site['canonical_origin'] ?? '' ), (string) ( $state['origin'] ?? '' ) ) )
             return array();
         return is_array( $state['profiles'] ?? null ) ? $state['profiles'] : array();
     }
@@ -205,8 +206,12 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
         if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 ) return self::invalid( 'reason_invalid' );
         $site = self::site();
         if ( ! is_array( $site ) || (string) ( $site['configured_environment'] ?? '' ) !== 'staging' ||
+            'staging' !== (string) ( $site['environment'] ?? '' ) ||
             empty( $site['authority_ready'] ) || empty( $site['origin_match'] ) ||
-            empty( $site['profile_digest'] ) ) return self::invalid( 'staging_site_required' );
+            empty( $site['profile_digest'] ) ||
+            ( ! empty( $site['wordpress_environment_explicit'] ) &&
+              'staging' !== (string) ( $site['wordpress_environment'] ?? '' ) ) )
+            return self::invalid( 'staging_site_required' );
         $saved = self::stored( $site );
         $snapshot = hash( 'sha256', wp_json_encode( $saved, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         $plan = array( 'contract' => self::CONTRACT . '.plan.v1',
@@ -264,11 +269,20 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             $profiles[ $plan['operation_id'] ] = $plan['profile'];
             ksort( $profiles, SORT_STRING );
             $next = array( 'site_uuid' => $plan['site_uuid'],
-                'profile_digest' => $plan['site_digest'], 'profiles' => $profiles );
+                'profile_digest' => $plan['site_digest'],
+                'origin' => $plan['origin'], 'profiles' => $profiles );
             update_option( self::OPTION, $next, false );
             if ( get_option( self::OPTION, array() ) !== $next ) {
                 update_option( self::OPTION, $before, false );
                 return self::invalid( 'readback_failed' );
+            }
+            $site_after = self::site();
+            if ( ! is_array( $site_after ) ||
+                ! hash_equals( (string) ( $site_after['site_uuid'] ?? '' ), $plan['site_uuid'] ) ||
+                ! hash_equals( (string) ( $site_after['profile_digest'] ?? '' ), $plan['site_digest'] ) ||
+                ! hash_equals( (string) ( $site_after['canonical_origin'] ?? '' ), $plan['origin'] ) ) {
+                update_option( self::OPTION, $before, false );
+                return self::invalid( 'identity_changed_after_write' );
             }
             if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
                 update_option( self::OPTION, $before, false );
@@ -299,6 +313,10 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             return self::invalid( 'resolve_input_invalid' );
         $site = self::site();
         if ( ! is_array( $site ) ) return self::invalid( 'site_unavailable' );
+        if ( 'staging' !== (string) ( $site['configured_environment'] ?? '' ) ||
+            'staging' !== (string) ( $site['environment'] ?? '' ) ||
+            empty( $site['authority_ready'] ) || empty( $site['origin_match'] ) )
+            return self::invalid( 'site_no_longer_staging' );
         $profiles = self::stored( $site );
         $id = (string) ( $input['operation_id'] ?? '' );
         if ( ! isset( $profiles[ $id ] ) || empty( $profiles[ $id ]['enabled'] ) )
@@ -322,6 +340,15 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
                 ( $rule['enum'] && ! in_array( $values[$key], $rule['enum'], true ) ) )
                 return self::invalid( 'field_out_of_contract' );
         }
+        if ( ! function_exists( 'wp_get_ability' ) ) return self::invalid( 'wordpress_ability_registry_unavailable' );
+        $planner_ability = wp_get_ability( (string) $operation['planner'] );
+        if ( ! $planner_ability || ! method_exists( $planner_ability, 'validate_input' ) )
+            return self::invalid( 'planner_ability_unavailable' );
+        // The actual registered WordPress Ability schema is authoritative;
+        // configuration cannot silently inject unchecked values into it.
+        $checked = $planner_ability->validate_input( $values );
+        if ( is_wp_error( $checked ) || true !== $checked )
+            return self::invalid( 'original_planner_schema_rejected_values' );
         $context = array( 'site_uuid' => $site['site_uuid'] ?? '',
             'site_digest' => $site['profile_digest'] ?? '',
             'operation_id' => $id,
@@ -329,6 +356,7 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             'variables' => $values, 'approval_mode' => $profile['approval_mode'] );
         return array( 'contract' => self::CONTRACT . '.handoff.v1',
             'operation' => $context, 'handoff_sha256' => hash( 'sha256', wp_json_encode( $context ) ),
+            'planner_input' => $values, 'planner_input_schema_verified' => true,
             'next_ability' => $operation['planner'],
             'execute_only_via_original_governed_mcp_ability' => true,
             'original_executor' => $operation['executor'],
