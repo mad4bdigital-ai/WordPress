@@ -332,7 +332,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			&& in_array( $selected_environment, array( 'local', 'development', 'staging' ), true )
 			? "define( 'WP_ENVIRONMENT_TYPE', '" . $selected_environment . "' );" : '';
 
-		$autopilot = MAD4B_SCP_Staging_Autopilot::decision( $status );
+		$autopilot = MAD4B_SCP_Staging_Autopilot::status( array() );
 		if ( 'admin_reconcile_available' === $autopilot['state'] ) {
 			if ( ! class_exists( 'MAD4B_SCP_WP_Config_Environment_Sync' ) )
 				require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wp-config-environment-sync.php';
@@ -362,6 +362,28 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					<p class="description"><?php esc_html_e( 'Host deployment binding missing: separately provision a unique host-private binding before clone-safe MCP selected-HEAD operations. This cannot be created from a Site Profile read.', 'mad4b-site-control-plane' ); ?></p>
 				<?php endif; ?>
 				<p class="description"><?php esc_html_e( 'Assistants: mad4b/site-autopilot-status (read-only), mad4b/staging-write-authority-convergence-handshake (review-only), mad4b/full-staging-authority-handshake (review-only). No authority or Production changes are automatic.', 'mad4b-site-control-plane' ); ?></p>
+				<?php if ( ! empty( $autopilot['automation_plan'] ) && is_array( $autopilot['automation_plan'] ) ) :
+					$plan = $autopilot['automation_plan'];
+					$lanes = isset( $plan['assistant_workflow'] ) && is_array( $plan['assistant_workflow'] ) ? $plan['assistant_workflow'] : array();
+				?>
+				<h3><?php esc_html_e( 'Ordered Staging recovery — independent gates', 'mad4b-site-control-plane' ); ?></h3>
+				<p><?php echo esc_html( sprintf( 'Next: %s | Owner: %s | Profile revision: %d',
+					(string) ( $plan['next_action_id'] ?? 'none' ), (string) ( $plan['responsible_actor'] ?? 'none' ),
+					(int) ( $plan['profile_identity']['revision'] ?? 0 ) ) ); ?></p>
+				<table class="widefat striped" style="max-width:920px">
+					<thead><tr><th><?php esc_html_e( 'Stage', 'mad4b-site-control-plane' ); ?></th><th><?php esc_html_e( 'Current evidence', 'mad4b-site-control-plane' ); ?></th><th><?php esc_html_e( 'Next safe action', 'mad4b-site-control-plane' ); ?></th></tr></thead>
+					<tbody>
+					<?php foreach ( $lanes as $lane ) : ?>
+						<tr>
+							<td><code><?php echo esc_html( (string) ( $lane['step_id'] ?? '' ) ); ?></code></td>
+							<td><?php echo esc_html( (string) ( $lane['state'] ?? 'not_evaluated' ) ); ?></td>
+							<td><code><?php echo esc_html( (string) ( $lane['next_action_id'] ?? 'none' ) ); ?></code></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+				<p class="description"><?php esc_html_e( 'WordPress environment alignment and host-private deployment binding are separate checks. Host secrets, sandbox packages and Write grants are never created by opening this screen. Saving the profile changes its revision and requires fresh exact Write approval/readback.', 'mad4b-site-control-plane' ); ?></p>
+				<?php endif; ?>
 			</div>
 			<?php if ( 'REVIEW_REQUIRED' === ( $legacy_migration['status'] ?? '' ) ) : ?>
 			<div class="notice notice-warning" style="max-width:950px;padding:1em">
