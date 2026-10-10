@@ -176,14 +176,12 @@ def summarize_checks(checks):
     """Fail closed for partial execution; test coverage never certifies GitHub CI."""
     counts = {s: sum(c.get("state") == s for c in checks)
               for s in ("PASS", "FAIL", "NOT_RUN")}
-    if not checks or counts["NOT_RUN"]:
-        verdict = "LOCAL_CI_PARITY_BLOCKED"
-    elif counts["FAIL"]:
-        verdict = "LOCAL_CI_PARITY_FAIL"
-    else:
-        verdict = "LOCAL_CI_PARITY_PARTIAL"
     if counts["FAIL"]:
         verdict = "LOCAL_CI_PARITY_FAIL"
+    elif not checks or counts["NOT_RUN"]:
+        verdict = "LOCAL_CI_PARITY_BLOCKED"
+    else:
+        verdict = "LOCAL_CI_PARITY_PARTIAL"
     passed = bool(checks) and counts["FAIL"] == 0 and counts["NOT_RUN"] == 0
     return counts, verdict, passed
 
