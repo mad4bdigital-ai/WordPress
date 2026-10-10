@@ -439,6 +439,12 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-truth.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operational-remediation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso01-read-foundation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-scope.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-forms.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-gateway.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-form-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-secrets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-recovery-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
@@ -531,6 +537,13 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Staging_Certification::boot();
 	MAD4B_SCP_Operational_Remediation::boot();
 	MAD4B_SCP_CSO01_Read_Foundation::boot();
+    // Opt-in CSO extensions remain inert unless a deploy-time flag enables
+    // the exact component. Discovery/form validation are non-authorizing.
+    if ( MAD4B_SCP_CSO_Scope::enabled( 'discovery' ) ) {
+        MAD4B_SCP_CSO_Gateway::boot();
+        MAD4B_SCP_CSO_Form_UI::boot();
+        if ( MAD4B_SCP_CSO_Scope::enabled( 'secrets' ) ) MAD4B_SCP_CSO_Secrets::boot();
+    }
 	MAD4B_SCP_Acceptance_Core::boot_early();
 	MAD4B_SCP_Connection_Ability::boot();
 	MAD4B_SCP_Read_Consistency::boot();

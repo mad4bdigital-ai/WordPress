@@ -54,6 +54,19 @@ final class MAD4B_SCP_CSO_Gateway {
         );
     }
 
+    /**
+     * Only handlers that exist and are backed by the existing CSO01 read
+     * contracts may be advertised. All other proposed CSO routes remain
+     * unregistered and fail closed instead of causing runtime class errors.
+     */
+    private static function implemented() {
+        return array(
+            'capability_catalog', 'form_prepare', 'typed_validate',
+            'field_help', 'form_presentation', 'secret_session',
+            'secret_status', 'secret_rotation_plan'
+        );
+    }
+
     public static function read_tools() { return self::$registered; }
 
     private static function argument_schema( array $keys ) {
@@ -76,7 +89,7 @@ final class MAD4B_SCP_CSO_Gateway {
         self::$attempted = true;
         $candidates = array();
         foreach ( self::routes() as $action=>$route ) {
-            if ( 'private' === $route[1] || ! MAD4B_SCP_CSO_Scope::enabled($route[0]) ) continue;
+            if ( ! in_array( $action, self::implemented(), true ) || 'private' === $route[1] || ! MAD4B_SCP_CSO_Scope::enabled($route[0]) ) continue;
             $name = 'cso/' . str_replace('_','-',$action);
             if ( wp_has_ability($name) ) return; // Never adopt another registrar's callback.
             $candidates[$name] = array($action,$route);
@@ -108,7 +121,7 @@ final class MAD4B_SCP_CSO_Gateway {
             'callback'=>static function($request) {
                 $body=$request->get_body();
                 if ( ! is_string($body) || strlen($body)>131072 ) return MAD4B_SCP_CSO_Scope::error('REQUEST_BOUNDS');
-                $result=self::dispatch($request->get_json_params());
+                $result=self::dispatch($request->get_json_params(), true);
                 if ( is_wp_error($result) ) return $result;
                 $response=new WP_REST_Response($result);
                 $response->header('Cache-Control','private, no-store');
@@ -131,10 +144,15 @@ final class MAD4B_SCP_CSO_Gateway {
         return hash_equals($expected,$origin) ? true : MAD4B_SCP_CSO_Scope::error('ORIGIN_MISMATCH');
     }
 
-    public static function dispatch($input) {
+    public static function dispatch($input, $first_party = false) {
         if ( ! is_array($input) || array_diff(array_keys($input),array('action','arguments')) || ! is_string($input['action']??null) || ! is_array($input['arguments']??null) || true !== MAD4B_SCP_CSO_Scope::bounded($input) ) return MAD4B_SCP_CSO_Scope::error('REQUEST_SHAPE');
         $action=$input['action']; $args=$input['arguments']; $routes=self::routes();
         if ( ! isset($routes[$action]) || ! MAD4B_SCP_CSO_Scope::enabled('discovery') || ! MAD4B_SCP_CSO_Scope::enabled($routes[$action][0]) ) return MAD4B_SCP_CSO_Scope::error('FEATURE_DISABLED');
+        if ( ! in_array( $action, self::implemented(), true ) )
+            return MAD4B_SCP_CSO_Scope::error( 'IMPLEMENTATION_NOT_CERTIFIED' );
+        if ( 'private' === $routes[$action][1] &&
+            ( true !== $first_party || ! MAD4B_SCP_CSO_Scope::first_party_session() ) )
+            return MAD4B_SCP_CSO_Scope::error( 'FIRST_PARTY_PRIVATE_SESSION_REQUIRED' );
         if ( array_diff(array_keys($args),$routes[$action][2]) ) return MAD4B_SCP_CSO_Scope::error('UNKNOWN_ARGUMENT');
         $scope=MAD4B_SCP_CSO_Scope::current(); if ( is_wp_error($scope) ) return $scope;
         // Schema metadata and sealed contracts may legitimately name secrets;
