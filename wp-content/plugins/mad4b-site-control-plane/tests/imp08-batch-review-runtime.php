@@ -32,6 +32,19 @@ function imp08_many( $start, $groups, $prefix ) {
     }
     return $result;
 }
+// A held per-Profile mutex denies mutation, rather than trusting an
+// application-level read that could race another PHP worker.
+$mutex_key = 'mad4b_batch_mutex_' . hash( 'sha256',
+    MAD4B_SCP_Site_Profile::site_uuid() . '|pricing' );
+add_option( $mutex_key, array( 'token_sha256' => str_repeat( 'f', 64 ),
+    'operation' => 'append', 'created_at' => gmdate( 'c' ) ), '', false );
+$locked = MAD4B_SCP_Activity_Import_Batches::begin( array(
+    'profile_slug' => 'pricing', 'expected_chunks' => 2,
+    'confirmed' => true ) );
+ck( is_wp_error( $locked ) &&
+    $locked->get_error_code() === 'mad4b_batch_mutation_locked',
+    'Concurrent batch mutation bypassed the exact Profile mutex.' );
+delete_option( $mutex_key );
 $incomplete = MAD4B_SCP_Activity_Import_Batches::begin(
     array( 'profile_slug' => 'pricing', 'expected_chunks' => 2,
         'confirmed' => false ) );
@@ -43,6 +56,8 @@ $b = MAD4B_SCP_Activity_Import_Batches::begin(
 ck( !is_wp_error( $b ) && strlen( $b['batch_id'] ) === 32,
     'Encrypted multi-part source inbox not created.' );
 $id = $b['batch_id'];
+ck( false === get_option( $mutex_key, false ),
+    'Successfully persisted batch did not release its own mutex.' );
 $base = array( 'profile_slug' => 'pricing', 'batch_id' => $id );
 $part1 = MAD4B_SCP_Activity_Import_Batches::append( array_merge( $base,
     array( 'chunk_index' => 0, 'source' => imp08_many( 1, 250, 'grp' ) ) ) );
