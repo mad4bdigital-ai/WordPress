@@ -79,7 +79,7 @@
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
       "sha256": "2da4c1deb8d34ea35744493b611c0f7a42df5ac6bffbefa29de35269f30bc156",
-      "bytes": 50279
+      "bytes": 50281
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
