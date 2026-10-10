@@ -1,6 +1,6 @@
 <?php
 /** WordPress post adapter denial-first source regression, no live DB changes. */
-define('ABSPATH','/');
+define('ABSPATH','/');define('ARRAY_A','ARRAY_A');
 class WP_Error {private $c;function __construct($c,$m='',$d=null){$this->c=$c;}function get_error_code(){return $this->c;}}
 function is_wp_error($v){return $v instanceof WP_Error;}
 function wp_json_encode($v){return json_encode($v);}
@@ -22,8 +22,9 @@ class MAD4B_SCP_CSO_Scope {
 }
 class MAD4B_SCP_CSO_Policy_Sentinel {}
 class MAD4B_SCP_Policy {static function can_mutate(){return $GLOBALS['mutate'];}}
+class MAD4B_SCP_Database_Topology {static function assert_write_ready($strict){return array('ready'=>true);}}
 class MAD4B_SCP_CSO_Native_Executor {
- static function native_permit_matches($input,$consume=false){return false;}
+ static function native_permit_matches($input,$consume=false){$ok=!empty($GLOBALS['permit']);if($consume)$GLOBALS['permit']=false;return $ok;}
 }
 interface MAD4B_SCP_CSO_Storage_Provider {
  public function provider_key();
@@ -64,4 +65,40 @@ $payload=array('provider_id'=>'wp_post_core','target'=>$target,
 ck(!MAD4B_SCP_CSO_WP_Post_Driver::write_permission($payload),'native permission requires claimed one-use ticket');
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload)),'direct WordPress write method denied');
 ck($GLOBALS['post']->post_title==='Old title','no side effect');
-echo "PASS CSO WordPress post native scope/ownership/permission/registry denial\n";
+function wp_slash($v){return $v;}
+function clean_post_cache($id){}
+function wp_update_post($args,$error=false){
+ $GLOBALS['updates']++;
+ foreach(array('post_title','post_excerpt')as$key)
+  if(isset($args[$key]))$GLOBALS['post']->$key=$args[$key];
+ $GLOBALS['post']->post_modified_gmt='2026-10-10 14:00:0'.$GLOBALS['updates'];
+ return 37;
+}
+class MockPostDB {
+ public $posts='wp_posts';public $postmeta='wp_postmeta';
+ function prepare($sql,...$args){return array($sql,$args);}
+ function query($sql){return in_array($sql,array('START TRANSACTION','COMMIT','ROLLBACK'),true)?0:false;}
+ function get_row($v,$format){return (array)$GLOBALS['post'];}
+ function get_results($v,$format){
+  $out=array();foreach($GLOBALS['owner']as$key=>$value)
+   $out[]=array('meta_key'=>$key,'meta_value'=>$value);
+  return $out;
+ }
+}
+$GLOBALS['post']->ID=37;$GLOBALS['updates']=0;$GLOBALS['permit']=false;
+$GLOBALS['wpdb']=new MockPostDB();
+$payload=array('provider_id'=>'wp_post_core','target'=>$target,
+ 'values'=>array('title'=>'New title'),'expected_revision'=>$descriptor['revision'],
+ 'scope_sha256'=>MAD4B_SCP_CSO_Scope::digest($GLOBALS['scope']));
+ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload)),'direct call blocked');
+ck($GLOBALS['updates']===0,'not written without approved permit');
+$GLOBALS['permit']=true;
+$write=MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload);
+ck(!is_wp_error($write)&&$write['status']==='written','committed narrowed title update');
+ck($GLOBALS['post']->post_title==='New title'&&$GLOBALS['updates']===1,'one effect');
+ck(!$GLOBALS['permit'],'permit consumed at effect');
+$GLOBALS['permit']=true;
+ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload)),'stale revision blocked');
+ck($GLOBALS['updates']===1,'stale revision cannot overwrite newer edit');
+echo "PASS CSO WP post bound register/read/one-use write/revision conflict\n";
+

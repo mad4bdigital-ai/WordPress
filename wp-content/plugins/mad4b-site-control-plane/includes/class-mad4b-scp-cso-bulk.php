@@ -54,7 +54,15 @@ final class MAD4B_SCP_CSO_Bulk {
         if ( true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
             return MAD4B_SCP_CSO_Scope::error( 'BULK_SCOPE_CHANGED' );
         $digest = MAD4B_SCP_CSO_Scope::digest( array_keys( $digests ) );
+        $material = array(
+            'contract' => self::CONTRACT, 'scope_sha256' => MAD4B_SCP_CSO_Scope::digest( $scope ),
+            'actor_sha256' => $scope['actor_sha256'],
+            'plans' => $plans, 'canary_size' => $canary,
+            'digest_sha256' => $digest, 'expires_at' => time() + 300 );
+        $sealed = MAD4B_SCP_CSO_Scope::seal( $material, self::CONTRACT );
+        if ( is_wp_error( $sealed ) ) return $sealed;
         return array( 'contract' => self::CONTRACT,
+            'sealed_batch' => $sealed, 'execution_requires_item_tickets' => true,
             'count' => count( $plans ),
             'plan_sha256' => $digest,
             'canary_size' => $canary,
@@ -65,6 +73,6 @@ final class MAD4B_SCP_CSO_Bulk {
     }
 
     public static function commit( $plan, $governance, $checkpoint, $limit ) {
-        return MAD4B_SCP_CSO_Scope::error( 'BULK_NATIVE_EXECUTOR_NOT_CERTIFIED' );
+        return MAD4B_SCP_CSO_Bulk_Runtime::commit( $plan, $governance, $checkpoint, $limit );
     }
 }

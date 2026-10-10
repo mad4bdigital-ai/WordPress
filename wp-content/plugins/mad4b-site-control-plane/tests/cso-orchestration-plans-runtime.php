@@ -22,6 +22,7 @@ class MAD4B_SCP_CSO_Scope {
  }
 }
 class MAD4B_SCP_CSO_Changes {const CONTRACT='mad4b.cso.change-plan.v1';}
+class MAD4B_SCP_CSO_Bulk_Runtime {static function commit($a,$b,$c,$d){return new WP_Error('UNCERTIFIED_FIXTURE');}}
 $GLOBALS['cookie']=true;$GLOBALS['scope']=array('binding_sha256'=>str_repeat('b',64),'actor_sha256'=>str_repeat('a',64));
 require dirname(__DIR__).'/includes/class-mad4b-scp-cso-bulk.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-cso-workflows.php';

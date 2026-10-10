@@ -448,6 +448,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-changes.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-native-executor.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-wp-post-driver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-bulk.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-bulk-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-workflows.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-templates.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-operations.php';
