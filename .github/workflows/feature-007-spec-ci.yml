@@ -786,11 +786,11 @@ jobs:
         run: |
           set -euo pipefail
           root=wp-content/plugins/mad4b-site-control-plane
-          for name in class-mad4b-scp-operational-integrity.php class-mad4b-scp-operational-scope-guard.php class-mad4b-scp-context-authority.php class-mad4b-scp-content-jobs.php class-mad4b-scp-deployment-mode-resolver.php class-mad4b-scp-brand-core-control-loop.php class-mad4b-scp-skill-abilities.php; do
+          for name in class-mad4b-scp-operational-integrity.php class-mad4b-scp-operational-scope-guard.php class-mad4b-scp-context-authority.php class-mad4b-scp-content-jobs.php class-mad4b-scp-deployment-mode-resolver.php class-mad4b-scp-brand-core-control-loop.php class-mad4b-scp-skill-abilities.php class-mad4b-scp-progressive-requirements.php; do
             php -l "$root/includes/$name"
           done
           php -l "$root/includes/adapters/class-mad4b-scp-context-adapter.php"
-          for name in unified-operational-scope-runtime.php operational-integrity-local-runtime.php trusted-brand-scope-runtime.php brand-core-control-loop-runtime.php skill-context-preflight-runtime.php content-job-transaction-fault-runtime.php business-activity-sync-runtime.php deployment-mode-resolver-runtime.php; do
+          for name in unified-operational-scope-runtime.php operational-integrity-local-runtime.php trusted-brand-scope-runtime.php brand-core-control-loop-runtime.php progressive-requirements-runtime.php skill-context-preflight-runtime.php content-job-transaction-fault-runtime.php business-activity-sync-runtime.php deployment-mode-resolver-runtime.php; do
             php -l "$root/tests/$name"
             php "$root/tests/$name"
           done
