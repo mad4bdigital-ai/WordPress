@@ -125,7 +125,7 @@ class MultiEnvironmentCITest(unittest.TestCase):
             fixture = path / "mad4b-local-ci-gates.json"
             fixture.write_text(json.dumps(baseline), encoding="utf-8")
             cases, fingerprint = runner.load_manifest(Path(tmp), "extended")
-            self.assertEqual(20, len(cases))
+            self.assertEqual(len(runner.BASELINE_GATE_SPECS), len(cases))
             self.assertEqual(64, len(fingerprint))
             for mode in ("remove_gate", "rewrite_file", "rewrite_args", "shrink_profile"):
                 mutated = json.loads(json.dumps(baseline))
@@ -159,7 +159,7 @@ class MultiEnvironmentCITest(unittest.TestCase):
                 json.dumps(baseline), encoding="utf-8")
             expanded, _ = runner.load_manifest(Path(tmp), "extended")
             core, _ = runner.load_manifest(Path(tmp), "core")
-            self.assertEqual(21, len(expanded))
+            self.assertEqual(len(runner.BASELINE_GATE_SPECS) + 1, len(expanded))
             self.assertEqual(
                 sum("core" in gate["profiles"] for gate in baseline["gates"]),
                 len(core))
