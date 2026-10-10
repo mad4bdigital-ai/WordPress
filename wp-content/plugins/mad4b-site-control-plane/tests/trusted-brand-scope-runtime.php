@@ -62,6 +62,12 @@ class MAD4B_SCP_Google_Drive_Context {
             : new WP_Error( 'mad4b_provider_folder_missing' );
     }
 }
+class MAD4B_SCP_Host_Identity_Live {
+    public static $proof_ready = false;
+    public static function observe( $site ) {
+        return array( 'verified' => self::$proof_ready, 'source' => 'original_enrolled_host_runner' );
+    }
+}
 class MAD4B_SCP_Site_Profile {
     public static function status() { return $GLOBALS['site_status']; }
 }
@@ -195,6 +201,11 @@ $disabled_transfer = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( a
 check( is_wp_error($disabled_transfer) && 'mad4b_legacy_transfer_rollback_certification_required' === $disabled_transfer->get_error_code(),
     'Uncertified legacy transfer was executed instead of failing closed' );
 define( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED', true );
+$unverified_host = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( array() );
+check( is_wp_error( $unverified_host ) &&
+    'mad4b_legacy_transfer_host_proof_required' === $unverified_host->get_error_code(),
+    'A local rollback flag was improperly treated as independent Host attestation' );
+MAD4B_SCP_Host_Identity_Live::$proof_ready = true;
 $legacy_source_id = hash( 'sha256', $uuid . '|google_drive|governed|folder_legacy_verified|' );
 $legacy_asset_id = hash( 'sha256', $legacy_source_id . '|file_one' );
 $old_sources = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
