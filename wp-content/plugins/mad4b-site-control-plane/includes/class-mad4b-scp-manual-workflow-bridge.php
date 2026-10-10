@@ -42,6 +42,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
  private static function discover_schema() {
   return array( 'type' => 'object', 'additionalProperties' => false, 'properties' => array(
    'include_remediation' => array( 'type' => 'boolean' ),
+   'include_plugin_updates' => array( 'type' => 'boolean' ),
    'operation_filter' => array( 'type' => 'string', 'maxLength' => 100 ),
   ) );
  }
@@ -80,7 +81,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'host_runner_required' => false, 'production_allowed' => false );
  }
  public static function discover( $input = array() ) {
-  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter' ) ) )
+  if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'include_remediation', 'operation_filter', 'include_plugin_updates' ) ) )
    return new WP_Error( 'mad4b_manual_discovery_input_invalid', 'Only bounded discovery filters supported.' );
   $filter = (string) ( $input['operation_filter'] ?? '' );
   if ( strlen( $filter ) > 100 || ( '' !== $filter && ! preg_match( '/^[A-Za-z0-9._-]+$/D', $filter ) ) )
@@ -129,6 +130,26 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
      'mcp_generic_execution_allowed' => false );
    }
   }
+  $plugin_update_routes = array(
+   'state' => 'not_requested', 'items' => array(),
+   'discovery_ability' => 'mad4b/plugin-update-recovery-discover'
+  );
+  if ( ! empty( $input['include_plugin_updates'] ) &&
+   class_exists( 'MAD4B_SCP_Plugin_Update_Recovery' ) ) {
+   $inv = MAD4B_SCP_Plugin_Update_Recovery::discover( array(
+    'include_uncertified' => true, 'limit' => 80
+   ) );
+   if ( is_array( $inv ) ) {
+    $plugin_update_routes = array(
+     'state' => $inv['state'] ?? 'read_only_discovery',
+     'installed_plugin_count' => $inv['installed_plugin_count'] ?? 0,
+     'items' => $inv['items'] ?? array(),
+     'discovery_ability' => 'mad4b/plugin-update-recovery-discover',
+     'plan_ability' => 'mad4b/plugin-update-recovery-plan',
+     'generic_auto_apply' => false
+    );
+   }
+  }
   $remediation = array( 'state' => 'not_requested', 'work_items' => array() );
   if ( ! empty( $input['include_remediation'] ) && class_exists( 'MAD4B_SCP_Operational_Remediation' ) ) {
    $r = MAD4B_SCP_Operational_Remediation::status( array( 'include_live_acceptance' => false ) );
@@ -143,7 +164,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    'discovery_sources' => array( 'canonical_operation_registry', 'staging_remediation', 'site_profile' ),
    'operations' => $entries, 'operation_count' => count( $entries ),
    'admin_routes_detected' => $manual_routes, 'admin_route_count' => count( $manual_routes ),
-   'remediation' => $remediation,
+   'remediation' => $remediation, 'plugin_update_routes' => $plugin_update_routes,
    'unregistered_manual_actions_auto_executable' => false, 'unknown_executor_policy' => 'deny_and_propose_adapter',
    'read_only' => true, 'authorizing' => false, 'mutation_performed' => false );
  }
