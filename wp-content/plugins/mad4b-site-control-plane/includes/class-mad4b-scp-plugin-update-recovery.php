@@ -60,21 +60,6 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
                 'source' => array( 'type' => 'string',
                     'enum' => array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer',
                         'certified_repository_archive', 'certified_local_archive' ) ),
-                'ci_state' => array( 'type' => 'string',
-                    'enum' => array( 'unknown', 'queued', 'unavailable', 'passed',
-                        'infrastructure_failure', 'test_failure', 'security_failure' ) ),
-                'native_evidence' => array( 'type' => 'object', 'additionalProperties' => false,
-                    'properties' => array(
-                        'source_exact' => array( 'type' => 'boolean' ),
-                        'package_verified' => array( 'type' => 'boolean' ),
-                        'tests_passed' => array( 'type' => 'boolean' ),
-                        'owner_reviewed' => array( 'type' => 'boolean' ),
-                        'independently_signed' => array( 'type' => 'boolean' ),
-                        'signature_trust_verified' => array( 'type' => 'boolean' ),
-                        'evidence_fresh' => array( 'type' => 'boolean' ),
-                        'same_plugin_and_site' => array( 'type' => 'boolean' ),
-                    ),
-                ),
             ) );
     }
 
@@ -219,7 +204,7 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
 
     public static function plan( $input = array() ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ),
-            array( 'plugin_file', 'reason', 'source', 'ci_state', 'native_evidence' ) ) )
+            array( 'plugin_file', 'reason', 'source' ) ) )
             return new WP_Error( 'mad4b_plugin_update_plan_input_invalid', 'Only plugin ID, selected certified source, CI diagnostic and test evidence accepted.' );
         $plugin = (string) ( $input['plugin_file'] ?? '' );
         if ( ! preg_match( '#^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+\\.php$#D', $plugin ) )
@@ -233,12 +218,13 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
         if ( empty( $target ) || ! empty( $target['conflict'] ) )
             return new WP_Error( 'mad4b_plugin_update_uncertified', 'Plugin has no uniquely certified provider: discoverable but not installable.' );
         $source = (string) ( $input['source'] ?? 'auto_certified' );
-        $ci = (string) ( $input['ci_state'] ?? 'unknown' );
+        // CI diagnostic, when present, must come from trusted server evidence.
+        // An assistant cannot self-assert a green run or a signed test bundle.
+        $ci = 'unknown';
         if ( ! in_array( $source, array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer',
             'certified_repository_archive', 'certified_local_archive' ), true ) )
             return new WP_Error( 'mad4b_plugin_update_source_invalid', 'Unknown certified source type.' );
-        $evidence = isset( $input['native_evidence'] ) && is_array( $input['native_evidence'] )
-            ? $input['native_evidence'] : array();
+        $evidence = array(); // Never promote caller-supplied PASS flags into trust.
         $ci_policy = self::ci_policy( $ci, $evidence, true );
         // Native-evidence flags supplied by callers are for diagnostics only.
         // They never authorize a plugin write or certify source bytes.
@@ -251,6 +237,9 @@ final class MAD4B_SCP_Plugin_Update_Recovery {
         ) );
         if ( is_wp_error( $base ) ) return $base;
         $base['ci_outage_policy'] = $ci_policy;
+        $base['certification_route'] = 'exact_source_owned_provider_contract';
+        $base['ci_verdict_is_not_a_precondition_for_existing_certified_source'] = true;
+        $base['staging_native_receipt_required_only_for_a_new_uncertified_release_lane'] = true;
         $base['ci_state_is_authoritative'] = false;
         $base['native_evidence_is_authoritative'] = false;
         $base['update_executor'] = 'mad4b/plugin-package-apply';
