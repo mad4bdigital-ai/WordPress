@@ -105,11 +105,18 @@ final class MAD4B_SCP_Progressive_Requirements {
 		// A package install is a one-time effect per immutable source identity,
 		// NEVER a per-attempt requirement. No claimed previous success is used.
 		$installed = false;
-		$identity = array();
-		if ( class_exists('MAD4B_SCP_Self_Update',false)
-			&& method_exists('MAD4B_SCP_Self_Update','native_plan') ) {
-			// No network fetch here; local matching is only a conditional
-			// optimization. Real installer performs its own protected readback.
+		if ( class_exists('MAD4B_SCP_External_Handshake_Evidence',false) ) {
+			$proof=MAD4B_SCP_External_Handshake_Evidence::status();
+			$target=is_array($plan['package_identity']??null)?$plan['package_identity']:array();
+			$installed=is_array($proof)&&!empty($proof['verified']) &&
+				!empty($proof['package_identity_match']) &&
+				!empty($proof['build_fingerprint_match']) &&
+				hash_equals($sha,(string)($proof['source_commit_sha']??'')) &&
+				!empty($target) &&
+				hash_equals((string)($target['build_fingerprint']??''),
+					(string)($proof['package_build_fingerprint']??'')) &&
+				hash_equals((string)($target['package_manifest_digest']??''),
+					(string)($proof['package_manifest_digest']??''));
 		}
 		$mapped[]=self::gate('exact_package_proof',!empty($plan['package_identity']) &&
 			!in_array('mad4b_selected_head_certified_artifact_unavailable',$blockers,true),
@@ -125,7 +132,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 			'effect_ability'=>MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY,
 			'effect_kind'=>'exact_head_install_if_not_already_installed',
 			'effect_per_attempt'=>false,'package_recreation_per_attempt'=>false,
-			'install_per_attempt'=>false,'canonical_blockers'=>$blockers,
+			'install_per_attempt'=>false,'already_installed_exact_head_readback'=>$installed,'canonical_blockers'=>$blockers,
 			'operation_family'=>'plugin_install',
 			'current_package_identity_readback_required'=>true);
 	}
