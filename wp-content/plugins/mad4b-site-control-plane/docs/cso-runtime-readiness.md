@@ -91,6 +91,12 @@ bounded by 8192 bytes; unsafe tags and empty titles still fail closed.
 
 ### Dual WordPress / Site Profile environment fence
 
+The private Secrets handoff applies the same physical WordPress environment
+check when preparing its bounded session and immediately before invoking a
+native credential-store callback. An apparent Staging profile must not turn
+a production WordPress runtime into a Staging secret-write surface.
+
+
 Native CSO write admission and the core Post driver independently require
 \`wp_get_environment_type()\` to match the enrolled Site Profile's
 \`environment\`, and both must be exactly one of local, development or staging.
