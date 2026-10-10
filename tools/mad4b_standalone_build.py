@@ -138,7 +138,7 @@ def verify_zip(archive: Path, receipt: dict, source: str) -> None:
             require(len(raw) == size and hashlib.sha256(raw).hexdigest() == digest,
                     "embedded_manifest_member_hash_mismatch")
             expected_names.add(member)
-            canonical.append((name + "\\0" + str(size) + "\\0" + digest + "\\n").encode("utf-8"))
+            canonical.append(name.encode("utf-8") + bytes([0]) + str(size).encode("ascii") + bytes([0]) + digest.encode("ascii") + bytes([10]))
         require(set(z.namelist()) == expected_names, "unexpected_archive_members")
         manifest_sha = hashlib.sha256(b"".join(canonical)).hexdigest()
         require(manifest_sha == receipt.get("package_manifest_digest"),
