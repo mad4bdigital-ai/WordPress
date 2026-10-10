@@ -85,8 +85,10 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					'message' => __( 'Site Profile write completed but persisted readback did not match the committed revision.', 'mad4b-site-control-plane' ),
 				), 500 );
 			}
+			$environment_sync = self::sync_wp_config_after_verified_save( $status );
 			wp_send_json_success( array(
-				'message' => __( 'Site Profile saved and verified by persisted readback.', 'mad4b-site-control-plane' ),
+				'environment_sync' => $environment_sync,
+				'message' => __( 'Site Profile saved. WordPress bootstrap synchronization status is reported separately.', 'mad4b-site-control-plane' ),
 				'persistence_verified' => true,
 				'readback' => array(
 					'revision' => (int) $status['revision'],
@@ -111,7 +113,16 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		if ( ! self::persisted_readback_matches( $input, $result, $status, $profile ) ) {
 			self::redirect( 'mad4b_site_profile_readback_mismatch' );
 		}
-		self::redirect( 'saved' );
+		$environment_sync = self::sync_wp_config_after_verified_save( $status );
+		self::redirect( 'config_written_verified_new_request_required' === ( $environment_sync['state'] ?? '' )
+			? 'saved_environment_sync_written' : ( 'already_aligned' === ( $environment_sync['state'] ?? '' ) || 'not_requested' === ( $environment_sync['state'] ?? '' )
+			? 'saved' : 'saved_environment_sync_blocked' ) );
+	}
+
+	/** Admin-initiated config change only, after a successful audited profile commit. */
+	private static function sync_wp_config_after_verified_save( array $status ) {
+		require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wp-config-environment-sync.php';
+		return MAD4B_SCP_WP_Config_Environment_Sync::apply_from_verified_admin_save( $status );
 	}
 
 	/** Revision may reset to 1 on an identity rebind; compare identity and intent. */
@@ -260,7 +271,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
-			<?php if ( '' !== $state ) : ?><div class="notice notice-info"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
+			<?php if ( '' !== $state ) : ?><div class="notice <?php echo 'saved_environment_sync_blocked' === $state ? 'notice-warning' : 'notice-info'; ?>"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
 			<?php if ( 'REVIEW_REQUIRED' === ( $legacy_migration['status'] ?? '' ) ) : ?>
 			<div class="notice notice-warning" style="max-width:950px;padding:1em">
 				<p><strong><?php esc_html_e( 'Legacy Site Profile identity detected — not imported', 'mad4b-site-control-plane' ); ?></strong></p>
@@ -277,7 +288,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<?php endif; ?>
 			<table class="widefat striped" style="max-width:1000px;margin:1em 0">
 				<tbody>
-				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> · <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. Host-Managed Sync is an explicit, restart-verified host configuration workflow; saving the profile never edits wp-config.php or grants host write authority.', 'mad4b-site-control-plane' ); ?></p>
+				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> · <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. For an administrator-confirmed Staging profile, Host-Managed Sync attempts a guarded automatic wp-config.php correction on Save. The new environment is effective from the next WordPress request. Explicit host configuration and unwritable/ambiguous files are never overridden.', 'mad4b-site-control-plane' ); ?></p>
 				<?php if ( 'blocked_missing_deployment_binding' === $sync_state ) : ?><div class="notice notice-warning inline"><p><?php esc_html_e( 'Configure a unique MAD4B_SCP_DEPLOYMENT_BINDING secret at this host and save the exact Site Profile again before planning Host-Managed Sync. Do not use a shared secret between Production and Staging.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
 				<?php if ( 'blocked_explicit_host_conflict' === $sync_state ) : ?><div class="notice notice-error inline"><p><?php esc_html_e( 'Host declares another environment explicitly. Site Profile cannot override it; reconcile at the Host after checking its identity.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
 				<?php if ( '' !== $host_directive ) : ?>
@@ -315,9 +326,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					<tr><th><label for="mad4b-environment-sync-mode"><?php esc_html_e( 'WordPress environment synchronization', 'mad4b-site-control-plane' ); ?></label></th><td>
 						<select id="mad4b-environment-sync-mode" name="environment_sync_mode">
 							<option value="profile_only" <?php selected( $sync_mode, 'profile_only' ); ?>><?php esc_html_e( 'Profile Only (MAD4B governance)', 'mad4b-site-control-plane' ); ?></option>
-							<option value="host_managed" <?php selected( $sync_mode, 'host_managed' ); ?>><?php esc_html_e( 'Host-Managed Sync (non-Production; Host applies, WordPress verifies)', 'mad4b-site-control-plane' ); ?></option>
+							<option value="host_managed" <?php selected( $sync_mode, 'host_managed' ); ?>><?php esc_html_e( 'Host-Managed Sync (Staging wp-config updated automatically on Save)', 'mad4b-site-control-plane' ); ?></option>
 						</select>
-						<p class="description"><?php esc_html_e( 'Host-Managed Sync records the requested mode only. It does not modify WordPress bootstrap in this request. A separate authorized host deployment must set WP_ENVIRONMENT_TYPE and the unique deployment binding; a fresh boot must read them back.', 'mad4b-site-control-plane' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Host-Managed Sync automatically attempts the Staging wp-config.php update on an authorized Site Profile Save. On success, WordPress will report Staging on the next request. Other environments, explicit host settings and unsupported files require independent Host reconciliation; the deployment binding remains a separate MCP safety requirement.', 'mad4b-site-control-plane' ); ?></p>
 					</td></tr>
 					<tr><th><label for="mad4b-display-name"><?php esc_html_e( 'Display name', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-display-name" name="display_name" value="<?php echo esc_attr( isset( $profile['display_name'] ) ? $profile['display_name'] : get_bloginfo( 'name' ) ); ?>" /></td></tr>
 					<tr><th><label for="mad4b-app-id"><?php esc_html_e( 'ChatGPT App ID', 'mad4b-site-control-plane' ); ?></label></th><td><input class="regular-text" id="mad4b-app-id" name="chatgpt_app_id" value="<?php echo esc_attr( MAD4B_SCP_Site_Profile::chatgpt_app_id() ); ?>" placeholder="plugin_asdk_app_..." /></td></tr>
