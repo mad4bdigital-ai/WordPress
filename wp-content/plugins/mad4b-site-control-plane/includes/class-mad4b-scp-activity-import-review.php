@@ -141,7 +141,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             'ready_for_import_execution' => false, 'read_only' => true,
             'mutation_performed' => false );
     }
-    private static function inspect( $input ) {
+    private static function inspect( $input, $issue_offset = 0 ) {
         if ( ! is_array( $input ) ) return self::error( 'mad4b_import_payload_invalid', 'Object required.' );
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
         if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
@@ -288,7 +288,8 @@ final class MAD4B_SCP_Activity_Import_Review {
                 ), true ) ) $review_count++; else $block_count++;
                 $issue_counts[ $reason ] = isset( $issue_counts[ $reason ] ) ?
                     $issue_counts[ $reason ] + 1 : 1;
-                if ( count( $issues ) < self::MAX_ISSUES )
+                if ( $issue_total > $issue_offset &&
+                    count( $issues ) < self::MAX_ISSUES )
                     $issues[] = array( 'row' => (int) $i + 1,
                         'identity_sha256' => hash( 'sha256', $id ),
                         'reason' => $reason, 'severity' =>
@@ -306,7 +307,8 @@ final class MAD4B_SCP_Activity_Import_Review {
                         $reason = 'wpml_group_missing_required_language';
                         $issue_counts[ $reason ] = isset( $issue_counts[ $reason ] ) ?
                             $issue_counts[ $reason ] + 1 : 1;
-                        if ( count( $issues ) < self::MAX_ISSUES )
+                        if ( $issue_total > $issue_offset &&
+                            count( $issues ) < self::MAX_ISSUES )
                             $issues[] = array( 'row' => 0,
                                 'identity_sha256' => hash( 'sha256', $group_name ),
                                 'reason' => $reason, 'severity' => 'block' );
@@ -335,7 +337,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'block_issue_count' => $block_count,
             'review_issue_count' => $review_count,
             'issue_counts_by_reason' => $issue_counts,
-            'issues' => $issues, 'issues_truncated' => $issue_total > count( $issues ),
+            'issues' => $issues,
+            'issue_offset' => $issue_offset,
+            'issues_truncated' => $issue_total > $issue_offset + count( $issues ),
             'ready_for_import_execution' => false,
             'requires_human_review' => true, 'source_values_persisted' => false,
             'read_only' => true, 'mutation_performed' => false );
@@ -344,6 +348,35 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
             return self::error( 'mad4b_import_plan_denied', 'Enrolled administrator required.' );
         return self::inspect( $input );
+    }
+    public static function issues_page( $input = array() ) {
+        if ( ! is_array( $input ) || ! current_user_can( 'manage_options' ) )
+            return self::error( 'mad4b_import_issues_page_denied', 'Administrator access required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $sha = isset( $input['snapshot_sha256'] ) ? (string) $input['snapshot_sha256'] : '';
+        $offset = isset( $input['issue_offset'] ) ? $input['issue_offset'] : 0;
+        if ( ! is_int( $offset ) || $offset < 0 || $offset > 10000 )
+            return self::error( 'mad4b_import_issues_offset_invalid', 'Issue page offset out of bounds.' );
+        $loaded = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot( $slug, $sha );
+        if ( is_wp_error( $loaded ) ) return $loaded;
+        $all = self::inspect( $loaded['input'] );
+        if ( is_wp_error( $all ) ) return $all;
+        if ( ! hash_equals( $loaded['receipt']['plan']['plan_sha256'], $all['plan_sha256'] ) ||
+            $loaded['receipt']['plan']['issue_count_observed'] !== $all['issue_count_observed'] )
+            return self::error( 'mad4b_import_issues_source_stale', 'Snapshot policy or issue set has changed.' );
+        $page = self::inspect( $loaded['input'], $offset );
+        if ( is_wp_error( $page ) ) return $page;
+        return array( 'contract' => 'mad4b.import-issues-page.v1',
+            'profile_slug' => $slug, 'snapshot_sha256' => $sha,
+            'plan_sha256' => $page['plan_sha256'],
+            'issue_offset' => $offset, 'issues' => $page['issues'],
+            'next_offset' => $page['issues_truncated'] ?
+                $offset + count( $page['issues'] ) : null,
+            'issue_count_total' => $page['issue_count_observed'],
+            'issue_counts_by_reason' => $page['issue_counts_by_reason'],
+            'block_issue_count' => $page['block_issue_count'],
+            'review_issue_count' => $page['review_issue_count'],
+            'read_only' => true, 'mutation_performed' => false );
     }
     public static function review( $input = array() ) {
         if ( ! current_user_can( 'manage_options' ) || ! self::enrolled() )
