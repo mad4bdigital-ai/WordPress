@@ -33,15 +33,22 @@ final class MAD4B_SCP_CSO_Domain_Plans {
     public static function read( $name, array $params, array $preparation ) {
         $descriptor = MAD4B_SCP_CSO_Registry::describe( $name, $params );
         if ( is_wp_error( $descriptor ) ) return $descriptor;
-        if ( true !== ( $descriptor['readonly'] ?? null ) || 'read' !== ( $descriptor['lane'] ?? null ) ) return self::error( 'native_read_contract_required' );
+        if ( true !== ( $descriptor['read_only'] ?? $descriptor['readonly'] ?? null ) || 'read' !== ( $descriptor['lane'] ?? null ) ) return self::error( 'native_read_contract_required' );
         $result = MAD4B_SCP_CSO_Registry::read( $name, $params, $preparation );
         if ( is_wp_error( $result ) ) return $result;
-        if ( is_array( $result ) && 'mad4b.chatgpt-read-execute.v1' === ( $result['contract'] ?? null ) ) $result = $result['result'] ?? null;
+        if ( is_array( $result ) && 'mad4b.cso01.native-read.v1' === ( $result['contract'] ?? null ) ) {
+            if ( true !== ( $result['read_only'] ?? null ) || true === ( $result['mutation_performed'] ?? false ) || true === ( $result['authorizing'] ?? false ) ) return self::error( 'native_read_output_invalid' );
+            $result = $result['result'] ?? null;
+        }
+        if ( is_array( $result ) && 'mad4b.chatgpt-read-execute.v1' === ( $result['contract'] ?? null ) ) {
+            if ( true === ( $result['mutation_performed'] ?? false ) || true === ( $result['authorizing'] ?? false ) ) return self::error( 'native_read_output_invalid' );
+            $result = $result['result'] ?? null;
+        }
         if ( ! is_array( $result ) || true === ( $result['mutation_performed'] ?? false ) || true === ( $result['authorizing'] ?? false ) ) return self::error( 'native_read_output_invalid' );
         return $result;
     }
     public static function descriptor_summary( array $descriptor ) {
-        return self::select( $descriptor, array( 'ability_name', 'schema_sha256', 'adapter_sha256', 'capability_binding', 'lane', 'readonly', 'provider', 'storage', 'storage_status', 'certification_status', 'cso_conformance_certified' ) );
+        return self::select( $descriptor, array( 'ability_name', 'schema_sha256', 'adapter_sha256', 'capability_binding', 'lane', 'read_only', 'readonly', 'provider', 'storage_kind', 'native_route_available', 'storage', 'storage_status', 'certification_status', 'cso_conformance_certified' ) );
     }
     public static function field_summary( array $values ) {
         $out = array();
@@ -76,13 +83,13 @@ final class MAD4B_SCP_CSO_Domain_Plans {
         if ( is_wp_error( $profile ) || ! is_array( $profile ) ) return self::error( 'content_native_profile_required' );
         $routes = MAD4B_SCP_Content_Experience_Profiles::profile_routes( $profile['slug'], $profile['revision'] );
         $phase = array_search( $name, array_intersect_key( $routes, array_flip( array( 'create_plan', 'update_plan', 'publish_plan' ) ) ), true );
-        if ( false === $phase || true !== ( $descriptor['readonly'] ?? null ) ) return self::error( 'content_native_plan_required' );
+        if ( false === $phase || true !== ( $descriptor['read_only'] ?? $descriptor['readonly'] ?? null ) ) return self::error( 'content_native_plan_required' );
         if ( ( $profile['post_type'] ?? null ) !== $target['post_type'] ) return self::error( 'content_post_type_mismatch' );
         if ( 'create_plan' === $phase && 0 !== $target['id'] ) return self::error( 'content_create_target_invalid' );
         if ( 'create_plan' !== $phase && ( $target['id'] < 1 || '' === $target['expected_revision'] || ( $values['post_id'] ?? null ) !== $target['id'] || ( $values['expected_modified_gmt'] ?? null ) !== $target['expected_revision'] ) ) return self::error( 'content_revision_binding_mismatch' );
         if ( ! is_array( $input['preparation'] ?? null ) ) return self::error( 'native_preparation_required' );
         $native = self::read( $name, $values, $input['preparation'] ); if ( is_wp_error( $native ) ) return $native;
-        if ( 'mad4b.content-experience-operation-plan.v1' !== ( $native['contract'] ?? null ) || ! self::sha( $native['plan_sha256'] ?? null ) || ( $native['profile_slug'] ?? null ) !== $profile['slug'] || ( $native['post_type'] ?? null ) !== $target['post_type'] ) return self::error( 'content_plan_provenance_invalid' );
+        if ( 'mad4b.content-experience-operation-plan.v1' !== ( $native['contract'] ?? null ) || ! self::sha( $native['plan_sha256'] ?? null ) || ( $native['profile_slug'] ?? null ) !== $profile['slug'] || ( $native['profile_revision'] ?? null ) !== $profile['revision'] || ( $native['operation'] ?? null ) !== str_replace( '_plan', '', $phase ) || ( $native['post_type'] ?? null ) !== $target['post_type'] ) return self::error( 'content_plan_provenance_invalid' );
         $media = array();
         foreach ( array( 'media_publish_rights', 'remote_media_provenance_rights', 'remote_media_manifest_receipt' ) as $key ) if ( is_array( $native[ $key ] ?? null ) ) $media[ $key ] = self::select( $native[ $key ], array( 'contract', 'valid', 'ready', 'state', 'checked_field_count', 'checked_item_count', 'checked_attachment_count', 'remote_attachment_count', 'nearest_expiry', 'evaluated_on' ) );
         return self::finish( 'content_plan', $scope, array( 'target' => $target, 'descriptor' => self::descriptor_summary( $descriptor ),
@@ -104,11 +111,12 @@ final class MAD4B_SCP_CSO_Domain_Plans {
         $descriptor = MAD4B_SCP_CSO_Registry::describe( $name, $values ); if ( is_wp_error( $descriptor ) ) return $descriptor;
         $valid = self::validate_values( $values, $descriptor['input_schema'] ?? null ); if ( is_wp_error( $valid ) ) return $valid;
         $provider = $descriptor['provider'] ?? array(); $storage = $descriptor['storage'] ?? array(); $blockers = array();
-        if ( ! self::sha( $provider['certification_sha256'] ?? null ) ) $blockers[] = 'independent_provider_certification_required';
-        if ( 'native_ability' !== ( $storage['kind'] ?? null ) || true !== ( $storage['native_route_available'] ?? null ) ) $blockers[] = 'native_provider_route_required';
+        $provider_id = $provider['provider_id'] ?? $provider['id'] ?? null;
+        if ( ! self::sha( $provider['certification_generation_sha256'] ?? $provider['certification_sha256'] ?? null ) ) $blockers[] = 'current_provider_certification_descriptor_required';
+        if ( 'native_ability' !== ( $descriptor['storage_kind'] ?? $storage['kind'] ?? null ) || true !== ( $descriptor['native_route_available'] ?? $storage['native_route_available'] ?? null ) ) $blockers[] = 'native_provider_route_required';
         if ( 'WRITE_CANDIDATE' !== ( $descriptor['storage_status'] ?? null ) ) $blockers[] = 'native_business_write_route_unavailable';
-        $cert = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && is_string( $provider['id'] ?? null ) ? MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider['id'], $name ) : array();
-        $traits = class_exists( 'MAD4B_SCP_Capability_Traits' ) && is_string( $cert['capability_id'] ?? null ) ? MAD4B_SCP_Capability_Traits::profile( $provider['id'], $cert['capability_id'] ) : array();
+        $cert = class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) && method_exists( 'MAD4B_SCP_Provider_Compatibility_Certification', 'ability_status' ) && is_string( $provider_id ) ? MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider_id, $name ) : array();
+        $traits = class_exists( 'MAD4B_SCP_Capability_Traits' ) && is_string( $cert['capability_id'] ?? null ) ? MAD4B_SCP_Capability_Traits::profile( $provider_id, $cert['capability_id'] ) : array();
         $business = ! is_wp_error( $traits ) && is_array( $traits ) && true === ( $traits['descriptor_binding_ready'] ?? null ) && in_array( $name, is_array( $traits['ability_names'] ?? null ) ? $traits['ability_names'] : array(), true ) && 'mad4b_adapter_semantics' === ( $traits['traits']['traits_scope'] ?? null ) && true === ( $cert['structural_compatible'] ?? null ) && true === ( $cert['artifact_authority_bound'] ?? null ) && true === ( $cert['write_eligible'] ?? null );
         if ( ! $business ) $blockers[] = 'native_business_validation_and_side_effect_contract_required';
         $revision_verified = false;
