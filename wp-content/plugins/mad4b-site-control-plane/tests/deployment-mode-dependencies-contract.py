@@ -71,6 +71,26 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
           len(cfg.get("required_for_identity",[]))==3
           and len(cfg.get("optional_capabilities",[]))>=4
           and cfg.get("failure_classification",{}).get("optional_provider_unavailable")=="CAPABILITY_UNAVAILABLE")
+    release_path=plugin_root/"config/runtime-release-policy.json"
+    if release_path.is_file():
+        try:
+            release=json.loads(release_path.read_text(encoding="utf-8"))
+            releases=cfg.get("mcp_release_pair",{})
+            check("mcp_release_pair_policy",
+                  releases.get("current_target_adapter_version")==release.get("target_adapter_version")
+                  and releases.get("supported_transition_versions")==release.get("supported_transition_adapter_versions")
+                  and releases.get("pair_certification_required") is True)
+        except (OSError,ValueError):
+            check("mcp_release_pair_policy",False)
+    else:
+        check("mcp_release_pair_policy",False)
+    hostcfg=cfg.get("host_compatibility",{})
+    check("wp_php_header_floor",
+          "Requires at least: "+str(hostcfg.get("wordpress_header_requires_at_least","")) in bootstrap
+          and "Requires PHP: "+str(hostcfg.get("php_header_requires_at_least","")) in bootstrap)
+    check("mcp_transport_not_self_certified",
+          "pair_certification_verified' => false" in plugin and
+          "TRANSPORT_NOT_OBSERVED" in plugin)
     check("negative_fixture",all(x in test_source for x in
           ("tenant spoof rejected","mode spoof rejected","switched blog may not reuse static site profile cache",
            "unbound legacy profile blocked","unversioned brand context blocked")))
