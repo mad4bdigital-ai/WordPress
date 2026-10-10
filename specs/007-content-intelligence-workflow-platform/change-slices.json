@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 757,
+  "changed_file_count": 762,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1576,6 +1576,19 @@
         "docs/runbooks/staging-autopilot-assistant-handoff.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-autopilot.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-autopilot-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261011-preview-evidence-matrix",
+      "semantic_unit": "Provide real Chromium, same-origin Customizer preview and actual WP-CLI native read-only evidence as separated source-pinned diagnostics, with fail-closed contracts",
+      "revert_boundary": "Remove preview runner, native observer, tests, workflow and runbook as one opt-in non-authorizing unit; no WordPress plugin bootstrap or production release mutation",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/mad4b-preview-matrix.py",
+        "tools/mad4b-preview-native-probe.php",
+        "tools/test_mad4b_preview_matrix.py",
+        "docs/runbooks/advanced-preview-evidence-matrix.md",
+        ".github/workflows/mad4b-preview-matrix-ci.yml"
       ]
     }
   ],
