@@ -145,9 +145,9 @@ def execute_test(runtime, source, kind, args, timeout):
                "--tmpfs", "/tmp:rw,nosuid,size=64m", "--workdir", "/source",
                image, "php" if kind == "php" else "python3", *args]
     else:
-        executable = shutil.which("php" if kind == "php" else "python3")
-        if executable is None and kind == "python":
-            executable = sys.executable
+        # Use the interpreter that launched this runner, not Windows
+        # Store python3 aliases or a second unreviewed Python installation.
+        executable = shutil.which("php") if kind == "php" else sys.executable
         if executable is None:
             return {"state": "NOT_RUN", "reason": "native_runtime_missing:" + kind}
         cmd = [executable, *args]
