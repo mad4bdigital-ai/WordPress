@@ -432,7 +432,7 @@ final class MAD4B_SCP_Self_Update {
 		$admin = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
-		if ( is_array( $input ) && isset( $input['channel'] ) && 'staging_candidate_upload' === $input['channel'] ) {
+		if ( is_array( $input ) && isset( $input['channel'] ) && in_array( $input['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
 			// A generic admin grant is not sufficient for an unpromoted PR build.
 			// Require an enrolled owner/admin's same-app OAuth step-up authority.
 			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
@@ -848,10 +848,11 @@ final class MAD4B_SCP_Self_Update {
 		$identity = self::normalize_requested_identity( $input );
 		if ( is_wp_error( $identity ) ) return $identity;
 		$channel = isset( $input['channel'] ) ? (string) $input['channel'] : 'governed_file_upload';
-		if ( ! in_array( $channel, array( 'governed_file_upload', 'staging_candidate_upload' ), true ) ) {
+		if ( ! in_array( $channel, array( 'governed_file_upload', 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
 			return new WP_Error( 'mad4b_self_update_upload_channel_invalid', 'Unknown Control Plane upload channel.' );
 		}
-		$staging_candidate = 'staging_candidate_upload' === $channel;
+		$staging_candidate = in_array( $channel, array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true );
+		$wordpress_native = 'wordpress_native_candidate_upload' === $channel;
 
 		$current = self::installed_identity();
 		$blockers = array();
@@ -867,20 +868,23 @@ final class MAD4B_SCP_Self_Update {
 		if ( $staging_candidate ) {
 			// This is an explicit, owner-governed Staging opt-in. It is NEVER an
 			// alternate Production update feed or an arbitrary archive URL.
-			if ( ! defined( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' )
-				|| true !== constant( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' ) ) {
+			if ( ! $wordpress_native && ( ! defined( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' )
+				|| true !== constant( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' ) ) ) {
 				$blockers[] = 'staging_candidate_host_opt_in_required';
 			}
-			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+			if ( ! $wordpress_native && ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
 				|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'wordpress_environment_explicit' )
 				|| ! MAD4B_SCP_Site_Profile::wordpress_environment_explicit()
 				|| ! function_exists( 'wp_get_environment_type' )
-				|| 'staging' !== wp_get_environment_type() ) {
+				|| 'staging' !== wp_get_environment_type() ) ) {
 				$blockers[] = 'explicit_wordpress_staging_environment_required';
 			}
 			$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-			if ( ! is_array( $site ) || empty( $site['deployment_binding_configured'] )
-				|| empty( $site['same_origin_clone_protection'] ) ) {
+			if ( $wordpress_native && ( ! class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) ||
+				! MAD4B_SCP_WordPress_Native_Opt_In::enabled() ) )
+				$blockers[] = 'wordpress_native_site_opt_in_required';
+			if ( ! $wordpress_native && ( ! is_array( $site ) || empty( $site['deployment_binding_configured'] )
+				|| empty( $site['same_origin_clone_protection'] ) ) ) {
 				$blockers[] = 'exact_site_deployment_binding_required';
 			}
 			require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-source-selector.php';
@@ -937,7 +941,10 @@ final class MAD4B_SCP_Self_Update {
 		if ( $staging_candidate ) {
 			$plan['candidate_source'] = $candidate_source;
 			$plan['staging_only'] = true;
-			$plan['host_opt_in_required'] = true;
+			$plan['host_opt_in_required'] = ! $wordpress_native;
+			$plan['wordpress_native_admin_opt_in_required'] = $wordpress_native;
+			$plan['host_runner_required'] = ! $wordpress_native;
+			$plan['general_governed_write_authority_required'] = true;
 		}
 		sort( $plan['blockers'], SORT_STRING );
 		$plan['plan_sha256'] = self::digest( $plan );
@@ -951,7 +958,7 @@ final class MAD4B_SCP_Self_Update {
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed upload plan is required.' );
 		// Defense in depth: even direct internal callers must present the same
 		// enrolled administrator OAuth step-up required by the Ability gate.
-		if ( isset( $input['channel'] ) && 'staging_candidate_upload' === $input['channel'] ) {
+		if ( isset( $input['channel'] ) && in_array( $input['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
 			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
 				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
 				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
@@ -970,7 +977,7 @@ final class MAD4B_SCP_Self_Update {
 			return new WP_Error( 'mad4b_self_update_plan_changed', 'Control Plane upload plan changed since review.', array( 'current_plan_sha256' => $plan['plan_sha256'], 'expected_plan_sha256' => $expected ) );
 		}
 		if ( empty( $plan['eligible'] ) ) return new WP_Error( 'mad4b_self_update_preflight_blocked', 'Control Plane upload preflight blocked the mutation.', array( 'blockers' => $plan['blockers'] ) );
-		$staging_candidate = 'staging_candidate_upload' === $plan['channel'];
+		$staging_candidate = in_array( $plan['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true );
 		if ( $staging_candidate && ( ! isset( $input['candidate_confirmation'] )
 			|| 'INSTALL EXACT STAGING CANDIDATE' !== $input['candidate_confirmation'] ) ) {
 			return new WP_Error( 'mad4b_self_update_staging_confirmation_required', 'Explicit reviewed Staging candidate confirmation is required.' );
@@ -2942,7 +2949,7 @@ final class MAD4B_SCP_Self_Update {
 				'package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 				'size_bytes' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_UPLOAD_BYTES ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
-				'channel' => array( 'type' => 'string', 'enum' => array( 'governed_file_upload', 'staging_candidate_upload' ) ),
+				'channel' => array( 'type' => 'string', 'enum' => array( 'governed_file_upload', 'staging_candidate_upload', 'wordpress_native_candidate_upload' ) ),
 				'candidate_source' => array( 'type' => 'object', 'properties' => array(
 					'repository' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 140 ),
 					'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit' ) ),

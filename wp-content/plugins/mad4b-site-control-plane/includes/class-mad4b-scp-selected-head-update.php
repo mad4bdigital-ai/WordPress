@@ -49,13 +49,23 @@ final class MAD4B_SCP_Selected_Head_Update {
 
     /** Default remains the signed master channel; optional mode needs host opt-in. */
     private static function opt_in() {
+        if ( class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) &&
+            MAD4B_SCP_WordPress_Native_Opt_In::enabled() ) return true;
         return defined( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' )
             && true === constant( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' )
             && defined( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' )
             && true === constant( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' );
     }
 
+    private static function candidate_channel() {
+        return class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) &&
+            MAD4B_SCP_WordPress_Native_Opt_In::enabled()
+            ? 'wordpress_native_candidate_upload' : 'staging_candidate_upload';
+    }
+
     private static function exact_staging() {
+        if ( class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) &&
+            MAD4B_SCP_WordPress_Native_Opt_In::enabled() ) return true;
         return class_exists( 'MAD4B_SCP_Site_Profile' )
             && method_exists( 'MAD4B_SCP_Site_Profile', 'wordpress_environment_explicit' )
             && MAD4B_SCP_Site_Profile::wordpress_environment_explicit()
@@ -75,7 +85,7 @@ final class MAD4B_SCP_Selected_Head_Update {
         // Reuse all existing enrolled-owner, OAuth step-up and central approval
         // gates of the manual Staging candidate upload, not bootstrap/breakglass.
         $access = MAD4B_SCP_Self_Update::can_upload_apply(
-            array( 'channel' => 'staging_candidate_upload' )
+            array( 'channel' => self::candidate_channel() )
         );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
@@ -224,7 +234,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             $blockers[] = $package->get_error_code();
         } else {
             $upload_plan = MAD4B_SCP_Self_Update::upload_plan( array_merge( $package['identity'], array(
-                'channel' => 'staging_candidate_upload', 'candidate_source' => $candidate, 'reason' => $reason,
+                'channel' => self::candidate_channel(), 'candidate_source' => $candidate, 'reason' => $reason,
             ) ) );
             if ( is_wp_error( $upload_plan ) ) $blockers[] = $upload_plan->get_error_code();
             elseif ( empty( $upload_plan['eligible'] ) ) $blockers = array_merge( $blockers, $upload_plan['blockers'] );
@@ -251,6 +261,8 @@ final class MAD4B_SCP_Selected_Head_Update {
             'manifest_sha256' => is_wp_error( $package ) ? '' : $package['manifest_sha256'],
             'release_verdict_run_id' => is_wp_error( $package ) ? 0 : $package['release_verdict_run_id'],
             'underlying_upload_plan_sha256' => is_array( $upload_plan ) ? ( $upload_plan['plan_sha256'] ?? '' ) : '',
+            'update_channel' => self::candidate_channel(),
+            'wordpress_native' => 'wordpress_native_candidate_upload' === self::candidate_channel(),
             'eligible' => empty( $blockers ), 'blockers' => $blockers,
             'assistant_recovery' => self::blocker_recovery( $blockers ),
             'unattended_host_bootstrap' => false,
@@ -304,7 +316,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             return self::fail( 'selected_head_moved', 'Branch/PR moved after download. New approval required.' );
 
         $upload = array_merge( $plan['package_identity'], $plan_input, array(
-            'channel' => 'staging_candidate_upload',
+            'channel' => $plan['update_channel'],
             'candidate_confirmation' => 'INSTALL EXACT STAGING CANDIDATE',
             'expected_plan_sha256' => $plan['underlying_upload_plan_sha256'],
             'package_base64' => base64_encode( $bytes ),

@@ -343,6 +343,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
+			<?php MAD4B_SCP_WordPress_Native_Opt_In::render_admin( $status ); ?>
 			<?php if ( '' !== $state ) : ?><div class="notice <?php echo false !== strpos( $state, 'blocked' ) ? 'notice-warning' : 'notice-info'; ?>"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
 			<div class="notice notice-info inline" style="max-width:950px;padding:12px 16px">
 				<p><strong><?php esc_html_e( 'Staging Autopilot / Assistant Handoff', 'mad4b-site-control-plane' ); ?></strong></p>
