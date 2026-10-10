@@ -228,11 +228,11 @@ def probe_wordpress_rest(site_url, target_type):
     try:
         with opener.open(req, timeout=8) as response:
             status = int(response.status)
-            body = response.read(65537)
-        if status != 200 or len(body) > 65536:
+            body = response.read(1048577)
+        if status != 200 or len(body) > 1048576:
             return {"state": "UNVERIFIED", "reason": "rest_api_unavailable_or_unbounded"}
         doc = json.loads(body)
-        return {"state": "REACHABLE_NOT_CERTIFIED" if isinstance(doc, dict) else "UNVERIFIED",
+        return {"state": "REACHABLE_NOT_CERTIFIED" if isinstance(doc, dict) and ("routes" in doc or "namespaces" in doc) else "UNVERIFIED",
                 "endpoint": url, "http_status": status, "read_only": True,
                 "hosting_not_docker_assumed": True}
     except (OSError, ValueError, json.JSONDecodeError) as exc:
