@@ -15,6 +15,7 @@ if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Experience' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-experience.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Batches' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-batches.php';
 if ( ! class_exists( 'MAD4B_SCP_Import_Acceptance_Gates' ) ) require_once __DIR__ . '/class-mad4b-scp-import-acceptance-gates.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_WPML_Readback' ) ) require_once __DIR__ . '/class-mad4b-scp-import-wpml-readback.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
 /**
@@ -599,6 +600,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-import-experience-plan',
             'mad4b/business-activity-import-batch-verify',
             'mad4b/business-activity-import-acceptance-gates',
+            'mad4b/business-activity-import-wpml-readback',
             'mad4b/business-activity-import-modes',
             'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-reconciliation-plan',
@@ -882,6 +884,19 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 ), array( 'profile_slug', 'batch_id', 'confirmed' ) ),
                 'surface' => 'content', 'readonly' => false,
                 'destructive' => true, 'idempotent' => false,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-wpml-readback',
+                'label' => 'Audit Exact Source WPML Translation Group Readback',
+                'callback' => array( 'MAD4B_SCP_Import_WPML_Readback', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'group_index' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 499 ),
+                ), array( 'profile_slug', 'snapshot_sha256', 'group_index' ) ),
+                'surface' => 'read', 'readonly' => true,
+                'destructive' => false, 'idempotent' => true,
             ),
             array(
                 'name' => 'mad4b/business-activity-import-acceptance-gates',
