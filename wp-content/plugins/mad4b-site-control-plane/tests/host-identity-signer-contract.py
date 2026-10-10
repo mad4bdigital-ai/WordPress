@@ -58,6 +58,7 @@ with tempfile.TemporaryDirectory(prefix="mad4b-host-identity-") as temp:
         "environment": "staging",
         "profile_revision": 3,
         "profile_digest": "a" * 64,
+        "target_fingerprint": profile["target_fingerprint"],
     }
     proof = runner.sign_live_host_identity_challenge(profile, challenge, now=1791630000)
     assert proof["contract"] == "mad4b.host-identity-live.v1"
@@ -73,6 +74,7 @@ with tempfile.TemporaryDirectory(prefix="mad4b-host-identity-") as temp:
     ).encode()
     denied(profile, dict(challenge, environment="production"), "production cannot be signed")
     denied(profile, dict(challenge, site_uuid="11111111-1111-4111-8111-111111111111"), "foreign site UUID")
+    denied(profile, dict(challenge, target_fingerprint="c" * 64), "copied site at different physical install")
     denied(profile, dict(challenge, nonce="1"), "short nonce")
     denied(profile, dict(challenge, profile_revision=0), "missing revision")
     denied(profile, dict(challenge, profile_digest=""), "missing digest")
@@ -90,4 +92,4 @@ with tempfile.TemporaryDirectory(prefix="mad4b-host-identity-") as temp:
     os.chmod(fake_root / "host-private-identity.pem", 0o600)
     denied(dict(profile, wordpress_root=str(fake_root), host_environment_receipt_signing_key_file=str(fake_root / "host-private-identity.pem")), challenge, "signer copied into site root")
 
-print("PASS: 13 enrolled Host Runner identity signing and no-clone refusals")
+print("PASS: 14 enrolled Host Runner identity signing and no-clone refusals")
