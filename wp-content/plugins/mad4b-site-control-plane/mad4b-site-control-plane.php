@@ -447,6 +447,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-drafts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-changes.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-bulk.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-workflows.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-templates.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-operations.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-gateway.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-form-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-secrets.php';

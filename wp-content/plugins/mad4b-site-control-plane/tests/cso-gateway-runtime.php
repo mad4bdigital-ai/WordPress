@@ -54,7 +54,7 @@ foreach(array('change_commit','workflow_run','monitor_plan','promotion_plan')as$
 $private=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>'secret_session','arguments'=>array()));
 ok(is_wp_error($private)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($private),
   'secret handoff cannot be entered from MCP/public dispatch');
-foreach(array('draft','change_plan','change_verify','bulk_plan','workflow_compile') as $private_name) {
+foreach(array('draft','change_plan','change_verify','bulk_plan','workflow_compile','doctor_plan','template_plan') as $private_name) {
  $result=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$private_name,'arguments'=>array()));
  ok(is_wp_error($result)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($result),
    'private write-state route never callable from MCP: '.$private_name);

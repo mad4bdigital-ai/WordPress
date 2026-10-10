@@ -46,11 +46,11 @@ final class MAD4B_SCP_CSO_Gateway {
             'multisite_plan' => array( 'multisite', 'plan', array( 'scope','sites' ) ),
             'promotion_plan' => array( 'production_proposal', 'plan', array( 'scope','artifact','destination','staging_bundle','preparation','changes' ) ),
             'monitor_plan' => array( 'operations', 'plan', array( 'scope','opt_in','conditions','interval_seconds','ttl_seconds' ) ),
-            'doctor_plan' => array( 'operations', 'plan', array( 'scope','domain','diagnostic_input','preparation' ) ),
+            'doctor_plan' => array( 'operations', 'private', array( 'scope','domain','diagnostic_input','preparation' ) ),
             'drift_plan' => array( 'operations', 'plan', array( 'scope','capability','reference','target','desired_values','observation_capability','observation_input','observation_path','preparation' ) ),
             'metrics_plan' => array( 'operations', 'plan', array( 'scope','opt_in','hours' ) ),
             'accessibility_report' => array( 'forms', 'read', array( 'scope','capability','target' ) ),
-            'template_plan' => array( 'forms', 'plan', array( 'form','recipe' ) ),
+            'template_plan' => array( 'forms', 'private', array( 'form','recipe' ) ),
         );
     }
 
@@ -63,7 +63,7 @@ final class MAD4B_SCP_CSO_Gateway {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
             'field_help', 'field_suggest', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify', 'bulk_plan', 'workflow_compile'
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify', 'bulk_plan', 'workflow_compile', 'doctor_plan', 'template_plan'
         );
     }
 
