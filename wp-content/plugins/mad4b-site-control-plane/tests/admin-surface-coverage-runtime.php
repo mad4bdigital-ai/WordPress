@@ -116,6 +116,19 @@ $proposal=$c::blueprint(array('surface_id'=>$ajax['surface_id'],
 check_surface(!is_wp_error($proposal) && !$proposal['execution_performed'] &&
  !$proposal['authority_created'] && $proposal['next_state']==='source_owner_adapter_review',
  'Exact snapshot returns reviewed adapter proposal not execution');
+check_surface(in_array('hook_callback_source_review',$proposal['family_acceptance_requirements'],true) &&
+ $proposal['risk_class']==='unknown_external_or_write_effect',
+ 'Opaque AJAX proposed adapter requires hook source review and effect policy');
+$setting_blueprint=$c::blueprint(array('surface_id'=>$setting['surface_id'],
+ 'snapshot_sha256'=>$full['snapshot_sha256'],'purpose'=>'Certify registered Settings API entry'));
+check_surface(!is_wp_error($setting_blueprint) &&
+ in_array('nonsecret_field_allowlist',$setting_blueprint['family_acceptance_requirements'],true),
+ 'Settings adapter proposal includes explicit safe-field allowlist');
+$approved_blueprint=$c::blueprint(array('surface_id'=>$approved['surface_id'],
+ 'snapshot_sha256'=>$full['snapshot_sha256'],'purpose'=>'Reuse original governed WP Ability'));
+check_surface(!is_wp_error($approved_blueprint) &&
+ $approved_blueprint['next_state']==='use_existing_canonical_planner',
+ 'Already registered planner is reused, not replaced with new adapter');
 MAD4B_SCP_Site_Profile::$site['canonical_origin']='https://foreign.example.test';
 check_surface(is_wp_error($c::blueprint(array('surface_id'=>$ajax['surface_id'],
  'snapshot_sha256'=>$full['snapshot_sha256'],'purpose'=>'Same operation'))),
