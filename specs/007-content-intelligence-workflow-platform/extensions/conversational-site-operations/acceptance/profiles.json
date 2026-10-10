@@ -1,0 +1,55 @@
+{
+  "contract": "mad4b.cso01.dynamic-acceptance.profiles.v1",
+  "status": "SPEC_ONLY_OPEN",
+  "profiles": [
+    {
+      "id": "baseline",
+      "extends": null,
+      "thresholds": {},
+      "additional_checks": []
+    },
+    {
+      "id": "large_catalog",
+      "extends": "baseline",
+      "thresholds": {
+        "min_catalog_abilities": 5000,
+        "max_search_p95_ms": 1500
+      },
+      "additional_checks": [
+        "discovery_multilingual_metadata_fuzz"
+      ]
+    },
+    {
+      "id": "multisite_network",
+      "extends": "baseline",
+      "thresholds": {
+        "min_independent_sites": 3
+      },
+      "additional_checks": [
+        "identity_network_role_isolation",
+        "provider_paid_feature_and_shadow_collision"
+      ]
+    },
+    {
+      "id": "multilingual",
+      "extends": "baseline",
+      "thresholds": {
+        "min_accessibility_modes": 3
+      },
+      "additional_checks": [
+        "discovery_multilingual_metadata_fuzz",
+        "client_low_bandwidth_and_offline"
+      ]
+    },
+    {
+      "id": "complex_provider",
+      "extends": "baseline",
+      "thresholds": {},
+      "additional_checks": [
+        "schema_nested_adapter_conformance",
+        "provider_paid_feature_and_shadow_collision",
+        "staging_browser_provider_parity"
+      ]
+    }
+  ]
+}
