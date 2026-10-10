@@ -63,6 +63,18 @@ class MAD4B_SCP_External_Handshake_Evidence {
 			'package_manifest_digest'=>str_repeat('b',64));
 	}
 }
+class MAD4B_SCP_Operation_Pipeline {
+	public static function compile($input){
+		return array('operation_id'=>$input['operation'],
+			'pipeline_sha256'=>str_repeat('e',64),
+			'registry_catalog_sha256'=>str_repeat('d',64),
+			'stages'=>array(
+				array('id'=>'discover','type'=>'read','required'=>true,
+					'enabled'=>true,'ability_registered'=>true),
+				array('id'=>'verify','type'=>'readback','required'=>true,
+					'enabled'=>true,'ability_registered'=>true)));
+	}
+}
 class MAD4B_SCP_Operation_Registry {
 	public static function status() {
 		$a=array('id'=>'content.create_draft',
