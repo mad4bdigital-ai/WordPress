@@ -18,6 +18,12 @@ operation that still requires a legacy HMAC binding.
 - A separate private key is NOT created. If the existing Host Runner has no
   enrolled signer, this mode fails closed; a Host operator must complete the
   original Host Runner key enrollment, not invent a WordPress fallback.
+- The signed challenge includes the **actual installed WordPress physical target
+  fingerprint** computed by the same canonical Host Bridge payload as the
+  existing Host Runner enrollment: site UUID, effective environment, real
+  WordPress root and current wp-config SHA-256. Host Runner refuses to sign
+  another fingerprint. This closes the same-URL copied-profile/different-root
+  case without inventing a second identity registry.
 - Multiple simultaneously authoritative roots are denied. When both the legacy
   deployment secret and live signed proof are present, Autopilot shows
   `blocked_multiple_host_identity_roots`; an operator must migrate rather than
@@ -112,3 +118,39 @@ implicitly allowed.
   functionality is deployed just because the PR code exists.
 
 The Host Runner source SHA changes when this feature is installed, so the existing profile's pinned `expected_runner_sha256` needs an independently reviewed exact-head update. Do not bypass the pin or let WordPress rewrite it. An existing Host Runner signer, its public trust pin and a distinct PHP pool UID are prerequisites, not automatically created by this source change.
+
+## Read-only migration inventory and aligned WordPress semantics
+
+`mad4b/host-identity-migration-plan` now returns a fail-closed, non-authorizing
+inventory of legacy consumers, their original HMAC/job integrity boundaries,
+whether a single Host signature has been freshly verified, and the next
+migration step. Every migrated consumer currently remains
+`new_signed_protocol_accepted=false`; obtaining a signed read proof alone
+never creates an approved mutation plan.
+
+WordPress `WP_ENVIRONMENT_TYPE=staging` observed explicitly with the exact
+Staging Site Profile is independently reported as `host_aligned` even when
+the old `MAD4B_SCP_DEPLOYMENT_BINDING` is missing. This is **an environment
+observation only**, not host-operation authorization or clone-safe acceptance.
+The exact separate `deployment_binding_configured`,
+`same_origin_clone_protection`, `host_identity.verified`, and current
+Write/Developer acceptance fields remain separately reported.
+
+Autopilot now proposes discovering the **existing enrolled Host Runner signer**
+when no legacy binding exists; it does not recommend a second secret by default.
+If the trusted signer/socket is unavailable, it remains BLOCKED, not repaired
+by falling back to a WordPress-stored credential.
+
+## Remaining security limits
+
+The physical install fingerprint + Unix peer isolation + private Host signing
+key can distinguish separately rooted sites. It cannot prove arbitrary tenant
+isolation when multiple sites intentionally share the same physical WordPress
+root, exact wp-config, PHP worker UID and Host Unix permissions. Those shared
+tenancy configurations require stronger Host enrollment / pool isolation and
+are not certified by this protocol alone.
+
+Host Runner signer/challenge source, PHP verifier, and read-only migration
+inventory are implemented in PR #258; Host Runner/Unix socket activation,
+signed write-intent migration, native runner acceptance and any deployment are
+still independent acceptance tasks. CI fixtures are not a signed Host receipt.
