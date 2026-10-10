@@ -87,6 +87,42 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         }
     }
 
+    /** Per-family checklist, not a silent authorization to use WordPress APIs. */
+    private static function family_requirements( $kind ) {
+        switch ( $kind ) {
+            case 'registered_settings':
+                return array( 'register_setting_source_ownership', 'rest_schema_and_sanitizer',
+                    'nonsecret_field_allowlist', 'option_revision_and_readback', 'rollback_or_irreversible_effect' );
+            case 'rest_routes':
+                return array( 'rest_permission_callback_review', 'allowed_HTTP_methods_and_args_schema',
+                    'authenticated_mcp_ability_wrapper', 'side_effect_and_idempotency_review', 'response_postconditions' );
+            case 'ajax_actions':
+            case 'admin_post_actions':
+                return array( 'hook_callback_source_review', 'csrf_nonce_and_WP_capabilities',
+                    'typed_input_and_output_contract', 'no_raw_form_or_AJAX_replay',
+                    'governed_ability_wrapper_and_effect_readback' );
+            case 'content_types':
+            case 'taxonomies':
+                return array( 'registered_entity_and_meta_schema', 'per_entity_capabilities',
+                    'revision_and_relationship_integrity', 'status_transition_readback',
+                    'trash_or_compensation_plan' );
+            case 'blocks':
+                return array( 'registered_block_attributes_schema', 'editor_serialization',
+                    'dynamic_render_side_effect_policy', 'preview_frontend_parity', 'restore_previous_revision' );
+            case 'cron_hooks':
+                return array( 'named_job_ability_not_direct_cron', 'schedule_lease_and_idempotency',
+                    'time_and_resource_budget', 'job_receipt_and_completion_probe', 'cancel_resume_policy' );
+            case 'governed_operations':
+                return array( 'registered_planner_schema', 'exact_executor_authority',
+                    'owner_confirmation_if_mutation', 'fresh_postconditions_and_audit',
+                    'rollback_or_compensation_validation' );
+            default:
+                return array( 'page_source_and_control_review', 'effective_WP_capability',
+                    'registered_typed_MCP_adapter', 'exact_owner_authorization',
+                    'effects_readback_and_compensation' );
+        }
+    }
+
     /** Pure reducer for independently testable discovery and trust boundaries. */
     public static function summarize( $observations, $site_identity = array(), $scan_mode = 'deep' ) {
         if ( ! is_array( $observations ) ) $observations = array();
@@ -287,6 +323,9 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                 'requested_purpose' => $purpose, 'source_inventory_sha256' => $expected,
                 'recommended_strategy' => $row['strategy'],
                 'adapter_kind' => $row['next_adapter'],
+                'family_acceptance_requirements' => self::family_requirements( $row['kind'] ),
+                'risk_class' => in_array( $row['kind'], array( 'ajax_actions', 'admin_post_actions',
+                    'cron_hooks', 'rest_routes' ), true ) ? 'unknown_external_or_write_effect' : 'source_review_required',
                 'required_artifacts' => array(
                     'registered_plugin_or_core_source_owner',
                     'typed_input_and_output_schemas',
