@@ -600,19 +600,24 @@ final class MAD4B_SCP_Activity_Import_Review {
             sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
         $expected = isset( $_POST['expected_payload_sha256'] ) ?
             sanitize_text_field( wp_unslash( $_POST['expected_payload_sha256'] ) ) : '';
+        $snapshot = isset( $_POST['expected_snapshot_sha256'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['expected_snapshot_sha256'] ) ) : '';
         if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
-            ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
-            wp_die( 'Exact review identity and digest required.' );
+            ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $snapshot ) )
+            wp_die( 'Exact review identity and both hashes required.' );
         $key = self::option_key( $slug );
         $state = get_option( $key, false );
         if ( ! is_array( $state ) ||
-            ! isset( $state['payload_sha256'] ) ||
-            ! hash_equals( (string) $state['payload_sha256'], $expected ) )
+            ! isset( $state['payload_sha256'], $state['snapshot_sha256'] ) ||
+            ! hash_equals( (string) $state['payload_sha256'], $expected ) ||
+            ! hash_equals( (string) $state['snapshot_sha256'], $snapshot ) )
             wp_die( 'Review changed since the archive confirmation.' );
         $audit_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
-            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $expected );
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $snapshot );
         $audit = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'profile_slug' => $slug, 'payload_sha256' => $expected,
+            'snapshot_sha256' => $snapshot,
             'archived_at' => gmdate( 'c' ), 'post_writes' => 0 );
         if ( ! add_option( $audit_key, $audit, '', false ) ||
             self::digest( get_option( $audit_key, false ) ) !== self::digest( $audit ) )
@@ -793,6 +798,8 @@ final class MAD4B_SCP_Activity_Import_Review {
                     echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
                     echo '<input type="hidden" name="expected_payload_sha256" value="' .
                         esc_attr( $review['payload_sha256'] ) . '" />';
+                    echo '<input type="hidden" name="expected_snapshot_sha256" value="' .
+                        esc_attr( $review['snapshot_sha256'] ) . '" />';
                     wp_nonce_field( 'mad4b_activity_archive_review', 'mad4b_archive_nonce' );
                     submit_button( 'Archive reviewed snapshot (no WordPress post changes)', 'secondary' );
                     echo '</form>';
