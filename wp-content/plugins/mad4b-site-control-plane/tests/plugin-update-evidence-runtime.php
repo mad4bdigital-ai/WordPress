@@ -17,7 +17,8 @@ $private=sodium_crypto_sign_secretkey($keypair);
 $authority=array('plugin_file'=>'sample/sample.php','version'=>'3.4.1',
  'archive_sha256'=>str_repeat('a',64),
  'offline_update_attestor_public_key'=>base64_encode(sodium_crypto_sign_publickey($keypair)));
-$site=array('configured_environment'=>'staging',
+$site=array('configured_environment'=>'staging','environment'=>'staging',
+ 'wordpress_environment'=>'staging','wordpress_environment_explicit'=>true,
  'site_uuid'=>'49c562d1-8f2f-456f-b454-26816c6ba4cb',
  'canonical_origin'=>'https://staging.example.test','origin_match'=>true,'authority_ready'=>true);
 $time=1770000000;
@@ -51,6 +52,9 @@ demand_evidence(is_wp_error($c::verify(signed_evidence($changed,$private),$autho
 $changed=$claims;$changed['expires_at']=$time+90000;
 demand_evidence(is_wp_error($c::verify(signed_evidence($changed,$private),$authority,$site,'sample','',$time)),'long validity denied');
 demand_evidence(is_wp_error($c::verify(signed_evidence($claims,$private),$authority,$site,'sample','',$time+4000)),'expiry denied');
+$wpProduction=$site;$wpProduction['wordpress_environment']='production';
+demand_evidence(is_wp_error($c::verify(signed_evidence($claims,$private),$authority,$wpProduction,'sample','',$time)),
+ 'explicit WP Production environment denied');
 $production=$site;$production['configured_environment']='production';
 demand_evidence(is_wp_error($c::verify(signed_evidence($claims,$private),$authority,$production,'sample','',$time)),'production denied');
 $foreign=$site;$foreign['site_uuid']='other';
