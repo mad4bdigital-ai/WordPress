@@ -12,9 +12,9 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
     const MAX_CELLS = 40080;
     public static function available() {
         return class_exists( 'ZipArchive' ) &&
-            class_exists( '\\PhpOffice\\PhpSpreadsheet\\IOFactory' ) &&
-            class_exists( '\\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate' ) &&
-            class_exists( '\\PhpOffice\\PhpSpreadsheet\\Cell\\DataType' );
+            class_exists( '\PhpOffice\\PhpSpreadsheet\\IOFactory' ) &&
+            class_exists( '\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate' ) &&
+            class_exists( '\PhpOffice\\PhpSpreadsheet\\Cell\\DataType' );
     }
     private static function err( $code, $message ) {
         return new WP_Error( $code, $message );
@@ -69,7 +69,7 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             return self::err( 'mad4b_xlsx_zip_unsafe',
                 'Complex, oversized or externally linked spreadsheets require a separately certified converter.' );
         try {
-            $reader = \\PhpOffice\\PhpSpreadsheet\\IOFactory::createReader( 'Xlsx' );
+            $reader = \PhpOffice\\PhpSpreadsheet\\IOFactory::createReader( 'Xlsx' );
             $reader->setReadDataOnly( true );
             $names = $reader->listWorksheetNames( $file['tmp_name'] );
             if ( ! is_array( $names ) || count( $names ) !== 1 )
@@ -79,7 +79,7 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             $workbook = $reader->load( $file['tmp_name'] );
             $sheet = $workbook->getActiveSheet();
             $row_count = (int) $sheet->getHighestDataRow();
-            $cols = \\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::columnIndexFromString(
+            $cols = \PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::columnIndexFromString(
                 $sheet->getHighestDataColumn() );
             if ( $row_count < 2 || $row_count > 501 || $cols < 1 ||
                 $cols > 80 || $row_count * $cols > self::MAX_CELLS ) {
@@ -89,10 +89,10 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             }
             $headers = array();
             for ( $c = 1; $c <= $cols; $c++ ) {
-                $addr = \\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::stringFromColumnIndex( $c ) . '1';
+                $addr = \PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::stringFromColumnIndex( $c ) . '1';
                 $value = $sheet->getCell( $addr );
                 if ( $value->getDataType() ===
-                    \\PhpOffice\\PhpSpreadsheet\\Cell\\DataType::TYPE_FORMULA ) {
+                    \PhpOffice\\PhpSpreadsheet\\Cell\\DataType::TYPE_FORMULA ) {
                     $workbook->disconnectWorksheets();
                     return self::err( 'mad4b_xlsx_formula_denied',
                         'A formula was found in the Excel header.' );
@@ -103,10 +103,10 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             for ( $r = 2; $r <= $row_count; $r++ ) {
                 $row = array(); $empty = true;
                 for ( $c = 1; $c <= $cols; $c++ ) {
-                    $addr = \\PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::stringFromColumnIndex( $c ) . $r;
+                    $addr = \PhpOffice\\PhpSpreadsheet\\Cell\\Coordinate::stringFromColumnIndex( $c ) . $r;
                     $cell = $sheet->getCell( $addr );
                     if ( $cell->getDataType() ===
-                        \\PhpOffice\\PhpSpreadsheet\\Cell\\DataType::TYPE_FORMULA ) {
+                        \PhpOffice\\PhpSpreadsheet\\Cell\\DataType::TYPE_FORMULA ) {
                         $workbook->disconnectWorksheets();
                         return self::err( 'mad4b_xlsx_formula_denied',
                             'Workbook formulas must be converted to literal values by their author.' );
@@ -133,7 +133,7 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
             return array( 'headers' => $headers, 'rows' => $rows,
                 'source_format' => 'xlsx', 'formulas_evaluated' => false,
                 'worksheet_count' => 1, 'post_writes' => 0 );
-        } catch ( \\Throwable $error ) {
+        } catch ( \Throwable $error ) {
             return self::err( 'mad4b_xlsx_parse_failed',
                 'Unable to parse the bounded XLSX source safely. Use literal CSV as the fallback.' );
         }
