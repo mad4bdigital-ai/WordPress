@@ -95,3 +95,38 @@ foreach ( $scenarios as $index => $case ) {
 	}
 }
 echo "PASS: 12 ordered Staging Autopilot gates; environment/binding/authority/skills/host separation\n";
+
+/** Status read callback stubs: ensure live state projection does not infer PASS. */
+class MAD4B_SCP_Site_Profile {
+	public static function status() { return $GLOBALS['mad4b_test_site']; }
+}
+class MAD4B_SCP_Full_Staging_Authority {
+	public static function status() { return $GLOBALS['mad4b_test_full']; }
+}
+class MAD4B_SCP_Skill_Runtime_Certification {
+	public static function current_status() { return $GLOBALS['mad4b_test_skills']; }
+}
+$GLOBALS['mad4b_test_site'] = $aligned;
+$GLOBALS['mad4b_test_full'] = array(
+	'write' => array( 'ready' => false, 'current_readiness_blockers' => array( 'profile_revision_changed' ) ),
+	'developer' => $dev_ok,
+);
+$GLOBALS['mad4b_test_skills'] = $skills_ok;
+$live = MAD4B_SCP_Staging_Autopilot::status( array() );
+if ( ! isset( $live['automation_plan']['state'] )
+	|| 'blocked_write_authority_not_current' !== $live['automation_plan']['state']
+	|| $live['automation_plan']['observations']['write_ready']
+	|| $live['automation_plan']['assistant_workflow'][2]['blockers'] !== array( 'profile_revision_changed' )
+	|| ! $live['automation_plan']['environment']['wordpress_explicit_staging_aligned'] ) {
+	fwrite( STDERR, "FAIL status projection of post-save write authority drift\n" );
+	exit( 1 );
+}
+$GLOBALS['mad4b_test_full']['write']['ready'] = true;
+$GLOBALS['mad4b_test_full']['write']['current_readiness_blockers'] = array();
+$GLOBALS['mad4b_test_skills'] = array( 'ready' => false );
+$live = MAD4B_SCP_Staging_Autopilot::status( array() );
+if ( 'blocked_managed_skills_not_current' !== $live['automation_plan']['state'] ) {
+	fwrite( STDERR, "FAIL runtime managed Skill evidence projection\n" );
+	exit( 1 );
+}
+echo "PASS: 2 live status composition refusals after Site Profile/Skill drift\n";
