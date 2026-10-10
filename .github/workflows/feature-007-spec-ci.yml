@@ -799,3 +799,55 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py
+
+  cso01-governed-interaction-native:
+    if: github.event_name == 'pull_request'
+    name: CSO01 interaction, first-party and credential boundaries PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact source guard
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint all CSO01 production and fixture PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for src in class-mad4b-scp-cso01-read-foundation.php class-mad4b-scp-cso-scope.php class-mad4b-scp-cso-registry.php class-mad4b-scp-cso-forms.php class-mad4b-scp-cso-gateway.php class-mad4b-scp-cso-form-ui.php class-mad4b-scp-cso-secrets.php; do
+            php -l "$root/includes/$src"
+          done
+          for fixture in cso-scope-runtime.php cso-forms-native-runtime.php cso-gateway-runtime.php cso-secrets-runtime.php; do
+            php -l "$root/tests/$fixture"
+          done
+      - name: Isolated authorization, form lifecycle and secret handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          php "$root/tests/cso-scope-runtime.php"
+          php "$root/tests/cso-forms-native-runtime.php"
+          php "$root/tests/cso-gateway-runtime.php" normal
+          php "$root/tests/cso-gateway-runtime.php" collision
+          php "$root/tests/cso-gateway-runtime.php" partial
+          php "$root/tests/cso-secrets-runtime.php"
+      - name: DOM, spec and dynamic acceptance contracts (not browser attestation)
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node wp-content/plugins/mad4b-site-control-plane/tests/cso-form-ui-runtime.cjs
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/validate_dynamic_acceptance.py --profile baseline
