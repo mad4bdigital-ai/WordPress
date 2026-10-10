@@ -74,7 +74,7 @@ final class MAD4B_SCP_Activity_Import_Reconciliation {
                 'meta_key' => $meta_key,
                 'meta_value' => $source_id, 'meta_compare' => '=',
                 'numberposts' => 2, 'fields' => 'ids',
-                'suppress_filters' => false ) );
+                'suppress_filters' => true ) );
             if ( ! is_array( $posts ) ) {
                 $status = 'unverified'; $details = array();
             } elseif ( count( $posts ) > 1 ) {
