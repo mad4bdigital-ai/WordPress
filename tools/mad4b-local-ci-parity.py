@@ -180,6 +180,46 @@ def inspect_site_evidence(path, expected_host, expected_sha):
             "host_snapshot_signed": False, "host_mutation_performed": False}
 
 
+
+def probe_wordpress_rest(site_url, target_type):
+    """Public HTTPS read-only reachability, NOT authenticated MCP acceptance."""
+    from urllib.parse import urlsplit, urlunsplit
+    from ipaddress import ip_address
+    parsed = urlsplit(site_url)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("credentials/queries/fragments not allowed in site target")
+    if target_type != "wordpress_local":
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError("hosted target must use an exact HTTPS origin")
+        try:
+            ip = ip_address(parsed.hostname)
+            if not ip.is_global:
+                raise ValueError("non-public hosted IP target rejected")
+        except ValueError as exc:
+            if "rejected" in str(exc):
+                raise
+    elif parsed.scheme not in ("http", "https"):
+        raise ValueError("local WordPress URL must be HTTP(S)")
+    if parsed.path not in ("", "/"):
+        raise ValueError("site probe requires the origin, not a caller-defined path")
+    url = urlunsplit((parsed.scheme, parsed.netloc, "/wp-json/", "", ""))
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/json", "User-Agent": "MAD4B-ReadOnly-CI-Probe"
+    })
+    opener = urllib.request.build_opener(NoRedirect())
+    try:
+        with opener.open(req, timeout=8) as response:
+            status = int(response.status)
+            body = response.read(65537)
+        if status != 200 or len(body) > 65536:
+            return {"state": "UNVERIFIED", "reason": "rest_api_unavailable_or_unbounded"}
+        doc = json.loads(body)
+        return {"state": "REACHABLE_NOT_CERTIFIED" if isinstance(doc, dict) else "UNVERIFIED",
+                "endpoint": url, "http_status": status, "read_only": True,
+                "hosting_not_docker_assumed": True}
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return {"state": "UNVERIFIED", "reason": type(exc).__name__}
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--repository-path", required=True)
@@ -193,6 +233,7 @@ def main(argv=None):
     ap.add_argument("--output", required=True)
     ap.add_argument("--target-type", choices=("hostinger", "wordpress_hosted", "wordpress_local"), default="hostinger")
     ap.add_argument("--site-evidence")
+    ap.add_argument("--probe-site", action="store_true")
     ap.add_argument("--expected-site-url", default="")
     ap.add_argument("--timeout", type=int, default=90)
     args = ap.parse_args(argv)
@@ -266,6 +307,11 @@ def main(argv=None):
                 raise ValueError("source HEAD moved during the run")
             report["source_verified_after"] = True
         report["site"] = inspect_site_evidence(args.site_evidence, args.expected_site_url, args.expected_sha)
+        report["site_reachability"] = (
+            probe_wordpress_rest(args.expected_site_url, args.target_type)
+            if args.probe_site and args.expected_site_url else
+            {"state": "NOT_RUN", "reason": "explicit_readonly_probe_not_requested"}
+        )
         if report["site"].get("target_type") not in (None, args.target_type):
             raise ValueError("site snapshot host type conflicts with target type")
         counts = {s: sum(c["state"] == s for c in report["checks"])
