@@ -53,6 +53,34 @@ ck( is_wp_error( $identity_denied ) &&
     $identity_denied->get_error_code() ===
         'mad4b_mapping_identity_registry_mutation_denied',
     'Destination identity registry was rewritten from a suggestion' );
+$externalIdentityChange = $proposal;
+$externalIdentityChange['identity_field'] = 'singlePrice';
+ck( is_wp_error( MAD4B_SCP_Import_Mapping_Evolution::simulate(
+    array_merge( $base, array(
+        'proposal_plan_sha256' => $plan['plan_sha256'],
+        'candidate_validation' => $externalIdentityChange ) ) ) ),
+    'Changing source identity via a renamed column bypassed identity governance' );
+$weakLanguages = $proposal;
+$weakLanguages['wpml_languages'] = array( 'en' );
+ck( is_wp_error( MAD4B_SCP_Import_Mapping_Evolution::simulate(
+    array_merge( $base, array(
+        'proposal_plan_sha256' => $plan['plan_sha256'],
+        'candidate_validation' => $weakLanguages ) ) ) ),
+    'A schema rename silently removed required translation languages' );
+$weakColumns = $proposal;
+$weakColumns['required_columns'] = array( 'ID', 'singlePrice' );
+ck( is_wp_error( MAD4B_SCP_Import_Mapping_Evolution::simulate(
+    array_merge( $base, array(
+        'proposal_plan_sha256' => $plan['plan_sha256'],
+        'candidate_validation' => $weakColumns ) ) ) ),
+    'A schema rename silently deleted required source columns' );
+$weakCurrency = $proposal;
+$weakCurrency['allowed_currencies'] = array( 'USD' );
+ck( is_wp_error( MAD4B_SCP_Import_Mapping_Evolution::simulate(
+    array_merge( $base, array(
+        'proposal_plan_sha256' => $plan['plan_sha256'],
+        'candidate_validation' => $weakCurrency ) ) ) ),
+    'A schema rename silently narrowed approved currency safeguards' );
 $override = $base;
 $override['untrusted_policy_override'] = true;
 ck( is_wp_error( MAD4B_SCP_Import_Mapping_Evolution::plan( $override ) ),
