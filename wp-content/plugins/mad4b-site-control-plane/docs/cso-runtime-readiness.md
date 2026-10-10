@@ -81,6 +81,18 @@ Keep the plugin inside Feature 007, without independent plugin, `master` merge, 
 - `CSO_Operations::doctor_plan` returns bounded blockers tied to the current site. It does not attest runtime, execute repair, start monitoring or grant Production promotion.
 - `cso-storage-adapters-runtime.php` and `cso-template-doctor-runtime.php` are synthetic native fixtures wired into the PHP 7.4/8.3 CI matrix; queued Actions checks are not a PASS.
 
+### Dual WordPress / Site Profile environment fence
+
+Native CSO write admission and the core Post driver independently require
+\`wp_get_environment_type()\` to match the enrolled Site Profile's
+\`environment\`, and both must be exactly one of local, development or staging.
+An implicit WordPress production default with a Staging Site Profile is a
+**write blocker**, never a signal to auto-edit WordPress configuration. A
+trusted Host deployment must set and independently verify the correct
+\`WP_ENVIRONMENT_TYPE\` before canary acceptance; MCP discovery and
+profile switches cannot set this trusted execution fact. This is source
+hardening only, not a live Staging acceptance receipt.
+
 ### Recovery observation and canary authority
 
 - `CSO_Native_Executor::reconcile_inspect` is a first-party, scope/actor-bound read-only diagnostic. It reports the native provider's current values/revision relative to an exactly sealed plan, even for an expired execution plan. It **never** repairs an uncertain journal, finalizes a ticket, replays a write, or calls provider observation independent third-party attestation.
