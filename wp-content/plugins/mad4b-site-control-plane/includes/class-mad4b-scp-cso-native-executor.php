@@ -403,4 +403,286 @@ final class MAD4B_SCP_CSO_Native_Executor {
             'journal_mutated' => false, 'replay_allowed' => false,
             'next_safe_action' => 'collect_external_independent_readback' );
     }
+
+    /**
+     * Optional, externally witnessed recovery. The signing PRIVATE key must
+     * live outside WordPress/MCP. A Site Profile, native provider snapshot,
+     * local audit entry or ChatGPT assertion is NOT independent evidence.
+     *
+     * Deployment must pin a separate auditor's public key and identity. No
+     * key means recovery closure remains disabled (fail closed).
+     */
+    private static function reconcile_evidence( $material, $scope, $original_id,
+        $journal, $evidence, $allow_expired = false ) {
+        if ( ! defined( 'MAD4B_CSO_RECONCILE_TRUSTED_PUBLIC_KEY' ) ||
+            ! defined( 'MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID' ) ||
+            ! is_string( MAD4B_CSO_RECONCILE_TRUSTED_PUBLIC_KEY ) ||
+            ! is_string( MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID ) ||
+            strlen( MAD4B_CSO_RECONCILE_TRUSTED_PUBLIC_KEY ) < 200 ||
+            ! preg_match( '/^[a-z0-9._-]{8,96}$/D',
+                MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID ) ||
+            ! function_exists( 'openssl_verify' ) )
+            return self::error( 'NATIVE_EXTERNAL_AUDITOR_NOT_ENROLLED' );
+        if ( ! is_array( $evidence ) ||
+            array_keys( $evidence ) !== array( 'body', 'signature' ) ||
+            ! is_array( $evidence['body'] ) ||
+            ! is_string( $evidence['signature'] ) ||
+            strlen( $evidence['signature'] ) > 2048 )
+            return self::error( 'NATIVE_RECONCILE_EVIDENCE_SHAPE' );
+        $body = $evidence['body'];
+        $fields = array( 'contract', 'issuer', 'ticket_sha256', 'plan_sha256',
+            'scope_sha256', 'provider_id', 'target_sha256', 'outcome',
+            'observed_revision_sha256', 'observed_values_sha256', 'evidence_ref',
+            'writer_fenced', 'quiesced_at', 'side_effects_excluded', 'issued_at',
+            'expires_at' );
+        if ( array_keys( $body ) !== $fields ||
+            $body['contract'] !== self::CONTRACT . '.external-proof.v1' ||
+            ! hash_equals( MAD4B_CSO_RECONCILE_EXTERNAL_AUDITOR_ID,
+                (string) $body['issuer'] ) ||
+            ! hash_equals( hash( 'sha256', $original_id ),
+                (string) $body['ticket_sha256'] ) ||
+            ! hash_equals( MAD4B_SCP_CSO_Scope::digest( $material ),
+                (string) $body['plan_sha256'] ) ||
+            ! hash_equals( MAD4B_SCP_CSO_Scope::digest( $scope ),
+                (string) $body['scope_sha256'] ) ||
+            ! hash_equals( (string) $material['provider_id'],
+                (string) $body['provider_id'] ) ||
+            ! hash_equals( MAD4B_SCP_CSO_Scope::digest( $material['target'] ),
+                (string) $body['target_sha256'] ) ||
+            ! in_array( $body['outcome'], array( 'applied', 'absent' ), true ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) $body['observed_revision_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) $body['observed_values_sha256'] ) ||
+            ! is_string( $body['evidence_ref'] ) ||
+            ! preg_match( '/^[A-Za-z0-9._:-]{8,191}$/D', $body['evidence_ref'] ) ||
+            true !== $body['writer_fenced'] ||
+            ! is_int( $body['quiesced_at'] ) ||
+            $body['quiesced_at'] < (int) $journal['updated_at'] ||
+            ! is_bool( $body['side_effects_excluded'] ) ||
+            ! is_int( $body['issued_at'] ) ||
+            ! is_int( $body['expires_at'] ) ||
+            $body['issued_at'] < (int) $journal['created_at'] ||
+            $body['issued_at'] > time() + 30 ||
+            $body['expires_at'] <= $body['issued_at'] ||
+            $body['expires_at'] > $body['issued_at'] + 300 ||
+            ( ! $allow_expired && $body['expires_at'] < time() ) ||
+            ( $allow_expired && $body['expires_at'] < time() - 86400 ) ||
+            ( 'absent' === $body['outcome'] && true !== $body['side_effects_excluded'] ) )
+            return self::error( 'NATIVE_RECONCILE_PROOF_BINDING_INVALID' );
+        $bytes = base64_decode( $evidence['signature'], true );
+        $canonical = wp_json_encode( $body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        if ( false === $bytes || ! is_string( $canonical ) ||
+            1 !== openssl_verify( $canonical, $bytes,
+                MAD4B_CSO_RECONCILE_TRUSTED_PUBLIC_KEY, OPENSSL_ALGO_SHA256 ) )
+            return self::error( 'NATIVE_RECONCILE_SIGNATURE_INVALID' );
+        // A valid signature cannot overrule newer provider changes.
+        $snapshot = MAD4B_SCP_CSO_Storage_Adapters::snapshot(
+            $material['provider_id'], $material['target'] );
+        if ( is_wp_error( $snapshot ) || ! is_array( $snapshot ) ||
+            ! is_array( $snapshot['values'] ?? null ) ||
+            ! is_string( $snapshot['revision'] ?? null ) ||
+            ! hash_equals( $body['observed_revision_sha256'],
+                hash( 'sha256', $snapshot['revision'] ) ) ||
+            ! hash_equals( $body['observed_values_sha256'],
+                MAD4B_SCP_CSO_Scope::digest( $snapshot['values'] ) ) )
+            return self::error( 'NATIVE_RECONCILE_OBSERVATION_DRIFT' );
+        $applied = $body['outcome'] === 'applied';
+        $matching = true;
+        foreach ( $material['values'] as $field => $wanted ) {
+            if ( ! array_key_exists( $field, $snapshot['values'] ) ||
+                $snapshot['values'][ $field ] !== $wanted ) {
+                $matching = false;
+                break;
+            }
+        }
+        if ( ( $applied && ( ! $matching ||
+                hash_equals( $material['expected_revision'], $snapshot['revision'] ) ) ) ||
+            ( ! $applied && ! hash_equals(
+                $material['expected_revision'], $snapshot['revision'] ) ) )
+            return self::error( 'NATIVE_RECONCILE_OUTCOME_CONTRADICTED' );
+        return array( 'body' => $body,
+            'proof_sha256' => hash( 'sha256', $canonical . '|' . $evidence['signature'] ) );
+    }
+
+    private static function reconcile_context( $sealed, $original_id, $evidence,
+        $agent_public_id, $allow_expired = false ) {
+        $observed = self::status( $sealed, $original_id );
+        if ( is_wp_error( $observed ) ) return $observed;
+        $material = MAD4B_SCP_CSO_Scope::unseal(
+            $sealed, MAD4B_SCP_CSO_Changes::CONTRACT );
+        $scope = MAD4B_SCP_CSO_Scope::current();
+        if ( is_wp_error( $material ) || ! is_array( $material ) ||
+            is_wp_error( $scope ) || ! is_array( $scope ) )
+            return self::error( 'NATIVE_RECONCILE_CONTEXT_INVALID' );
+        $admission = self::admission( $material );
+        if ( is_wp_error( $admission ) ) return $admission;
+        if ( ! method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ||
+            ! MAD4B_SCP_Policy::can_approve_mutations() )
+            return self::error( 'NATIVE_RECONCILE_APPROVER_DENIED' );
+        $agent = self::agent( $agent_public_id );
+        if ( is_wp_error( $agent ) ) return $agent;
+        $payload = self::payload( $material, $scope );
+        $binding = self::approval_identifiers( $material, $scope, $payload );
+        $original = MAD4B_SCP_Approval_Tickets::get( $original_id );
+        $expected_hash = MAD4B_SCP_Approval_Tickets::canonical_payload_hash(
+            $agent['public_id'], $binding['server'], $binding['ability'],
+            $binding['provider'], $binding['target_fingerprint'],
+            $binding['payload'], 'mutation' );
+        if ( is_wp_error( $expected_hash ) || ! is_array( $original ) ||
+            (int) ( $original['agent_id'] ?? 0 ) !== (int) $agent['id'] ||
+            ( $original['ticket_class'] ?? '' ) !== 'mutation' ||
+            ( $original['server_id'] ?? '' ) !== self::SERVER ||
+            ( $original['ability_name'] ?? '' ) !== $binding['ability'] ||
+            ( $original['provider'] ?? '' ) !== $binding['provider'] ||
+            ! hash_equals( (string) ( $original['target_fingerprint'] ?? '' ),
+                $binding['target_fingerprint'] ) ||
+            ! hash_equals( (string) ( $original['payload_sha256'] ?? '' ),
+                (string) $expected_hash ) )
+            return self::error( 'NATIVE_RECONCILE_ORIGINAL_TICKET_MISMATCH' );
+        $key = self::journal_key( $original_id, $payload['plan_sha256'] );
+        $journal = get_option( $key, null );
+        if ( ! is_array( $journal ) || ! in_array( $journal['state'] ?? '',
+            array( 'reserved', 'inflight', 'needs_reconcile', 'reconciling' ), true ) )
+            return self::error( 'NATIVE_RECONCILE_JOURNAL_NOT_OPEN' );
+        $proof = self::reconcile_evidence( $material, $scope, $original_id,
+            $journal, $evidence, $allow_expired );
+        if ( is_wp_error( $proof ) ) return $proof;
+        $outcome = $proof['body']['outcome'];
+        if ( ! in_array( (string) ( $original['status'] ?? '' ),
+            $outcome === 'applied' ? array( 'executing', 'used' ) :
+                array( 'executing', 'failed' ), true ) )
+            return self::error( 'NATIVE_RECONCILE_ORIGINAL_STATUS_CONFLICT' );
+        return compact( 'agent', 'binding', 'journal', 'key', 'proof', 'original', 'outcome' );
+    }
+
+    private static function recovery_binding( $context, $original_id ) {
+        return array(
+            'server' => self::SERVER,
+            'ability' => 'mad4b-cso/reconcile-finalize',
+            'provider' => $context['binding']['provider'],
+            'fingerprint' => MAD4B_SCP_CSO_Scope::digest(
+                array( $original_id, $context['binding']['target_fingerprint'] ) ),
+            'payload' => array( 'contract' => self::CONTRACT . '.recovery-ticket.v1',
+                'original_ticket_sha256' => hash( 'sha256', $original_id ),
+                'plan_sha256' => $context['binding']['payload']['plan_sha256'],
+                'proof_sha256' => $context['proof']['proof_sha256'],
+                'outcome' => $context['outcome'] ),
+        );
+    }
+
+    /** Prepare a SECOND, separately reviewed one-use recovery approval. */
+    public static function reconcile_approval_plan( $sealed, $original_id, $evidence,
+        $agent_public_id, $reason ) {
+        if ( ! is_string( $reason ) || strlen( $reason ) < 3 || strlen( $reason ) > 500 )
+            return self::error( 'NATIVE_RECONCILE_REASON_INVALID' );
+        $ctx = self::reconcile_context( $sealed, $original_id, $evidence,
+            $agent_public_id );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        if ( $ctx['journal']['state'] === 'reconciling' )
+            return self::error( 'NATIVE_RECONCILE_ALREADY_CLAIMED' );
+        $r = self::recovery_binding( $ctx, $original_id );
+        $ticket = MAD4B_SCP_Approval_Tickets::create_pending(
+            $ctx['agent']['public_id'], $r['server'], $r['ability'],
+            $r['provider'], $r['fingerprint'], $r['payload'],
+            'recovery', $reason, 300 );
+        if ( is_wp_error( $ticket ) ) return $ticket;
+        return array( 'contract' => self::CONTRACT . '.recovery-plan.v1',
+            'ticket_id' => $ticket['ticket_id'], 'status' => 'pending',
+            'original_ticket_sha256' => hash( 'sha256', $original_id ),
+            'proof_sha256' => $ctx['proof']['proof_sha256'],
+            'operator_approval_required' => true, 'mutation_performed' => false );
+    }
+
+    /**
+     * Close original ticket + journal without replaying provider. Interrupted
+     * closures may resume only with EXACT same signed proof and recovery ticket.
+     * An auditor must independently attest the write outcome and worker fencing.
+     */
+    public static function reconcile_finalize( $sealed, $original_id, $evidence,
+        $agent_public_id, $recovery_ticket_id ) {
+        if ( ! is_string( $recovery_ticket_id ) || strlen( $recovery_ticket_id ) > 128 )
+            return self::error( 'NATIVE_RECOVERY_TICKET_INVALID' );
+        $ctx = self::reconcile_context( $sealed, $original_id, $evidence,
+            $agent_public_id, true );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $r = self::recovery_binding( $ctx, $original_id );
+        $held = $ctx['journal']['state'] === 'reconciling';
+        if ( $held ) {
+            if ( ! hash_equals( (string) ( $ctx['journal']['recovery_ticket_sha256'] ?? '' ),
+                    hash( 'sha256', $recovery_ticket_id ) ) ||
+                ! hash_equals( (string) ( $ctx['journal']['reconcile_proof_sha256'] ?? '' ),
+                    $ctx['proof']['proof_sha256'] ) ||
+                ( $ctx['journal']['reconcile_outcome'] ?? '' ) !== $ctx['outcome'] )
+                return self::error( 'NATIVE_RECONCILE_LOCK_CONFLICT' );
+        } else {
+            $auth = MAD4B_SCP_Approval_Tickets::authorize_exact(
+                $recovery_ticket_id, $ctx['agent'], $r['server'], $r['ability'],
+                $r['provider'], $r['fingerprint'], $r['payload'], 'recovery' );
+            if ( is_wp_error( $auth ) ) return $auth;
+            $next = $ctx['journal'];
+            $next['state'] = 'reconciling';
+            $next['recovery_ticket_sha256'] = hash( 'sha256', $recovery_ticket_id );
+            $next['reconcile_proof_sha256'] = $ctx['proof']['proof_sha256'];
+            $next['reconcile_outcome'] = $ctx['outcome'];
+            $next['updated_at'] = time();
+            $next['reason_code'] = 'EXTERNAL_PROOF_PINNED';
+            $ok = self::journal_cas( $ctx['key'], $ctx['journal'], $next );
+            if ( is_wp_error( $ok ) ) return $ok;
+            $ctx['journal'] = $next;
+        }
+        $recovery = MAD4B_SCP_Approval_Tickets::get( $recovery_ticket_id );
+        if ( ! is_array( $recovery ) ||
+            (int) ( $recovery['agent_id'] ?? 0 ) !== (int) $ctx['agent']['id'] ||
+            ( $recovery['ticket_class'] ?? '' ) !== 'recovery' ||
+            ( $recovery['server_id'] ?? '' ) !== $r['server'] ||
+            ( $recovery['ability_name'] ?? '' ) !== $r['ability'] ||
+            ( $recovery['provider'] ?? '' ) !== $r['provider'] ||
+            ( $recovery['target_fingerprint'] ?? '' ) !== $r['fingerprint'] )
+            return self::error( 'NATIVE_RECOVERY_APPROVAL_CHANGED' );
+        $hash = MAD4B_SCP_Approval_Tickets::canonical_payload_hash(
+            $ctx['agent']['public_id'], $r['server'], $r['ability'],
+            $r['provider'], $r['fingerprint'], $r['payload'], 'recovery' );
+        if ( is_wp_error( $hash ) || ! hash_equals(
+            (string) ( $recovery['payload_sha256'] ?? '' ), (string) $hash ) )
+            return self::error( 'NATIVE_RECOVERY_APPROVAL_PAYLOAD_CHANGED' );
+        if ( ( $recovery['status'] ?? '' ) === 'approved' ) {
+            $claimed = MAD4B_SCP_Approval_Tickets::claim_exact(
+                $recovery_ticket_id, $ctx['agent'], $r['server'], $r['ability'],
+                $r['provider'], $r['fingerprint'], $r['payload'], 'recovery' );
+            if ( is_wp_error( $claimed ) ) return $claimed;
+        } elseif ( ! in_array( (string) ( $recovery['status'] ?? '' ),
+            array( 'executing', 'used' ), true ) ) {
+            return self::error( 'NATIVE_RECOVERY_APPROVAL_NOT_CLAIMED' );
+        }
+        if ( ( $ctx['original']['status'] ?? '' ) === 'executing' ) {
+            $terminal = $ctx['outcome'] === 'applied' ? 'used' : 'failed';
+            $closed = MAD4B_SCP_Approval_Tickets::finalize_claim( $original_id,
+                $terminal, 'EXTERNALLY_RECONCILED' );
+            if ( is_wp_error( $closed ) ) return $closed;
+        }
+        $recovery = MAD4B_SCP_Approval_Tickets::get( $recovery_ticket_id );
+        if ( is_array( $recovery ) && ( $recovery['status'] ?? '' ) === 'executing' ) {
+            $closed = MAD4B_SCP_Approval_Tickets::finalize_claim(
+                $recovery_ticket_id, 'used' );
+            if ( is_wp_error( $closed ) ) return $closed;
+        }
+        $original = MAD4B_SCP_Approval_Tickets::get( $original_id );
+        $recovery = MAD4B_SCP_Approval_Tickets::get( $recovery_ticket_id );
+        if ( ! is_array( $original ) || ! is_array( $recovery ) ||
+            ( $original['status'] ?? '' ) !== ( $ctx['outcome'] === 'applied' ? 'used' : 'failed' ) ||
+            ( $recovery['status'] ?? '' ) !== 'used' )
+            return self::error( 'NATIVE_RECONCILE_FINAL_READBACK_UNCERTAIN' );
+        $next = $ctx['journal'];
+        $next['state'] = $ctx['outcome'] === 'applied' ?
+            'reconciled_applied' : 'reconciled_absent';
+        $next['updated_at'] = time();
+        $next['reason_code'] = 'EXTERNALLY_ATTESTED_FINALIZED';
+        $ok = self::journal_cas( $ctx['key'], $ctx['journal'], $next );
+        if ( is_wp_error( $ok ) ) return $ok;
+        return array( 'contract' => self::CONTRACT . '.recovery-receipt.v1',
+            'status' => $next['state'], 'proof_sha256' => $ctx['proof']['proof_sha256'],
+            'original_ticket_terminal' => $original['status'],
+            'recovery_ticket_terminal' => $recovery['status'],
+            'provider_write_replayed' => false, 'production_promotion_authorized' => false );
+    }
+
 }
