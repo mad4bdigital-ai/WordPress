@@ -88,6 +88,16 @@ final class MAD4B_SCP_CSO_Native_Executor {
             ! class_exists( 'MAD4B_SCP_Policy', false ) ||
             ! MAD4B_SCP_Policy::can_mutate() )
             return self::error( 'NATIVE_AUTHORITY_UNAVAILABLE' );
+        // The selected Site Profile is not proof of the running WordPress
+        // environment. In particular, an implicit WP production default must
+        // NEVER be converted into Staging write authority by profile settings.
+        $live_scope = MAD4B_SCP_CSO_Scope::current();
+        if ( is_wp_error( $live_scope ) ||
+            ! function_exists( 'wp_get_environment_type' ) ||
+            ! is_string( $live_scope['environment'] ?? null ) ||
+            ! in_array( $live_scope['environment'], array( 'local', 'development', 'staging' ), true ) ||
+            ! hash_equals( $live_scope['environment'], (string) wp_get_environment_type() ) )
+            return self::error( 'NATIVE_WORDPRESS_ENVIRONMENT_MISMATCH' );
         $certificate = MAD4B_SCP_Write_Runtime_Certification::current_status();
         if ( ! is_array( $certificate ) || empty( $certificate['ready'] ) ||
             empty( $certificate['current_truth'] ) )
