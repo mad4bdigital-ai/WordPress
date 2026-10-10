@@ -78,6 +78,39 @@ final class MAD4B_SCP_Batch_Atomic_Mutex {
         }
         return true;
     }
+    /**
+     * One-time HMAC nonce marker, issued by the validated sender only.
+     * A simultaneous replay MUST lose without replacing its first marker.
+     */
+    public static function reserve_signed_nonce( $key, $issued_at ) {
+        if ( ! is_string( $key ) ||
+            ! preg_match( '/^mad4b_import_nonce_[a-f0-9]{64}$/D', $key ) ||
+            ! is_int( $issued_at ) || $issued_at < 1 )
+            return self::err( 'mad4b_import_nonce_invalid',
+                'Only a validated bounded signed-source nonce can be reserved.' );
+        $db = self::db();
+        if ( is_wp_error( $db ) ) return $db;
+        $raw = (string) $issued_at;
+        $inserted = $db->query( $db->prepare(
+            "INSERT IGNORE INTO `{$db->options}` (option_name, option_value, autoload) VALUES (%s, %s, %s)",
+            $key, $raw, 'off' ) );
+        if ( 1 !== $inserted )
+            return self::err( 'mad4b_import_webhook_replay',
+                'This signed source nonce already exists or cannot be reserved.' );
+        self::cache_clear( $key );
+        if ( ! hash_equals( $raw, (string) self::read( $db, $key ) ) )
+            return self::err( 'mad4b_import_nonce_readback_failed',
+                'The signed nonce was not independently confirmed.' );
+        if ( function_exists( 'wp_cache_get' ) &&
+            function_exists( 'wp_cache_set' ) ) {
+            $notoptions = wp_cache_get( 'notoptions', 'options' );
+            if ( is_array( $notoptions ) && isset( $notoptions[ $key ] ) ) {
+                unset( $notoptions[ $key ] );
+                wp_cache_set( 'notoptions', $notoptions, 'options' );
+            }
+        }
+        return true;
+    }
     public static function observe( $slug ) {
         $db = self::db();
         if ( is_wp_error( $db ) ) return $db;
