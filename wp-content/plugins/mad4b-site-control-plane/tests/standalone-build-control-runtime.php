@@ -24,12 +24,25 @@ $class = 'MAD4B_SCP_Standalone_Build_Control';
 $class::boot();
 $class::register_abilities();
 $class::register_abilities();
-expect_build(count($GLOBALS['build_abilities']) === 2, 'Idempotent ability registration');
-foreach ($GLOBALS['build_abilities'] as $def) {
+expect_build(count($GLOBALS['build_abilities']) === 3, 'Idempotent read and owner-gated request registration');
+foreach (array('mad4b/standalone-build-discover', 'mad4b/standalone-build-plan') as $ability_name) {
+    $def = $GLOBALS['build_abilities'][$ability_name];
     expect_build($def['category'] === 'mad4b-read', 'Only read category');
     expect_build($def['meta']['annotations']['readonly'] === true, 'Read-only tool');
     expect_build($def['input_schema']['additionalProperties'] === false, 'No extra inputs');
 }
+$requestDef = $GLOBALS['build_abilities']['mad4b/standalone-build-request'];
+expect_build($requestDef['category'] === 'mad4b-admin', 'Request uses admin governed surface');
+expect_build($requestDef['meta']['annotations']['readonly'] === false, 'Queue write is not mislabeled readonly');
+expect_build($requestDef['input_schema']['additionalProperties'] === false, 'No extra request fields');
+expect_build(is_wp_error($class::request(array('command' => 'shell'))), 'Unsafe request rejected');
+expect_build(is_wp_error($class::complete_signed_job(array(), array())), 'Unbound receipt rejected');
+expect_build($class::valid_job_payload(array('shell' => 'php')) === false,
+    'Arbitrary executable payload rejected');
+$workOps = $class::work_definitions(array());
+expect_build(isset($workOps['standalone_source_build']), 'Single semantic operation registered');
+expect_build($workOps['standalone_source_build']['production_policy'] === 'deny',
+    'Remote build operation never runs Production');
 $status = $class::discover(array());
 expect_build($status['mcp_dispatch_implemented'] === false, 'No hidden shell runner');
 expect_build($status['automatic_execution_enabled'] === false, 'No automatic execution');
