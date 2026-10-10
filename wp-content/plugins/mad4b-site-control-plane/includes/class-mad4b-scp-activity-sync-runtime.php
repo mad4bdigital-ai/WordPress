@@ -13,6 +13,19 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
     const CONTRACT = 'mad4b.activity-sync-runtime.v1';
     const MAX_STEPS = 400;
     private static function err( $code, $message ) { return new WP_Error( $code, $message ); }
+    /** Exact Site/Brand/actor fence before an external or WordPress effect. */
+    private static function authorize_provider_write( $binding ) {
+        if ( ! class_exists( 'MAD4B_SCP_Operational_Integrity', false ) )
+            return self::err( 'mad4b_sync_integrity_unavailable', 'Trusted Operational Integrity is required for provider writes.' );
+        $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+        if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+        if ( ! is_array( $binding ) || ! isset( $binding['site_uuid'], $checkpoint['scope']['site_uuid'] ) ||
+            ! hash_equals( (string) $binding['site_uuid'], (string) $checkpoint['scope']['site_uuid'] ) )
+            return self::err( 'mad4b_sync_provider_scope_changed', 'Provider write site differs from trusted site scope.' );
+        $status = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
+        return is_wp_error( $status ) ? $status : $checkpoint;
+    }
+
     private static function digest( $value ) {
         $s = wp_json_encode( $value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
         return is_string( $s ) ? hash( 'sha256', $s ) : '';
@@ -120,6 +133,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'observed_at' => gmdate( 'Y-m-d\\TH:i:s\\Z' ), 'state' => 'present', 'fields' => $values );
     }
     public static function write_wordpress( $source, $field, $value, $expected, $binding ) {
+        $scope_fence = self::authorize_provider_write( $binding );
+        if ( is_wp_error( $scope_fence ) ) return $scope_fence;
         $fields = array_keys( $expected['fields'] );
         $current = self::read_wordpress( $source, $fields, $binding );
         if ( is_wp_error( $current ) ) return $current;
@@ -556,6 +571,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             if ( is_wp_error( $released ) ) return $released;
             return $persisted;
         }
+        $scope_fence = self::authorize_provider_write( $binding );
+        if ( is_wp_error( $scope_fence ) ) return self::prewrite_failure( $binding, $key, $op, $scope_fence );
         $written = call_user_func( $adapter['write'], $binding['sources'][ $step['destination'] ],
             $field, $value, $dest, $binding );
         if ( is_wp_error( $written ) ) {
@@ -572,6 +589,15 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 $persisted = self::persist_operation( $key, $op, 'mad4b_sync_failure_journal_unverified' );
                 if ( is_wp_error( $persisted ) ) return $persisted;
                 return self::err( 'mad4b_sync_provider_readback_uncertain', 'Provider write outcome has not passed exact readback.' );
+        }
+        // A provider may already have committed even if identity changed.
+        // Preserve the uncertain journal; never silently repeat its effect.
+        $postwrite_scope = MAD4B_SCP_Operational_Integrity::assert_unchanged( $scope_fence, true );
+        if ( is_wp_error( $postwrite_scope ) ) {
+            $op['state'] = 'needs_reconcile';
+            $persisted = self::persist_operation( $key, $op, 'mad4b_sync_postwrite_scope_journal_unverified' );
+            if ( is_wp_error( $persisted ) ) return $persisted;
+            return self::err( 'mad4b_sync_postwrite_scope_changed', 'Provider effect requires independent exact readback under renewed authority.' );
         }
         $op['next_step'] = $i + 1; unset( $op['inflight_step'] ); $op['state'] = 'running';
         $persisted = self::persist_operation( $key, $op, 'mad4b_sync_postwrite_journal_unverified' );

@@ -22,6 +22,16 @@ function delete_option($key){unset($GLOBALS['options'][$key]);return true;}
 function apply_filters($hook,$adapters,$profile){if($hook==='mad4b_activity_sync_adapters'){$adapters['google_drive']=array(
  'read'=>'fake_drive_read','write'=>'fake_drive_write',
  'conditional_write'=>true,'readback'=>true);}return $adapters;}
+class MAD4B_SCP_Operational_Integrity {
+ static $mutation_allowed=true;
+ static $site_uuid='11111111-2222-4333-8444-555555555555';
+ static function capture(){return array('fingerprint'=>hash('sha256',self::$site_uuid),'scope'=>array('site_uuid'=>self::$site_uuid));}
+ static function assert_unchanged($checkpoint,$mutation=false){
+  return (!$mutation||self::$mutation_allowed)&&
+   hash_equals(hash('sha256',self::$site_uuid),$checkpoint['fingerprint'])
+   ?true:new WP_Error('mad4b_integrity_authorization_revoked');
+ }
+}
 class MAD4B_SCP_Site_Profile {
  static function configured(){return true;}
  static function origin_enrolled(){return true;}
@@ -270,3 +280,16 @@ echo "PASS MSR02 deterministic conflict unlock and zero-write cancellation lease
 echo "PASS MSR02 failure-injected prewrite/postwrite journal checks and serialized recovery\n";
 
 echo "PASS MSR02 durable checkpoint, WordPress/Drive CAS, stale plan, conflict, readback, uncertain-write recovery and archival\n";
+$method=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','bind');
+$binding=$method->invoke(null,scope(101));
+ck(!is_wp_error($binding),'Trusted source unavailable for direct write guard regression');
+$source=$binding['sources']['wordpress'];
+$expected=MAD4B_SCP_Activity_Sync_Runtime::read_wordpress($source,array('biography'),$binding);
+$previous=$GLOBALS['wp_values'][101]['biography'];
+MAD4B_SCP_Operational_Integrity::$mutation_allowed=false;
+$denied=MAD4B_SCP_Activity_Sync_Runtime::write_wordpress($source,'biography','unapproved',$expected,$binding);
+ck(is_wp_error($denied)&&$denied->get_error_code()==='mad4b_integrity_authorization_revoked'
+ &&$GLOBALS['wp_values'][101]['biography']===$previous,
+ 'Direct WordPress provider write bypassed revoked trusted scope');
+MAD4B_SCP_Operational_Integrity::$mutation_allowed=true;
+
