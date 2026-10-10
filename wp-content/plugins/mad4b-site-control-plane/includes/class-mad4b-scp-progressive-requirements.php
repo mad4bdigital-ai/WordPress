@@ -213,6 +213,20 @@ final class MAD4B_SCP_Progressive_Requirements {
 		if(!preg_match('/^[a-z][a-z0-9._-]{1,119}$/D',$id))
 			return new WP_Error('mad4b_progressive_exact_operation_required',
 				'Use the registered exact operation id; arbitrary callbacks are never accepted.');
+		$inventory=MAD4B_SCP_Operation_Registry::status();
+		if(!is_array($inventory)||!is_array($inventory['operations']??null))
+			return new WP_Error('mad4b_progressive_live_catalog_missing','Current mounted operation catalog is unavailable.');
+		$verified=false;
+		foreach($inventory['operations'] as $candidate) {
+			if(!is_array($candidate)||($candidate['id']??'')!==$id)continue;
+			$verified=!empty($candidate['descriptor_binding_ready']) &&
+				true===($candidate['planner_registered']??false) &&
+				true===($candidate['executor_registered']??false);
+			break;
+		}
+		if(!$verified)
+			return new WP_Error('mad4b_progressive_operation_unready',
+				'Canonical planner and executor are not currently registered with verified descriptors.');
 		$row=MAD4B_SCP_Operation_Registry::operation($id);
 		if(is_wp_error($row))return $row;
 		if(!is_array($row)||empty($row['descriptor_binding_ready']))
