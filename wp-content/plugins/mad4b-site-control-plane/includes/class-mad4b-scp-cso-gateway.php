@@ -33,9 +33,9 @@ final class MAD4B_SCP_CSO_Gateway {
             'change_verify' => array( 'single_write', 'private', array( 'plan' ) ),
             'change_history' => array( 'single_write', 'read', array( 'operation_id','limit','offset' ) ),
             'undo_plan' => array( 'single_write', 'plan', array( 'operation_id','preparation' ) ),
-            'bulk_plan' => array( 'bulk', 'plan', array( 'plans','selection','canary_size' ) ),
+            'bulk_plan' => array( 'bulk', 'private', array( 'plans','selection','canary_size' ) ),
             'bulk_commit' => array( 'bulk', 'private', array( 'plan','governance','checkpoint','max_items' ) ),
-            'workflow_compile' => array( 'workflow', 'plan', array( 'nodes' ) ),
+            'workflow_compile' => array( 'workflow', 'private', array( 'nodes' ) ),
             'workflow_run' => array( 'workflow', 'private', array( 'plan','governance','max_nodes' ) ),
             'trigger_plan' => array( 'workflow', 'plan', array( 'source_ability','workflow' ) ),
             'secret_session' => array( 'secrets', 'private', array( 'provider_id','field_ref','mode','consent','ttl' ) ),
@@ -63,7 +63,7 @@ final class MAD4B_SCP_CSO_Gateway {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
             'field_help', 'field_suggest', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify'
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify', 'bulk_plan', 'workflow_compile'
         );
     }
 
