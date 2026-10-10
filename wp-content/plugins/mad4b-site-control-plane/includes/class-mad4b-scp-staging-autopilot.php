@@ -318,9 +318,13 @@ final class MAD4B_SCP_Staging_Autopilot {
 			? MAD4B_SCP_Full_Staging_Authority::status() : array();
 		$developer = is_array( $full ) && isset( $full['developer'] ) && is_array( $full['developer'] )
 			? $full['developer'] : array();
+		$write_observation = is_array( $write ) && isset( $write['contract'] )
+			? array( 'ready' => ! empty( $write['write_ready'] ),
+				'current_readiness_blockers' => isset( $write['write_current_readiness_blockers'] ) ? $write['write_current_readiness_blockers'] : array() )
+			: array();
 		$report['automation_plan'] = self::automation_plan(
 			is_array( $site ) ? $site : array(),
-			is_array( $write ) ? $write : array(),
+			$write_observation,
 			is_array( $skills ) ? $skills : array(),
 			$developer
 		);
