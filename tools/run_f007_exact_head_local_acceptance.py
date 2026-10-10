@@ -24,6 +24,8 @@ LINT = (
     "includes/class-mad4b-scp-servers.php",
     "includes/class-mad4b-scp-content-jobs.php",
     "includes/class-mad4b-scp-context-authority.php",
+    "includes/class-mad4b-scp-activity-sync-runtime.php",
+    "tests/business-activity-sync-runtime.php",
     "tests/trusted-brand-scope-runtime.php",
     "tests/unified-operational-scope-runtime.php",
     "tests/operational-integrity-local-runtime.php",
@@ -39,11 +41,15 @@ RUNTIME = (
     "tests/site-profile-general-distribution-runtime.php",
     "tests/site-profile-lifecycle-matrix-runtime.php",
     "tests/content-job-domain-runtime.php",
+    "tests/business-activity-sync-runtime.php",
 )
+# The paired Core seed/verified ZIP audit is an external release stage, not a
+# local native test: running it without --core-seed, --wp-head, --core-head,
+# --run-php and --package-zip always produces an intentional BLOCKED result.
 CONTRACTS = (
     "tests/context-authority-contract.py",
     "tests/unified-operational-scope-source-contract.py",
-    "tests/deployment-mode-dependencies-contract.py",
+    "tests/business-activity-sync-runtime-contract.py",
 )
 ALL = tuple(("php_lint", x) for x in LINT) + tuple(("php_runtime", x) for x in RUNTIME) + tuple(("python_contract", x) for x in CONTRACTS)
 
@@ -67,6 +73,9 @@ def assess(root: Path, expected_head: str, timeout: int = 90, php: str = "php"):
         "exact_head_match": bool(observed and observed == expected_head),
         "native_gate": "BLOCKED",
         "operational_acceptance": False,
+        "cross_repo_acceptance": False,
+        "cross_repo_audit": "NOT_RUN_REQUIRES_EXACT_CORE_HEAD_AND_VERIFIED_PACKAGE",
+        "legacy_migration_executed": False,
         "staging_acceptance": False,
         "host_acceptance": False,
         "mcp_acceptance": False,
