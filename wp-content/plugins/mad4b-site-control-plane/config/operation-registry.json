@@ -96,6 +96,27 @@
       "pipeline_profile": "governed_mutation_v1"
     },
     {
+      "id": "wordpress.candidate-channel.consent",
+      "target_kind": "control_plane",
+      "risk": "high",
+      "planner": "mad4b/manual-workflow-plan",
+      "executor": "mad4b/manual-workflow-apply",
+      "supports": [
+        "enable-native-candidates",
+        "disable-native-candidates"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "site_option_opt_in",
+      "retry_semantics": "readback_before_retry",
+      "owner_confirmation_required": true,
+      "host_runner_required": false,
+      "production_allowed": false
+    },
+    {
       "id": "wordpress.runtime.converge",
       "target_kind": "runtime",
       "risk": "high",
@@ -201,7 +222,8 @@
     "import": "wordpress.content.import",
     "export": "wordpress.content.export",
     "converge-runtime": "wordpress.runtime.converge",
-    "reconcile-runtime": "wordpress.runtime.converge"
+    "reconcile-runtime": "wordpress.runtime.converge",
+    "native-candidate-mode": "wordpress.candidate-channel.consent"
   },
   "read_projection": {
     "direct": [
@@ -223,7 +245,9 @@
       "mad4b/provider-transport-registry-status",
       "mad4b/operation-resume-status",
       "mad4b/runtime-convergence-status",
-      "mad4b/runtime-convergence-plan"
+      "mad4b/runtime-convergence-plan",
+      "mad4b/manual-workflow-discover",
+      "mad4b/manual-workflow-plan"
     ]
   },
   "pipeline_profiles": {
