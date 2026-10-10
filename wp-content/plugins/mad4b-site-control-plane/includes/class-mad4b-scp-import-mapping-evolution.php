@@ -174,6 +174,38 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
                 'type_observation' => self::type_profile( $rows, $col ),
                 'policy' => 'quarantine_until_explicit_profile_mapping' );
         }
+        $typed_observations = array();
+        $type_conflicts = array();
+        if ( !$header_only ) {
+            foreach ( array_keys( $mapped ) as $field ) {
+                if ( ! isset( $observed[ $field ] ) ) continue;
+                $types = self::type_profile( $rows, $field );
+                $risk = self::classify( $field, $policy );
+                $typed_observations[] = array(
+                    'source_field' => $field,
+                    'risk' => $risk,
+                    'sample_size_bounded' => min( count( $rows ), 100 ),
+                    'counts_only' => $types
+                );
+                if ( in_array( $field, (array) $policy['price_fields'], true ) &&
+                    ( $types['text'] > 0 || $types['nested'] > 0 ||
+                      $types['iso_date'] > 0 ) )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'commercial_price_semantic_type_drift',
+                        'requires_human_review' => true );
+                if ( ! empty( $policy['period_start_field'] ) &&
+                    in_array( $field, array( $policy['period_start_field'],
+                        $policy['period_end_field'] ), true ) &&
+                    ( $types['nested'] > 0 ||
+                      ( 'iso_date' === $policy['period_format'] &&
+                        $types['number'] > 0 ) ) )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'configured_interval_format_drift',
+                        'requires_human_review' => true );
+            }
+        }
         $allowed_meta = array_fill_keys( (array) $profile['meta_keys'], true );
         $invalid_destinations = array();
         foreach ( $mapped as $source => $destination )
@@ -217,6 +249,8 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
             'mapped_source_columns_missing' => $missing,
             'rename_suggestions' => $suggestions,
             'unmapped_source_columns' => $unmapped,
+            'sampled_mapped_column_type_counts' => $typed_observations,
+            'semantic_type_conflicts' => $type_conflicts,
             'invalid_destinations' => $invalid_destinations,
             'critical_columns_missing' => array_keys( $critical_required ),
             'unresolved_conflicts' => $blocking,
@@ -229,7 +263,7 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
                 'candidate_never_applied_automatically' => true
             ),
             'safe_to_reuse_old_mapping' => !$missing && !$invalid_destinations &&
-                !$critical_required && !$blocking,
+                !$critical_required && !$blocking && !$type_conflicts,
             'requires_new_governed_profile_revision' =>
                 (bool) ( $missing || $invalid_destinations || $critical_required || $suggestions ),
             'uncertified_provider_gates' => $uncertified,
