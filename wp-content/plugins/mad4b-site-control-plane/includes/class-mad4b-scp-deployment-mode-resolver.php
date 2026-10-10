@@ -20,6 +20,7 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         $wp_site = function_exists( 'get_current_blog_id' ) && function_exists( 'get_current_network_id' );
         $abilities = function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' );
         $policy = class_exists( 'MAD4B_SCP_Policy', false ) && is_callable( array( 'MAD4B_SCP_Policy', 'can_read' ) );
+        $adapter_observed = class_exists( 'WP\\MCP\\Core\\McpAdapter', false );
         return array(
             'contract' => 'mad4b.wordpress-dedicated-dependency-readiness.v1',
             'identity_services' => array(
@@ -30,7 +31,10 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'mcp_discovery' => array(
                 'abilities_api_available' => $abilities,
                 'read_policy_available' => $policy,
-                'status' => $abilities && $policy ? 'POTENTIALLY_AVAILABLE' : 'BLOCKED',
+                'adapter_class_observed' => $adapter_observed,
+                'status' => ! $abilities || ! $policy ? 'BLOCKED'
+                    : ( $adapter_observed ? 'POTENTIALLY_AVAILABLE' : 'TRANSPORT_NOT_OBSERVED' ),
+                'transport_and_registration_independently_certified' => false,
             ),
             'optional_provider_observation' => array(
                 'google_drive' => class_exists( 'MAD4B_SCP_Google_Drive_Context', false ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
