@@ -16,6 +16,7 @@ if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Experience' ) ) require_once __D
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Batches' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-batches.php';
 if ( ! class_exists( 'MAD4B_SCP_Import_Acceptance_Gates' ) ) require_once __DIR__ . '/class-mad4b-scp-import-acceptance-gates.php';
 if ( ! class_exists( 'MAD4B_SCP_Import_WPML_Readback' ) ) require_once __DIR__ . '/class-mad4b-scp-import-wpml-readback.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_Mapping_Evolution' ) ) require_once __DIR__ . '/class-mad4b-scp-import-mapping-evolution.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
 /**
@@ -601,6 +602,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-import-batch-verify',
             'mad4b/business-activity-import-acceptance-gates',
             'mad4b/business-activity-import-wpml-readback',
+            'mad4b/business-activity-import-mapping-evolution-plan',
+            'mad4b/business-activity-import-mapping-mutation-simulate',
             'mad4b/business-activity-import-modes',
             'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-reconciliation-plan',
@@ -884,6 +887,42 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 ), array( 'profile_slug', 'batch_id', 'confirmed' ) ),
                 'surface' => 'content', 'readonly' => false,
                 'destructive' => true, 'idempotent' => false,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-mapping-evolution-plan',
+                'label' => 'Observe Schema Drift and Proposed Import Mapping Changes',
+                'callback' => array( 'MAD4B_SCP_Import_Mapping_Evolution', 'plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'observed_headers' => array( 'type' => 'array', 'minItems' => 1,
+                        'maxItems' => 80, 'items' => array( 'type' => 'string',
+                            'minLength' => 1, 'maxLength' => 121 ) ),
+                    'expected_profile_authority_sha256' => self::sha_schema(),
+                ), array( 'profile_slug' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false,
+                'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-mapping-mutation-simulate',
+                'label' => 'Simulate Site-Owned Import Mapping Mutation Without Applying',
+                'callback' => array( 'MAD4B_SCP_Import_Mapping_Evolution', 'simulate' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'observed_headers' => array( 'type' => 'array', 'minItems' => 1,
+                        'maxItems' => 80, 'items' => array( 'type' => 'string',
+                            'minLength' => 1, 'maxLength' => 121 ) ),
+                    'expected_profile_authority_sha256' => self::sha_schema(),
+                    'proposal_plan_sha256' => self::sha_schema(),
+                    'candidate_validation' => array( 'type' => 'object',
+                        'additionalProperties' => true ),
+                ), array( 'profile_slug', 'proposal_plan_sha256',
+                    'candidate_validation' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false,
+                'idempotent' => true,
             ),
             array(
                 'name' => 'mad4b/business-activity-import-wpml-readback',
