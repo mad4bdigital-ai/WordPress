@@ -32,6 +32,10 @@ class MAD4B_SCP_CSO_Scope {
 }
 class MAD4B_SCP_CSO_Changes {const CONTRACT='mad4b.cso.change-plan.v1';}
 class MAD4B_SCP_Database_Topology {static function assert_write_ready($v){return array('ready'=>true);}}
+$GLOBALS['can_approve']=true;
+class MAD4B_SCP_Policy {
+ static function can_approve_mutations(){return $GLOBALS['can_approve'];}
+}
 class MAD4B_SCP_Operational_Integrity {
  static function capture(){return array('actor'=>$GLOBALS['scope']['actor_sha256']);}
  static function assert_unchanged($x,$mutate){return $x['actor']===$GLOBALS['scope']['actor_sha256']?true:new WP_Error('DRIFT');}
@@ -63,6 +67,10 @@ $r=MAD4B_SCP_CSO_Bulk_Runtime::commit($batch['sealed_batch'],$g,array(),1);
 ck(!is_wp_error($r)&&$r['status']==='paused'&&$r['completed_items']===1&&$GLOBALS['runs']===1,'one canary then pause');
 ck(is_wp_error(MAD4B_SCP_CSO_Bulk_Runtime::commit($batch['sealed_batch'],$g,array(),2)),'resume without checkpoint denied');
 $g['canary_reviewed']=true;
+$GLOBALS['can_approve']=false;
+ck(is_wp_error(MAD4B_SCP_CSO_Bulk_Runtime::commit($batch['sealed_batch'],$g,$r['checkpoint'],2)),'canary review requires current approving actor');
+ck($GLOBALS['runs']===1,'no new effect for unapproved canary resume');
+$GLOBALS['can_approve']=true;
 $r2=MAD4B_SCP_CSO_Bulk_Runtime::commit($batch['sealed_batch'],$g,$r['checkpoint'],2);
 ck(!is_wp_error($r2)&&$r2['status']==='complete'&&$GLOBALS['runs']===3,'resume two, complete three');
 ck(is_wp_error(MAD4B_SCP_CSO_Bulk_Runtime::commit($batch['sealed_batch'],$g,$r2['checkpoint'],1)),'completed batch cannot replay');

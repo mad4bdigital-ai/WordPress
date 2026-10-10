@@ -92,7 +92,11 @@ final class MAD4B_SCP_CSO_Bulk_Runtime {
                 ! hash_equals( (string) ( $journal['scope_sha256'] ?? '' ),
                     MAD4B_SCP_CSO_Scope::digest( $scope ) ) ||
                 ( $journal['status'] ?? '' ) !== 'paused' ||
-                ! $governance['canary_reviewed'] || ! $checkpoint )
+                ! $governance['canary_reviewed'] || ! $checkpoint ||
+                ! class_exists( 'MAD4B_SCP_Policy', false ) ||
+                ! method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ||
+                ! MAD4B_SCP_Policy::can_approve_mutations() )
+                // A request-supplied boolean alone is never a review grant.
                 return self::error( 'BULK_REPLAY_OR_UNCERTAIN_EFFECT' );
             $proof = MAD4B_SCP_CSO_Scope::unseal(
                 $checkpoint, self::CONTRACT . '.checkpoint' );
