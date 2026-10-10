@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 756,
+  "changed_file_count": 757,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1484,6 +1484,7 @@
         "docs/runbooks/standalone-build-orchestrator.md",
         "tools/mad4b_standalone_build.py",
         "tools/mad4b_standalone_evidence.py",
+        "tools/mad4b_standalone_runner_receipt.py",
         "tools/test_mad4b_standalone_build.py",
         "tools/test_mad4b_standalone_evidence.py",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php",
@@ -1578,6 +1579,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "cb3e024b8c88396e824b73ea9bb6dad65f9143d7e0b3c00e916e8097e1e8d987",
+  "changed_paths_sha256": "9406c7095ec754f6f19387543d1550cb8da2810e0f296a5f19d2b958d610b96a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
