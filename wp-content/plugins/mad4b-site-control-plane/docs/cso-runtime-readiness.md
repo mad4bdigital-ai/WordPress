@@ -52,3 +52,25 @@ Before enabling a selected Staging canary, independently verify:
 - **Not implemented by this source change:** general SQL/plugin option writes, `CSO_Changes`, durable drafts, `CSO_Bulk`, `CSO_Workflows`, `CSO_Triggers`, `CSO_Domain_Plans`, `CSO_Operations`, `CSO_Templates`. These remain disabled and unadvertised. Implement and review each as an isolated branch/slice before claiming full CSO closure.
 
 **Release verdict:** non-authorizing implementation progress; no plugin publication, `master` merge, Staging/Production promotion or "fully closed" claim from source alone.
+
+## Incremental P0/P1 source delivery — 10 October 2026
+
+The current PR branch additionally includes source-level modules, **not** operational certification:
+
+| Domain | Implemented source behavior | Still blocked |
+| --- | --- | --- |
+| Storage adapters | Explicit deployment-owned provider registry, typed descriptor, exact target/site scope, registered native Ability identity and permission-checked nonsecret read snapshot | Real provider certification, atomic target revision enforcement, independent post-write readback |
+| Dynamic forms | Canonical descriptor, typed validation and bounded literal enum suggestions | Live CPT/taxonomy/user/relationship autocomplete, conditional mutations and rights-scoped search |
+| Private drafts | First-party create/load/save/delete using bounded nonsecret values, actor/site scope HMAC, fixed option names and SQL CAS | Retention worker, GDPR export/delete evidence, real two-writer concurrency proof |
+| Change plans | Private readback, typed diff digest, exact descriptor/revision, sealed nonexecuting plan | Native write executor, separate approval grant, durable effect journal, verified undo |
+| Bulk preparation | Exact owner/site for each plan, 32-item cap, duplicate refusal, 1–5 Canary | Durable checkpoint, independent per-item executor, restart recovery and compensation |
+| Workflows | Bounded DAG compiler, topological order, cycle and secret rejection | Native DAG runner, durable saga, signed triggers/webhooks, pause/resume |
+| Privacy and UI | First-party RTL/English forms, no credential value in conversation | Real accessibility/browser/privacy/retention acceptance |
+
+**Important:** `CSO_Changes::commit`, `CSO_Bulk::commit` and `CSO_Workflows::run` currently always refuse execution. Flags never confer write grants. Private plan is not an approval or a verified external effect.
+
+### External operational proof required
+
+Run exact-head PHP 7.4/8.3 native matrix with `cso-drafts-runtime.php`, `cso-changes-runtime.php`, `cso-orchestration-plans-runtime.php`, plus real Staging MySQL concurrency, crash-after-provider-COMMIT recovery, actor and plugin-version drift, replay refusal, independent write readback and rollback. Synthetic tests alone cannot certify a live provider.
+
+Keep the plugin inside Feature 007, without independent plugin, `master` merge, Production release, arbitrary SQL, general plugin-option writing or unknown provider authority.
