@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Progressive_Operation_Discovery {
 	const CONTRACT = 'mad4b.progressive-operation-discovery.v1';
-	const MAX_OPERATIONS = 512;
+	const MAX_OPERATIONS = 2048;
 	const MAX_VARIABLES = 80;
 
 	private static function normalize( $value ) {
@@ -56,6 +56,40 @@ final class MAD4B_SCP_Progressive_Operation_Discovery {
 					is_array( $item['supports'] ?? null ) ? $item['supports'] : array(), 0, 20 ) ),
 			);
 		}
+		// WordPress Abilities API is a second dynamic discovery surface.
+		// Registered does NOT mean independently certified for mutation.
+		if ( function_exists( 'wp_get_abilities' ) ) {
+			$abilities = wp_get_abilities();
+			if ( is_array( $abilities ) ) foreach ( $abilities as $key => $ability ) {
+				if ( ! is_object( $ability ) ) continue;
+				$name = method_exists( $ability, 'get_name' )
+					? (string) $ability->get_name() : ( is_string( $key ) ? $key : '' );
+				if ( ! preg_match( '#^[a-z][a-z0-9._-]*/[a-z][a-z0-9._-]+$#D', $name ) )
+					continue;
+				if ( 0 === strpos( $name, 'mad4b/progressive-requirements-' ) ) continue;
+				$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
+				$annotations = is_array( $meta ) &&
+					is_array( $meta['annotations'] ?? null ) ? $meta['annotations'] : array();
+				$items[] = array(
+					'id' => 'ability.' . str_replace( '/', '.', $name ),
+					'selector' => 'registry.ability',
+					'target_operation_id' => '',
+					'target_ability_name' => $name,
+					'planner' => $name,
+					'executor' => $name,
+					'kind' => 'runtime_registered_ability',
+					'available' => method_exists( $ability, 'get_input_schema' ),
+					'capability_verified' => false,
+					'capability_family' => 'wordpress_abilities_runtime',
+					'declared_readonly' => true === ( $annotations['readonly'] ?? false ),
+					'native_execution_policy_required' => true,
+					'supports' => array(),
+				);
+			}
+		}
+		if ( count( $items ) + count( $internal ) > self::MAX_OPERATIONS )
+			return new WP_Error( 'mad4b_progressive_abilities_overflow',
+				'Runtime Ability inventory exceeded the bounded catalog; do not truncate and auto-select.' );
 		foreach ( $internal as $id => $callback ) {
 			if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9._-]{1,79}$/D', $id ) )
 				continue;
