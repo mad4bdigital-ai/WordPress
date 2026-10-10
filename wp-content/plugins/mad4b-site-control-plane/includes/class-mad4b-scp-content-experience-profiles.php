@@ -13,6 +13,7 @@ if ( ! class_exists( 'MAD4B_SCP_Activity_WPAI_Observer' ) ) require_once __DIR__
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Xlsx' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-xlsx.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Experience' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-experience.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Batches' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-batches.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
 /**
@@ -595,6 +596,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
             'mad4b/business-activity-import-capabilities',
             'mad4b/business-activity-import-experience-plan',
+            'mad4b/business-activity-import-batch-verify',
             'mad4b/business-activity-import-modes',
             'mad4b/business-activity-import-mode-plan',
             'mad4b/business-activity-import-reconciliation-plan',
@@ -611,6 +613,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
             'mad4b/business-activity-link-apply',
             'mad4b/business-activity-import-approve',
+            'mad4b/business-activity-import-batch-begin',
+            'mad4b/business-activity-import-batch-append',
             'mad4b/business-activity-wpai-observation-arm',
             'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
             'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
@@ -632,6 +636,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
             'mad4b/business-activity-link-apply',
             'mad4b/business-activity-import-approve',
+            'mad4b/business-activity-import-batch-begin',
+            'mad4b/business-activity-import-batch-append',
             'mad4b/business-activity-wpai-observation-arm',
             'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
             'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
@@ -813,6 +819,46 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                     'import_id' => array( 'type' => 'integer', 'minimum' => 1 ),
                 ), array( 'import_id' ) ),
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-batch-begin',
+                'label' => 'Start Bounded Encrypted Staging Import Review Batch',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Batches', 'begin' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'expected_chunks' => array( 'type' => 'integer', 'minimum' => 2, 'maximum' => 10 ),
+                    'confirmed' => array( 'type' => 'boolean' ),
+                ), array( 'profile_slug', 'expected_chunks', 'confirmed' ) ),
+                'surface' => 'content', 'readonly' => false, 'destructive' => true,
+                'idempotent' => false,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-batch-append',
+                'label' => 'Append One Immutable Encrypted Source Chunk',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Batches', 'append' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'batch_id' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32 ),
+                    'chunk_index' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 9 ),
+                    'source' => array( 'type' => 'object',
+                        'additionalProperties' => true ),
+                ), array( 'profile_slug', 'batch_id', 'chunk_index', 'source' ) ),
+                'surface' => 'content', 'readonly' => false, 'destructive' => true,
+                'idempotent' => false,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-batch-verify',
+                'label' => 'Verify Source Chunk Integrity and Cross-Chunk Identity',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Batches', 'verify' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'batch_id' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 32 ),
+                ), array( 'profile_slug', 'batch_id' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false,
+                'idempotent' => true,
             ),
             array(
                 'name' => 'mad4b/business-activity-import-experience-plan',
