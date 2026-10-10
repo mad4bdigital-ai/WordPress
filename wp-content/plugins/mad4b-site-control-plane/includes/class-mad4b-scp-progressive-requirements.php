@@ -291,6 +291,67 @@ final class MAD4B_SCP_Progressive_Requirements {
 		);
 	}
 
+	/**
+	 * Any WordPress registered Ability can be discovered without a new static
+	 * adapter. Its ORIGINAL schema and original execution policy are the
+	 * authority; this observation never calls execute() or escalates rights.
+	 */
+	public static function registered_ability( array $input ) {
+		$name=(string)($input['target_ability_name']??'');
+		if(!preg_match('#^[a-z][a-z0-9._-]*/[a-z][a-z0-9._-]+$#D',$name) ||
+			0===strpos($name,'mad4b/progressive-requirements-'))
+			return new WP_Error('mad4b_progressive_ability_name_invalid',
+				'Exact separately registered native Ability required.');
+		if(!function_exists('wp_get_ability'))
+			return new WP_Error('mad4b_progressive_ability_registry_missing',
+				'Native WordPress Abilities registry unavailable.');
+		$ability=wp_get_ability($name);
+		if(!is_object($ability)||!method_exists($ability,'get_input_schema'))
+			return new WP_Error('mad4b_progressive_ability_unregistered',
+				'Runtime Ability is not registered with an introspectable schema.');
+		$schema=$ability->get_input_schema();
+		if(!is_array($schema))
+			return new WP_Error('mad4b_progressive_ability_schema_invalid',
+				'Native Ability schema is invalid and cannot be dynamically bound.');
+		$meta=method_exists($ability,'get_meta')?$ability->get_meta():array();
+		$annotations=is_array($meta) && is_array($meta['annotations']??null)
+			? $meta['annotations']:array();
+		$readonly=true===($annotations['readonly']??false);
+		$json=function_exists('wp_json_encode')?
+			wp_json_encode(array('ability'=>$name,'schema'=>$schema,
+				'declared_readonly'=>$readonly),
+				JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE):
+			json_encode(array('ability'=>$name,'schema'=>$schema,
+				'declared_readonly'=>$readonly),
+				JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+		if(!is_string($json)||''===$json||strlen($json)>131072)
+			return new WP_Error('mad4b_progressive_ability_schema_unbounded',
+				'Registered ability schema is too large to safely bind.');
+		$digest=hash('sha256',$json);
+		return array(
+			'operation_identity'=>$digest,
+			'canonical_observation_digest'=>$digest,
+			'canonical_ready'=>false,
+			'conditions'=>array(
+				self::gate('native_ability_registered',true,'hard','before_effect'),
+				self::gate('native_input_schema_bound',true,'hard','before_effect'),
+				self::gate('original_plugin_permission_verified',false,'hard','before_effect'),
+				self::gate('exact_native_plan_accepted',false,'hard','before_effect'),
+				self::gate('separate_effect_approval',false,'hard','before_effect'),
+				self::gate('native_postcondition_verified',false,'postcondition','after_effect'),
+			),
+			'effect_ability'=>$name,
+			'effect_kind'=>$readonly?'original_governed_read':'original_governed_write',
+			'original_native_ability'=>$name,
+			'declared_readonly'=>$readonly,
+			'ability_schema_sha256'=>$digest,
+			'effect_per_attempt'=>false,
+			'install_per_attempt'=>false,
+			'package_recreation_per_attempt'=>false,
+			'operation_family'=>'runtime_registered_ability',
+		);
+	}
+
 	/** Pure reducer for tests and future trusted operation providers. */
 	public static function decide( array $observation, $mode='detached', $attempt=1,
 		$site_identity='', $operation_id='' ) {
