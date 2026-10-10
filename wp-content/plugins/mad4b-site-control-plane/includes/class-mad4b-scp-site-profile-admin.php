@@ -359,8 +359,11 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					</form>
 					<p class="description"><?php esc_html_e( 'Uses your administrator session and existing explicit Staging attestation. Preserves the enrolled identity and settings, saves host_managed, then attempts only a guarded local wp-config edit. Check the WordPress environment again on a fresh request.', 'mad4b-site-control-plane' ); ?></p>
 				<?php endif; ?>
+				<?php if ( ! empty( $autopilot['host_identity'] ) && is_array( $autopilot['host_identity'] ) ) : ?>
+					<p class="description"><?php echo esc_html( 'Existing enrolled Host Runner (dynamic signed identity): ' . (string) ( $autopilot['host_identity']['state'] ?? 'not_evaluated' ) ); ?></p>
+				<?php endif; ?>
 				<?php if ( empty( $status['deployment_binding_configured'] ) ) : ?>
-					<p class="description"><?php esc_html_e( 'Host deployment binding missing: separately provision a unique host-private binding before clone-safe MCP selected-HEAD operations. This cannot be created from a Site Profile read.', 'mad4b-site-control-plane' ); ?></p>
+					<p class="description"><?php esc_html_e( 'No legacy deployment binding configured. The preferred alternative is a fresh challenge signed by the existing enrolled Host Runner, without creating another Host secret or identity registry. Until the trusted local adapter is connected and legacy operations explicitly migrate to signed proof, sensitive selected-HEAD Host operations remain blocked.', 'mad4b-site-control-plane' ); ?></p>
 				<?php endif; ?>
 				<p class="description"><?php esc_html_e( 'Assistants: mad4b/site-autopilot-status (read-only), mad4b/staging-write-authority-convergence-handshake (review-only), mad4b/full-staging-authority-handshake (review-only). No authority or Production changes are automatic.', 'mad4b-site-control-plane' ); ?></p>
 				<?php if ( ! empty( $autopilot['automation_plan'] ) && is_array( $autopilot['automation_plan'] ) ) :
