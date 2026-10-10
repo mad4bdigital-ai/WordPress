@@ -534,5 +534,48 @@ foreach(array('shell_exec(','exec(','proc_open(','passthru(','system(','eval(','
 	$check(false===strpos($source,$forbidden), 'forbidden execution primitive present: '.$forbidden);
 }
 
+/* On-demand single-source Host identity migration is bounded READ only. */
+$exact = array(
+ 'configured_environment'=>'staging','wordpress_environment'=>'staging',
+ 'wordpress_environment_explicit'=>true,'origin_match'=>true,
+ 'environment_match'=>true,'authority_ready'=>true,
+ 'deployment_binding_configured'=>false,
+);
+$attested = array(
+ 'verified'=>true,'state'=>'fresh_host_identity_verified',
+ 'one_authoritative_source'=>true,'authorizing'=>false,'mutation_performed'=>false,
+);
+$migrated = MAD4B_SCP_Host_Bridge::identity_migration_decision($exact,$attested);
+$check('signed_host_verified_legacy_consumers_not_migrated'===$migrated['state']
+ && false===$migrated['ready_for_host_write']
+ && false===$migrated['operation_approval_migrated']
+ && count($migrated['legacy_operations'])===4
+ && !array_filter(array_column($migrated['legacy_operations'],'new_signed_protocol_accepted')),
+ 'Fresh signer was incorrectly treated as existing Host write authority');
+$dual = MAD4B_SCP_Host_Bridge::identity_migration_decision(
+ array_merge($exact,array('deployment_binding_configured'=>true)),$attested
+);
+$check('blocked_multiple_host_identity_roots'===$dual['state']
+ && true===$dual['multiple_identity_roots_detected'],
+ 'Legacy secret and signer coexistence accepted without migration');
+$untrusted = MAD4B_SCP_Host_Bridge::identity_migration_decision(
+ $exact,array_merge($attested,array('authorizing'=>true))
+);
+$check('signed_host_proof_not_verified'===$untrusted['state'],
+ 'Authorizing or forged Host evidence accepted as read-only proof');
+$production = MAD4B_SCP_Host_Bridge::identity_migration_decision(
+ array_merge($exact,array('wordpress_environment'=>'production')),$attested
+);
+$check('blocked_non_staging_or_inexact_site'===$production['state'],
+ 'Explicit Production host accepted for dynamic identity');
+$input_denied = MAD4B_SCP_Host_Bridge::host_identity_migration_plan(array('secret'=>'injected'));
+$check(is_wp_error($input_denied)
+ && 'mad4b_host_identity_migration_input_invalid'===$input_denied->get_error_code(),
+ 'Caller arguments reached one-source Host migration discovery');
+$read_plan = MAD4B_SCP_Host_Bridge::host_identity_migration_plan(array());
+$check(is_array($read_plan) && false===$read_plan['mutation_performed']
+ && false===$read_plan['production_authorized'] && false===$read_plan['ready_for_host_write'],
+ 'Missing Host signer incorrectly enabled legacy writes');
+
 exec('rm -rf ' . escapeshellarg($tmp));
 echo "mad4b.host-bridge.v1: PASS\n";
