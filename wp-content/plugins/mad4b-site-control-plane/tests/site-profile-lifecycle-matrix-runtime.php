@@ -61,6 +61,7 @@ $sync_cases = array(
  array('host_managed','staging','production',false,true,false,'blocked_missing_deployment_binding'),
  array('host_managed','staging','production',false,true,true,'awaiting_host_bootstrap'),
  array('host_managed','staging','staging',true,true,true,'host_aligned'),
+ array('host_managed','staging','staging',true,true,false,'host_aligned'),
  array('host_managed','staging','production',true,true,true,'blocked_explicit_host_conflict'),
  array('host_managed','production','production',true,true,true,'blocked_production_or_invalid_target'),
  array('host_managed','invalid','production',false,true,true,'blocked_production_or_invalid_target'),
@@ -97,7 +98,11 @@ foreach ( $homes as $home ) foreach ( $environments as $wordpress ) foreach ( $e
  journey_check( ! is_wp_error( $result ), 'valid enrollment failed' );
  $enrolled_sync = MAD4B_SCP_Site_Profile::status();
  journey_check( $enrolled_sync['environment_sync_mode'] === $sync_requested, 'synchronization mode was not persisted with exact Site Profile identity' );
- journey_check( $sync_requested !== 'host_managed' || $enrolled_sync['environment_sync_state'] === 'blocked_missing_deployment_binding', 'host-managed mode claimed synchronization without host binding' );
+ journey_check( $sync_requested !== 'host_managed'
+  || ( $enrolled_sync['environment_sync_state'] === 'host_aligned'
+   && empty( $enrolled_sync['same_origin_clone_protection'] )
+   && empty( $enrolled_sync['deployment_binding_configured'] ) ),
+  'explicit WordPress environment alignment incorrectly claimed Host identity or mutation authority' );
  $effective=$wordpress===$selected || 'production'===$wordpress ? $selected : $wordpress;
  $enrolled=$effective===$selected;
  journey_check( $effective===MAD4B_SCP_Site_Profile::current_environment() && $enrolled===MAD4B_SCP_Site_Profile::origin_enrolled(), 'effective environment mismatch' );
