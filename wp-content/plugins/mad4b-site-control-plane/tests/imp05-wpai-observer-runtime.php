@@ -46,4 +46,19 @@ ck( is_wp_error( $duplicate ) &&
     $duplicate->get_error_code() === 'mad4b_wpai_observation_active',
     'Concurrent rearming replaced active observation journal' );
 unset( $GLOBALS['imp02_enabled_modes'] );
+$archived_source = $review['payload_sha256'];
+$archived_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
+    MAD4B_SCP_Site_Profile::site_uuid() . '|pricing|' . $archived_source );
+add_option( $archived_key, array( 'payload_sha256' => $archived_source ), '', false );
+$approval_replay = MAD4B_SCP_Activity_Import_Snapshot::approval(
+    'pricing', $review['snapshot_sha256'] );
+ck( is_wp_error( $approval_replay ) &&
+    $approval_replay->get_error_code() === 'mad4b_import_snapshot_archived',
+    'Previously archived snapshot reused old approval' );
+delete_option( MAD4B_SCP_Activity_Import_Snapshot::option_key( 'pricing' ) );
+$replayed_source = MAD4B_SCP_Activity_Import_Snapshot::stage(
+    'pricing', $clean, $cleanPreview, 'admin_csv_upload', 'test-admin' );
+ck( is_wp_error( $replayed_source ) &&
+    $replayed_source->get_error_code() === 'mad4b_import_snapshot_previously_archived',
+    'Identical source was restaged after archival without a new review revision' );
 echo "PASS IMP05 observed public hook lifecycle, exact approved arm, duplicate denial, no false provider provenance (PHP fixture only)\n";
