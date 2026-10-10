@@ -563,6 +563,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
+		if ( 'context/legacy-owner-transfer-apply' === $ability_name
+			&& ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' )
+				|| true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required',
+				'Host-certified crash-safe rollback acceptance is required before the legacy owner-transfer write can mount.' );
 		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply'), true ) ) {
 			$site = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
 			return 'staging' === (string)($site['environment'] ?? '') &&
