@@ -14,7 +14,7 @@ This code slice integrates existing Site Profile, Context Authority and Content 
 
 - Existing Content Jobs or Context Sources with no valid Brand Context or no enrolled Deployment Binding are hidden/blocked rather than silently assigned to an arbitrary brand.
 - Legacy/source records missing `brand_id` remain physically untouched but are inaccessible until an explicit migration with ownership evidence. The older source hash is preserved and collisions reject instead of assigning ownership.
-- This slice does not make the entire plugin's write surface pass through the new guard: next mandatory integrations include source/asset mutations, other content operations, workflow executors, asynchronous claims, and the MCP custom-server tool inventory.
+- This slice now fences every Context Authority registry mutation at the common registry lock boundary, with initial Brand Profile enrollment/rename explicitly exempt. Other plugin write surfaces remain independent: workflow executors, asynchronous claims, unrelated plugin management, and custom direct operations require a separate review of their existing policy guards. The status Ability is added to the dedicated read server inventory; actual MCP discovery still needs live readback.
 - This slice does not certify production readiness, source rights, external signatures, or WordPress Multisite switching under real traffic.
 
 ## Native acceptance

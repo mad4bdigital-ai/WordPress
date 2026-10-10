@@ -11,6 +11,7 @@ guard=(root/"includes/class-mad4b-scp-operational-scope-guard.php").read_text()
 assert "MAD4B_SCP_Operational_Scope_Guard::require_current()" in src
 assert "MAD4B_SCP_Operational_Scope_Guard::source_in_scope(" in src
 assert "mad4b_context_source_brand_conflict" in src
+assert "if ( 'save_profile' !== (string) $operation )" in src
 assert "'brand_id' => ! empty( $current['brand_id'] )" in src
 assert "'site_uuid=%s', 'brand_id=%s'" in jobs
 assert "'tenant_id' => (string) $scope['tenant_ref']" in jobs

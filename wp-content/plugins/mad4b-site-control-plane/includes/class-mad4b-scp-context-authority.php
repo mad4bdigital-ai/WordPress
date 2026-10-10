@@ -2420,6 +2420,15 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function with_registry_lock( $operation, $callback ) {
+        // All operational Context Authority mutations share this site+brand
+        // fence. Only initial Brand Profile enrollment/rename is exempt so
+        // operators can configure the profile before it has an active scope.
+        if ( 'save_profile' !== (string) $operation ) {
+            $scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+                ? MAD4B_SCP_Operational_Scope_Guard::require_current()
+                : new WP_Error( 'mad4b_scope_guard_missing', 'Operational scope guard is unavailable.' );
+            if ( is_wp_error( $scope ) ) return $scope;
+        }
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
 		$snapshot = self::registry_option_snapshot();

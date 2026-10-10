@@ -67,4 +67,9 @@ check( array_keys( $visible_assets ) === array( 'own' ), 'foreign, orphan and fo
 MAD4B_SCP_Deployment_Mode_Resolver::$blocked = true;
 check( is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_current() ), 'missing host binding fails closed' );
 check( empty( $source_filter->invoke( null, $sources, array( 'site_uuid' => $GLOBALS['site_uuid'] ) ) ), 'revoked site sees no sources' );
+$mutation = $ref->getMethod( 'with_registry_lock' );
+$mutation->setAccessible( true );
+$blocked_mutation = $mutation->invoke( null, 'upsert_source', static function () { return true; } );
+check( is_wp_error( $blocked_mutation ) && 'mad4b_scope_not_bound' === $blocked_mutation->get_error_code(),
+    'all Context governance mutations are fenced before locks and callbacks' );
 echo 'PASS unified operational scope synthetic PHP tests' . PHP_EOL;
