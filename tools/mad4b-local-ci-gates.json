@@ -1,0 +1,219 @@
+{
+  "contract": "mad4b.local-ci-gate-manifest.v1",
+  "scope": "repository_candidate_exact_head",
+  "source": "Feature 007 checked-in test files",
+  "non_authorizing": true,
+  "profiles": [
+    "core",
+    "extended"
+  ],
+  "github_workflows_fully_represented": false,
+  "wordpress_host_deployment_required": false,
+  "gates": [
+    {
+      "name": "g9-delivery",
+      "language": "python",
+      "file": "g9-delivery-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "g9-source",
+      "language": "python",
+      "file": "g9-security-source-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "g9-resilience",
+      "language": "php",
+      "file": "g9-resilience-gates-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "g9-restore",
+      "language": "php",
+      "file": "g9-resilience-state-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "g9-fleet",
+      "language": "php",
+      "file": "g9-fleet-rollout-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "selected-head-contract",
+      "language": "python",
+      "file": "selected-head-update-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "selected-head-disabled",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "disabled"
+      ],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "selected-head-normal",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "normal"
+      ],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "selected-head-master",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "master"
+      ],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "selected-head-missing",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "missing"
+      ],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "selected-head-uncertified",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "uncertified"
+      ],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "selected-head-drift",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "drift"
+      ],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "selected-head-bad-archive",
+      "language": "php",
+      "file": "selected-head-update-runtime.php",
+      "args": [
+        "bad-archive"
+      ],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "staging-selector",
+      "language": "php",
+      "file": "staging-source-selector-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "staging-upload-contract",
+      "language": "python",
+      "file": "self-update-staging-candidate-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "release-channel-contract",
+      "language": "python",
+      "file": "self-update-dual-channel-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "runtime-release-set",
+      "language": "python",
+      "file": "runtime-release-set-contract.py",
+      "args": [],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "imp07-source",
+      "language": "python",
+      "file": "imp07-import-source-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    },
+    {
+      "name": "imp07-runtime",
+      "language": "php",
+      "file": "imp07-import-source-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended"
+      ]
+    },
+    {
+      "name": "enrollment-dispatch",
+      "language": "php",
+      "file": "enrollment-dispatch-runtime.php",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
+    }
+  ]
+}
