@@ -57,7 +57,7 @@ $skills_ok = array( 'ready' => true );
 $dev_ok = array( 'execution' => array( 'execution_ready' => true, 'blockers' => array() ) );
 $scenarios = array(
 	array( $aligned, $write_ok, $skills_ok, $dev_ok, 'awaiting_exact_head_native_acceptance', 'none' ),
-	array( array_merge( $aligned, array( 'deployment_binding_configured' => false, 'deployment_binding_bound' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'provision_unique_host_deployment_binding' ),
+	array( array_merge( $aligned, array( 'deployment_binding_configured' => false, 'deployment_binding_bound' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'inspect_existing_enrolled_host_runner_signer' ),
 	array( array_merge( $aligned, array( 'deployment_binding_bound' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'save_exact_site_profile_to_bind_host_secret' ),
 	array( array_merge( $aligned, array( 'deployment_binding_match' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'stop_and_review_deployment_binding_drift' ),
 	array( $aligned, array( 'ready' => false, 'current_readiness_blockers' => array( 'candidate_binding_not_current' ) ), $skills_ok, $dev_ok, 'blocked_write_authority_not_current', 'review_exact_write_only_convergence_handshake' ),
