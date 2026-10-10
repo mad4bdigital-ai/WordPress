@@ -47,6 +47,7 @@ final class MAD4B_SCP_Host_Bridge {
 		self::register( 'mad4b/host-operation-receipt', 'Read Host Operation Receipt', 'receipt', true );
 		self::register( 'mad4b/host-environment-sync-verification', 'Verify Fresh Host Environment Synchronization', 'environment_sync_verification', true );
 		self::register( 'mad4b/host-doctor', 'Host Runner Doctor', 'doctor', true );
+		self::register( 'mad4b/host-identity-migration-plan', 'Dynamic Host Identity Migration Readiness', 'host_identity_migration_plan', true );
 	}
 
 	private static function register( $name, $label, $method, $readonly ) {
@@ -97,6 +98,83 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 			'authorizing' => false,
 			'mutation_performed' => false,
+		);
+	}
+
+	/**
+	 * Pure migration reducer. A read-only signature is evidence of the Host
+	 * identity for this request, never an authorization for an existing write.
+	 * Neither the legacy HMAC consumer nor the Host Runner job integrity MAC
+	 * can be derived from a host signature.
+	 */
+	public static function identity_migration_decision( array $site, array $host ) {
+		$staging = 'staging' === (string) ( $site['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
+			&& ! empty( $site['wordpress_environment_explicit'] )
+			&& ! empty( $site['origin_match'] ) && ! empty( $site['environment_match'] )
+			&& ! empty( $site['authority_ready'] );
+		$signed = ! empty( $host['verified'] )
+			&& 'fresh_host_identity_verified' === (string) ( $host['state'] ?? '' )
+			&& ! empty( $host['one_authoritative_source'] )
+			&& empty( $host['authorizing'] ) && empty( $host['mutation_performed'] );
+		$legacy = ! empty( $site['deployment_binding_configured'] );
+		$dual = $signed && $legacy;
+		$state = ! $staging ? 'blocked_non_staging_or_inexact_site'
+			: ( $dual ? 'blocked_multiple_host_identity_roots'
+			: ( ! $signed ? 'signed_host_proof_not_verified'
+			: 'signed_host_verified_legacy_consumers_not_migrated' ) );
+		$action = ! $staging ? 'review_exact_staging_profile'
+			: ( $dual ? 'resolve_source_conflict_without_creating_second_secret'
+			: ( ! $signed ? 'establish_fresh_enrolled_host_signature'
+			: 'implement_versioned_signed_host_operation_adapter' ) );
+		$operations = array();
+		foreach ( array(
+			'wordpress_environment_sync' => 'legacy_deployment_hmac_and_host_receipt',
+			'wordpress_environment_rollback' => 'legacy_signed_receipt_and_job_approval',
+			'wordpress_plugin_deploy' => 'host_runner_integrity_mac_and_exact_package',
+			'wordpress_plugin_rollback' => 'host_runner_integrity_mac_and_exact_receipt',
+		) as $id => $legacy_protocol ) {
+			$operations[] = array(
+				'operation_id' => $id,
+				'legacy_protocol' => $legacy_protocol,
+				'new_signed_protocol_accepted' => false,
+				'write_execution_unlocked' => false,
+				'fresh_plan_and_owner_approval_required' => true,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.host-identity-migration-plan.v1',
+			'state' => $state,
+			'next_action_id' => $action,
+			'current_enrolled_host_signer_verified' => $signed,
+			'legacy_deployment_binding_present' => $legacy,
+			'multiple_identity_roots_detected' => $dual,
+			'physical_target_binding_required' => true,
+			'legacy_operations' => $operations,
+			'operation_approval_migrated' => false,
+			'rollout_policy' => array(
+				'one_enrolled_host_signer' => true,
+				'no_implicit_hmac_substitution' => true,
+				'fresh_host_attestation_per_sensitive_operation' => true,
+				'exact_plan_and_host_target_binding' => true,
+				'write_grant_requires_independent_approval' => true,
+				'read_not_apply' => true,
+			),
+			'ready_for_host_write' => false,
+			'authorizing' => false, 'read_only' => true,
+			'mutation_performed' => false, 'production_authorized' => false,
+		);
+	}
+
+	public static function host_identity_migration_plan( $input = array() ) {
+		if ( null === $input ) $input = array();
+		if ( ! is_array( $input ) || ! empty( $input ) )
+			return new WP_Error( 'mad4b_host_identity_migration_input_invalid', 'Only empty read-only discovery input is accepted.' );
+		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$host = class_exists( 'MAD4B_SCP_Host_Identity_Live' )
+			? MAD4B_SCP_Host_Identity_Live::observe( is_array( $site ) ? $site : array() ) : array();
+		return self::identity_migration_decision(
+			is_array( $site ) ? $site : array(), is_array( $host ) ? $host : array()
 		);
 	}
 
