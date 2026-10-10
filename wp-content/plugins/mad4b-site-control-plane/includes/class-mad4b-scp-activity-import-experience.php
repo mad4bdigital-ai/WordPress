@@ -412,6 +412,55 @@ final class MAD4B_SCP_Activity_Import_Experience {
             echo '<a class="button" href="' . esc_url( self::url( $slug, 3,
                 array( 'issue_offset' => $issues['next_offset'] ) ) ) . '">' .
                 self::e( self::title( 'Next issues' ) ) . '</a>';
+        echo '<h3>' . self::e( self::title( 'Compare with existing WordPress records' ) ) . '</h3>';
+        echo '<p>' . self::e( self::title( 'Optional independent check. It does not perform an import and does not certify WPML links or external import completion.' ) ) . '</p>';
+        $compare = isset( $_GET['compare_destination'] ) &&
+            '1' === (string) $_GET['compare_destination'];
+        if ( !$compare ) {
+            echo '<p><a class="button" href="' . esc_url( self::url( $slug, 3,
+                array( 'compare_destination' => 1 ) ) ) . '">' .
+                self::e( self::title( 'Compare existing destination records' ) ) . '</a></p>';
+        } else {
+            $cursor = isset( $_GET['reconcile_start'] ) ?
+                absint( $_GET['reconcile_start'] ) : 0;
+            $compare_result = MAD4B_SCP_Activity_Import_Reconciliation::plan(
+                array( 'profile_slug' => $slug,
+                    'snapshot_sha256' => $review['snapshot_sha256'],
+                    'start_index' => $cursor, 'page_size' => 25 ) );
+            if ( is_wp_error( $compare_result ) ) {
+                self::explanation( self::title( 'Destination comparison unavailable.' ),
+                    self::error_guidance( $compare_result->get_error_code() ),
+                    'warning' );
+            } else {
+                $counts = $compare_result['counts'];
+                echo '<p>' . self::e( sprintf( self::title(
+                    'This page: %d matching, %d different, %d missing, %d ambiguous, %d unverified.' ),
+                    $counts['matched'], $counts['different'],
+                    $counts['missing'], $counts['ambiguous'], $counts['unverified'] ) ) . '</p>';
+                echo '<table class="widefat striped"><caption>' .
+                    self::e( self::title( 'Compared destination rows; no private values shown' ) ) .
+                    '</caption><thead><tr><th scope="col">Row</th><th scope="col">Result</th><th scope="col">Field issues</th></tr></thead><tbody>';
+                foreach ( $compare_result['items'] as $item ) {
+                    echo '<tr><td>' . self::e( $item['row_index'] + 1 ) .
+                        '</td><td>' . self::e( $item['status'] ) . '</td><td>';
+                    foreach ( $item['field_issues'] as $issue )
+                        echo '<p>' . self::e( $issue['field'] . ': ' .
+                            str_replace( '_', ' ', $issue['reason'] ) ) . '</p>';
+                    echo '</td></tr>';
+                }
+                echo '</tbody></table>';
+                if ( $cursor > 0 )
+                    echo '<a class="button" href="' . esc_url( self::url( $slug, 3,
+                        array( 'compare_destination' => 1,
+                            'reconcile_start' => max( 0, $cursor - 25 ) ) ) ) .
+                        '">' . self::e( self::title( 'Previous 25 destination records' ) ) . '</a> ';
+                if ( null !== $compare_result['next_index'] )
+                    echo '<a class="button" href="' . esc_url( self::url( $slug, 3,
+                        array( 'compare_destination' => 1,
+                            'reconcile_start' => $compare_result['next_index'] ) ) ) .
+                        '">' . self::e( self::title( 'Next 25 destination records' ) ) . '</a>';
+            }
+        }
         echo '<p><a class="button button-primary" href="' .
             esc_url( self::url( $slug, 4 ) ) . '">' .
             self::e( self::title( 'Review approval and next actions' ) ) . '</a></p>';
