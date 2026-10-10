@@ -96,6 +96,35 @@ foreach ( $scenarios as $index => $case ) {
 }
 echo "PASS: 12 ordered Staging Autopilot gates; environment/binding/authority/skills/host separation\n";
 
+/** One signed enrolled Host source, never two. Dynamic evidence is not legacy authorization. */
+$signed_host = array( 'verified' => true, 'state' => 'fresh_host_identity_verified' );
+$no_secret_site = array_merge( $aligned, array(
+	'deployment_binding_configured' => false, 'deployment_binding_bound' => false,
+	'same_origin_clone_protection' => false,
+) );
+$dynamic_only = MAD4B_SCP_Staging_Autopilot::automation_plan(
+	$no_secret_site, $write_ok, $skills_ok, $dev_ok, $signed_host
+);
+if ( 'fresh_host_identity_verified_legacy_consumers_pending' !== $dynamic_only['state']
+	|| 'enrolled_host_runner' !== $dynamic_only['host_binding']['active_identity_source']
+	|| ! $dynamic_only['host_binding']['signed_host_identity_verified']
+	|| $dynamic_only['host_binding']['legacy_operations_support_dynamic_identity']
+	|| $dynamic_only['host_binding']['secret_read_or_generated']
+	|| $dynamic_only['completion_certified'] ) {
+	fwrite( STDERR, "FAIL: dynamic existing signer must not impersonate legacy Host HMAC\n" );
+	exit( 1 );
+}
+$two_roots = MAD4B_SCP_Staging_Autopilot::automation_plan(
+	$aligned, $write_ok, $skills_ok, $dev_ok, $signed_host
+);
+if ( 'blocked_multiple_host_identity_roots' !== $two_roots['state']
+	|| ! $two_roots['host_binding']['identity_source_conflict']
+	|| $two_roots['assistant_workflow'][1]['ready'] ) {
+	fwrite( STDERR, "FAIL: overlapping identity roots must hard stop\n" );
+	exit( 1 );
+}
+echo "PASS: 2 signed Host single-root migration and dual-root denial cases\n";
+
 /** Status read callback stubs: ensure live state projection does not infer PASS. */
 class MAD4B_SCP_Site_Profile {
 	public static function status() { return $GLOBALS['mad4b_test_site']; }
