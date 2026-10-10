@@ -32,6 +32,8 @@ final class MAD4B_SCP_Host_Identity_Live {
 		$origin = (string) ( $site['canonical_origin'] ?? '' );
 		$digest = (string) ( $site['profile_digest'] ?? '' );
 		$rev = (int) ( $site['revision'] ?? 0 );
+		$fp = class_exists( 'MAD4B_SCP_Host_Bridge' ) && method_exists( 'MAD4B_SCP_Host_Bridge', 'target_fingerprint_readonly' )
+			? MAD4B_SCP_Host_Bridge::target_fingerprint_readonly() : '';
 		if ( empty( $site['configured'] ) || empty( $site['authority_ready'] )
 			|| empty( $site['origin_match'] ) || empty( $site['environment_match'] )
 			|| empty( $site['wordpress_environment_explicit'] )
@@ -39,7 +41,8 @@ final class MAD4B_SCP_Host_Identity_Live {
 			|| 'staging' !== (string) ( $site['wordpress_environment'] ?? '' )
 			|| 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $uuid )
 			|| 1 !== preg_match( '/^https:\/\/[a-z0-9.-]+(?::[0-9]{2,5})?(?:\/[A-Za-z0-9._~%-]+)*\/?$/D', $origin )
-			|| $rev < 1 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $digest ) ) return array();
+			|| $rev < 1 || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $digest )
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $fp ) ) return array();
 		return array(
 			'contract' => 'mad4b.host-identity-challenge.v1',
 			'nonce' => $nonce,
@@ -48,6 +51,7 @@ final class MAD4B_SCP_Host_Identity_Live {
 			'environment' => 'staging',
 			'profile_revision' => $rev,
 			'profile_digest' => $digest,
+			'target_fingerprint' => $fp,
 		);
 	}
 
@@ -75,7 +79,7 @@ final class MAD4B_SCP_Host_Identity_Live {
 			|| 'Ed25519' !== (string) $response['algorithm']
 			|| self::PAYLOAD !== (string) ( $payload['contract'] ?? '' )
 			|| ! is_string( $signature ) || 64 !== strlen( $signature ) ) return false;
-		foreach ( array( 'site_uuid', 'origin', 'environment', 'profile_revision', 'profile_digest' ) as $field ) {
+		foreach ( array( 'site_uuid', 'origin', 'environment', 'profile_revision', 'profile_digest', 'target_fingerprint' ) as $field ) {
 			if ( ! isset( $challenge[ $field ], $payload[ $field ] )
 				|| $challenge[ $field ] !== $payload[ $field ] ) return false;
 		}
