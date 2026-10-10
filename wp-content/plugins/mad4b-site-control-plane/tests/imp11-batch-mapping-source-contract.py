@@ -19,7 +19,8 @@ for token in (
     "automatic_lock_takeover_allowed' => false",
     "function archival_manifest(", "mad4b_batch_archive_manifest_invalid",
     "if ( 'archive' === $operation )", "self::archival_manifest( $slug, $id )",
-    "audit_recorded", "archived_after_interrupted_cleanup"
+    "audit_recorded", "archived_after_interrupted_cleanup",
+    "mad4b_batch_archival_in_progress"
 ):
     require(token in batch, "Missing bounded batch safety guard: "+token)
 for func in ("begin", "append", "approve", "archive"):
@@ -45,7 +46,8 @@ for token in (
 require("business-activity-import-batch-mutation-status" in profiles,
         "Mutex status is not accessible via governed MCP")
 for token in ("mad4b_batch_mutation_locked","mutation_lock_held",
-              "imp02_enabled_modes","archived_after_interrupted_cleanup"):
+              "imp02_enabled_modes","archived_after_interrupted_cleanup",
+              "mad4b_batch_archival_in_progress"):
     require(token in native_batch, "Missing native mutation/archival regression: "+token)
 for token in ("externalIdentityChange","weakLanguages","weakColumns","weakCurrency"):
     require(token in native_map, "Missing native mapping regression: "+token)
