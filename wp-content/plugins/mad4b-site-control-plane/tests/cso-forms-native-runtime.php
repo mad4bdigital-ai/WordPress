@@ -14,7 +14,7 @@ class MAD4B_SCP_CSO01_Read_Foundation {
  public static function form_schema($a){
   if(!isset($a['ability_name'])||$a['ability_name']!=='mad4b/test-read')return new WP_Error('unknown');
   return array('ability_name'=>$a['ability_name'],'descriptor_sha256'=>hash('sha256',self::$revision),
-   'fields'=>array(array('key'=>'query','type'=>'string','required'=>true,'max_length'=>40)));
+   'fields'=>array(array('key'=>'query','type'=>'string','required'=>true,'max_length'=>40,'enum'=>array('Cairo','Giza','Luxor'))));
  }
  public static function form_validate($input){
   $current=self::form_schema(array('ability_name'=>$input['ability_name']));
@@ -37,4 +37,7 @@ ck(is_wp_error(MAD4B_SCP_CSO_Forms::validate($form['sealed_form'],array('api_key
 MAD4B_SCP_CSO01_Read_Foundation::$revision='new';
 ck(is_wp_error(MAD4B_SCP_CSO_Forms::validate($form['sealed_form'],array('query'=>'test'))),'stale descriptor denied');
 ck(is_wp_error(MAD4B_SCP_CSO_Forms::schema('mad4b/test-read',array('post_id'=>12))),'unbound target form rejected');
+$suggest=MAD4B_SCP_CSO_Forms::suggest($form['sealed_form'],'query','Gi',0);
+ck(!is_wp_error($suggest)&&count($suggest['items'])===1&&$suggest['items'][0]['value']==='Giza','literal enum suggestion is scoped to sealed descriptor');
+ck(is_wp_error(MAD4B_SCP_CSO_Forms::suggest($form['sealed_form'],'unlisted','',0)),'unknown field suggestion denied');
 echo "PASS CSO native descriptors/secret rejection/revision fence\n";

@@ -17,6 +17,46 @@ final class MAD4B_SCP_CSO_Storage_Adapters {
     const CONTRACT = 'mad4b.cso.storage-adapters.v1';
     const MAX_ADAPTERS = 16;
 
+    /**
+     * Read an exact native provider snapshot. Returns only non-secret values;
+     * adapter-originated approval claims are discarded.
+     */
+    public static function snapshot( $provider_id, $target = array() ) {
+        $discovery = self::discover( $provider_id, $target );
+        if ( is_wp_error( $discovery ) ) return $discovery;
+        $descriptor = $discovery['descriptor'];
+        $ability = wp_get_ability( $descriptor['native_read_ability'] );
+        if ( ! is_object( $ability ) || ! method_exists( $ability, 'check_permissions' ) ||
+            true !== $ability->check_permissions( $target ) )
+            return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_READ_PERMISSION_DENIED' );
+        $scope = MAD4B_SCP_CSO_Scope::current();
+        if ( is_wp_error( $scope ) ) return $scope;
+        $class = MAD4B_CSO_STORAGE_ADAPTER_CLASSES[ $provider_id ];
+        try {
+            $adapter = new $class();
+            $snapshot = $adapter->read( $target, $scope );
+        } catch ( \Throwable $e ) {
+            return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_READ_FAILED' );
+        }
+        if ( ! is_array( $snapshot ) || array_diff( array_keys( $snapshot ),
+            array( 'revision', 'values', 'observed_at' ) ) ||
+            ! is_array( $snapshot['values'] ?? null ) ||
+            count( $snapshot['values'] ) > 32 ||
+            true !== MAD4B_SCP_CSO_Scope::safe_data( $snapshot['values'] ) ||
+            ! is_string( $snapshot['revision'] ?? null ) ||
+            ! hash_equals( (string) $descriptor['revision'], $snapshot['revision'] ) ||
+            ! is_int( $snapshot['observed_at'] ?? null ) ||
+            $snapshot['observed_at'] > time() ||
+            $snapshot['observed_at'] < time() - 300 )
+            return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_READBACK_INVALID' );
+        if ( true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
+            return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_SCOPE_CHANGED' );
+        return array( 'contract' => self::CONTRACT . '.snapshot.v1',
+            'descriptor' => $descriptor, 'revision' => $snapshot['revision'],
+            'values' => $snapshot['values'], 'observed_at' => $snapshot['observed_at'],
+            'mutation_performed' => false, 'authorizing' => false );
+    }
+
     public static function discover( $provider_id, $target = array() ) {
         if ( ! MAD4B_SCP_CSO_Scope::enabled( 'forms' ) ||
             ! is_string( $provider_id ) ||
@@ -36,12 +76,12 @@ final class MAD4B_SCP_CSO_Storage_Adapters {
             ! class_exists( $registered[ $provider_id ], false ) )
             return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_NOT_ENROLLED' );
         try { $adapter = new $registered[ $provider_id ](); }
-        catch ( \\Throwable $e ) { return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_LOAD_FAILED' ); }
+        catch ( \Throwable $e ) { return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_LOAD_FAILED' ); }
         if ( ! $adapter instanceof MAD4B_SCP_CSO_Storage_Provider ||
             ! hash_equals( $provider_id, (string) $adapter->provider_key() ) )
             return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_IDENTITY_MISMATCH' );
         try { $descriptor = $adapter->describe( $target, $scope ); }
-        catch ( \\Throwable $e ) { return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_DESCRIPTOR_FAILED' ); }
+        catch ( \Throwable $e ) { return MAD4B_SCP_CSO_Scope::error( 'ADAPTER_DESCRIPTOR_FAILED' ); }
         if ( ! is_array( $descriptor ) || array_diff( array_keys( $descriptor ),
             array( 'provider_id', 'target', 'fields', 'native_read_ability',
                 'native_write_ability', 'descriptor_sha256', 'revision' ) ) ||
