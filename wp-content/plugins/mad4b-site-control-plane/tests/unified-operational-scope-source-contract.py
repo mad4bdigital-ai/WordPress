@@ -13,6 +13,7 @@ assert "MAD4B_SCP_Operational_Scope_Guard::source_in_scope(" in src
 assert "mad4b_context_source_brand_conflict" in src
 assert "'brand_id' => ! empty( $current['brand_id'] )" in src
 assert "'site_uuid=%s', 'brand_id=%s'" in jobs
+assert "'tenant_id' => (string) $scope['tenant_ref']" in jobs
 assert "WHERE job_id=%s AND site_uuid=%s AND brand_id=%s" in jobs
 assert "MAD4B_SCP_Operational_Scope_Guard::require_brand(" in jobs
 assert "'mad4b/deployment-mode-status'" in server

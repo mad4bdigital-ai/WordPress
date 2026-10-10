@@ -302,7 +302,7 @@ final class MAD4B_SCP_Content_Jobs {
 		$t = MAD4B_SCP_Schema::tables();
 		$data = array(
 			'job_id' => $job_id,
-			'tenant_id' => '',
+			'tenant_id' => (string) $scope['tenant_ref'],
 			'site_uuid' => $site_uuid,
 			'brand_id' => $brand_id,
 			'subject' => $subject,
