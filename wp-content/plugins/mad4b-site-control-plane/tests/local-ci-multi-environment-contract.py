@@ -153,10 +153,12 @@ class MultiEnvironmentCITest(unittest.TestCase):
                 runner.load_manifest(Path(tmp), "extended")
 
     def test_core_is_subset_of_extended(self):
-        available = {r[0] for r in runner.GATES}
-        self.assertGreaterEqual(len(runner.GATES), 20)
-        self.assertTrue(runner.CORE_NAMES.issubset(available))
-        self.assertEqual(len(available), len(runner.GATES))
+        core, core_sha = runner.load_manifest(ROOT, "core")
+        expanded, expanded_sha = runner.load_manifest(ROOT, "extended")
+        self.assertGreaterEqual(len(expanded), 20)
+        self.assertTrue({c[0] for c in core}.issubset({c[0] for c in expanded}))
+        self.assertEqual(core_sha, expanded_sha)
+        self.assertEqual(len({x[0] for x in expanded}), len(expanded))
 
 
 if __name__ == "__main__":
