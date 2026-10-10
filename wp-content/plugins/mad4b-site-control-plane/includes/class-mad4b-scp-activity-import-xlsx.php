@@ -61,6 +61,14 @@ final class MAD4B_SCP_Activity_Import_Xlsx {
                     $name ) ) {
                 $zip_issue = true; break;
             }
+            if ( preg_match( '/\\.rels$/iD', $name ) ) {
+                $relationships = $zip->getFromIndex( $i );
+                if ( ! is_string( $relationships ) ||
+                    preg_match( '/TargetMode\\s*=\\s*["\\x27]External["\\x27]/i',
+                        $relationships ) ) {
+                    $zip_issue = true; break;
+                }
+            }
             if ( 'xl/workbook.xml' === $name ) $has_workbook = true;
             if ( 'xl/worksheets/sheet1.xml' === $name ) $has_sheet = true;
         }
