@@ -12,9 +12,18 @@ function wp_has_ability( $id ) { return isset( $GLOBALS['mad4b_mock_abilities'][
 function wp_register_ability( $id, $args ) { $GLOBALS['mad4b_mock_abilities'][$id] = $args; }
 function get_current_blog_id() { return $GLOBALS['mad4b_mock_blog']; }
 function get_current_network_id() { return $GLOBALS['mad4b_mock_network']; }
+function get_option( $key, $default = null ) {
+    return isset( $GLOBALS['mad4b_blog_records'][ $GLOBALS['mad4b_mock_blog'] ][ $key ] )
+        ? $GLOBALS['mad4b_blog_records'][ $GLOBALS['mad4b_mock_blog'] ][ $key ] : $default;
+}
 class MAD4B_SCP_Policy { public static function can_read() { return false; } }
 class MAD4B_SCP_Site_Profile {
+    const OPTION = 'mad4b_scp_site_profile_v2';
     public static $status = array();
+    public static function current_origin() {
+        return isset( $GLOBALS['mad4b_mock_origins'][ $GLOBALS['mad4b_mock_blog'] ] )
+            ? $GLOBALS['mad4b_mock_origins'][ $GLOBALS['mad4b_mock_blog'] ] : '';
+    }
     public static function status() { return self::$status; }
 }
 class MAD4B_SCP_Context_Authority {
@@ -32,6 +41,11 @@ MAD4B_SCP_Site_Profile::$status = array(
     'deployment_binding_match' => true, 'deployment_binding_bound' => true,
     'deployment_binding_configured' => true, 'authority_ready' => true, 'revision' => 7,
     'environment' => 'staging',
+);
+$GLOBALS['mad4b_mock_origins'] = array( 5 => 'https://site.example/', 6 => 'https://other.example/' );
+$GLOBALS['mad4b_blog_records'] = array(
+    5 => array( MAD4B_SCP_Site_Profile::OPTION => array( 'site_uuid' => $uuid, 'revision' => 7, 'canonical_origin' => 'https://site.example/' ) ),
+    6 => array( MAD4B_SCP_Site_Profile::OPTION => array( 'site_uuid' => '99999999-2222-4333-8444-555555555555', 'revision' => 3, 'canonical_origin' => 'https://other.example/' ) ),
 );
 MAD4B_SCP_Context_Authority::$profile = array(
     'site_uuid' => $uuid,
@@ -85,8 +99,16 @@ MAD4B_SCP_Site_Profile::$status['deployment_binding_match'] = true;
 MAD4B_SCP_Context_Authority::$profile['site_uuid'] = '99999999-2222-4333-8444-555555555555';
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'BRAND_PROFILE_UNRESOLVED', 'foreign brand blocked' );
 MAD4B_SCP_Context_Authority::$profile['site_uuid'] = $uuid;
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'blog_id' => 6 ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'request cannot override current blog' );
 $GLOBALS['mad4b_mock_blog'] = 6;
-expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve( array( 'blog_id' => 5 ) )['reason'] === 'REQUEST_SCOPE_MISMATCH', 'multisite cross-blog blocked' );
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_BLOG_LOCAL_BINDING_MISMATCH', 'switched blog may not reuse static site profile cache' );
+$GLOBALS['mad4b_mock_blog'] = 5;
+$GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['revision'] = 8;
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_BLOG_LOCAL_BINDING_MISMATCH', 'same blog changed source revision blocks stale cache' );
+$GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['revision'] = 7;
+$GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['canonical_origin'] = 'https://cloned.example/';
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_BLOG_LOCAL_BINDING_MISMATCH', 'foreign persisted origin blocks' );
+$GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['canonical_origin'] = 'https://site.example/';
 MAD4B_SCP_Site_Profile::$status['configured'] = false;
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_NOT_ENROLLED', 'unconfigured blocks' );
 echo "PASS wordpress dedicated isolated fixture\n";
