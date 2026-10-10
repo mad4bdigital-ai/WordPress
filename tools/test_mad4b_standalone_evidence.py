@@ -105,6 +105,28 @@ class RunnerReceiptTests(unittest.TestCase):
         with self.assertRaisesRegex(signer.Refusal, "build_report_untrusted"):
             signer.make_claims(self.claim, self.policy, self.report, self.now)
 
+    def test_ephemeral_ed25519_receipt_roundtrip_and_tamper(self):
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.exceptions import InvalidSignature
+        key = Ed25519PrivateKey.generate()
+        with tempfile.TemporaryDirectory() as tmp:
+            keyfile = Path(tmp) / "enrolled-key.pem"
+            keyfile.write_bytes(key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.PKCS8,
+                serialization.NoEncryption()))
+            keyfile.chmod(0o600)
+            claims = signer.make_claims(self.claim, self.policy, self.report, self.now)
+            signature = signer.sign_claims(claims, keyfile)
+            import base64
+            raw = base64.b64decode(signature["claims_b64"], validate=True)
+            sig = base64.b64decode(signature["signature_b64"], validate=True)
+            key.public_key().verify(sig, raw)
+            with self.assertRaises(InvalidSignature):
+                key.public_key().verify(sig, raw + b"tamper")
+            self.assertNotIn("lease_token", raw.decode())
+
     def test_archive_hash_manifest_verified_before_signing(self):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
