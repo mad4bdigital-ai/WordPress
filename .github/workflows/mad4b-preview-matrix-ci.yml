@@ -4,6 +4,9 @@ on:
     paths:
       - 'tools/mad4b-preview-matrix.py'
       - 'tools/mad4b-preview-native-probe.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preview-matrix.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/preview-matrix-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - 'tools/test_mad4b_preview_matrix.py'
       - 'docs/runbooks/advanced-preview-evidence-matrix.md'
       - '.github/workflows/mad4b-preview-matrix-ci.yml'
@@ -28,5 +31,11 @@ jobs:
           python -m py_compile tools/mad4b-preview-matrix.py tools/test_mad4b_preview_matrix.py
       - name: Preview contract regressions
         run: python -m unittest discover -s tools -p 'test_mad4b_preview_matrix.py' -v
-      - name: Native WordPress PHP parse check
-        run: php -l tools/mad4b-preview-native-probe.php
+      - name: Native and plugin PHP 8.3 syntax
+        run: |
+          php -l tools/mad4b-preview-native-probe.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preview-matrix.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/preview-matrix-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+      - name: Hermetic WordPress preview contract
+        run: php wp-content/plugins/mad4b-site-control-plane/tests/preview-matrix-runtime.php
