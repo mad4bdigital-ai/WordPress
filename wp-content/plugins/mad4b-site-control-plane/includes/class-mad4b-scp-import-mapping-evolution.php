@@ -41,12 +41,15 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
     }
     private static function type_profile( $rows, $field ) {
         $seen = array( 'empty' => 0, 'number' => 0, 'iso_date' => 0,
-            'boolean' => 0, 'text' => 0, 'nested' => 0 );
+            'boolean' => 0, 'text' => 0, 'nested' => 0,
+            'php_serialized_untrusted' => 0 );
         foreach ( array_slice( $rows, 0, 100 ) as $row ) {
             $value = isset( $row[ $field ] ) ? $row[ $field ] : '';
             if ( ! is_scalar( $value ) && null !== $value ) $kind = 'nested';
             elseif ( '' === (string) $value ) $kind = 'empty';
             elseif ( is_bool( $value ) ) $kind = 'boolean';
+            elseif ( preg_match( '/^(?:a|O|C):[0-9]+:/D', (string) $value ) )
+                $kind = 'php_serialized_untrusted';
             elseif ( preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/D', (string) $value ) )
                 $kind = 'iso_date';
             elseif ( preg_match( '/^-?\\d+(?:\\.\\d+)?$/D', (string) $value ) )
@@ -187,6 +190,12 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
                     'sample_size_bounded' => min( count( $rows ), 100 ),
                     'counts_only' => $types
                 );
+                if ( $types['php_serialized_untrusted'] > 0 )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'serialized_source_requires_certified_typed_driver',
+                        'never_php_unserialize_from_untrusted_source' => true,
+                        'requires_human_review' => true );
                 if ( in_array( $field, (array) $policy['price_fields'], true ) &&
                     ( $types['text'] > 0 || $types['nested'] > 0 ||
                       $types['iso_date'] > 0 ) )
