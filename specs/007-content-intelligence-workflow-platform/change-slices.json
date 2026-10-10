@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 687,
+  "changed_file_count": 689,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1419,8 +1419,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-optional-mcp-selected-head-update-documentation-20261010",
+      "semantic_unit": "Source guidance and deterministic contract fixture for explicitly selected PR/branch/SHA update via opt-in staging-only MCP; default master release path unchanged.",
+      "revert_boundary": "Revert source-selected update documentation and its source-only contract test together; keep canonical release immutability and owner confirmation.",
+      "certification": "source_only_staging_package_acceptance_required",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/OPT-IN-MCP-SELECTED-HEAD-UPDATE.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "d3e24bf83682a9bd65102e717e2312846025c688ae2d4726e5d183e1c54850aa",
+  "changed_paths_sha256": "b37a8162a3199d93678bb480daeb37c7becb0cde75a348adf5bcc392838f6f16",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
