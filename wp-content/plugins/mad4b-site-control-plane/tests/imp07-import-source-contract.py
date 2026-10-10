@@ -50,6 +50,19 @@ for token in ("class-mad4b-scp-activity-import-xlsx.php",
               "imp07-import-source-runtime.php",
               "imp07-import-source-contract.py"):
     ensure(token in preflight,"Offline manual preflight did not register "+token)
+# Fully qualified PHP class expressions must use one namespace separator.
+# This catches the PHP 8.3 parse failure caused by literal doubled separators
+# without flagging the intentionally escaped PHP class_exists() strings.
+xlsx_class_expressions = [line for line in xlsx.splitlines()
+                          if "PhpOffice" in line and "::" in line]
+ensure(len(xlsx_class_expressions) == 6,
+       "XLSX PhpSpreadsheet class expression inventory changed; review its syntax")
+ensure(all("\\PhpOffice\\PhpSpreadsheet\\" in line
+           for line in xlsx_class_expressions),
+       "XLSX class expressions lost PhpSpreadsheet namespace")
+ensure(not any("\\PhpOffice\\\\PhpSpreadsheet" in line
+               for line in xlsx_class_expressions),
+       "Doubled namespace separator in executable PhpSpreadsheet class expression")
 ensure("class-mad4b-scp-activity-import-xlsx.php" in profiles,
        "XLSX source capability not loaded")
 print("PASS IMP07 source-owned interval schema, bounded XLSX upload, preflighted CSV and regression enrollment (STATIC ONLY)")
