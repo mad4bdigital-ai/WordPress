@@ -160,7 +160,9 @@ class MultiEnvironmentCITest(unittest.TestCase):
             expanded, _ = runner.load_manifest(Path(tmp), "extended")
             core, _ = runner.load_manifest(Path(tmp), "core")
             self.assertEqual(21, len(expanded))
-            self.assertEqual(13, len(core))
+            self.assertEqual(
+                sum("core" in gate["profiles"] for gate in baseline["gates"]),
+                len(core))
 
     def test_manifest_refuses_arbitrary_commands_and_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
