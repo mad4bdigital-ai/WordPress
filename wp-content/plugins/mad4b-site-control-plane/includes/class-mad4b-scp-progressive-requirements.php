@@ -301,11 +301,12 @@ final class MAD4B_SCP_Progressive_Requirements {
 		$no_reinstall='plugin_install'===($observation['operation_family']??'')&&
 			!empty($observation['already_installed_exact_head_readback']);
 		$effect_ability=(string)($observation['effect_ability']??'');
-		$handoff_possible='linked'===$mode&&!$errors&&''!==$effect_ability&&
+		$handoff_possible='linked'===$mode&&!$no_reinstall&&!$errors&&''!==$effect_ability&&
 			(bool)preg_match('#^[a-z][a-z0-9._-]*/[a-z][a-z0-9._-]+$#D',$effect_ability);
 		$out=array(
 			'contract'=>self::CONTRACT,'state'=>$errors?'INTEGRITY_BLOCKED':
-				($preconditions_ready?'CONDITIONS_SATISFIED':'REMEDIATION_REQUIRED'),
+				($no_reinstall?'ALREADY_CURRENT_READBACK':
+					($preconditions_ready?'CONDITIONS_SATISFIED':'REMEDIATION_REQUIRED')),
 			'operation_id'=>$operation_id,'operation_identity'=>$identity,
 			'site_identity_sha256'=>hash('sha256',$site_identity),
 			'canonical_observation_digest'=>$server_digest,'mode'=>$mode,'attempt'=>$attempt,
@@ -321,8 +322,9 @@ final class MAD4B_SCP_Progressive_Requirements {
 			'already_installed_exact_head_verified'=>$no_reinstall,
 			'skip_duplicate_install'=>$no_reinstall,
 			'next_action'=>$errors?'inspect_canonical_condition_integrity':
-				($pending?'remediate_only_unresolved_conditions':
-					($preconditions_ready?'prepare_separate_exact_approved_effect':'inspect_current_source_evidence')),
+				($no_reinstall?'verify_existing_postconditions_only':
+					($pending?'remediate_only_unresolved_conditions':
+						($preconditions_ready?'prepare_separate_exact_approved_effect':'inspect_current_source_evidence'))),
 			'policy_downgrade_permitted'=>false,
 			'production_mutation_authorized'=>false,'breakglass_authorized'=>false,
 			'read_only'=>true,'authorizing'=>false,'mutation_performed'=>false,
