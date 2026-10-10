@@ -25,7 +25,7 @@ VALIDATOR = "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contr
 def safe_read(path: str) -> bytes:
     relative = Path(path)
     if (not path or relative.is_absolute() or ".." in relative.parts
-            or "\\\\" in path or "\\x00" in path or relative.as_posix() != path):
+            or chr(92) in path or chr(0) in path or relative.as_posix() != path):
         raise RuntimeError("unsafe manifest source path: " + repr(path))
     file = ROOT / relative
     if (not file.is_file() or file.is_symlink() or not file.resolve().is_relative_to(ROOT)
