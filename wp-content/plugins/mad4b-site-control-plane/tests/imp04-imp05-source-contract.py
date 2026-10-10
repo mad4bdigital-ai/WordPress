@@ -11,6 +11,7 @@ identity=get("class-mad4b-scp-activity-import-reconciliation.php")
 observer=get("class-mad4b-scp-activity-wpai-observer.php")
 test=(P/"tests"/"imp04-reconciliation-runtime.php").read_text(encoding="utf8")
 hooks=(P/"tests"/"imp05-wpai-observer-runtime.php").read_text(encoding="utf8")
+mutex=get("class-mad4b-scp-batch-atomic-mutex.php")
 spec=(repo/"specs/007-content-intelligence-workflow-platform/extensions/imp04-imp05-import-reconciliation-and-provider-observation.md").read_text(encoding="utf8")
 def insist(ok,label):
     if not ok: raise AssertionError(label)
@@ -69,6 +70,17 @@ for marker in (
     "source_provenance_verified",
 ):
     insist(marker in hooks,"Hook fixture incorrectly certifies success: "+marker)
+insist("MAD4B_SCP_Batch_Atomic_Mutex::reserve_observation( $key, $record )" in observer,
+       "WP All Import observer must reserve a unique option atomically")
+insist("add_option( $key, $record" not in observer,
+       "WPAI observation still uses an UPSERT-prone WordPress Options reservation")
+insist("function reserve_observation(" in mutex and
+       "INSERT IGNORE INTO" in mutex and
+       "'mad4b_wpai_observation_active'" in mutex and
+       "hash_equals( $raw, (string) self::read( $db, $name ) )" in mutex,
+       "Atomic WPAI observer reservation/readback missing")
+insist("Stale Options cache cannot overwrite the observation SQL reservation" in hooks,
+       "Missing concurrent-like stale cache observation regression")
 insist("not delivered" in spec.lower() and "not authorized" in spec.lower(),
        "Spec must explicitly distinguish source code from operational authority")
 print("PASS IMP04/05 read-only identity reconciliation, full issue pages, WP All Import hook observation and no-false-certification source contracts (STATIC ONLY)")

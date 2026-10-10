@@ -89,10 +89,16 @@ final class MAD4B_SCP_Activity_WPAI_Observer {
             'provider_write_fence_verified' => false,
             'wpml_links_verified' => false );
         $key = self::key( $plan['import_id'] );
-        if ( ! add_option( $key, $record, '', false ) )
-            return self::err( 'mad4b_wpai_observation_active', 'Existing observation must be archived before re-arming.' );
+        // This is the initial reservation, not a WordPress Options UPSERT.
+        // A competing worker must never overwrite an earlier observation.
+        if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ||
+            ! method_exists( 'MAD4B_SCP_Batch_Atomic_Mutex', 'reserve_observation' ) )
+            return self::err( 'mad4b_wpai_observation_atomic_store_missing',
+                'Atomic observation enrollment is required before arming.' );
+        $reservation = MAD4B_SCP_Batch_Atomic_Mutex::reserve_observation( $key, $record );
+        if ( is_wp_error( $reservation ) ) return $reservation;
         if ( self::hash( get_option( $key, false ) ) !== self::hash( $record ) )
-            return self::err( 'mad4b_wpai_observation_persistence_failed', 'Observation readback failed.' );
+            return self::err( 'mad4b_wpai_observation_persistence_failed', 'Observation readback failed; reconciliation required.' );
         return $record;
     }
     private static function update_event( $id, $event ) {

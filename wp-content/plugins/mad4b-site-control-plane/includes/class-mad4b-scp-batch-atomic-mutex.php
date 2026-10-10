@@ -79,6 +79,49 @@ final class MAD4B_SCP_Batch_Atomic_Mutex {
         return true;
     }
     /**
+     * Reserve an external-import observation journal exactly once.
+     *
+     * This is a mutable BEST-EFFORT hook journal, never a provider attestation.
+     * Only its initial enrollment is immutable. WordPress add_option() can
+     * overwrite a racing value; SQL INSERT IGNORE cannot.
+     */
+    public static function reserve_observation( $name, $record ) {
+        if ( ! is_string( $name ) ||
+            ! preg_match( '/^mad4b_wpai_observation_[a-f0-9]{64}$/D', $name ) ||
+            ! is_array( $record ) ||
+            'mad4b.wpai-run-observation.v1' !==
+                ( isset( $record['contract'] ) ? (string) $record['contract'] : '' ) ||
+            ! function_exists( 'maybe_serialize' ) )
+            return self::err( 'mad4b_wpai_observation_reservation_invalid',
+                'An exact bounded WordPress Import observation journal is required.' );
+        $db = self::db();
+        if ( is_wp_error( $db ) ) return $db;
+        $raw = maybe_serialize( $record );
+        if ( ! is_string( $raw ) || strlen( $raw ) > 65536 )
+            return self::err( 'mad4b_wpai_observation_reservation_unbounded',
+                'Observation journal exceeds the source-bounded limit.' );
+        $inserted = $db->query( $db->prepare(
+            "INSERT IGNORE INTO `{$db->options}` (option_name, option_value, autoload) VALUES (%s, %s, %s)",
+            $name, $raw, 'off' ) );
+        if ( 1 !== $inserted )
+            return self::err( 'mad4b_wpai_observation_active',
+                'Another observation exists or the exact insert could not be confirmed.' );
+        self::cache_clear( $name );
+        if ( ! hash_equals( $raw, (string) self::read( $db, $name ) ) )
+            return self::err( 'mad4b_wpai_observation_reservation_readback_failed',
+                'Observation journal could not be independently confirmed.' );
+        if ( function_exists( 'wp_cache_get' ) &&
+            function_exists( 'wp_cache_set' ) ) {
+            $notoptions = wp_cache_get( 'notoptions', 'options' );
+            if ( is_array( $notoptions ) && isset( $notoptions[ $name ] ) ) {
+                unset( $notoptions[ $name ] );
+                wp_cache_set( 'notoptions', $notoptions, 'options' );
+            }
+        }
+        return true;
+    }
+
+    /**
      * One-time HMAC nonce marker, issued by the validated sender only.
      * A simultaneous replay MUST lose without replacing its first marker.
      */

@@ -45,6 +45,20 @@ $duplicate = MAD4B_SCP_Activity_WPAI_Observer::arm( array_merge( $input,
 ck( is_wp_error( $duplicate ) &&
     $duplicate->get_error_code() === 'mad4b_wpai_observation_active',
     'Concurrent rearming replaced active observation journal' );
+// WordPress Options may retain a stale cache while the UNIQUE SQL row exists.
+// Another worker must not exploit that cache miss to replace original evidence.
+$observation_key = 'mad4b_wpai_observation_' . hash( 'sha256',
+    MAD4B_SCP_Site_Profile::site_uuid() . '|12' );
+$persisted_before = $GLOBALS['imp01_sql_options'][ $observation_key ];
+$observed_before = $GLOBALS['imp01_options'][ $observation_key ];
+unset( $GLOBALS['imp01_options'][ $observation_key ] );
+$cache_race = MAD4B_SCP_Activity_WPAI_Observer::arm( array_merge( $input,
+    array( 'plan_sha256' => $plan['plan_sha256'], 'confirmed' => true ) ) );
+ck( is_wp_error( $cache_race ) &&
+    $cache_race->get_error_code() === 'mad4b_wpai_observation_active' &&
+    $GLOBALS['imp01_sql_options'][ $observation_key ] === $persisted_before,
+    'Stale Options cache cannot overwrite the observation SQL reservation' );
+$GLOBALS['imp01_options'][ $observation_key ] = $observed_before;
 unset( $GLOBALS['imp02_enabled_modes'] );
 $archived_source = $review['payload_sha256'];
 $archived_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
