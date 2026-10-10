@@ -62,7 +62,9 @@ class MAD4B_SCP_Content_Experience_Profiles {
             'activity_contract' => array( 'enabled' => true ),
             'import_contract' => array( 'enabled' => true,
                 'enabled_modes' => isset( $GLOBALS['imp02_enabled_modes'] ) ?
-                    $GLOBALS['imp02_enabled_modes'] : array(),
+                    $GLOBALS['imp02_enabled_modes'] : array( 'admin_csv_upload',
+                        'google_apps_script', 'signed_generic_webhook',
+                        'admin_xlsx_convert' ),
                 'preferred_mode' => 'admin_csv_upload',
                 'fallback_modes' => array( 'signed_generic_webhook' ),
                 'manual_review_required' => true, 'auto_execute' => false,
