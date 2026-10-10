@@ -79,6 +79,33 @@ final class MAD4B_SCP_Activity_Import_Batches {
                 'Active batch is missing or governed Profile revision changed.' );
         return array( 'manifest' => $m, 'names' => $names );
     }
+    /** Clean up a prior exact, enrolled batch even after Profile policy drift.
+     * This deliberately does not grant source preview or provider execution.
+     */
+    private static function archival_manifest( $slug, $id ) {
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            ! preg_match( '/^[a-f0-9]{32}$/D', $id ) )
+            return self::err( 'mad4b_batch_archive_identity_invalid',
+                'Exact site Profile and batch ID required.' );
+        $keys = self::names( $slug, $id );
+        $active = get_option( $keys['active'], false );
+        $m = get_option( $keys['manifest'], false );
+        if ( ! is_string( $active ) || ! hash_equals( $active, $id ) ||
+            ! is_array( $m ) ||
+            ( $m['contract'] ?? '' ) !== self::CONTRACT ||
+            ( $m['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid() ||
+            ( $m['profile_slug'] ?? '' ) !== $slug ||
+            ( $m['batch_id'] ?? '' ) !== $id ||
+            ! is_int( $m['expected_chunks'] ?? null ) ||
+            $m['expected_chunks'] < 2 ||
+            $m['expected_chunks'] > self::MAX_CHUNKS ||
+            ! isset( $m['profile_revision'], $m['profile_authority_sha256'],
+                $m['policy_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) $m['policy_sha256'] ) )
+            return self::err( 'mad4b_batch_archive_manifest_invalid',
+                'Stored batch identity or membership cannot be independently verified.' );
+        return array( 'manifest' => $m, 'names' => $keys );
+    }
     /**
      * Serialize own WordPress-option mutations per enrolled site and Profile.
      * add_option() enforces a unique key across concurrent PHP workers.
@@ -93,8 +120,15 @@ final class MAD4B_SCP_Activity_Import_Batches {
                 'A recognized batch operation and object are required.' );
         $slug = isset( $input['profile_slug'] ) ?
             (string) $input['profile_slug'] : '';
-        $ctx = self::context( $slug );
-        if ( is_wp_error( $ctx ) ) return $ctx;
+        if ( 'archive' === $operation ) {
+            if ( ! self::environment() ||
+                ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+                return self::err( 'mad4b_batch_archive_site_denied',
+                    'An enrolled Staging administrator is required for cleanup.' );
+        } else {
+            $ctx = self::context( $slug );
+            if ( is_wp_error( $ctx ) ) return $ctx;
+        }
         $lock_key = 'mad4b_batch_mutex_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
         $token = bin2hex( random_bytes( 16 ) );
@@ -481,9 +515,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
                 'Explicit administrative archive confirmation required.' );
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
         $id = isset( $input['batch_id'] ) ? (string) $input['batch_id'] : '';
-        $ctx = self::context( $slug );
-        if ( is_wp_error( $ctx ) ) return $ctx;
-        $read = self::read_manifest( $slug, $id, $ctx );
+        $read = self::archival_manifest( $slug, $id );
         $names = self::names( $slug, $id );
         $tombstone_key = 'mad4b_batch_archive_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $id );
