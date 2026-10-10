@@ -54,3 +54,36 @@ Native isolated fixture: `php tests/deployment-mode-resolver-runtime.php`.
 Test both origin/deployment drift denial and request-scope spoofing. Run
 independent WordPress staging integration before marking plugin runtime
 accepted; no test here authorizes a production rollout.
+
+## Dependency closure (required vs optional)
+
+The source-of-truth matrix is `config/deployment-mode-dependencies.json`. These categories have separate consequences:
+
+1. **Identity mandatory:** Site Profile `mad4b.site-profile.v2`, an enrolled and bound deployment identity (both `deployment_binding_bound` and `deployment_binding_configured` and `deployment_binding_match`), exact origin/environment, an enrolled versioned `mad4b.brand-context-profile.v1`, and current WordPress blog/network context. Failure returns `BLOCKED`, never a random tenant/brand.
+2. **Discovery mandatory:** WordPress Abilities API, MAD4B read policy and the authorized MCP adapter. These are necessary for connector-side discovery, not for the standalone read-only PHP identity projection.
+3. **Capabilities optional:** Google Drive, WooCommerce, Elementor, JetEngine, WPML and SEO providers. Their absence disables relevant capabilities only, with no switch to a different deployment mode, tenant, brand or backup source.
+
+The read-only `dependency_status` diagnostic reports code presence, not certified provider operation. A detected provider means `DETECTED_UNVERIFIED`; the source feature must still pass its own governance and runtime tests. WordPress user capabilities and MCP authorization remain separate from the ability's registration.
+
+A legacy Site Profile that merely reports `deployment_binding_match=true` **without a stored bound identity** is blocked for Dedicated scope resolution. This is a deliberate compatibility fence: re-enroll through the existing governed Site Profile flow; do not fabricate a token or edit the DB.
+
+## Native offline evidence (without CI)
+
+For the plugin alone: `php -l includes/class-mad4b-scp-deployment-mode-resolver.php` and `php tests/deployment-mode-resolver-runtime.php`.
+
+For both repositories checked out at exact pinned commits:
+
+```sh
+python tests/deployment-mode-dependencies-contract.py \
+  --plugin-root . \
+  --core-seed /path/to/context-authority-business-profile-v1 \
+  --wp-head <40-hex-wordpress-head> \
+  --core-head <40-hex-platform-head> \
+  --run-php
+```
+
+The cross-repo checker is read-only and fails closed when files, versions, pinned heads or native PHP runtime are missing. Passing it **does not** prove actual WordPress Staging installation, Google Drive integration, browser approval or production release readiness.
+
+## Migration and recovery
+
+Keep existing `Site Profile` records; no automatic DB migration, rewrite of `wp-config.php` or change of `wp_get_environment_type()` is performed. A missing brand record, a stale version, origin drift or a clone must produce an actionable diagnostic and a governed re-enrollment path, not a silent fallback to another brand or a shared platform mode. Binding changes invalidate previously assembled Context Authority projections and trigger independent readback before any future writes.
