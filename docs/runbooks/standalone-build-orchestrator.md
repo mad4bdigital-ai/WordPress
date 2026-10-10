@@ -133,3 +133,7 @@ php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-r
 
 Feature 007 Spec CI also invokes these tests when the workflow service is
 functioning. Tests on one SHA never certify later commits on the moving branch.
+
+## Trusted runner integration gate (11 October 2026)
+
+The current MCP Abilities are **read-only**. Enabling remote execution requires a separate owner-approved and exact-job-bound request, a registered semantic Remote Work Queue operation, and a pinned trusted runner identity. The worker must use only the existing deterministic ZIP entrypoint against a clean exact SHA, with verified MCP Adapter archive. The WordPress runtime must reject unsigned or expired receipts, mismatched job/site/plan/build identities, canceled or expired leases, and all Production requests. The signed receipt may prove only `BUILT_UNVERIFIED`, not installation, certification, or publish authority. Until the corresponding worker, verifier, and native acceptance tests are deployed, `automatic_execution_enabled` remains false; UI discovery and plans must not claim that a job was executed.
