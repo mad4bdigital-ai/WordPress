@@ -22,6 +22,16 @@ function imp08_part( $start, $group ) {
                 '_wpml_import_after_process_post_status' => 'draft' )
         ) );
 }
+function imp08_many( $start, $groups, $prefix ) {
+    $first = imp08_part( $start, $prefix . '-0' );
+    $result = array( 'profile_slug' => 'pricing', 'headers' => $first['headers'],
+        'rows' => array() );
+    for ( $n = 0; $n < $groups; $n++ ) {
+        $one = imp08_part( $start + $n * 2, $prefix . '-' . $n );
+        foreach ( $one['rows'] as $row ) $result['rows'][] = $row;
+    }
+    return $result;
+}
 $incomplete = MAD4B_SCP_Activity_Import_Batches::begin(
     array( 'profile_slug' => 'pricing', 'expected_chunks' => 2,
         'confirmed' => false ) );
@@ -35,7 +45,7 @@ ck( !is_wp_error( $b ) && strlen( $b['batch_id'] ) === 32,
 $id = $b['batch_id'];
 $base = array( 'profile_slug' => 'pricing', 'batch_id' => $id );
 $part1 = MAD4B_SCP_Activity_Import_Batches::append( array_merge( $base,
-    array( 'chunk_index' => 0, 'source' => imp08_part( 1, 'grp-A' ) ) ) );
+    array( 'chunk_index' => 0, 'source' => imp08_many( 1, 250, 'grp' ) ) ) );
 ck( !is_wp_error( $part1 ) && $part1['post_writes'] === 0,
     'First encrypted page did not persist without business writes.' );
 $missing = MAD4B_SCP_Activity_Import_Batches::verify( $base );
@@ -44,18 +54,18 @@ ck( !is_wp_error( $missing ) && !$missing['all_chunks_present'] &&
     'Unfinished manifest was authorized.' );
 $duplicate_index = MAD4B_SCP_Activity_Import_Batches::append(
     array_merge( $base, array( 'chunk_index' => 0,
-        'source' => imp08_part( 1, 'grp-A' ) ) ) );
+        'source' => imp08_many( 1, 250, 'grp' ) ) ) );
 ck( is_wp_error( $duplicate_index ) &&
     $duplicate_index->get_error_code() === 'mad4b_batch_chunk_already_staged',
     'Existing source chunk overwritten.' );
 $part2 = MAD4B_SCP_Activity_Import_Batches::append(
     array_merge( $base, array( 'chunk_index' => 1,
-        'source' => imp08_part( 3, 'grp-B' ) ) ) );
+        'source' => imp08_part( 501, 'grp-B' ) ) ) );
 ck( !is_wp_error( $part2 ), 'Second encrypted source chunk refused.' );
 $complete = MAD4B_SCP_Activity_Import_Batches::verify( $base );
 ck( !is_wp_error( $complete ) &&
     $complete['all_chunks_present'] &&
-    $complete['total_rows'] === 4 &&
+    $complete['total_rows'] === 502 &&
     $complete['blocks'] === 0 &&
     $complete['cross_chunk_duplicate_id_count'] === 0 &&
     $complete['cross_chunk_wpml_group_split_count'] === 0 &&
@@ -89,7 +99,7 @@ $b2 = MAD4B_SCP_Activity_Import_Batches::begin(
 ck( !is_wp_error( $b2 ), 'Archived batch retained locked Profile.' );
 $base2 = array( 'profile_slug' => 'pricing', 'batch_id' => $b2['batch_id'] );
 MAD4B_SCP_Activity_Import_Batches::append( array_merge( $base2,
-    array( 'chunk_index' => 0, 'source' => imp08_part( 1, 'grp-A' ) ) ) );
+    array( 'chunk_index' => 0, 'source' => imp08_many( 1, 250, 'grp' ) ) ) );
 MAD4B_SCP_Activity_Import_Batches::append( array_merge( $base2,
     array( 'chunk_index' => 1, 'source' => imp08_part( 1, 'grp-B' ) ) ) );
 $collision = MAD4B_SCP_Activity_Import_Batches::verify( $base2 );
