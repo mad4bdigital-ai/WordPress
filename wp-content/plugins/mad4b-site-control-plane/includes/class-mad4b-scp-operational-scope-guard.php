@@ -83,4 +83,49 @@ final class MAD4B_SCP_Operational_Scope_Guard {
         }
         return true;
     }
+
+    /**
+     * Read-only legacy census: never infer a missing owner, move a row,
+     * touch a WordPress option, or expose source content/record identifiers.
+     * Explicitly foreign and incomplete records remain quarantined for a
+     * separately approved, backup-backed migration with independent readback.
+     */
+    public static function legacy_reconciliation_census( $records ) {
+        $trusted = self::require_current();
+        if ( is_wp_error( $trusted ) ) return $trusted;
+        if ( ! is_array( $records ) || count( $records ) > 1000 )
+            return new WP_Error( 'mad4b_legacy_census_unbounded', 'Provide a bounded read-only legacy inventory.' );
+        $counts = array(
+            'already_owned' => 0,
+            'owner_unknown' => 0,
+            'foreign_scope' => 0,
+            'conflicting_metadata' => 0,
+            'malformed' => 0,
+        );
+        foreach ( $records as $record ) {
+            if ( ! is_array( $record ) ) { ++$counts['malformed']; continue; }
+            $site = isset( $record['site_uuid'] ) && is_scalar( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
+            $brand = isset( $record['brand_id'] ) && is_scalar( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+            if ( '' === $site || '' === $brand ) { ++$counts['owner_unknown']; continue; }
+            if ( ! hash_equals( strtolower( (string) $trusted['site_uuid'] ), $site ) ||
+                ! hash_equals( strtolower( (string) $trusted['brand_ref'] ), $brand ) ) {
+                ++$counts['foreign_scope']; continue;
+            }
+            if ( ! self::record_metadata_matches( $record, $trusted ) ) {
+                ++$counts['conflicting_metadata']; continue;
+            }
+            ++$counts['already_owned'];
+        }
+        return array(
+            'contract' => 'mad4b.legacy-reconciliation-census.v1',
+            'counts' => $counts,
+            'rows_inspected' => count( $records ),
+            'quarantined' => $counts['owner_unknown'] + $counts['foreign_scope'] +
+                $counts['conflicting_metadata'] + $counts['malformed'],
+            'mutation_performed' => false,
+            'migration_authorized' => false,
+            'blind_reassignment_allowed' => false,
+            'next_safe_action' => 'review_owner_evidence_and_backup_before_any_individual_migration',
+        );
+    }
 }

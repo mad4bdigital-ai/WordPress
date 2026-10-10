@@ -81,6 +81,23 @@ $legacy_unknown = $stored;
 unset( $legacy_unknown['brand_id'] );
 check( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $legacy_unknown, $scope ),
     'unknown legacy brand is quarantined rather than adopted or deleted' );
+$census = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( array(
+    $stored,
+    array_merge( $stored, array( 'tenant_id' => 'wp-site:foreign' ) ),
+    $legacy_unknown,
+    array_merge( $stored, array( 'brand_id' => str_repeat( 'b', 32 ) ) ),
+    'invalid'
+) );
+check( ! is_wp_error( $census ) && $census['rows_inspected'] === 5 &&
+    $census['counts']['already_owned'] === 1 &&
+    $census['counts']['conflicting_metadata'] === 1 &&
+    $census['counts']['owner_unknown'] === 1 &&
+    $census['counts']['foreign_scope'] === 1 &&
+    $census['counts']['malformed'] === 1 &&
+    $census['quarantined'] === 4 &&
+    $census['migration_authorized'] === false &&
+    $census['mutation_performed'] === false,
+    'legacy census classifies without adopting, deleting or exposing records' );
 check( ! MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $sources['own'], $stale_scope ), 'stale asserted scope cannot authorize owned source' );
 $ref = new ReflectionClass( 'MAD4B_SCP_Context_Authority' );
 $source_filter = $ref->getMethod( 'authorized_sources_from_records' );

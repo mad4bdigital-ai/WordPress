@@ -275,6 +275,32 @@ final class MAD4B_SCP_Context_Authority {
 		return self::authorized_assets_from_records( self::raw_assets(), $sources, $site );
 	}
 
+    /** Aggregate only; does not expose or adopt quarantined legacy data. */
+    public static function legacy_reconciliation_census() {
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ||
+            ! class_exists( 'MAD4B_SCP_Policy', false ) || ! MAD4B_SCP_Policy::can_read() )
+            return new WP_Error( 'mad4b_legacy_census_permission_denied', 'Administrator read permission required.' );
+        $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+        if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+        $sources = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_sources() );
+        if ( is_wp_error( $sources ) ) return $sources;
+        $assets = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_assets() );
+        if ( is_wp_error( $assets ) ) return $assets;
+        $fresh = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, false );
+        if ( is_wp_error( $fresh ) ) return $fresh;
+        return array(
+            'contract' => 'mad4b.context-legacy-reconciliation-census.v1',
+            'sources' => $sources['counts'],
+            'assets' => $assets['counts'],
+            'source_quarantine_count' => $sources['quarantined'],
+            'asset_quarantine_count' => $assets['quarantined'],
+            'scope_fingerprint' => $checkpoint['fingerprint'],
+            'read_only' => true,
+            'mutation_performed' => false,
+            'migration_authorized' => false,
+        );
+    }
+
 	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
 		return is_array( $records ) ? $records : array();
