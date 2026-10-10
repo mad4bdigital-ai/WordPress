@@ -51,10 +51,11 @@ $GLOBALS['installed_plugins'] = array(
  'example-one/example.php' => array('Version'=>'1.0.0'),
  'example-two/plugin.php' => array('Version'=>'1.1.0'),
  'uncertified/something.php' => array('Version'=>'5.4'),
+ 'hello.php' => array('Version'=>'1.7'),
  'misc-hack/../bad.php' => array('Version'=>'9'),
 );
 $inventory = $c::inventory( get_plugins(), $map, true );
-insist( count($inventory)===3, 'All valid installed plugins discovered, unsafe identifier omitted' );
+insist( count($inventory)===4, 'All valid installed and single-file plugins discovered; unsafe identifier omitted' );
 insist( count(array_filter($inventory,static function($r){return $r['certified_provider'];}))===2, 'Two certified and one uncertified' );
 $only = $c::inventory( get_plugins(), $map, false );
 insist( count($only)===2, 'Optional uncertified filter' );
@@ -62,7 +63,7 @@ insist( count($c::inventory( get_plugins(), $map, true, 1 ))===1, 'Bounded inven
 $unregistered = array_values(array_filter($inventory,static function($v){return !$v['certified_provider'];}))[0];
 insist( $unregistered['update_apply_ability']==='' && !$unregistered['automatic_install'], 'Unregistered plugins never gain executor' );
 $read = $c::discover(array('limit'=>5));
-insist( !is_wp_error($read) && $read['installed_plugin_count']===4, 'Read-only dynamic installed inventory' );
+insist( !is_wp_error($read) && $read['installed_plugin_count']===5, 'Read-only dynamic installed inventory' );
 insist( is_wp_error( $c::discover(array('filter'=>'../wp-config')) ), 'Unsafe discovery input denied' );
 $policy=$c::ci_policy('queued',array(),true);
 insist(!$policy['eligible']&&!$policy['github_ci_queue_alone_is_blocker'], 'Queue never counts as a test PASS' );
