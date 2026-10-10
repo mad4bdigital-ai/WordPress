@@ -136,6 +136,17 @@ Test_Ability::$reject=true;
 check( is_wp_error($c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array()))), 'original planner schema is authoritative' );
 Test_Ability::$reject=false;
 check( is_wp_error($c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array('secret'=>'x')))), 'unknown runtime field blocked' );
+$wp_registered_settings=array('normal_option'=>array(), 'secret/unsafe'=>array());
+$menu=array(array('Dashboard','manage_options','index.php'),array('Foreign','unavailable','foreign.php'));
+$submenu=array('tools.php'=>array(array('Existing','manage_options','tools.php')));
+function get_post_types($filter,$output='names') { return array('post','page','tour'); }
+$signals=$c::observe_ui();
+check(in_array('normal_option',$signals['core_settings'],true) &&
+ !in_array('secret/unsafe',$signals['core_settings'],true), 'bounded registered setting names only');
+check($signals['admin_menu_materialized'] && in_array('index.php',$signals['menu_routes'],true) &&
+ !in_array('foreign.php',$signals['menu_routes'],true), 'WordPress menu capability filtering');
+check(in_array('tour',$signals['post_types'],true), 'dynamic plugin custom post type signals');
+check(!$signals['unknown_actions_remotely_executable'], 'passive discovery grants no execution');
 $read=$c::discover(array());
 check( !is_wp_error($read) && $read['count']===1 && $read['operations'][0]['customized'], 'dynamic operation discovery retains installed profile' );
 MAD4B_SCP_Site_Profile::$site['canonical_origin']='https://changed.example';
