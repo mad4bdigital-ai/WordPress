@@ -84,6 +84,15 @@ final class MAD4B_SCP_Activity_Import_Reconciliation {
             } else {
                 $post_id = (int) $posts[0];
                 $details = array();
+                // Database collations can be case-insensitive: re-read the
+                // canonical destination ID and refuse a case-changed match.
+                $observed_identity = get_post_meta( $post_id, $meta_key, true );
+                if ( ! is_scalar( $observed_identity ) ||
+                    (string) $observed_identity !== $source_id ) {
+                    $status = 'unverified';
+                    $details[] = array( 'field' => $meta_key,
+                        'reason' => 'destination_identity_not_exact' );
+                } else {
                 foreach ( $map as $source_col => $dest_meta ) {
                     // WPML import control fields must be verified by a WPML
                     // adapter, not guessed from arbitrary WordPress meta.
@@ -104,6 +113,7 @@ final class MAD4B_SCP_Activity_Import_Reconciliation {
                             'actual_sha256' => hash( 'sha256', $actual ) );
                 }
                 $status = $details ? 'different' : 'matched';
+                }
             }
             $counts[ $status ]++;
             $results[] = array( 'row_index' => $i,
