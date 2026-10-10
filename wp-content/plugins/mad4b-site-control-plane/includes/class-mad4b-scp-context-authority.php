@@ -441,6 +441,8 @@ final class MAD4B_SCP_Context_Authority {
 	 * All inherited approval statuses are invalidated until new review.
 	 */
 	public static function legacy_owner_transfer_apply( $input ) {
+		if ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) || true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required', 'Legacy ownership writes remain disabled until independent rollback and Host acceptance are certified.' );
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_legacy_transfer_input_invalid', 'Exact transfer input required.' );
 		if ( 'APPROVE EXACT UNBOUND BRAND TRANSFER' !== (string) ( $input['confirmation'] ?? '' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_owner_confirmation_required', 'The exact owner transfer confirmation was not given.' );
