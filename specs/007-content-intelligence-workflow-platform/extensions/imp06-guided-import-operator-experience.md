@@ -37,6 +37,7 @@ Read-only views do not alter source data. All HTML values must be escaped and fo
 | Warnings but no blockers | Generic confirmation | Show full business warning count, require checkbox and reject a stale acknowledgement |
 | 390 warning-only issues | Truncated 200-item list could permanently block approval | Paginate all 390, require exact count 390; no silent acknowledgement |
 | Approved source, no importer execution | Apparently complete task | Explicitly "manual CSV handoff only"; separate native WP All Import run/readback |
+| External WP All Import job reports a finished hook | Treated as completed import or scattered logs | Optional advanced job ID lookup; status explicitly unverified and links to independent destination check |
 | Review archived | Old source reused approval | Archive only specific receipt; follow-up upload requires new review |
 | Narrow/mobile or RTL WordPress | Wide nonresponsive table/stepper | Responsive horizontally scrollable table, wrapping steps, direction-neutral margins |
 | Screen reader or keyboard | Visual-only status | Labeled form inputs, table captions, alerts/status roles, aria-current step |
