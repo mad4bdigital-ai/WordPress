@@ -143,7 +143,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
         $total = $active_review && isset( $review['plan']['issue_count_observed'] ) ?
             (int) $review['plan']['issue_count_observed'] : 0;
         $truncated = $active_review && ! empty( $review['plan']['issues_truncated'] );
-        $approval_candidate = $active_review && 0 === $blocks && !$truncated;
+        // Pagination is a presentation detail. Every nonblocking warning is
+        // counted and explicitly acknowledged before manual-only approval.
+        $approval_candidate = $active_review && 0 === $blocks;
         $step = is_int( $step ) ? max( 1, min( 4, $step ) ) : 1;
         if ( !$selected || !$has_policy || !$allowed ) $step = 1;
         if ( !$active_review && $step > 2 ) $step = 2;
@@ -409,10 +411,14 @@ final class MAD4B_SCP_Activity_Import_Experience {
             self::e( self::title( 'blocking' ) ) . ' &middot; <strong>' .
             self::e( (string) $view['review_issue_count'] ) . '</strong> ' .
             self::e( self::title( 'require business review' ) ) . '</p>';
-        if ( $view['blocking_issue_count'] || $view['issue_list_truncated'] )
+        if ( $view['blocking_issue_count'] )
             self::explanation( self::title( 'Approval is blocked.' ),
-                self::title( 'Fix the blocking data in its source, or complete the missing issue review. Then stage a new version. This screen never silently edits commercial values.' ),
+                self::title( 'Fix blocking rows in the source and stage a new version. This screen never silently edits commercial values.' ),
                 'warning' );
+        elseif ( $view['issue_list_truncated'] )
+            self::explanation( self::title( 'Additional review pages exist.' ),
+                self::title( 'Browse the remaining issues. Manual approval will require acknowledging the exact total of all nonblocking business warnings, not only the first page.' ),
+                'info' );
         $offset = isset( $_GET['issue_offset'] ) ? absint( $_GET['issue_offset'] ) : 0;
         $issues = MAD4B_SCP_Activity_Import_Review::issues_page( array(
             'profile_slug' => $slug, 'snapshot_sha256' => $review['snapshot_sha256'],
@@ -534,6 +540,11 @@ final class MAD4B_SCP_Activity_Import_Experience {
                 echo '<input type="hidden" name="action" value="mad4b_activity_import_approve" />';
                 echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
                 echo '<input type="hidden" name="snapshot_sha256" value="' . esc_attr( $sha ) . '" />';
+                echo '<input type="hidden" name="acknowledged_warning_count" value="' .
+                    esc_attr( $view['review_issue_count'] ) . '" />';
+                echo '<p><label><input name="acknowledge_warnings" type="checkbox" value="1" required /> ' .
+                    self::e( self::title( 'I have reviewed the full issue totals and explicitly acknowledge all nonblocking warnings.' ) ) .
+                    '</label></p>';
                 wp_nonce_field( 'mad4b_activity_approve_review', 'mad4b_approve_nonce' );
                 submit_button( self::title( 'Approve fixed source for manual CSV download' ), 'primary' );
                 echo '</form>';
