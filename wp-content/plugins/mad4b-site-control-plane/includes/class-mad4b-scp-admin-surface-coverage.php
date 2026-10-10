@@ -128,8 +128,10 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                 if ( count( $rows ) >= self::MAX_TOTAL ) break 2;
             }
         }
-        $ids = array_column( $rows, 'surface_id' );
-        sort( $ids, SORT_STRING );
+        // Bind both source identities AND classification metadata. Merely
+        // hashing IDs would miss a settings schema or registration-state drift.
+        $top_level = 0;
+        foreach ( $rows as $row ) $top_level = max( $top_level, (int) $row['coverage_level'] );
         $identity = array(
             'site_uuid' => (string) ( $site_identity['site_uuid'] ?? '' ),
             'profile_digest' => (string) ( $site_identity['profile_digest'] ?? '' ),
@@ -137,13 +139,14 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         );
         $fingerprint = hash( 'sha256', (string) wp_json_encode(
             array( 'contract' => self::CONTRACT, 'identity' => $identity,
-                'ids' => $ids, 'counts' => $counts ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                'actor_user_id' => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
+                'rows' => $rows, 'counts' => $counts ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
         ) );
         return array(
             'contract' => self::CONTRACT, 'snapshot_sha256' => $fingerprint,
             'counts_by_kind' => $counts, 'truncated_by_kind' => $truncated,
             'observed_count' => array_sum( $counts ), 'returned_count' => count( $rows ),
-            'items' => $rows, 'highest_coverage_level' => 2,
+            'items' => $rows, 'highest_coverage_level' => $top_level,
             'ui_discovery_proves_execution' => false, 'arbitrary_admin_execution_supported' => false,
             'credentials_included' => false, 'read_only' => true,
             'authorizing' => false, 'mutation_performed' => false,
@@ -156,7 +159,8 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         if ( ! current_user_can( 'manage_options' ) ) return $sources;
         if ( class_exists( 'MAD4B_SCP_Operation_Registry' ) ) {
             $reg = MAD4B_SCP_Operation_Registry::status();
-            foreach ( is_array( $reg['operations'] ?? null ) ? $reg['operations'] : array() as $op )
+            $known = is_array( $reg ) && is_array( $reg['operations'] ?? null ) ? $reg['operations'] : array();
+            foreach ( $known as $op )
                 if ( is_array( $op ) && self::safe_key( $op['id'] ?? null ) )
                     $sources['governed_operations'][$op['id']] = array(
                         'planner_registered' => $op['planner_registered'] ?? false,
@@ -278,8 +282,9 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                     'compensation_or_declared_nonreversible_effect',
                     'negative_security_and_staging_runtime_tests',
                 ),
-                'proposed_coverage_level' => 1,
-                'next_state' => 'source_owner_adapter_review',
+                'proposed_coverage_level' => max( 1, (int) $row['coverage_level'] ),
+                'next_state' => (int) $row['coverage_level'] >= 2 ?
+                    'use_existing_canonical_planner' : 'source_owner_adapter_review',
                 'registration_performed' => false, 'execution_performed' => false,
                 'credentials_accessed' => false, 'authority_created' => false,
                 'production_allowed' => false, 'read_only' => true,
