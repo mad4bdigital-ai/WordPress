@@ -152,6 +152,16 @@ add_option( $tombstone, array(
     'batch_id_sha256' => hash( 'sha256', $b2['batch_id'] ),
     'expected_chunks' => 2, 'manifest_sha256' => str_repeat( 'a', 64 )
 ), '', false );
+$archiving = MAD4B_SCP_Activity_Import_Batches::verify( $base2 );
+ck( is_wp_error( $archiving ) &&
+    $archiving->get_error_code() === 'mad4b_batch_archival_in_progress',
+    'Archived intent still permits ordinary source reads/approvals' );
+$injected = MAD4B_SCP_Activity_Import_Batches::append(
+    array_merge( $base2, array( 'chunk_index' => 1,
+        'source' => imp08_part( 9999, 'injected' ) ) ) );
+ck( is_wp_error( $injected ) &&
+    $injected->get_error_code() === 'mad4b_batch_archival_in_progress',
+    'Archived source manifest allowed a new chunk to race cleanup' );
 delete_option( $manifest_key );
 $closed = MAD4B_SCP_Activity_Import_Batches::archive(
     array_merge( $base2, array( 'confirmed' => true ) ) );
