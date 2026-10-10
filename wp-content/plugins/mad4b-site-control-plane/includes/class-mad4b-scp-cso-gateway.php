@@ -64,7 +64,7 @@ final class MAD4B_SCP_CSO_Gateway {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
             'field_help', 'field_suggest', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'approval_plan', 'change_commit', 'change_verify', 'change_status', 'bulk_plan', 'bulk_commit', 'workflow_compile', 'doctor_plan', 'template_plan'
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'approval_plan', 'change_commit', 'change_verify', 'change_status', 'bulk_plan', 'bulk_commit', 'workflow_compile', 'workflow_run', 'doctor_plan', 'template_plan'
         );
     }
 
