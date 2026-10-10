@@ -6,6 +6,8 @@ on:
       - 'specs/007-content-intelligence-workflow-platform/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'tools/solution-discovery/**'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
@@ -610,6 +612,12 @@ jobs:
         run: |
           set -euo pipefail
           for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php; do php -l "$f" || exit 1; done
+      - name: Verify standalone source builder and MCP read-only contract
+        run: |
+          set -euo pipefail
+          python3 tools/test_mad4b_standalone_build.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
       - name: Verify G9 non-authorizing delivery contract
         run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py
       - name: Verify G9 source security invariants
