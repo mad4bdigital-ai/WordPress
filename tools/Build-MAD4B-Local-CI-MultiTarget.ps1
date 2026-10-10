@@ -16,6 +16,7 @@ param(
     [string]$SiteEvidence="",
     [string]$ExpectedSiteUrl="",
     [switch]$AllowNativeExecution,
+    [switch]$ProbeSiteReadOnly,
     [string]$OutputRoot="$env:USERPROFILE\Downloads"
 )
 $ErrorActionPreference = "Stop"
@@ -60,6 +61,10 @@ $cli = @($program, "--repository-path", $repo, "--repository", $repoName,
     "--output", $OutputPath)
 if ($AllowNativeExecution) { $cli += "--allow-native-execution" }
 if ($SiteEvidence) { $cli += @("--site-evidence", $SiteEvidence) }
+if ($ProbeSiteReadOnly) {
+    if (-not $ExpectedSiteUrl) { throw "Use -ExpectedSiteUrl for the explicit read-only probe." }
+    $cli += "--probe-site"
+}
 if ($ExpectedSiteUrl) { $cli += @("--expected-site-url", $ExpectedSiteUrl) }
 Write-Host "Exact selected SHA: $resolved"
 Write-Host "Host target: $target | isolated test runtime: $Runtime"
