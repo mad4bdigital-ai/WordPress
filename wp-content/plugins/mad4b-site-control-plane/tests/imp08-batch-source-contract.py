@@ -12,7 +12,7 @@ preflight=(ROOT/"tests"/"feature007-manual-preflight.py").read_text(encoding="ut
 def require(ok,why):
     if not ok: raise AssertionError(why)
 for marker in (
-    "const MAX_CHUNKS = 10", "'expected_chunks' < 2",
+    "const MAX_CHUNKS = 10", "$input['expected_chunks'] < 2",
     "'admin_csv_upload'", "MAD4B_SCP_Activity_Import_Authority::mode_allowed",
     "add_option( $names['active']", "add_option( $names['manifest']",
     "'chunk_index' => $index", "aes-256-gcm", "OPENSSL_RAW_DATA",
