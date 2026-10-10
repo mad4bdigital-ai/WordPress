@@ -188,7 +188,8 @@ $disabled_transfer = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( a
 check( is_wp_error($disabled_transfer) && 'mad4b_legacy_transfer_rollback_certification_required' === $disabled_transfer->get_error_code(),
     'Uncertified legacy transfer was executed instead of failing closed' );
 define( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED', true );
-$legacy_source_id = hash( 'sha256', 'one-unbound-source' );
+$legacy_source_id = hash( 'sha256', $uuid . '|google_drive|governed|folder_legacy_verified|' );
+$legacy_asset_id = hash( 'sha256', $legacy_source_id . '|file_one' );
 $old_sources = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
 $old_assets = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
 $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $legacy_source_id ] = array(
@@ -196,12 +197,24 @@ $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $legacy
     'source_id' => $legacy_source_id, 'site_uuid' => $uuid, 'provider' => 'google_drive',
     'mode' => 'governed', 'external_root_id' => 'folder_legacy_verified', 'write_policy' => 'managed',
 );
-$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-test-one'] = array(
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $legacy_asset_id ] = array(
     'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
-    'asset_id' => 'legacy-test-one', 'site_uuid' => $uuid, 'source_id' => $legacy_source_id,
+    'asset_id' => $legacy_asset_id, 'site_uuid' => $uuid, 'source_id' => $legacy_source_id,
     'source_mode' => 'governed', 'file_id' => 'file_one', 'review_status' => 'approved',
     'reviewed_content_hash' => str_repeat( 'e', 64 ), 'status' => 'ready',
 );
+$noncanonical_source_id = hash( 'sha256', 'injected-unbound-source' );
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $noncanonical_source_id ] = array(
+    'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
+    'source_id' => $noncanonical_source_id, 'site_uuid' => $uuid,
+    'provider' => 'google_drive', 'mode' => 'governed',
+    'external_root_id' => 'folder_that_was_not_enrolled',
+);
+$invalid = MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan( array( 'source_id' => $noncanonical_source_id ) );
+check( is_wp_error( $invalid ) &&
+    'mad4b_legacy_transfer_source_identity_not_canonical' === $invalid->get_error_code(),
+    'Invented legacy source hash was improperly adopted' );
+unset( $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $noncanonical_source_id ] );
 $legacy_plan = MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan( array( 'source_id' => $legacy_source_id ) );
 check( is_array( $legacy_plan ) && $legacy_plan['asset_count'] === 1 &&
     empty( $legacy_plan['mutation_performed'] ), 'Unbound source plan not independently read-only' );
@@ -240,7 +253,7 @@ unset( $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['l
 $done = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
 check( is_array( $done ) && 'transferred_unapproved_requires_fresh_scan' === $done['state'] &&
     1 === $done['asset_count'], 'Independently approved exact legacy transfer failed' );
-$transferred_asset = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-test-one'];
+$transferred_asset = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $legacy_asset_id ];
 check( $a === $transferred_asset['brand_id'] &&
     'unreviewed' === $transferred_asset['review_status'] &&
     '' === $transferred_asset['reviewed_content_hash'] &&
