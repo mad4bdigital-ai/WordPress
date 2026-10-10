@@ -77,7 +77,7 @@
     let busy=false;
     form.fields.forEach((field,index)=>{
       if(!object(field)) throw new Error('FIELD_SHAPE');
-      const name=field.field_id||field.name||field.id;
+      const name=field.field_id||field.name||field.id||field.key;
       if(typeof name!=='string'||name.length>193||['__proto__','constructor','prototype'].includes(name)) throw new Error('FIELD_NAME');
       const kind=fieldType(field); const schema=field.schema||field;
       const group=element(doc,'div',undefined,{'class':'cso-field'});
