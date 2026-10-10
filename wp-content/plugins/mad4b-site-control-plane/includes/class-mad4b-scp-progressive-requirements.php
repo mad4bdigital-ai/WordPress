@@ -44,7 +44,10 @@ final class MAD4B_SCP_Progressive_Requirements {
 						'type'=>array( 'type'=>'string', 'enum'=>array('pull_request','branch','commit') ),
 						'reference'=>array( 'type'=>'string', 'maxLength'=>120 ) ) ),
 				'reason' => array( 'type'=>'string', 'maxLength'=>500 ),
-				'target_operation_id'=>array('type'=>'string','pattern'=>'^[a-z][a-z0-9._-]{1,119}
+				'target_operation_id'=>array('type'=>'string','maxLength'=>120),
+				'intent'=>array('type'=>'string','maxLength'=>160),
+				'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>50),
+				'offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>1000),
 			) );
 	}
 	public static function register_abilities() {
