@@ -496,6 +496,13 @@ final class MAD4B_SCP_Context_Authority {
 					$asset['review_decision'] = '';
 					$asset['reviewed_content_hash'] = '';
 					$asset['reviewed_at'] = '';
+					// No old Agent/owner review is inherited across an
+					// identity change, including stale-evidence overrides.
+					foreach ( array( 'review_actor_type', 'review_agent_public_id',
+						'review_note', 'reviewed_by', 'review_evidence_sha256',
+						'generation_evidence_stale_override',
+						'generation_evidence_reviewed_current_digest',
+					) as $approval_field ) unset( $asset[ $approval_field ] );
 					$asset['status'] = 'stale';
 					$asset['updated_at'] = gmdate( 'c' );
 					$assets[ $id ] = $asset;
