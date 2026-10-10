@@ -112,6 +112,7 @@ FIXTURES = (
     "imp10-wpml-readback-runtime.php",
     "imp12-schema-onboarding-runtime.php",
     "imp13-commercial-source-safety-runtime.php",
+    "imp14-single-snapshot-atomic-runtime.php",
     "projection-registration-lifecycle.php",
     "host-bridge-contract.php",
     "browser-acceptance-admin-setup-contract.php",
