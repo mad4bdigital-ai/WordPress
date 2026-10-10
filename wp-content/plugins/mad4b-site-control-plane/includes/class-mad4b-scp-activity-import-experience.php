@@ -307,6 +307,15 @@ final class MAD4B_SCP_Activity_Import_Experience {
         $review = $slug ? MAD4B_SCP_Activity_Import_Review::review(
             array( 'profile_slug' => $slug ) ) : array();
         $view = self::journey( $profiles, $slug, $catalog, $review, $mode_id, $step );
+        // A multi-part batch has its OWN active encrypted manifest. It is
+        // intentionally independent of the single-source review inbox.
+        // Allow its handoff screen to be reached even with no single snapshot;
+        // the authoritative batch status call below still fails closed.
+        $bulk_id = isset( $_GET['batch_id'] ) ?
+            sanitize_text_field( wp_unslash( $_GET['batch_id'] ) ) : '';
+        if ( 4 === $step && preg_match( '/^[a-f0-9]{32}$/D', $bulk_id ) &&
+            ! empty( $view['selected_profile'] ) && $view['has_import_policy'] )
+            $view['step'] = 4;
         $selected = $view['selected_profile'];
         echo '<div class="wrap mad4b-import-guide">';
         echo '<style>
