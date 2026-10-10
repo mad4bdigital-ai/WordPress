@@ -559,6 +559,20 @@ final class MAD4B_SCP_Context_Authority {
 				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
 				$audit_ready = self::audit_preflight();
 				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
+				// MCP-managed source writes carry two exact identity assertions.
+				// Validate while the same registry lock used for persistence is held.
+				if ( array_key_exists( 'expected_registry_revision', $input ) &&
+					(int) $input['expected_registry_revision'] !== self::registry_revision() )
+					return new WP_Error( 'mad4b_context_source_registry_revision_stale',
+						'Source registry changed after review; replan against current authority.' );
+				if ( array_key_exists( 'expected_authority_manifest_fingerprint', $input ) ) {
+					$claimed = (string) $input['expected_authority_manifest_fingerprint'];
+					$current_manifest = self::authority_manifest_fingerprint();
+					if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed ) ||
+						! hash_equals( $current_manifest, $claimed ) )
+						return new WP_Error( 'mad4b_context_source_authority_manifest_stale',
+							'Source authority manifest changed; reviewed plan cannot be reused.' );
+				}
 
 				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
