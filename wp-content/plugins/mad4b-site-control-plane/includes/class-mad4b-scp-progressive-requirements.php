@@ -296,7 +296,8 @@ final class MAD4B_SCP_Progressive_Requirements {
 		$audit=MAD4B_SCP_Audit::storage_status();
 		if(!is_array($audit)||empty($audit['ready']))
 			return new WP_Error('mad4b_progressive_audit_unready','Audit must be ready before handoff.');
-		$key='mad4b_scp_progressive_handoff_'.substr($plan['plan_sha256'],0,24);
+		$bound_key=hash('sha256',$plan['operation_id'].'|'.$plan['operation_identity'].'|'.$plan['site_identity_sha256']);
+		$key='mad4b_scp_progressive_handoff_'.substr($bound_key,0,24);
 		$record=array('contract'=>'mad4b.progressive-linked-handoff.v1',
 			'plan_sha256'=>$plan['plan_sha256'],
 			'operation_id'=>$plan['operation_id'],
@@ -308,9 +309,15 @@ final class MAD4B_SCP_Progressive_Requirements {
 			'execution_authorized'=>false,'production_allowed'=>false);
 		if(!function_exists('add_option')||!add_option($key,$record,'','no')) {
 			$existing=function_exists('get_option')?get_option($key,array()):array();
-			if(!is_array($existing)||($existing['plan_sha256']??'')!==$plan['plan_sha256'])
-				return new WP_Error('mad4b_progressive_handoff_conflict','Bound handoff record conflicts with original plan.');
-			return array('state'=>'already_queued','plan_sha256'=>$plan['plan_sha256'],
+			if(!is_array($existing) ||
+				($existing['operation_identity']??'')!==$plan['operation_identity'] ||
+				($existing['site_identity_sha256']??'')!==$plan['site_identity_sha256'])
+				return new WP_Error('mad4b_progressive_handoff_conflict','Another exact operation owns this handoff.');
+			return array('state'=>($existing['plan_sha256']??'')===$plan['plan_sha256']?
+					'already_queued':'queued_plan_stale_reconciliation_required',
+				'plan_sha256'=>(string)($existing['plan_sha256']??''),
+				'current_plan_sha256'=>$plan['plan_sha256'],
+				'fresh_governed_approval_required_for_effect'=>true,
 				'effect_executed'=>false,'mutation_performed'=>false);
 		}
 		$audit_result=MAD4B_SCP_Audit::record('mad4b/progressive-handoff',
