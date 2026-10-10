@@ -16,6 +16,11 @@ final class MAD4B_SCP_Plugin_Package {
 	const APPLY_CONTRACT = 'mad4b.plugin-package-apply.v1';
 
 	public static function boot() {
+		// Reuse the existing certified provider package pipeline for any plugin;
+		// the recovery layer never installs unregistered plugin archives.
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Update_Recovery', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-plugin-update-recovery.php';
+		MAD4B_SCP_Plugin_Update_Recovery::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 	}
 
