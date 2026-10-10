@@ -44,7 +44,9 @@ expect_build(isset($workOps['standalone_source_build']), 'Single semantic operat
 expect_build($workOps['standalone_source_build']['production_policy'] === 'deny',
     'Remote build operation never runs Production');
 $status = $class::discover(array());
-expect_build($status['mcp_dispatch_implemented'] === false, 'No hidden shell runner');
+expect_build($status['mcp_dispatch_implemented'] === true &&
+    $status['mcp_dispatch_mode'] === 'owner_approved_semantic_work_queue',
+    'Only owner-gated semantic queue is implemented');
 expect_build($status['automatic_execution_enabled'] === false, 'No automatic execution');
 expect_build($status['ci_required_for_build'] === false, 'CI-independent build');
 expect_build(is_wp_error($class::discover(array('cmd' => 'php -r 1'))), 'Discovery refuses commands');
