@@ -214,6 +214,16 @@
         "extended",
         "core"
       ]
+    },
+    {
+      "name": "local-ci-contract",
+      "language": "python",
+      "file": "local-ci-multi-environment-contract.py",
+      "args": [],
+      "profiles": [
+        "extended",
+        "core"
+      ]
     }
   ]
 }
