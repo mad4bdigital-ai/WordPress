@@ -16,8 +16,9 @@ final class MAD4B_SCP_CSO_Registry {
 		if ( ! function_exists( 'wp_get_ability' ) || ! function_exists( 'wp_has_ability' ) ) return self::failure( 'descriptor_unavailable' );
 		return MAD4B_SCP_CSO_Scope::current();
 	}
-	private static function describe_current( $name, array $target, $prepare ) {
-		$scope = self::admit(); if ( is_wp_error( $scope ) ) return $scope;
+	private static function describe_current( $name, array $target, $prepare, array $batch_scope = null ) {
+		// Catalogs pin the scope before and after the whole bounded scan; per-object permissions stay live.
+		$scope = null === $batch_scope ? self::admit() : $batch_scope; if ( is_wp_error( $scope ) ) return $scope;
 		if ( ! is_string( $name ) || 1 !== preg_match( '#^[a-z0-9][a-z0-9._-]{0,95}/[a-z0-9][a-z0-9._-]{0,95}$#D', $name ) || self::fixed_dispatcher( $name ) || true !== MAD4B_SCP_CSO_Scope::safe_data( $target ) || ! wp_has_ability( $name ) ) return self::failure( 'descriptor_unavailable' );
 		$ability = wp_get_ability( $name );
 		foreach ( array( 'get_input_schema', 'get_output_schema', 'get_meta', 'check_permissions', 'execute' ) as $method ) if ( ! is_object( $ability ) || ! method_exists( $ability, $method ) ) return self::failure( 'descriptor_unavailable' );
@@ -48,13 +49,16 @@ final class MAD4B_SCP_CSO_Registry {
 		$adapter = MAD4B_SCP_CSO_Scope::digest( array( 'provider' => $provider, 'capability_binding' => $binding, 'field_metadata' => $fields, 'storage_kind' => $kind, 'native_route_available' => $native_route, 'readback' => $readback ) );
 		if ( is_wp_error( $schema ) || is_wp_error( $adapter ) ) return self::failure( 'schema_unsupported' );
 		$result = array( 'contract' => self::CONTRACT, 'ability_name' => $name, 'label' => $row['label'] ?? '', 'description' => $row['description'] ?? '', 'input_schema' => $input, 'output_schema' => $output, 'schema_sha256' => $schema, 'adapter_sha256' => $adapter, 'capability_binding' => $binding, 'scope' => $scope, 'lane' => $row['lane'], 'read_only' => $read, 'native_route_available' => $native_route, 'provider' => $provider, 'provenance' => $provider, 'storage_kind' => $kind, 'storage_status' => $status, 'certification_status' => $mounted ? 'existing_governed_mount' : 'unmapped', 'cso_conformance_certified' => false, 'metadata_trusted' => $trusted, 'write_supported' => $writable, 'writable_by_adapter' => $writable, 'field_metadata' => $fields, 'readback' => $readback, 'visibility' => 'permission_filtered', 'authority_revalidation_required' => true, 'authorizing' => false, 'mutation_performed' => false );
+		// Compatibility aliases derive from the same current canonical values, never caller flags.
+		$result['readonly'] = $read;
+		$result['storage'] = array( 'kind' => $kind, 'native_route_available' => $native_route );
 		if ( $prepare && $native_route ) {
 			if ( ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) || ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' ) ) return self::failure( 'preparation_unavailable' );
 			$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row ); $authority = MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope();
 			if ( is_wp_error( $receipt ) || ! is_string( $receipt ) || '' === $receipt || strlen( $receipt ) > 4096 || ! self::sha( $authority ) ) return self::failure( 'preparation_unavailable' );
 			$result['preparation'] = array( 'scope' => $scope, 'schema_sha256' => $schema, 'adapter_sha256' => $adapter, 'capability_binding' => $binding, 'expected_input_schema_sha256' => $row['input_schema_sha256'], 'expected_execution_lane' => $row['execution_lane'], 'expected_classification_sha256' => $row['classification_sha256'], 'expected_authority_scope_sha256' => $authority, 'preparation_receipt' => $receipt );
 		}
-		if ( is_wp_error( MAD4B_SCP_CSO_Scope::assert_current( $scope ) ) || true !== MAD4B_SCP_CSO_Scope::safe_data( $result, false ) ) return self::failure( 'descriptor_changed' );
+		if ( ( null === $batch_scope && is_wp_error( MAD4B_SCP_CSO_Scope::assert_current( $scope ) ) ) || true !== MAD4B_SCP_CSO_Scope::safe_data( $result, false ) ) return self::failure( 'descriptor_changed' );
 		return $result;
 	}
 	/** Count and page only after permission filtering; private names/counts are never emitted. */
@@ -67,7 +71,7 @@ final class MAD4B_SCP_CSO_Registry {
 			sort( $names, SORT_STRING ); $items = array(); $seen = 0; $more = false; $deadline = microtime( true ) + 5;
 			foreach ( $names as $name ) {
 				if ( microtime( true ) > $deadline ) return self::failure( 'catalog_budget' );
-				$row = self::describe_current( $name, array(), false ); if ( is_wp_error( $row ) ) continue;
+				$row = self::describe_current( $name, array(), false, $scope ); if ( is_wp_error( $row ) ) continue;
 				if ( '' !== $query && false === stripos( $row['ability_name'] . ' ' . $row['label'] . ' ' . $row['description'], $query ) ) continue;
 				if ( $seen++ < $offset ) continue; if ( count( $items ) === $limit ) { $more = true; break; }
 				$items[] = array_intersect_key( $row, array_fill_keys( array( 'ability_name', 'label', 'description', 'lane', 'read_only', 'native_route_available', 'schema_sha256', 'adapter_sha256', 'storage_kind', 'storage_status', 'certification_status', 'write_supported', 'metadata_trusted', 'provider', 'authorizing' ), true ) );
@@ -118,7 +122,7 @@ final class MAD4B_SCP_CSO_Registry {
 		}
 		if ( '' === $version && 'core' === $id && defined( 'MAD4B_SCP_VERSION' ) ) $version = (string) MAD4B_SCP_VERSION;
 		$generation = '' !== $id && class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) ? MAD4B_SCP_Provider_Compatibility_Certification::certification_generation_sha256( $id ) : '';
-		return array( 'provider_id' => $id, 'adapter_id' => $adapter_id, 'runtime_version' => $version, 'certification_generation_sha256' => self::sha( $generation ) ? $generation : '', 'source' => '' === $id ? 'unmapped_native_ability' : 'existing_capability_descriptor', 'cso_conformance_certified' => false );
+		return array( 'provider_id' => $id, 'id' => $id, 'adapter_id' => $adapter_id, 'runtime_version' => $version, 'certification_generation_sha256' => self::sha( $generation ) ? $generation : '', 'certification_sha256' => self::sha( $generation ) ? $generation : '', 'source' => '' === $id ? 'unmapped_native_ability' : 'existing_capability_descriptor', 'cso_conformance_certified' => false );
 	}
 	private static function readback( $write_name, $input, array $raw ) {
 		if ( array_diff( array_keys( $raw ), array( 'ability_name', 'input_map', 'revision_path', 'field_map', 'target_map', 'revision_input' ) ) || ! is_string( $raw['ability_name'] ?? null ) || $write_name === $raw['ability_name'] || self::fixed_dispatcher( $raw['ability_name'] ) ) return null;
