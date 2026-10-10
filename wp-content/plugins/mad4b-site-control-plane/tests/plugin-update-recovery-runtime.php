@@ -74,9 +74,12 @@ foreach (array('queued','unavailable','infrastructure_failure','unknown') as $st
  insist($result['eligible']&&$result['evidence_mode']==='certified_provider_with_signed_native_tests',
   'Trusted independent tests can replace unavailable CI diagnostic '.$status);
 }
-insist(!$c::ci_policy('test_failure',$all,true)['eligible'],'Actual native failure cannot bypass' );
-insist(!$c::ci_policy('security_failure',$all,true)['eligible'],'Confirmed security gate cannot bypass' );
-insist(!$c::ci_policy('queued',$all,false)['eligible'],'Unknown source does not become certified' );
+$bad=$c::ci_policy('test_failure',$all,true);
+insist(!$bad['eligible'],'Actual native failure cannot bypass' );
+$bad=$c::ci_policy('security_failure',$all,true);
+insist(!$bad['eligible'],'Confirmed security gate cannot bypass' );
+$bad=$c::ci_policy('queued',$all,false);
+insist(!$bad['eligible'],'Unknown source does not become certified' );
 $plan=$c::plan(array('plugin_file'=>'example-one/example.php','reason'=>'Reviewed Staging plugin update','source'=>'auto_certified'));
 insist(!is_wp_error($plan)&&$plan['plan_sha256']===str_repeat('f',64),'Original plugin package plan remains authoritative');
 insist($plan['update_executor']==='mad4b/plugin-package-apply'&&!$plan['generic_auto_apply_allowed'],'Existing secure updater reused');
