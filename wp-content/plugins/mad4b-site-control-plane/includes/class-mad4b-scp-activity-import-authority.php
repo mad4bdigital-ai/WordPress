@@ -19,7 +19,7 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'field_mapping', 'price_tier_policy', 'review_past_intervals',
             'wpml_languages', 'require_complete_wpml_groups',
             'required_relationships', 'max_rows', 'currency_field',
-            'price_fields', 'decimal_scale'
+            'price_fields', 'decimal_scale', 'destination_identity_meta_key'
         ) ) ) return self::err( 'mad4b_import_validation_unknown_keys', 'Validation policy contains unsupported fields.' );
         $identity = isset( $raw['identity_field'] ) ? (string) $raw['identity_field'] : '';
         if ( ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $identity ) )
@@ -32,6 +32,8 @@ final class MAD4B_SCP_Activity_Import_Authority {
         $currency_field = isset( $raw['currency_field'] ) ? (string) $raw['currency_field'] : '';
         $price_fields = isset( $raw['price_fields'] ) ? $raw['price_fields'] : array();
         $decimal_scale = isset( $raw['decimal_scale'] ) ? $raw['decimal_scale'] : 4;
+        $destination_identity_meta_key = isset( $raw['destination_identity_meta_key'] )
+            ? (string) $raw['destination_identity_meta_key'] : '';
         $safe_cols = static function( $x, $maximum ) {
             if ( ! is_array( $x ) || count( $x ) > $maximum ) return false;
             foreach ( $x as $val ) if ( ! is_string( $val ) ||
@@ -58,6 +60,10 @@ final class MAD4B_SCP_Activity_Import_Authority {
             $currency_set[ $currency ] = true;
         }
         $approved_meta = array_fill_keys( (array) $meta_keys, true );
+        if ( '' !== $destination_identity_meta_key &&
+            ! isset( $approved_meta[ $destination_identity_meta_key ] ) )
+            return self::err( 'mad4b_import_identity_destination_not_allowed',
+                'WordPress identity metadata must be explicitly allowlisted by the Profile.' );
         $approved_wpml = array_fill_keys( array(
             '_wpml_import_language_code', '_wpml_import_source_language_code',
             '_wpml_import_translation_group', '_wpml_import_after_process_post_status'
@@ -99,6 +105,7 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'currency_field' => $currency_field,
             'price_fields' => array_values( $price_fields ),
             'decimal_scale' => $decimal_scale,
+            'destination_identity_meta_key' => $destination_identity_meta_key,
             'max_rows' => $max_rows
         );
     }
@@ -107,7 +114,7 @@ final class MAD4B_SCP_Activity_Import_Authority {
         if ( null === $raw || array() === $raw || false === $raw ) return array( 'enabled' => false );
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ),
             array( 'enabled', 'validation', 'enabled_modes', 'preferred_mode',
-                'fallback_modes', 'manual_review_required' ) ) )
+                'fallback_modes', 'manual_review_required', 'configured_explicitly' ) ) )
             return self::err( 'mad4b_import_contract_unknown_fields', 'Unsupported import contract options.' );
         if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
         $enabled = isset( $raw['enabled_modes'] ) ? $raw['enabled_modes'] : array();
