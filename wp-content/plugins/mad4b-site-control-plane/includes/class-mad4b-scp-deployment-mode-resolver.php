@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Deployment_Mode_Resolver {
     const CONTRACT = 'mad4b.deployment-mode-resolution.v1';
+    const COMMON_CONTRACT = 'mad4b.context-deployment-mode.v1';
+    const ADAPTER_VERSION = '1.1.0';
     const MODE = 'wordpress_dedicated';
     const ABILITY = 'mad4b/deployment-mode-status';
 
@@ -44,17 +46,32 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
     private static function blocked( $reason ) {
         return array(
             'contract' => self::CONTRACT,
+            'common_contract' => self::COMMON_CONTRACT,
+            'adapter_version' => self::ADAPTER_VERSION,
             'supported_modes' => self::supported_modes(),
             'candidate_mode' => self::MODE,
             'active_mode' => 'unresolved',
             'status' => 'BLOCKED',
+            'portable_state' => 'BLOCKED',
             'reason' => $reason,
+            'missing_dependencies' => self::dependency_codes( $reason ),
             'scope' => null,
             'review_only' => true,
+            'host_binding_requires_independent_acceptance' => true,
             'execution_authorized' => false,
             'publication_authorized' => false,
             'production_authorized' => false,
         );
+    }
+
+    private static function dependency_codes( $reason ) {
+        $known = array(
+            'SITE_PROFILE_UNAVAILABLE', 'SITE_NOT_ENROLLED', 'SITE_IDENTITY_NOT_READY',
+            'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'SITE_UUID_INVALID',
+            'BRAND_CONTEXT_UNAVAILABLE', 'BRAND_PROFILE_UNRESOLVED',
+            'BRAND_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_INVALID'
+        );
+        return in_array( $reason, $known, true ) ? array( $reason ) : array();
     }
 
     public static function status() {
@@ -66,8 +83,17 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return self::blocked( 'SITE_PROFILE_UNAVAILABLE' );
         $site = MAD4B_SCP_Site_Profile::status();
         if ( ! is_array( $site ) || empty( $site['configured'] ) ) return self::blocked( 'SITE_NOT_ENROLLED' );
-        foreach ( array( 'origin_match', 'environment_match', 'deployment_binding_match', 'authority_ready' ) as $check ) {
+        foreach ( array( 'origin_match', 'environment_match', 'authority_ready' ) as $check ) {
             if ( empty( $site[ $check ] ) ) return self::blocked( 'SITE_IDENTITY_NOT_READY' );
+        }
+        // A legacy, unbound profile may report deployment_binding_match=true.
+        // Dedicated identity must require an existing bound and matching enrollment.
+        if ( empty( $site['deployment_binding_bound'] ) ||
+             empty( $site['deployment_binding_configured'] ) ) {
+            return self::blocked( 'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED' );
+        }
+        if ( empty( $site['deployment_binding_match'] ) ) {
+            return self::blocked( 'SITE_IDENTITY_NOT_READY' );
         }
         $uuid = strtolower( trim( isset( $site['site_uuid'] ) ? (string) $site['site_uuid'] : '' ) );
         if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $uuid ) ) {
@@ -81,6 +107,8 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
              ! hash_equals( $uuid, strtolower( trim( (string) $brand['site_uuid'] ) ) ) ) {
             return self::blocked( 'BRAND_PROFILE_UNRESOLVED' );
         }
+        if ( empty( $brand['revision'] ) || ! is_numeric( $brand['revision'] ) ||
+             (int) $brand['revision'] < 1 ) return self::blocked( 'BRAND_PROFILE_REVISION_MISSING' );
         $blog_id = function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 1;
         $network_id = function_exists( 'get_current_network_id' ) ? (int) get_current_network_id() : 1;
         if ( $blog_id < 1 || $network_id < 1 ) return self::blocked( 'WORDPRESS_SITE_CONTEXT_INVALID' );
@@ -102,10 +130,18 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         }
         return array(
             'contract' => self::CONTRACT,
+            'common_contract' => self::COMMON_CONTRACT,
+            'adapter_version' => self::ADAPTER_VERSION,
             'supported_modes' => self::supported_modes(),
             'active_mode' => self::MODE,
             'status' => 'RESOLVED_FOR_REVIEW_ONLY',
+            'portable_state' => 'BOUND_FOR_REVIEW_ONLY',
             'scope' => $scope,
+            'dependency_revision' => array(
+                'site_profile' => isset( $site['revision'] ) ? (int) $site['revision'] : 0,
+                'brand_profile' => (int) $brand['revision'],
+            ),
+            'missing_dependencies' => array(),
             'brand_resolution' => 'current_site_brand_profile',
             'review_only' => true,
             'execution_authorized' => false,
