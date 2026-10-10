@@ -74,6 +74,7 @@ final class MAD4B_SCP_Standalone_Build_Control {
         return array(
             'contract' => self::CONTRACT,
             'build_entrypoint' => self::SCRIPT,
+            'native_evidence_entrypoint' => 'tools/mad4b_standalone_evidence.py',
             'supported_profiles' => array( 'build-only', 'local-checks' ),
             'canonical_builder' => 'wp-content/plugins/mad4b-site-control-plane/tests/build-deterministic-control-plane-package.py',
             'adapter_source' => 'certified-provider-profiles.json + runtime-release-policy.json',
@@ -121,6 +122,7 @@ final class MAD4B_SCP_Standalone_Build_Control {
             'source_verification_owner' => 'trusted_external_builder',
             'build_entrypoint' => self::SCRIPT,
             'build_profile' => $profile,
+            'native_evidence_entrypoint' => 'tools/mad4b_standalone_evidence.py',
             'site_binding' => $site,
             'inputs_required_on_trusted_runner' => array(
                 'repo_root', 'expected_head', 'certified_adapter_archive',
@@ -130,6 +132,8 @@ final class MAD4B_SCP_Standalone_Build_Control {
                 'MAD4B-BUILD-PROVENANCE.json',
                 'BUILD-FINGERPRINT.txt', 'PACKAGE-MANIFEST-DIGEST.txt',
                 'STANDALONE-BUILD-REPORT.json' ),
+            'native_evidence_outputs' => array( 'GATE-RESULTS.json',
+                'NATIVE-TEST-EVIDENCE-BUNDLE.json' ),
             'next_state' => 'external_trusted_runner_required',
             'builder_status' => 'NOT_RUN',
             'mcp_execution_available' => false,
