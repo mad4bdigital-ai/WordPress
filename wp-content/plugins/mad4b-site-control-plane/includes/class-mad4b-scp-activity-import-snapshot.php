@@ -30,6 +30,10 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         return 'mad4b_activity_import_review_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $profile_slug );
     }
+    private static function archive_key( $slug, $data_sha ) {
+        return 'mad4b_activity_import_archive_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $data_sha );
+    }
     private static function approval_key( $slug, $snapshot_sha ) {
         return 'mad4b_import_approval_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $snapshot_sha );
@@ -55,6 +59,9 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             ! function_exists( 'random_bytes' ) )
             return self::err( 'mad4b_import_snapshot_size', 'Bounded JSON snapshot required.' );
         $data_sha = hash( 'sha256', $json );
+        if ( is_array( get_option( self::archive_key( $slug, $data_sha ), false ) ) )
+            return self::err( 'mad4b_import_snapshot_previously_archived',
+                'Exact same source was archived. A new approved source revision is required.' );
         $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
             $data_sha . '|' . $preview['policy_sha256'];
         $nonce = random_bytes( 12 );
@@ -173,6 +180,10 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         if ( is_wp_error( $loaded ) ) return $loaded;
         $current = self::check_current( $loaded['receipt'] );
         if ( is_wp_error( $current ) ) return $current;
+        if ( is_array( get_option( self::archive_key(
+            $slug, $loaded['receipt']['payload_sha256'] ), false ) ) )
+            return self::err( 'mad4b_import_snapshot_archived',
+                'An archived snapshot approval can never be reused.' );
         $approval = get_option( self::approval_key( $slug, $snapshot_sha ), false );
         if ( ! is_array( $approval ) || ! isset( $approval['snapshot_sha256'],
             $approval['policy_sha256'], $approval['payload_sha256'] ) ||
