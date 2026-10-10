@@ -184,6 +184,41 @@ class MultiEnvironmentCITest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 runner.load_manifest(Path(tmp), "extended")
 
+    def test_not_run_and_empty_suites_are_blocked_not_partial_success(self):
+        cases = (
+            ([], "LOCAL_CI_PARITY_BLOCKED", False),
+            ([{"state": "NOT_RUN"}], "LOCAL_CI_PARITY_BLOCKED", False),
+            ([{"state": "PASS"}, {"state": "NOT_RUN"}], "LOCAL_CI_PARITY_BLOCKED", False),
+            ([{"state": "PASS"}, {"state": "FAIL"}, {"state": "NOT_RUN"}],
+             "LOCAL_CI_PARITY_FAIL", False),
+            ([{"state": "PASS"}], "LOCAL_CI_PARITY_PARTIAL", True),
+            ([{"state": "SURPRISE"}], "LOCAL_CI_PARITY_FAIL", False),
+            ([{"state": "PASS"}, {"state": "UNKNOWN"}],
+             "LOCAL_CI_PARITY_FAIL", False),
+            ([None], "LOCAL_CI_PARITY_FAIL", False),
+        )
+        for checks, expected_verdict, expected_pass in cases:
+            with self.subTest(checks=checks):
+                counts, verdict, passed = runner.summarize_checks(checks)
+                self.assertEqual(expected_verdict, verdict)
+                self.assertEqual(expected_pass, passed)
+                self.assertEqual(len(checks),
+                                 sum(counts.values()))
+
+    def test_explicit_probe_requires_an_origin_before_any_repository_access(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "report"
+            code = runner.main([
+                "--repository-path", tmp, "--source-type", "commit",
+                "--source-reference", self.sha, "--expected-sha", self.sha,
+                "--output", str(output), "--probe-site",
+            ])
+            self.assertEqual(1, code)
+            report = json.loads((output / "LOCAL-CI-PARITY-REPORT.json").read_text())
+            self.assertEqual("LOCAL_CI_PARITY_FAIL", report["parity_verdict"])
+            self.assertIn("explicit expected site origin", report["blocker"])
+            self.assertFalse(report["checks"])
+
     def test_core_is_subset_of_extended(self):
         core, core_sha = runner.load_manifest(ROOT, "core")
         expanded, expanded_sha = runner.load_manifest(ROOT, "extended")

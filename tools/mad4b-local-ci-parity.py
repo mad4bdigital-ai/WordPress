@@ -172,6 +172,22 @@ def load_manifest(checkout, profile):
     return rows, sha256(raw)
 
 
+def summarize_checks(checks):
+    """Fail closed for partial execution; test coverage never certifies GitHub CI."""
+    states = [c.get("state") if isinstance(c, dict) else None
+              for c in checks]
+    counts = {s: states.count(s) for s in ("PASS", "FAIL", "NOT_RUN")}
+    counts["INVALID"] = len(states) - sum(counts.values())
+    if counts["FAIL"] or counts["INVALID"]:
+        verdict = "LOCAL_CI_PARITY_FAIL"
+    elif not checks or counts["NOT_RUN"]:
+        verdict = "LOCAL_CI_PARITY_BLOCKED"
+    else:
+        verdict = "LOCAL_CI_PARITY_PARTIAL"
+    passed = bool(checks) and counts["PASS"] == len(checks)
+    return counts, verdict, passed
+
+
 def docker_ready():
     if shutil.which("docker") is None:
         return False
@@ -301,6 +317,8 @@ def main(argv=None):
         if args.repository != REPO:
             raise ValueError("repository not on this runner's allowlist")
         clean_reference(args.source_type, args.source_reference)
+        if args.probe_site and not args.expected_site_url:
+            raise ValueError("--probe-site requires an explicit expected site origin")
         if resolve(args.source_type, args.source_reference, args.repository) != args.expected_sha:
             raise ValueError("source HEAD changed before tests")
         repo = Path(args.repository_path).resolve()
@@ -365,15 +383,12 @@ def main(argv=None):
         )
         if report["site"].get("target_type") not in (None, args.target_type):
             raise ValueError("site snapshot host type conflicts with target type")
-        counts = {s: sum(c["state"] == s for c in report["checks"])
-                  for s in ("PASS", "FAIL", "NOT_RUN")}
+        counts, verdict, passed = summarize_checks(report["checks"])
         report["counts"] = counts
-        if counts["FAIL"]:
-            report["parity_verdict"] = "LOCAL_CI_PARITY_FAIL"
-        else:
-            # 75 workflow files are not all represented here: never claim full parity.
-            report["parity_verdict"] = "LOCAL_CI_PARITY_PARTIAL"
-        report["tested_gate_set_passed"] = counts["FAIL"] == 0 and counts["NOT_RUN"] == 0
+        # BLOCKED means the targeted suite did not execute fully, not just
+        # that the overall GitHub workflow matrix remains unrepresented.
+        report["parity_verdict"] = verdict
+        report["tested_gate_set_passed"] = passed
         report["coverage"] = {"suite": "targeted_repo_contracts", "all_github_workflows_reproduced": False,
                               "wordpress_database_integration_run": False,
                               "browser_matrix_run": False, "hostinger_live_acceptance_run": False}
