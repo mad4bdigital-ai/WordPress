@@ -833,9 +833,10 @@ jobs:
           php "$root/tests/staging-autopilot-runtime.php"
           php "$root/tests/host-identity-live-runtime.php"
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
-          python3 -m py_compile tools/mad4b_staging_host_preflight.py tools/mad4b_host_runner.py
+          python3 -m py_compile tools/mad4b_staging_host_preflight.py tools/mad4b_host_runner.py tools/mad4b_host_identity_socket.py
           python3 "$root/tests/staging-host-preflight-contract.py"
           python3 "$root/tests/host-identity-signer-contract.py"
+          python3 "$root/tests/host-identity-socket-contract.py"
 
   cso01-governed-interaction-native:
     if: github.event_name == 'pull_request'
