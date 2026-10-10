@@ -110,6 +110,8 @@ def verify_zip(archive: Path, receipt: dict, source: str) -> None:
             path = row.filename
             require(path.startswith("mad4b-site-control-plane/") and
                     not path.endswith("/") and ".." not in Path(path).parts and
+                    "\\\\" not in path and
+                    (row.external_attr >> 16) & 0o170000 == 0o100000 and
                     row.compress_type == zipfile.ZIP_STORED, "unsafe_archive_entry")
         require(z.testzip() is None, "archive_crc_mismatch")
         provenance = json.loads(z.read("mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"))
