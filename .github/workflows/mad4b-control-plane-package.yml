@@ -143,6 +143,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-operational-remediation.php"
           php -l "$root/tests/manual-workflow-bridge-policy-runtime.php"
           php "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php -l "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php "$root/tests/manual-workflow-bridge-apply-runtime.php"
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
       - name: Verify Feature 007 release root-trust contract
