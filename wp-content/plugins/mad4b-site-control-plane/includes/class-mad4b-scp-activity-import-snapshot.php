@@ -30,9 +30,9 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         return 'mad4b_activity_import_review_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $profile_slug );
     }
-    private static function archive_key( $slug, $data_sha ) {
+    private static function archive_key( $slug, $snapshot_sha ) {
         return 'mad4b_activity_import_archive_' . hash( 'sha256',
-            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $data_sha );
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $snapshot_sha );
     }
     private static function approval_key( $slug, $snapshot_sha ) {
         return 'mad4b_import_approval_' . hash( 'sha256',
@@ -59,12 +59,10 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             ! function_exists( 'random_bytes' ) )
             return self::err( 'mad4b_import_snapshot_size', 'Bounded JSON snapshot required.' );
         $data_sha = hash( 'sha256', $json );
-        if ( is_array( get_option( self::archive_key( $slug, $data_sha ), false ) ) )
-            return self::err( 'mad4b_import_snapshot_previously_archived',
-                'Exact same source was archived. A new approved source revision is required.' );
         $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
             $data_sha . '|' . $preview['policy_sha256'];
         $nonce = random_bytes( 12 );
+        $review_nonce = bin2hex( random_bytes( 16 ) );
         $tag = '';
         $cipher = openssl_encrypt( $json, 'aes-256-gcm', $key, OPENSSL_RAW_DATA,
             $nonce, $tag, $aad, 16 );
@@ -78,7 +76,8 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             'received_at' => gmdate( 'c' ),
             'payload_sha256' => $data_sha,
             'policy_sha256' => $preview['policy_sha256'],
-            'snapshot_sha256' => hash( 'sha256', $aad . '|' . $preview['plan_sha256'] ),
+            'snapshot_sha256' => hash( 'sha256', $aad . '|' . $preview['plan_sha256'] . '|' . $review_nonce ),
+            'review_nonce' => $review_nonce,
             'plan' => $preview,
             'ciphertext' => base64_encode( $cipher ),
             'nonce' => base64_encode( $nonce ),
@@ -110,6 +109,12 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         if ( is_wp_error( $key ) ) return $key;
         $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
             $record['payload_sha256'] . '|' . $record['policy_sha256'];
+        $expected_receipt = hash( 'sha256', $aad . '|' .
+            $record['plan']['plan_sha256'] .
+            ( isset( $record['review_nonce'] ) ? '|' . $record['review_nonce'] : '' ) );
+        if ( ! hash_equals( $expected_receipt, $record['snapshot_sha256'] ) )
+            return self::err( 'mad4b_import_snapshot_digest_mismatch',
+                'Stored receipt identity differs from its source, policy or review nonce.' );
         $json = openssl_decrypt( base64_decode( $record['ciphertext'], true ),
             'aes-256-gcm', $key, OPENSSL_RAW_DATA,
             base64_decode( $record['nonce'], true ), base64_decode( $record['tag'], true ), $aad );
@@ -181,7 +186,7 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         $current = self::check_current( $loaded['receipt'] );
         if ( is_wp_error( $current ) ) return $current;
         if ( is_array( get_option( self::archive_key(
-            $slug, $loaded['receipt']['payload_sha256'] ), false ) ) )
+            $slug, $snapshot_sha ), false ) ) )
             return self::err( 'mad4b_import_snapshot_archived',
                 'An archived snapshot approval can never be reused.' );
         $approval = get_option( self::approval_key( $slug, $snapshot_sha ), false );
