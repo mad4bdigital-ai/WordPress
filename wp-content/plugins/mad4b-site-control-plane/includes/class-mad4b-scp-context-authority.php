@@ -288,11 +288,14 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_sources_from_records( array $records, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid ) return array();
+		if ( '' === $site_uuid || ! class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false ) ) return array();
+        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+        if ( is_wp_error( $scope ) || ! hash_equals( $site_uuid, (string) $scope['site_uuid'] ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
 			$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
 			if ( ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
+            if ( ! MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $record, $scope ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -305,13 +308,17 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_assets_from_records( array $records, array $sources, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid ) return array();
+		if ( '' === $site_uuid || ! class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false ) ) return array();
+        $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+        if ( is_wp_error( $scope ) || ! hash_equals( $site_uuid, (string) $scope['site_uuid'] ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_asset( $record ) ) continue;
 			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
 			if ( '' === $record_site_uuid || ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$source_id = isset( $record['source_id'] ) ? (string) $record['source_id'] : '';
 			if ( '' === $source_id || ! isset( $sources[ $source_id ] ) ) continue;
+            if ( ! empty( $record['brand_id'] ) &&
+                 ! hash_equals( strtolower( (string) $scope['brand_ref'] ), strtolower( (string) $record['brand_id'] ) ) ) continue;
 			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
 			$asset_mode = isset( $record['source_mode'] ) ? (string) $record['source_mode'] : '';
 			if ( '' === $source_mode || '' === $asset_mode || ! hash_equals( $source_mode, $asset_mode ) ) continue;
@@ -451,7 +458,8 @@ final class MAD4B_SCP_Context_Authority {
 			$record = array(
 				'contract' => self::PROFILE_CONTRACT,
 				'site_uuid' => $site['site_uuid'],
-				'brand_id' => self::brand_id( $site['site_uuid'], $brand_name ),
+				'brand_id' => ! empty( $current['brand_id'] ) && preg_match( '/^[a-f0-9]{32}$/', (string) $current['brand_id'] )
+                    ? (string) $current['brand_id'] : self::brand_id( $site['site_uuid'], $brand_name ),
 				'brand_name' => $brand_name,
 				'revision' => $revision,
 				'status' => 'configured',
@@ -506,6 +514,15 @@ final class MAD4B_SCP_Context_Authority {
 				$authorized_sources = self::sources();
 				$sources = self::raw_sources();
 				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
+                // Legacy key is shared across brand names: never transfer an
+                // existing record to another Brand as an accidental overwrite.
+                if ( isset( $sources[ $source_id ] ) &&
+                     ( empty( $sources[ $source_id ]['brand_id'] ) ||
+                       ! hash_equals( strtolower( (string) $profile['brand_id'] ),
+                           strtolower( (string) $sources[ $source_id ]['brand_id'] ) ) ) ) {
+                    return new WP_Error( 'mad4b_context_source_brand_conflict',
+                        'Existing source belongs to another or unverified Brand; governed migration required.' );
+                }
 				$current = isset( $authorized_sources[ $source_id ] ) ? $authorized_sources[ $source_id ] : array();
 				if ( ! isset( $sources[ $source_id ] ) && count( $sources ) >= self::MAX_SOURCES ) {
 					return new WP_Error(

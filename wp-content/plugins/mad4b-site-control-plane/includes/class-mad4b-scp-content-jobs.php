@@ -169,6 +169,12 @@ final class MAD4B_SCP_Content_Jobs {
 		return class_exists( 'MAD4B_SCP_Schema' ) && MAD4B_SCP_Schema::critical_ready();
 	}
 
+    private static function current_scope() {
+        return class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+            ? MAD4B_SCP_Operational_Scope_Guard::require_current()
+            : new WP_Error( 'mad4b_scope_guard_missing', 'Operational scope guard unavailable.' );
+    }
+
 	private static function site_uuid() {
 		$uuid = class_exists( 'MAD4B_SCP_Site_Profile' ) ? strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) ) : '';
 		return preg_match( '/^[a-f0-9-]{36}$/', $uuid ) ? $uuid : '';
@@ -213,11 +219,12 @@ final class MAD4B_SCP_Content_Jobs {
 	public static function list_jobs( $input ) {
 		global $wpdb;
 		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
-		$site_uuid = self::site_uuid();
-		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_content_job_site_identity_unavailable', 'Site Profile identity is unavailable.' );
+		$scope = self::current_scope();
+        if ( is_wp_error( $scope ) ) return $scope;
+        $site_uuid = (string) $scope['site_uuid'];
 		$t = MAD4B_SCP_Schema::tables();
-		$where = array( 'site_uuid=%s' );
-		$args = array( $site_uuid );
+		$where = array( 'site_uuid=%s', 'brand_id=%s' );
+		$args = array( $site_uuid, (string) $scope['brand_ref'] );
 		$state = isset( $input['state'] ) ? strtoupper( sanitize_key( (string) $input['state'] ) ) : '';
 		$stage = isset( $input['stage'] ) ? strtoupper( sanitize_key( (string) $input['stage'] ) ) : '';
 		if ( '' !== $state ) { $where[] = 'state=%s'; $args[] = $state; }
@@ -264,11 +271,14 @@ final class MAD4B_SCP_Content_Jobs {
 	public static function create_job( $input ) {
 		global $wpdb;
 		if ( ! self::schema_ready() ) return new WP_Error( 'mad4b_content_job_schema_unavailable', 'ContentJob schema is not ready.' );
-		$site_uuid = self::site_uuid();
-		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_content_job_site_identity_unavailable', 'Site Profile identity is unavailable.' );
+		$scope = self::current_scope();
+        if ( is_wp_error( $scope ) ) return $scope;
+        $site_uuid = (string) $scope['site_uuid'];
 		$subject = trim( wp_strip_all_tags( (string) $input['subject'] ) );
 		if ( '' === $subject || strlen( $subject ) > 5000 ) return new WP_Error( 'mad4b_content_job_subject_invalid', 'ContentJob subject is missing or too long.' );
 		$brand_id = sanitize_text_field( (string) $input['brand_id'] );
+        $brand_check = MAD4B_SCP_Operational_Scope_Guard::require_brand( $brand_id, $scope );
+        if ( is_wp_error( $brand_check ) ) return $brand_check;
 		$language = sanitize_key( (string) $input['language'] );
 		$country = sanitize_key( (string) $input['country'] );
 		$content_type = sanitize_key( (string) $input['content_type'] );
@@ -449,10 +459,11 @@ final class MAD4B_SCP_Content_Jobs {
 	private static function load_job( $job_id, $for_update ) {
 		global $wpdb;
 		if ( ! self::valid_uuid( $job_id ) ) return new WP_Error( 'mad4b_content_job_id_invalid', 'ContentJob ID is invalid.' );
-		$site_uuid = self::site_uuid();
-		if ( '' === $site_uuid ) return new WP_Error( 'mad4b_content_job_site_identity_unavailable', 'Site Profile identity is unavailable.' );
+		$scope = self::current_scope();
+        if ( is_wp_error( $scope ) ) return $scope;
+        $site_uuid = (string) $scope['site_uuid'];
 		$t = MAD4B_SCP_Schema::tables();
-		$sql = $wpdb->prepare( "SELECT * FROM {$t['content_jobs']} WHERE job_id=%s AND site_uuid=%s LIMIT 1" . ( $for_update ? ' FOR UPDATE' : '' ), $job_id, $site_uuid );
+		$sql = $wpdb->prepare( "SELECT * FROM {$t['content_jobs']} WHERE job_id=%s AND site_uuid=%s AND brand_id=%s LIMIT 1" . ( $for_update ? ' FOR UPDATE' : '' ), $job_id, $site_uuid, (string) $scope['brand_ref'] );
 		$row = $wpdb->get_row( $sql, ARRAY_A );
 		return is_array( $row ) ? $row : new WP_Error( 'mad4b_content_job_missing', 'ContentJob was not found for this site.' );
 	}

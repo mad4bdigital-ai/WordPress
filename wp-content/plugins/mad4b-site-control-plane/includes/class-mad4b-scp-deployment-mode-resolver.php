@@ -127,6 +127,11 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
     public static function resolve( $untrusted_request_scope = array() ) {
         if ( ! is_array( $untrusted_request_scope ) ) return self::blocked( 'REQUEST_SCOPE_INVALID' );
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return self::blocked( 'SITE_PROFILE_UNAVAILABLE' );
+        // Prevent this read-only ability from causing legacy migration writes.
+        if ( ! function_exists( 'get_option' ) ||
+             ! is_array( get_option( MAD4B_SCP_Site_Profile::OPTION, null ) ) ) {
+            return self::blocked( 'SITE_NOT_ENROLLED' );
+        }
         $site = MAD4B_SCP_Site_Profile::status();
         if ( ! is_array( $site ) || empty( $site['configured'] ) ) return self::blocked( 'SITE_NOT_ENROLLED' );
         foreach ( array( 'origin_match', 'environment_match', 'authority_ready' ) as $check ) {
