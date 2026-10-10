@@ -183,6 +183,71 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'never_auto_execute_or_publish' => true, 'read_only' => true
         );
     }
+    /** Nonsecret read-only plan for conversation clients and admin UI parity. */
+    public static function plan( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) || ! is_array( $input ) )
+            return new WP_Error( 'mad4b_import_experience_denied',
+                'Only enrolled site administrators may inspect import UX.' );
+        $slug = isset( $input['profile_slug'] ) ?
+            sanitize_key( (string) $input['profile_slug'] ) : '';
+        $mode_id = isset( $input['mode_id'] ) ?
+            sanitize_key( (string) $input['mode_id'] ) : '';
+        $step = isset( $input['wizard_step'] ) ?
+            (int) $input['wizard_step'] : 1;
+        $catalog = MAD4B_SCP_Activity_Import_Modes::catalog();
+        if ( is_wp_error( $catalog ) ) return $catalog;
+        // Match the native UI's profile-scoped source readiness.
+        foreach ( $catalog['modes'] as &$mode ) {
+            if ( !$slug || empty( $mode['review_intake_implemented'] ) ) continue;
+            $ready = MAD4B_SCP_Activity_Import_Modes::plan( array(
+                'profile_slug' => $slug, 'mode_id' => $mode['id'] ) );
+            $mode['detected'] = ! is_wp_error( $ready ) &&
+                ! empty( $ready['eligible_for_staging_review'] );
+        }
+        unset( $mode );
+        $review = $slug ? MAD4B_SCP_Activity_Import_Review::review(
+            array( 'profile_slug' => $slug ) ) : array();
+        $view = self::journey( self::profiles(), $slug, $catalog, $review,
+            $mode_id, $step );
+        $action = 'select_profile';
+        if ( $view['selected_profile'] && ! $view['has_import_policy'] )
+            $action = 'configure_site_owned_import_contract';
+        elseif ( $view['selected_profile'] && !$view['available_modes'] )
+            $action = 'enable_approved_import_mode';
+        elseif ( $view['review_unavailable'] )
+            $action = 'repair_existing_review_before_new_upload';
+        elseif ( $view['review_pending'] && $view['blocking_issue_count'] )
+            $action = 'resolve_source_blockers_and_stage_new_review';
+        elseif ( $view['review_pending'] && $view['approval_candidate'] )
+            $action = 'review_exact_approval_and_manual_handoff';
+        elseif ( $view['selected_profile'] )
+            $action = 'choose_ready_source_and_stage';
+        $profile = isset( $view['selected_profile']['slug'] ) ?
+            $view['selected_profile']['slug'] : '';
+        $allowed_status = array();
+        foreach ( $view['available_modes'] as $mode )
+            $allowed_status[] = array( 'mode_id' => $mode['id'],
+                'label' => $mode['label'],
+                'ready_for_review' => $mode['ready_for_review'],
+                'requirements' => $mode['setup'] );
+        return array( 'contract' => self::CONTRACT,
+            'selected_profile_slug' => $profile,
+            'selected_mode_id' => $view['selected_mode_id'],
+            'active_step' => $view['step'],
+            'profiles' => $view['profiles'],
+            'allowed_modes' => $allowed_status,
+            'review_pending' => $view['review_pending'],
+            'review_unavailable' => $view['review_unavailable'],
+            'blocking_issue_count' => $view['blocking_issue_count'],
+            'warning_issue_count' => $view['review_issue_count'],
+            'issue_count_total' => $view['issue_count_total'],
+            'next_recommended_action' => $action,
+            'can_upload_new_source' => $view['can_upload_new'],
+            'approval_candidate' => $view['approval_candidate'],
+            'admin_screen' => 'tools.php?page=mad4b-import-review',
+            'no_source_values' => true, 'import_execution_certified' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
     private static function url( $slug, $step, $extra = array() ) {
         $query = array_merge( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'wizard_step' => $step ), $extra );
@@ -319,6 +384,36 @@ final class MAD4B_SCP_Activity_Import_Experience {
     private static function step_destination( $view, $catalog, $slug ) {
         echo '<h2>' . self::e( self::title( 'Choose how to receive the source' ) ) . '</h2>';
         echo '<p>' . self::e( self::title( 'Only methods permitted by this Profile appear in the main list. A method being installed does not mean it can safely import.' ) ) . '</p>';
+        $current = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( ! is_wp_error( $current ) ) {
+            $contract = MAD4B_SCP_Activity_Import_Authority::profile_contract( $current );
+            $validation = isset( $contract['validation'] ) ? $contract['validation'] : array();
+            if ( $validation ) {
+                echo '<details><summary>' .
+                    self::e( self::title( 'View expected source columns and mapping' ) ) .
+                    '</summary>';
+                echo '<p><strong>' . self::e( self::title( 'Unique source ID column:' ) ) .
+                    '</strong> <code>' .
+                    self::e( $validation['identity_field'] ) . '</code></p>';
+                echo '<p><strong>' . self::e( self::title( 'Required source columns:' ) ) .
+                    '</strong> <code>' .
+                    self::e( implode( ', ', $validation['required_columns'] ) ) .
+                    '</code></p>';
+                if ( ! empty( $validation['currency_field'] ) )
+                    echo '<p><strong>' . self::e( self::title( 'Currency column and allowed codes:' ) ) .
+                        '</strong> <code>' . self::e( $validation['currency_field'] .
+                            ' — ' . implode( ', ', $validation['allowed_currencies'] ) ) .
+                        '</code></p>';
+                if ( ! empty( $validation['price_fields'] ) )
+                    echo '<p><strong>' . self::e( self::title( 'Ordered pricing columns:' ) ) .
+                        '</strong> <code>' .
+                        self::e( implode( ', ', $validation['price_fields'] ) ) .
+                        '</code></p>';
+                echo '<p>' . self::e( self::title(
+                    'Field mappings belong to the site administrator. Uploading a file never changes them.' ) ) .
+                    '</p></details>';
+            }
+        }
         echo '<form method="get"><input type="hidden" name="page" value="mad4b-import-review" />';
         echo '<input type="hidden" name="wizard_step" value="2" />';
         echo '<input type="hidden" name="profile_slug" value="' . esc_attr( $slug ) . '" />';
