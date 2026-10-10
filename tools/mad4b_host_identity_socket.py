@@ -18,7 +18,7 @@ import struct
 
 from mad4b_host_runner import load_profile, sign_live_host_identity_challenge
 
-SOCKET_PATTERN = re.compile(r"^/(?:var/run|run)/mad4b-host-runner/[A-Za-z0-9._-]{1,80}\\.sock$")
+SOCKET_PATTERN = re.compile(r"^/(?:var/run|run)/mad4b-host-runner/[A-Za-z0-9._-]{1,80}\.sock$")
 MAX_REQUEST = 3072
 MAX_REPLY = 8192
 
@@ -66,8 +66,8 @@ def serve(profile_path, socket_path):
     if profile.get("environment") != "staging":
         raise ValueError("Only trusted Staging enrollment is supported")
     expected_uid = os.stat(profile["wordpress_root"]).st_uid
-    if expected_uid == 0:
-        raise ValueError("WordPress runtime root identity cannot receive a Host signing socket")
+    if expected_uid == 0 or expected_uid == os.geteuid():
+        raise ValueError("Host signer and non-root WordPress worker must use distinct Unix UIDs")
     # Existing Host key enrollment and filesystem owner checks, not a new key.
     from mad4b_host_runner import _wp_environment_receipt_signing_key
     _wp_environment_receipt_signing_key(profile)
@@ -76,7 +76,7 @@ def serve(profile_path, socket_path):
     bound_inode = None
     try:
         server.bind(str(socket_path))
-        os.chmod(socket_path, 0o600)
+        os.chmod(socket_path, 0o660)
         bound_inode = os.lstat(socket_path).st_ino
         server.listen(4)
         server.settimeout(1.0)
