@@ -10,6 +10,8 @@ on:
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/mad4b_standalone_build.py'
       - 'tools/test_mad4b_standalone_build.py'
+      - 'tools/mad4b_standalone_evidence.py'
+      - 'tools/test_mad4b_standalone_evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -27,6 +29,8 @@ on:
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/mad4b_standalone_build.py'
       - 'tools/test_mad4b_standalone_build.py'
+      - 'tools/mad4b_standalone_evidence.py'
+      - 'tools/test_mad4b_standalone_evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -73,6 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/test_mad4b_standalone_build.py
+          python3 tools/test_mad4b_standalone_evidence.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
           php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
 
