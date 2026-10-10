@@ -118,6 +118,7 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
     public static function write_native( $input ) {
         global $wpdb;
         if ( ! self::write_permission( $input ) ||
+            ! MAD4B_SCP_CSO_Native_Executor::native_permit_matches( $input, true ) ||
             ! is_array( $input['values'] ?? null ) ||
             ! is_string( $input['expected_revision'] ?? null ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $input['expected_revision'] ) ||
