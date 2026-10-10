@@ -255,40 +255,75 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         return self::approval( (string) $input['profile_slug'],
             (string) $input['snapshot_sha256'] );
     }
+    /**
+     * Build the full export in an isolated bounded temporary stream before
+     * issuing CSV response headers. A rejected late row must never leave
+     * a partial, misleading "approved" download in the operator's browser.
+     */
     public static function export_approved_csv( $slug, $snapshot_sha ) {
         $approved = self::approval( $slug, $snapshot_sha );
         if ( is_wp_error( $approved ) ) return $approved;
         $loaded = self::raw_snapshot( $slug, $snapshot_sha );
         if ( is_wp_error( $loaded ) ) return $loaded;
+        $fresh = MAD4B_SCP_Activity_Import_Review::plan( $loaded['input'] );
+        if ( is_wp_error( $fresh ) ||
+            ! isset( $fresh['plan_sha256'] ) ||
+            ! hash_equals( $approved['plan_sha256'], $fresh['plan_sha256'] ) )
+            return self::err( 'mad4b_import_export_policy_changed',
+                'Revalidate and approve the exact current snapshot before exporting.' );
         $input = $loaded['input'];
         $headers = isset( $input['headers'] ) ? $input['headers'] : array();
         $rows = isset( $input['rows'] ) ? $input['rows'] : array();
         if ( ! is_array( $headers ) || ! is_array( $rows ) ||
-            count( $rows ) > 500 || count( $headers ) > 80 )
-            return self::err( 'mad4b_import_export_invalid', 'Approved snapshot out of bounds.' );
-        if ( headers_sent() ) return self::err( 'mad4b_import_export_headers_sent', 'Cannot stream after headers.' );
+            count( $rows ) < 1 || count( $rows ) > 500 ||
+            count( $headers ) < 1 || count( $headers ) > 80 )
+            return self::err( 'mad4b_import_export_invalid', 'Approved source is outside safe export limits.' );
+        if ( headers_sent() )
+            return self::err( 'mad4b_import_export_headers_sent',
+                'Download must begin before any page content is sent.' );
+        $out = fopen( 'php://temp/maxmemory:2097152', 'w+b' );
+        if ( false === $out )
+            return self::err( 'mad4b_import_export_failed', 'Temporary CSV validation stream unavailable.' );
+        if ( false === fputcsv( $out, $headers ) ) {
+            fclose( $out );
+            return self::err( 'mad4b_import_export_write_failed', 'CSV header encoding failed.' );
+        }
+        foreach ( $rows as $row ) {
+            if ( ! is_array( $row ) ) {
+                fclose( $out );
+                return self::err( 'mad4b_import_export_row_invalid',
+                    'Source row is no longer structurally valid.' );
+            }
+            $ordered = array();
+            foreach ( $headers as $key ) {
+                $v = isset( $row[ $key ] ) ? (string) $row[ $key ] : '';
+                if ( preg_match( '/^[=+@]/', ltrim( $v ) ) ||
+                    preg_match( '/^-(?!\\d+(?:\\.\\d+)?$)/', ltrim( $v ) ) ||
+                    preg_match( '/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/', $v ) ) {
+                    fclose( $out );
+                    return self::err( 'mad4b_import_csv_formula_denied',
+                        'A source cell is unsafe for downstream CSV consumers.' );
+                }
+                $ordered[] = $v;
+            }
+            if ( false === fputcsv( $out, $ordered ) ) {
+                fclose( $out );
+                return self::err( 'mad4b_import_export_write_failed', 'CSV row encoding failed.' );
+            }
+        }
+        $size = ftell( $out );
+        if ( ! is_int( $size ) || $size < 1 || $size > 2097152 ) {
+            fclose( $out );
+            return self::err( 'mad4b_import_export_size', 'Encoded source exceeds 2 MiB safe download budget.' );
+        }
+        rewind( $out );
         nocache_headers();
         header( 'Content-Type: text/csv; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename="mad4b-approved-' .
             substr( $snapshot_sha, 0, 16 ) . '.csv"' );
         header( 'X-Content-Type-Options: nosniff' );
-        $out = fopen( 'php://output', 'wb' );
-        if ( false === $out ) return self::err( 'mad4b_import_export_failed', 'Output stream unavailable.' );
-        fputcsv( $out, $headers );
-        foreach ( $rows as $row ) {
-            $ordered = array();
-            foreach ( $headers as $key ) {
-                $v = isset( $row[ $key ] ) ? (string) $row[ $key ] : '';
-                // No CSV formula injection in downstream editors.
-                if ( preg_match( '/^[=+@]/', ltrim( $v ) ) ||
-                    ( preg_match( '/^-(?!\\d+(?:\\.\\d+)?$)/', ltrim( $v ) ) ) ) {
-                    fclose( $out );
-                    return self::err( 'mad4b_import_csv_formula_denied', 'Unsafe cell escaped preview guard.' );
-                }
-                $ordered[] = $v;
-            }
-            fputcsv( $out, $ordered );
-        }
+        header( 'Content-Length: ' . $size );
+        fpassthru( $out );
         fclose( $out );
         exit;
     }
