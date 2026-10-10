@@ -693,10 +693,33 @@ final class MAD4B_SCP_Activity_Import_Review {
             $review = self::review( array( 'profile_slug' => $slug ) );
             if ( is_wp_error( $review ) ) echo '<p>' . esc_html( $review->get_error_message() ) . '</p>';
             elseif ( isset( $review['plan']['issues'] ) ) {
-                echo '<p>Plan: <code>' . esc_html( $review['plan']['plan_sha256'] ) . '</code></p><table class="widefat striped"><thead><tr><th>Row</th><th>Reason</th><th>Severity</th></tr></thead><tbody>';
-                foreach ( $review['plan']['issues'] as $issue )
-                    echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' . esc_html( $issue['reason'] ) . '</td><td>' . esc_html( $issue['severity'] ) . '</td></tr>';
-                echo '</tbody></table>';
+                $issue_offset = isset( $_GET['issue_offset'] ) ?
+                    absint( $_GET['issue_offset'] ) : 0;
+                $issues_view = isset( $review['snapshot_sha256'] ) ?
+                    self::issues_page( array( 'profile_slug' => $slug,
+                        'snapshot_sha256' => $review['snapshot_sha256'],
+                        'issue_offset' => $issue_offset ) ) : $review['plan'];
+                echo '<h3>Source validation conflicts</h3>';
+                echo '<p>Plan: <code>' . esc_html( $review['plan']['plan_sha256'] ) .
+                    '</code>; total: ' . esc_html( $review['plan']['issue_count_observed'] ) . '</p>';
+                if ( is_wp_error( $issues_view ) ) {
+                    echo '<p>' . esc_html( $issues_view->get_error_message() ) . '</p>';
+                } else {
+                    echo '<table class="widefat striped"><thead><tr><th>Row</th><th>Reason</th><th>Severity</th></tr></thead><tbody>';
+                    foreach ( $issues_view['issues'] as $issue )
+                        echo '<tr><td>' . esc_html( $issue['row'] ) . '</td><td>' .
+                            esc_html( $issue['reason'] ) . '</td><td>' .
+                            esc_html( $issue['severity'] ) . '</td></tr>';
+                    echo '</tbody></table>';
+                    if ( isset( $issues_view['next_offset'] ) &&
+                        null !== $issues_view['next_offset'] )
+                        echo '<p><a href="' . esc_url( add_query_arg( array(
+                            'page' => 'mad4b-import-review',
+                            'profile_slug' => $slug,
+                            'issue_offset' => $issues_view['next_offset']
+                        ), admin_url( 'tools.php' ) ) ) .
+                        '">Review next 200 source issues</a></p>';
+                }
                 if ( isset( $review['snapshot_sha256'] ) &&
                     class_exists( 'MAD4B_SCP_Activity_Import_Reconciliation' ) ) {
                     $page_index = isset( $_GET['reconcile_start'] ) ?
