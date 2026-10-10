@@ -147,18 +147,23 @@ final class MAD4B_SCP_Progressive_Requirements {
 		// A package install is a one-time effect per immutable source identity,
 		// NEVER a per-attempt requirement. No claimed previous success is used.
 		$installed = false;
-		if ( class_exists('MAD4B_SCP_External_Handshake_Evidence',false) ) {
-			$proof=MAD4B_SCP_External_Handshake_Evidence::status();
-			$target=is_array($plan['package_identity']??null)?$plan['package_identity']:array();
-			$installed=is_array($proof)&&!empty($proof['verified']) &&
-				!empty($proof['package_identity_match']) &&
-				!empty($proof['build_fingerprint_match']) &&
-				hash_equals($sha,(string)($proof['source_commit_sha']??'')) &&
-				!empty($target) &&
-				hash_equals((string)($target['build_fingerprint']??''),
-					(string)($proof['package_build_fingerprint']??'')) &&
-				hash_equals((string)($target['package_manifest_digest']??''),
-					(string)($proof['package_manifest_digest']??''));
+		$installed_evidence_mode = 'unverified';
+		// Runtime package integrity is independent of the currently active
+		// ChatGPT MCP session. Confirm the exact installed source and every
+		// packaged file BEFORE turning a repeated install into a read-only no-op.
+		if ( class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false ) &&
+			method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) ) {
+			$runtime = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+			$target_sha = $sha;
+			$installed = is_array( $runtime )
+				&& ! empty( $runtime['runtime_manifest_match'] )
+				&& empty( $runtime['stale'] )
+				&& ! empty( $runtime['manifest_valid'] )
+				&& hash_equals( $target_sha, (string) ( $runtime['source_commit_sha'] ?? '' ) )
+				&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $runtime['build_fingerprint'] ?? '' ) )
+				&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $runtime['package_manifest_digest'] ?? '' ) )
+				&& '' !== (string) ( $runtime['artifact_identity'] ?? '' );
+			if ( $installed ) $installed_evidence_mode = 'verified_live_runtime_package_files';
 		}
 		$mapped[]=self::gate('exact_package_proof',!empty($plan['package_identity']) &&
 			!in_array('mad4b_selected_head_certified_artifact_unavailable',$blockers,true),
@@ -174,7 +179,8 @@ final class MAD4B_SCP_Progressive_Requirements {
 			'effect_ability'=>MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY,
 			'effect_kind'=>'exact_head_install_if_not_already_installed',
 			'effect_per_attempt'=>false,'package_recreation_per_attempt'=>false,
-			'install_per_attempt'=>false,'already_installed_exact_head_readback'=>$installed,'canonical_blockers'=>$blockers,
+			'install_per_attempt'=>false,'already_installed_exact_head_readback'=>$installed,
+			'installed_evidence_mode'=>$installed_evidence_mode,'canonical_blockers'=>$blockers,
 			'operation_family'=>'plugin_install',
 			'current_package_identity_readback_required'=>true);
 	}
