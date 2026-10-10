@@ -7,7 +7,7 @@ native=(root/"includes/class-mad4b-scp-self-update.php").read_text()
 bootstrap=(root/"mad4b-site-control-plane.php").read_text()
 servers=(root/"includes/class-mad4b-scp-servers.php").read_text()
 fixture=(root/"tests/selected-head-update-runtime.php").read_text()
-workflow=(root.parents[3]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text() if (root.parents[3]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").is_file() else ""
+workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").read_text() if (root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audit.yml").is_file() else ""
 assert "class-mad4b-scp-selected-head-update.php" in bootstrap
 assert "MAD4B_SCP_Selected_Head_Update::boot();" in bootstrap
 assert "public static function plan(" in selected
