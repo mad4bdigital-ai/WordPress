@@ -215,6 +215,12 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( ! in_array( $price_policy, array( 'none', 'review_monotonic' ), true ) )
             return self::error( 'mad4b_import_price_policy_invalid', 'Only configured price review policy is permitted.' );
         $flag_expired = $policy['review_past_intervals'];
+        $period_start_key = isset( $policy['period_start_field'] ) ?
+            $policy['period_start_field'] : '';
+        $period_end_key = isset( $policy['period_end_field'] ) ?
+            $policy['period_end_field'] : '';
+        $period_format = isset( $policy['period_format'] ) ?
+            $policy['period_format'] : 'iso_date';
         $currency_key = $policy['currency_field'];
         $price_fields = $policy['price_fields'];
         $issues = array(); $issue_total = 0; $issue_counts = array();
@@ -253,11 +259,11 @@ final class MAD4B_SCP_Activity_Import_Review {
                     array( 'draft', 'pending', 'private', 'publish' ), true ) )
                 $errors[] = 'invalid_wordpress_post_status';
             $period_end = false;
-            if ( ! empty( $policy['period_start_field'] ) ) {
+            if ( $period_start_key ) {
                 $period_start = self::parse_period(
-                    $row[ $policy['period_start_field'] ], $policy['period_format'] );
+                    $row[ $period_start_key ], $period_format );
                 $period_end = self::parse_period(
-                    $row[ $policy['period_end_field'] ], $policy['period_format'] );
+                    $row[ $period_end_key ], $period_format );
                 if ( false === $period_start || false === $period_end )
                     $errors[] = 'date_period_invalid';
                 elseif ( $period_start > $period_end )
@@ -347,9 +353,9 @@ final class MAD4B_SCP_Activity_Import_Review {
             'decimal_scale' => $policy['decimal_scale'],
             'price_tier_policy' => $price_policy,
             'review_past_intervals' => $flag_expired,
-            'period_start_field' => $policy['period_start_field'],
-            'period_end_field' => $policy['period_end_field'],
-            'period_format' => $policy['period_format'],
+            'period_start_field' => $period_start_key,
+            'period_end_field' => $period_end_key,
+            'period_format' => $period_format,
             'policy_sha256' => $policy_result['policy_sha256'] );
         return array( 'contract' => self::CONTRACT, 'plan_sha256' => self::digest( $plan ),
             'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
