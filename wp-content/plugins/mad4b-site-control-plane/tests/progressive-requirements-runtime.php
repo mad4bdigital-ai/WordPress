@@ -65,6 +65,20 @@ class MAD4B_SCP_Selected_Head_Update {
 				'package_manifest_digest'=>str_repeat('b',64)):array());
 	}
 }
+class MAD4B_SCP_Live_Acceptance_Observer {
+	public static function build_provenance_status() {
+		$installed=!empty($GLOBALS['already_installed']);
+		return array(
+			'manifest_valid'=>true,
+			'runtime_manifest_match'=>$installed,
+			'stale'=>!$installed,
+			'source_commit_sha'=>$GLOBALS['target_sha'],
+			'build_fingerprint'=>str_repeat('a',64),
+			'package_manifest_digest'=>str_repeat('b',64),
+			'artifact_identity'=>'mad4b-site-control-plane-test-fixture',
+		);
+	}
+}
 class MAD4B_SCP_External_Handshake_Evidence {
 	public static function status(){
 		return array('verified'=>!empty($GLOBALS['already_installed']),
