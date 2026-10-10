@@ -125,6 +125,47 @@ def resolve(kind, ref, repo=REPO):
     return digest
 
 
+
+def load_manifest(checkout, profile):
+    """Suite data is committed with the candidate HEAD, never fetched as a URL."""
+    path = checkout / "tools/mad4b-local-ci-gates.json"
+    raw = path.read_bytes()
+    if len(raw) > 100000:
+        raise ValueError("local CI gate manifest too large")
+    obj = json.loads(raw)
+    if (not isinstance(obj, dict)
+            or obj.get("contract") != "mad4b.local-ci-gate-manifest.v1"
+            or obj.get("non_authorizing") is not True
+            or obj.get("github_workflows_fully_represented") is not False
+            or not isinstance(obj.get("gates"), list)
+            or not 1 <= len(obj["gates"]) <= 300):
+        raise ValueError("local CI gate manifest contract invalid")
+    ids = set()
+    rows = []
+    for gate in obj["gates"]:
+        if not isinstance(gate, dict):
+            raise ValueError("malformed CI gate")
+        name, kind, filename = (gate.get("name"), gate.get("language"), gate.get("file"))
+        params, profiles = gate.get("args"), gate.get("profiles")
+        if (not isinstance(name, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,80}", name)
+                or name in ids or kind not in ("php", "python")
+                or not isinstance(filename, str)
+                or not re.fullmatch(r"[a-zA-Z0-9_-]+[.](?:php|py)", filename)
+                or not filename.endswith(".php" if kind == "php" else ".py")
+                or not isinstance(params, list) or len(params) > 6
+                or any(not isinstance(arg, str) or len(arg) > 120 or not re.fullmatch(r"[a-zA-Z0-9_-]+", arg) for arg in params)
+                or not isinstance(profiles, list)
+                or any(x not in ("core", "extended") for x in profiles)
+                or not profiles):
+            raise ValueError("unsafe or malformed CI gate declaration")
+        ids.add(name)
+        if profile in profiles:
+            rows.append((name, kind, filename, *params))
+    if not rows:
+        raise ValueError("selected CI profile has no gates")
+    return rows, sha256(raw)
+
+
 def docker_ready():
     if shutil.which("docker") is None:
         return False
@@ -296,8 +337,10 @@ def main(argv=None):
             code, output = run(["git", "rev-parse", "HEAD"], cwd=checkout)
             if code or output.strip() != args.expected_sha:
                 raise ValueError("isolated commit identity mismatch")
-            report["tests"] = len(GATES) if args.profile == "extended" else len(CORE_NAMES)
-            choices = [g for g in GATES if args.profile == "extended" or g[0] in CORE_NAMES]
+            choices, gate_manifest_sha = load_manifest(checkout, args.profile)
+            report["tests"] = len(choices)
+            report["gate_manifest_sha256"] = gate_manifest_sha
+            report["gate_manifest_path"] = "tools/mad4b-local-ci-gates.json"
             for name, kind, filename, *parameters in choices:
                 rel = TEST_ROOT + filename
                 if not (checkout / rel).is_file():
