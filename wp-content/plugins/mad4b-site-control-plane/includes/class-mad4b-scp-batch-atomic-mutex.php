@@ -41,6 +41,43 @@ final class MAD4B_SCP_Batch_Atomic_Mutex {
         if ( function_exists( 'wp_cache_delete' ) )
             wp_cache_delete( $key, 'options' );
     }
+    /**
+     * Insert an immutable MAD4B source receipt exactly once.
+     * add_option() can update an existing option under an insertion race.
+     * This helper instead requires one new SQL row and exact byte readback.
+     */
+    public static function insert_immutable( $name, $value ) {
+        if ( ! is_string( $name ) ||
+            ! preg_match( '/^mad4b_(?:activity_import_review|import_approval)_[a-f0-9]{64}$/D', $name ) ||
+            ! is_array( $value ) || ! function_exists( 'maybe_serialize' ) )
+            return self::err( 'mad4b_import_immutable_input_invalid',
+                'An exact generated source receipt and WordPress serialization are required.' );
+        $db = self::db();
+        if ( is_wp_error( $db ) ) return $db;
+        $raw = maybe_serialize( $value );
+        if ( ! is_string( $raw ) || strlen( $raw ) > 3000000 )
+            return self::err( 'mad4b_import_immutable_size_denied',
+                'Immutable review receipt is not a bounded string.' );
+        $inserted = $db->query( $db->prepare(
+            "INSERT IGNORE INTO `{$db->options}` (option_name, option_value, autoload) VALUES (%s, %s, %s)",
+            $name, $raw, 'off' ) );
+        if ( 1 !== $inserted )
+            return self::err( 'mad4b_import_immutable_exists_or_failed',
+                'Source receipt already exists or exact insert could not be verified.' );
+        self::cache_clear( $name );
+        if ( ! hash_equals( $raw, (string) self::read( $db, $name ) ) )
+            return self::err( 'mad4b_import_immutable_readback_failed',
+                'Atomic immutable receipt could not be independently verified.' );
+        if ( function_exists( 'wp_cache_get' ) &&
+            function_exists( 'wp_cache_set' ) ) {
+            $notoptions = wp_cache_get( 'notoptions', 'options' );
+            if ( is_array( $notoptions ) && isset( $notoptions[ $name ] ) ) {
+                unset( $notoptions[ $name ] );
+                wp_cache_set( 'notoptions', $notoptions, 'options' );
+            }
+        }
+        return true;
+    }
     public static function observe( $slug ) {
         $db = self::db();
         if ( is_wp_error( $db ) ) return $db;
