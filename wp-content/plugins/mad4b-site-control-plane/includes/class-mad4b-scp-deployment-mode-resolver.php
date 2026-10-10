@@ -15,6 +15,34 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
     const MODE = 'wordpress_dedicated';
     const ABILITY = 'mad4b/deployment-mode-status';
 
+    public static function dependency_status() {
+        // Detection is informational. A loaded provider is not automatically certified.
+        $wp_site = function_exists( 'get_current_blog_id' ) && function_exists( 'get_current_network_id' );
+        $abilities = function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' );
+        $policy = class_exists( 'MAD4B_SCP_Policy', false ) && is_callable( array( 'MAD4B_SCP_Policy', 'can_read' ) );
+        return array(
+            'contract' => 'mad4b.wordpress-dedicated-dependency-readiness.v1',
+            'identity_services' => array(
+                'site_profile_loaded' => class_exists( 'MAD4B_SCP_Site_Profile', false ),
+                'brand_context_loaded' => class_exists( 'MAD4B_SCP_Context_Authority', false ),
+                'wordpress_site_context_available' => $wp_site,
+            ),
+            'mcp_discovery' => array(
+                'abilities_api_available' => $abilities,
+                'read_policy_available' => $policy,
+                'status' => $abilities && $policy ? 'POTENTIALLY_AVAILABLE' : 'BLOCKED',
+            ),
+            'optional_provider_observation' => array(
+                'google_drive' => class_exists( 'MAD4B_SCP_Google_Drive_Context', false ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
+                'woocommerce' => class_exists( 'WooCommerce', false ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
+                'elementor' => class_exists( 'Elementor\\Plugin', false ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
+                'wpml' => defined( 'ICL_SITEPRESS_VERSION' ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
+                'rank_math' => defined( 'RANK_MATH_VERSION' ) ? 'DETECTED_UNVERIFIED' : 'NOT_DETECTED',
+            ),
+            'provider_detection_grants_authority' => false,
+        );
+    }
+
     public static function supported_modes() {
         return array( 'shared_multi_tenant', 'dedicated_isolated', 'dedicated_autonomous', 'wordpress_dedicated' );
     }
@@ -55,6 +83,7 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'portable_state' => 'BLOCKED',
             'reason' => $reason,
             'missing_dependencies' => self::dependency_codes( $reason ),
+            'dependency_status' => self::dependency_status(),
             'scope' => null,
             'review_only' => true,
             'host_binding_requires_independent_acceptance' => true,
@@ -69,7 +98,9 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'SITE_PROFILE_UNAVAILABLE', 'SITE_NOT_ENROLLED', 'SITE_IDENTITY_NOT_READY',
             'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'SITE_UUID_INVALID',
             'BRAND_CONTEXT_UNAVAILABLE', 'BRAND_PROFILE_UNRESOLVED',
-            'BRAND_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_INVALID'
+            'BRAND_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_INVALID',
+            'SITE_PROFILE_REVISION_MISSING', 'WORDPRESS_SITE_CONTEXT_UNAVAILABLE',
+            'WORDPRESS_ENVIRONMENT_UNSUPPORTED'
         );
         return in_array( $reason, $known, true ) ? array( $reason ) : array();
     }
@@ -95,6 +126,13 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         if ( empty( $site['deployment_binding_match'] ) ) {
             return self::blocked( 'SITE_IDENTITY_NOT_READY' );
         }
+        if ( empty( $site['revision'] ) || (int) $site['revision'] < 1 ) {
+            return self::blocked( 'SITE_PROFILE_REVISION_MISSING' );
+        }
+        $environment = isset( $site['environment'] ) ? (string) $site['environment'] : '';
+        if ( ! in_array( $environment, array( 'local', 'development', 'staging', 'production' ), true ) ) {
+            return self::blocked( 'WORDPRESS_ENVIRONMENT_UNSUPPORTED' );
+        }
         $uuid = strtolower( trim( isset( $site['site_uuid'] ) ? (string) $site['site_uuid'] : '' ) );
         if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $uuid ) ) {
             return self::blocked( 'SITE_UUID_INVALID' );
@@ -109,8 +147,10 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         }
         if ( empty( $brand['revision'] ) || ! is_numeric( $brand['revision'] ) ||
              (int) $brand['revision'] < 1 ) return self::blocked( 'BRAND_PROFILE_REVISION_MISSING' );
-        $blog_id = function_exists( 'get_current_blog_id' ) ? (int) get_current_blog_id() : 1;
-        $network_id = function_exists( 'get_current_network_id' ) ? (int) get_current_network_id() : 1;
+        if ( ! function_exists( 'get_current_blog_id' ) ||
+             ! function_exists( 'get_current_network_id' ) ) return self::blocked( 'WORDPRESS_SITE_CONTEXT_UNAVAILABLE' );
+        $blog_id = (int) get_current_blog_id();
+        $network_id = (int) get_current_network_id();
         if ( $blog_id < 1 || $network_id < 1 ) return self::blocked( 'WORDPRESS_SITE_CONTEXT_INVALID' );
         $scope = array(
             'tenant_ref' => 'wp-site:' . $uuid,
@@ -118,7 +158,7 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
             'site_uuid' => $uuid,
             'blog_id' => $blog_id,
             'network_id' => $network_id,
-            'environment' => isset( $site['environment'] ) ? (string) $site['environment'] : '',
+            'environment' => $environment,
             'deployment_mode' => self::MODE,
         );
         foreach ( $untrusted_request_scope as $key => $value ) {
@@ -142,6 +182,8 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
                 'brand_profile' => (int) $brand['revision'],
             ),
             'missing_dependencies' => array(),
+            'dependency_status' => self::dependency_status(),
+            'host_binding_requires_independent_acceptance' => true,
             'brand_resolution' => 'current_site_brand_profile',
             'review_only' => true,
             'execution_authorized' => false,
