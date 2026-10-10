@@ -39,6 +39,9 @@ The launcher fetches the source HEAD from GitHub, pins the exact SHA, runs a dis
 
 The Python entry point is `tools/mad4b-local-ci-parity.py`; it also runs on Linux/macOS with the corresponding flags.
 
+**Pinned review path:** When testing an approved PR HEAD, prefer `-Runtime Docker -ExpectedSha <reviewed_40_character_SHA>`. Running a launcher taken from an older merge commit can omit later runner hardening; review and execute a trusted runner revision that includes the required baseline checks. The source under test is always a disposable exact-SHA checkout, not the mutable working tree.
+
+
 ## Hosted WordPress evidence through MCP
 
 Use existing governed **read-only** WordPress calls to collect site information, profile environment, installed source SHA and deployment binding. Export a minimal JSON file with no passwords, tokens, WP salts, API keys or PII:
@@ -61,6 +64,8 @@ If WordPress reports `production` implicitly while Site Profile reports `staging
 ## Verdict, coverage and release binding
 
 The runner produces `LOCAL-CI-PARITY-REPORT.json` containing source SHA, source type/reference, runtime, every actual gate result, `NOT_RUN` counts, optional host observation and untested coverage. Existing targeted gates include G9, Selected HEAD, staging selector/upload, IMP07, release-set, enrollment and update-channel contracts. The suite is configured by the checked-in, exact-source `tools/mad4b-local-ci-gates.json` manifest, rather than a hard-coded PR or site. New tested providers can add bounded, named PHP/Python fixtures in the same source review; shell snippets, unreviewed paths, and external executables are rejected. The report binds the manifest SHA-256 to the selected commit.
+
+As of the 2026-10-10 Feature 007 hardening, the named `Extended` subset includes **21 gates** (`Core`: **12**), including the Local CI runner's own contract; 15 distinct fixture files are referenced. The executable has a required baseline of gate identities, interpreter types, fixture names, arguments and profiles, so an edited manifest cannot silently omit or rewrite these baseline gates. Additional vetted gates remain supported. **This is not a cryptographic trust anchor:** if a candidate changes the runner itself, its code must be reviewed or verified against an independently trusted copy before local evidence can be treated as dependable. Source file existence is not test execution.
 
 A complete pass of this named subset sets `tested_gate_set_passed=true` **but retains** `LOCAL_CI_PARITY_PARTIAL`, because the repository includes many more GitHub workflows and the runner does not run disposable WordPress+MySQL integration, MariaDB upgrade tests, Playwright, multisite/browser suites, and actual live Staging mutation/rollback. A failed gate or source drift yields `LOCAL_CI_PARITY_FAIL`.
 
