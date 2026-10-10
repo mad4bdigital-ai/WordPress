@@ -92,6 +92,12 @@ final class MAD4B_SCP_CSO_Secrets {
 	 */
 	public static function dispatch_native( $adapter, $input ) {
 		$p=self::$pending;
+        // Repeat the physical environment fence immediately before native callbacks.
+        if ( ! function_exists( 'wp_get_environment_type' ) ||
+            ! is_array( $p['scope'] ?? null ) ||
+            ! hash_equals( (string) ( $p['scope']['environment'] ?? '' ),
+                (string) wp_get_environment_type() ) )
+            return self::error( 'wordpress_environment_mismatch' );
 		if(!is_array($p)||!is_array($input)||$p['used']||$adapter!==$p['provider']['adapter']||$input!==$p['target']) return self::error('private_callback_unavailable');
 		if(!class_exists('MAD4B_SCP_Authorization')||!MAD4B_SCP_Authorization::execution_callback_started($p['ability'])||!MAD4B_SCP_Execution_Fence::has_active_frame()) return self::error('native_execution_entry_required');
 		self::$pending['used']=true;
@@ -270,6 +276,10 @@ final class MAD4B_SCP_CSO_Secrets {
 		if(!class_exists('MAD4B_SCP_CSO_Scope')||!MAD4B_SCP_CSO_Scope::enabled('secrets')) return self::error('secrets_disabled');
 		$scope=MAD4B_SCP_CSO_Scope::current(); if(is_wp_error($scope)) return $scope;
 		if(!is_array($scope)||!in_array($scope['environment']??null,array('staging','development','local'),true)||!is_string($scope['origin']??null)||!preg_match('/^https:\/\/[a-z0-9.-]+(?::[0-9]{1,5})?$/D',$scope['origin'])||!self::sha($scope['actor_sha256']??null)) return self::error('first_party_staging_scope_required');
+        // A staging profile cannot override the actual WordPress runtime type.
+        if ( ! function_exists( 'wp_get_environment_type' ) ||
+            ! hash_equals( (string) $scope['environment'], (string) wp_get_environment_type() ) )
+            return self::error( 'wordpress_environment_mismatch' );
         // No secret handoff without an exact release/runtime restore identity.
         // A guessed source revision or a missing installed-package digest is
         // not authority; operator provisioning must bind these values.
