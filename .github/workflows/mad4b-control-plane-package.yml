@@ -8,6 +8,8 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -23,6 +25,8 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -63,6 +67,14 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
+
+      - name: Verify independent deterministic build helper and read-only MCP contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_mad4b_standalone_build.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
 
       - name: Verify release-evidence trigger symmetry
         shell: bash
