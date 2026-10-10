@@ -514,6 +514,11 @@ final class MAD4B_SCP_Activity_Import_Experience {
                 self::e( self::title( 'CSV file' ) ) .
                 '</strong></label> <input id="mad4b-source-file" type="file" name="import_csv" accept=".csv,text/csv" required /></p>';
             submit_button( self::title( 'Upload and inspect (no import)' ), 'primary' );
+            echo '<button class="button button-secondary" type="submit" name="mad4b_import_intent" value="preview_mapping">' .
+                self::e( self::title( 'Check dynamic mapping before upload' ) ) .
+                '</button>';
+            echo '<p class="description">' . self::e( self::title(
+                'Mapping preflight reads column headers only, proposes possible renames and never stages data. The normal upload still requires the approved site schema.' ) ) . '</p>';
             echo '</form>';
         } elseif ( 'admin_xlsx_convert' === $mode ) {
             echo '<p>' . self::e( self::title(
