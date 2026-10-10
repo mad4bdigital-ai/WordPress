@@ -98,6 +98,8 @@ def report_summary(rows):
             row.get("http_status") == 200 and not row.get("observation_error") for row in groups["browser"]),
         "customizer_iframe_same_origin": bool(groups["customizer"]) and all(
             row.get("iframe_same_origin") is True and not row.get("observation_error") for row in groups["customizer"]),
+        "customizer_js_runtime_active": bool(groups["customizer"]) and all(
+            row.get("customizer_js_active") is True and not row.get("observation_error") for row in groups["customizer"]),
         "native_cli_observed": bool(groups["native"]) and all(
             row.get("native_state") == "observed" for row in groups["native"]),
         "external_signed_receipt": False,
@@ -155,7 +157,7 @@ def browser_observations(args, base):
                     result = {
                         "mode": mode, "path": urlparse(target_url).path or "/",
                         "sample_index": index + 1, "viewport": args.viewport, "http_status": None,
-                        "iframe_same_origin": None, "js_error_count": None,
+                        "iframe_same_origin": None, "customizer_js_active": None, "js_error_count": None,
                         "ajax_request_count": None, "ajax_5xx_count": None,
                         "browser_elapsed_ms": None, "foreign_requests_blocked": None,
                         "server_elapsed_ms": None, "db_queries": None,
@@ -177,12 +179,18 @@ def browser_observations(args, base):
                             iframe = page.locator("#customize-preview-iframe")
                             iframe.wait_for(state="attached", timeout=args.timeout_ms)
                             frame = iframe.element_handle().content_frame()
+                            if frame:
+                                frame.wait_for_load_state("domcontentloaded", timeout=args.timeout_ms)
                             result["iframe_same_origin"] = bool(
                                 frame and urlparse(frame.url).netloc.lower() == urlparse(base).netloc)
                             if not result["iframe_same_origin"]:
                                 raise ValueError("CUSTOMIZER_PREVIEW_NOT_SAME_ORIGIN")
                             if (urlparse(frame.url).path or "/").rstrip("/") != (urlparse(target_url).path or "/").rstrip("/"):
                                 raise ValueError("CUSTOMIZER_PREVIEW_TARGET_DRIFT")
+                            result["customizer_js_active"] = bool(frame.evaluate(
+                                "() => !!(window.wp && window.wp.customize)"))
+                            if not result["customizer_js_active"]:
+                                raise ValueError("CUSTOMIZER_JS_RUNTIME_MISSING")
                         elif args.scroll:
                             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                             page.wait_for_timeout(750)
