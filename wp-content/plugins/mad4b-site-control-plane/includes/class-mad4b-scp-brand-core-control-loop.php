@@ -19,10 +19,29 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 	 * Quarantined records are prioritised before any source creation.
 	 */
 	public static function decide( array $coverage, array $context, array $convergence, array $census, array $provider ) {
-		$quarantined_sources = max( 0, (int) ( $census['source_quarantine_count'] ?? $context['quarantined_source_record_count'] ?? 0 ) );
-		$quarantined_assets = max( 0, (int) ( $census['asset_quarantine_count'] ?? $context['quarantined_asset_record_count'] ?? 0 ) );
+		// These snapshots are collected in separate reads. A stale/malformed
+		// census must not silently erase quarantined records reported by Context.
+		$counts_valid = isset( $census['source_quarantine_count'], $census['asset_quarantine_count'],
+			$context['quarantined_source_record_count'], $context['quarantined_asset_record_count'] )
+			&& is_int( $census['source_quarantine_count'] ) && is_int( $census['asset_quarantine_count'] )
+			&& is_int( $context['quarantined_source_record_count'] ) && is_int( $context['quarantined_asset_record_count'] )
+			&& $census['source_quarantine_count'] >= 0 && $census['asset_quarantine_count'] >= 0
+			&& $context['quarantined_source_record_count'] >= 0 && $context['quarantined_asset_record_count'] >= 0;
+		$quarantined_sources = max( 0, (int) ( $census['source_quarantine_count'] ?? 0 ),
+			(int) ( $context['quarantined_source_record_count'] ?? 0 ) );
+		$quarantined_assets = max( 0, (int) ( $census['asset_quarantine_count'] ?? 0 ),
+			(int) ( $context['quarantined_asset_record_count'] ?? 0 ) );
+		$counts_drift = ! $counts_valid
+			|| (int) ( $census['source_quarantine_count'] ?? -1 ) !== (int) ( $context['quarantined_source_record_count'] ?? -2 )
+			|| (int) ( $census['asset_quarantine_count'] ?? -1 ) !== (int) ( $context['quarantined_asset_record_count'] ?? -2 );
 		$quarantine = $quarantined_sources + $quarantined_assets > 0;
-		$invalid_snapshot = ! isset( $coverage['coverage'], $coverage['registry_revision'], $convergence['registry_revision'] )
+		$invalid_snapshot = $counts_drift
+			|| ! isset( $context['registry_revision'], $context['authority_manifest_fingerprint'] )
+			|| (int) ( $context['registry_revision'] ?? -1 ) !== (int) ( $coverage['registry_revision'] ?? -2 )
+			|| empty( $context['authority_manifest_fingerprint'] )
+			|| ! hash_equals( (string) ( $context['authority_manifest_fingerprint'] ?? '' ),
+				(string) ( $coverage['authority_manifest_fingerprint'] ?? '' ) )
+			|| ! isset( $coverage['coverage'], $coverage['registry_revision'], $convergence['registry_revision'] )
 			|| ! is_array( $coverage['coverage'] )
 			|| (int) $coverage['registry_revision'] !== (int) $convergence['registry_revision']
 			|| empty( $convergence['authority_manifest_fingerprint'] )
