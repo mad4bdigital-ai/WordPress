@@ -17,6 +17,45 @@ bounded hashed `data-post-id` identities and advisory dataset comparisons,
 without storing page content or accepting a matching dataset as a release
 receipt. The plan does not manufacture missing Query Monitor attribution.
 
+## Existing managed browser execution (authoritative acceptance)
+
+The browser lane must use **MAD4B Managed Browser Execution Providers v2** as
+the authoritative executor; do not create an additional independent browser
+acceptance authority in this Preview Matrix. The canonical source is
+`docs/MAD4B-MANAGED-BROWSER-PROVIDERS.md` and its external runner is
+`tools/browser-acceptance/run-live-site-browser-acceptance.mjs`. The provider
+scheduler supports Cloudflare, Browserbase, Browserless and Steel, subject to
+actual credentials, quotas, session budgets, dual OAuth/challenge deadline
+and approved site capability driver. Run the no-secret
+`node tools/browser-acceptance/provider-preflight.mjs` before requesting a
+live provider session. A provider's presence in source does not establish
+credential availability, acceptance readiness or free quota.
+
+The authoritative sequence is Site Capability Discovery ->
+`mad4b/browser-acceptance-capabilities` -> fresh
+`mad4b/browser-acceptance-plan` -> provider-neutral bounded browser runner ->
+`mad4b/browser-acceptance-result` -> server reducer -> tamper-evident receipt.
+Do not substitute a locally generated JSON record or caller-supplied URL.
+The current All Royal Egypt live registration advertises
+`mad4b-native-public` as its site provider; external provider credentials,
+required signing identity and provider-specific result submission must be
+validated separately. Discovery alone is not certification.
+
+The Python Chromium implementation in this child branch is a **manual,
+diagnostic-only** alternative, not another managed acceptance engine. It
+cannot sign an existing job, assert an externally observed probe, or replace
+the canonical signed-plan/result reducer. In particular, the currently
+approved generic site driver checks only `browser.canonical_path`, whereas
+the ETG driver validates richer JetSmartFilters/filter-identity oracles.
+Do not claim that one generic browser run covers both providers.
+
+`customizer` and `native` remain complementary read-only diagnostic
+lanes. Before adding them to the managed-provider runner, define distinct
+review-owned, signed-plan oracles and preserve authentication isolation;
+Customizer credentials cannot be injected via an arbitrary user-supplied URL
+or JavaScript payload. No attempt is made here to modify provider worker
+authority or force execution from the WordPress server.
+
 Three independent lanes:
 
 * `browser`: actual Chromium navigation with browser timing, JavaScript error counts and AJAX/fetch status counts.
