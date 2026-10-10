@@ -123,9 +123,17 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
         php=shutil.which("php")
         if php:
             try:
-                syntax=subprocess.run([php,"-l",str(base_path)],capture_output=True,text=True,timeout=15,check=False)
-                fixture_result=subprocess.run([php,str(fixture)],cwd=plugin_root,capture_output=True,text=True,timeout=30,check=False)
-                php_status="PASS" if syntax.returncode==0 and fixture_result.returncode==0 else "FAIL"
+                native_files=[base_path,
+                    plugin_root/"includes/class-mad4b-scp-operational-scope-guard.php",
+                    plugin_root/"includes/class-mad4b-scp-content-jobs.php",
+                    plugin_root/"includes/class-mad4b-scp-context-authority.php",
+                    plugin_root/"includes/class-mad4b-scp-servers.php"]
+                native_fixtures=[fixture,plugin_root/"tests/unified-operational-scope-runtime.php"]
+                lint=[subprocess.run([php,"-l",str(p)],capture_output=True,text=True,timeout=15,check=False)
+                      for p in native_files]
+                runs=[subprocess.run([php,str(p)],cwd=plugin_root,capture_output=True,text=True,timeout=30,check=False)
+                      for p in native_fixtures]
+                php_status="PASS" if all(p.returncode==0 for p in lint+runs) else "FAIL"
             except (OSError,subprocess.TimeoutExpired):
                 php_status="BLOCKED"
         else:

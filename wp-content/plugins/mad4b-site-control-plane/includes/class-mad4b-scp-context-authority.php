@@ -495,6 +495,12 @@ final class MAD4B_SCP_Context_Authority {
 				if ( is_wp_error( $site ) ) return $site;
 				$profile = self::profile();
 				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
+                $scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+                    ? MAD4B_SCP_Operational_Scope_Guard::require_current()
+                    : new WP_Error( 'mad4b_scope_guard_missing', 'Operational scope guard unavailable.' );
+                if ( is_wp_error( $scope ) ) return $scope;
+                $brand_check = MAD4B_SCP_Operational_Scope_Guard::require_brand( $profile['brand_id'], $scope );
+                if ( is_wp_error( $brand_check ) ) return $brand_check;
 				$audit_ready = self::audit_preflight();
 				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
 

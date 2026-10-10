@@ -112,6 +112,10 @@ $GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['revision'] 
 $GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['canonical_origin'] = 'https://cloned.example/';
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_BLOG_LOCAL_BINDING_MISMATCH', 'foreign persisted origin blocks' );
 $GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ]['canonical_origin'] = 'https://site.example/';
+$saved_blog_record = $GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ];
+unset( $GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ] );
+expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_NOT_ENROLLED', 'status call must never migrate missing site profile option' );
+$GLOBALS['mad4b_blog_records'][5][ MAD4B_SCP_Site_Profile::OPTION ] = $saved_blog_record;
 MAD4B_SCP_Site_Profile::$status['configured'] = false;
 expect( MAD4B_SCP_Deployment_Mode_Resolver::resolve()['reason'] === 'SITE_NOT_ENROLLED', 'unconfigured blocks' );
 echo "PASS wordpress dedicated isolated fixture\n";
