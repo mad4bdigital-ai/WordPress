@@ -73,17 +73,27 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
         $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
         $sha = isset( $input['snapshot_sha256'] ) ?
             (string) $input['snapshot_sha256'] : '';
+        $header_only = array_key_exists( 'observed_headers', $input );
+        $expected_authority = isset( $input['expected_profile_authority_sha256'] ) ?
+            (string) $input['expected_profile_authority_sha256'] : '';
         if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
-            ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) ||
             array_diff( array_keys( $input ), array( 'profile_slug',
-                'snapshot_sha256' ) ) )
+                'snapshot_sha256', 'observed_headers',
+                'expected_profile_authority_sha256' ) ) ||
+            ( $header_only && ( '' !== $sha ||
+                ! preg_match( '/^[a-f0-9]{64}$/D', $expected_authority ) ) ) ||
+            ( !$header_only && ( ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) ||
+                '' !== $expected_authority ) ) )
             return self::err( 'mad4b_mapping_plan_input_invalid',
-                'Exact source snapshot only; callers cannot override mappings or policies.' );
-        if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) )
-            return self::err( 'mad4b_mapping_snapshot_unavailable',
-                'Encrypted Staging source facility unavailable.' );
-        $loaded = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot( $slug, $sha );
-        if ( is_wp_error( $loaded ) ) return $loaded;
+                'Use either exact immutable snapshot or observed header names bound to the Profile authority.' );
+        $loaded = null;
+        if ( !$header_only ) {
+            if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) )
+                return self::err( 'mad4b_mapping_snapshot_unavailable',
+                    'Encrypted Staging source facility unavailable.' );
+            $loaded = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot( $slug, $sha );
+            if ( is_wp_error( $loaded ) ) return $loaded;
+        }
         $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) )
             return self::err( 'mad4b_mapping_profile_missing',
@@ -93,18 +103,20 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
         if ( !$policy || empty( $policy['field_mapping'] ) )
             return self::err( 'mad4b_mapping_policy_not_configured',
                 'Approved site-owned field mapping is required.' );
-        if ( (string) $loaded['receipt']['plan']['profile_revision'] !==
-             (string) $profile['revision'] ||
-            ! hash_equals( (string) $loaded['receipt']['plan']['authority_sha256'],
-                (string) $profile['authority_sha256'] ) ||
-            ! hash_equals( (string) $loaded['receipt']['plan']['policy_sha256'],
-                MAD4B_SCP_Activity_Import_Authority::digest( $policy ) ) )
+        if ( ( $header_only && ! hash_equals(
+                (string) $profile['authority_sha256'], $expected_authority ) ) ||
+            ( !$header_only && (
+                (string) $loaded['receipt']['plan']['profile_revision'] !==
+                    (string) $profile['revision'] ||
+                ! hash_equals( (string) $loaded['receipt']['plan']['authority_sha256'],
+                    (string) $profile['authority_sha256'] ) ||
+                ! hash_equals( (string) $loaded['receipt']['plan']['policy_sha256'],
+                    MAD4B_SCP_Activity_Import_Authority::digest( $policy ) ) ) ) )
             return self::err( 'mad4b_mapping_profile_drift',
-                'Profile changed since source capture. Re-review exact source under current authority.' );
-        $columns = isset( $loaded['input']['headers'] ) ?
-            $loaded['input']['headers'] : array();
-        $rows = isset( $loaded['input']['rows'] ) ?
-            $loaded['input']['rows'] : array();
+                'Exact Profile authority changed. A fresh mapping review is required.' );
+        $columns = $header_only ? $input['observed_headers'] :
+            $loaded['input']['headers'];
+        $rows = $header_only ? array() : $loaded['input']['rows'];
         if ( ! is_array( $columns ) || !$columns || count( $columns ) > 80 ||
             count( $columns ) !== count( array_unique( $columns ) ) )
             return self::err( 'mad4b_mapping_headers_invalid',
@@ -195,6 +207,9 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
         $report = array(
             'contract' => self::CONTRACT,
             'profile_slug' => $slug, 'snapshot_sha256' => $sha,
+            'source_evidence_kind' => $header_only ?
+                'header_only_unstaged' : 'encrypted_exact_snapshot',
+            'header_only_is_not_accepted_import_data' => $header_only,
             'profile_revision' => $profile['revision'],
             'profile_authority_sha256' => $profile['authority_sha256'],
             'policy_sha256' => MAD4B_SCP_Activity_Import_Authority::digest( $policy ),
