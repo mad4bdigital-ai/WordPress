@@ -63,6 +63,16 @@ class MAD4B_SCP_External_Handshake_Evidence {
 			'package_manifest_digest'=>str_repeat('b',64));
 	}
 }
+class MAD4B_SCP_Operation_Registry {
+	public static function operation($id) {
+		if ('content.create_draft'!==$id)
+			return new WP_Error('mad4b_operation_not_registered');
+		return array('id'=>$id,'planner'=>'mad4b/content-orchestration-plan',
+			'executor'=>'mad4b/content-apply-bundle',
+			'descriptor_binding_ready'=>true,
+			'capability_descriptor_bindings'=>array('canonical'=>str_repeat('c',64)));
+	}
+}
 class MAD4B_SCP_Context_Authority {
 	public static function status(){return array(
 		'quarantined_source_record_count'=>!empty($GLOBALS['brand_quarantine'])?1:0);
@@ -141,6 +151,20 @@ $GLOBALS['brand_quarantine']=false;$GLOBALS['brand_ready']=true;
 $brand=MAD4B_SCP_Progressive_Requirements::plan(array('operation_id'=>'context.brand_core','mode'=>'detached'));
 check($brand['conditions_satisfied'] && empty($brand['remaining_hard_requirements']),
 	'fresh trusted context evidence failed to converge');
+$registry=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'registry.operation','mode'=>'linked',
+	'target_operation_id'=>'content.create_draft'));
+check(!is_wp_error($registry)&&$registry['effect_connected']&&
+	$registry['effect_ability']==='mad4b/content-orchestration-plan' &&
+	$registry['state']==='REMEDIATION_REQUIRED' &&
+	count($registry['remaining_hard_requirements'])===3 &&
+	!$registry['conditions_satisfied'],
+	'Any registered operation should discover planner but never auto-grant execution');
+$nonregistered=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'registry.operation','mode'=>'detached',
+	'target_operation_id'=>'arbitrary.system_exec'));
+check(is_wp_error($nonregistered),
+	'External operation or arbitrary callback cannot be admitted as a generic effect');
 $unknown=MAD4B_SCP_Progressive_Requirements::plan(array('operation_id'=>'untrusted.php_callback','mode'=>'linked'));
 check(is_wp_error($unknown),'arbitrary callback must not enter operation registry');
 $pure=MAD4B_SCP_Progressive_Requirements::decide(
