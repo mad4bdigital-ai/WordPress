@@ -25,10 +25,11 @@ function apply_filters($hook,$adapters,$profile){if($hook==='mad4b_activity_sync
 class MAD4B_SCP_Operational_Integrity {
  static $mutation_allowed=true;
  static $site_uuid='11111111-2222-4333-8444-555555555555';
- static function capture(){return array('fingerprint'=>hash('sha256',self::$site_uuid),'scope'=>array('site_uuid'=>self::$site_uuid));}
+ static $actor='actor-A';
+ static function capture(){return array('fingerprint'=>hash('sha256',self::$site_uuid.'|'.self::$actor),'scope'=>array('site_uuid'=>self::$site_uuid));}
  static function assert_unchanged($checkpoint,$mutation=false){
   return (!$mutation||self::$mutation_allowed)&&
-   hash_equals(hash('sha256',self::$site_uuid),$checkpoint['fingerprint'])
+   hash_equals(hash('sha256',self::$site_uuid.'|'.self::$actor),$checkpoint['fingerprint'])
    ?true:new WP_Error('mad4b_integrity_authorization_revoked');
  }
 }
@@ -292,4 +293,12 @@ ck(is_wp_error($denied)&&$denied->get_error_code()==='mad4b_integrity_authorizat
  &&$GLOBALS['wp_values'][101]['biography']===$previous,
  'Direct WordPress provider write bypassed revoked trusted scope');
 MAD4B_SCP_Operational_Integrity::$mutation_allowed=true;
+
+MAD4B_SCP_Operational_Integrity::$actor='actor-B';
+$actorDenied=MAD4B_SCP_Activity_Sync_Runtime::write_wordpress(
+ $source,'biography','stale-actor',$expected,$binding);
+ck(is_wp_error($actorDenied)&&$actorDenied->get_error_code()==='mad4b_sync_provider_scope_changed'
+ &&$GLOBALS['wp_values'][101]['biography']===$previous,
+ 'Prior actor scope was accepted for a direct WordPress write');
+MAD4B_SCP_Operational_Integrity::$actor='actor-A';
 

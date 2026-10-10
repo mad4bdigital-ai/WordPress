@@ -20,7 +20,9 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
         if ( is_wp_error( $checkpoint ) ) return $checkpoint;
         if ( ! is_array( $binding ) || ! isset( $binding['site_uuid'], $checkpoint['scope']['site_uuid'] ) ||
-            ! hash_equals( (string) $binding['site_uuid'], (string) $checkpoint['scope']['site_uuid'] ) )
+            ! hash_equals( (string) $binding['site_uuid'], (string) $checkpoint['scope']['site_uuid'] ) ||
+            ! isset( $binding['scope_fingerprint'] ) ||
+            ! hash_equals( (string) $binding['scope_fingerprint'], (string) $checkpoint['fingerprint'] ) )
             return self::err( 'mad4b_sync_provider_scope_changed', 'Provider write site differs from trusted site scope.' );
         $status = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
         return is_wp_error( $status ) ? $status : $checkpoint;
@@ -107,8 +109,17 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             }
             $sources[ $id ] = $target;
         }
+        $identity = class_exists( 'MAD4B_SCP_Operational_Integrity', false )
+            ? MAD4B_SCP_Operational_Integrity::capture()
+            : self::err( 'mad4b_sync_integrity_unavailable', 'Trusted scope unavailable.' );
+        if ( is_wp_error( $identity ) ) return $identity;
+        if ( ! isset( $identity['fingerprint'], $identity['scope']['site_uuid'] ) ||
+            ! hash_equals( (string) MAD4B_SCP_Site_Profile::site_uuid(),
+                (string) $identity['scope']['site_uuid'] ) )
+            return self::err( 'mad4b_sync_identity_unbound', 'Source profile is not bound to the trusted site.' );
         return array( 'profile' => $profile, 'contract' => $c, 'entity_id' => $entity,
-            'site_uuid' => (string) MAD4B_SCP_Site_Profile::site_uuid(), 'sources' => $sources );
+            'site_uuid' => (string) MAD4B_SCP_Site_Profile::site_uuid(),
+            'scope_fingerprint' => $identity['fingerprint'], 'sources' => $sources );
     }
     public static function read_wordpress( $source, $fields, $binding ) {
         $id = (int) $binding['entity_id'];
@@ -361,6 +372,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 return self::err( 'mad4b_sync_initial_steps_unbounded', 'Initial arbitration exceeds the step budget.' );
             $mode = $equal ? 'bootstrap' : 'bootstrap_arbitrate';
             $proposal = array( 'mode' => $mode, 'site_uuid' => $binding['site_uuid'],
+                'scope_fingerprint' => $binding['scope_fingerprint'],
                 'profile_slug' => $binding['profile']['slug'],
                 'profile_revision' => $binding['profile']['revision'],
                 'profile_authority_sha256' => $binding['profile']['authority_sha256'],
@@ -378,6 +390,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $resolved = self::trusted_plan( $binding, $observed, $checkpoint );
         if ( is_wp_error( $resolved ) ) return $resolved;
         $intent = array( 'mode' => 'sync', 'site_uuid' => $binding['site_uuid'],
+            'scope_fingerprint' => $binding['scope_fingerprint'],
             'profile_slug' => $binding['profile']['slug'], 'entity_id' => $binding['entity_id'],
             'profile_revision' => $binding['profile']['revision'],
             'authority_sha256' => $binding['profile']['authority_sha256'],
@@ -420,6 +433,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             if ( is_wp_error( $fresh ) || !$fresh['ready_for_apply'] ||
                 ! hash_equals( $fresh['plan_sha256'], $input['plan_sha256'] ) )
                 return self::err( 'mad4b_sync_bootstrap_drifted', 'Authoritative sources changed during bootstrap.' );
+            $write_scope = self::authorize_provider_write( $binding );
+            if ( is_wp_error( $write_scope ) ) return $write_scope;
             if ( ! add_option( self::key( $binding, 'checkpoint' ), $checkpoint, '', false ) )
                 return self::err( 'mad4b_sync_checkpoint_concurrent', 'Checkpoint has already been initialized.' );
             if ( function_exists( 'wp_cache_delete' ) )
@@ -430,6 +445,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'checkpoint_sha256' => self::digest( $checkpoint ), 'mutation_performed' => true );
         }
         $op = array( 'site_uuid' => $binding['site_uuid'],
+            'scope_fingerprint' => $binding['scope_fingerprint'],
             'profile_revision' => (int) $binding['profile']['revision'],
             'authority_sha256' => $binding['profile']['authority_sha256'],
             'plan_sha256' => $plan['plan_sha256'], 'operation_key' => $operation_key,
@@ -438,6 +454,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 ? null : self::digest( self::checkpoint( $binding ) ),
             'bootstrap_arbitration' => 'bootstrap_arbitrate' === $plan['mode'],
             'started_at' => gmdate( 'c' ) );
+        $write_scope = self::authorize_provider_write( $binding );
+        if ( is_wp_error( $write_scope ) ) return $write_scope;
         if ( ! add_option( $key, $op, '', false ) )
             return self::err( 'mad4b_sync_operation_raced', 'Another worker reserved the same sync entity.' );
         if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( $key, 'options' );
@@ -456,6 +474,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         if ( ! is_array( $op ) || ! isset( $op['operation_key'], $op['steps'], $op['next_step'] ) ||
             ! isset( $input['operation_key'] ) || ! hash_equals( $op['operation_key'], (string) $input['operation_key'] ) ||
             $op['site_uuid'] !== $binding['site_uuid'] ||
+            ( $op['scope_fingerprint'] ?? '' ) !== $binding['scope_fingerprint'] ||
             (int) $op['profile_revision'] !== (int) $binding['profile']['revision'] ||
             $op['authority_sha256'] !== $binding['profile']['authority_sha256'] )
             return self::err( 'mad4b_sync_operation_not_current', 'Exact operation, site and profile authority must match.' );
@@ -627,6 +646,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             ! hash_equals( $op['operation_key'], (string) $input['operation_key'] ) ||
             ! in_array( $op['state'], array( 'step_inflight', 'needs_reconcile' ), true ) ||
             ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+            ( $op['scope_fingerprint'] ?? '' ) !== $binding['scope_fingerprint'] ||
             (int) ( $op['profile_revision'] ?? -1 ) !== (int) $binding['profile']['revision'] ||
             ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] ||
             ! isset( $op['inflight_step'] ) )
@@ -686,6 +706,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
             ! hash_equals( self::digest( $op ), $expected ) ||
             ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+            ( $op['scope_fingerprint'] ?? '' ) !== $binding['scope_fingerprint'] ||
             (int) ( $op['profile_revision'] ?? -1 ) !== (int) $binding['profile']['revision'] ||
             ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] )
             return self::err( 'mad4b_sync_reconcile_journal_not_exact', 'Require unchanged partial saga journal digest.' );
@@ -776,6 +797,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 ! isset( $op['next_step'] ) || (int) $op['next_step'] !== 0 ||
                 isset( $op['inflight_step'] ) || ! hash_equals( self::digest( $op ), $expected ) ||
                 ( $op['site_uuid'] ?? '' ) !== $binding['site_uuid'] ||
+            ( $op['scope_fingerprint'] ?? '' ) !== $binding['scope_fingerprint'] ||
                 ( $op['authority_sha256'] ?? '' ) !== $binding['profile']['authority_sha256'] )
                 return self::err( 'mad4b_sync_cancel_write_may_exist', 'Cannot cancel an uncertain, in-flight or partially applied provider write.' );
             $op['state'] = 'cancelled_without_provider_write';
@@ -812,6 +834,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         $op = get_option( $key, false );
         $expected = isset( $input['expected_operation_sha256'] ) ? (string) $input['expected_operation_sha256'] : '';
         if ( ! is_array( $op ) || ! isset( $op['state'] ) || 'complete' !== $op['state'] ||
+            ( $op['scope_fingerprint'] ?? '' ) !== $binding['scope_fingerprint'] ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
             ! hash_equals( self::digest( $op ), $expected ) )
             return self::err( 'mad4b_sync_archive_not_exact_complete', 'Only an exactly verified completed operation may be archived.' );
