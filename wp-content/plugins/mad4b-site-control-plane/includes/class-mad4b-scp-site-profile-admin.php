@@ -260,6 +260,11 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		$wordpress_default_production = 'production' === (string) $resolution['wordpress_environment'] && empty( $resolution['wordpress_environment_explicit'] );
 		$override_already_confirmed = ! empty( $profile['implicit_production_override_confirmed'] );
 		$sync_mode = (string) ( $status['environment_sync_mode'] ?? MAD4B_SCP_Site_Profile::ENV_SYNC_PROFILE_ONLY );
+		// First-time Staging enrollment should make Save sufficient for local
+		// wp-config correction. Respect an existing profile_only opt-out.
+		if ( empty( $status['configured'] ) && 'staging' === $selected_environment ) {
+			$sync_mode = MAD4B_SCP_Site_Profile::ENV_SYNC_HOST_MANAGED;
+		}
 		$sync_state = (string) ( $status['environment_sync_state'] ?? 'profile_only' );
 		$host_directive = 'awaiting_host_bootstrap' === $sync_state
 			&& ! empty( $status['authority_ready'] )
@@ -321,7 +326,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 							<option value="<?php echo esc_attr( $environment_option ); ?>" <?php echo $selected_environment === $environment_option ? 'selected' : ''; ?>><?php echo esc_html( ucfirst( $environment_option ) ); ?></option>
 						<?php endforeach; ?>
 						</select>
-						<p class="description"><?php esc_html_e( 'Profile Only can use the confirmed implicit WordPress Production default without editing wp-config.php. Host-Managed Sync requires an independent Host change before WordPress boots, plus exact readback. Explicit WordPress settings always win.', 'mad4b-site-control-plane' ); ?></p>
+						<p class="description"><?php esc_html_e( 'With Staging and Host-Managed Sync selected, Save automatically inserts the Staging environment setting into a writable standard wp-config.php. It takes effect on the next WordPress request. Explicit host settings always win; Profile Only disables file edits.', 'mad4b-site-control-plane' ); ?></p>
 					</td></tr>
 					<tr><th><label for="mad4b-environment-sync-mode"><?php esc_html_e( 'WordPress environment synchronization', 'mad4b-site-control-plane' ); ?></label></th><td>
 						<select id="mad4b-environment-sync-mode" name="environment_sync_mode">
