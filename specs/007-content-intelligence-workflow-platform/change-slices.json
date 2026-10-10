@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 610,
+  "changed_file_count": 613,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1230,8 +1230,19 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-source-contract.py"
       ]
+    },
+    {
+      "id": "feature007-imp13-commercial-source-and-archive-closure-20261010",
+      "semantic_unit": "IMP13: archive tombstone blocks subsequent review, append, approval and export, including during cleanup failures; actual source review rejects PHP-serialized relation payloads instead of only warning in schema mapping, improves exact validator UX labels, and shows bounded WordPress CPT onboarding when Profiles are empty. Native negative fixture and acceptance spec.",
+      "revert_boundary": "Reverting IMP13 archive tombstone fence or typed-commercial block requires independent existing source/approval review and staged cleanup. Never enable automated third-party writes from a source review. No Profile or Production edits are included.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp13-source-archival-and-commercial-review-closure.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp13-archival-and-commercial-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp13-commercial-source-safety-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "32add12e636a1632138cc8a8272558e553c719dc6ce401a3fa41600159f8ac5d",
+  "changed_paths_sha256": "7ab73986a952ba20249348cab78b47fb4646e0a48a798f7600886b4a49417c63",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
