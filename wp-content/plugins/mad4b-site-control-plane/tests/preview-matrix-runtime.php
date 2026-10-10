@@ -17,9 +17,12 @@ final class MAD4B_SCP_Site_Profile {
         return array(
             'configured' => true,
             'environment' => $GLOBALS['mad4b_preview_environment'],
+            'configured_environment' => 'staging',
+            'canonical_origin' => 'https://staging.allroyalegypt.com',
             'environment_match' => empty( $GLOBALS['mad4b_preview_profile_drift'] ),
             'origin_match' => empty( $GLOBALS['mad4b_preview_profile_drift'] ),
-            'exact_profile_bound' => true,
+            'deployment_binding_match' => true,
+            'authority_ready' => true,
         );
     }
 }
@@ -61,6 +64,10 @@ check( $plan['remaining_frontend_samples'] === 1, 'sample_gap' );
 check( $plan['staging_release_certified'] === false && $plan['mutation_performed'] === false, 'non_authorizing' );
 check( $plan['lanes']['native']['equivalent_to_http_timing'] === false, 'no_cli_http_equivalence' );
 check( $plan['lanes']['customizer']['equivalent_to_public_frontend'] === false, 'no_preview_public_equivalence' );
+check( $plan['lanes']['browser']['engine'] === 'mad4b_managed_browser_execution_providers_v2', 'existing_managed_browser_engine' );
+check( $plan['lanes']['browser']['approved_plan_ability'] === 'mad4b/browser-acceptance-plan', 'reuse_signed_plan' );
+check( $plan['lanes']['browser']['authoritative_result_ability'] === 'mad4b/browser-acceptance-result', 'reuse_authoritative_reducer' );
+check( $plan['lanes']['browser']['local_diagnostic_only'] === 'tools/mad4b-preview-matrix.py', 'diagnostics_are_non_authorizing' );
 $focused = MAD4B_SCP_Preview_Matrix::plan( array( 'target_path' => '/egypt-tours/', 'mode' => 'browser' ) );
 check( count( $focused['lanes'] ) === 1 && isset( $focused['lanes']['browser'] ), 'select_lane' );
 $invalid = MAD4B_SCP_Preview_Matrix::plan( array( 'target_path' => '/../../etc', 'mode' => 'all' ) );
