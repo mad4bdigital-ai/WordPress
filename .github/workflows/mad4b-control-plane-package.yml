@@ -123,6 +123,18 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
 
+      - name: Verify Staging Autopilot and guarded WordPress config sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-staging-autopilot.php"
+          php -l "$root/includes/class-mad4b-scp-site-profile-admin.php"
+          php -l "$root/includes/class-mad4b-scp-wp-config-environment-sync.php"
+          php -l "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
+
       - name: Verify Feature 007 release root-trust contract
         shell: bash
         run: |
