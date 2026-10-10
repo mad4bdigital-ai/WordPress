@@ -92,13 +92,13 @@ final class MAD4B_SCP_CSO_Secrets {
 	 */
 	public static function dispatch_native( $adapter, $input ) {
 		$p=self::$pending;
+		if(!is_array($p)||!is_array($input)||$p['used']||$adapter!==$p['provider']['adapter']||$input!==$p['target']) return self::error('private_callback_unavailable');
         // Repeat the physical environment fence immediately before native callbacks.
         if ( ! function_exists( 'wp_get_environment_type' ) ||
             ! is_array( $p['scope'] ?? null ) ||
             ! hash_equals( (string) ( $p['scope']['environment'] ?? '' ),
                 (string) wp_get_environment_type() ) )
             return self::error( 'wordpress_environment_mismatch' );
-		if(!is_array($p)||!is_array($input)||$p['used']||$adapter!==$p['provider']['adapter']||$input!==$p['target']) return self::error('private_callback_unavailable');
 		if(!class_exists('MAD4B_SCP_Authorization')||!MAD4B_SCP_Authorization::execution_callback_started($p['ability'])||!MAD4B_SCP_Execution_Fence::has_active_frame()) return self::error('native_execution_entry_required');
 		self::$pending['used']=true;
 		$guard=MAD4B_SCP_CSO_Scope::assert_current($p['scope']); if(is_wp_error($guard)) return $guard;
