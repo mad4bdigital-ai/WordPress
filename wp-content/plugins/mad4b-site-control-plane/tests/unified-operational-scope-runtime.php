@@ -39,6 +39,13 @@ $GLOBALS['mad4b_options'] = array(
 $scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
 check( ! is_wp_error( $scope ) && $scope['brand_ref'] === $GLOBALS['brand_id'], 'trusted scope resolved' );
 check( ! is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_brand( $GLOBALS['brand_id'], $scope ) ), 'own brand accepted' );
+$stale_scope = $scope;
+$stale_scope['brand_ref'] = str_repeat( 'b', 32 );
+check( is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_brand( $GLOBALS['brand_id'], $stale_scope ) ), 'caller-provided foreign brand assertion rejected' );
+$stale_scope = $scope;
+$stale_scope['blog_id'] = 99;
+check( is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_brand( $GLOBALS['brand_id'], $stale_scope ) ), 'caller-provided stale blog scope rejected' );
+
 check( is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_brand( str_repeat( 'b', 32 ), $scope ) ), 'foreign brand rejected' );
 $source = static function ( $id, $brand ) {
     return array( 'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT, 'source_id' => $id,
@@ -50,6 +57,8 @@ $sources = array(
     'foreign' => $source( 'foreign', str_repeat( 'b', 32 ) ),
     'missing' => $source( 'missing', '' ),
 );
+check( MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $sources['own'], $scope ), 'owned source stays in bound scope' );
+check( ! MAD4B_SCP_Operational_Scope_Guard::source_in_scope( $sources['own'], $stale_scope ), 'stale asserted scope cannot authorize owned source' );
 $ref = new ReflectionClass( 'MAD4B_SCP_Context_Authority' );
 $source_filter = $ref->getMethod( 'authorized_sources_from_records' );
 $source_filter->setAccessible( true );
