@@ -146,32 +146,41 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 		$this->add_ability(
 			'context/brand-core-control-loop',
-			'Recover, Update and Certify Existing Brand Core (Read-Only Guided Loop)',
+			'Recover and Certify Brand Core from Existing Authority',
 			'brand_core_control_loop',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/legacy-reconciliation-census',
-			'Review Quarantined Legacy Brand Ownership Counts (No Transfer)',
+			'Review Quarantined Legacy Brand Counts',
 			'legacy_reconciliation_census',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/legacy-owner-transfer-discover',
-			'Discover Owner-Reviewable Existing Legacy Sources without Adopting',
+			'Discover Unbound Legacy Sources Requiring Owner Review',
 			'legacy_owner_transfer_discover',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
 		);
 		$this->add_ability(
 			'context/legacy-owner-transfer-plan',
-			'Plan One Exact Unbound Legacy Brand Source Transfer',
+			'Plan One Reviewed Unbound Legacy Context Source',
 			'legacy_owner_transfer_plan',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
-			$this->schema( array(
-				'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-readback',
+			'Verify Transfer Postconditions without Reusing Reviews',
+			'legacy_owner_transfer_readback',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+		$this->add_ability(
+			'context/brand-reconstruction-plan',
 			'Plan Governed Brand Context Reconstruction',
 			'brand_reconstruction_plan',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
@@ -315,38 +324,51 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$write_permission = array( 'MAD4B_SCP_Policy', 'can_admin' );
 		$this->add_ability(
 			'context/brand-profile-save',
-			'Save Exact Brand Identity with Revision and Owner Approval',
+			'Save Exact Existing Brand Identity with CAS',
 			'brand_profile_save',
 			$write_permission,
 			$this->schema( array(
-				'brand_name' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 200 ),
-				'expected_brand_id' => array( 'type' => 'string', 'maxLength' => 32 ),
-				'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
-				'confirm_identity_preserving_rename' => array( 'type' => 'boolean', 'default' => false ),
-			), array( 'brand_name', 'expected_brand_id', 'expected_revision' ) ),
+				'brand_name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+				'expected_brand_id'=>array('type'=>'string','maxLength'=>32),
+				'expected_revision'=>array('type'=>'integer','minimum'=>0),
+				'confirm_identity_preserving_rename'=>array('type'=>'boolean','default'=>false),
+			), array('brand_name','expected_brand_id','expected_revision')),
 			'write', false, true, false
 		);
 		$this->add_ability(
 			'context/governed-source-upsert',
-			'Upsert Existing Single Governed Drive Source (Never Adopt Quarantine)',
+			'Upsert Existing Governed Drive Source Without Adopting Quarantine',
 			'governed_source_upsert',
 			$write_permission,
 			$this->schema( array(
-				'external_root_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 255 ),
-				'label' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 200 ),
-				'write_policy' => array( 'type' => 'string', 'enum' => array( 'read_only', 'repair_only', 'managed' ), 'default' => 'read_only' ),
-				'recursive' => array( 'type' => 'boolean', 'default' => true ),
-				'write_policy_confirmed' => array( 'type' => 'boolean', 'default' => false ),
-				'recursive_scope_confirmed' => array( 'type' => 'boolean', 'default' => false ),
-				'expected_registry_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
-				'expected_authority_manifest_fingerprint' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+				'external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+				'label'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+				'write_policy'=>array('type'=>'string','enum'=>array('read_only','repair_only','managed'),'default'=>'read_only'),
+				'recursive'=>array('type'=>'boolean','default'=>true),
+				'write_policy_confirmed'=>array('type'=>'boolean','default'=>false),
+				'recursive_scope_confirmed'=>array('type'=>'boolean','default'=>false),
+				'expected_registry_revision'=>array('type'=>'integer','minimum'=>0),
+				'expected_authority_manifest_fingerprint'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+			), array('external_root_id','label','write_policy','expected_registry_revision','expected_authority_manifest_fingerprint')),
+			'write', false, true, false
+		);
 		$this->add_ability(
 			'context/legacy-owner-transfer-apply',
-			'Adopt One Reviewed Unbound Legacy Source on Staging Only',
+			'Approve Exact Unbound Legacy Brand Context Transfer',
 			'legacy_owner_transfer_apply',
 			$write_permission,
 			$this->schema( array(
-				'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+				'source_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+				'expected_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+				'expected_brand_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+				'reviewed_external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+				'owner_evidence_reference'=>array('type'=>'string','minLength'=>12,'maxLength'=>500),
+				'confirmation'=>array('type'=>'string','enum'=>array('APPROVE EXACT UNBOUND BRAND TRANSFER')),
+			), array('source_id','expected_plan_sha256','expected_brand_id','reviewed_external_root_id','owner_evidence_reference','confirmation')),
+			'write', false, true, false
+		);
+		$this->add_ability(
+			'context/create-drive-asset',
 			'Create Google Drive Context Asset',
 			'create_drive_asset',
 			$write_permission,
@@ -541,17 +563,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
-		if ( in_array( $ability_name, array( 'context/brand-profile-save', 'context/governed-source-upsert',
-			'context/legacy-owner-transfer-apply' ), true ) ) {
-			// These are audited WordPress registry mutations, not Drive file
-			// writes. Requiring an already selected Drive folder would deadlock
-			// first-time enrollment/legacy recovery. Independent permission,
-			// exact approval and scope checks still run for EVERY invocation.
-			$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
-			return 'staging' === (string) ( $site['environment'] ?? '' )
-				&& ! empty( $site['origin_match'] ) && ! empty( $site['environment_match'] )
-				? true : new WP_Error( 'mad4b_brand_registry_write_staging_only',
-					'Brand recovery registry mutation is not eligible outside the exact enrolled Staging site.' );
+		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply'), true ) ) {
+			$site = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
+			return 'staging' === (string)($site['environment'] ?? '') &&
+				!empty($site['origin_match']) && !empty($site['environment_match']) ? true
+				: new WP_Error('mad4b_brand_registry_staging_only','Governed Brand Registry writes are exact Staging only.');
 		}
 		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/brand-draft-create', 'context/source-scan-apply' ), true ) ) {
 			return true;
@@ -978,69 +994,52 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function brand_core_control_loop( $input = array() ) {
 		return MAD4B_SCP_Brand_Core_Control_Loop::status( $input );
 	}
-
 	public function legacy_reconciliation_census( $input = array() ) {
-		if ( ! is_array( $input ) || $input )
-			return new WP_Error( 'mad4b_brand_legacy_census_input_invalid', 'Census is read-only and accepts no caller-controlled scope.' );
+		if ( !is_array($input) || $input ) return new WP_Error('mad4b_brand_census_input_invalid','Census is read-only.');
 		return MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
 	}
-
-	public function brand_profile_save( $input ) {
-		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_brand_profile_input_invalid', 'Exact Brand Profile input required.' );
-		$existing = MAD4B_SCP_Context_Authority::profile();
-		$current_id = strtolower( trim( (string) ( $existing['brand_id'] ?? '' ) ) );
-		$expected_id = strtolower( trim( (string) ( $input['expected_brand_id'] ?? '' ) ) );
-		if ( ! hash_equals( $current_id, $expected_id )
-			|| (int) ( $existing['revision'] ?? 0 ) !== (int) ( $input['expected_revision'] ?? -1 ) )
-			return new WP_Error( 'mad4b_brand_profile_stale_owner_assertion', 'Brand identity changed; refresh the exact Profile before an approved write.' );
-		if ( '' !== $current_id && (string) ( $existing['brand_name'] ?? '' ) === trim( (string) ( $input['brand_name'] ?? '' ) ) )
-			return array( 'contract' => 'mad4b.brand-profile-exact-noop.v1', 'state' => 'already_current',
-				'brand_id' => $current_id, 'revision' => (int) $existing['revision'], 'mutation_performed' => false );
-		return MAD4B_SCP_Context_Authority::save_profile( (string) ( $input['brand_name'] ?? '' ), array(
-			'expected_brand_id' => $expected_id,
-			'expected_revision' => (int) ( $input['expected_revision'] ?? 0 ),
-			'confirm_identity_preserving_rename' => ! empty( $input['confirm_identity_preserving_rename'] ),
-		) );
-	}
-
-	public function governed_source_upsert( $input ) {
-		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_brand_source_input_invalid', 'Exact bounded source input required.' );
-		$status = MAD4B_SCP_Context_Authority::status();
-		if ( ! is_array( $status ) || ! empty( $status['quarantined_source_record_count'] )
-			|| ! empty( $status['quarantined_asset_record_count'] ) ) {
-			return new WP_Error( 'mad4b_brand_source_quarantine_recovery_required',
-				'An existing quarantined source or asset must be independently reviewed before a second governed source is added.' );
-		}
-		return MAD4B_SCP_Context_Authority::upsert_source( array(
-			'provider' => 'google_drive',
-			'mode' => 'governed',
-			'external_root_id' => (string) ( $input['external_root_id'] ?? '' ),
-			'label' => (string) ( $input['label'] ?? '' ),
-			'write_policy' => (string) ( $input['write_policy'] ?? 'read_only' ),
-			'recursive' => ! empty( $input['recursive'] ),
-			'write_policy_confirmed' => ! empty( $input['write_policy_confirmed'] ),
-			'recursive_scope_confirmed' => ! empty( $input['recursive_scope_confirmed'] ),
-			'expected_registry_revision' => (int) ( $input['expected_registry_revision'] ?? -1 ),
-			'expected_authority_manifest_fingerprint' => (string) ( $input['expected_authority_manifest_fingerprint'] ?? '' ),
-		) );
-	}
-
 	public function legacy_owner_transfer_discover( $input = array() ) {
-		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover( $input );
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover($input);
 	}
-
 	public function legacy_owner_transfer_plan( $input ) {
-		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan( is_array( $input ) ? $input : array() );
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan($input);
 	}
-
-	public function legacy_owner_transfer_apply( $input ) {
-		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $input );
-	}
-
 	public function legacy_owner_transfer_readback( $input ) {
-		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback( is_array( $input ) ? $input : array() );
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback($input);
 	}
-
+	public function legacy_owner_transfer_apply( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply($input);
+	}
+	public function brand_profile_save( $input ) {
+		$current = MAD4B_SCP_Context_Authority::profile();
+		if ( (string)($current['brand_id']??'') !== (string)($input['expected_brand_id']??'')
+			|| (int)($current['revision']??0) !== (int)($input['expected_revision']??-1) )
+			return new WP_Error('mad4b_brand_profile_stale','Exact Brand revision and identity required.');
+		if ( !empty($current) && (string)$current['brand_name'] === trim((string)$input['brand_name']) )
+			return array('state'=>'already_current','mutation_performed'=>false);
+		return MAD4B_SCP_Context_Authority::save_profile((string)$input['brand_name'], array(
+			'expected_brand_id'=>(string)($input['expected_brand_id']??''),
+			'expected_revision'=>(int)($input['expected_revision']??0),
+			'confirm_identity_preserving_rename'=>!empty($input['confirm_identity_preserving_rename']),
+		));
+	}
+	public function governed_source_upsert( $input ) {
+		$status = MAD4B_SCP_Context_Authority::status();
+		if ( !is_array($status) || !empty($status['quarantined_source_record_count'])
+			|| !empty($status['quarantined_asset_record_count']) )
+			return new WP_Error('mad4b_brand_source_quarantine_first','Quarantined records must be reviewed before source creation.');
+		return MAD4B_SCP_Context_Authority::upsert_source(array(
+			'provider'=>'google_drive','mode'=>'governed',
+			'external_root_id'=>(string)($input['external_root_id']??''),
+			'label'=>(string)($input['label']??''),
+			'write_policy'=>(string)($input['write_policy']??'read_only'),
+			'recursive'=>!empty($input['recursive']),
+			'write_policy_confirmed'=>!empty($input['write_policy_confirmed']),
+			'recursive_scope_confirmed'=>!empty($input['recursive_scope_confirmed']),
+			'expected_registry_revision'=>(int)($input['expected_registry_revision']??-1),
+			'expected_authority_manifest_fingerprint'=>(string)($input['expected_authority_manifest_fingerprint']??''),
+		));
+	}
 	public function brand_reconstruction_plan( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Reconstruction::plan( is_array( $input ) ? $input : array() );
 	}
