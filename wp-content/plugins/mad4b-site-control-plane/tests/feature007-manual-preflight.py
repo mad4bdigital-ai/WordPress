@@ -154,6 +154,7 @@ PY_CHECKS = (
     "imp08-batch-source-contract.py",
     "imp09-import-acceptance-source-contract.py",
     "imp10-mapping-wpml-source-contract.py",
+    "imp11-batch-mapping-source-contract.py",
     "chatgpt-dynamic-tool-projection-contract.py",
     "host-runner-kernel-contract.py",
     "host-environment-sync-runner-contract.py",
