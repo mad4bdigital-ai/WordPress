@@ -87,6 +87,8 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'mad4b_import_snapshot_readback_failed' => 'The source was not independently confirmed in encrypted storage. Contact the site administrator; no import was started.',
             'mad4b_import_snapshot_encrypt' => 'The server could not encrypt the source. Ask the host administrator to check encrypted storage.',
             'mad4b_import_snapshot_size' => 'The source exceeds the secure review size limit. Use a separately certified batched mode.',
+            'mad4b_import_warning_ack_confirmation_missing' => 'Check the acknowledgement box before approving the full business warning count.',
+            'mad4b_import_warning_acknowledgement_mismatch' => 'The business warning totals changed. Refresh the source review and confirm the new exact count.',
         );
         return isset( $map[ $code ] ) ? $map[ $code ] :
             'Read the diagnostic, check the site configuration and retry only after the underlying issue is resolved.';
