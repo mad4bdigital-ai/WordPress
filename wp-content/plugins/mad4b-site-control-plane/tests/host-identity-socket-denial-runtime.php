@@ -11,6 +11,10 @@ function apply_filters( $name, $value, ...$args ) {
 	return array( 'verified' => true );
 }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+final class MAD4B_SCP_Host_Bridge {
+	public static $test_target = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+	public static function target_fingerprint_readonly() { return self::$test_target; }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-host-identity-live.php';
 $site = array(
 	'configured' => true, 'authority_ready' => true,
