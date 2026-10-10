@@ -800,6 +800,37 @@ jobs:
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py
 
+  staging-autopilot-gates-native:
+    if: github.event_name == 'pull_request'
+    name: Staging Autopilot Recovery Gates PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact source guard
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Local Staging Autopilot, profile and bootstrap refusal cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for file in "$root/includes/class-mad4b-scp-staging-autopilot.php" "$root/includes/class-mad4b-scp-site-profile-admin.php" "$root/includes/class-mad4b-scp-site-profile.php" "$root/tests/staging-autopilot-runtime.php" "$root/tests/site-profile-wp-config-auto-sync-runtime.php"; do
+            php -l "$file"
+          done
+          php "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
+
   cso01-governed-interaction-native:
     if: github.event_name == 'pull_request'
     name: CSO01 interaction, first-party and credential boundaries PHP ${{ matrix.php }}
