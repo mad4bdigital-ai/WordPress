@@ -117,6 +117,41 @@ class MultiEnvironmentCITest(unittest.TestCase):
         self.assertNotIn("wp plugin update", text)
         self.assertNotIn("sshpass", text)
 
+    def test_manifest_is_pinned_to_exact_candidate_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools"
+            path.mkdir()
+            gate = {"name": "dynamic-branch-test", "language": "php",
+                    "file": "staging-source-selector-runtime.php",
+                    "args": [], "profiles": ["core", "extended"]}
+            data = {"contract": "mad4b.local-ci-gate-manifest.v1",
+                    "non_authorizing": True, "github_workflows_fully_represented": False,
+                    "gates": [gate]}
+            (path / "mad4b-local-ci-gates.json").write_text(json.dumps(data), encoding="utf-8")
+            cases, fingerprint = runner.load_manifest(Path(tmp), "core")
+            self.assertEqual([("dynamic-branch-test", "php", gate["file"])], cases)
+            self.assertEqual(64, len(fingerprint))
+
+    def test_manifest_refuses_arbitrary_commands_and_traversal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools"
+            path.mkdir()
+            obj = {"contract": "mad4b.local-ci-gate-manifest.v1",
+                   "non_authorizing": True, "github_workflows_fully_represented": False,
+                   "gates": [{
+                       "name": "arbitrary-command", "language": "php",
+                       "file": "../../do-evil.php", "args": [],
+                       "profiles": ["extended"]}]}
+            file = path / "mad4b-local-ci-gates.json"
+            file.write_text(json.dumps(obj), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                runner.load_manifest(Path(tmp), "extended")
+            obj["gates"][0]["file"] = "staging-source-selector-runtime.php"
+            obj["gates"][0]["args"] = ["; rm -rf /"]
+            file.write_text(json.dumps(obj), encoding="utf-8")
+            with self.assertRaises(ValueError):
+                runner.load_manifest(Path(tmp), "extended")
+
     def test_core_is_subset_of_extended(self):
         available = {r[0] for r in runner.GATES}
         self.assertGreaterEqual(len(runner.GATES), 20)
