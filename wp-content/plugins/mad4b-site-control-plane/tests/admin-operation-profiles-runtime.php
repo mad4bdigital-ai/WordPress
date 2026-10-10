@@ -29,10 +29,11 @@ function add_option( $key, $value, $deprecated = '', $autoload = false ) {
 }
 function delete_option( $key ) { unset( $GLOBALS['store'][$key] ); return true; }
 class MAD4B_SCP_Operation_Registry {
+ public static $risk = 'high';
  public static function operation( $id ) {
   return 'wordpress.settings.example' === $id
     ? array( 'id' => $id, 'planner' => 'mad4b/target-plan',
-      'executor' => 'mad4b/target-apply', 'target_kind' => 'settings', 'risk' => 'high' )
+      'executor' => 'mad4b/target-apply', 'target_kind' => 'settings', 'risk' => self::$risk )
     : new WP_Error( 'unregistered_operation' );
  }
  public static function status() {
@@ -132,6 +133,27 @@ check( is_wp_error($c::apply($write)), 'same plan cannot replay after committed 
 $handoff=$c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array('mode'=>'advanced','dry_run'=>true)));
 check( !is_wp_error($handoff) && $handoff['planner_input']['mode']==='advanced', 'typed runtime parameter override' );
 check( $handoff['next_ability']==='mad4b/target-plan' && $handoff['original_executor']==='mad4b/target-apply', 'original MCP planner/executor bound' );
+MAD4B_SCP_Operation_Registry::$risk='critical';
+check( is_wp_error($c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array()))),
+ 'Updated source-owned operation policy invalidates previously saved profile' );
+$stale=$c::discover(array());
+check($stale['operations'][0]['stale_profile_requires_reapproval'] && !$stale['operations'][0]['enabled'],
+ 'Stale provider risk/schema marked for owner reapproval, not auto-migrated');
+MAD4B_SCP_Operation_Registry::$risk='high';
+$manual=$profile;$manual['approval_mode']='manual_only';
+$manual_args=array('operation_id'=>'wordpress.settings.example','reason'=>$reason,'profile'=>$manual);
+$manual_plan=$c::plan($manual_args);
+check(!is_wp_error($manual_plan),'Manual-only policy can be configured');
+$manual_apply=$c::apply($manual_args+array('expected_plan_sha256'=>$manual_plan['plan_sha256'],
+ 'confirmation'=>$c::CONFIRM));
+check(!is_wp_error($manual_apply),'Owner can save stricter manual-only profile');
+check(is_wp_error($c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array()))),
+ 'Manual-only setting cannot be remotely resolved into execution');
+$restore=$c::plan($args);
+check(!is_wp_error($restore),'Owner can plan restoring MCP after fresh approval');
+$restore_write=$c::apply($args+array('expected_plan_sha256'=>$restore['plan_sha256'],
+ 'confirmation'=>$c::CONFIRM));
+check(!is_wp_error($restore_write),'Restoring owner-confirm requires another governed change');
 Test_Ability::$reject=true;
 check( is_wp_error($c::resolve(array('operation_id'=>'wordpress.settings.example','values'=>array()))), 'original planner schema is authoritative' );
 Test_Ability::$reject=false;
