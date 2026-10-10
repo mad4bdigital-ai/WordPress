@@ -16,6 +16,8 @@ ck( !is_wp_error( $review ) &&
     isset( $review['issue_counts_by_reason']['invalid_wordpress_post_status'] ) &&
     isset( $review['issue_counts_by_reason']['serialized_relation_requires_certified_driver'] ),
     'Commercial source currency/status/serialized relation was silently approved.' );
+$prior_snapshot = get_option( $storeKey, false );
+delete_option( $storeKey ); // isolated fixture: prior approved source is not deleted on a real site
 $review_only = MAD4B_SCP_Activity_Import_Snapshot::stage(
     'pricing', $commercial, $review, 'admin_csv_upload', 'test-admin' );
 ck( !is_wp_error( $review_only ),
@@ -24,6 +26,7 @@ $rejected = MAD4B_SCP_Activity_Import_Snapshot::approve(
     'pricing', $review_only['snapshot_sha256'], true );
 ck( is_wp_error( $rejected ),
     'Blocking serialized relationship payload was approved for export.' );
+$GLOBALS['imp01_options'][ $storeKey ] = $prior_snapshot;
 $normalized = $commercial;
 $normalized['rows'][0]['base_currency'] = 'EUR';
 $normalized['rows'][0]['_wpml_import_after_process_post_status'] = 'draft';
