@@ -99,8 +99,10 @@ def browser_observations(args, base):
     output = []
     with sync_playwright() as play:
         browser = play.chromium.launch(headless=not args.headed)
+        viewport_dimensions = {"desktop": (1365, 900), "tablet": (820, 1180), "mobile": (390, 844)}
+        width, height = viewport_dimensions[args.viewport]
         context = browser.new_context(storage_state=args.storage_state or None,
-                                      service_workers="block", viewport={"width": 1365, "height": 900})
+                                      service_workers="block", viewport={"width": width, "height": height})
         context.set_default_timeout(args.timeout_ms)
         for mode in args.modes:
             if mode == "native":
@@ -126,12 +128,14 @@ def browser_observations(args, base):
                     started = time.perf_counter()
                     result = {
                         "mode": mode, "path": urlparse(target_url).path or "/",
-                        "sample_index": index + 1, "http_status": None,
+                        "sample_index": index + 1, "viewport": args.viewport, "http_status": None,
                         "iframe_same_origin": None, "js_error_count": None,
                         "ajax_request_count": None, "ajax_5xx_count": None,
                         "browser_elapsed_ms": None, "foreign_requests_blocked": None,
                         "server_elapsed_ms": None, "db_queries": None,
-                        "peak_memory_bytes": None, "accepted_as_frontend_http": mode == "browser",
+                        "peak_memory_bytes": None, "listing_item_count": None,
+                        "listing_identity_digest": None, "heading_present": None,
+                        "accepted_as_frontend_http": mode == "browser",
                         "accepted_as_external_signed_receipt": False,
                     }
                     try:
@@ -141,6 +145,8 @@ def browser_observations(args, base):
                         result["http_status"] = response.status if response else None
                         if urlparse(page.url).netloc.lower() != urlparse(base).netloc:
                             raise ValueError("CROSS_ORIGIN_REDIRECT")
+                        if page.url.startswith(base + "/wp-login.php"):
+                            raise ValueError("AUTHENTICATION_REDIRECT")
                         if mode == "customizer":
                             iframe = page.locator("#customize-preview-iframe")
                             iframe.wait_for(state="attached", timeout=args.timeout_ms)
@@ -149,9 +155,19 @@ def browser_observations(args, base):
                                 frame and urlparse(frame.url).netloc.lower() == urlparse(base).netloc)
                             if not result["iframe_same_origin"]:
                                 raise ValueError("CUSTOMIZER_PREVIEW_NOT_SAME_ORIGIN")
+                            if (urlparse(frame.url).path or "/").rstrip("/") != (urlparse(target_url).path or "/").rstrip("/"):
+                                raise ValueError("CUSTOMIZER_PREVIEW_TARGET_DRIFT")
                         elif args.scroll:
                             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                             page.wait_for_timeout(750)
+                        page.wait_for_timeout(1000)
+                        observed_frame = frame if mode == "customizer" else page
+                        ids = observed_frame.locator("[data-post-id]").evaluate_all(
+                            "(nodes) => nodes.slice(0, 300).map(el => el.getAttribute('data-post-id')).filter(Boolean)")
+                        result["listing_item_count"] = len(ids)
+                        result["listing_identity_digest"] = hashlib.sha256(
+                            json.dumps(sorted(ids)).encode("utf-8")).hexdigest() if ids else None
+                        result["heading_present"] = observed_frame.locator("h1").count() > 0
                     except Exception as error:
                         result["observation_error"] = type(error).__name__[:64]
                     finally:
@@ -217,6 +233,7 @@ def parse_args(argv=None):
     parser.add_argument("--wp-cli", default="wp")
     parser.add_argument("--native-rest", action="store_true", help="Allowlisted core GET /wp/v2/types")
     parser.add_argument("--scroll", action="store_true")
+    parser.add_argument("--viewport", choices=("desktop", "tablet", "mobile"), default="desktop")
     parser.add_argument("--headed", action="store_true")
     parser.add_argument("--timeout-ms", type=int, default=25000)
     parser.add_argument("--output", required=True)
@@ -247,7 +264,7 @@ def main(argv=None):
     report = {
         "contract": CONTRACT, "observed_at": datetime.now(timezone.utc).isoformat(),
         "origin": base, "expected_source_sha": args.expected_source_sha,
-        "modes": args.modes, "rows": rows, "summary": report_summary(rows),
+        "modes": args.modes, "viewport": args.viewport, "rows": rows, "summary": report_summary(rows),
         "evidence_class": "LOCAL_READ_ONLY_NON_AUTHORIZING",
         "remote_queue_completion_performed": False, "external_mcp_attestation_performed": False,
         "limitations": [
