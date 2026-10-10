@@ -17,7 +17,53 @@ function add_option( $key, $value, $ignored = '', $autoload = false ) {
     $GLOBALS['imp01_options'][ $key ] = $value;
     return true;
 }
-function delete_option( $key ) { unset( $GLOBALS['imp01_options'][ $key ] ); return true; }
+function delete_option( $key ) {
+    unset( $GLOBALS['imp01_options'][ $key ],
+        $GLOBALS['imp01_sql_options'][ $key ] );
+    return true;
+}
+function maybe_serialize( $value ) {
+    return is_array( $value ) || is_object( $value ) ?
+        serialize( $value ) : (string) $value;
+}
+// Simulated SQL UNIQUE option_name semantics, separate from add_option():
+// INSERT IGNORE cannot overwrite an existing immutable review or approval.
+$GLOBALS['imp01_sql_options'] = array();
+class IMP01_Atomic_Option_SQL {
+    public $options = 'wp_options';
+    public function prepare( $query, ...$args ) {
+        return array( 'sql' => $query, 'args' => $args );
+    }
+    public function query( $prepared ) {
+        $sql = $prepared['sql'];
+        $a = $prepared['args'];
+        if ( strpos( $sql, 'INSERT IGNORE INTO' ) !== false ) {
+            if ( array_key_exists( $a[0], $GLOBALS['imp01_options'] ) ||
+                array_key_exists( $a[0], $GLOBALS['imp01_sql_options'] ) )
+                return 0;
+            $GLOBALS['imp01_sql_options'][ $a[0] ] = $a[1];
+            $decoded = @unserialize( $a[1], array( 'allowed_classes' => false ) );
+            $GLOBALS['imp01_options'][ $a[0] ] =
+                false !== $decoded ? $decoded : $a[1];
+            return 1;
+        }
+        if ( strpos( $sql, 'DELETE FROM' ) !== false ) {
+            if ( ! isset( $GLOBALS['imp01_sql_options'][ $a[0] ] ) ||
+                $GLOBALS['imp01_sql_options'][ $a[0] ] !== $a[1] )
+                return 0;
+            delete_option( $a[0] );
+            return 1;
+        }
+        throw new RuntimeException( 'Unrecognized isolated SQL mutation' );
+    }
+    public function get_var( $prepared ) {
+        $key = $prepared['args'][0];
+        return array_key_exists( $key, $GLOBALS['imp01_sql_options'] ) ?
+            $GLOBALS['imp01_sql_options'][ $key ] : null;
+    }
+}
+$GLOBALS['wpdb'] = new IMP01_Atomic_Option_SQL();
+
 class IMP01_Test_Request {
     private $body; private $signature;
     function __construct( $body, $signature ) { $this->body = $body; $this->signature = $signature; }
