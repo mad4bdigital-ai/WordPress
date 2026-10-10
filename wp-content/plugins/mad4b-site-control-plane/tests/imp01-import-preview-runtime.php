@@ -34,7 +34,7 @@ class WP_Error {
     function get_error_code() { return $this->code; }
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
-function current_user_can( $cap ) { return true; }
+function current_user_can( $cap ) { return empty( $GLOBALS['imp07_anonymous_sender'] ); }
 function get_current_user_id() { return 9; }
 function apply_filters( $hook, $value ) {
     if ( 'mad4b_activity_import_mode_manifests' === $hook &&
@@ -201,9 +201,11 @@ $packet = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
 $raw = json_encode( $packet );
 $sig = hash_hmac( 'sha256', $raw, MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS['rates_appscript']['secret'] );
 $request = new IMP01_Test_Request( $raw, $sig );
+$GLOBALS['imp07_anonymous_sender'] = true;
 $permission = MAD4B_SCP_Activity_Import_Review::authorize_signed( $request );
 ck( true === $permission, 'Signed review intake signature unexpectedly refused' );
 $accepted = MAD4B_SCP_Activity_Import_Review::receive_signed( $request );
+unset( $GLOBALS['imp07_anonymous_sender'] );
 ck( !is_wp_error( $accepted ) && $accepted['staged'] &&
     $accepted['post_writes'] === 0, 'Verified Apps Script inbox must stage review only' );
 $review = MAD4B_SCP_Activity_Import_Review::review( array( 'profile_slug' => 'pricing' ) );
