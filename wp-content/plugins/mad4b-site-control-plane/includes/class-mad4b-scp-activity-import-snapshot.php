@@ -46,7 +46,33 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
             MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
     }
+    /**
+     * One exact Profile source inbox reservation for append/approval/export
+     * and archival. No output handler may exit before lock release.
+     */
+    private static function source_with_lock( $slug, $operation, $callback ) {
+        if ( ! self::environment_ready() ||
+            ( 'append' !== $operation && ! current_user_can( 'manage_options' ) ) )
+            return self::err( 'mad4b_import_source_operation_denied',
+                'Exact enrolled Staging source authority required.' );
+        $lock = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, $operation );
+        if ( is_wp_error( $lock ) ) return $lock;
+        try {
+            $result = call_user_func( $callback );
+        } catch ( \Throwable $unexpected ) {
+            return self::err( 'mad4b_import_source_operation_interrupted',
+                'Review operation stopped unexpectedly. Lock retained for independent recovery.' );
+        }
+        $released = MAD4B_SCP_Batch_Atomic_Mutex::release( $lock );
+        if ( is_wp_error( $released ) ) return $released;
+        return $result;
+    }
     public static function stage( $slug, $input, $preview, $source_mode, $source_identity = '' ) {
+        return self::source_with_lock( $slug, 'append', function() use ( $slug, $input, $preview, $source_mode, $source_identity ) {
+            return self::stage_unlocked( $slug, $input, $preview, $source_mode, $source_identity );
+        } );
+    }
+    private static function stage_unlocked( $slug, $input, $preview, $source_mode, $source_identity = '' ) {
         if ( ! self::environment_ready() ) return self::err( 'mad4b_import_snapshot_staging_only', 'Staging enrolled site required.' );
         $key = self::data_key();
         if ( is_wp_error( $key ) ) return $key;
@@ -144,6 +170,11 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
         return true;
     }
     public static function approve( $slug, $expected_sha, $confirmed, $acknowledged_warning_count = 0 ) {
+        return self::source_with_lock( $slug, 'approve', function() use ( $slug, $expected_sha, $confirmed, $acknowledged_warning_count ) {
+            return self::approve_unlocked( $slug, $expected_sha, $confirmed, $acknowledged_warning_count );
+        } );
+    }
+    private static function approve_unlocked( $slug, $expected_sha, $confirmed, $acknowledged_warning_count = 0 ) {
         if ( ! current_user_can( 'manage_options' ) || ! self::environment_ready() ||
             true !== $confirmed )
             return self::err( 'mad4b_import_approval_denied', 'Exact administrator approval is required.' );
@@ -266,6 +297,68 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
      * a partial, misleading "approved" download in the operator's browser.
      */
     public static function export_approved_csv( $slug, $snapshot_sha ) {
+        return self::source_with_lock( $slug, 'export', function() use ( $slug, $snapshot_sha ) {
+            return self::export_approved_csv_unlocked( $slug, $snapshot_sha );
+        } );
+    }
+    /** Idempotent audited source cleanup; no WordPress post mutation. */
+    public static function archive_exact_review( $slug, $expected_payload_sha, $snapshot_sha ) {
+        return self::source_with_lock( $slug, 'archive',
+            function() use ( $slug, $expected_payload_sha, $snapshot_sha ) {
+                if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', (string) $slug ) ||
+                    ! preg_match( '/^[a-f0-9]{64}$/D', (string) $expected_payload_sha ) ||
+                    ! preg_match( '/^[a-f0-9]{64}$/D', (string) $snapshot_sha ) )
+                    return self::err( 'mad4b_import_archive_identity_invalid',
+                        'Exact review source identity and both hashes required.' );
+                $archive = self::archive_key( $slug, $snapshot_sha );
+                $prior = get_option( $archive, false );
+                $store = self::option_key( $slug );
+                $state = get_option( $store, false );
+                if ( false !== $prior &&
+                    ( ! is_array( $prior ) ||
+                      ( $prior['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid() ||
+                      ( $prior['profile_slug'] ?? '' ) !== $slug ||
+                      ( $prior['payload_sha256'] ?? '' ) !== $expected_payload_sha ||
+                      ( $prior['snapshot_sha256'] ?? '' ) !== $snapshot_sha ) )
+                    return self::err( 'mad4b_import_archive_audit_mismatch',
+                        'Existing archive intent does not match this exact source.' );
+                if ( false === $state ) {
+                    if ( ! is_array( $prior ) )
+                        return self::err( 'mad4b_import_archive_unknown_source',
+                            'No exact source or immutable archive record exists.' );
+                    return array( 'archived' => true, 'audit_recorded' => true,
+                        'already_cleaned' => true, 'post_writes' => 0 );
+                }
+                if ( ! is_array( $state ) ||
+                    ! isset( $state['snapshot_sha256'], $state['payload_sha256'] ) ||
+                    ! hash_equals( (string) $state['snapshot_sha256'], $snapshot_sha ) ||
+                    ! hash_equals( (string) $state['payload_sha256'],
+                        $expected_payload_sha ) )
+                    return self::err( 'mad4b_import_archive_source_changed',
+                        'Source is not the reviewed snapshot confirmed by the operator.' );
+                if ( false === $prior ) {
+                    $record = array(
+                        'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+                        'profile_slug' => $slug,
+                        'payload_sha256' => $expected_payload_sha,
+                        'snapshot_sha256' => $snapshot_sha,
+                        'archived_at' => gmdate( 'c' ),
+                        'post_writes' => 0 );
+                    $inserted = MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable(
+                        $archive, $record );
+                    if ( is_wp_error( $inserted ) )
+                        return self::err( 'mad4b_import_archive_audit_failed',
+                            'Archive intent was not atomically persisted and read back.' );
+                }
+                delete_option( $store );
+                if ( false !== get_option( $store, false ) )
+                    return self::err( 'mad4b_import_archive_cleanup_unverified',
+                        'Immutable audit remains but source cleanup could not be confirmed.' );
+                return array( 'archived' => true, 'audit_recorded' => true,
+                    'post_writes' => 0 );
+            } );
+    }
+    private static function export_approved_csv_unlocked( $slug, $snapshot_sha ) {
         $approved = self::approval( $slug, $snapshot_sha );
         if ( is_wp_error( $approved ) ) return $approved;
         $loaded = self::raw_snapshot( $slug, $snapshot_sha );
@@ -328,8 +421,11 @@ final class MAD4B_SCP_Activity_Import_Snapshot {
             substr( $snapshot_sha, 0, 16 ) . '.csv"' );
         header( 'X-Content-Type-Options: nosniff' );
         header( 'Content-Length: ' . $size );
-        fpassthru( $out );
+        $written = fpassthru( $out );
         fclose( $out );
-        exit;
+        if ( ! is_int( $written ) || $written !== $size )
+            return self::err( 'mad4b_import_export_partial_transfer',
+                'CSV download did not complete. Inspect transport logs before retrying.' );
+        return true;
     }
 }
