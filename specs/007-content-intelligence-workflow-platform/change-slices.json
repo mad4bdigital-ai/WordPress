@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 618,
+  "changed_file_count": 657,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1262,8 +1262,71 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/imp14-single-snapshot-atomic-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-operational-integrity-p0-20261010",
+      "semantic_unit": "P0 trusted Brand/ContentJob scope, fail-closed tenant isolation, operational integrity revisions, resolver identity, transactional safety and exact-head local acceptance fixtures. Imported from #374.",
+      "revert_boundary": "Preserve site/brand association, quarantined records, immutable ContentJob journals and pending mutation reconciliation. Never revert to user-supplied scopes or silently reuse foreign assets. Native Staging/database acceptance remains separately required.",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/run_f007_exact_head_local_acceptance.py",
+        "wp-content/plugins/mad4b-site-control-plane/docs/TRUSTED-BRAND-SCOPE-ACCEPTANCE.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/UNIFIED-OPERATIONAL-INTEGRITY-HANDOFF-20261010.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-mode-resolver.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-integrity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-scope-guard.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/content-job-transaction-fault-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-mode-resolver-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-integrity-local-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/trusted-brand-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-operational-scope-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-operational-scope-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-cso01-conversation-read-foundation-20261010",
+      "semantic_unit": "CSO01 read-only conversational discovery, schema planning, secrets safety contract and dynamic Site Explorer/Form Bridge acceptance, imported from #368.",
+      "revert_boundary": "Remove only governed CSO01 read/discovery registration and UI when reverting; retain existing authorization and provider gateway boundaries. Do not treat design descriptions as write capabilities.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/README.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/profiles.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/registry.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/site-overlay.example.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/test_dynamic_acceptance.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/validate_dynamic_acceptance.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/contracts/dynamic-integration-resolution.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/integration-compatibility.md",
+        "wp-content/plugins/mad4b-site-control-plane/assets/cso-form.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/cso-form.js",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-form-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-gateway.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-secrets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-unified-capability-gateway.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-form-ui-runtime.cjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-gateway-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-secrets-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-collision-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-unified-discovery-funnel-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-deployment-mode-hardening-20261010",
+      "semantic_unit": "Feature 007 deployment-mode dependency contracts, host/environment diagnostics and source-level integrity runbooks retained on the Hub.",
+      "revert_boundary": "Preserve explicit Site Profile vs host WP_ENVIRONMENT_TYPE distinction and fail-closed authority; no implicit Staging or Production switching.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/config/deployment-mode-dependencies.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/deployment-modes.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/unified-operational-integrity-slice1.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-mode-dependencies-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "ee936d445f4ee08a81a414f81e774d042ecbc121c0d1588eafd8b4e4cc43065b",
+  "changed_paths_sha256": "905c3490c7b9df4bf395f484cccb2984a6da87a8e9bf83dd5ea250a1fa2157c3",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
