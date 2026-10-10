@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 MODULE = ROOT / "tools" / "mad4b-local-ci-parity.py"
 spec = importlib.util.spec_from_file_location("mad4b_local_ci_parity", MODULE)
 runner = importlib.util.module_from_spec(spec)
