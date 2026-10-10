@@ -1,0 +1,169 @@
+name: MAD4B Staging Selected-HEAD Candidate Publisher
+
+# Privileged, owner-reviewed publisher. It must run from the trusted default
+# branch after the workflow is admitted there; PR workflows stay read-only.
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Repository-owned PR number"
+        required: true
+        type: string
+      source_sha:
+        description: "Exact 40-char reviewed PR HEAD (never floating)"
+        required: true
+        type: string
+      confirmation:
+        description: "Type PUBLISH EXACT STAGING CANDIDATE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-staging-candidate-publish-${{ inputs.source_sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish-exact-staging-candidate:
+    # Configure this protected environment with explicit owner reviewers.
+    environment: mad4b-staging-candidate-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+      attestations: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ inputs.source_sha }}
+      PR: ${{ inputs.pr_number }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      TAG: mad4b-site-control-plane-update-channel
+    steps:
+      - name: Verify protected exact source and immutable candidate identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = 'PUBLISH EXACT STAGING CANDIDATE'
+          [[ "$SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$PR" =~ ^[1-9][0-9]*$ ]]
+          test "$GITHUB_REF" = "refs/heads/${{ github.event.repository.default_branch }}"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" > /tmp/mad4b-candidate-pr.json
+          jq -e --arg sha "$SHA" --arg repo "$GITHUB_REPOSITORY" '
+            .state == "open" and .head.sha == $sha and
+            .head.repo.full_name == $repo and .base.repo.full_name == $repo and
+            .base.ref == "master"
+          ' /tmp/mad4b-candidate-pr.json > /dev/null
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null
+
+      - name: Resolve successful source-exact CI evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for workflow in mad4b-control-plane-package.yml mad4b-release-verdict.yml; do
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?event=pull_request&head_sha=$SHA&per_page=100" \
+              > "/tmp/$workflow.json"
+            run="$(jq -r --arg sha "$SHA" --argjson pr "$PR" '
+              [.workflow_runs[] | select(.head_sha == $sha and
+                .status == "completed" and .conclusion == "success" and
+                ([.pull_requests[]?.number] | index($pr) != null))] |
+              sort_by(.run_started_at) | last | .id // empty
+            ' "/tmp/$workflow.json")"
+            test -n "$run" || { echo "BLOCKED: successful exact PR CI missing: $workflow" >&2; exit 1; }
+            if [ "$workflow" = "mad4b-control-plane-package.yml" ]; then
+              echo "PKG_RUN_ID=$run" >> "$GITHUB_ENV"
+            else
+              echo "VERDICT_RUN_ID=$run" >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Download CI-built immutable artifact; never rebuild in publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mad4b-staging-candidate
+          gh run download "$PKG_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "mad4b-site-control-plane-general-distribution-kit-$SHA" \
+            --dir /tmp/mad4b-staging-candidate
+          test -f /tmp/mad4b-staging-candidate/CANONICAL-PACKAGE-RECEIPT.json
+          test -f /tmp/mad4b-staging-candidate/install-manifest.json
+
+      - name: Verify GitHub attestation and exact package provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import glob, hashlib, json, os, pathlib, shutil
+          root=pathlib.Path('/tmp/mad4b-staging-candidate')
+          sha=os.environ['SHA']
+          archive=list(root.glob('mad4b-site-control-plane-*.zip'))
+          if len(archive)!=1:
+              raise SystemExit('exactly one canonical Control Plane ZIP required')
+          receipt=json.loads((root/'CANONICAL-PACKAGE-RECEIPT.json').read_text())
+          install=json.loads((root/'install-manifest.json').read_text())
+          data=archive[0].read_bytes()
+          digest=hashlib.sha256(data).hexdigest()
+          if (receipt.get('contract')!='mad4b.deterministic-control-plane-package.v1'
+              or receipt.get('source_commit_sha')!=sha
+              or receipt.get('archive_sha256')!=digest
+              or receipt.get('archive_bytes')!=len(data)
+              or receipt.get('archive_compression')!='stored'
+              or install.get('commit')!=sha
+              or install.get('repository')!=os.environ['GITHUB_REPOSITORY']):
+              raise SystemExit('exact certified artifact / receipt mismatch')
+          cp=install.get('control_plane') or {}
+          if cp.get('sha256')!=digest or cp.get('version')!=receipt.get('control_plane_version'):
+              raise SystemExit('package identity mismatch')
+          name=root/f'mad4b-site-control-plane-{sha}.zip'
+          shutil.copyfile(archive[0],name)
+          manifest={
+              'contract':'mad4b.control-plane-update-channel.v1',
+              'repository':os.environ['GITHUB_REPOSITORY'],
+              'release_tag':os.environ['TAG'],
+              'version':receipt['control_plane_version'],
+              'source_commit_sha':sha,
+              'archive_sha256':digest,
+              'build_fingerprint':receipt['build_fingerprint'],
+              'package_manifest_digest':receipt['package_manifest_digest'],
+              'size_bytes':len(data),
+              'package_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['TAG']}/{name.name}",
+              'package_workflow_run_id':int(os.environ['PKG_RUN_ID']),
+              'release_verdict_run_id':int(os.environ['VERDICT_RUN_ID']),
+              'release_verdict_success':True,
+              'staging_candidate_certified':True,
+              'release_root_trust_verified':False,
+              'published_from_master':False,
+              'production_auto_update_enabled':False,
+              'production_authorized':False,
+          }
+          (root/f'mad4b-site-control-plane-update-{sha}.json').write_text(
+              json.dumps(manifest,sort_keys=True,indent=2)+'\n',encoding='utf-8')
+          print('Exact candidate artifact hashes verified; GitHub attestation still required')
+          PY
+          gh attestation verify "/tmp/mad4b-staging-candidate/mad4b-site-control-plane-$SHA.zip" \
+            --repo "$GITHUB_REPOSITORY"
+
+      - name: Publish immutable candidate assets without moving master pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in "mad4b-site-control-plane-$SHA.zip" "mad4b-site-control-plane-update-$SHA.json"; do
+            path="/tmp/mad4b-staging-candidate/$name"
+            test -s "$path"
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+               --jq ".assets[] | select(.name == \"$name\") | .name" | grep -qx "$name"; then
+              mkdir -p /tmp/mad4b-existing
+              gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+                --pattern "$name" --dir /tmp/mad4b-existing --clobber
+              test "$(sha256sum "$path" | cut -d ' ' -f1)" = \
+                   "$(sha256sum "/tmp/mad4b-existing/$name" | cut -d ' ' -f1)"
+            else
+              gh release upload "$TAG" "$path" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+          # Deliberately NO --clobber for the master pointer or legacy manifest.
+          # Production and standard self-update must remain pinned to master.
+          echo "Staging-only exact candidate published without master pointer mutation."
