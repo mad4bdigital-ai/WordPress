@@ -121,8 +121,11 @@ check( isset( $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::SOURCES_OPTI
 $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION]['brand_name'] = 'After rename';
 check( array_keys( MAD4B_SCP_Context_Authority::sources() ) === array( 'source-a' ), 'display-name edit retains source ownership' );
 $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION]['brand_id'] = $b;
+// Simulate a legitimate verified host re-enrollment to the new Brand.
+$GLOBALS['mode_resolution']['scope']['brand_ref'] = $b;
 check( array_keys( MAD4B_SCP_Context_Authority::sources() ) === array( 'source-b' ), 'brand switch prevents old source exposure' );
 $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION]['brand_id'] = $a;
+$GLOBALS['mode_resolution']['scope']['brand_ref'] = $a;
 
 $rejected = MAD4B_SCP_Content_Jobs::create_job( array(
     'brand_id' => $b, 'subject' => 'Test', 'language' => 'en', 'country' => 'eg',
@@ -148,10 +151,12 @@ $GLOBALS['mock_blog_id'] = 2;
 $blog_drift = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint );
 check( is_wp_error( $blog_drift ) && 'mad4b_integrity_blog_context_drift' === $blog_drift->get_error_code(), 'cross-blog change fails closed' );
 $GLOBALS['mock_blog_id'] = 1;
+$saved_resolution = $GLOBALS['mode_resolution'];
 $GLOBALS['mode_resolution'] = array( 'status' => 'BLOCKED', 'reason' => 'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED', 'scope' => null );
 $before = count( $wpdb->calls );
 check( is_wp_error( MAD4B_SCP_Content_Jobs::list_jobs( array() ) ), 'blocked deployment fails closed' );
 check( count( $wpdb->calls ) === $before, 'blocked deployment cannot query data' );
+$GLOBALS['mode_resolution'] = $saved_resolution;
 // Actual save path: a rename must be deliberate, exact-brand and revision bound.
 $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION]['brand_name'] = 'Before rename';
 $denied_rename = MAD4B_SCP_Context_Authority::save_profile( 'After rename' );
@@ -161,6 +166,7 @@ $renamed = MAD4B_SCP_Context_Authority::save_profile( 'After rename', array(
     'expected_brand_id' => $a, 'expected_revision' => 2, 'confirm_identity_preserving_rename' => true,
 ) );
 check( ! is_wp_error( $renamed ) && $renamed['brand_id'] === $a && $renamed['revision'] === 3, 'explicit rename preserves opaque brand identity' );
+$GLOBALS['mode_resolution']['dependency_revision']['brand_profile'] = 3;
 check( array_keys( MAD4B_SCP_Context_Authority::sources() ) === array( 'source-a' ), 'approved same-brand rename keeps current sources' );
 $stale = MAD4B_SCP_Context_Authority::save_profile( 'Another name', array(
     'expected_brand_id' => $a, 'expected_revision' => 2, 'confirm_identity_preserving_rename' => true,
@@ -169,5 +175,7 @@ check( is_wp_error( $stale ) && 'mad4b_brand_rename_revision_conflict' === $stal
 unset( $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION] );
 $recreated = MAD4B_SCP_Context_Authority::save_profile( 'After rename' );
 check( ! is_wp_error( $recreated ) && $recreated['brand_id'] !== $a, 're-enrollment never reclaims name-derived legacy identity' );
-check( count( MAD4B_SCP_Context_Authority::sources() ) === 0, 'new brand cannot see abandoned old sources even with same name' );
+$GLOBALS['mode_resolution']['scope']['brand_ref'] = $recreated['brand_id'];
+$GLOBALS['mode_resolution']['dependency_revision']['brand_profile'] = (int) $recreated['revision'];
+check( count( MAD4B_SCP_Context_Authority::sources() ) === 0, 'new verified brand cannot see abandoned old sources even with same name' );
 echo "PASS: scoped Context, explicit rename, re-enrollment, ContentJob synthetic regressions" . PHP_EOL;
