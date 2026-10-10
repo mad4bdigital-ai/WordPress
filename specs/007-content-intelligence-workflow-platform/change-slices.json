@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 584,
+  "changed_file_count": 588,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1164,8 +1164,20 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/imp04-reconciliation-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp05-wpai-observer-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-imp06-guided-import-operator-experience-20261010",
+      "semantic_unit": "IMP06 accessible four-stage import wizard: Profile and site-ready Mode selection, guarded source delivery, explainable full conflict and destination paging, immutable approval/CSV handoff, safe WordPress error recovery and explicit human-only controls.",
+      "revert_boundary": "Revert IMP06 guided WordPress admin presentation and UX tests/spec, retaining unchanged IMP01-IMP05 security, import snapshots and WordPress commercial records. No automated provider writer or Production authority included.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp06-guided-import-operator-experience.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp06-import-ux-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp06-import-ux-source-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "4c1216aca8791c6a65a904e9b1bb788c1b4caaff2c07abc296f19dcc4ce9ad8a",
+  "changed_paths_sha256": "89dce641339f816fa34349f107ba43cd7bc060b4f7528395e401a89f1ab5d48d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
