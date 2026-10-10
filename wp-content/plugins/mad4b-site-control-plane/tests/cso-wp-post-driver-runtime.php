@@ -84,8 +84,13 @@ function wp_update_post($args,$error=false){
 class MockPostDB {
  public $posts='wp_posts';public $postmeta='wp_postmeta';
  function prepare($sql,...$args){return array($sql,$args);}
- function query($sql){return in_array($sql,array('START TRANSACTION','COMMIT','ROLLBACK'),true)?0:false;}
- function get_row($v,$format){return (array)$GLOBALS['post'];}
+ function query($sql){if($sql==='COMMIT'&&!empty($GLOBALS['db_commit_failure']))return false;
+  return in_array($sql,array('START TRANSACTION','COMMIT','ROLLBACK'),true)?0:false;}
+ function get_row($v,$format){if(!empty($GLOBALS['race_on_lock'])){
+   $GLOBALS['post']->post_title='Concurrent edit';
+   $GLOBALS['post']->post_modified_gmt='2026-10-10 15:00:00';
+   $GLOBALS['race_on_lock']=false;}
+  return (array)$GLOBALS['post'];}
  function get_results($v,$format){
   $out=array();foreach($GLOBALS['owner']as$key=>$value)
    $out[]=array('meta_key'=>$key,'meta_value'=>$value);
@@ -128,5 +133,26 @@ $GLOBALS['permit']=true;
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload)),
  'malformed UTF-8 denied');
 ck($GLOBALS['updates']===$previous_updates,'invalid Unicode has no write effect');
+// Concurrent change is observed from the locked DB row, never overwritten.
+$race_payload=$payload;
+$race_payload['expected_revision']=$provider->describe($target,$GLOBALS['scope'])['revision'];
+$race_payload['values']=array('title'=>'Should never overwrite race');
+$before_race=$GLOBALS['updates'];
+$GLOBALS['race_on_lock']=true;$GLOBALS['permit']=true;
+$race=MAD4B_SCP_CSO_WP_Post_Driver::write_native($race_payload);
+ck(is_wp_error($race)&&$race->get_error_code()==='POST_PRE_EFFECT_CONFLICT',
+ 'locked row revision conflict aborts before effect');
+ck($GLOBALS['updates']===$before_race,'concurrent writer cannot be overwritten');
+// Simulate lost COMMIT acknowledgment after wp_update_post and its hooks ran.
+$crash_payload=$payload;
+$crash_payload['expected_revision']=$provider->describe($target,$GLOBALS['scope'])['revision'];
+$crash_payload['values']=array('title'=>'Effect may have occurred');
+$GLOBALS['db_commit_failure']=true;$GLOBALS['permit']=true;
+$uncertain_commit=MAD4B_SCP_CSO_WP_Post_Driver::write_native($crash_payload);
+$GLOBALS['db_commit_failure']=false;
+ck(is_wp_error($uncertain_commit)&&$uncertain_commit->get_error_code()==='POST_WRITE_EFFECT_UNCERTAIN',
+ 'lost COMMIT acknowledgment remains uncertain even when hooks ran');
+ck($GLOBALS['post']->post_title==='Effect may have occurred',
+ 'test models possible external effect despite rollback request');
 echo "PASS CSO WP post bound register/read/one-use write/revision conflict\n";
 
