@@ -165,7 +165,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 	 * assistant handoff. This cannot create host secrets, grants or approvals.
 	 * Any stale Site Profile revision invalidates an earlier apply envelope.
 	 */
-	public static function automation_plan( array $site, array $write = array(), array $skills = array(), array $developer = array() ) {
+	public static function automation_plan( array $site, array $write = array(), array $skills = array(), array $developer = array(), array $host_identity = array() ) {
 		$decision = self::decision( $site );
 		$environment_aligned = 'staging' === (string) ( $site['configured_environment'] ?? '' )
 			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
@@ -180,6 +180,13 @@ final class MAD4B_SCP_Staging_Autopilot {
 		$binding_match = ! empty( $site['deployment_binding_match'] );
 		$binding_ready = $binding_configured && $binding_bound && $binding_match
 			&& ! empty( $site['same_origin_clone_protection'] );
+		$live_host_verified = ! empty( $host_identity['verified'] )
+			&& 'fresh_host_identity_verified' === (string) ( $host_identity['state'] ?? '' );
+		// Never combine independent roots silently. New mode uses the EXISTING
+		// Runner Ed25519 root; an installed legacy host secret is migration drift.
+		$two_sources = $live_host_verified && $binding_configured;
+		$active_source = $two_sources ? 'conflict'
+			: ( $live_host_verified ? 'enrolled_host_runner' : ( $binding_ready ? 'legacy_host_binding' : 'none' ) );
 		$write_observed = array_key_exists( 'ready', $write );
 		$write_ready = $write_observed && ! empty( $write['ready'] );
 		$skills_observed = array_key_exists( 'ready', $skills );
@@ -201,6 +208,14 @@ final class MAD4B_SCP_Staging_Autopilot {
 				$next = 'review_site_environment_identity';
 				$actor = 'site_administrator';
 			}
+		} elseif ( $two_sources ) {
+			$actor = 'host_operator';
+			$state = 'blocked_multiple_host_identity_roots';
+			$next = 'resolve_host_identity_source_conflict_without_cloning';
+		} elseif ( $live_host_verified && ! $binding_ready ) {
+			$actor = 'host_operator';
+			$state = 'fresh_host_identity_verified_legacy_consumers_pending';
+			$next = 'migrate_legacy_host_operations_to_signed_proof';
 		} elseif ( ! $binding_ready ) {
 			$actor = 'host_operator';
 			$state = 'blocked_host_deployment_binding';
@@ -224,10 +239,15 @@ final class MAD4B_SCP_Staging_Autopilot {
 		$lanes = $decision['assistant_workflow'];
 		$lanes[0]['state'] = $environment_aligned ? 'explicit_staging_aligned' : (string) $decision['state'];
 		$lanes[0]['ready'] = $environment_aligned && $profile_valid;
-		$lanes[1]['state'] = $binding_ready ? 'bound_to_exact_host'
-			: ( ! $binding_configured ? 'missing_host_secret' : ( ! $binding_match ? 'binding_drift' : 'host_secret_not_bound_to_profile' ) );
-		$lanes[1]['ready'] = $binding_ready;
-		$lanes[1]['next_action_id'] = $binding_ready ? 'none' : ( ! $binding_configured ? 'provision_unique_host_deployment_binding' : ( ! $binding_match ? 'stop_and_review_deployment_binding_drift' : 'save_exact_site_profile_to_bind_host_secret' ) );
+		$lanes[1]['state'] = $two_sources ? 'conflicting_identity_roots' : ( $live_host_verified ? 'signed_existing_host_root' : ( $binding_ready ? 'bound_to_exact_host'
+			: ( ! $binding_configured ? 'missing_host_secret' : ( ! $binding_match ? 'binding_drift' : 'host_secret_not_bound_to_profile' ) ) );
+		$lanes[1]['ready'] = $binding_ready && ! $two_sources;
+		$lanes[1]['signed_host_evidence_verified'] = $live_host_verified;
+		$lanes[1]['active_identity_source'] = $active_source;
+		$lanes[1]['next_action_id'] = $two_sources ? 'resolve_host_identity_source_conflict_without_cloning'
+			: ( $live_host_verified && ! $binding_ready ? 'migrate_legacy_host_operations_to_signed_proof'
+			: ( $binding_ready ? 'none' : ( ! $binding_configured ? 'provision_unique_host_deployment_binding'
+			: ( ! $binding_match ? 'stop_and_review_deployment_binding_drift' : 'save_exact_site_profile_to_bind_host_secret' ) ) ) );
 		$lanes[1]['host_secret_generated_by_wordpress'] = false;
 		$lanes[2]['state'] = ! $write_observed ? 'not_evaluated' : ( $write_ready ? 'exact_current_authority_ready' : 'exact_current_authority_blocked' );
 		$lanes[2]['ready'] = $write_ready;
@@ -264,7 +284,11 @@ final class MAD4B_SCP_Staging_Autopilot {
 				'configured' => $binding_configured,
 				'bound' => $binding_bound,
 				'match' => $binding_match,
-				'clone_protection_ready' => $binding_ready,
+				'clone_protection_ready' => $binding_ready && ! $two_sources,
+				'signed_host_identity_verified' => $live_host_verified,
+				'active_identity_source' => $active_source,
+				'legacy_operations_support_dynamic_identity' => false,
+				'identity_source_conflict' => $two_sources,
 				'secret_read_or_generated' => false,
 			),
 			'observations' => array(
@@ -279,6 +303,8 @@ final class MAD4B_SCP_Staging_Autopilot {
 			'assistant_workflow' => $lanes,
 			'execution_policy' => array(
 				'read_observation_automatic' => true,
+				'one_host_identity_root_only' => true,
+				'signed_host_proof_not_equivalent_to_legacy_hmac_secret' => true,
 				'wp_config_mutation_requires_local_admin_save' => true,
 				'host_secret_provisioning_requires_host_operator' => true,
 				'write_only_convergence_requires_exact_owner_approval' => true,
@@ -324,11 +350,15 @@ final class MAD4B_SCP_Staging_Autopilot {
 			? array( 'ready' => ! empty( $write_from_full['ready'] ),
 				'current_readiness_blockers' => isset( $write_from_full['current_readiness_blockers'] ) ? $write_from_full['current_readiness_blockers'] : array() )
 			: array();
+		$host_identity = class_exists( 'MAD4B_SCP_Host_Identity_Live' )
+			? MAD4B_SCP_Host_Identity_Live::observe( $site ) : array();
+		$report['host_identity'] = $host_identity;
 		$report['automation_plan'] = self::automation_plan(
 			is_array( $site ) ? $site : array(),
 			$write_observation,
 			is_array( $skills ) ? $skills : array(),
-			$developer
+			$developer,
+			is_array( $host_identity ) ? $host_identity : array()
 		);
 		$report['site_profile_read_ability'] = 'mad4b/site-profile-status';
 		$report['environment_sync_verification_ability'] = 'mad4b/host-environment-sync-verification';
