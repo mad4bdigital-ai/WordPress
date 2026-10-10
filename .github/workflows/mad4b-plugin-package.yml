@@ -56,6 +56,10 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-wordpress-native-opt-in.php"
           php -l "$root/tests/wordpress-native-candidate-policy-runtime.php"
           php "$root/tests/wordpress-native-candidate-policy-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-manual-workflow-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-operational-remediation.php"
+          php -l "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php "$root/tests/manual-workflow-bridge-policy-runtime.php"
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
       - name: Verify general-distribution package contract
