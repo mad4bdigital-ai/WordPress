@@ -21,6 +21,12 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
         $abilities = function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' );
         $policy = class_exists( 'MAD4B_SCP_Policy', false ) && is_callable( array( 'MAD4B_SCP_Policy', 'can_read' ) );
         $adapter_observed = class_exists( 'WP\\MCP\\Core\\McpAdapter', false );
+        $adapter_version = $adapter_observed && defined( 'WP\\MCP\\Core\\McpAdapter::VERSION' )
+            ? (string) constant( 'WP\\MCP\\Core\\McpAdapter::VERSION' ) : '';
+        $release_target = class_exists( 'MAD4B_SCP_Runtime_Release_Set', false ) &&
+            is_callable( array( 'MAD4B_SCP_Runtime_Release_Set', 'target_adapter_version' ) )
+            ? (string) MAD4B_SCP_Runtime_Release_Set::target_adapter_version() : '';
+
         return array(
             'contract' => 'mad4b.wordpress-dedicated-dependency-readiness.v1',
             'identity_services' => array(
@@ -32,6 +38,10 @@ final class MAD4B_SCP_Deployment_Mode_Resolver {
                 'abilities_api_available' => $abilities,
                 'read_policy_available' => $policy,
                 'adapter_class_observed' => $adapter_observed,
+                'adapter_runtime_version' => $adapter_version,
+                'policy_target_adapter_version' => $release_target,
+                'pair_certification_required' => true,
+                'pair_certification_verified' => false,
                 'status' => ! $abilities || ! $policy ? 'BLOCKED'
                     : ( $adapter_observed ? 'POTENTIALLY_AVAILABLE' : 'TRANSPORT_NOT_OBSERVED' ),
                 'transport_and_registration_independently_certified' => false,
