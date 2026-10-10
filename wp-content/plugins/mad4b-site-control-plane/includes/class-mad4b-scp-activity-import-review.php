@@ -735,6 +735,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             sanitize_text_field( wp_unslash( $_POST['snapshot_sha256'] ) ) : '';
         $result = MAD4B_SCP_Activity_Import_Snapshot::export_approved_csv( $slug, $sha );
         if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ) );
+        if ( true === $result ) exit;
         wp_die( 'Export did not produce an approved CSV stream.' );
     }
     public static function archive_preview() {
@@ -753,25 +754,10 @@ final class MAD4B_SCP_Activity_Import_Review {
             ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) ||
             ! preg_match( '/^[a-f0-9]{64}$/D', $snapshot ) )
             wp_die( 'Exact review identity and both hashes required.' );
-        $key = self::option_key( $slug );
-        $state = get_option( $key, false );
-        if ( ! is_array( $state ) ||
-            ! isset( $state['payload_sha256'], $state['snapshot_sha256'] ) ||
-            ! hash_equals( (string) $state['payload_sha256'], $expected ) ||
-            ! hash_equals( (string) $state['snapshot_sha256'], $snapshot ) )
-            wp_die( 'Review changed since the archive confirmation.' );
-        $audit_key = 'mad4b_activity_import_archive_' . hash( 'sha256',
-            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $snapshot );
-        $audit = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
-            'profile_slug' => $slug, 'payload_sha256' => $expected,
-            'snapshot_sha256' => $snapshot,
-            'archived_at' => gmdate( 'c' ), 'post_writes' => 0 );
-        if ( ! add_option( $audit_key, $audit, '', false ) ||
-            self::digest( get_option( $audit_key, false ) ) !== self::digest( $audit ) )
-            wp_die( 'Immutable preview archive could not be confirmed.' );
-        delete_option( $key );
-        if ( false !== get_option( $key, false ) )
-            wp_die( 'Preview archive recorded but active review could not be cleared.' );
+        $result = MAD4B_SCP_Activity_Import_Snapshot::archive_exact_review(
+            $slug, $expected, $snapshot );
+        if ( is_wp_error( $result ) )
+            wp_die( esc_html( $result->get_error_message() ) );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
             'profile_slug' => $slug, 'wizard_step' => 2, 'archived' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
