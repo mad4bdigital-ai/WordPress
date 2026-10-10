@@ -107,5 +107,26 @@ ck(!$GLOBALS['permit'],'permit consumed at effect');
 $GLOBALS['permit']=true;
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload)),'stale revision blocked');
 ck($GLOBALS['updates']===1,'stale revision cannot overwrite newer edit');
+// Ensure typed form Unicode limits and native callback agree for Arabic.
+$unicode_descriptor=$provider->describe($target,$GLOBALS['scope']);
+$unicode_title=str_repeat('ع',150); // 150 Unicode characters / 300 UTF-8 bytes.
+$unicode_payload=$payload;
+$unicode_payload['values']=array('title'=>$unicode_title);
+$unicode_payload['expected_revision']=$unicode_descriptor['revision'];
+$GLOBALS['permit']=true;
+$unicode_write=MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload);
+ck(!is_wp_error($unicode_write)&&$GLOBALS['post']->post_title===$unicode_title,
+ 'valid Arabic title not rejected as >200 UTF-8 bytes');
+$previous_updates=$GLOBALS['updates'];
+$unicode_payload['expected_revision']=$provider->describe($target,$GLOBALS['scope'])['revision'];
+$unicode_payload['values']=array('title'=>str_repeat('ع',201));
+$GLOBALS['permit']=true;
+ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload)),
+ 'overlong Unicode title rejected');
+$unicode_payload['values']=array('title'=>"\\xC3\\x28");
+$GLOBALS['permit']=true;
+ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($unicode_payload)),
+ 'malformed UTF-8 denied');
+ck($GLOBALS['updates']===$previous_updates,'invalid Unicode has no write effect');
 echo "PASS CSO WP post bound register/read/one-use write/revision conflict\n";
 
