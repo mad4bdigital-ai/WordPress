@@ -62,12 +62,12 @@ The current PR branch additionally includes source-level modules, **not** operat
 | Storage adapters | Explicit deployment-owned provider registry, typed descriptor, exact target/site scope, registered native Ability identity and permission-checked nonsecret read snapshot | Real provider certification, atomic target revision enforcement, independent post-write readback |
 | Dynamic forms | Canonical descriptor, typed validation and bounded literal enum suggestions | Live CPT/taxonomy/user/relationship autocomplete, conditional mutations and rights-scoped search |
 | Private drafts | First-party create/load/save/delete using bounded nonsecret values, actor/site scope HMAC, fixed option names and SQL CAS | Retention worker, GDPR export/delete evidence, real two-writer concurrency proof |
-| Change plans | Private readback, typed diff digest, exact descriptor/revision, sealed nonexecuting plan | Native write executor, separate approval grant, durable effect journal, verified undo |
-| Bulk preparation | Exact owner/site for each plan, 32-item cap, duplicate refusal, 1–5 Canary | Durable checkpoint, independent per-item executor, restart recovery and compensation |
-| Workflows | Bounded DAG compiler, topological order, cycle and secret rejection | Native DAG runner, durable saga, signed triggers/webhooks, pause/resume |
+| Change plans | Scoped exact native Ability executor with pending/approved ticket claim, one-use execution permit, pre-effect journal and provider readback | Real provider acceptance, independent external attestation, durable reconciliation finalization and verified undo |
+| Bulk execution | Exact owner/site, 32-item cap, per-item native tickets, durable CAS checkpoint and 1–5-item Canary; resume now checks current mutation-approver policy | Real concurrent-writer acceptance, independent Canary review receipt, unknown-effect reconciliation and compensation |
+| Workflows | Static cycle-safe DAG of sealed write-only intents may run via native-ticket bulk journal; mixed nodes cannot execute | Persisted cross-provider saga, signed triggers/webhooks, independent recovery and compensation |
 | Privacy and UI | First-party RTL/English forms, no credential value in conversation | Real accessibility/browser/privacy/retention acceptance |
 
-**Important:** `CSO_Changes::commit`, `CSO_Bulk::commit` and `CSO_Workflows::run` currently always refuse execution. Flags never confer write grants. Private plan is not an approval or a verified external effect.
+**Important:** `CSO_Changes::commit`, `CSO_Bulk::commit` and write-only `CSO_Workflows::run` now delegate to bounded native admission. They remain **OFF without explicit feature opt-ins, current write-runtime certification, separately approved exact native tickets, enrolled WordPress provider, durable journal and Staging acceptance**. The direct gateway/MCP never becomes an independent write authority. Missing conditions must deny with no effect. A private plan or provider readback is not independent approval or external-effect proof.
 
 ### External operational proof required
 
@@ -80,3 +80,11 @@ Keep the plugin inside Feature 007, without independent plugin, `master` merge, 
 - `CSO_Templates::plan` validates nonsecret recipe values against an exact current form descriptor and binds a first-party, ten-minute HMAC recipe to Site/Brand and actor. It does not publish, apply a template or modify site content.
 - `CSO_Operations::doctor_plan` returns bounded blockers tied to the current site. It does not attest runtime, execute repair, start monitoring or grant Production promotion.
 - `cso-storage-adapters-runtime.php` and `cso-template-doctor-runtime.php` are synthetic native fixtures wired into the PHP 7.4/8.3 CI matrix; queued Actions checks are not a PASS.
+
+### Recovery observation and canary authority
+
+- `CSO_Native_Executor::reconcile_inspect` is a first-party, scope/actor-bound read-only diagnostic. It reports the native provider's current values/revision relative to an exactly sealed plan, even for an expired execution plan. It **never** repairs an uncertain journal, finalizes a ticket, replays a write, or calls provider observation independent third-party attestation.
+- `CSO_Bulk_Runtime::commit` does not accept a mere `canary_reviewed: true` as authority. Resuming an existing `paused` checkpoint additionally requires current `MAD4B_SCP_Policy::can_approve_mutations()`, while every write still requires its own original approval ticket.
+- An interrupted `inflight`, `reserved` or `needs_reconcile` journal is **not** permission to retry. Operator reconciliation must establish native/host result and separate grant evidence before any new operation.
+- Only explicitly tagged, permitted WordPress `post_title` and `post_excerpt` fields have a source-owned driver. CPT relationships, Meta, WPML, SEO, media and commerce remain unsupported until independently enrolled drivers and tests are added.
+- No claim of completed PHP 7.4/8.3 native test execution, Staging/Host/browser acceptance, deterministic ZIP, rollback or Production approval follows from source presence or queued GitHub Actions.
