@@ -61,6 +61,10 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'plugin_installed' => 'Install and activate the compatible provider plugin',
             'exact_import_id' => 'Identify the existing configured import job',
             'staging_approval' => 'Review and approve the exact source snapshot on Staging',
+            'controlled_parser' => 'Host administrator must approve an installed PhpSpreadsheet converter for this site',
+            'zip_limits' => 'Use a simple ZIP-bounded XLSX file under 1 MiB and 8 MiB expanded',
+            'no_formulas' => 'Replace spreadsheet formulas with literal values before upload',
+            'single_sheet' => 'Use only one worksheet per review',
         );
         return isset( $labels[ $requirement ] ) ? $labels[ $requirement ] :
             ucwords( str_replace( '_', ' ', (string) $requirement ) );
