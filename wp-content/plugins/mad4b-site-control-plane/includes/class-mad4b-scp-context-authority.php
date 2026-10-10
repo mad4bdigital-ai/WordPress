@@ -348,7 +348,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! array_key_exists( $key, $record ) ) continue;
 			if ( ! isset( $scope[ $trusted ] ) || ! is_scalar( $record[ $key ] )
 				|| '' === trim( (string) $record[ $key ] )
-				|| ! hash_equals( (string) $scope[ $trusted ], trim( (string) $record[ $key ] ) ) return false;
+				|| ! hash_equals( (string) $scope[ $trusted ], trim( (string) $record[ $key ] ) ) ) return false;
 		}
 		return true;
 	}
