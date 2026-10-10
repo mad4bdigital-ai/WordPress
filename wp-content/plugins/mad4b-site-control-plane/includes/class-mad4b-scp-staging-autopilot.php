@@ -140,6 +140,18 @@ final class MAD4B_SCP_Staging_Autopilot {
 					'remote_write_allowed' => false,
 				),
 				array(
+					'step_id' => 'universal_plugin_update_recovery',
+					'state' => 'source_certification_required_per_plugin',
+					'actor' => 'plugin_owner',
+					'read_ability' => 'mad4b/plugin-update-recovery-discover',
+					'plan_ability' => 'mad4b/plugin-update-recovery-plan',
+					'certified_executor' => 'mad4b/plugin-package-apply',
+					'per_provider_offline_evidence_ability' => 'mad4b/plugin-update-evidence-verify',
+					'github_ci_terminal_result_required' => false,
+					'unknown_provider_auto_enrollment' => false,
+					'remote_write_allowed' => false,
+				),
+				array(
 					'step_id' => 'release_and_staging_acceptance',
 					'state' => 'native_live_acceptance_not_evaluated',
 					'actor' => 'staging_operator',
