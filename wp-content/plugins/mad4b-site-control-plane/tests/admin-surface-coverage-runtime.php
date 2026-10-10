@@ -94,6 +94,20 @@ check_surface($setting['coverage_level']===1,'REST settings schema visibility is
 check_surface($ajax['coverage_level']===0,'Opaque AJAX hook never auto executable');
 $hidden = $c::inventory(array());
 check_surface(!isset($hidden['items']) && $hidden['returned_count']>10,'Summary-only inventory');
+$fast=$c::inventory(array('scan_mode'=>'fast','include_details'=>true));
+check_surface($fast['scan_mode']==='fast' && in_array('ajax_actions',$fast['not_scanned_kinds'],true),
+ 'Fast scan identifies categories deliberately not inspected');
+check_surface($fast['counts_by_kind']['ajax_actions']===0 &&
+ $fast['returned_count'] < $hidden['returned_count'],
+ 'Fast mode reduces expensive work rather than claiming full breadth');
+check_surface(is_wp_error($c::inventory(array('scan_mode'=>'unchecked'))),'Unknown scan mode denied');
+$one=$c::summarize($observed,MAD4B_SCP_Site_Profile::$site);
+$changed=$observed;$changed['registered_settings']['blogname']['show_in_rest']=false;
+$two=$c::summarize($changed,MAD4B_SCP_Site_Profile::$site);
+check_surface($one['snapshot_sha256']!==$two['snapshot_sha256'],
+ 'Changing registered source schema invalidates old snapshot');
+check_surface($c::summarize($observed,MAD4B_SCP_Site_Profile::$site,'fast')['snapshot_sha256'] !==
+ $one['snapshot_sha256'],'Snapshot binds declared scan mode');
 $full = $c::inventory(array('include_details'=>true));
 check_surface(isset($full['items']),'Detailed inventory permitted');
 check_surface(is_wp_error($c::inventory(array('inject'=>'random'))),'Unknown discovery argument refused');
