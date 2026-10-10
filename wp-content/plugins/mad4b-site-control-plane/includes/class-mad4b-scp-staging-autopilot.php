@@ -240,7 +240,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 		$lanes[0]['state'] = $environment_aligned ? 'explicit_staging_aligned' : (string) $decision['state'];
 		$lanes[0]['ready'] = $environment_aligned && $profile_valid;
 		$lanes[1]['state'] = $two_sources ? 'conflicting_identity_roots' : ( $live_host_verified ? 'signed_existing_host_root' : ( $binding_ready ? 'bound_to_exact_host'
-			: ( ! $binding_configured ? 'missing_host_secret' : ( ! $binding_match ? 'binding_drift' : 'host_secret_not_bound_to_profile' ) ) );
+			: ( ! $binding_configured ? 'missing_host_secret' : ( ! $binding_match ? 'binding_drift' : 'host_secret_not_bound_to_profile' ) ) ) );
 		$lanes[1]['ready'] = $binding_ready && ! $two_sources;
 		$lanes[1]['signed_host_evidence_verified'] = $live_host_verified;
 		$lanes[1]['active_identity_source'] = $active_source;
