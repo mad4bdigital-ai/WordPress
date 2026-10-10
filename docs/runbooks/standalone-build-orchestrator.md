@@ -193,3 +193,27 @@ Never treat queued GitHub Actions, policy tests or this source update as live
 runtime PASS. `automatic_execution_enabled=false` until a separately
 enrolled, reachable runner executes the full protocol and provides verified
 runtime readback.
+
+## October 2026 parse-failure prevention
+
+The reviewed PR head previously contained a malformed
+`class-mad4b-scp-standalone-build-control.php`: a truncated input schema,
+duplicate methods and premature PHP class termination. A build-only ZIP had
+no mandatory PHP parser gate and could therefore package that source.
+
+The recovered source was reconstructed from the last known-good standalone
+control implementation with the exact typed build-request and signed-receipt
+methods reattached once. **A source readback is not itself PHP acceptance.**
+
+Starting with the corrected standalone builder, all packaging profiles
+(including `build-only`) require the **real PHP 8.3 CLI**. Every plugin
+`*.php` source must pass `php -l` before any ZIP or sidecar is written;
+missing CLI, wrong PHP version, interrupted linter or one parse failure
+must block building. This cannot be skipped by passing a profile or by
+running only Python unit tests. The build report includes
+`php83_syntax_gate` when successful. Actual Staging runtime acceptance
+still requires a fresh environment-matched observation after installation.
+
+To avoid unrelated site mutations during recovery, isolate the plugin
+directory on Staging and preserve the prior package and error logs;
+never deploy the unverified October 10 candidate or alter Production.
