@@ -75,7 +75,7 @@ All secrets must be independently generated; no shared-secret fallback is accept
 - Only `manage_options` may approve or read raw snapshot; approval reruns validation against decrypted source and ensures unchanged policy hash, profile authority/revision and plan SHA. Block reasons and truncated reviews prevent approval; warnings require explicit human confirmation.
 - Approval is recorded as a separate no-autoload option with site, profile, snapshot, plan, policy, reviewer ID, time and immutable manual-export-only scope. No WordPress posts or WP All Import jobs are written by approval.
 - Approved CSV export is a protected WordPress admin POST with nonce, fresh authority/readback checks, formula-injection checks and no-store cache headers; names contain only first 16 chars of snapshot digest.
-- Archive records immutable audit metadata and removes the active encrypted review; if the archive cannot be saved, it must not destroy active review.
+- Every staged review also receives a cryptographic random review nonce; the receipt hash therefore differs even when a periodic import submits identical source bytes. An approval always binds to the unique review receipt. Archive creates an immutable tombstone keyed by the specific snapshot (not by the data content alone), invalidates only that review, and permits the same source to be proposed again under a NEW explicit review and approval. If the archive audit cannot be saved, it must not destroy active review.
 
 ### Boundaries still open (do NOT certify)
 - Exact `post_id` versus stable supplier key identity mapping and relationship/JetEngine data adapter (provider readback necessary).
