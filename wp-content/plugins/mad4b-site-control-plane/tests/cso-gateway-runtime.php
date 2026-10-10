@@ -6,6 +6,7 @@ function is_wp_error($v){return $v instanceof WP_Error;}
 $GLOBALS['mode']=$argv[1]??'normal'; $GLOBALS['flags']=array(); $GLOBALS['calls']=0; $GLOBALS['scope_changed']=false; $GLOBALS['registered']=array(); $GLOBALS['cookie']=true;
 class MAD4B_SCP_CSO_Scope {
     public static function boot(){}
+    public static function first_party_session(){return !empty($GLOBALS['cookie']);}
     public static function enabled($flag){return true===($GLOBALS['flags'][$flag]??false);}
     public static function current(){return $GLOBALS['scope_denied']??false?self::error('DENIED'):array('origin'=>'https://site.example','generation'=>1);}
     public static function assert_current($scope){return $GLOBALS['scope_changed']?self::error('CHANGED'):true;}
@@ -37,7 +38,7 @@ if('normal'!==$GLOBALS['mode']){
     if('collision'===$GLOBALS['mode'])ok(1===count($GLOBALS['registered']),'foreign namespace untouched');
     echo 'CSO GATEWAY '.$GLOBALS['mode'].': '.$checks." PASS\n";exit;
 }
-ok(count(MAD4B_SCP_CSO_Gateway::read_tools())===6,'only implemented, non-authorizing MCP read contracts registered');
+ok(count(MAD4B_SCP_CSO_Gateway::read_tools())===7,'only implemented, non-authorizing MCP read contracts registered');
 ok(!isset($GLOBALS['registered']['cso/secret-status']),'browser-bound secret status cannot be advertised to OAuth-only MCP');
 foreach($GLOBALS['registered']as$name=>$args){
     ok(!preg_match('/commit|workflow-run|secret-session|draft$/',$name),'private actions excluded');
@@ -45,7 +46,7 @@ foreach($GLOBALS['registered']as$name=>$args){
     ok(true===$args['meta']['annotations']['readonly'],'read annotation');
 }
 ok(true===MAD4B_SCP_CSO_Gateway::can_read(),'complete set permission');
-foreach(array('change_plan','change_commit','bulk_plan','workflow_compile','workflow_run','draft','monitor_plan','field_suggest','promotion_plan')as$unsupported){
+foreach(array('change_commit','bulk_plan','workflow_compile','workflow_run','monitor_plan','promotion_plan')as$unsupported){
  $denied=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$unsupported,'arguments'=>array()));
  ok(is_wp_error($denied)&&'IMPLEMENTATION_NOT_CERTIFIED'===reason($denied),
     'unsupported operational action may not run or be advertised: '.$unsupported);
@@ -53,6 +54,11 @@ foreach(array('change_plan','change_commit','bulk_plan','workflow_compile','work
 $private=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>'secret_session','arguments'=>array()));
 ok(is_wp_error($private)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($private),
   'secret handoff cannot be entered from MCP/public dispatch');
+foreach(array('draft','change_plan','change_verify') as $private_name) {
+ $result=MAD4B_SCP_CSO_Gateway::dispatch(array('action'=>$private_name,'arguments'=>array()));
+ ok(is_wp_error($result)&&'FIRST_PARTY_PRIVATE_SESSION_REQUIRED'===reason($result),
+   'private write-state route never callable from MCP: '.$private_name);
+}
 $v=MAD4B_SCP_CSO_Gateway::dispatch($request);ok('CATALOG'===$v['status'],'valid dispatch');ok(1===$GLOBALS['calls'],'exactly one service entry');
 foreach(array(null,array('action'=>'missing','arguments'=>array()),array_merge($request,array('trusted'=>true)),array('action'=>'capability_catalog','arguments'=>array('grant'=>true)),array('action'=>'capability_catalog','arguments'=>array('query'=>'api_key')))as$bad){ok(is_wp_error(MAD4B_SCP_CSO_Gateway::dispatch($bad)),'malformed/secret denied');}
 ok(1===$GLOBALS['calls'],'invalid input cannot enter service');

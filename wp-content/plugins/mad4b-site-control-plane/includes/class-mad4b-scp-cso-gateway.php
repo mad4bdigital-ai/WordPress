@@ -27,7 +27,7 @@ final class MAD4B_SCP_CSO_Gateway {
             'field_help' => array( 'forms', 'read', array( 'form','field' ) ),
             'form_presentation' => array( 'forms', 'read', array( 'ability_name','target' ) ),
             'draft' => array( 'forms', 'private', array( 'operation','id','expected_revision','form','values' ) ),
-            'change_plan' => array( 'single_write', 'plan', array( 'form','values','target_revision' ) ),
+            'change_plan' => array( 'single_write', 'private', array( 'form','values','target_revision' ) ),
             'approval_plan' => array( 'single_write', 'plan', array( 'plan','reason' ) ),
             'change_commit' => array( 'single_write', 'private', array( 'plan','governance' ) ),
             'change_verify' => array( 'single_write', 'private', array( 'plan' ) ),
@@ -62,8 +62,8 @@ final class MAD4B_SCP_CSO_Gateway {
     private static function implemented() {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
-            'field_help', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan'
+            'field_help', 'field_suggest', 'form_presentation', 'secret_session',
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'change_verify'
         );
     }
 
