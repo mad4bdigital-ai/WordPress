@@ -32,6 +32,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 		self::register_provider( 'wordpress.selected_head', array( __CLASS__, 'selected_head' ) );
 		self::register_provider( 'context.brand_core', array( __CLASS__, 'brand_core' ) );
 		self::register_provider( 'registry.operation', array( __CLASS__, 'registered_operation' ) );
+		self::register_provider( 'registry.ability', array( __CLASS__, 'registered_ability' ) );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 	}
 
@@ -48,6 +49,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 						'reference'=>array( 'type'=>'string', 'maxLength'=>120 ) ) ),
 				'reason' => array( 'type'=>'string', 'maxLength'=>500 ),
 				'target_operation_id'=>array('type'=>'string','maxLength'=>120),
+				'target_ability_name'=>array('type'=>'string','maxLength'=>191),
 				'intent'=>array('type'=>'string','maxLength'=>160),
 				'limit'=>array('type'=>'integer','minimum'=>1,'maximum'=>50),
 				'offset'=>array('type'=>'integer','minimum'=>0,'maximum'=>1000),
@@ -382,7 +384,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 	}
 	public static function plan( $input=array() ) {
 		if(!is_array($input))return new WP_Error('mad4b_progressive_invalid_input','Object required.');
-		$allowed=array('operation_id','mode','attempt','candidate_source','reason','target_operation_id','intent','limit','offset');
+		$allowed=array('operation_id','mode','attempt','candidate_source','reason','target_operation_id','target_ability_name','intent','limit','offset');
 		if(array_diff(array_keys($input),$allowed))
 			return new WP_Error('mad4b_progressive_unknown_input','Unknown dynamic input is not executable.');
 		$operation=(string)($input['operation_id']??'auto');
@@ -407,6 +409,8 @@ final class MAD4B_SCP_Progressive_Requirements {
 			$operation=(string)$selected['selector'];
 			if('registry.operation'===$operation)
 				$input['target_operation_id']=(string)$selected['target_operation_id'];
+			if('registry.ability'===$operation)
+				$input['target_ability_name']=(string)$selected['target_ability_name'];
 		}
 		if(!in_array($mode,array('detached','linked'),true)
 			||!isset(self::$providers[$operation])||$attempt<1||$attempt>self::MAX_ATTEMPT)
@@ -424,6 +428,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 				$operation.':'.(string)($input['target_operation_id']??'') : $operation);
 		$decision['resolved_provider']=$operation;
 		$decision['resolved_operation_id']=(string)($input['target_operation_id']??$operation);
+		$decision['resolved_target_ability_name']=(string)($input['target_ability_name']??'');
 		$decision['planner_inputs']=MAD4B_SCP_Progressive_Operation_Discovery::planner_variables(
 			(string)($observed['effect_ability']??''));
 		return $decision;
