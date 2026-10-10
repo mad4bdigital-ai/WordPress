@@ -19,7 +19,8 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'field_mapping', 'price_tier_policy', 'review_past_intervals',
             'wpml_languages', 'require_complete_wpml_groups',
             'required_relationships', 'max_rows', 'currency_field',
-            'price_fields', 'decimal_scale', 'destination_identity_meta_key'
+            'price_fields', 'decimal_scale', 'destination_identity_meta_key',
+            'period_start_field', 'period_end_field', 'period_format'
         ) ) ) return self::err( 'mad4b_import_validation_unknown_keys', 'Validation policy contains unsupported fields.' );
         $identity = isset( $raw['identity_field'] ) ? (string) $raw['identity_field'] : '';
         if ( ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $identity ) )
@@ -32,6 +33,12 @@ final class MAD4B_SCP_Activity_Import_Authority {
         $currency_field = isset( $raw['currency_field'] ) ? (string) $raw['currency_field'] : '';
         $price_fields = isset( $raw['price_fields'] ) ? $raw['price_fields'] : array();
         $decimal_scale = isset( $raw['decimal_scale'] ) ? $raw['decimal_scale'] : 4;
+        $period_start = isset( $raw['period_start_field'] ) ?
+            (string) $raw['period_start_field'] : '';
+        $period_end = isset( $raw['period_end_field'] ) ?
+            (string) $raw['period_end_field'] : '';
+        $period_format = isset( $raw['period_format'] ) ?
+            (string) $raw['period_format'] : 'iso_date';
         $destination_identity_meta_key = isset( $raw['destination_identity_meta_key'] )
             ? (string) $raw['destination_identity_meta_key'] : '';
         $safe_cols = static function( $x, $maximum ) {
@@ -43,6 +50,11 @@ final class MAD4B_SCP_Activity_Import_Authority {
         if ( ! $safe_cols( $columns, 80 ) || ! $safe_cols( $relationships, 20 ) ||
             ! $safe_cols( $price_fields, 20 ) || ! is_int( $decimal_scale ) ||
             $decimal_scale < 0 || $decimal_scale > 6 ||
+            ! in_array( $period_format, array( 'iso_date', 'unix_seconds' ), true ) ||
+            ( ( '' === $period_start ) !== ( '' === $period_end ) ) ||
+            ( '' !== $period_start && (
+                ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $period_start ) ||
+                ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $period_end ) ) ) ||
             ( '' !== $currency_field && ! preg_match(
                 '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $currency_field ) ) ||
             ! is_array( $currencies ) || count( $currencies ) > 20 ||
@@ -106,6 +118,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
             'price_fields' => array_values( $price_fields ),
             'decimal_scale' => $decimal_scale,
             'destination_identity_meta_key' => $destination_identity_meta_key,
+            'period_start_field' => $period_start,
+            'period_end_field' => $period_end,
+            'period_format' => $period_format,
             'max_rows' => $max_rows
         );
     }
@@ -114,8 +129,13 @@ final class MAD4B_SCP_Activity_Import_Authority {
         if ( null === $raw || array() === $raw || false === $raw ) return array( 'enabled' => false );
         if ( ! is_array( $raw ) || array_diff( array_keys( $raw ),
             array( 'enabled', 'validation', 'enabled_modes', 'preferred_mode',
-                'fallback_modes', 'manual_review_required', 'configured_explicitly' ) ) )
+                'fallback_modes', 'manual_review_required', 'configured_explicitly',
+                'auto_execute' ) ) )
             return self::err( 'mad4b_import_contract_unknown_fields', 'Unsupported import contract options.' );
+        if ( array_key_exists( 'auto_execute', $raw ) &&
+            false !== $raw['auto_execute'] )
+            return self::err( 'mad4b_import_implicit_execution_denied',
+                'Automatic import execution cannot be enabled by a profile.' );
         if ( empty( $raw['enabled'] ) ) return array( 'enabled' => false );
         $enabled = isset( $raw['enabled_modes'] ) ? $raw['enabled_modes'] : array();
         $fallback = isset( $raw['fallback_modes'] ) ? $raw['fallback_modes'] : array();
@@ -177,6 +197,9 @@ final class MAD4B_SCP_Activity_Import_Authority {
             ! in_array( $policy['identity_field'], $headers, true ) ||
             array_diff( array_keys( $policy['field_mapping'] ), $headers ) ||
             array_diff( $policy['price_fields'], $headers ) ||
+            ( ! empty( $policy['period_start_field'] ) &&
+                ( ! in_array( $policy['period_start_field'], $headers, true ) ||
+                  ! in_array( $policy['period_end_field'], $headers, true ) ) ) ||
             ( '' !== $policy['currency_field'] &&
               ! in_array( $policy['currency_field'], $headers, true ) ) ||
             ( ! empty( $policy['require_complete_wpml_groups'] ) &&
