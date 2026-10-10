@@ -600,6 +600,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-import-capabilities',
             'mad4b/business-activity-import-experience-plan',
             'mad4b/business-activity-import-batch-verify',
+            'mad4b/business-activity-import-batch-mutation-status',
             'mad4b/business-activity-import-acceptance-gates',
             'mad4b/business-activity-import-wpml-readback',
             'mad4b/business-activity-import-mapping-evolution-plan',
@@ -944,6 +945,18 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'permission' => array( __CLASS__, 'can_manage_profiles' ),
                 'schema' => self::schema( array(
                     'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                ), array( 'profile_slug' ) ),
+                'surface' => 'read', 'readonly' => true,
+                'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-import-batch-mutation-status',
+                'label' => 'Inspect Exact Staging Batch Mutation Lock and Recovery State',
+                'callback' => array( 'MAD4B_SCP_Activity_Import_Batches', 'mutation_status' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string',
+                        'minLength' => 2, 'maxLength' => 48 ),
                 ), array( 'profile_slug' ) ),
                 'surface' => 'read', 'readonly' => true,
                 'destructive' => false, 'idempotent' => true,
