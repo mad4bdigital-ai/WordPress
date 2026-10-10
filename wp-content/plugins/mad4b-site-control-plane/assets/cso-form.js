@@ -29,7 +29,9 @@
     if(field.options||schema.enum) return (['array','multiselect','multi_enum'].includes(type))?'multiselect':'select';
     if(type==='boolean'||type==='bool') return 'checkbox';
     if(['number','integer','currency'].includes(type)) return 'number';
-    if(['object','array','repeater','nested','relation','media_reference'].includes(type)) return 'typed-json';
+    if(['relation','relationship','media_reference'].includes(type)&&['integer','number'].includes(field.value_type)) return 'number';
+    if(['relation','relationship','media_reference'].includes(type)&&field.value_type==='string') return 'text';
+    if(['object','array','repeater','nested','relation','relationship','media_reference'].includes(type)) return 'typed-json';
     if(type==='date'||schema.format==='date') return 'date';
     if(type==='datetime'||schema.format==='date-time') return 'datetime-local';
     if(['rich_text','richtext','textarea'].includes(type)) return 'textarea';
@@ -62,6 +64,36 @@
     if(rule.operator==='not_in') return Array.isArray(rule.value)&&!rule.value.includes(value);
     return false;
   }
+  function constraints(value,schema) {
+    if(value===undefined) return;
+    if(typeof value==='number'&&(schema.minimum!==undefined&&value<schema.minimum||schema.maximum!==undefined&&value>schema.maximum)) throw new Error('LIMIT');
+    if(typeof value==='string') {
+      const length=Array.from(value).length;
+      if(schema.minLength!==undefined&&length<schema.minLength||schema.maxLength!==undefined&&length>schema.maxLength) throw new Error('LENGTH');
+    }
+    if(Array.isArray(value)&&(schema.minItems!==undefined&&value.length<schema.minItems||schema.maxItems!==undefined&&value.length>schema.maxItems)) throw new Error('ITEMS');
+  }
+  function applySuggestion(control,kind,schema,value) {
+    const encoded=JSON.stringify(value);
+    if(kind==='select'||kind==='multiselect') {
+      const option=Array.from(control.children).find(o=>o.value===encoded);
+      if(!option) throw new Error('OPTION_NOT_IN_FORM');
+      if(kind==='select') control.value=encoded; else option.selected=true;
+    } else if(kind==='typed-json') {
+      if(schema.type==='array'&&!Array.isArray(value)) {
+        const current=control.value===''?[]:JSON.parse(control.value);
+        if(!Array.isArray(current)||current.length>=Math.min(schema.maxItems??100,100)) throw new Error('ITEMS');
+        if(!current.some(v=>JSON.stringify(v)===encoded)) current.push(value);
+        control.value=JSON.stringify(current);
+      } else control.value=encoded;
+    } else if(kind==='number') {
+      if(typeof value!=='number'||!Number.isFinite(value)||schema.type==='integer'&&!Number.isInteger(value)) throw new Error('TYPE');
+      control.value=String(value);
+    } else {
+      if(typeof value!=='string') throw new Error('TYPE');
+      control.value=value;
+    }
+  }
   function render(root, config, transport) {
     const doc=root.ownerDocument;
     const view=config.presentation;
@@ -79,7 +111,7 @@
       if(!object(field)) throw new Error('FIELD_SHAPE');
       const name=field.field_id||field.name||field.id;
       if(typeof name!=='string'||name.length>193||['__proto__','constructor','prototype'].includes(name)) throw new Error('FIELD_NAME');
-      const kind=fieldType(field); const schema=field.schema||field;
+      const kind=fieldType(field); const schema=Object.assign({},field.constraints||{},field.schema||field,{type:field.value_type||field.schema?.type||field.type});
       const group=element(doc,'div',undefined,{'class':'cso-field'});
       const id='cso-field-'+index; const help=id+'-help'; const error=id+'-error';
       const label=String(field.label||name);
@@ -104,19 +136,26 @@
       group.append(control,element(doc,'p',field.help||field.description||'',{id:help}),problem);
       const source=field.autocomplete||field.suggestion_source||schema['x-cso-suggestions'];
       if(source) {
+        let suggestionList;
+        const query=element(doc,'input',undefined,{type:'search','aria-label':label+' '+text.suggestHelp,dir:'auto',autocomplete:'off',maxlength:'128'});
         const button=element(doc,'button',text.suggestions,{type:'button'});
         button.addEventListener('click',async()=>{
           button.disabled=true;
           try {
-            const result=await transport('field_suggest',{form:form.sealed,field:name,query:control.value||'',offset:0});
+            const result=await transport('field_suggest',{form:form.sealed,field:name,query:query.value||'',offset:0});
             const options=result.items||result.options||result.suggestions||[];
             const list=element(doc,'select',undefined,{'aria-label':label+' '+text.suggestHelp,dir:'auto'});
             list.append(element(doc,'option','',{value:''}));
-            options.slice(0,50).forEach(o=>list.append(element(doc,'option',o.label||o.value||o.id,{value:String(o.value??o.id??'')})));
-            list.addEventListener('change',()=>{ control.value=list.value; });
-            group.append(list);
+            options.slice(0,50).forEach(o=>list.append(element(doc,'option',o.label||o.value||o.id,{value:JSON.stringify(o.value??o.id??'')})));
+            list.addEventListener('change',()=>{
+              if(list.value==='') return;
+              try { applySuggestion(control,kind,schema,JSON.parse(list.value)); problem.textContent=''; visibility(); }
+              catch(e) { problem.textContent=text.invalid; }
+            });
+            if(suggestionList) suggestionList.remove();
+            suggestionList=list; group.append(list);
           } catch(e) { problem.textContent=text.notReady; } finally { button.disabled=false; }
-        }); group.append(button);
+        }); group.append(query,button);
       }
       controls.push({field,name,kind,schema,control,problem,group,active:true}); inputs.append(group);
     });
@@ -147,6 +186,7 @@
         try {
           const value=readControl(row.control,row.kind,row.schema);
           if(value===undefined&&row.required) throw new Error('REQUIRED');
+          constraints(value,row.schema);
           if(value!==undefined) values[row.name]=value;
         } catch(e) {
           row.problem.textContent=e.message==='REQUIRED'?text.required:text.invalid;
@@ -177,7 +217,7 @@
     const body=await response.text(); if(body.length>131072) throw new Error('RESPONSE_BOUNDS');
     const value=JSON.parse(body); if(!response.ok||value.code) throw new Error(value.data?.reason||value.code||'REQUEST_FAILED'); return value;
   }
-  const api={render,normalize,fieldType,readControl,condition,request};
+  const api={render,normalize,fieldType,readControl,condition,constraints,applySuggestion,request};
   if(typeof module!=='undefined'&&module.exports) module.exports=api;
   if(global.document) {
     const root=global.document.getElementById('cso-app'); const node=global.document.getElementById('cso-config');

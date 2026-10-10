@@ -10,13 +10,14 @@ final class MAD4B_SCP_CSO_Form_UI {
         add_action('admin_post_mad4b_cso_form',array(__CLASS__,'page'));
     }
     public static function presentation(array $input) {
-        if ( ! MAD4B_SCP_CSO_Scope::enabled('forms') || array_diff(array_keys($input),array('ability_name','target')) ) return MAD4B_SCP_CSO_Scope::error('PRESENTATION_DISABLED_OR_INPUT_INVALID');
+        if ( ! MAD4B_SCP_CSO_Scope::enabled('discovery') || ! MAD4B_SCP_CSO_Scope::enabled('forms') || array_diff(array_keys($input),array('ability_name','target')) ) return MAD4B_SCP_CSO_Scope::error('PRESENTATION_DISABLED_OR_INPUT_INVALID');
         $name=$input['ability_name']??''; $target=$input['target']??array();
         if ( ! is_string($name) || ! is_array($target) || true !== MAD4B_SCP_CSO_Scope::safe_data($target) ) return MAD4B_SCP_CSO_Scope::error('PRESENTATION_TARGET_INVALID');
         $form=MAD4B_SCP_CSO_Forms::schema($name,$target); if ( is_wp_error($form) ) return $form;
         $scope=MAD4B_SCP_CSO_Scope::current(); if ( is_wp_error($scope) ) return $scope;
         $url=add_query_arg(array('action'=>'mad4b_cso_form','ability_name'=>$name,'target'=>wp_json_encode($target)),admin_url('admin-post.php'));
         if ( ! self::same_origin($url,$scope['origin']) ) return MAD4B_SCP_CSO_Scope::error('FIRST_PARTY_ORIGIN_REQUIRED');
+        $current=MAD4B_SCP_CSO_Scope::assert_current($scope); if ( is_wp_error($current) ) return $current;
         return array('contract'=>'mad4b.cso01.presentation.v1','form'=>$form,'first_party_url'=>$url,
             'locale'=>$scope['locale']??'en_US','direction'=>0===strpos($scope['locale']??'','ar')?'rtl':'ltr',
             'host_widget_status'=>'CLIENT_RESOURCE_NOT_ACCEPTED','authorizing'=>false,'automatic_commit'=>false,
@@ -32,7 +33,7 @@ final class MAD4B_SCP_CSO_Form_UI {
         if ( ! MAD4B_SCP_CSO_Scope::enabled('forms') || is_wp_error($scope) || ! is_user_logged_in() || ! function_exists('wp_get_session_token') || ''===wp_get_session_token() ) { status_header(403); exit; }
         // GET only constructs a fresh form for the current cookie actor. No saved
         // form, remote token, posted plaintext secret or state change is accepted.
-        if ( 'GET'!==($_SERVER['REQUEST_METHOD']??'') || ! empty($_SERVER['HTTP_AUTHORIZATION']) ) { status_header(405); exit; }
+        if ( 'GET'!==($_SERVER['REQUEST_METHOD']??'') || ! empty($_SERVER['HTTP_AUTHORIZATION']) || ! empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) ) { status_header(405); exit; }
         $name=isset($_GET['ability_name'])&&is_string($_GET['ability_name'])?wp_unslash($_GET['ability_name']):'';
         $raw=isset($_GET['target'])&&is_string($_GET['target'])?wp_unslash($_GET['target']):'{}';
         $target=strlen($raw)<=8192?json_decode($raw,true):null;
@@ -45,6 +46,7 @@ final class MAD4B_SCP_CSO_Form_UI {
         $config=array('presentation'=>$view,'endpoint'=>$endpoint,'nonce'=>wp_create_nonce('wp_rest'));
         $json=wp_json_encode($config,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
         if(!is_string($json)||strlen($json)>131072) { status_header(413); exit; }
+        if(is_wp_error(MAD4B_SCP_CSO_Scope::assert_current($scope))) { status_header(403); exit; }
         $arabic='rtl'===$view['direction']; $title=$arabic?'نموذج الموقع':'Site form';
         nocache_headers();
         header("Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'");

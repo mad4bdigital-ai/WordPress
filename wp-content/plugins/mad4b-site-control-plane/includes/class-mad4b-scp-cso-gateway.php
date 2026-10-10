@@ -28,11 +28,14 @@ final class MAD4B_SCP_CSO_Gateway {
             'form_presentation' => array( 'forms', 'read', array( 'ability_name','target' ) ),
             'draft' => array( 'forms', 'private', array( 'operation','id','expected_revision','form','values' ) ),
             'change_plan' => array( 'single_write', 'plan', array( 'form','values','target_revision' ) ),
-            'approval_plan' => array( 'single_write', 'plan', array( 'plan','reason' ) ),
+            'approval_plan' => array( 'single_write', 'private', array( 'plan','reason' ) ),
             'change_commit' => array( 'single_write', 'private', array( 'plan','governance' ) ),
             'change_verify' => array( 'single_write', 'private', array( 'plan' ) ),
-            'change_history' => array( 'single_write', 'read', array( 'operation_id','limit','offset' ) ),
-            'undo_plan' => array( 'single_write', 'plan', array( 'operation_id','preparation' ) ),
+            'change_history' => array( 'single_write', 'read', array( 'plan' ) ),
+            'change_reconcile' => array( 'single_write', 'private', array( 'plan','reconciliation_ref' ) ),
+            'undo_plan' => array( 'single_write', 'plan', array( 'plan','mutation_id','reason' ) ),
+            'change_compensate' => array( 'single_write', 'private', array( 'compensation','governance' ) ),
+            'compensation_verify' => array( 'single_write', 'read', array( 'compensation' ) ),
             'bulk_plan' => array( 'bulk', 'plan', array( 'plans','selection','canary_size' ) ),
             'bulk_commit' => array( 'bulk', 'private', array( 'plan','governance','checkpoint','max_items' ) ),
             'workflow_compile' => array( 'workflow', 'plan', array( 'nodes' ) ),
@@ -56,11 +59,11 @@ final class MAD4B_SCP_CSO_Gateway {
 
     public static function read_tools() { return self::$registered; }
 
-    private static function argument_schema( array $keys ) {
+    private static function argument_schema( $action, array $keys ) {
         $properties = array();
-        $objects = array( 'scope','target','form','values','plan','governance','selection','checkpoint','artifact','destination','staging_bundle','preparation','read_preparation','reference','desired_values','diagnostic_input','observation_input','recipe','workflow' );
+        $objects = array( 'scope','target','form','values','plan','compensation','governance','artifact','destination','staging_bundle','preparation','read_preparation','reference','desired_values','diagnostic_input','observation_input','recipe','workflow' );
         $arrays = array( 'plans','nodes','sites','conditions','changes' );
-        $integers = array( 'limit','offset','canary_size','max_items','max_nodes','ttl','interval_seconds','ttl_seconds','hours' );
+        $integers = array( 'limit','offset','canary_size','max_items','max_nodes','ttl','interval_seconds','ttl_seconds','hours','expected_revision','checkpoint' );
         foreach ( $keys as $key ) {
             if ( in_array( $key, $objects, true ) ) $properties[$key] = array( 'type'=>'object','maxProperties'=>128 );
             elseif ( in_array( $key, $arrays, true ) ) $properties[$key] = array( 'type'=>'array','maxItems'=>100,'items'=>array( 'type'=>'object' ) );
@@ -68,7 +71,28 @@ final class MAD4B_SCP_CSO_Gateway {
             elseif ( in_array( $key, array( 'opt_in','consent' ), true ) ) $properties[$key] = array( 'type'=>'boolean' );
             else $properties[$key] = array( 'type'=>'string','maxLength'=>512 );
         }
-        return array( 'type'=>'object','properties'=>$properties,'additionalProperties'=>false );
+        if ( isset($properties['ability_name']) ) $properties['ability_name']=array('type'=>'string','minLength'=>1,'maxLength'=>193);
+        if ( isset($properties['query']) ) $properties['query']=array('type'=>'string','maxLength'=>128);
+        if ( isset($properties['limit']) ) $properties['limit']=array('type'=>'integer','minimum'=>1,'maximum'=>50);
+        if ( isset($properties['target_revision']) ) $properties['target_revision']=array('type'=>array('string','integer'),'minLength'=>1,'maxLength'=>191,'minimum'=>0,'maximum'=>2147483647);
+        if ( isset($properties['selection']) ) $properties['selection']=array('type'=>'array','maxItems'=>100,'items'=>array('type'=>'string','maxLength'=>193));
+        if ( isset($properties['nodes']) ) $properties['nodes']['maxItems']=32;
+        $required=array(
+            'form_prepare'=>array('ability_name'), 'field_suggest'=>array('form','field'),
+            'typed_validate'=>array('form','values'), 'field_help'=>array('form','field'),
+            'form_presentation'=>array('ability_name'), 'change_plan'=>array('form','values','target_revision'),
+            'change_history'=>array('plan'), 'undo_plan'=>array('plan','mutation_id'),
+            'compensation_verify'=>array('compensation'), 'bulk_plan'=>array('plans'),
+            'workflow_compile'=>array('nodes'), 'trigger_plan'=>array('source_ability','workflow'),
+            'secret_status'=>array('session_ref'), 'secret_rotation_plan'=>array('provider_id','field_ref'),
+            'content_plan'=>array('capability','target','values','preparation'),
+            'object_contract'=>array('capability','target'), 'multisite_plan'=>array('sites'),
+            'promotion_plan'=>array('artifact','destination'), 'monitor_plan'=>array('opt_in','conditions'),
+            'doctor_plan'=>array('domain'), 'drift_plan'=>array('capability','reference'),
+            'metrics_plan'=>array('opt_in'), 'accessibility_report'=>array('capability'),
+            'template_plan'=>array('form','recipe'),
+        );
+        return array( 'type'=>'object','properties'=>$properties,'required'=>$required[$action]??array(),'additionalProperties'=>false );
     }
 
     public static function register_abilities() {
@@ -87,7 +111,7 @@ final class MAD4B_SCP_CSO_Gateway {
             $result = wp_register_ability($name,array(
                 'label'=>'CSO ' . str_replace('_',' ',$action),
                 'description'=>'Bounded CSO preparation; capability discovery and plans do not authorize changes.',
-                'category'=>'mad4b-read', 'input_schema'=>self::argument_schema($row[1][2]),
+                'category'=>'mad4b-read', 'input_schema'=>self::argument_schema($action,$row[1][2]),
                 'output_schema'=>array('type'=>'object'),
                 'permission_callback'=>array(__CLASS__,'can_read'),
                 'execute_callback'=>static function($args) use($action) { return self::dispatch(array('action'=>$action,'arguments'=>$args)); },
@@ -109,8 +133,10 @@ final class MAD4B_SCP_CSO_Gateway {
                 $body=$request->get_body();
                 if ( ! is_string($body) || strlen($body)>131072 ) return MAD4B_SCP_CSO_Scope::error('REQUEST_BOUNDS');
                 $result=self::dispatch($request->get_json_params());
-                if ( is_wp_error($result) ) return $result;
-                $response=new WP_REST_Response($result);
+                if ( is_wp_error($result) ) {
+                    $data=$result->get_error_data();
+                    $response=new WP_REST_Response(array('code'=>$result->get_error_code(),'message'=>'Prepare the current site operation again.','data'=>is_array($data)?$data:array()),403);
+                } else $response=new WP_REST_Response($result);
                 $response->header('Cache-Control','private, no-store');
                 $response->header('Vary','Cookie');
                 $response->header('X-Content-Type-Options','nosniff');
@@ -132,11 +158,14 @@ final class MAD4B_SCP_CSO_Gateway {
     }
 
     public static function dispatch($input) {
-        if ( ! is_array($input) || array_diff(array_keys($input),array('action','arguments')) || ! is_string($input['action']??null) || ! is_array($input['arguments']??null) || true !== MAD4B_SCP_CSO_Scope::bounded($input) ) return MAD4B_SCP_CSO_Scope::error('REQUEST_SHAPE');
+        if ( ! is_array($input) || array_diff(array_keys($input),array('action','arguments')) || ! is_string($input['action']??null) || ! is_array($input['arguments']??null) || true !== MAD4B_SCP_CSO_Scope::bounded($input,131072) ) return MAD4B_SCP_CSO_Scope::error('REQUEST_SHAPE');
         $action=$input['action']; $args=$input['arguments']; $routes=self::routes();
         if ( ! isset($routes[$action]) || ! MAD4B_SCP_CSO_Scope::enabled('discovery') || ! MAD4B_SCP_CSO_Scope::enabled($routes[$action][0]) ) return MAD4B_SCP_CSO_Scope::error('FEATURE_DISABLED');
         if ( array_diff(array_keys($args),$routes[$action][2]) ) return MAD4B_SCP_CSO_Scope::error('UNKNOWN_ARGUMENT');
         $scope=MAD4B_SCP_CSO_Scope::current(); if ( is_wp_error($scope) ) return $scope;
+        // Domain services receive a current site by default; a supplied stale scope
+        // is still checked by the service and is never overwritten silently.
+        if ( in_array('scope',$routes[$action][2],true) && ! array_key_exists('scope',$args) ) $args['scope']=$scope;
         // Schema metadata and sealed contracts may legitimately name secrets;
         // only ordinary submitted values/search text enter the credential guard.
         foreach ( array('values','desired_values','query','reason','diagnostic_input','observation_input') as $key ) if ( isset($args[$key]) && true !== MAD4B_SCP_CSO_Scope::safe_data($args[$key]) ) return MAD4B_SCP_CSO_Scope::error('SECRET_INPUT_DENIED');
@@ -146,7 +175,7 @@ final class MAD4B_SCP_CSO_Gateway {
             $data=$result->get_error_data(); $reason=is_array($data)?($data['reason']??'SERVICE_DENIED'):'SERVICE_DENIED';
             return MAD4B_SCP_CSO_Scope::error(is_string($reason)&&preg_match('/^[A-Za-z0-9_.:-]{1,100}$/D',$reason)?$reason:'SERVICE_DENIED');
         }
-        return is_array($result) && true === MAD4B_SCP_CSO_Scope::bounded($result) ? $result : MAD4B_SCP_CSO_Scope::error('OUTPUT_CONTRACT_INVALID');
+        return is_array($result) && true === MAD4B_SCP_CSO_Scope::bounded($result,131072) && true === MAD4B_SCP_CSO_Scope::safe_data($result,false) ? $result : MAD4B_SCP_CSO_Scope::error('OUTPUT_CONTRACT_INVALID');
     }
 
     private static function invoke($action,array $a) {
@@ -159,13 +188,16 @@ final class MAD4B_SCP_CSO_Gateway {
             case 'form_presentation': return MAD4B_SCP_CSO_Form_UI::presentation($a);
             case 'draft': return self::draft($a);
             case 'change_plan': return MAD4B_SCP_CSO_Changes::plan($a['form']??array(),$a['values']??array(),$a['target_revision']??'');
-            case 'approval_plan': return MAD4B_SCP_CSO_Changes::approval_plan($a['plan']??array(),$a['reason']??'');
+            case 'approval_plan': return MAD4B_SCP_CSO_Changes::approval_plan($a['plan']??array(),$a['reason']??'Review the exact CSO proposal.');
             case 'change_commit': return MAD4B_SCP_CSO_Changes::commit($a['plan']??array(),$a['governance']??array());
             case 'change_verify': return MAD4B_SCP_CSO_Changes::verify($a['plan']??array());
-            case 'change_history': return MAD4B_SCP_CSO_Changes::history($a);
-            case 'undo_plan': return MAD4B_SCP_CSO_Changes::undo_plan($a);
+            case 'change_history': return MAD4B_SCP_CSO_Changes::history($a['plan']??array());
+            case 'change_reconcile': return MAD4B_SCP_CSO_Changes::reconcile($a['plan']??array(),$a['reconciliation_ref']??'');
+            case 'undo_plan': return MAD4B_SCP_CSO_Changes::undo_plan($a['plan']??array(),$a['mutation_id']??'',$a['reason']??'Undo this verified CSO mutation.');
+            case 'change_compensate': return MAD4B_SCP_CSO_Changes::compensate($a['compensation']??array(),$a['governance']??array());
+            case 'compensation_verify': return MAD4B_SCP_CSO_Changes::verify_compensation($a['compensation']??array());
             case 'bulk_plan': return MAD4B_SCP_CSO_Bulk::plan($a['plans']??array(),$a['selection']??array(),$a['canary_size']??1);
-            case 'bulk_commit': return MAD4B_SCP_CSO_Bulk::commit($a['plan']??array(),$a['governance']??array(),$a['checkpoint']??array(),$a['max_items']??1);
+            case 'bulk_commit': return MAD4B_SCP_CSO_Bulk::commit($a['plan']??array(),$a['governance']??array(),$a['checkpoint']??0,$a['max_items']??1);
             case 'workflow_compile': return MAD4B_SCP_CSO_Workflows::compile($a['nodes']??array());
             case 'workflow_run': return MAD4B_SCP_CSO_Workflows::run($a['plan']??array(),$a['governance']??array(),$a['max_nodes']??1);
             case 'trigger_plan': return MAD4B_SCP_CSO_Triggers::plan($a['source_ability']??'',$a['workflow']??array());

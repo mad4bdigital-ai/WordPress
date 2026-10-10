@@ -39,11 +39,14 @@ if('normal'!==$GLOBALS['mode']){
 }
 ok(count(MAD4B_SCP_CSO_Gateway::read_tools())>15,'read and plan catalog registered');
 foreach($GLOBALS['registered']as$name=>$args){
-    ok(!preg_match('/commit|workflow-run|secret-session|draft$/',$name),'private actions excluded');
+    ok(!preg_match('/commit|workflow-run|secret-session|approval-plan|change-reconcile|change-compensate|draft$/',$name),'stateful actions excluded from readonly tools');
     ok(false===$args['input_schema']['additionalProperties'],'closed argument contract');
     ok(true===$args['meta']['annotations']['readonly'],'read annotation');
 }
 ok(true===MAD4B_SCP_CSO_Gateway::can_read(),'complete set permission');
+ok(array('plan')===$GLOBALS['registered']['cso/change-history']['input_schema']['required'],'history binds its sealed plan');
+ok('array'===$GLOBALS['registered']['cso/bulk-plan']['input_schema']['properties']['selection']['type'],'bulk selection is a typed list');
+ok(193===$GLOBALS['registered']['cso/form-prepare']['input_schema']['properties']['ability_name']['maxLength'],'canonical ability length');
 $v=MAD4B_SCP_CSO_Gateway::dispatch($request);ok('CATALOG'===$v['status'],'valid dispatch');ok(1===$GLOBALS['calls'],'exactly one service entry');
 foreach(array(null,array('action'=>'missing','arguments'=>array()),array_merge($request,array('trusted'=>true)),array('action'=>'capability_catalog','arguments'=>array('grant'=>true)),array('action'=>'capability_catalog','arguments'=>array('query'=>'api_key')))as$bad){ok(is_wp_error(MAD4B_SCP_CSO_Gateway::dispatch($bad)),'malformed/secret denied');}
 ok(1===$GLOBALS['calls'],'invalid input cannot enter service');
