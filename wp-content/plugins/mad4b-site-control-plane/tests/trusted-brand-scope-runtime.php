@@ -17,6 +17,7 @@ function get_current_network_id() { return 1; }
 function get_current_user_id() { return $GLOBALS['mock_actor'] ?? 7; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); }
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
+function current_user_can( $cap ) { return 'manage_options' === (string) $cap; }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_strip_all_tags( $value ) { return strip_tags( $value ); }
 function wp_generate_uuid4() { return 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'; }
@@ -45,6 +46,14 @@ function check( $pass, $label ) {
 class MAD4B_SCP_Audit {
     public static function storage_status() { return array( 'ready' => true ); }
     public static function record( $event, $summary = array(), $status = 'ok' ) { return true; }
+}
+class MAD4B_SCP_Google_Drive_Context {
+    public static $file_exists = true;
+    public static function get_folder( $folder ) {
+        return self::$file_exists
+            ? array( 'id' => $folder, 'mimeType' => 'application/vnd.google-apps.folder' )
+            : new WP_Error( 'mad4b_provider_folder_missing' );
+    }
 }
 class MAD4B_SCP_Site_Profile {
     public static function status() { return $GLOBALS['site_status']; }
@@ -172,6 +181,75 @@ $stale = MAD4B_SCP_Context_Authority::save_profile( 'Another name', array(
     'expected_brand_id' => $a, 'expected_revision' => 2, 'confirm_identity_preserving_rename' => true,
 ) );
 check( is_wp_error( $stale ) && 'mad4b_brand_rename_revision_conflict' === $stale->get_error_code(), 'stale rename CAS rejected' );
+
+// A separate SHA-bound legacy source remains quarantined until a real
+// independently approved owner transfer. No foreign source is ever adopted.
+$legacy_source_id = hash( 'sha256', 'one-unbound-source' );
+$old_sources = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
+$old_assets = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $legacy_source_id ] = array(
+    'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
+    'source_id' => $legacy_source_id, 'site_uuid' => $uuid, 'provider' => 'google_drive',
+    'mode' => 'governed', 'external_root_id' => 'folder_legacy_verified', 'write_policy' => 'managed',
+);
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-test-one'] = array(
+    'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
+    'asset_id' => 'legacy-test-one', 'site_uuid' => $uuid, 'source_id' => $legacy_source_id,
+    'source_mode' => 'governed', 'file_id' => 'file_one', 'review_status' => 'approved',
+    'reviewed_content_hash' => str_repeat( 'e', 64 ), 'status' => 'ready',
+);
+$legacy_plan = MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan( array( 'source_id' => $legacy_source_id ) );
+check( is_array( $legacy_plan ) && $legacy_plan['asset_count'] === 1 &&
+    empty( $legacy_plan['mutation_performed'] ), 'Unbound source plan not independently read-only' );
+$discover = MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover();
+check( is_array( $discover ) && $discover['candidate_count'] === 1 &&
+    $discover['eligible_unbound_candidates'][0]['source_id'] === $legacy_source_id,
+    'Unbound source ID cannot be discovered without adopting foreign records' );
+$payload = array(
+    'source_id' => $legacy_source_id, 'expected_plan_sha256' => $legacy_plan['plan_sha256'],
+    'expected_brand_id' => $a, 'reviewed_external_root_id' => 'folder_legacy_verified',
+    'owner_evidence_reference' => 'reviewed-google-drive-folder-proof-v1',
+    'confirmation' => 'APPROVE EXACT UNBOUND BRAND TRANSFER',
+);
+$no_consent = $payload; $no_consent['confirmation'] = 'YES';
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $no_consent );
+check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_owner_confirmation_required' === $denied->get_error_code(),
+    'Unapproved brand transfer mutated old records' );
+$stale_claim = $payload; $stale_claim['expected_plan_sha256'] = str_repeat( '0', 64 );
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $stale_claim );
+check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_exact_plan_stale' === $denied->get_error_code(),
+    'Stale transfer accepted' );
+MAD4B_SCP_Google_Drive_Context::$file_exists = false;
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
+check( is_wp_error( $denied ) && 'mad4b_provider_folder_missing' === $denied->get_error_code(),
+    'Transfer proceeded without independent provider folder read' );
+MAD4B_SCP_Google_Drive_Context::$file_exists = true;
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-foreign'] = array(
+    'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
+    'asset_id' => 'legacy-foreign', 'site_uuid' => $uuid, 'brand_id' => $b,
+    'source_id' => $legacy_source_id, 'source_mode' => 'governed', 'file_id' => 'foreign',
+);
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan( array( 'source_id' => $legacy_source_id ) );
+check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_asset_scope_conflict' === $denied->get_error_code(),
+    'Foreign Brand asset was included in transfer' );
+unset( $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-foreign'] );
+$done = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
+check( is_array( $done ) && 'transferred_unapproved_requires_fresh_scan' === $done['state'] &&
+    1 === $done['asset_count'], 'Independently approved exact legacy transfer failed' );
+$transferred_asset = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]['legacy-test-one'];
+check( $a === $transferred_asset['brand_id'] &&
+    'unreviewed' === $transferred_asset['review_status'] &&
+    '' === $transferred_asset['reviewed_content_hash'] &&
+    'stale' === $transferred_asset['status'],
+    'Legacy transfer reused previous authority or skipped mandatory rescan' );
+check( 'read_only' === $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ][ $legacy_source_id ]['write_policy'],
+    'Transfer carried forward old managed-write policy' );
+check( is_wp_error( MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload ) ),
+    'Old transfer approval silently replayed' );
+// Restore previous test data after completing the separate migration scenario.
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = $old_sources;
+$GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] = $old_assets;
+
 unset( $GLOBALS['mock_options'][MAD4B_SCP_Context_Authority::PROFILE_OPTION] );
 $recreated = MAD4B_SCP_Context_Authority::save_profile( 'After rename' );
 check( ! is_wp_error( $recreated ) && $recreated['brand_id'] !== $a, 're-enrollment never reclaims name-derived legacy identity' );
