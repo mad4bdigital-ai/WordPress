@@ -828,10 +828,14 @@ jobs:
           for file in "$root/includes/class-mad4b-scp-staging-autopilot.php" "$root/includes/class-mad4b-scp-site-profile-admin.php" "$root/includes/class-mad4b-scp-site-profile.php" "$root/tests/staging-autopilot-runtime.php" "$root/tests/site-profile-wp-config-auto-sync-runtime.php"; do
             php -l "$file"
           done
+          php -l "$root/includes/class-mad4b-scp-host-identity-live.php"
+          php -l "$root/tests/host-identity-live-runtime.php"
           php "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/host-identity-live-runtime.php"
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
-          python3 -m py_compile tools/mad4b_staging_host_preflight.py
+          python3 -m py_compile tools/mad4b_staging_host_preflight.py tools/mad4b_host_runner.py
           python3 "$root/tests/staging-host-preflight-contract.py"
+          python3 "$root/tests/host-identity-signer-contract.py"
 
   cso01-governed-interaction-native:
     if: github.event_name == 'pull_request'
