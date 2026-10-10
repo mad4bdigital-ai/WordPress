@@ -603,6 +603,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
         $content = array(
             self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
             'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-import-approve',
             'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
             'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
             'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
@@ -622,6 +623,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		$abilities = array(
             self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
             'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-import-approve',
             'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
             'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
             'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
