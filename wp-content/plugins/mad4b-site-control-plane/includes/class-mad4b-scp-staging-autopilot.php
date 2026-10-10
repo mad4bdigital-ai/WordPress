@@ -310,17 +310,19 @@ final class MAD4B_SCP_Staging_Autopilot {
 
 		// Explicit on-demand observations: local, read-only, exact-current truth.
 		// If a component is absent, show NOT_EVALUATED instead of a false PASS.
-		$write = class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
-			? MAD4B_SCP_Staging_Write_Authority_Convergence::status() : array();
-		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
-			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+		// The Full handshake computes the governed Write inventory once.
+		// Do not duplicate that potentially expensive projection per MCP read.
 		$full = class_exists( 'MAD4B_SCP_Full_Staging_Authority' )
 			? MAD4B_SCP_Full_Staging_Authority::status() : array();
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
 		$developer = is_array( $full ) && isset( $full['developer'] ) && is_array( $full['developer'] )
 			? $full['developer'] : array();
-		$write_observation = is_array( $write ) && isset( $write['contract'] )
-			? array( 'ready' => ! empty( $write['write_ready'] ),
-				'current_readiness_blockers' => isset( $write['write_current_readiness_blockers'] ) ? $write['write_current_readiness_blockers'] : array() )
+		$write_from_full = is_array( $full ) && isset( $full['write'] ) && is_array( $full['write'] )
+			? $full['write'] : array();
+		$write_observation = array_key_exists( 'ready', $write_from_full )
+			? array( 'ready' => ! empty( $write_from_full['ready'] ),
+				'current_readiness_blockers' => isset( $write_from_full['current_readiness_blockers'] ) ? $write_from_full['current_readiness_blockers'] : array() )
 			: array();
 		$report['automation_plan'] = self::automation_plan(
 			is_array( $site ) ? $site : array(),
