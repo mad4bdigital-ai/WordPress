@@ -60,7 +60,7 @@ If WordPress reports `production` implicitly while Site Profile reports `staging
 
 ## Verdict, coverage and release binding
 
-The runner produces `LOCAL-CI-PARITY-REPORT.json` containing source SHA, source type/reference, runtime, every actual gate result, `NOT_RUN` counts, optional host observation and untested coverage. Existing targeted gates include G9, Selected HEAD, staging selector/upload, IMP07, release-set, enrollment and update-channel contracts.
+The runner produces `LOCAL-CI-PARITY-REPORT.json` containing source SHA, source type/reference, runtime, every actual gate result, `NOT_RUN` counts, optional host observation and untested coverage. Existing targeted gates include G9, Selected HEAD, staging selector/upload, IMP07, release-set, enrollment and update-channel contracts. The suite is configured by the checked-in, exact-source `tools/mad4b-local-ci-gates.json` manifest, rather than a hard-coded PR or site. New tested providers can add bounded, named PHP/Python fixtures in the same source review; shell snippets, unreviewed paths, and external executables are rejected. The report binds the manifest SHA-256 to the selected commit.
 
 A complete pass of this named subset sets `tested_gate_set_passed=true` **but retains** `LOCAL_CI_PARITY_PARTIAL`, because the repository includes many more GitHub workflows and the runner does not run disposable WordPress+MySQL integration, MariaDB upgrade tests, Playwright, multisite/browser suites, and actual live Staging mutation/rollback. A failed gate or source drift yields `LOCAL_CI_PARITY_FAIL`.
 
