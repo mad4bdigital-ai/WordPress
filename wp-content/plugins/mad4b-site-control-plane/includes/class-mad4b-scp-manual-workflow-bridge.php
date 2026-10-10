@@ -90,6 +90,7 @@ final class MAD4B_SCP_Manual_Workflow_Bridge {
    ? MAD4B_SCP_WordPress_Native_Opt_In::status() : array( 'enabled' => false );
   $registry = class_exists( 'MAD4B_SCP_Operation_Registry' )
    ? MAD4B_SCP_Operation_Registry::status() : array( 'operations' => array() );
+  if ( ! is_array( $registry ) ) $registry = array( 'operations' => array(), 'state' => 'catalog_unavailable' );
   $entries = array();
   foreach ( array( self::ENABLE, self::DISABLE ) as $id ) {
    if ( '' !== $filter && false === stripos( $id, $filter ) ) continue;
