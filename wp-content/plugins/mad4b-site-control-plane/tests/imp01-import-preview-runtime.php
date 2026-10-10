@@ -82,7 +82,11 @@ class MAD4B_SCP_Content_Experience_Profiles {
                         'review_monotonic' : 'none',
                     'review_past_intervals' => false,
                     'wpml_languages' => array( 'en', 'fr' ), 'require_complete_wpml_groups' => true,
-                    'required_relationships' => array(), 'max_rows' => 500
+                    'required_relationships' => array(),
+                    'period_start_field' => ! empty( $GLOBALS['imp07_period_test'] ) ? 'period_start' : '',
+                    'period_end_field' => ! empty( $GLOBALS['imp07_period_test'] ) ? 'period_end' : '',
+                    'period_format' => 'iso_date',
+                    'max_rows' => 500
                 ) ) );
     }
 }
