@@ -590,30 +590,52 @@ final class MAD4B_SCP_Context_Authority {
 		if ( is_wp_error( $scope ) ) return $scope;
 		$source = self::raw_sources()[ $id ] ?? array();
 		$brand = strtolower( (string) ( $scope['brand_ref'] ?? '' ) );
+		$expected_id = is_array( $source )
+			? hash( 'sha256', (string) $scope['site_uuid'] . '|google_drive|governed|' .
+				(string) ( $source['external_root_id'] ?? '' ) . '|' ) : '';
 		$source_valid = is_array( $source ) && self::valid_source( $source )
+			&& hash_equals( $expected_id, $id )
+			&& 'google_drive' === (string) ( $source['provider'] ?? '' )
+			&& 'governed' === (string) ( $source['mode'] ?? '' )
 			&& 'read_only' === (string) ( $source['write_policy'] ?? '' )
+			&& 'selected' === (string) ( $source['status'] ?? '' )
+			&& empty( $source['last_scan_complete'] )
 			&& hash_equals( $brand, strtolower( (string) ( $source['brand_id'] ?? '' ) ) )
 			&& MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $source, $scope );
-		$items = 0; $unreviewed = 0; $foreign = 0;
-		foreach ( self::raw_assets() as $asset ) {
+		$items = 0; $unreviewed = 0; $foreign = 0; $prior_review_still_present = 0;
+		foreach ( self::raw_assets() as $key => $asset ) {
 			if ( ! is_array( $asset ) || $id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
 			++$items;
-			if ( 'stale' === (string) ( $asset['status'] ?? '' ) &&
-				'unreviewed' === (string) ( $asset['review_status'] ?? '' ) &&
-				'' === (string) ( $asset['reviewed_content_hash'] ?? '' ) &&
-				MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $asset, $scope ) )
+			$canonical_asset_id = hash( 'sha256', $id . '|' . (string) ( $asset['file_id'] ?? '' ) );
+			$approval_present = 'approved' === (string) ( $asset['review_status'] ?? '' )
+				|| '' !== (string) ( $asset['reviewed_content_hash'] ?? '' )
+				|| ! empty( $asset['review_agent_public_id'] )
+				|| ! empty( $asset['generation_evidence_stale_override'] );
+			if ( $approval_present ) ++$prior_review_still_present;
+			if ( self::valid_asset( $asset )
+				&& hash_equals( $canonical_asset_id, (string) $key )
+				&& hash_equals( $canonical_asset_id, (string) ( $asset['asset_id'] ?? '' ) )
+				&& 'stale' === (string) ( $asset['status'] ?? '' )
+				&& 'unreviewed' === (string) ( $asset['review_status'] ?? '' )
+				&& ! $approval_present
+				&& MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $asset, $scope ) )
 				++$unreviewed;
 			else ++$foreign;
 		}
+		$ready = $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign;
 		return array(
 			'contract' => 'mad4b.context-legacy-owner-transfer-readback.v1',
-			'state' => $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign
-				? 'transferred_unapproved_requires_fresh_scan' : 'blocked_or_changed',
-			'ready_for_fresh_source_scan' => $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign,
+			'state' => $ready ? 'transferred_unapproved_requires_fresh_scan' : 'blocked_or_changed',
+			'ready_for_fresh_source_scan' => $ready,
 			'existing_source_verified' => $source_valid,
-			'asset_count' => $items, 'unreviewed_asset_count' => $unreviewed,
+			'asset_count' => $items,
+			'unreviewed_asset_count' => $unreviewed,
 			'foreign_or_approved_asset_count' => $foreign,
-			'old_approvals_reused' => false,
+			'prior_review_evidence_still_present_count' => $prior_review_still_present,
+			'old_approvals_reused' => $ready ? false : null,
+			'registry_revision' => self::registry_revision(),
+			'provider_readback_performed' => false,
+			'cross_request_crash_recovery_certified' => false,
 			'content_ready_for_publication' => false,
 			'supplier_rights_authorized' => false,
 			'read_only' => true, 'mutation_performed' => false,
