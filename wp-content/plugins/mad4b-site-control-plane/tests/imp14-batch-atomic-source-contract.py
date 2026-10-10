@@ -7,6 +7,8 @@ P = Path(__file__).resolve().parents[1]
 get = lambda f:(P/"includes"/f).read_text(encoding="utf8")
 atomic = get("class-mad4b-scp-batch-atomic-mutex.php")
 batch = get("class-mad4b-scp-activity-import-batches.php")
+snapshot = get("class-mad4b-scp-activity-import-snapshot.php")
+review = get("class-mad4b-scp-activity-import-review.php")
 fixture = (P/"tests"/"imp08-batch-review-runtime.php").read_text(encoding="utf8")
 preflight = (P/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")
 mysql_test = (P/"tests"/"imp14-batch-mysql-concurrency.php").read_text(encoding="utf8")
@@ -25,6 +27,15 @@ require("ON DUPLICATE KEY UPDATE" not in atomic.split("public static function ac
         "Mutex reservation overwrites an existing owner")
 require("add_option( $lock_key" not in batch,
         "WordPress add_option UPSERT is not an atomic reservation")
+require("MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $store, $record )" in snapshot and
+        "MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $key, $approval )" in snapshot and
+        "add_option( $store, $record" not in snapshot and
+        "add_option( $key, $approval" not in snapshot,
+        "Concurrent snapshot/approval can overwrite immutable source receipts")
+require("MAD4B_SCP_Batch_Atomic_Mutex::reserve_signed_nonce(" in review and
+        "add_option( $nonce_key" not in review and
+        "reserve_signed_nonce(" in atomic,
+        "Signed webhook replay protection is not atomic")
 for guard in (
     "MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, $operation )",
     "MAD4B_SCP_Batch_Atomic_Mutex::release( $lease )",
