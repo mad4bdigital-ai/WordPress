@@ -118,19 +118,49 @@ class MultiEnvironmentCITest(unittest.TestCase):
         self.assertNotIn("sshpass", text)
 
     def test_manifest_is_pinned_to_exact_candidate_files(self):
+        baseline = json.loads((ROOT / "tools/mad4b-local-ci-gates.json").read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "tools"
             path.mkdir()
-            gate = {"name": "dynamic-branch-test", "language": "php",
-                    "file": "staging-source-selector-runtime.php",
-                    "args": [], "profiles": ["core", "extended"]}
-            data = {"contract": "mad4b.local-ci-gate-manifest.v1",
-                    "non_authorizing": True, "github_workflows_fully_represented": False,
-                    "gates": [gate]}
-            (path / "mad4b-local-ci-gates.json").write_text(json.dumps(data), encoding="utf-8")
-            cases, fingerprint = runner.load_manifest(Path(tmp), "core")
-            self.assertEqual([("dynamic-branch-test", "php", gate["file"])], cases)
+            fixture = path / "mad4b-local-ci-gates.json"
+            fixture.write_text(json.dumps(baseline), encoding="utf-8")
+            cases, fingerprint = runner.load_manifest(Path(tmp), "extended")
+            self.assertEqual(20, len(cases))
             self.assertEqual(64, len(fingerprint))
+            for mode in ("remove_gate", "rewrite_file", "rewrite_args", "shrink_profile"):
+                mutated = json.loads(json.dumps(baseline))
+                gates = mutated["gates"]
+                if mode == "remove_gate":
+                    gates.pop(0)
+                elif mode == "rewrite_file":
+                    gates[0]["file"] = "staging-source-selector-runtime.php"
+                elif mode == "rewrite_args":
+                    gates[0]["args"] = ["unexpected"]
+                else:
+                    gates[0]["profiles"].remove("core")
+                fixture.write_text(json.dumps(mutated), encoding="utf-8")
+                with self.subTest(mode=mode), self.assertRaisesRegex(
+                        ValueError, "required local CI baseline gate"):
+                    runner.load_manifest(Path(tmp), "extended")
+
+    def test_manifest_allows_additional_gates_without_shrinking_baseline(self):
+        baseline = json.loads((ROOT / "tools/mad4b-local-ci-gates.json").read_text(encoding="utf-8"))
+        baseline["gates"].append({
+            "name": "additional-contract",
+            "language": "php",
+            "file": "staging-source-selector-runtime.php",
+            "args": [],
+            "profiles": ["extended"],
+        })
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tools"
+            path.mkdir()
+            (path / "mad4b-local-ci-gates.json").write_text(
+                json.dumps(baseline), encoding="utf-8")
+            expanded, _ = runner.load_manifest(Path(tmp), "extended")
+            core, _ = runner.load_manifest(Path(tmp), "core")
+            self.assertEqual(21, len(expanded))
+            self.assertEqual(13, len(core))
 
     def test_manifest_refuses_arbitrary_commands_and_traversal(self):
         with tempfile.TemporaryDirectory() as tmp:
