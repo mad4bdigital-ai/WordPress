@@ -634,6 +634,8 @@ final class MAD4B_SCP_Activity_Import_Review {
             'manage_options', 'mad4b-import-review', array( __CLASS__, 'admin_page' ) );
     }
     public static function admin_page() {
+        if ( class_exists( 'MAD4B_SCP_Activity_Import_Experience' ) )
+            return MAD4B_SCP_Activity_Import_Experience::render();
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Permission denied.' );
         echo '<div class="wrap"><h1>MAD4B Activity Import Review</h1>';
         echo '<p>Review-only transports: signed Apps Script/Make/n8n/Zapier/BitFlows push, or Staging administrator CSV upload. No import job is executed here.</p>';
