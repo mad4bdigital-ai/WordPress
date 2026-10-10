@@ -122,9 +122,15 @@ final class MAD4B_SCP_Selected_Head_Update {
             if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $m[ $field ] ?? '' ) ) )
                 return self::fail( 'manifest_identity_incomplete', 'Package build identity is incomplete.' );
         }
-        if ( empty( $m['staging_candidate_certified'] ) || true !== ( $m['release_verdict_success'] ?? false ) ||
+        // Support BOTH independently governed master releases and optional
+        // Staging candidate receipts. A plain ZIP or a bare HEAD is not proof.
+        $master_certified = true === ( $m['published_from_master'] ?? false )
+            && true === ( $m['release_root_trust_verified'] ?? false );
+        $candidate_certified = true === ( $m['staging_candidate_certified'] ?? false );
+        if ( ( ! $master_certified && ! $candidate_certified ) ||
+            true !== ( $m['release_verdict_success'] ?? false ) ||
             empty( $m['release_verdict_run_id'] ) )
-            return self::fail( 'candidate_not_certified', 'Exact candidate lacks an approved Staging build verdict.' );
+            return self::fail( 'candidate_not_certified', 'Exact HEAD lacks a governed build verdict and trusted release or Staging certification.' );
         if ( ! isset( $m['version'] ) || ! is_string( $m['version'] ) ||
             strlen( $m['version'] ) < 1 || strlen( $m['version'] ) > 64 ||
             ! isset( $m['size_bytes'] ) || ! is_numeric( $m['size_bytes'] ) ||
