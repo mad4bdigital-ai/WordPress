@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 578,
+  "changed_file_count": 584,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1150,8 +1150,22 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-snapshot.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp03-governed-import-contract.py"
       ]
+    },
+    {
+      "id": "feature007-imp04-imp05-exact-source-reconciliation-provider-observation-20261010",
+      "semantic_unit": "IMP04/05: paginated encrypted-snapshot conflict inspection, dynamic external identity WP Meta reconciliation, only observed WP All Import documented lifecycle and verified-readback preflight gates.",
+      "revert_boundary": "Revert IMP04/05 page/reconciliation/hook observer and isolated tests without impacting approved snapshot, WordPress business records or existing imported content. Hooks are observation-only; no automatic importer launched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp04-imp05-import-reconciliation-and-provider-observation.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-wpai-observer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp04-imp05-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp04-reconciliation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp05-wpai-observer-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "60926c8952082eae2a299f4620338b06cc74b34f686b797945c31778f9a91587",
+  "changed_paths_sha256": "4c1216aca8791c6a65a904e9b1bb788c1b4caaff2c07abc296f19dcc4ce9ad8a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
