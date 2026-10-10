@@ -45,7 +45,7 @@ class MAD4B_SCP_Audit {
 class MAD4B_SCP_Site_Profile {
 	public static function status() {
 		return array('configured'=>true,'origin_match'=>true,'environment_match'=>true,
-			'environment'=>'staging','site_uuid'=>'11111111-2222-4333-8444-555555555555',
+			'environment'=>($GLOBALS['site_environment']??'staging'),'site_uuid'=>'11111111-2222-4333-8444-555555555555',
 			'profile_digest'=>str_repeat('3',64));
 	}
 }
@@ -241,6 +241,19 @@ $nonregistered=MAD4B_SCP_Progressive_Requirements::plan(array(
 	'target_operation_id'=>'arbitrary.system_exec'));
 check(is_wp_error($nonregistered),
 	'External operation or arbitrary callback cannot be admitted as a generic effect');
+$GLOBALS['site_environment']='production';
+$portable=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'registry.ability','mode'=>'detached',
+	'target_ability_name'=>'vendor/create-cruise'));
+check(!is_wp_error($portable) && !$portable['production_mutation_authorized'],
+	'Read-only dynamic discovery should work on verified Production without authorizing writes');
+$production_link=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'registry.ability','mode'=>'linked',
+	'target_ability_name'=>'vendor/create-cruise'));
+check(is_wp_error($production_link) &&
+	'mad4b_progressive_link_staging_only'===$production_link->get_error_code(),
+	'Linked effect cannot be scheduled on Production without a separate policy');
+$GLOBALS['site_environment']='staging';
 $unknown=MAD4B_SCP_Progressive_Requirements::plan(array('operation_id'=>'untrusted.php_callback','mode'=>'linked'));
 check(is_wp_error($unknown),'arbitrary callback must not enter operation registry');
 $pure=MAD4B_SCP_Progressive_Requirements::decide(
