@@ -157,6 +157,15 @@ $dupe=MAD4B_SCP_Progressive_Requirements::link($apply);
 check(is_array($dupe)&&'already_queued'===$dupe['state'] &&
 	!$dupe['mutation_performed'],'repeat attempt created another side effect');
 $GLOBALS['ready']=true;
+$GLOBALS['already_installed']=false;
+$changed=MAD4B_SCP_Progressive_Requirements::plan($linked);
+$change_approval=$linked;
+$change_approval['expected_plan_sha256']=$changed['plan_sha256'];
+$change_approval['confirmation']='QUEUE EXACT GOVERNED WORK HANDOFF';
+$changed_result=MAD4B_SCP_Progressive_Requirements::link($change_approval);
+check(is_array($changed_result) &&
+	'queued_plan_stale_reconciliation_required'===$changed_result['state'],
+	'Changing the retry observations must not create another linked action');
 $GLOBALS['already_installed']=true;
 $installed=MAD4B_SCP_Progressive_Requirements::plan($linked);
 check(!is_wp_error($installed) && $installed['skip_duplicate_install'] &&
@@ -164,9 +173,8 @@ check(!is_wp_error($installed) && $installed['skip_duplicate_install'] &&
 	!$installed['install_per_retry'],'exact verified installed build must skip repeat installation');
 $newapply=$linked;$newapply['expected_plan_sha256']=$installed['plan_sha256'];
 $newapply['confirmation']='QUEUE EXACT GOVERNED WORK HANDOFF';
-$stale=MAD4B_SCP_Progressive_Requirements::link($newapply);
-check(is_array($stale)&&'queued_plan_stale_reconciliation_required'===$stale['state'] &&
-	!$stale['mutation_performed'],'changed condition set duplicated a linked handoff');
+$installed_effect=MAD4B_SCP_Progressive_Requirements::link($newapply);
+check(is_wp_error($installed_effect),'Exact installed build must never queue another installation');
 $GLOBALS['already_installed']=false;
 $needs=MAD4B_SCP_Progressive_Requirements::plan($linked);
 check(!$needs['skip_duplicate_install'],'caller-supplied/replayed old installation proof bypassed new readback');
