@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +57,47 @@ class StandalonePackageTests(unittest.TestCase):
         run("git", "commit", "-qm", "fixture", cwd=self.root)
         self.head = run("git", "rev-parse", "HEAD", cwd=self.root)
         self.out = self.temp_root / "dist"
+        # Synthetic ZIP fixtures test deterministic behavior, not host PHP 8.3.
+        # The real CLI never accepts this injected test-only bypass.
+        self.lint_stub = mock.patch.object(builder, "require_php_syntax",
+            return_value={"state": "PASS", "php_version": "8.3",
+                          "files_checked": 2, "complete_lint": True})
+        self.lint_stub.start()
+        self.addCleanup(self.lint_stub.stop)
+
+
+    def test_real_php_gate_refuses_missing_php(self):
+        with mock.patch.object(builder.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(builder.BuildBlocked, "php83_cli_required_before_packaging"):
+                builder.require_php_syntax(self.root, "nonexistent-php83")
+
+    def test_real_php_gate_refuses_parse_error(self):
+        def run_checked(argv, cwd, timeout=120):
+            if "-r" in argv:
+                return subprocess.CompletedProcess(argv, 0, stdout="8.3", stderr="")
+            if "-l" in argv:
+                return subprocess.CompletedProcess(argv, 255, stdout="", stderr="PHP Parse error")
+            raise AssertionError("Unexpected command")
+        with mock.patch.object(builder.shutil, "which", return_value="/trusted/php83"), \
+             mock.patch.object(builder, "command", side_effect=run_checked):
+            with self.assertRaisesRegex(builder.BuildBlocked, "php_syntax_invalid:"):
+                builder.require_php_syntax(self.root, "php")
+
+    def test_real_php_gate_checks_every_php_source(self):
+        calls = []
+        def run_checked(argv, cwd, timeout=120):
+            if "-r" in argv:
+                return subprocess.CompletedProcess(argv, 0, stdout="8.3", stderr="")
+            if "-l" in argv:
+                calls.append(argv[-1])
+                return subprocess.CompletedProcess(argv, 0, stdout="No syntax errors", stderr="")
+            raise AssertionError("Unexpected command")
+        with mock.patch.object(builder.shutil, "which", return_value="/trusted/php83"), \
+             mock.patch.object(builder, "command", side_effect=run_checked):
+            summary = builder.require_php_syntax(self.root, "php")
+        expected = sorted(str(x) for x in (self.root / builder.PLUGIN).rglob("*.php"))
+        self.assertEqual(sorted(calls), expected)
+        self.assertTrue(summary["complete_lint"])
 
     def test_build_twice_reproducible_and_source_unmodified(self):
         first = builder.build(self.root, self.out, self.head, self.adapter)
