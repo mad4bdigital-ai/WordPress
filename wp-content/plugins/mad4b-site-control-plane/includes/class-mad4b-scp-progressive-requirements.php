@@ -484,7 +484,11 @@ final class MAD4B_SCP_Progressive_Requirements {
 				'Operation, mode or retry budget unavailable.');
 		$site=self::exact_site_identity();
 		if(''===$site)
-			return new WP_Error('mad4b_progressive_staging_identity_required','Exact enrolled Staging required.');
+			return new WP_Error('mad4b_progressive_site_identity_required',
+				'Exact enrolled site identity required for portable read planning.');
+		if('linked'===$mode && false===strpos($site,'|staging'))
+			return new WP_Error('mad4b_progressive_link_staging_only',
+				'Effectful linked planning remains restricted to governed Staging.');
 		$observed=call_user_func(self::$providers[$operation],$input);
 		if(is_wp_error($observed))return $observed;
 		if(!is_array($observed))
@@ -520,6 +524,10 @@ final class MAD4B_SCP_Progressive_Requirements {
 		if(!is_array($input) || 'linked'!==($input['mode']??'') ||
 			'QUEUE EXACT GOVERNED WORK HANDOFF'!==($input['confirmation']??''))
 			return new WP_Error('mad4b_progressive_confirmation_required','Approved linked handoff input required.');
+		$site_identity=self::exact_site_identity();
+		if(''===$site_identity || false===strpos($site_identity,'|staging'))
+			return new WP_Error('mad4b_progressive_link_staging_only',
+				'The read-only dynamic catalog is portable but this mutation handoff is Staging-only.');
 		$expected=(string)($input['expected_plan_sha256']??'');
 		$plan_input=$input;unset($plan_input['expected_plan_sha256'],$plan_input['confirmation']);
 		$plan=self::plan($plan_input);
