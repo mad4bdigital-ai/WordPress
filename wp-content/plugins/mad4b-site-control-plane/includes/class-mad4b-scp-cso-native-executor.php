@@ -326,6 +326,8 @@ final class MAD4B_SCP_CSO_Native_Executor {
                 MAD4B_SCP_CSO_Scope::digest( $scope ) ) ||
             ! hash_equals( (string) ( $record['plan_sha256'] ?? '' ), $plan_sha ) )
             return self::error( 'NATIVE_OPERATION_NOT_OWNED_OR_FOUND' );
+        if ( true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
+            return self::error( 'NATIVE_STATUS_SCOPE_CHANGED' );
         return array( 'contract' => self::CONTRACT . '.status.v1',
             'status' => $record['state'],
             'reason_code' => $record['reason_code'],
@@ -333,5 +335,62 @@ final class MAD4B_SCP_CSO_Native_Executor {
             'needs_independent_reconcile' => in_array( $record['state'],
                 array( 'needs_reconcile','reserved','inflight' ), true ),
             'mutation_performed' => false );
+    }
+
+    /**
+     * Recovery observation ONLY, never a certification, retry, journal update,
+     * approval finalization or automatic compensation. Existing native provider
+     * snapshot is *not* an external independent attestation.
+     */
+    public static function reconcile_inspect( $sealed, $ticket_id ) {
+        $status = self::status( $sealed, $ticket_id );
+        if ( is_wp_error( $status ) ) return $status;
+        $material = MAD4B_SCP_CSO_Scope::unseal(
+            $sealed, MAD4B_SCP_CSO_Changes::CONTRACT );
+        $scope = MAD4B_SCP_CSO_Scope::current();
+        if ( is_wp_error( $material ) || ! is_array( $material ) ||
+            is_wp_error( $scope ) ||
+            ! is_array( $material['values'] ?? null ) ||
+            ! is_array( $material['target'] ?? null ) ||
+            ! is_string( $material['provider_id'] ?? null ) ||
+            ! is_string( $material['expected_revision'] ?? null ) ||
+            true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
+            return self::error( 'NATIVE_RECONCILE_SCOPE_INVALID' );
+        $observed = MAD4B_SCP_CSO_Storage_Adapters::snapshot(
+            $material['provider_id'], $material['target'] );
+        if ( is_wp_error( $observed ) || ! is_array( $observed ) ||
+            ! is_array( $observed['values'] ?? null ) ||
+            ! is_string( $observed['revision'] ?? null ) ) {
+            return array(
+                'contract' => self::CONTRACT . '.reconcile-observation.v1',
+                'journal_status' => $status['status'],
+                'observation_available' => false,
+                'provider_values_match' => null,
+                'native_revision_changed' => null,
+                'effect_verified_independently' => false,
+                'journal_mutated' => false, 'replay_allowed' => false,
+                'next_safe_action' => 'collect_external_independent_readback' );
+        }
+        $match = true;
+        foreach ( $material['values'] as $field => $wanted ) {
+            if ( ! is_string( $field ) ||
+                ! array_key_exists( $field, $observed['values'] ) ||
+                $observed['values'][ $field ] !== $wanted ) {
+                $match = false;
+                break;
+            }
+        }
+        if ( true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
+            return self::error( 'NATIVE_RECONCILE_SCOPE_CHANGED' );
+        return array(
+            'contract' => self::CONTRACT . '.reconcile-observation.v1',
+            'journal_status' => $status['status'],
+            'observation_available' => true,
+            'provider_values_match' => $match,
+            'native_revision_changed' => ! hash_equals(
+                $material['expected_revision'], $observed['revision'] ),
+            'effect_verified_independently' => false,
+            'journal_mutated' => false, 'replay_allowed' => false,
+            'next_safe_action' => 'collect_external_independent_readback' );
     }
 }

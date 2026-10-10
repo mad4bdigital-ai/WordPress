@@ -124,6 +124,8 @@ ck($GLOBALS['executions']===1&&$GLOBALS['title']==='New','exactly one native eff
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit($sealed,array('ticket_id'=>$id,'agent_public_id'=>'agent-demo'))),'ticket replay denied');
 $status=MAD4B_SCP_CSO_Native_Executor::status($sealed,$id);
 ck(!is_wp_error($status)&&$status['status']==='verified'&&!$status['replay_allowed'],'terminal status read');
+$inspection=MAD4B_SCP_CSO_Native_Executor::reconcile_inspect($sealed,$id);
+ck(!is_wp_error($inspection)&&$inspection['observation_available']&&$inspection['provider_values_match']&&!$inspection['effect_verified_independently'],'recovery observation never promoted to independent proof');
 $GLOBALS['scope']['actor_sha256']=str_repeat('d',64);
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::status($sealed,$id)),'actor isolation');
 $GLOBALS['scope']['actor_sha256']=str_repeat('a',64);
@@ -135,6 +137,8 @@ $err=MAD4B_SCP_CSO_Native_Executor::commit($second,array('ticket_id'=>$id2,'agen
 ck(is_wp_error($err)&&$GLOBALS['executions']===2,'uncertain write not represented as verified');
 $status2=MAD4B_SCP_CSO_Native_Executor::status($second,$id2);
 ck(!is_wp_error($status2)&&$status2['status']==='needs_reconcile'&&!$status2['replay_allowed'],'unknown effect durable without retry');
+$observe2=MAD4B_SCP_CSO_Native_Executor::reconcile_inspect($second,$id2);
+ck(!is_wp_error($observe2)&&$observe2['provider_values_match']&&$observe2['journal_status']==='needs_reconcile'&&!$observe2['effect_verified_independently'],'unknown-effect evidence requires independent resolution');
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit($second,array('ticket_id'=>$id2,'agent_public_id'=>'agent-demo'))),'uncertain effect replay denied');
 $GLOBALS['policy']=false;
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::approval_plan($second,'again','agent-demo')),'revoked policy');
