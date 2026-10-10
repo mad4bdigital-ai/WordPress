@@ -110,7 +110,7 @@ final class MAD4B_SCP_Activity_Import_Batches {
         try {
             $callee = $operation . '_unlocked';
             $result = call_user_func( array( __CLASS__, $callee ), $input );
-        } catch ( \\Throwable $unexpected ) {
+        } catch ( \Throwable $unexpected ) {
             // An exception can happen after a partial durable mutation. Never
             // release a lock if the commit outcome is unknown.
             return self::err( 'mad4b_batch_mutation_interrupted',
