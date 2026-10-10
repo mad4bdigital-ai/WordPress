@@ -118,7 +118,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 						? 'exact_host_binding_present' : 'requires_host_operator_review',
 					'actor' => 'host_operator',
 					'next_action_id' => ! empty( $site['same_origin_clone_protection'] )
-						? 'none' : 'provision_unique_host_deployment_binding',
+						? 'none' : 'inspect_existing_enrolled_host_runner_signer',
 					'remote_write_allowed' => false,
 				),
 				array(
@@ -219,7 +219,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 		} elseif ( ! $binding_ready ) {
 			$actor = 'host_operator';
 			$state = 'blocked_host_deployment_binding';
-			$next = ! $binding_configured ? 'provision_unique_host_deployment_binding'
+			$next = ! $binding_configured ? 'inspect_existing_enrolled_host_runner_signer'
 				: ( ! $binding_match ? 'stop_and_review_deployment_binding_drift'
 					: 'save_exact_site_profile_to_bind_host_secret' );
 			if ( $binding_configured && ! $binding_bound && $binding_match ) $actor = 'site_administrator';
@@ -246,7 +246,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 		$lanes[1]['active_identity_source'] = $active_source;
 		$lanes[1]['next_action_id'] = $two_sources ? 'resolve_host_identity_source_conflict_without_cloning'
 			: ( $live_host_verified && ! $binding_ready ? 'migrate_legacy_host_operations_to_signed_proof'
-			: ( $binding_ready ? 'none' : ( ! $binding_configured ? 'provision_unique_host_deployment_binding'
+			: ( $binding_ready ? 'none' : ( ! $binding_configured ? 'inspect_existing_enrolled_host_runner_signer'
 			: ( ! $binding_match ? 'stop_and_review_deployment_binding_drift' : 'save_exact_site_profile_to_bind_host_secret' ) ) ) );
 		$lanes[1]['host_secret_generated_by_wordpress'] = false;
 		$lanes[2]['state'] = ! $write_observed ? 'not_evaluated' : ( $write_ready ? 'exact_current_authority_ready' : 'exact_current_authority_blocked' );
@@ -307,6 +307,8 @@ final class MAD4B_SCP_Staging_Autopilot {
 				'signed_host_proof_not_equivalent_to_legacy_hmac_secret' => true,
 				'wp_config_mutation_requires_local_admin_save' => true,
 				'host_secret_provisioning_requires_host_operator' => true,
+				'new_legacy_host_secret_preferred' => false,
+				'existing_enrolled_host_signer_is_preferred' => true,
 				'write_only_convergence_requires_exact_owner_approval' => true,
 				'managed_skills_remote_reconcile_requires_step_up' => true,
 				'developer_isolation_requires_independent_host_acceptance' => true,
