@@ -74,3 +74,9 @@ The current PR branch additionally includes source-level modules, **not** operat
 Run exact-head PHP 7.4/8.3 native matrix with `cso-drafts-runtime.php`, `cso-changes-runtime.php`, `cso-orchestration-plans-runtime.php`, plus real Staging MySQL concurrency, crash-after-provider-COMMIT recovery, actor and plugin-version drift, replay refusal, independent write readback and rollback. Synthetic tests alone cannot certify a live provider.
 
 Keep the plugin inside Feature 007, without independent plugin, `master` merge, Production release, arbitrary SQL, general plugin-option writing or unknown provider authority.
+
+### Incremental template and diagnostics source
+
+- `CSO_Templates::plan` validates nonsecret recipe values against an exact current form descriptor and binds a first-party, ten-minute HMAC recipe to Site/Brand and actor. It does not publish, apply a template or modify site content.
+- `CSO_Operations::doctor_plan` returns bounded blockers tied to the current site. It does not attest runtime, execute repair, start monitoring or grant Production promotion.
+- `cso-storage-adapters-runtime.php` and `cso-template-doctor-runtime.php` are synthetic native fixtures wired into the PHP 7.4/8.3 CI matrix; queued Actions checks are not a PASS.
