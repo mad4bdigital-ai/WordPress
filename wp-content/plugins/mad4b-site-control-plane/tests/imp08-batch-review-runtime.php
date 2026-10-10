@@ -38,6 +38,13 @@ $mutex_key = 'mad4b_batch_mutex_' . hash( 'sha256',
     MAD4B_SCP_Site_Profile::site_uuid() . '|pricing' );
 add_option( $mutex_key, array( 'token_sha256' => str_repeat( 'f', 64 ),
     'operation' => 'append', 'created_at' => gmdate( 'c' ) ), '', false );
+$mutex_readback = MAD4B_SCP_Activity_Import_Batches::mutation_status(
+    array( 'profile_slug' => 'pricing' ) );
+ck( ! is_wp_error( $mutex_readback ) &&
+    $mutex_readback['mutation_lock_held'] &&
+    !$mutex_readback['safe_for_new_mutation'] &&
+    !$mutex_readback['automatic_lock_takeover_allowed'],
+    'Stale or concurrent source lock was silently stolen or not observable' );
 $locked = MAD4B_SCP_Activity_Import_Batches::begin( array(
     'profile_slug' => 'pricing', 'expected_chunks' => 2,
     'confirmed' => true ) );
@@ -58,6 +65,12 @@ ck( !is_wp_error( $b ) && strlen( $b['batch_id'] ) === 32,
 $id = $b['batch_id'];
 ck( false === get_option( $mutex_key, false ),
     'Successfully persisted batch did not release its own mutex.' );
+$mutex_released = MAD4B_SCP_Activity_Import_Batches::mutation_status(
+    array( 'profile_slug' => 'pricing' ) );
+ck( !is_wp_error( $mutex_released ) &&
+    !$mutex_released['mutation_lock_held'] &&
+    $mutex_released['safe_for_new_mutation'],
+    'Completed batch mutation retained a false lock after readback' );
 $base = array( 'profile_slug' => 'pricing', 'batch_id' => $id );
 $part1 = MAD4B_SCP_Activity_Import_Batches::append( array_merge( $base,
     array( 'chunk_index' => 0, 'source' => imp08_many( 1, 250, 'grp' ) ) ) );
