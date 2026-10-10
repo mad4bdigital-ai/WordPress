@@ -2489,12 +2489,13 @@ final class MAD4B_SCP_Context_Authority {
 
 	private static function with_registry_lock( $operation, $callback ) {
 		// Initial Brand enrollment/rename establishes identity. All other
-		// registry writes require the current site/brand/revision fence.
+		// registry writes require the same exact revision-bound scope as jobs.
+		$checkpoint = null;
 		if ( 'save_profile' !== (string) $operation ) {
-			$guard = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
-				? MAD4B_SCP_Operational_Scope_Guard::require_current()
-				: new WP_Error( 'mad4b_scope_guard_missing', 'Verified operational scope is unavailable.' );
-			if ( is_wp_error( $guard ) ) return $guard;
+			$checkpoint = class_exists( 'MAD4B_SCP_Operational_Integrity', false )
+				? MAD4B_SCP_Operational_Integrity::capture()
+				: new WP_Error( 'mad4b_scope_integrity_missing', 'Verified operational scope is unavailable.' );
+			if ( is_wp_error( $checkpoint ) ) return $checkpoint;
 		}
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
@@ -2502,6 +2503,14 @@ final class MAD4B_SCP_Context_Authority {
 		try {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) return self::compensate_registry_error( $snapshot, $operation, $result, 'callback' );
+			// Recheck site, brand, revision and actor before registry revision/audit.
+			// A drift forces the existing registry snapshot compensation path.
+			if ( null !== $checkpoint ) {
+				$rechecked = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint );
+				if ( is_wp_error( $rechecked ) ) {
+					return self::compensate_registry_error( $snapshot, $operation, $rechecked, 'scope_drift' );
+				}
+			}
 
 			$wrapped = self::is_audited_registry_result( $result );
 			$public_result = $wrapped ? $result['result'] : $result;
