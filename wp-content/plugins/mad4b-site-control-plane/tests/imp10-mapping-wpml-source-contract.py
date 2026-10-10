@@ -7,6 +7,8 @@ mapping=src("class-mad4b-scp-import-mapping-evolution.php")
 wpml=src("class-mad4b-scp-import-wpml-readback.php")
 profiles=src("class-mad4b-scp-content-experience-profiles.php")
 reconciliation=src("class-mad4b-scp-activity-import-reconciliation.php")
+review=src("class-mad4b-scp-activity-import-review.php")
+experience=src("class-mad4b-scp-activity-import-experience.php")
 preflight=(root/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf-8")
 fixtures=[(root/"tests"/f).read_text(encoding="utf-8") for f in (
     "imp10-mapping-evolution-runtime.php","imp10-wpml-readback-runtime.php")]
@@ -37,6 +39,14 @@ for word in ("wpml_element_trid","wpml_get_element_translations",
     must(word in wpml, "Missing WPML postwrite proof guard "+word)
 must("'suppress_filters' => true" in reconciliation,
      "WordPress Meta identity reconcile incorrectly narrows by current WPML language")
+must("mad4b_import_intent" in review and
+     "preview_mapping" in review and
+     "observed_headers' => $headers" in review and
+     "Check dynamic mapping before upload" in experience,
+     "Header-only mapping preflight is not available in the guided CSV flow")
+must("sampled_mapped_column_type_counts" in mapping and
+     "commercial_price_semantic_type_drift" in mapping,
+     "Business-semantic drift was reduced to lexical name-only matching")
 for word in ("class-mad4b-scp-import-mapping-evolution.php",
              "class-mad4b-scp-import-wpml-readback.php",
              "business-activity-import-mapping-evolution-plan",
