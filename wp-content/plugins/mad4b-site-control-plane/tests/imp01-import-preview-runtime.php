@@ -311,6 +311,12 @@ $badMode = MAD4B_SCP_Activity_Import_Modes::plan( array( 'profile_slug' => 'pric
     'mode_id' => 'user_invented_exec' ) );
 ck( is_wp_error( $badMode ) && $badMode->get_error_code() === 'mad4b_import_mode_unknown',
     'Unregistered arbitrary execution mode accepted' );
+$GLOBALS['imp02_enabled_modes'] = array();
+$emptyMode = MAD4B_SCP_Activity_Import_Modes::plan( array(
+    'profile_slug' => 'pricing', 'mode_id' => 'admin_csv_upload' ) );
+ck( is_wp_error( $emptyMode ) &&
+    $emptyMode->get_error_code() === 'mad4b_import_mode_disabled_for_profile',
+    'Empty Profile Mode allowlist inadvertently allowed CSV upload' );
 $GLOBALS['imp02_enabled_modes'] = array( 'admin_csv_upload', 'signed_generic_webhook' );
 $notAllowed = MAD4B_SCP_Activity_Import_Modes::plan( array(
     'profile_slug' => 'pricing', 'mode_id' => 'wp_all_import_cron' ) );
