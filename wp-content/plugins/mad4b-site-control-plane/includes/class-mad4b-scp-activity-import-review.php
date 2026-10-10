@@ -230,7 +230,14 @@ final class MAD4B_SCP_Activity_Import_Review {
             if ( ! is_array( $row ) || array_diff( array_keys( $row ), $headers ) ||
                 array_diff( $headers, array_keys( $row ) ) )
                 return self::error( 'mad4b_import_row_shape', 'All rows must contain precisely the declared columns.' );
+            $serialized_source_payload = false;
             foreach ( $row as $value ) {
+                // PHP-serialized arrays/objects may hide typed JetEngine
+                // relation IDs or object payloads. Never parse/unserialize
+                // untrusted source cells in a generic CSV import lane.
+                if ( is_string( $value ) &&
+                    preg_match( '/^(?:a|O|C):[0-9]+:/D', $value ) )
+                    $serialized_source_payload = true;
                 if ( ! is_scalar( $value ) && null !== $value )
                     return self::error( 'mad4b_import_value_type', 'Nested structures/formulas/executable data cannot be imported by the preview lane.' );
                 if ( strlen( (string) $value ) > 4096 )
@@ -245,6 +252,8 @@ final class MAD4B_SCP_Activity_Import_Review {
             $id = (string) $row[ $identity ];
             $row_hashes[] = self::digest( $row );
             $errors = array();
+            if ( $serialized_source_payload )
+                $errors[] = 'serialized_relation_requires_certified_driver';
             if ( '' === $id || isset( $ids[ $id ] ) ) $errors[] = 'identity_missing_or_duplicate';
             $ids[ $id ] = true;
             foreach ( $policy['required_relationships'] as $relation ) {
