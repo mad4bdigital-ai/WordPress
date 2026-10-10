@@ -343,7 +343,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
             'reason_code' => $record['reason_code'],
             'replay_allowed' => false,
             'needs_independent_reconcile' => in_array( $record['state'],
-                array( 'needs_reconcile','reserved','inflight' ), true ),
+                array( 'needs_reconcile','reserved','inflight','reconciling' ), true ),
             'mutation_performed' => false );
     }
 
@@ -456,7 +456,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
             ! preg_match( '/^[A-Za-z0-9._:-]{8,191}$/D', $body['evidence_ref'] ) ||
             true !== $body['writer_fenced'] ||
             ! is_int( $body['quiesced_at'] ) ||
-            $body['quiesced_at'] < (int) $journal['updated_at'] ||
+            $body['quiesced_at'] < (int) ( $journal['reconcile_initial_updated_at'] ?? $journal['updated_at'] ) ||
             ! is_bool( $body['side_effects_excluded'] ) ||
             ! is_int( $body['issued_at'] ) ||
             ! is_int( $body['expires_at'] ) ||
@@ -602,8 +602,17 @@ final class MAD4B_SCP_CSO_Native_Executor {
         if ( ! is_string( $recovery_ticket_id ) || strlen( $recovery_ticket_id ) > 128 )
             return self::error( 'NATIVE_RECOVERY_TICKET_INVALID' );
         $ctx = self::reconcile_context( $sealed, $original_id, $evidence,
-            $agent_public_id, true );
-        if ( is_wp_error( $ctx ) ) return $ctx;
+            $agent_public_id, false );
+        if ( is_wp_error( $ctx ) ) {
+            // Only an already pinned recovery may resume with an expired
+            // signature; a fresh unclaimed proof must always be in TTL.
+            $status = self::status( $sealed, $original_id );
+            if ( is_wp_error( $status ) || ( $status['status'] ?? '' ) !== 'reconciling' )
+                return $ctx;
+            $ctx = self::reconcile_context( $sealed, $original_id, $evidence,
+                $agent_public_id, true );
+            if ( is_wp_error( $ctx ) ) return $ctx;
+        }
         $r = self::recovery_binding( $ctx, $original_id );
         $held = $ctx['journal']['state'] === 'reconciling';
         if ( $held ) {
@@ -620,6 +629,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
             if ( is_wp_error( $auth ) ) return $auth;
             $next = $ctx['journal'];
             $next['state'] = 'reconciling';
+            $next['reconcile_initial_updated_at'] = $ctx['journal']['updated_at'];
             $next['recovery_ticket_sha256'] = hash( 'sha256', $recovery_ticket_id );
             $next['reconcile_proof_sha256'] = $ctx['proof']['proof_sha256'];
             $next['reconcile_outcome'] = $ctx['outcome'];
