@@ -137,3 +137,59 @@ functioning. Tests on one SHA never certify later commits on the moving branch.
 ## Trusted runner integration gate (11 October 2026)
 
 The current MCP Abilities are **read-only**. Enabling remote execution requires a separate owner-approved and exact-job-bound request, a registered semantic Remote Work Queue operation, and a pinned trusted runner identity. The worker must use only the existing deterministic ZIP entrypoint against a clean exact SHA, with verified MCP Adapter archive. The WordPress runtime must reject unsigned or expired receipts, mismatched job/site/plan/build identities, canceled or expired leases, and all Production requests. The signed receipt may prove only `BUILT_UNVERIFIED`, not installation, certification, or publish authority. Until the corresponding worker, verifier, and native acceptance tests are deployed, `automatic_execution_enabled` remains false; UI discovery and plans must not claim that a job was executed.
+
+## MCP Staging queue and trusted runner receipt v1 (source delivered 11 October 2026)
+
+These steps are separate from WordPress plugin activation and Production authority.
+The WordPress MCP Ability `mad4b/standalone-build-plan` remains read-only. The
+new `mad4b/standalone-build-request` is an **owner-governed queue mutation** on
+`mad4b-admin`; it requires exact lowercase `expected_head`,
+`expected_plan_sha256`, optional `profile`, and exact confirmation
+`QUEUE EXACT STAGING SOURCE BUILD`. Existing actor enrollment, exact grant,
+approval, OAuth step-up and authorization checks remain in force. A real
+`WP_ENVIRONMENT_TYPE=staging`, valid Site Profile, installed current-build
+provenance and match of enrolled origin are mandatory; no implicit Production
+environment acceptance or automatic approval is added.
+
+The request enqueues only `standalone_source_build` into the existing bounded
+Remote Work Queue. It does **not** run a build on the WordPress host. A
+separately enrolled runner uses the existing
+`mad4b/remote-operation-work-claim`,
+`mad4b/remote-operation-work-cancel-signal`,
+`mad4b/remote-operation-work-provider-checkpoint` and
+`mad4b/remote-operation-work-complete` abilities. The worker must record
+`provider_entered` **before** invoking the isolated build and
+`provider_returned` on successful return; cancellation or expired lease
+blocks completion and requires reconciliation. No blind retry.
+
+The external worker must run a **pinned, independently reviewed executable**
+outside the untrusted source checkout and reproduce the ZIP using
+`tools/mad4b_standalone_build.py` in an isolated, resource-limited sandbox,
+with a hash-verified certified MCP Adapter archive. The separate runner
+receipt implementation is `tools/mad4b_standalone_runner_receipt.py` and
+uses `cryptography` Ed25519. Install its reviewed digest to the trusted
+runner path and prevent the source under test from accessing the signing key.
+Never store that key in Git, plugin options, WordPress uploads, or container
+mounts. The trusted runner signs only when the canonical receipt, source
+HEAD, manifest hashes, archive bytes, job claim/generation, site binding and
+independent owner-approved runner policy agree.
+
+The WordPress host must be explicitly enrolled with **public** key
+`MAD4B_SCP_STANDALONE_BUILDER_PUBLIC_KEY_B64` (32 decoded bytes) and fixed
+executor ID `MAD4B_SCP_STANDALONE_BUILDER_EXECUTOR_ID`. Configuration of
+these constants requires the existing authorized host deployment process;
+neither can be set by untrusted MCP payload. The signed pair
+`build_receipt: {claims_b64, signature_b64}` accompanies the leased job's
+current executor/lease token on the already-governed Work Complete ability.
+The verifier checks Ed25519 signature, exact target SHA, plan, site/origin,
+worker identity, claim generation, 5-minute receipt freshness, three digest
+fields, actual Staging and provider-returned checkpoint. It then records
+`BUILT_UNVERIFIED` only.
+
+A created ZIP is not a certified release. Required follow-ups remain native
+PHP 8.3 checks, independent ZIP acceptance/evidence, manual owner release
+review, signing/approval authority, Staging deployment and live readback.
+Never treat queued GitHub Actions, policy tests or this source update as live
+runtime PASS. `automatic_execution_enabled=false` until a separately
+enrolled, reachable runner executes the full protocol and provides verified
+runtime readback.
