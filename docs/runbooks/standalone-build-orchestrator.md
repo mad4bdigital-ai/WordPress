@@ -67,6 +67,34 @@ and `stored` compression for byte-for-byte reproducibility; run the builder
 twice in separate output directories to compare SHA-256. Never claim a
 release certificate solely from matching hashes.
 
+## Produce actual five-gate evidence without GitHub Actions
+
+A separate entrypoint re-runs G9 delivery and the eight named PHP runtime
+fixtures on the exact clean source tree, lints the complete PHP tree under
+**native PHP 8.3**, verifies the package/receipt and then unpacks the ZIP into
+a disposable workspace for the original PHP package-integrity verifier:
+
+```powershell
+python tools/mad4b_standalone_evidence.py `
+  --repo-root "M:\\Users\\Nagy\\Repo\\WordPress" `
+  --expected-head "<FULL_40_CHARACTER_REVIEWED_SHA>" `
+  --zip "C:\\builds\\mad4b-<FULL_SHA>\\mad4b-site-control-plane-<FULL_SHA>.zip" `
+  --receipt "C:\\builds\\mad4b-<FULL_SHA>\\CANONICAL-PACKAGE-RECEIPT.json" `
+  --output-dir "C:\\evidence\\mad4b-<FULL_SHA>" `
+  --php "C:\\php83\\php.exe"
+```
+
+Outputs `GATE-RESULTS.json` with **five actual PASS/FAIL/BLOCKED values**
+and `NATIVE-TEST-EVIDENCE-BUNDLE.json` with source/archive identity,
+tested PHP version and bounded named-check results. Exit 2 is **BLOCKED**
+or **FAIL**, not a fabricated PASS. These are correctly shaped inputs for
+the separate existing owner-reviewed publisher, but they are **not themselves
+trusted attestation**, even if all five gates pass: the test runner and
+selected candidate might be from the same untrusted repository. The owner
+must independently review source/test provenance and run in a trusted,
+isolated runtime before using the existing Ed25519 signer. The script has
+no signing, publishing, GitHub mutation or WordPress deployment capabilities.
+
 ## CI outage versus native-test failure
 
 If GitHub Actions reports failed runs **with zero jobs created**, distinguish
@@ -98,6 +126,7 @@ that requires an independent signed-job/receipt contract and runtime acceptance.
 Offline source tests:
 ```bash
 python3 tools/test_mad4b_standalone_build.py
+python3 tools/test_mad4b_standalone_evidence.py
 php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
 php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
 ```
