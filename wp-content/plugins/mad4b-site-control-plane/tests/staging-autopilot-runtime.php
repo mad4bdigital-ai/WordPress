@@ -34,3 +34,64 @@ foreach ( $cases as $index => $case ) {
 	}
 }
 echo "PASS: 8 Staging Autopilot policy cases, non-Production and no automatic grants\n";
+
+/**
+ * Check every gated stage in the automatic read-only handoff.
+ * A green environment is not the same as a clone-safe host binding.
+ */
+$aligned = array_merge( $ready, array(
+	'wordpress_environment' => 'staging',
+	'wordpress_environment_explicit' => true,
+	'wordpress_profile_mismatch' => false,
+	'deployment_binding_configured' => true,
+	'deployment_binding_bound' => true,
+	'deployment_binding_match' => true,
+	'same_origin_clone_protection' => true,
+	'authority_ready' => true,
+	'site_uuid' => '00000000-0000-4000-8000-000000000001',
+	'revision' => 3,
+	'profile_digest' => str_repeat( 'a', 64 ),
+) );
+$write_ok = array( 'ready' => true, 'current_readiness_blockers' => array() );
+$skills_ok = array( 'ready' => true );
+$dev_ok = array( 'execution' => array( 'execution_ready' => true, 'blockers' => array() ) );
+$scenarios = array(
+	array( $aligned, $write_ok, $skills_ok, $dev_ok, 'awaiting_exact_head_native_acceptance', 'none' ),
+	array( array_merge( $aligned, array( 'deployment_binding_configured' => false, 'deployment_binding_bound' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'provision_unique_host_deployment_binding' ),
+	array( array_merge( $aligned, array( 'deployment_binding_bound' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'save_exact_site_profile_to_bind_host_secret' ),
+	array( array_merge( $aligned, array( 'deployment_binding_match' => false, 'same_origin_clone_protection' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_host_deployment_binding', 'stop_and_review_deployment_binding_drift' ),
+	array( $aligned, array( 'ready' => false, 'current_readiness_blockers' => array( 'candidate_binding_not_current' ) ), $skills_ok, $dev_ok, 'blocked_write_authority_not_current', 'review_exact_write_only_convergence_handshake' ),
+	array( $aligned, array(), $skills_ok, $dev_ok, 'write_authority_not_evaluated', 'review_exact_write_only_convergence_handshake' ),
+	array( $aligned, $write_ok, array( 'ready' => false ), $dev_ok, 'blocked_managed_skills_not_current', 'review_exact_managed_skills_reconciliation' ),
+	array( $aligned, $write_ok, array(), $dev_ok, 'managed_skills_not_evaluated', 'review_exact_managed_skills_reconciliation' ),
+	array( $aligned, $write_ok, $skills_ok, array( 'execution' => array( 'execution_ready' => false, 'blockers' => array( 'resource_limiter_unavailable', 'network_isolation_unavailable' ) ) ), 'blocked_developer_host_prerequisites', 'inspect_staging_host_sandbox_and_process_limits' ),
+	array( $aligned, $write_ok, $skills_ok, array(), 'developer_execution_not_evaluated', 'inspect_staging_host_sandbox_and_process_limits' ),
+	array( array_merge( $aligned, array( 'wordpress_environment' => 'production', 'wordpress_environment_explicit' => true ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_site_environment_or_identity', 'host_operator_reconcile_explicit_environment' ),
+	array( array_merge( $aligned, array( 'origin_match' => false ) ), $write_ok, $skills_ok, $dev_ok, 'blocked_site_environment_or_identity', 'review_exact_site_profile' ),
+);
+foreach ( $scenarios as $index => $case ) {
+	$result = MAD4B_SCP_Staging_Autopilot::automation_plan( $case[0], $case[1], $case[2], $case[3] );
+	if ( $result['state'] !== $case[4] || $result['next_action_id'] !== $case[5] ) {
+		fwrite( STDERR, "FAIL automation gate $index: " . $result['state'] . " / " . $result['next_action_id'] . "\n" );
+		exit( 1 );
+	}
+	if ( count( $result['assistant_workflow'] ) !== 5 || ! $result['read_only']
+		|| $result['mutation_performed'] || $result['authorizing'] || $result['completion_certified']
+		|| $result['execution_policy']['unattended_write_grant_allowed']
+		|| $result['execution_policy']['unattended_host_install_allowed']
+		|| $result['execution_policy']['production_mutation_allowed']
+		|| $result['host_binding']['secret_read_or_generated'] ) {
+		fwrite( STDERR, "FAIL automation safety $index\n" );
+		exit( 1 );
+	}
+	if ( $index === 1 && ! $result['environment']['wordpress_explicit_staging_aligned'] ) {
+		fwrite( STDERR, "FAIL independent WP environment vs host binding\n" );
+		exit( 1 );
+	}
+	if ( $index === 4 && ( $result['assistant_workflow'][2]['ready']
+		|| $result['assistant_workflow'][2]['blockers'] !== array( 'candidate_binding_not_current' ) ) ) {
+		fwrite( STDERR, "FAIL stale exact grant projection\n" );
+		exit( 1 );
+	}
+}
+echo "PASS: 12 ordered Staging Autopilot gates; environment/binding/authority/skills/host separation\n";
