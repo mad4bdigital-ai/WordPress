@@ -13,9 +13,11 @@ function get_posts( $args ) {
     return array();
 }
 function get_post_meta( $post_id, $key, $single = false ) {
-    if ( $post_id !== 101 || $key !== 'single_price' )
-        throw new RuntimeException( 'Unexpected unsanctioned field lookup' );
-    return '100';
+    if ( $post_id !== 101 )
+        throw new RuntimeException( 'Unexpected unsanctioned post read' );
+    if ( 'source_external_id' === $key ) return '1';
+    if ( 'single_price' === $key ) return '100';
+    throw new RuntimeException( 'Unexpected unsanctioned field lookup' );
 }
 require __DIR__ . '/imp01-import-preview-runtime.php';
 require __DIR__ . '/../includes/class-mad4b-scp-activity-import-reconciliation.php';
