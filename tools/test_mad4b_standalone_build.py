@@ -18,6 +18,9 @@ SPEC = importlib.util.spec_from_file_location("mad4b_standalone_build", HERE)
 builder = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(builder)
 
+# Preserve the real gate for refusal tests while fixture builders mock it.
+REAL_PHP_SYNTAX_GATE = builder.require_php_syntax
+
 
 def run(*args, cwd):
     return subprocess.check_output(list(args), cwd=str(cwd), text=True).strip()
@@ -69,7 +72,7 @@ class StandalonePackageTests(unittest.TestCase):
     def test_real_php_gate_refuses_missing_php(self):
         with mock.patch.object(builder.shutil, "which", return_value=None):
             with self.assertRaisesRegex(builder.BuildBlocked, "php83_cli_required_before_packaging"):
-                builder.require_php_syntax(self.root, "nonexistent-php83")
+                REAL_PHP_SYNTAX_GATE(self.root, "nonexistent-php83")
 
     def test_real_php_gate_refuses_parse_error(self):
         def run_checked(argv, cwd, timeout=120):
@@ -81,7 +84,7 @@ class StandalonePackageTests(unittest.TestCase):
         with mock.patch.object(builder.shutil, "which", return_value="/trusted/php83"), \
              mock.patch.object(builder, "command", side_effect=run_checked):
             with self.assertRaisesRegex(builder.BuildBlocked, "php_syntax_invalid:"):
-                builder.require_php_syntax(self.root, "php")
+                REAL_PHP_SYNTAX_GATE(self.root, "php")
 
     def test_real_php_gate_checks_every_php_source(self):
         calls = []
@@ -94,7 +97,7 @@ class StandalonePackageTests(unittest.TestCase):
             raise AssertionError("Unexpected command")
         with mock.patch.object(builder.shutil, "which", return_value="/trusted/php83"), \
              mock.patch.object(builder, "command", side_effect=run_checked):
-            summary = builder.require_php_syntax(self.root, "php")
+            summary = REAL_PHP_SYNTAX_GATE(self.root, "php")
         expected = sorted(str(x) for x in (self.root / builder.PLUGIN).rglob("*.php"))
         self.assertEqual(sorted(calls), expected)
         self.assertTrue(summary["complete_lint"])
