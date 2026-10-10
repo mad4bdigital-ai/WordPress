@@ -80,12 +80,18 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             return self::error( 'mad4b_wpai_profile_not_enabled', 'Enabled Profile Activity facet required.' );
+        $site_policy = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        if ( empty( $site_policy['validation']['identity_field'] ) )
+            return self::error( 'mad4b_wpai_validation_missing', 'Approved import validation must exist.' );
         $import_id = isset( $input['import_id'] ) ? (int) $input['import_id'] : 0;
         $unique = isset( $input['unique_identifier'] ) ? (string) $input['unique_identifier'] : '';
         $mode = isset( $input['mode'] ) ? (string) $input['mode'] : '';
         if ( $import_id < 1 || ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $unique ) ||
             ! in_array( $mode, array( 'create_new', 'match_existing', 'update_existing' ), true ) )
             return self::error( 'mad4b_wpai_handoff_invalid', 'Exact installed import ID, stable unique key and explicit import mode required.' );
+        if ( $unique !== (string) $site_policy['validation']['identity_field'] )
+            return self::error( 'mad4b_wpai_identity_mismatch',
+                'WP All Import unique identifier must match approved source identity.');
         $allowed_sections = array(
             'source', 'sheet', 'mapping', 'match', 'records', 'post', 'custom_fields',
             'taxonomies', 'relationships', 'media', 'wpml', 'pricing',
@@ -103,8 +109,11 @@ final class MAD4B_SCP_Activity_Import_Review {
         $update_fields = isset( $input['update_fields'] ) ? $input['update_fields'] : array();
         if ( ! is_array( $update_fields ) || count( $update_fields ) > 80 )
             return self::error( 'mad4b_wpai_update_fields_invalid', 'Explicit bounded updated-field allowlist required.' );
+        $approved_fields = array_fill_keys(
+            array_values( $site_policy['validation']['field_mapping'] ), true );
         foreach ( $update_fields as $field ) {
-            if ( ! is_string( $field ) || ! isset( $permitted_meta[ $field ] ) )
+            if ( ! is_string( $field ) || ! isset( $permitted_meta[ $field ] ) ||
+                ! isset( $approved_fields[ $field ] ) )
                 return self::error( 'mad4b_wpai_update_not_allowed', 'Only parent Profile-allowlisted Meta fields may be updated.' );
         }
         $requested_delete = ! empty( $input['delete_missing'] );
@@ -112,6 +121,8 @@ final class MAD4B_SCP_Activity_Import_Review {
         $contract = array( 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
             'profile_slug' => $slug, 'profile_revision' => $profile['revision'],
             'profile_authority_sha256' => $profile['authority_sha256'],
+            'validation_sha256' => MAD4B_SCP_Activity_Import_Authority::digest(
+                $site_policy['validation'] ),
             'engine' => 'wp_all_import', 'import_id' => $import_id,
             'unique_identifier' => $unique, 'mode' => $mode,
             'update_fields' => $update_fields, 'provider_options' => $options,
@@ -146,7 +157,8 @@ final class MAD4B_SCP_Activity_Import_Review {
         $rows = isset( $input['rows'] ) ? $input['rows'] : array();
         $headers = isset( $input['headers'] ) ? $input['headers'] : array();
         if ( ! is_array( $rows ) || ! is_array( $headers ) ||
-            count( $rows ) > min( self::MAX_ROWS, $policy['max_rows'] ) || count( $headers ) < 1 ||
+            count( $rows ) < 1 || count( $rows ) > min( self::MAX_ROWS, $policy['max_rows'] ) ||
+            count( $headers ) < 1 ||
             count( $headers ) > self::MAX_COLUMNS )
             return self::error( 'mad4b_import_bounds', 'Bounded spreadsheet preview required.' );
         $seen = array();
