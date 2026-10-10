@@ -480,4 +480,106 @@ final class MAD4B_SCP_Standalone_Build_Control {
             'release_certified' => false, 'production_authorized' => false );
     }
 
+    /**
+     * Trust anchor: a pinned offline Ed25519 public key, never a key supplied
+     * by MCP inputs or the queue. This only acknowledges BUILT_UNVERIFIED.
+     */
+    public static function complete_signed_job( $input, $job ) {
+        if ( ! is_array( $input ) || ! is_array( $job ) ||
+            ( $job['operation_id'] ?? '' ) !== self::OPERATION ||
+            ! self::staging_ready() ||
+            ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) )
+            return new WP_Error( 'mad4b_build_completion_unavailable',
+                'Current Staging and matching semantic job are required.' );
+        if ( ! defined( 'MAD4B_SCP_STANDALONE_BUILDER_PUBLIC_KEY_B64' ) ||
+            ! defined( 'MAD4B_SCP_STANDALONE_BUILDER_EXECUTOR_ID' ) ||
+            ! function_exists( 'sodium_crypto_sign_verify_detached' ) )
+            return new WP_Error( 'mad4b_build_runner_not_enrolled',
+                'Pinned public key and executor ID are required.' );
+        $executor = (string) constant( 'MAD4B_SCP_STANDALONE_BUILDER_EXECUTOR_ID' );
+        if ( '' === $executor || strlen( $executor ) > 64 ||
+            ( $input['executor_id'] ?? '' ) !== $executor ||
+            ( $job['executor_id'] ?? '' ) !== $executor )
+            return new WP_Error( 'mad4b_build_runner_identity_mismatch',
+                'Enrolled executor does not own the active lease.' );
+        if ( ( $job['status'] ?? '' ) !== 'claimed' ||
+            ( $job['provider_checkpoint'] ?? '' ) !== 'provider_returned' ||
+            ! empty( $job['cancel_requested_at'] ) ||
+            time() > (int) ( $job['lease_expires_at_epoch'] ?? 0 ) )
+            return new WP_Error( 'mad4b_build_lease_not_current',
+                'Valid uncancelled completed-provider lease is required.' );
+        $r = $input['build_receipt'] ?? null;
+        if ( ! is_array( $r ) || array_diff( array_keys( $r ),
+            array( 'claims_b64', 'signature_b64' ) ) ||
+            ! is_string( $r['claims_b64'] ?? null ) ||
+            ! is_string( $r['signature_b64'] ?? null ) ||
+            strlen( $r['claims_b64'] ) > 8192 ||
+            strlen( $r['signature_b64'] ) > 128 )
+            return new WP_Error( 'mad4b_build_receipt_invalid', 'Bounded signed receipt is required.' );
+        $key = base64_decode( (string) constant( 'MAD4B_SCP_STANDALONE_BUILDER_PUBLIC_KEY_B64' ), true );
+        $raw = base64_decode( $r['claims_b64'], true );
+        $sig = base64_decode( $r['signature_b64'], true );
+        if ( ! is_string( $key ) || strlen( $key ) !== 32 ||
+            ! is_string( $raw ) || strlen( $raw ) > 4096 ||
+            ! is_string( $sig ) || strlen( $sig ) !== 64 ||
+            ! sodium_crypto_sign_verify_detached( $sig, $raw, $key ) )
+            return new WP_Error( 'mad4b_build_receipt_signature_invalid',
+                'Runner proof is not signed by the pinned key.' );
+        $c = json_decode( $raw, true );
+        $payload = $job['payload'] ?? array();
+        $site = self::identity();
+        if ( ! is_array( $c ) ||
+            array_diff( array_keys( $c ), array(
+                'contract', 'job_id', 'executor_id', 'claim_generation',
+                'target_source_sha', 'plan_sha256', 'profile',
+                'site_uuid', 'profile_digest', 'origin',
+                'archive_sha256', 'build_fingerprint', 'package_manifest_digest',
+                'build_state', 'issued_at_epoch', 'expires_at_epoch',
+                'production_authorized' ) ) ||
+            ( $c['contract'] ?? '' ) !== self::CONTRACT . '.receipt.v1' ||
+            ( $c['job_id'] ?? '' ) !== ( $job['job_id'] ?? '' ) ||
+            ( $c['executor_id'] ?? '' ) !== $executor ||
+            ! is_int( $c['claim_generation'] ?? null ) ||
+            $c['claim_generation'] !== (int) ( $job['claim_generation'] ?? 0 ) ||
+            ( $c['target_source_sha'] ?? '' ) !== ( $payload['expected_head'] ?? '' ) ||
+            ( $c['plan_sha256'] ?? '' ) !== ( $payload['plan_sha256'] ?? '' ) ||
+            ( $c['profile'] ?? '' ) !== ( $payload['profile'] ?? '' ) ||
+            ( $c['site_uuid'] ?? '' ) !== $site['site_uuid'] ||
+            ( $c['profile_digest'] ?? '' ) !== $site['profile_digest'] ||
+            ( $c['origin'] ?? '' ) !== $site['origin'] ||
+            ( $c['build_state'] ?? '' ) !== 'BUILT_UNVERIFIED' ||
+            ! array_key_exists( 'production_authorized', $c ) ||
+            false !== $c['production_authorized'] )
+            return new WP_Error( 'mad4b_build_receipt_binding_mismatch',
+                'Signature payload does not match current job, claim or site.' );
+        $now = time();
+        if ( ! is_int( $c['issued_at_epoch'] ?? null ) ||
+            ! is_int( $c['expires_at_epoch'] ?? null ) ||
+            $c['issued_at_epoch'] > $now + 60 ||
+            $c['expires_at_epoch'] < $now ||
+            $c['expires_at_epoch'] > $c['issued_at_epoch'] + 900 )
+            return new WP_Error( 'mad4b_build_receipt_expired', 'Receipt freshness window invalid.' );
+        foreach ( array( 'archive_sha256', 'build_fingerprint',
+            'package_manifest_digest' ) as $field ) {
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $c[ $field ] ?? '' ) ) )
+                return new WP_Error( 'mad4b_build_hash_invalid',
+                    'Signed build identity must contain three exact SHA-256 digests.' );
+        }
+        $receipt_sha = hash( 'sha256', $raw );
+        return MAD4B_SCP_Remote_Work_Queue::complete(
+            (string) $input['job_id'], $executor, (string) $input['lease_token'],
+            array( 'verification' => 'pinned_ed25519_job_bound_runner_receipt',
+                'source_commit_sha' => $c['target_source_sha'],
+                'archive_sha256' => $c['archive_sha256'],
+                'build_fingerprint' => $c['build_fingerprint'],
+                'package_manifest_digest' => $c['package_manifest_digest'],
+                'build_state' => 'BUILT_UNVERIFIED',
+                'evidence_sha256' => $receipt_sha,
+                'provider_execution_ref' => 'standalone_build:' . substr( $receipt_sha, 0, 32 ),
+                'provider_effect_state' => 'applied',
+                'postcondition_verified' => true,
+                'release_certified' => false, 'staging_certified' => false,
+                'production_authorized' => false ) );
+    }
+
 }
