@@ -1624,6 +1624,30 @@ final class MAD4B_SCP_Context_Authority {
 			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
 			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
+			// Operational documents that quote Brand Core terminology are not
+			// sufficient evidence of owner-issued strategy, voice or editorial
+			// authority. Automatically classified references need explicit
+			// human classification before delegated AI can review them.
+			if ( 'approve' === $decision
+				&& in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true )
+				&& 'brand_authority' === $authority
+				&& 'automatic_heuristic' === $previous_classification_source ) {
+				$title = (string) ( isset( $asset['title'] ) ? $asset['title'] : '' );
+				$operational = 1 === preg_match( '/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i', $title );
+				if ( $operational ) {
+					$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
+					if ( 'ai_agent' === $actor_type ) return new WP_Error(
+						'brand_strategy' === $category ? 'mad4b_context_ai_brand_strategy_source_human_review_required' : 'mad4b_context_ai_brand_core_operational_human_review_required',
+						'Operational source cannot become Brand Core Authority from delegated AI review alone. Human classification is required.',
+						array( 'asset_id' => $asset_id, 'category' => $category )
+					);
+					if ( 'wp_admin' === $actor_type && empty( $input['classification_confirmed'] ) ) return new WP_Error(
+						'brand_strategy' === $category ? 'mad4b_context_brand_strategy_source_confirmation_required' : 'mad4b_context_brand_core_operational_confirmation_required',
+						'Confirm operational source is genuinely authoritative before approving it as Brand Core.',
+						array( 'asset_id' => $asset_id, 'category' => $category )
+					);
+				}
+			}
 			$generated_brand_asset = ! empty( $asset['generated_artifact_id'] ) || 'brand_context_builder' === $previous_classification_source;
 			$generation_freshness = null;
 			$stale_override = false;
@@ -2124,6 +2148,27 @@ final class MAD4B_SCP_Context_Authority {
 			$hits = 0;
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
+		}
+		// Operational/connector inventories often quote "brand strategy" while
+		// describing data plumbing, not the approved commercial Brand Strategy.
+		// When only document body text produced a strategy hit, never elevate
+		// an operational document into mandatory Brand Authority automatically.
+		// An explicit human-classified asset is preserved by the caller and can
+		// still be reviewed via the separate Context review authority surface.
+		if ( in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
+			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+			$named_authority = false;
+			foreach ( $rules[ $best ] as $needle ) {
+				if ( false !== strpos( $title_path, $needle ) ) { $named_authority = true; break; }
+			}
+			$operational_title = 1 === preg_match(
+				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
+				(string) $name . ' ' . (string) $path
+			);
+			if ( ! $named_authority && $operational_title ) {
+				$best = 'uncategorized';
+				$best_hits = 0;
+			}
 		}
 		$confidence = 0.35;
 		if ( 1 === $best_hits ) $confidence = 0.72;

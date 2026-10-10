@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 539,
+  "changed_file_count": 618,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -864,6 +864,7 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php"
       ]
     },
@@ -1038,12 +1039,43 @@
       ]
     },
     {
-      "id": "feature007-admin-route-registry-contract-ownership-20261009",
-      "semantic_unit": "Own previously integrated administration route registry Python conformance fixture that was not registered in the Feature007 changed-file Work Map.",
-      "revert_boundary": "Revert that sole admin route fixture with its owning original feature change, never route this into core policy changes.",
+      "id": "feature007-br01-brand-core-reconstruction-20261009",
+      "semantic_unit": "BR01 bounded Brand Context reconstruction state machine, certified assistants with human fallback, missing-files/provider/drift/conflict recovery and third-party source rights diagnostics.",
+      "revert_boundary": "Revert new reconstruction planner, source-reference gates, Context authority heuristic hardening, native/static negative tests and BR01 recovery spec; keep independently governed Write, Context Review and Production restrictions intact.",
       "certification": "exact_head",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/admin-route-registry-contract.py"
+        "specs/007-content-intelligence-workflow-platform/extensions/brand-core-reconstruction-state-machine.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-reconstruction.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-state-machine-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-mi01-competitor-first-dmc-exchange-20261009",
+      "semantic_unit": "MI01 competitor-first public-facts market research with dynamic pricing and original brand drafts, distinct from contracted DMC native CPT import/export; site-configurable media, assistant roles and persistent guarded Brand write attempts.",
+      "revert_boundary": "Revert MI01 market registry, research/DMC import-export planners, exact admin rules, persistent retry attempt budget, native/static fixtures and specification; retain original BR01 Context gates and independent publication/rights contracts.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/competitor-first-market-intelligence-and-dmc-exchange.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-growth-policies.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-attempt-budget.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/market-growth-competitor-dmc-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-activity-facet-config-contract-20261010",
+      "semantic_unit": "Site-agnostic optional Business Activity facet of canonical Content Experience Profiles: configured user identity/CPT/meta/taxonomy relations, exact site identity, provider sync plans, generic external image ingestion and All Royal sample data only.",
+      "revert_boundary": "Revert optional identity facet, generic media-source helper, native fixture, site-only sample JSON and media adapter registration; preserve the existing Site Profile and Content Experience Profile authority and all existing WordPress posts/users.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/examples/all-royal-activity-contracts.json",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-business-activity-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-media-ingest.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-contract-runtime.php"
       ]
     },
     {
@@ -1055,8 +1087,183 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-recipe-scope.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/content-experience-recipe-scope-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-msr01-activity-multisource-reconciliation-20261010",
+      "semantic_unit": "MSR01: Site-configured WordPress/Google Drive source roles, field owners, typed field mappings, exact resource identities, checkpoint-relative N-way field reconciliation and editorial policy impact review; no implicit provider writes.",
+      "revert_boundary": "Revert optional multi-source conflict/revision planner and its static/native tests and spec; preserve preexisting governed Content Experience Profiles, business activity relations and source authority.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/activity-multisource-reconciliation-and-provenance.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-source-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-multisource-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-source-reconciliation-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-msr02-activity-saga-cas-runtime-20261010",
+      "semantic_unit": "MSR02 durable, version and field-authority-bound multi-provider WordPress/Drive sync: admin reviewed first-time source arbitration, WordPress row CAS, conditional Google Docs OAuth adapter, immutable checkpoints, readback-only recovery and archival.",
+      "revert_boundary": "Revert MSR02 saga runtime, optional Docs adapter, tests and acceptance spec; preserve MSR01 source reconciliation, canonical Content Experience Profiles, and existing WordPress content.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/activity-sync-runtime-execution-and-recovery.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-google-docs-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-sync-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-imp01-spreadsheet-intake-governance-20261010",
+      "semantic_unit": "IMP01 generic Content Experience import preview and conflict review: governed Brand Core approval queue, signed Apps Script staging inbox, WP All Import handoff/specification and exact-source fixtures; no imported content mutation on source commit.",
+      "revert_boundary": "Revert IMP01 intake bridge, Apps Script example, isolated tests and import spec without altering existing Activity Sync, approved Brand Core assets, imported posts, or WP All Import jobs.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/examples/all-royal-tour-rates-import.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/imp01-dynamic-spreadsheet-import-and-apps-script.md",
+        "tools/feature007/google-apps-script/mad4b-activity-import-push.gs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp02-dynamic-alternative-import-modes-20261010",
+      "semantic_unit": "Composable alternative spreadsheet transports: twenty-three manifest modes; profile-bound preferences and explicit fallbacks; WP Tools CSV reviewed intake and signed generic webhook client; modes MCP surfaces, native guard fixtures and IMP02 specification.",
+      "revert_boundary": "Revert IMP02 mode registry, generic webhook client, tests and spec while retaining existing guarded IMP01 and MSR02 data and no business record mutation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp02-alternative-import-modes.md",
+        "tools/feature007/import-modes/signed-generic-webhook-push.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-modes.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp02-import-modes-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp03-site-policy-immutable-import-approval-20261010",
+      "semantic_unit": "IMP03 independently configured import contract; site-owned source validation and multi-language completeness; scoped provider source keys; AES-GCM immutable source receipt and manual-only approval/export; regression tests and source acceptance spec.",
+      "revert_boundary": "Revert IMP03 site policy, encrypted import snapshot, tests and spec without modifying current WordPress business records, approved Brand Core assets or previous MSR02 saga.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp03-immutable-governed-import-approval.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-snapshot.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp03-governed-import-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp04-imp05-exact-source-reconciliation-provider-observation-20261010",
+      "semantic_unit": "IMP04/05: paginated encrypted-snapshot conflict inspection, dynamic external identity WP Meta reconciliation, only observed WP All Import documented lifecycle and verified-readback preflight gates.",
+      "revert_boundary": "Revert IMP04/05 page/reconciliation/hook observer and isolated tests without impacting approved snapshot, WordPress business records or existing imported content. Hooks are observation-only; no automatic importer launched.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp04-imp05-import-reconciliation-and-provider-observation.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-wpai-observer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp04-imp05-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp04-reconciliation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp05-wpai-observer-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-imp06-guided-import-operator-experience-20261010",
+      "semantic_unit": "IMP06 accessible four-stage import wizard: Profile and site-ready Mode selection, guarded source delivery, explainable full conflict and destination paging, immutable approval/CSV handoff, safe WordPress error recovery and explicit human-only controls.",
+      "revert_boundary": "Revert IMP06 guided WordPress admin presentation and UX tests/spec, retaining unchanged IMP01-IMP05 security, import snapshots and WordPress commercial records. No automated provider writer or Production authority included.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp06-guided-import-operator-experience.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-experience.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp06-import-ux-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp06-import-ux-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp07-safe-xlsx-dynamic-source-and-conversation-20261010",
+      "semantic_unit": "IMP07: fixes for reapplicable safe Import Contracts; dynamic strict date intervals; fully validated CSV export; conditional bounded XLSX intake and host dependency discovery; source endpoint Mode policies; anonymous signed-HMAC auth independence; conversational import operator readiness; negative preflight fixtures.",
+      "revert_boundary": "Revert only IMP07 date/CSV/XLSX changes and tests; preserve all immutable source approvals and WordPress business posts. No automatic imports or site upgrade performed.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp07-import-source-hardening-xlsx-and-operator-plan.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-xlsx.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp07-import-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp07-import-source-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-imp08-imp09-encrypted-batch-acceptance-20261010",
+      "semantic_unit": "Encrypted immutable multi-part 5000-row review and manual-only bound CSV export; per-profile and per-chunk consistency, WPML group safeguards, cross-chunk source identity, explicit approval, durable audited archival recovery; live provider readiness matrix and exact-head independent acceptance tests.",
+      "revert_boundary": "Remove IMP08/09 code and review-only MCP abilities without changing third-party provider business content. Because encrypted batches may be staged, migrating/archiving their durable option records requires exact source and owner authority before code removal. No importer writes or Production authority are bundled.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp08-imp09-batch-review-runtime-acceptance.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-batches.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-acceptance-gates.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp08-batch-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp08-batch-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp09-import-acceptance-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp10-dynamic-mapping-maturation-wpml-20261010",
+      "semantic_unit": "IMP10: dynamic observed schema mapping drift (before/after source snapshot), exact authority-bound nonauthorizing mapping mutation simulation and field type insights, independent native WPML trid/language membership readback, post meta all-language identity match, isolated negative tests and acceptance spec.",
+      "revert_boundary": "Remove IMP10 read-only mapping/WPML audit and tests without changing any reviewed Profile revision, stored WordPress posts or provider import state. Do not disable existing source approval policies. External execution authority remains absent.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp10-dynamic-mapping-maturation-wpml-readback.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-mapping-evolution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-wpml-readback.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-mapping-evolution-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-mapping-wpml-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp10-wpml-readback-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-imp11-imp12-batch-recovery-and-bootstrap-20261010",
+      "semantic_unit": "IMP11 serializes four site-profile source-inbox mutators using a non-expiring durable option lock, exposes lock diagnostics and audited archival through intake policy drift; hardens mapping maturation from removing identity/currency/required field or WPML guards. IMP12 adds safe read-only zero-Profile WordPress CPT/REST Meta/taxonomy discovery and lexical-only candidate mappings, with negative tests and operational acceptance runbook.",
+      "revert_boundary": "Preserve durable encrypted batch options and lock/audit state when removing IMP11 code; requires explicit governed cleanup. Remove IMP12 read-only discovery without mutating WordPress content. No production grant, third-party writer, automatic mapping apply or cross-provider fence is implemented.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp11-imp12-safe-batches-and-onboarding.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-import-schema-onboarding.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp11-batch-mapping-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp12-schema-onboarding-source-contract.py"
+      ]
+    },
+    {
+      "id": "feature007-imp13-commercial-source-and-archive-closure-20261010",
+      "semantic_unit": "IMP13: archive tombstone blocks subsequent review, append, approval and export, including during cleanup failures; actual source review rejects PHP-serialized relation payloads instead of only warning in schema mapping, improves exact validator UX labels, and shows bounded WordPress CPT onboarding when Profiles are empty. Native negative fixture and acceptance spec.",
+      "revert_boundary": "Reverting IMP13 archive tombstone fence or typed-commercial block requires independent existing source/approval review and staged cleanup. Never enable automated third-party writes from a source review. No Profile or Production edits are included.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp13-source-archival-and-commercial-review-closure.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp13-archival-and-commercial-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp13-commercial-source-safety-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-imp14-atomic-source-race-20261010",
+      "semantic_unit": "Atomic insert-only SQL source review, batch lock, CSV export, HMAC nonce replay and immutable approvals, with negative fixtures and real two-worker Staging race harness.",
+      "revert_boundary": "Preserve exact encrypted source receipts and unresolved holder locks; require audit before removing these source guards. Never authorize third-party import by reverting.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/imp14-atomic-source-authorization-and-export-acceptance.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-batch-atomic-mutex.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp14-batch-atomic-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp14-batch-mysql-concurrency.php"
+      ]
+    },
+    {
+      "id": "feature007-imp14-single-source-archive-exclusion-20261010",
+      "semantic_unit": "Single source Snapshot staged upload/approval/CSV stream and audit archival share exclusive SQL owner reservation; retry-safe exact immutable audit and negative fixture.",
+      "revert_boundary": "Preserve pending source/audit records and never relax archive-vs-export fencing without a reviewed migration.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp14-single-snapshot-atomic-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "16d0bfea925d9b9b84e4de3e862ddc5239fdd3907077faac631f2399e4aec558",
+  "changed_paths_sha256": "ee936d445f4ee08a81a414f81e774d042ecbc121c0d1588eafd8b4e4cc43065b",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

@@ -6,8 +6,10 @@ function is_wp_error($value) { return $value instanceof WP_Error; }
 function wp_register_ability($name, $args) { $GLOBALS['abilities'][$name] = $args; }
 class WP_Error {
   private $code;
-  function __construct($code, $message = '') { $this->code = (string)$code; }
+  private $data;
+  function __construct($code, $message = '', $data = null) { $this->code = (string)$code; $this->data=$data; }
   function get_error_code() { return $this->code; }
+  function get_error_data() { return $this->data; }
 }
 class MAD4B_SCP_Skill_Registry {
   static function levels() { return array('site','workflow'); }
@@ -58,6 +60,13 @@ $skill = MAD4B_SCP_Skill_Abilities::skill_get($input);
 if (!is_wp_error($skill) || 'mad4b_required_brand_context_unavailable' !== $skill->get_error_code()) {
   throw new RuntimeException('Blocked Skill content unexpectedly bypassed original publication guard');
 }
+$errorData=$skill->get_error_data();
+if (!is_array($errorData) || !in_array('editorial_guidelines',$errorData['missing_context_sets'],true) ||
+    !empty($errorData['context_envelope_exposed']) || !empty($errorData['context_receipt_exposed']) ||
+    isset($errorData['context_preflight']) || isset($errorData['receipt']) ||
+    strpos(json_encode($errorData),'PRIVATE_')!==false) {
+  throw new RuntimeException('Blocked Skill error leaked Context envelope or receipt');
+}
 $GLOBALS['brand_context_ready'] = true;
 $ready = MAD4B_SCP_Skill_Abilities::skill_context_preflight($input);
 if (empty($ready['ready']) || $ready['next_action'] !== 'request_skill_get_for_exact_signed_context_receipt' ||
@@ -76,4 +85,45 @@ $ambiguous = MAD4B_SCP_Skill_Abilities::skill_context_preflight($input);
 if (!is_wp_error($ambiguous) || $ambiguous->get_error_code() !== 'mad4b_skill_target_ambiguous') {
   throw new RuntimeException('Ambiguous target not denied closed');
 }
-echo "PASS Skill Context preflight: redacted blocked status, signed receipt separation, unique target, ambiguous denial\n";
+function wp_parse_url($url, $component = -1) { return parse_url($url, $component); }
+function home_url($path = '/') { return 'https://staging.allroyalegypt.com' . $path; }
+class MAD4B_SCP_Context_Authority {
+  static function brand_core_coverage() {
+    return array('ready'=>false,
+      'missing_required_context_sets'=>array('brand_strategy','tone_of_voice','editorial_guidelines'));
+  }
+}
+$rights = MAD4B_SCP_Skill_Abilities::external_source_rights_preflight(array(
+  'source_url'=>'https://www.memphistours.com/egypt/cruises/river-nile-cruises',
+  'intended_use'=>'commercial_offer'
+));
+if (is_wp_error($rights) || empty($rights['external_source']) ||
+    !in_array('signed_distribution_or_resale_authorization',$rights['evidence_requirements'],true) ||
+    !empty($rights['supplier_rights_verified']) ||
+    !empty($rights['commercial_reuse_authorized']) ||
+    !empty($rights['authorizing']) || empty($rights['read_only']) ||
+    count($rights['brand_core_missing_context_sets']) !== 3) {
+  throw new RuntimeException('Third-party commercial rights were not denied open with exact evidence');
+}
+$media = MAD4B_SCP_Skill_Abilities::external_source_rights_preflight(array(
+  'source_url'=>'https://www.memphistours.com/image.jpg', 'intended_use'=>'third_party_media'
+));
+if (is_wp_error($media) || empty($media['external_source']) ||
+    !in_array('license_or_permission',$media['evidence_requirements'],true) ||
+    !empty($media['licensed_media_verified'])) {
+  throw new RuntimeException('Media rights were implicitly granted');
+}
+$local = MAD4B_SCP_Skill_Abilities::external_source_rights_preflight(array(
+  'source_url'=>'https://staging.allroyalegypt.com/tour', 'intended_use'=>'editorial_reference'
+));
+if (is_wp_error($local) || !empty($local['external_source']) ||
+    !empty($local['commercial_reuse_authorized'])) {
+  throw new RuntimeException('First-party URL was classified as a supplier license');
+}
+$bad = MAD4B_SCP_Skill_Abilities::external_source_rights_preflight(array(
+  'source_url'=>'file:///etc/passwd', 'intended_use'=>'commercial_offer'
+));
+if (!is_wp_error($bad) || 'mad4b_external_source_url_invalid' !== $bad->get_error_code()) {
+  throw new RuntimeException('Non-HTTP source URL was accepted');
+}
+echo "PASS Skill Context and supplier rights preflights: redacted blocked status, signed receipt separation, unique target, ambiguous denial\n";

@@ -83,6 +83,18 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( __CLASS__, 'skill_context_preflight' )
 		);
 
+
+		self::add(
+			'mad4b/external-source-rights-preflight',
+			'Inspect External Supplier and Media Reuse Rights',
+			array( 'type'=>'object','properties'=>array(
+				'source_url'=>array('type'=>'string','maxLength'=>2048),
+				'intended_use'=>array('type'=>'string','enum'=>array('editorial_reference','commercial_offer','third_party_media')),
+				'post_id'=>array('type'=>'integer','minimum'=>1),
+			),'required'=>array('source_url','intended_use'),'additionalProperties'=>false),
+			array( __CLASS__, 'external_source_rights_preflight' )
+		);
+
 		self::add(
 			'mad4b/skills-export-status',
 			'Get Skills Export Status',
@@ -97,6 +109,7 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( __CLASS__, 'skills_runtime_certification' )
 		);
 	}
+
 	private static function add( $name, $label, array $input_schema, $callback ) {
 		wp_register_ability(
 			$name,
@@ -166,7 +179,15 @@ final class MAD4B_SCP_Skill_Abilities {
 				'This Skill requires governed Brand Context that is not currently ready.',
 				array(
 					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
-					'context_preflight' => $preflight,
+					// Deliberately redact the raw Context envelope and signed
+					// receipt. Even a blocked preflight may contain eligible
+					// optional assets unrelated to the missing required set.
+					'context_ready' => false,
+					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
+					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
+					'next_read_ability' => 'mad4b/skill-context-preflight',
+					'context_envelope_exposed' => false,
+					'context_receipt_exposed' => false,
 				)
 			);
 		}
@@ -230,6 +251,49 @@ final class MAD4B_SCP_Skill_Abilities {
 			'skill_body_exposed' => false,
 			'context_assets_exposed' => false,
 			'context_receipt_issued' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+
+	/** External source references alone do not provide licensing or resale rights. */
+	public static function external_source_rights_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$url = isset( $input['source_url'] ) ? trim( (string) $input['source_url'] ) : '';
+		$intent = isset( $input['intended_use'] ) ? (string) $input['intended_use'] : '';
+		if ( ! in_array( $intent, array( 'editorial_reference', 'commercial_offer', 'third_party_media' ), true ) ) return new WP_Error( 'mad4b_external_source_intent_invalid', 'Source use purpose is invalid.' );
+		if ( '' === $url || strlen( $url ) > 2048 || ! function_exists( 'wp_parse_url' ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'A valid, bounded absolute source URL is required.' );
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || '' !== (string) wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
+		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+		if ( $id && ( ! get_post( $id ) || ! current_user_can( 'read_post', $id ) ) ) return new WP_Error( 'mad4b_external_source_post_denied', 'Post is not readable.' );
+		$site_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
+		$external = '' === $site_host || ! hash_equals( $site_host, $host );
+		$requirements = array();
+		if ( $external && 'commercial_offer' === $intent ) $requirements = array( 'supplier_identity', 'signed_distribution_or_resale_authorization', 'agreement_scope_and_validity', 'sales_channels', 'live_availability_and_price', 'booking_and_refund_responsibility', 'separate_media_rights' );
+		if ( $external && 'third_party_media' === $intent ) $requirements = array( 'asset_owner', 'asset_provenance', 'license_or_permission', 'allowed_use_and_derivatives', 'attribution', 'expiration' );
+		if ( $external && 'editorial_reference' === $intent ) $requirements = array( 'original_editorial_copy', 'source_attribution', 'fact_check', 'no_unlicensed_media', 'no_false_supplier_affiliation' );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' ) && method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		return array(
+			'contract' => 'mad4b.external-source-rights-preflight.v1',
+			'state' => $external ? 'independent_rights_review_required' : 'first_party_origin_detected',
+			'source_host' => $host,
+			'site_host' => $site_host,
+			'external_source' => $external,
+			'intended_use' => $intent,
+			'post_id' => $id,
+			'evidence_requirements' => $requirements,
+			'brand_core_ready' => is_array( $coverage ) && ! empty( $coverage['ready'] ),
+			'brand_core_missing_context_sets' => is_array( $coverage ) && isset( $coverage['missing_required_context_sets'] ) ? $coverage['missing_required_context_sets'] : array(),
+			'supplier_rights_verified' => false,
+			'commercial_reuse_authorized' => false,
+			'licensed_media_verified' => false,
+			'public_source_implies_license' => false,
+			'next_action' => $external ? 'independent_source_rights_review' : 'verify_first_party_origin_and_brand_policy',
+			'network_access_performed' => false,
 			'authorizing' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
