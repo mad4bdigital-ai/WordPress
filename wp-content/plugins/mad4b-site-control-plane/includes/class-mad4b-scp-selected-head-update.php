@@ -132,15 +132,33 @@ final class MAD4B_SCP_Selected_Head_Update {
             if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $m[ $field ] ?? '' ) ) )
                 return self::fail( 'manifest_identity_incomplete', 'Package build identity is incomplete.' );
         }
-        // Support BOTH independently governed master releases and optional
-        // Staging candidate receipts. A plain ZIP or a bare HEAD is not proof.
+        // An unavailable/queued GitHub CI run is not an implicit PASS and is
+        // not a required precondition when independent signed native evidence
+        // is available. Staging-only offline receipts cannot certify master.
         $master_certified = true === ( $m['published_from_master'] ?? false )
             && true === ( $m['release_root_trust_verified'] ?? false );
-        $candidate_certified = true === ( $m['staging_candidate_certified'] ?? false );
-        if ( ( ! $master_certified && ! $candidate_certified ) ||
-            true !== ( $m['release_verdict_success'] ?? false ) ||
-            empty( $m['release_verdict_run_id'] ) )
-            return self::fail( 'candidate_not_certified', 'Exact HEAD lacks a governed build verdict and trusted release or Staging certification.' );
+        $ci_candidate = true === ( $m['staging_candidate_certified'] ?? false )
+            && true === ( $m['release_verdict_success'] ?? false )
+            && ! empty( $m['release_verdict_run_id'] );
+        $ci_master = $master_certified && true === ( $m['release_verdict_success'] ?? false )
+            && ! empty( $m['release_verdict_run_id'] );
+        $offline_verified = array();
+        if ( ! $ci_master && ! $ci_candidate &&
+            true === ( $m['staging_offline_candidate'] ?? false ) &&
+            false === ( $m['production_authorized'] ?? null ) &&
+            false === ( $m['production_auto_update_enabled'] ?? null ) &&
+            false === ( $m['published_from_master'] ?? null ) &&
+            ! empty( $m['ci_outage_attestation'] ) &&
+            class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_CI_Outage_Attestation', false ) )
+                require_once __DIR__ . '/class-mad4b-scp-ci-outage-attestation.php';
+            $offline_verified = MAD4B_SCP_CI_Outage_Attestation::verify(
+                $m['ci_outage_attestation'], $m, MAD4B_SCP_Site_Profile::status()
+            );
+            if ( is_wp_error( $offline_verified ) ) return $offline_verified;
+        }
+        if ( ! $ci_master && ! $ci_candidate && empty( $offline_verified['verified'] ) )
+            return self::fail( 'candidate_not_certified', 'Exact HEAD requires completed trusted CI OR an owner-enrolled independently signed Staging-native test receipt.' );
         if ( ! isset( $m['version'] ) || ! is_string( $m['version'] ) ||
             strlen( $m['version'] ) < 1 || strlen( $m['version'] ) > 64 ||
             ! isset( $m['size_bytes'] ) || ! is_numeric( $m['size_bytes'] ) ||
@@ -155,7 +173,11 @@ final class MAD4B_SCP_Selected_Head_Update {
             $identity[ $k ] = $m[ $k ];
         return array( 'identity' => $identity, 'zip_url' => $zip_url,
             'manifest_sha256' => hash( 'sha256', $raw ),
-            'release_verdict_run_id' => (int) $m['release_verdict_run_id'] );
+            'release_verdict_run_id' => isset( $m['release_verdict_run_id'] ) ? (int) $m['release_verdict_run_id'] : 0,
+            'evidence_mode' => ! empty( $offline_verified['verified'] ) ? 'owner_signed_ci_outage' : 'github_ci_verdict',
+            'offline_receipt_sha256' => ! empty( $offline_verified['receipt_sha256'] ) ? $offline_verified['receipt_sha256'] : '',
+            'offline_receipt_expires_at' => ! empty( $offline_verified['expires_at'] ) ? $offline_verified['expires_at'] : 0,
+            'github_ci_terminal_required' => empty( $offline_verified['verified'] ) );
     }
 
     /** Pure assistant handoff; action metadata does not grant any authority. */
@@ -260,6 +282,10 @@ final class MAD4B_SCP_Selected_Head_Update {
             'package_identity' => is_wp_error( $package ) ? array() : $package['identity'],
             'manifest_sha256' => is_wp_error( $package ) ? '' : $package['manifest_sha256'],
             'release_verdict_run_id' => is_wp_error( $package ) ? 0 : $package['release_verdict_run_id'],
+            'verification_evidence_mode' => is_wp_error( $package ) ? 'unavailable' : $package['evidence_mode'],
+            'offline_receipt_sha256' => is_wp_error( $package ) ? '' : $package['offline_receipt_sha256'],
+            'offline_receipt_expires_at' => is_wp_error( $package ) ? 0 : $package['offline_receipt_expires_at'],
+            'github_ci_terminal_required' => is_wp_error( $package ) ? false : $package['github_ci_terminal_required'],
             'underlying_upload_plan_sha256' => is_array( $upload_plan ) ? ( $upload_plan['plan_sha256'] ?? '' ) : '',
             'update_channel' => self::candidate_channel(),
             'wordpress_native' => 'wordpress_native_candidate_upload' === self::candidate_channel(),
