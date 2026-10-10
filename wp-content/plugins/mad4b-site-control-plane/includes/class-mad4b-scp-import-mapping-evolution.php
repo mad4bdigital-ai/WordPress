@@ -321,6 +321,25 @@ final class MAD4B_SCP_Import_Mapping_Evolution {
             $current['destination_identity_meta_key'] )
             return self::err( 'mad4b_mapping_identity_registry_mutation_denied',
                 'Identity registry migrations require a separately approved driver.' );
+        if ( $candidate['identity_field'] !== $current['identity_field'] )
+            return self::err( 'mad4b_mapping_source_identity_migration_denied',
+                'Changing an external source ID is an identity migration, not a field rename.' );
+        if ( $current['require_complete_wpml_groups'] &&
+            ! $candidate['require_complete_wpml_groups'] )
+            return self::err( 'mad4b_mapping_wpml_safety_downgrade_denied',
+                'An import mapping cannot silently remove required WPML group completeness.' );
+        if ( $current['review_past_intervals'] &&
+            ! $candidate['review_past_intervals'] )
+            return self::err( 'mad4b_mapping_period_safety_downgrade_denied',
+                'Historical commercial interval review cannot be silently disabled.' );
+        if ( array_diff( (array) $current['wpml_languages'],
+            (array) $candidate['wpml_languages'] ) )
+            return self::err( 'mad4b_mapping_required_language_downgrade_denied',
+                'Existing approved languages require a separate governed decommission.' );
+        if ( array_diff( (array) $current['required_relationships'],
+            (array) $candidate['required_relationships'] ) )
+            return self::err( 'mad4b_mapping_relationship_downgrade_denied',
+                'Existing required relations cannot be removed by automatic schema maturation.' );
         $columns = array();
         if ( array_key_exists( 'observed_headers', $plan_input ) )
             $columns = $plan_input['observed_headers'];
