@@ -360,6 +360,12 @@ final class MAD4B_SCP_Staging_Autopilot {
 			$developer,
 			is_array( $host_identity ) ? $host_identity : array()
 		);
+		$report['wordpress_native_selected_head'] = class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' )
+			? MAD4B_SCP_WordPress_Native_Opt_In::status() : array(
+				'state' => 'not_installed', 'enabled' => false
+			);
+		$report['selected_head_update_preferred_channel'] = ! empty( $report['wordpress_native_selected_head']['enabled'] )
+			? 'wordpress_native_candidate_upload' : 'staging_candidate_upload';
 		$report['site_profile_read_ability'] = 'mad4b/site-profile-status';
 		$report['environment_sync_verification_ability'] = 'mad4b/host-environment-sync-verification';
 		// File checks are on-demand only; normal requests and chat discovery
