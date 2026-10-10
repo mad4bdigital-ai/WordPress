@@ -67,7 +67,9 @@ The runner produces `LOCAL-CI-PARITY-REPORT.json` containing source SHA, source 
 
 As of the 2026-10-10 Feature 007 hardening, the named `Extended` subset includes **21 gates** (`Core`: **12**), including the Local CI runner's own contract; 15 distinct fixture files are referenced. The executable has a required baseline of gate identities, interpreter types, fixture names, arguments and profiles, so an edited manifest cannot silently omit or rewrite these baseline gates. Additional vetted gates remain supported. **This is not a cryptographic trust anchor:** if a candidate changes the runner itself, its code must be reviewed or verified against an independently trusted copy before local evidence can be treated as dependable. Source file existence is not test execution.
 
-A complete pass of this named subset sets `tested_gate_set_passed=true` **but retains** `LOCAL_CI_PARITY_PARTIAL`, because the repository includes many more GitHub workflows and the runner does not run disposable WordPress+MySQL integration, MariaDB upgrade tests, Playwright, multisite/browser suites, and actual live Staging mutation/rollback. A failed gate or source drift yields `LOCAL_CI_PARITY_FAIL`.
+A complete pass of this named subset sets `tested_gate_set_passed=true` **but retains** `LOCAL_CI_PARITY_PARTIAL`, because the repository includes many more GitHub workflows and the runner does not run disposable WordPress+MySQL integration, MariaDB upgrade tests, Playwright, multisite/browser suites, and actual live Staging mutation/rollback. A missing Docker image, absent PHP runtime, or any other `NOT_RUN` gate yields `LOCAL_CI_PARITY_BLOCKED` with `tested_gate_set_passed=false`. An empty gate set is also blocked. A failed gate or source drift yields `LOCAL_CI_PARITY_FAIL`; a failure takes priority over a simultaneous `NOT_RUN`. The three verdicts never authorize publication or deployment.
+
+The Python entry point also refuses `--probe-site` without an explicit `--expected-site-url`. Site REST reachability remains observational, not authenticated WordPress/MCP acceptance.
 
 The report always contains:
 
