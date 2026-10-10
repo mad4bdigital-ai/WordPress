@@ -35,6 +35,8 @@ define('MAD4B_CSO_STORAGE_ADAPTER_CLASSES',array('wp_post_core'=>'MAD4B_SCP_CSO_
 define('MAD4B_CSO_WP_POST_WRITER_ENABLED',true);
 $GLOBALS['hooks']=array();$GLOBALS['abilities']=array();
 $GLOBALS['allowed']=true;$GLOBALS['mutate']=true;
+$GLOBALS['wp_environment']='staging';
+function wp_get_environment_type(){return $GLOBALS['wp_environment'];}
 $GLOBALS['scope']=array('site_uuid'=>'11111111-2222-4333-8444-555555555555',
  'brand_ref'=>str_repeat('b',32),'environment'=>'staging');
 $GLOBALS['owner']=array('_mad4b_cso_site_uuid'=>$GLOBALS['scope']['site_uuid'],
@@ -62,6 +64,11 @@ $GLOBALS['allowed']=true;
 $payload=array('provider_id'=>'wp_post_core','target'=>$target,
  'values'=>array('title'=>'New title'), 'expected_revision'=>$descriptor['revision'],
  'scope_sha256'=>MAD4B_SCP_CSO_Scope::digest($GLOBALS['scope']));
+$GLOBALS['wp_environment']='production';
+$GLOBALS['permit']=true;
+ck(!MAD4B_SCP_CSO_WP_Post_Driver::write_permission($payload),'physical production environment denies write even with permit');
+$GLOBALS['permit']=false;
+$GLOBALS['wp_environment']='staging';
 ck(!MAD4B_SCP_CSO_WP_Post_Driver::write_permission($payload),'native permission requires claimed one-use ticket');
 ck(is_wp_error(MAD4B_SCP_CSO_WP_Post_Driver::write_native($payload)),'direct WordPress write method denied');
 ck($GLOBALS['post']->post_title==='Old title','no side effect');
