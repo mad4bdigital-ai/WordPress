@@ -1,0 +1,32 @@
+name: Feature 007 Preview Evidence Matrix
+on:
+  pull_request:
+    paths:
+      - 'tools/mad4b-preview-matrix.py'
+      - 'tools/mad4b-preview-native-probe.php'
+      - 'tools/test_mad4b_preview_matrix.py'
+      - 'docs/runbooks/advanced-preview-evidence-matrix.md'
+      - '.github/workflows/mad4b-preview-matrix-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview-source-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: none
+      - name: Python compile
+        run: |
+          python -m py_compile tools/mad4b-preview-matrix.py tools/test_mad4b_preview_matrix.py
+      - name: Preview contract regressions
+        run: python -m unittest discover -s tools -p 'test_mad4b_preview_matrix.py' -v
+      - name: Native WordPress PHP parse check
+        run: php -l tools/mad4b-preview-native-probe.php
