@@ -143,5 +143,22 @@
       "id": "production_promotion_separate_grant",
       "required_when": "production_mutation_requested"
     }
-  ]
+  ],
+  "host_compatibility": {
+    "wordpress_header_requires_at_least": "6.9",
+    "php_header_requires_at_least": "7.4",
+    "source": "mad4b-site-control-plane.php plugin header",
+    "installation_runtime_must_be_checked": true
+  },
+  "mcp_release_pair": {
+    "policy_source": "config/runtime-release-policy.json",
+    "current_target_adapter_version": "0.7.0",
+    "supported_transition_versions": [
+      "0.6.1",
+      "0.7.0"
+    ],
+    "pair_certification_required": true,
+    "adapter_status_is_not_certification": true,
+    "production_auto_apply": false
+  }
 }
