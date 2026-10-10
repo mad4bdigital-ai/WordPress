@@ -119,6 +119,34 @@ The PHP fixture exercises the refusal and the opt-in test path; that
 fixture is **not** Host certification. Do not set the flag automatically
 from a WordPress Site Profile, MCP caller input, database option or GitHub PR.
 
+## Additional invariants for the legacy transfer release gate
+
+- Every unbound legacy `source_id` must equal the original deterministic
+  SHA-256 of `site_uuid|google_drive|governed|folder_id|`; every
+  `asset_id` and its option-record key must equal SHA-256 of
+  `source_id|provider_file_id`. A hexadecimal ID by itself is not evidence.
+- Before the locked WordPress update, a **fresh, complete, bounded Drive
+  folder scan** must independently find every previously stored file ID
+  inside the original folder and its allowed subtree. Missing/truncated/
+  timed-out provider inventories deny the transfer. The transfer never
+  downloads or copies files into a parallel source.
+- A constant claiming rollback certification is insufficient. The same
+  call requires a fresh signed, nonce-bound Host identity proof from the
+  single currently enrolled Host Runner. **Neither condition is currently
+  independently accepted on this Staging deployment.**
+- The locked transfer checks plan SHA, Brand identity, registry state and
+  source/asset counts, then independently re-reads the new options and
+  verifies old approvals were invalidated. A separate
+  `context/legacy-owner-transfer-readback` remains read-only and marks
+  `provider_readback_performed=false`; it is not proof of cross-request
+  crash recovery or license ownership.
+- Before removing the rollout block, run real DB transaction/crash
+  simulations, provider failure/race cases and independent signed Host
+  rollback evidence. A green simulated PHP reducer is insufficient.
+- As of the latest read, GitHub Actions runs on PR #258 were failing before
+  job execution (empty job lists for sampled runs); treat CI as **unverified**
+  rather than PASS. The plugin remains Draft, with no Production change.
+
 ## Explicit remaining blockers
 
 - Tested PHP 7.4/8.3 native fixtures, MySQL/MariaDB race, multisite,
