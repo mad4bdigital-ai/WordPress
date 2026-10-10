@@ -9,6 +9,7 @@ if ( ! class_exists( 'MAD4B_SCP_Activity_Google_Docs_Adapter' ) ) require_once _
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Authority' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-authority.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-snapshot.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-reconciliation.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_WPAI_Observer' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-wpai-observer.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
 if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
