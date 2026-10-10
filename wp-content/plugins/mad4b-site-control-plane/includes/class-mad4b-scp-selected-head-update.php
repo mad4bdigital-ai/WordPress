@@ -282,6 +282,8 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'local_receipt_authorizing' => false,
                 'github_ci_certified_by_local_runner' => false,
                 'staging_package_certification_still_required' => true,
+                'github_ci_terminal_result_required' => false,
+                'independent_signed_ci_outage_receipt_supported' => true,
             ),
             'source' => $resolved,
             'package_identity' => is_wp_error( $package ) ? array() : $package['identity'],
@@ -298,6 +300,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             'assistant_recovery' => self::blocker_recovery( $blockers ),
             'unattended_host_bootstrap' => false,
             'candidate_release_manifest_required' => true,
+            'queued_ci_is_blocker_when_signed_offline_receipt_exists' => false,
             'reason' => $reason, 'mutation_performed' => false, 'authorizing' => false,
         );
         $selected['plan_sha256'] = hash( 'sha256', wp_json_encode( $selected ) );
@@ -345,6 +348,19 @@ final class MAD4B_SCP_Selected_Head_Update {
         $fresh = self::source( $plan_input['candidate_source'] );
         if ( is_wp_error( $fresh ) || ! hash_equals( $sha, is_array( $fresh ) ? (string) $fresh['resolved_sha'] : '' ) )
             return self::fail( 'selected_head_moved', 'Branch/PR moved after download. New approval required.' );
+
+        // A signed CI-outage receipt may expire while the archive is being
+        // fetched. Re-validate the exact same immutable manifest and signer
+        // evidence immediately before invoking the core WordPress installer.
+        if ( 'owner_signed_ci_outage' === ( $plan['verification_evidence_mode'] ?? '' ) ) {
+            $current_evidence = self::manifest( $sha );
+            if ( is_wp_error( $current_evidence ) ||
+                ! hash_equals( (string) $plan['manifest_sha256'],
+                    is_array( $current_evidence ) ? (string) $current_evidence['manifest_sha256'] : '' ) ||
+                ! hash_equals( (string) $plan['offline_receipt_sha256'],
+                    is_array( $current_evidence ) ? (string) $current_evidence['offline_receipt_sha256'] : '' ) )
+                return self::fail( 'offline_evidence_expired_or_changed', 'Independent Staging offline evidence expired or changed before install.' );
+        }
 
         $upload = array_merge( $plan['package_identity'], $plan_input, array(
             'channel' => $plan['update_channel'],
