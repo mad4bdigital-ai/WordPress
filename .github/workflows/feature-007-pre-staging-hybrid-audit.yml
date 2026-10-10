@@ -69,6 +69,10 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py
+          for scenario in disabled normal master missing uncertified drift bad-archive; do
+            php wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php "$scenario"
+          done
 
       - name: Architecture maintainability and change-slice gate
         shell: bash
