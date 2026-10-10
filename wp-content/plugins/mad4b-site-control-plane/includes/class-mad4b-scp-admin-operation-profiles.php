@@ -158,6 +158,58 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
             return array();
         return is_array( $state['profiles'] ?? null ) ? $state['profiles'] : array();
     }
+    /**
+     * Passive runtime WordPress UI signals. Never fires admin_menu or plugin
+     * callbacks merely to enumerate them. REST/MCP does not always construct
+     * wp-admin menus, so missing menu signals are not an empty UI claim.
+     */
+    public static function observe_ui() {
+        $out = array( 'registered_admin_routes' => array(), 'core_settings' => array(),
+            'post_types' => array(), 'menu_routes' => array(),
+            'admin_menu_materialized' => false, 'unknown_actions_remotely_executable' => false );
+        if ( ! current_user_can( 'manage_options' ) ) return $out;
+        foreach ( array_keys( self::routes() ) as $route ) {
+            if ( preg_match( '/^[a-z0-9._-]{1,100}$/D', (string) $route ) )
+                $out['registered_admin_routes'][] = $route;
+            if ( count( $out['registered_admin_routes'] ) >= 96 ) break;
+        }
+        global $wp_registered_settings, $menu, $submenu;
+        if ( is_array( $wp_registered_settings ) ) {
+            foreach ( array_keys( $wp_registered_settings ) as $key ) {
+                if ( is_string( $key ) && preg_match( '/^[a-zA-Z0-9._-]{1,100}$/D', $key ) )
+                    $out['core_settings'][] = $key;
+                if ( count( $out['core_settings'] ) >= 128 ) break;
+            }
+        }
+        if ( function_exists( 'get_post_types' ) ) {
+            $types = get_post_types( array( 'show_ui' => true ), 'names' );
+            if ( is_array( $types ) ) {
+                foreach ( array_slice( $types, 0, 96 ) as $type ) {
+                    if ( is_string( $type ) && preg_match( '/^[a-z0-9_-]{1,50}$/D', $type ) )
+                        $out['post_types'][] = $type;
+                }
+            }
+        }
+        $out['admin_menu_materialized'] = is_array( $menu ) && ! empty( $menu );
+        if ( $out['admin_menu_materialized'] ) {
+            $entries = array();
+            foreach ( $menu as $row ) if ( is_array( $row ) ) $entries[] = $row;
+            if ( is_array( $submenu ) ) foreach ( $submenu as $children ) {
+                if ( is_array( $children ) ) foreach ( $children as $row )
+                    if ( is_array( $row ) ) $entries[] = $row;
+            }
+            foreach ( $entries as $item ) {
+                $slug = (string) ( $item[2] ?? '' );
+                $cap = (string) ( $item[1] ?? '' );
+                if ( ! preg_match( '/^[a-zA-Z0-9._-]{1,100}$/D', $slug ) ||
+                    '' === $cap || ! current_user_can( $cap ) ) continue;
+                if ( ! in_array( $slug, $out['menu_routes'], true ) ) $out['menu_routes'][] = $slug;
+                if ( count( $out['menu_routes'] ) >= 96 ) break;
+            }
+        }
+        return $out;
+    }
+
     public static function discover( $input = array() ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'operation_filter' ) ) )
             return self::invalid( 'discover_input_invalid' );
@@ -187,6 +239,8 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
         }
         return array( 'contract' => self::CONTRACT, 'site_uuid' => $site['site_uuid'] ?? '',
             'operations' => $rows, 'count' => count( $rows ),
+            'observed_ui' => self::observe_ui(),
+            'unregistered_screen_action_state' => 'adapter_required',
             'separate_plugin_update_recovery' => 'mad4b/plugin-update-recovery-discover',
             'configurable_site_variables' => true, 'unknown_admin_action_executable' => false,
             'read_only' => true, 'mutation_performed' => false );
