@@ -45,6 +45,8 @@ for marker in (
     "provider_write_fence_verified' => false",
     "job_execution_authorized' => false",
     "mad4b_wpai_observation_active",
+    "'run_sequence_ambiguous' => false",
+    "external_import_hook_order_ambiguous",
 ):
     insist(marker in observer,"Unbounded or unverified external job observation: "+marker)
 for suffix in (
@@ -68,6 +70,7 @@ for marker in (
     "external_import_end_observed_unverified",
     "mad4b_wpai_observation_active",
     "source_provenance_verified",
+    "Reused WP All Import ID silently reused the original observed run",
 ):
     insist(marker in hooks,"Hook fixture incorrectly certifies success: "+marker)
 insist("MAD4B_SCP_Batch_Atomic_Mutex::reserve_observation( $key, $record )" in observer,

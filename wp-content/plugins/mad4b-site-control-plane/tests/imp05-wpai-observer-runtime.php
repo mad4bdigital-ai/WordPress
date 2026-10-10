@@ -40,6 +40,18 @@ ck( !is_wp_error( $status ) &&
     !$status['source_provenance_verified'] &&
     $status['requires_independent_reconciliation'],
     'Hook end was incorrectly promoted to verified import' );
+MAD4B_SCP_Activity_WPAI_Observer::on_before( 12 );
+$repeat = MAD4B_SCP_Activity_WPAI_Observer::status( array( 'import_id' => 12 ) );
+ck( !is_wp_error( $repeat ) && !empty( $repeat['run_sequence_ambiguous'] ) &&
+    $repeat['state'] === 'external_import_hook_order_ambiguous',
+    'Reused WP All Import ID silently reused the original observed run' );
+MAD4B_SCP_Activity_WPAI_Observer::on_after( 12, null );
+$repeat = MAD4B_SCP_Activity_WPAI_Observer::status( array( 'import_id' => 12 ) );
+ck( !is_wp_error( $repeat ) && !empty( $repeat['run_sequence_ambiguous'] ) &&
+    !$repeat['source_provenance_verified'] &&
+    $repeat['state'] === 'external_import_hook_order_ambiguous',
+    'Repeated run / duplicate completion must remain ambiguous' );
+
 $duplicate = MAD4B_SCP_Activity_WPAI_Observer::arm( array_merge( $input,
     array( 'plan_sha256' => $plan['plan_sha256'], 'confirmed' => true ) ) );
 ck( is_wp_error( $duplicate ) &&

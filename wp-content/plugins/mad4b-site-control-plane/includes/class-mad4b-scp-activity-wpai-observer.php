@@ -85,6 +85,7 @@ final class MAD4B_SCP_Activity_WPAI_Observer {
             'armed_at' => gmdate( 'c' ),
             'seen_start_at' => null, 'seen_end_at' => null,
             'post_save_events_observed' => 0, 'event_count_best_effort' => true,
+            'run_sequence_ambiguous' => false,
             'source_provenance_verified' => false,
             'provider_write_fence_verified' => false,
             'wpml_links_verified' => false );
@@ -111,14 +112,34 @@ final class MAD4B_SCP_Activity_WPAI_Observer {
         // Never use this counter, hook completion or WordPress option readback
         // as a source/provenance/transaction certificate.
         if ( 'before' === $event ) {
-            $record['state'] = 'external_import_running_unverified';
-            $record['seen_start_at'] = gmdate( 'c' );
+            // One armed observation cannot be reused to certify a later run
+            // of the same WP All Import ID (manual rerun, cron or overlap).
+            if ( ! empty( $record['seen_start_at'] ) ||
+                ! empty( $record['seen_end_at'] ) ) {
+                $record['run_sequence_ambiguous'] = true;
+                $record['state'] = 'external_import_hook_order_ambiguous';
+            } else {
+                $record['state'] = 'external_import_running_unverified';
+                $record['seen_start_at'] = gmdate( 'c' );
+            }
         } elseif ( 'saved' === $event ) {
+            if ( empty( $record['seen_start_at'] ) ||
+                ! empty( $record['seen_end_at'] ) ) {
+                $record['run_sequence_ambiguous'] = true;
+                $record['state'] = 'external_import_hook_order_ambiguous';
+            }
             $record['post_save_events_observed'] =
                 min( 1000000, (int) $record['post_save_events_observed'] + 1 );
         } elseif ( 'after' === $event ) {
+            if ( empty( $record['seen_start_at'] ) ||
+                ! empty( $record['seen_end_at'] ) ||
+                ! empty( $record['run_sequence_ambiguous'] ) ) {
+                $record['run_sequence_ambiguous'] = true;
+                $record['state'] = 'external_import_hook_order_ambiguous';
+            } else {
+                $record['state'] = 'external_import_end_observed_unverified';
+            }
             $record['seen_end_at'] = gmdate( 'c' );
-            $record['state'] = 'external_import_end_observed_unverified';
         } else return;
         update_option( $key, $record, false );
     }
