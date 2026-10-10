@@ -33,6 +33,14 @@ for token in ("ERU", "puplished", "related_properties_id",
 require("No Content Experience Profile is configured yet" in ux and
         "MAD4B_SCP_Import_Schema_Onboarding::plan( array() )" in ux,
         "Zero-Profile Staging wizard still a dead-end")
+require(ux.count("'admin_xlsx_convert' =>") == 1 and
+        "Upload a bounded Excel XLSX file for Staging review" in ux,
+        "Excel Mode label is shadowed by a duplicate declaration")
+for reason in ("identity_missing_or_duplicate",
+               "invalid_wordpress_post_status",
+               "serialized_relation_requires_certified_driver"):
+    require("'" + reason + "' =>" in ux,
+            "Guided source issue reason has no actionable label: " + reason)
 for name in ("imp13-commercial-source-safety-runtime.php",
              "imp13-archival-and-commercial-source-contract.py"):
     require(name in pre,"Manual exact-head preflight missing "+name)
