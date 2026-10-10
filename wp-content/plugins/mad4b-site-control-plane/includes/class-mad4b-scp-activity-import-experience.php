@@ -21,8 +21,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'historical_rate_period_requires_review' => 'The price period is historical. Confirm whether archival import is intended.',
             'price_not_approved_decimal' => 'Price is not a valid nonnegative decimal with the approved precision.',
             'required_relationship_unresolved' => 'A required linked entity is missing from the source row.',
-            'duplicate_identity' => 'The source includes repeated record identifiers.',
-            'status_not_approved' => 'Publication status is not approved. Fix the source rather than publishing silently.',
+            'identity_missing_or_duplicate' => 'A source record ID is missing or repeated; resolve exact external identity before approval.',
+            'invalid_wordpress_post_status' => 'WordPress status must be draft, pending, private or publish. Fix the source; spelling is not corrected automatically.',
+            'serialized_relation_requires_certified_driver' => 'A source cell contains PHP-serialized relationship/object data. A certified typed destination driver and site owner review are required; this source cannot be approved as-is.',
         );
         return isset( $labels[ $reason ] ) ? $labels[ $reason ] :
             str_replace( '_', ' ', (string) $reason );
@@ -30,8 +31,7 @@ final class MAD4B_SCP_Activity_Import_Experience {
     public static function mode_label( $id ) {
         $labels = array(
             'admin_csv_upload' => 'Upload a CSV file here',
-            'admin_xlsx_convert' => 'Upload an Excel XLSX file here',
-            'admin_xlsx_convert' => 'Convert Excel to CSV',
+            'admin_xlsx_convert' => 'Upload a bounded Excel XLSX file for Staging review',
             'google_apps_script' => 'Google Sheets via Apps Script',
             'signed_generic_webhook' => 'Make / n8n / Zapier / signed webhook',
             'google_sheets_oauth' => 'Managed Google Sheets connection',
