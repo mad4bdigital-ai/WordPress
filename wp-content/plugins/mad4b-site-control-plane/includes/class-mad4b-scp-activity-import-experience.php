@@ -75,6 +75,18 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'mad4b_import_snapshot_stale' => 'This source review is no longer current. Refresh and inspect the latest review.',
             'mad4b_import_approval_blocked' => 'Correct every blocking issue in the original source and upload a new review.',
             'mad4b_import_legacy_preview_untrusted' => 'An older unencrypted review cannot be approved. Archive it and re-upload safely.',
+            'mad4b_ui_csv_upload_invalid' => 'Choose a genuine .csv file under 1 MiB. Large sheets need a separate bounded conversion or batch adapter.',
+            'mad4b_ui_csv_open_failed' => 'The uploaded file cannot be read. Export a fresh CSV and retry.',
+            'mad4b_ui_csv_header_invalid' => 'The CSV headers are empty, malformed or exceed 80 columns.',
+            'mad4b_ui_csv_rows_invalid' => 'A row has the wrong number of columns, or the file exceeds 500 records. Fix the CSV structure before retrying.',
+            'mad4b_ui_csv_unsafe_value' => 'An unsafe spreadsheet formula, control character or oversized cell was found. Export literal values rather than formulas.',
+            'mad4b_import_required_columns_missing' => 'The CSV is missing site-required columns or approved mappings. Compare its headers with the Profile validation contract.',
+            'mad4b_import_formula_or_control_denied' => 'The source contains a formula or forbidden control data. Export literal values.',
+            'mad4b_import_review_pending' => 'There is an earlier review. Open its issues, complete or explicitly archive it before uploading another source.',
+            'mad4b_import_approval_blocked' => 'Blocking issues remain. Correct source values and stage a new snapshot before approving.',
+            'mad4b_import_snapshot_readback_failed' => 'The source was not independently confirmed in encrypted storage. Contact the site administrator; no import was started.',
+            'mad4b_import_snapshot_encrypt' => 'The server could not encrypt the source. Ask the host administrator to check encrypted storage.',
+            'mad4b_import_snapshot_size' => 'The source exceeds the secure review size limit. Use a separately certified batched mode.',
         );
         return isset( $map[ $code ] ) ? $map[ $code ] :
             'Read the diagnostic, check the site configuration and retry only after the underlying issue is resolved.';
@@ -237,6 +249,11 @@ final class MAD4B_SCP_Activity_Import_Experience {
         echo '</select> ';
         submit_button( self::title( 'Choose Profile' ), 'secondary', 'submit', false );
         echo '</form>';
+        $ui_error = isset( $_GET['ui_error'] ) ?
+            sanitize_key( wp_unslash( $_GET['ui_error'] ) ) : '';
+        if ( $ui_error && preg_match( '/^[a-z0-9_]{5,100}$/D', $ui_error ) )
+            self::explanation( self::title( 'The action was not completed.' ),
+                self::error_guidance( $ui_error ), 'error' );
         if ( !$selected ) {
             self::explanation( self::title( 'Choose where the data belongs.' ),
                 self::title( 'Select an existing configured Profile above. There is no need to enter a technical slug.' ) );
