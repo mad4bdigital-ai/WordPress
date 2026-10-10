@@ -13,6 +13,7 @@ $cover = array(
 	'coverage' => array( 'brand_strategy' => $missing, 'tone_of_voice' => $missing, 'editorial_guidelines' => $missing ),
 );
 $context = array( 'brand_id' => str_repeat( 'a', 32 ), 'profile_revision' => 4,
+	'registry_revision' => 6, 'authority_manifest_fingerprint' => str_repeat( 'a', 64 ),
 	'review_policy' => array( 'ready' => true ),
 	'quarantined_source_record_count' => 1, 'quarantined_asset_record_count' => 12 );
 $convergence = array( 'registry_revision' => 6, 'authority_manifest_fingerprint' => str_repeat( 'a', 64 ),
@@ -32,6 +33,22 @@ foreach ( $r['categories'] as $c ) {
 	check_loop( 'OWNERSHIP_REVIEW_REQUIRED' === $c['state'], 'individual category bypassed ownership quarantine' );
 	check_loop( empty( $c['candidate_recreation_authorized'] ), 'alternative clone creation incorrectly authorized' );
 }
+// Independent reads may race. A zero census cannot erase quarantined
+// Context records and permit source re-creation or a fabricated READY.
+$stale_census = array( 'source_quarantine_count' => 0, 'asset_quarantine_count' => 0 );
+$r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, $stale_census, $provider );
+check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'] && ! $r['ready'], 'stale zero census bypassed quarantined records' );
+check_loop( 12 === $r['quarantine']['asset_count'] && 1 === $r['quarantine']['source_count'], 'stale census concealed quarantine' );
+$r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, array(), $provider );
+check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'], 'malformed census failed open' );
+$context['registry_revision'] = 7;
+$r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, $census, $provider );
+check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'], 'Context status registry revision drift ignored' );
+$context['registry_revision'] = 6;
+$context['authority_manifest_fingerprint'] = str_repeat( 'b', 64 );
+$r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, $census, $provider );
+check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'], 'Context status authority digest drift ignored' );
+$context['authority_manifest_fingerprint'] = str_repeat( 'a', 64 );
 $census = array( 'source_quarantine_count' => 0, 'asset_quarantine_count' => 0 );
 $context['quarantined_source_record_count'] = 0;
 $context['quarantined_asset_record_count'] = 0;
