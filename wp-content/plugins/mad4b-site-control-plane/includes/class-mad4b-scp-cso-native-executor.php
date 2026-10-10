@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_CSO_Native_Executor {
     const CONTRACT = 'mad4b.cso.native-executor.v1';
     const SERVER = 'mad4b-write';
+    private static $active_native_digest = '';
 
     private static function error( $code ) { return MAD4B_SCP_CSO_Scope::error( $code ); }
 
@@ -52,15 +53,44 @@ final class MAD4B_SCP_CSO_Native_Executor {
         );
     }
 
+    /**
+     * The native callback must be uncallable without an approved, claimed,
+     * exact one-use ticket in this SAME PHP request. Direct WordPress Ability
+     * execute and direct PHP invocation cannot supply this private permit.
+     */
+    public static function native_permit_matches( $input ) {
+        return is_array( $input ) && '' !== self::$active_native_digest &&
+            hash_equals( self::$active_native_digest,
+                MAD4B_SCP_CSO_Scope::digest( $input ) );
+    }
+
+    private static function execute_native_once( $ability, $payload ) {
+        if ( '' !== self::$active_native_digest )
+            return self::error( 'NATIVE_REENTRANT_EXECUTION_DENIED' );
+        self::$active_native_digest = MAD4B_SCP_CSO_Scope::digest( $payload );
+        try {
+            if ( true !== $ability->check_permissions( $payload ) )
+                return self::error( 'NATIVE_ABILITY_PERMISSION_REVOKED' );
+            return $ability->execute( $payload );
+        } finally {
+            self::$active_native_digest = '';
+        }
+    }
+
     private static function admission( $material ) {
         if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets', false ) ||
             ! class_exists( 'MAD4B_SCP_Execution_Fence', false ) ||
             ! class_exists( 'MAD4B_SCP_Operational_Integrity', false ) ||
             ! class_exists( 'MAD4B_SCP_Database_Topology', false ) ||
+            ! class_exists( 'MAD4B_SCP_Write_Runtime_Certification', false ) ||
             ! class_exists( 'MAD4B_SCP_Agent_Registry', false ) ||
             ! class_exists( 'MAD4B_SCP_Policy', false ) ||
             ! MAD4B_SCP_Policy::can_mutate() )
             return self::error( 'NATIVE_AUTHORITY_UNAVAILABLE' );
+        $certificate = MAD4B_SCP_Write_Runtime_Certification::current_status();
+        if ( ! is_array( $certificate ) || empty( $certificate['ready'] ) ||
+            empty( $certificate['current_truth'] ) )
+            return self::error( 'NATIVE_CURRENT_RUNTIME_NOT_CERTIFIED' );
         $ability_name = $material['native_write_ability'] ?? '';
         if ( ! is_string( $ability_name ) || ! function_exists( 'wp_get_ability' ) ||
             ! is_object( wp_get_ability( $ability_name ) ) ||
@@ -193,9 +223,8 @@ final class MAD4B_SCP_CSO_Native_Executor {
         $pre = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
         if ( is_wp_error( $pre ) || true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
             return self::error( 'NATIVE_EFFECT_SCOPE_UNAUTHORIZED' );
-        if ( true !== $admission['ability']->check_permissions( $payload ) )
-            return self::error( 'NATIVE_ABILITY_PERMISSION_DENIED' );
-
+        // Native permission is rechecked only inside an exact one-use
+        // in-request permit AFTER durable reservation and ticket claim.
         $journal = array(
             'contract' => self::CONTRACT . '.journal.v1',
             'ticket_sha256' => hash( 'sha256', $ticket_id ),
@@ -227,7 +256,7 @@ final class MAD4B_SCP_CSO_Native_Executor {
         if ( is_wp_error( $pre ) || true !== MAD4B_SCP_CSO_Scope::assert_current( $scope ) )
             return self::error( 'NATIVE_POST_CLAIM_SCOPE_CHANGED' );
         try {
-            $result = $admission['ability']->execute( $payload );
+            $result = self::execute_native_once( $admission['ability'], $payload );
         } catch ( \Throwable $error ) {
             self::transition( $key, $journal, 'needs_reconcile', 'NATIVE_THROWN' );
             return self::error( 'NATIVE_EFFECT_UNCERTAIN' );
@@ -251,10 +280,13 @@ final class MAD4B_SCP_CSO_Native_Executor {
             self::transition( $key, $journal, 'needs_reconcile', 'READBACK_OR_SCOPE_UNVERIFIED' );
             return self::error( 'NATIVE_INDEPENDENT_READBACK_REQUIRED' );
         }
+        $done = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'used' );
+        if ( is_wp_error( $done ) ) {
+            self::transition( $key, $journal, 'needs_reconcile', 'TICKET_FINALIZE_UNCERTAIN' );
+            return self::error( 'NATIVE_APPROVAL_FINALIZE_UNCERTAIN' );
+        }
         $verified = self::transition( $key, $journal, 'verified' );
         if ( is_wp_error( $verified ) ) return $verified;
-        $done = MAD4B_SCP_Approval_Tickets::finalize_claim( $ticket_id, 'used' );
-        if ( is_wp_error( $done ) ) return self::error( 'NATIVE_APPROVAL_FINALIZE_UNCERTAIN' );
         return array( 'contract' => self::CONTRACT . '.receipt.v1',
             'status' => 'verified', 'ticket_sha256' => $journal['ticket_sha256'],
             'plan_sha256' => $payload['plan_sha256'],

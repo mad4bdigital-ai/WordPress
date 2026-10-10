@@ -110,7 +110,9 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
             MAD4B_SCP_CSO_Scope::enabled( 'single_write' ) &&
             MAD4B_SCP_CSO_Scope::first_party_session() &&
             is_array( $input ) && ( $input['provider_id'] ?? '' ) === self::PROVIDER &&
-            self::allowed( $input['target'] ?? null, $scope, true );
+            self::allowed( $input['target'] ?? null, $scope, true ) &&
+            class_exists( 'MAD4B_SCP_CSO_Native_Executor', false ) &&
+            MAD4B_SCP_CSO_Native_Executor::native_permit_matches( $input );
     }
 
     public static function write_native( $input ) {

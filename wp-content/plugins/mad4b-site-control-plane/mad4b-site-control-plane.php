@@ -446,6 +446,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-storage-adapters.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-drafts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-changes.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-native-executor.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-wp-post-driver.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-bulk.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-workflows.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-templates.php';
@@ -548,6 +549,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
     // Opt-in CSO extensions remain inert unless a deploy-time flag enables
     // the exact component. Discovery/form validation are non-authorizing.
     if ( MAD4B_SCP_CSO_Scope::enabled( 'discovery' ) ) {
+        MAD4B_SCP_CSO_WP_Post_Driver::boot();
         MAD4B_SCP_CSO_Gateway::boot();
         MAD4B_SCP_CSO_Form_UI::boot();
         if ( MAD4B_SCP_CSO_Scope::enabled( 'secrets' ) ) MAD4B_SCP_CSO_Secrets::boot();
