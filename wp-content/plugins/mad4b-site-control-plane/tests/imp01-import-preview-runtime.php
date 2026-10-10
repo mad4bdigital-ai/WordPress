@@ -56,7 +56,9 @@ class MAD4B_SCP_Content_Experience_Profiles {
         if ( 'pricing' !== $slug ) return new WP_Error( 'unknown_profile' );
         return array( 'enabled' => true, 'revision' => 5,
             'authority_sha256' => str_repeat( 'a', 64 ),
-            'meta_keys' => array( 'base_currency', 'single_price', 'double_price' ),
+            'meta_keys' => array( 'base_currency', 'single_price', 'double_price',
+                'source_external_id' ),
+            'post_type' => 'tour_rate',
             'activity_contract' => array( 'enabled' => true ),
             'import_contract' => array( 'enabled' => true,
                 'enabled_modes' => isset( $GLOBALS['imp02_enabled_modes'] ) ?
@@ -73,6 +75,8 @@ class MAD4B_SCP_Content_Experience_Profiles {
                     'currency_field' => 'base_currency',
                     'price_fields' => array( 'single_price', 'double_price' ),
                     'decimal_scale' => 4,
+                    'destination_identity_meta_key' => empty( $GLOBALS['imp04_missing_identity_binding'] ) ?
+                        'source_external_id' : '',
                     'field_mapping' => array( 'single_price' => 'single_price' ),
                     'price_tier_policy' => ! empty( $GLOBALS['imp03_price_rule'] ) ?
                         'review_monotonic' : 'none',
