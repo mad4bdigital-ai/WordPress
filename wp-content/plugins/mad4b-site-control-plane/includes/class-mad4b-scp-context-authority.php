@@ -477,8 +477,41 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! is_array( $folder ) || ! hash_equals( $reviewed_root, (string) ( $folder['id'] ?? '' ) )
 			|| 'application/vnd.google-apps.folder' !== (string) ( $folder['mimeType'] ?? '' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_folder_mismatch', 'Independent Google Drive folder identity could not be verified.' );
+		// A folder existing is not proof that each old asset still belongs
+		// within it. Require a bounded, complete scan and identity match;
+		// incomplete provider results must never authorize reassignment.
+		$stored_source = self::raw_sources()[ $source_id ] ?? array();
+		if ( ! is_array( $stored_source ) ||
+			! hash_equals( $reviewed_root, (string) ( $stored_source['external_root_id'] ?? '' ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_root_drift', 'Original source folder changed before Provider verification.' );
+		$provider_scan = MAD4B_SCP_Google_Drive_Context::scan_folder(
+			$reviewed_root, ! empty( $stored_source['recursive'] ) );
+		if ( is_wp_error( $provider_scan ) ) return $provider_scan;
+		if ( ! is_array( $provider_scan ) || empty( $provider_scan['complete'] ) ||
+			! isset( $provider_scan['assets'] ) || ! is_array( $provider_scan['assets'] ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_scan_incomplete',
+				'Complete bounded Drive inventory is required; no assets may be adopted after a truncated scan.' );
+		$observed_file_ids = array();
+		foreach ( $provider_scan['assets'] as $candidate ) {
+			$file_id = is_array( $candidate ) ? (string) ( $candidate['file_id'] ?? '' ) : '';
+			if ( '' !== $file_id ) $observed_file_ids[ $file_id ] = true;
+		}
+		$expected_count = 0;
+		foreach ( self::raw_assets() as $old_asset ) {
+			if ( ! is_array( $old_asset ) ||
+				$source_id !== (string) ( $old_asset['source_id'] ?? '' ) ) continue;
+			++$expected_count;
+			$file_id = (string) ( $old_asset['file_id'] ?? '' );
+			if ( '' === $file_id || ! isset( $observed_file_ids[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_transfer_provider_asset_missing',
+					'At least one quarantined asset could not be verified inside the original Drive source folder.' );
+		}
+		if ( $expected_count < 1 )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_asset_inventory_empty',
+				'No matching existing assets were verified in the original provider folder.' );
+		$provider_inventory_digest = hash( 'sha256', implode( '|', array_keys( $observed_file_ids ) ) );
 		return self::with_registry_lock( 'legacy_owner_transfer_apply',
-			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence ) {
+			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest ) {
 				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
 				if ( is_wp_error( $plan ) ) return $plan;
 				if ( ! hash_equals( (string) $plan['plan_sha256'], $expected )
@@ -525,6 +558,9 @@ final class MAD4B_SCP_Context_Authority {
 					$assets[ $id ] = $asset;
 					++$count;
 				}
+				if ( $count !== $expected_count )
+					return new WP_Error( 'mad4b_legacy_transfer_provider_registry_count_drift',
+						'Registry changed after external Drive inventory; refresh identity and repeat preflight.' );
 				if ( $count !== (int) $plan['asset_count'] ) return new WP_Error(
 					'mad4b_legacy_transfer_count_drift', 'Asset set changed during the locked transfer.' );
 				$committed = self::commit_option_changes(
@@ -569,6 +605,9 @@ final class MAD4B_SCP_Context_Authority {
 					'asset_count' => $count,
 					'plan_sha256' => $expected,
 					'evidence_reference_sha256' => hash( 'sha256', $evidence ),
+					'verified_provider_file_count' => $expected_count,
+					'provider_inventory_digest' => $provider_inventory_digest,
+					'provider_scan_complete' => true,
 					'owner_approved_transfer' => true,
 					'prior_reviews_invalidated' => true,
 					'supplier_rights_auto_granted' => false,
