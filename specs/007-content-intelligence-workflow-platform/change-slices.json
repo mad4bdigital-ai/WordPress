@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 676,
+  "changed_file_count": 687,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1384,8 +1384,43 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-storage-adapters-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-template-doctor-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-cso-native-approved-write-bulk-dag-20261010",
+      "semantic_unit": "Native exact approved ticket + one-shot WordPress writer, CAS effect journal, durable canary bulk, signed workflow and their synthetic tests.",
+      "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
+      "certification": "source_only_native_staging_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-bulk-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-native-executor.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-wp-post-driver.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-bulk-native-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-native-executor-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-workflow-native-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso-wp-post-driver-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-runtime-acceptance-core-20261010",
+      "semantic_unit": "Independent runtime acceptance verifier and contract added by concurrent author.",
+      "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
+      "certification": "source_only_native_staging_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php"
+      ]
+    },
+    {
+      "id": "feature007-selected-head-update-20261010",
+      "semantic_unit": "Selected-head monotonicity and safe update tests added by concurrent author.",
+      "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
+      "certification": "source_only_native_staging_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "17755dcd599648d1362562df0e0a2e1608599ce5c1030aed5a5c4238207af259",
+  "changed_paths_sha256": "d3e24bf83682a9bd65102e717e2312846025c688ae2d4726e5d183e1c54850aa",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
