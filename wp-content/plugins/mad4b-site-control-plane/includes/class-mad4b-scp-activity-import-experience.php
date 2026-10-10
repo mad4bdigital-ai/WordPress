@@ -131,6 +131,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
         if ( '' === $mode_id && !$requested_mode_invalid &&
             isset( $modes['admin_csv_upload'] ) )
             $mode_id = 'admin_csv_upload';
+        $review_unavailable = is_wp_error( $review ) ||
+            ( is_array( $review ) && isset( $review['state'] ) &&
+                ! in_array( $review['state'], array( 'no_staged_feed', 'requires_review' ), true ) );
         $active_review = is_array( $review ) && isset( $review['snapshot_sha256'] ) &&
             isset( $review['plan'] ) && is_array( $review['plan'] );
         $blocks = $active_review && isset( $review['plan']['block_issue_count'] ) ?
@@ -152,7 +155,9 @@ final class MAD4B_SCP_Activity_Import_Experience {
             'requested_mode_invalid' => $requested_mode_invalid,
             'step' => $step,
             'review_pending' => $active_review,
+            'review_unavailable' => $review_unavailable,
             'can_upload_new' => $has_policy && ! $active_review &&
+                ! $review_unavailable &&
                 isset( $modes['admin_csv_upload'] ) &&
                 $modes['admin_csv_upload']['ready_for_review'],
             'blocking_issue_count' => $blocks, 'review_issue_count' => $warnings,
@@ -310,6 +315,12 @@ final class MAD4B_SCP_Activity_Import_Experience {
     private static function step_source( $view, $slug ) {
         echo '<h2>' . self::e( self::title( 'Provide the source for review' ) ) . '</h2>';
         $mode = $view['selected_mode_id'];
+        if ( $view['review_unavailable'] ) {
+            self::explanation( self::title( 'The existing review cannot be verified.' ),
+                self::title( 'Ask the site administrator to resolve the legacy or corrupted review state. A new upload is blocked to protect the current source.' ),
+                'error' );
+            return;
+        }
         if ( $view['review_pending'] ) {
             self::explanation( self::title( 'An earlier review is still active.' ),
                 self::title( 'You cannot overwrite it. Open the issues, complete approval, or explicitly archive that review first.' ),
