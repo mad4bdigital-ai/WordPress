@@ -422,14 +422,51 @@ final class MAD4B_SCP_Activity_Import_Batches {
         $ctx = self::context( $slug );
         if ( is_wp_error( $ctx ) ) return $ctx;
         $read = self::read_manifest( $slug, $id, $ctx );
-        if ( is_wp_error( $read ) ) return $read;
-        $names = $read['names'];
+        $names = self::names( $slug, $id );
         $tombstone_key = 'mad4b_batch_archive_' . hash( 'sha256',
             MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $id );
+        if ( is_wp_error( $read ) ) {
+            // If a process crashed after deleting the manifest but before
+            // releasing the slot, recover only from an independently persisted
+            // exact-ID tombstone. Never guess the source page count.
+            $audit = get_option( $tombstone_key, false );
+            $active = get_option( $names['active'], false );
+            $manifest = get_option( $names['manifest'], false );
+            if ( ! is_array( $audit ) ||
+                ! isset( $audit['batch_id_sha256'], $audit['expected_chunks'] ) ||
+                ! is_string( $active ) || ! hash_equals( $active, $id ) ||
+                false !== $manifest ||
+                ! hash_equals( (string) $audit['batch_id_sha256'],
+                    hash( 'sha256', $id ) ) ||
+                ! is_int( $audit['expected_chunks'] ) ||
+                $audit['expected_chunks'] < 2 ||
+                $audit['expected_chunks'] > self::MAX_CHUNKS )
+                return $read;
+            for ( $i = 0; $i < $audit['expected_chunks']; $i++ ) {
+                $key = $names['chunk_prefix'] . $i;
+                delete_option( $key );
+                if ( false !== get_option( $key, false ) )
+                    return self::err( 'mad4b_batch_archive_recovery_cleanup',
+                        'Recovery cannot verify encrypted page removal.' );
+            }
+            delete_option( $names['approved'] );
+            if ( false !== get_option( $names['approved'], false ) )
+                return self::err( 'mad4b_batch_archive_recovery_approval',
+                    'Recovery cannot verify approval removal.' );
+            delete_option( $names['active'] );
+            if ( false !== get_option( $names['active'], false ) )
+                return self::err( 'mad4b_batch_archive_recovery_release',
+                    'Recovery cannot verify active slot release.' );
+            return array( 'contract' => self::CONTRACT,
+                'state' => 'archived_after_interrupted_cleanup',
+                'batch_id_sha256' => hash( 'sha256', $id ),
+                'audit_recorded' => true, 'wordpress_post_writes' => 0 );
+        }
         $audit = array( 'batch_id_sha256' => hash( 'sha256', $id ),
             'profile_slug' => $slug, 'archived_at' => gmdate( 'c' ),
             'archived_by' => (int) get_current_user_id(),
             'manifest_sha256' => self::hash( $read['manifest'] ),
+            'expected_chunks' => $read['manifest']['expected_chunks'],
             'post_writes' => 0 );
         if ( ! add_option( $tombstone_key, $audit, '', false ) ) {
             $old_audit = get_option( $tombstone_key, false );
