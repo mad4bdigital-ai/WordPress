@@ -21,6 +21,9 @@ final class MAD4B_SCP_Plugin_Package {
 		if ( ! class_exists( 'MAD4B_SCP_Plugin_Update_Recovery', false ) )
 			require_once __DIR__ . '/class-mad4b-scp-plugin-update-recovery.php';
 		MAD4B_SCP_Plugin_Update_Recovery::boot();
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Update_Evidence', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-plugin-update-evidence.php';
+		MAD4B_SCP_Plugin_Update_Evidence::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 	}
 
