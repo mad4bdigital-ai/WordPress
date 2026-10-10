@@ -19,6 +19,34 @@ function update_option($key,$value,$autoload=false){
  $old=get_option($key,false);$GLOBALS['options'][$key]=$value;return $old!==$value;
 }
 function delete_option($key){unset($GLOBALS['options'][$key]);return true;}
+function maybe_serialize($value){return is_array($value)||is_object($value)?serialize($value):(string)$value;}
+// The fake SQL options table has a UNIQUE option_name and byte-sensitive
+// owner-constrained DELETE. It deliberately refuses the WP add_option path.
+class MSR02_Atomic_Option_SQL {
+ public $options='wp_options';
+ public function prepare($sql,...$args){return array('sql'=>$sql,'args'=>$args);}
+ public function query($prepared){
+  $sql=$prepared['sql'];$args=$prepared['args'];
+  if(strpos($sql,'INSERT IGNORE INTO')!==false){
+   if(array_key_exists($args[0],$GLOBALS['options']))return 0;
+   $raw=$args[1];$v=@unserialize($raw,array('allowed_classes'=>false));
+   $GLOBALS['options'][$args[0]]=(false!==$v||$raw==='b:0;')?$v:$raw;
+   return 1;
+  }
+  if(strpos($sql,'DELETE FROM')!==false){
+   if(!array_key_exists($args[0],$GLOBALS['options'])||
+     maybe_serialize($GLOBALS['options'][$args[0]])!==$args[1])return 0;
+   unset($GLOBALS['options'][$args[0]]);return 1;
+  }
+  throw new RuntimeException('Unexpected sync fake SQL query');
+ }
+ public function get_var($prepared){
+  $key=$prepared['args'][0];
+  return array_key_exists($key,$GLOBALS['options'])?
+    maybe_serialize($GLOBALS['options'][$key]):null;
+ }
+}
+$GLOBALS['wpdb']=new MSR02_Atomic_Option_SQL();
 function apply_filters($hook,$adapters,$profile){if($hook==='mad4b_activity_sync_adapters'){$adapters['google_drive']=array(
  'read'=>'fake_drive_read','write'=>'fake_drive_write',
  'conditional_write'=>true,'readback'=>true);}return $adapters;}
@@ -87,6 +115,25 @@ ck(is_wp_error($stale)&&$stale->get_error_code()==='mad4b_sync_plan_stale_or_con
  'Stale approved plan started writes');
 $begin=MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(101),array('plan_sha256'=>$plan['plan_sha256']))));
 ck(!is_wp_error($begin)&&$begin['state']==='queued','Operation not persisted before write');
+$atomic_reserve=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','reserve_once');
+$atomic_release=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','release_once');
+$opKey='mad4b_asyn_operation_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|101');
+$originalOp=$GLOBALS['options'][$opKey];
+ck($atomic_reserve->invoke(null,$opKey,array('forged'=>'worker-B'))===false &&
+ $GLOBALS['options'][$opKey]===$originalOp,
+ 'Racing sync worker overwrote the first operation journal');
+$ownLease='mad4b_asyn_lease_'.hash('sha256',
+ MAD4B_SCP_Site_Profile::site_uuid().'|vendor|199');
+$owner=array('operation_key'=>'worker-A','owner_nonce'=>'own');
+ck($atomic_reserve->invoke(null,$ownLease,$owner)===true,
+ 'Atomic synthetic lease could not be reserved');
+$GLOBALS['options'][$ownLease]=array('operation_key'=>'worker-B','owner_nonce'=>'foreign');
+ck($atomic_release->invoke(null,$ownLease)===false &&
+ $GLOBALS['options'][$ownLease]['owner_nonce']==='foreign',
+ 'A stale worker released another worker lease');
+unset($GLOBALS['options'][$ownLease]);
+
 $firstStep=MAD4B_SCP_Activity_Sync_Runtime::advance(confirmed(scope(101)));
 ck(!is_wp_error($firstStep)&&$GLOBALS['drive_value']==='Approved change'&&$firstStep['readback_verified'],
  'Drive adapter CAS/readback did not apply approved exact field');

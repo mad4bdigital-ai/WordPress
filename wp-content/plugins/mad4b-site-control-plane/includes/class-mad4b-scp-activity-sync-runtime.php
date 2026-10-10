@@ -28,6 +28,67 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         return is_wp_error( $status ) ? $status : $checkpoint;
     }
 
+    /** SQL UNIQUE reservation for sync checkpoints, journals and all worker leases.
+     * A WordPress add_option() call is not a reliable first-writer-wins CAS.
+     * Never fall back to add_option when SQL is unavailable.
+     */
+    private static $owned_reservations = array();
+
+    private static function reserve_once( $key, $value ) {
+        global $wpdb;
+        if ( ! is_string( $key ) ||
+            ! preg_match( '/^mad4b_asyn_(?:checkpoint|operation|lease|recovery_lease)_[a-f0-9]{64}$|^mad4b_asyn_archive_[a-f0-9]{64}_[a-f0-9]{32}$/D', $key ) ||
+            ! function_exists( 'maybe_serialize' ) ||
+            ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', (string) $wpdb->options ) ||
+            ! method_exists( $wpdb, 'query' ) || ! method_exists( $wpdb, 'prepare' ) ||
+            ! method_exists( $wpdb, 'get_var' ) ) return false;
+        $raw = maybe_serialize( $value );
+        if ( ! is_string( $raw ) || strlen( $raw ) > 3000000 ) return false;
+        $inserted = $wpdb->query( $wpdb->prepare(
+            "INSERT IGNORE INTO `{$wpdb->options}` (option_name, option_value, autoload) VALUES (%s, %s, %s)",
+            $key, $raw, 'off' ) );
+        if ( 1 !== $inserted ) return false;
+        self::clear_sql_option_cache( $key );
+        $observed = $wpdb->get_var( $wpdb->prepare(
+            "SELECT option_value FROM `{$wpdb->options}` WHERE option_name = %s LIMIT 1", $key ) );
+        if ( ! is_string( $observed ) || ! hash_equals( $raw, $observed ) ) return false;
+        self::$owned_reservations[ $key ] = $raw;
+        return true;
+    }
+
+    private static function clear_sql_option_cache( $key ) {
+        if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( $key, 'options' );
+        if ( function_exists( 'wp_cache_get' ) && function_exists( 'wp_cache_set' ) ) {
+            $notoptions = wp_cache_get( 'notoptions', 'options' );
+            if ( is_array( $notoptions ) && isset( $notoptions[ $key ] ) ) {
+                unset( $notoptions[ $key ] );
+                wp_cache_set( 'notoptions', $notoptions, 'options' );
+            }
+        }
+    }
+
+    /** Never release a lease reserved by another PHP worker (even for the
+     * same logical operation_key). Its original serialized owner is mandatory.
+     */
+    private static function release_once( $key ) {
+        global $wpdb;
+        if ( ! isset( self::$owned_reservations[ $key ] ) ||
+            ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', (string) $wpdb->options ) ||
+            ! method_exists( $wpdb, 'query' ) || ! method_exists( $wpdb, 'prepare' ) ||
+            ! method_exists( $wpdb, 'get_var' ) ) return false;
+        $value = self::$owned_reservations[ $key ];
+        $deleted = $wpdb->query( $wpdb->prepare(
+            "DELETE FROM `{$wpdb->options}` WHERE option_name = %s AND BINARY option_value = BINARY %s LIMIT 1",
+            $key, $value ) );
+        if ( 1 !== $deleted ) return false;
+        unset( self::$owned_reservations[ $key ] );
+        self::clear_sql_option_cache( $key );
+        return null === $wpdb->get_var( $wpdb->prepare(
+            "SELECT option_value FROM `{$wpdb->options}` WHERE option_name = %s LIMIT 1", $key ) );
+    }
+
     private static function digest( $value ) {
         $s = wp_json_encode( $value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
         return is_string( $s ) ? hash( 'sha256', $s ) : '';
@@ -53,9 +114,8 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         if ( ! is_array( $lease ) || ! isset( $lease['operation_key'] ) ||
             ! hash_equals( (string) $lease['operation_key'], (string) $operation_key ) )
             return self::err( 'mad4b_sync_lease_identity_changed', 'Cannot release a lease belonging to another worker.' );
-        delete_option( $key );
-        if ( false !== get_option( $key, false ) )
-            return self::err( 'mad4b_sync_lease_release_unverified', 'Could not verify release of this operation lease.' );
+        if ( ! self::release_once( $key ) )
+            return self::err( 'mad4b_sync_lease_release_unverified', 'Current PHP worker cannot prove exact lease ownership and release.' );
         return true;
     }
     /** Definitive refusal before the next provider call: journal, then unlock. */
@@ -435,7 +495,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 return self::err( 'mad4b_sync_bootstrap_drifted', 'Authoritative sources changed during bootstrap.' );
             $write_scope = self::authorize_provider_write( $binding );
             if ( is_wp_error( $write_scope ) ) return $write_scope;
-            if ( ! add_option( self::key( $binding, 'checkpoint' ), $checkpoint, '', false ) )
+            if ( ! self::reserve_once( self::key( $binding, 'checkpoint' ), $checkpoint ) )
                 return self::err( 'mad4b_sync_checkpoint_concurrent', 'Checkpoint has already been initialized.' );
             if ( function_exists( 'wp_cache_delete' ) )
                 wp_cache_delete( self::key( $binding, 'checkpoint' ), 'options' );
@@ -456,7 +516,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             'started_at' => gmdate( 'c' ) );
         $write_scope = self::authorize_provider_write( $binding );
         if ( is_wp_error( $write_scope ) ) return $write_scope;
-        if ( ! add_option( $key, $op, '', false ) )
+        if ( ! self::reserve_once( $key, $op ) )
             return self::err( 'mad4b_sync_operation_raced', 'Another worker reserved the same sync entity.' );
         if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( $key, 'options' );
         if ( self::digest( get_option( $key, false ) ) !== self::digest( $op ) )
@@ -481,7 +541,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         if ( ! in_array( $op['state'], array( 'queued', 'running' ), true ) )
             return self::err( 'mad4b_sync_requires_recovery', 'Unknown or completed operation requires independent reconciliation.' );
         $mutex = self::key( $binding, 'lease' );
-        if ( ! add_option( $mutex, array( 'operation_key' => $op['operation_key'], 'at' => time() ), '', false ) )
+        if ( ! self::reserve_once( $mutex, array( 'operation_key' => $op['operation_key'], 'at' => time(), 'owner_nonce' => bin2hex( random_bytes( 16 ) ) ) ) )
             return self::err( 'mad4b_sync_lease_busy', 'Another worker is running, or crashed while holding this lease.' );
         // Persist the in-flight step BEFORE executing any provider write.
         $i = (int) $op['next_step'];
@@ -531,7 +591,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'authority_sha256' => $binding['profile']['authority_sha256'],
                 'sources' => $current );
             $saved = ! empty( $op['bootstrap_arbitration'] )
-                ? add_option( self::key( $binding, 'checkpoint' ), $next_cp, '', false )
+                ? self::reserve_once( self::key( $binding, 'checkpoint' ), $next_cp )
                 : update_option( self::key( $binding, 'checkpoint' ), $next_cp, false );
             if ( !$saved &&
                 self::digest( get_option( self::key( $binding, 'checkpoint' ), false ) ) !== self::digest( $next_cp ) ) {
@@ -656,7 +716,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             return self::err( 'mad4b_sync_recover_inflight_worker_not_quiesced', 'In-flight provider request may still be active; recovery needs independent worker quiescence.' );
         $recovery_mutex = self::key( $binding, 'recovery_lease' );
         $recovery_token = self::digest( array( $op['operation_key'], $expected ) );
-        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+        if ( ! self::reserve_once( $recovery_mutex, $recovery_token ) )
             return self::err( 'mad4b_sync_recovery_busy', 'Another reconciliation worker owns this operation.' );
         try {
             $fresh_op = get_option( $key, false );
@@ -690,8 +750,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'provider_replayed' => false, 'mutation_performed' => true );
 
         } finally {
-            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
-                delete_option( $recovery_mutex );
+            self::release_once( $recovery_mutex );
         }
     }
     public static function finalize_reconciled( $input = array() ) {
@@ -712,7 +771,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             return self::err( 'mad4b_sync_reconcile_journal_not_exact', 'Require unchanged partial saga journal digest.' );
         $recovery_mutex = self::key( $binding, 'recovery_lease' );
         $recovery_token = self::digest( array( $op['operation_key'], $expected ) );
-        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+        if ( ! self::reserve_once( $recovery_mutex, $recovery_token ) )
             return self::err( 'mad4b_sync_recovery_busy', 'Another reconciliation worker owns this operation.' );
         try {
             $fresh_op = get_option( $key, false );
@@ -748,7 +807,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'authority_sha256' => $binding['profile']['authority_sha256'],
                 'sources' => $hashes );
             $saved = ! empty( $op['bootstrap_arbitration'] )
-                ? add_option( self::key( $binding, 'checkpoint' ), $new, '', false )
+                ? self::reserve_once( self::key( $binding, 'checkpoint' ), $new )
                 : update_option( self::key( $binding, 'checkpoint' ), $new, false );
             $back = get_option( self::key( $binding, 'checkpoint' ), false );
             if ( ( !$saved && self::digest( $back ) !== self::digest( $new ) ) ||
@@ -766,8 +825,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
                 'provider_readbacks_verified' => true, 'mutation_performed' => true );
 
         } finally {
-            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
-                delete_option( $recovery_mutex );
+            self::release_once( $recovery_mutex );
         }
     }
     public static function cancel( $input = array() ) {
@@ -783,13 +841,13 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
         // cancel and advance: acquire recovery reservation first.
         $recovery_mutex = self::key( $binding, 'recovery_lease' );
         $recovery_token = self::digest( array( $expected, 'cancel' ) );
-        if ( ! add_option( $recovery_mutex, $recovery_token, '', false ) )
+        if ( ! self::reserve_once( $recovery_mutex, $recovery_token ) )
             return self::err( 'mad4b_sync_recovery_busy', 'Another recovery/cancel worker is active.' );
         try {
         $lease_key = self::key( $binding, 'lease' );
         $cancel_token = self::digest( array( $binding['site_uuid'], $expected, 'cancel' ) );
         // Same atomic reservation used by advance. No cancel/advance TOCTOU.
-        if ( ! add_option( $lease_key, array( 'operation_key' => $cancel_token, 'at' => time() ), '', false ) )
+        if ( ! self::reserve_once( $lease_key, array( 'operation_key' => $cancel_token, 'at' => time(), 'owner_nonce' => bin2hex( random_bytes( 16 ) ) ) ) )
             return self::err( 'mad4b_sync_cancel_worker_active', 'Cannot cancel while an advance worker holds the lease.' );
         try {
             $op = get_option( $key, false );
@@ -803,7 +861,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             $op['state'] = 'cancelled_without_provider_write';
             $op['cancelled_at'] = gmdate( 'c' );
             $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
-            if ( ! add_option( $archive_key, $op, '', false ) ||
+            if ( ! self::reserve_once( $archive_key, $op ) ||
                 ! hash_equals( self::digest( $op ), self::digest( get_option( $archive_key, false ) ) ) )
                 return self::err( 'mad4b_sync_cancel_archive_failed', 'Exact cancelled-operation archive could not be verified.' );
             delete_option( $key );
@@ -816,11 +874,10 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             $lease = get_option( $lease_key, false );
             if ( is_array( $lease ) && isset( $lease['operation_key'] ) &&
                 hash_equals( (string) $lease['operation_key'], $cancel_token ) )
-                delete_option( $lease_key );
+                self::release_once( $lease_key );
         }
         } finally {
-            if ( (string) get_option( $recovery_mutex, '' ) === $recovery_token )
-                delete_option( $recovery_mutex );
+            self::release_once( $recovery_mutex );
         }
     }
 
@@ -839,7 +896,7 @@ final class MAD4B_SCP_Activity_Sync_Runtime {
             ! hash_equals( self::digest( $op ), $expected ) )
             return self::err( 'mad4b_sync_archive_not_exact_complete', 'Only an exactly verified completed operation may be archived.' );
         $archive_key = self::key( $binding, 'archive' ) . '_' . substr( self::digest( $op ), 0, 32 );
-        if ( ! add_option( $archive_key, $op, '', false ) )
+        if ( ! self::reserve_once( $archive_key, $op ) )
             return self::err( 'mad4b_sync_archive_already_exists', 'Operation is already archived or a duplicate.' );
         $back = get_option( $archive_key, false );
         if ( ! is_array( $back ) || ! hash_equals( self::digest( $op ), self::digest( $back ) ) )
