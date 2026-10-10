@@ -69,10 +69,12 @@ final class MAD4B_SCP_CSO_Secrets {
 		$scope = self::scope(); if ( is_wp_error( $scope ) ) return $scope;
 		$loaded = self::load( $input['session_ref'] ); if ( is_wp_error( $loaded ) ) return $loaded;
 		$record = $loaded['record']; $bound = self::bound( $record, $scope ); if ( is_wp_error( $bound ) ) return $bound;
-		if ( $record['expires_at'] <= time() && in_array( $record['state'], array('PREPARED','OPENED'), true ) ) {
-			$record['state']='EXPIRED'; $record['phase']='expired';
-			$saved=self::persist($record['session_ref'],$loaded['sealed'],$record); if(is_wp_error($saved)) return $saved;
-		}
+        // This is a read Ability. Project expiry without mutating the
+        // durable handoff record; explicit owner-governed retention cleanup
+        // handles storage separately. Never perform CAS from a status read.
+        if ( $record['expires_at'] <= time() && in_array( $record['state'], array('PREPARED','OPENED'), true ) ) {
+            $record['state'] = 'EXPIRED'; $record['phase'] = 'expired';
+        }
 		return self::projection( $record );
 	}
 
