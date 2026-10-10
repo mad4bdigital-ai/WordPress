@@ -84,6 +84,28 @@ final class MAD4B_SCP_Progressive_Requirements {
 			));
 		}
 	}
+	/** Enumerate the live registry and registered provider contracts; no execution. */
+	public static function discover( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+			array( 'intent', 'limit', 'offset', 'operation_id' ) ) )
+			return new WP_Error( 'mad4b_progressive_discovery_invalid',
+				'Only bounded discovery intent and pagination may be supplied.' );
+		$catalog = MAD4B_SCP_Progressive_Operation_Discovery::catalog( self::$providers );
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		$query = (string) ( $input['intent'] ?? $input['operation_id'] ?? '' );
+		$result = MAD4B_SCP_Progressive_Operation_Discovery::select(
+			$catalog, $query, $input['limit'] ?? 30, $input['offset'] ?? 0 );
+		foreach ( $result['results'] as &$row ) {
+			$row['planner_inputs'] = MAD4B_SCP_Progressive_Operation_Discovery::planner_variables(
+				(string) ( $row['planner'] ?? '' ) );
+		}
+		unset( $row );
+		$result['canonical_registry_sha256'] = $catalog['catalog_sha256'];
+		$result['read_only'] = true;
+		$result['authorizing'] = false;
+		return $result;
+	}
+
 	/** A blocker is always a non-waivable gate unless registered by source as advisory. */
 	private static function gate( $name, $ready, $policy, $phase, $dependencies = array() ) {
 		return array('id'=>$name, 'ready'=>(bool)$ready,'policy'=>$policy,
