@@ -16,7 +16,7 @@ for token in (
     "function locked_mutation(", "'begin', 'append', 'approve', 'archive'",
     "MAD4B_SCP_Batch_Atomic_Mutex::acquire(",
     "MAD4B_SCP_Batch_Atomic_Mutex::release(",
-    "mad4b_batch_mutation_locked", "function mutation_status(",
+    "function mutation_status(",
     "automatic_lock_takeover_allowed' => false",
     "function archival_manifest(", "mad4b_batch_archive_manifest_invalid",
     "if ( 'archive' === $operation )", "self::archival_manifest( $slug, $id )",
@@ -37,7 +37,7 @@ for func in ("begin", "append", "approve", "archive"):
     require("public static function "+func+"(" in batch and
             "private static function "+func+"_unlocked(" in batch,
             "High-impact operation not protected by the Profile mutex: "+func)
-require("delete_option( $lock_key )" in batch and
+require("MAD4B_SCP_Batch_Atomic_Mutex::release( $lease )" in batch and
         "delete_option( $names['active'] )" in batch and
         "wp_insert_post(" not in batch and "wp_update_post(" not in batch,
         "Batch mutex altered WordPress business posts or lost cleanup")
