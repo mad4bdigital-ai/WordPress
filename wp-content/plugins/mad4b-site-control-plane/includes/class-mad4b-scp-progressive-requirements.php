@@ -438,10 +438,15 @@ final class MAD4B_SCP_Progressive_Requirements {
 	private static function exact_site_identity() {
 		$site=class_exists('MAD4B_SCP_Site_Profile',false) ?
 			MAD4B_SCP_Site_Profile::status():array();
+		$environment=is_array($site)?
+			(string)($site['environment']??$site['configured_environment']??''):'';
 		if(!is_array($site)||empty($site['configured'])||empty($site['origin_match'])||
-			empty($site['environment_match'])||'staging'!==($site['environment']??$site['configured_environment']??''))
+			empty($site['environment_match'])||
+			!in_array($environment,array('staging','development','production','local'),true) ||
+			!preg_match('/^[a-f0-9-]{36}$/D',(string)($site['site_uuid']??'')) ||
+			!preg_match('/^[a-f0-9]{64}$/D',(string)($site['profile_digest']??'')))
 			return '';
-		return (string)($site['site_uuid']??'').'|'.(string)($site['profile_digest']??'').'|staging';
+		return (string)$site['site_uuid'].'|'.(string)$site['profile_digest'].'|'.$environment;
 	}
 	public static function plan( $input=array() ) {
 		if(!is_array($input))return new WP_Error('mad4b_progressive_invalid_input','Object required.');
@@ -496,6 +501,13 @@ final class MAD4B_SCP_Progressive_Requirements {
 	}
 	/** No arbitrary callback dispatch: linked mode only persists a governed handoff. */
 	public static function can_link( $input=null ) {
+		$site=class_exists('MAD4B_SCP_Site_Profile',false)?
+			MAD4B_SCP_Site_Profile::status():array();
+		if(!is_array($site)||
+			'staging'!==(string)($site['environment']??$site['configured_environment']??'') ||
+			''===self::exact_site_identity())
+			return new WP_Error('mad4b_progressive_link_staging_only',
+				'Generic read-only observation is portable; linked mutation requests remain Staging-only.');
 		if(!class_exists('MAD4B_SCP_Policy',false)||!MAD4B_SCP_Policy::can_admin($input)
 			||!MAD4B_SCP_Policy::can_mutate())
 			return new WP_Error('mad4b_progressive_admin_required','Governed administrator mutation authority required.');
