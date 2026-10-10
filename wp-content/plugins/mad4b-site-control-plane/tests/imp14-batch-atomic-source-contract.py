@@ -9,6 +9,7 @@ atomic = get("class-mad4b-scp-batch-atomic-mutex.php")
 batch = get("class-mad4b-scp-activity-import-batches.php")
 fixture = (P/"tests"/"imp08-batch-review-runtime.php").read_text(encoding="utf8")
 preflight = (P/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")
+mysql_test = (P/"tests"/"imp14-batch-mysql-concurrency.php").read_text(encoding="utf8")
 def require(ok, msg):
     if not ok: raise AssertionError(msg)
 for guard in (
@@ -48,4 +49,5 @@ for guard in (
 for path in ("class-mad4b-scp-batch-atomic-mutex.php",
              "imp14-batch-atomic-source-contract.py"):
     require(path in preflight, "Exact-HEAD preflight lacks: "+path)
+require("proc_open(" in mysql_test and "contenders_refused" in mysql_test and "Staging" in mysql_test, "Missing real DB test harness")
 print("PASS IMP14 source reservation/owner release and export/archive fencing (STATIC ONLY)")
