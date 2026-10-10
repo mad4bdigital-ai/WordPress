@@ -554,7 +554,7 @@ final class MAD4B_SCP_Activity_Import_Review {
             (string) get_current_user_id() );
         if ( is_wp_error( $receipt ) ) wp_die( esc_html( $receipt->get_error_message() ) );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
-            'profile_slug' => $slug, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
+            'profile_slug' => $slug, 'wizard_step' => 3, 'staged' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
     }
     /**
@@ -575,7 +575,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         $approved = MAD4B_SCP_Activity_Import_Snapshot::approve( $slug, $sha, true );
         if ( is_wp_error( $approved ) ) wp_die( esc_html( $approved->get_error_message() ) );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
-            'profile_slug' => $slug, 'approved' => 1 ), admin_url( 'tools.php' ) ) );
+            'profile_slug' => $slug, 'wizard_step' => 4, 'approved' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
     }
     public static function approved_csv_download() {
@@ -626,7 +626,7 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( false !== get_option( $key, false ) )
             wp_die( 'Preview archive recorded but active review could not be cleared.' );
         wp_safe_redirect( add_query_arg( array( 'page' => 'mad4b-import-review',
-            'profile_slug' => $slug, 'archived' => 1 ), admin_url( 'tools.php' ) ) );
+            'profile_slug' => $slug, 'wizard_step' => 2, 'archived' => 1 ), admin_url( 'tools.php' ) ) );
         exit;
     }
     public static function register_admin() {
