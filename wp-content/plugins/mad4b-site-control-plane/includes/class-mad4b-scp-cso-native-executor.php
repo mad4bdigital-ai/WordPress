@@ -58,10 +58,11 @@ final class MAD4B_SCP_CSO_Native_Executor {
      * exact one-use ticket in this SAME PHP request. Direct WordPress Ability
      * execute and direct PHP invocation cannot supply this private permit.
      */
-    public static function native_permit_matches( $input ) {
-        return is_array( $input ) && '' !== self::$active_native_digest &&
-            hash_equals( self::$active_native_digest,
-                MAD4B_SCP_CSO_Scope::digest( $input ) );
+    public static function native_permit_matches( $input, $consume = false ) {
+        $matched = is_array( $input ) && '' !== self::$active_native_digest &&
+            hash_equals( self::$active_native_digest, MAD4B_SCP_CSO_Scope::digest( $input ) );
+        if ( $matched && true === $consume ) self::$active_native_digest = '';
+        return $matched;
     }
 
     private static function execute_native_once( $ability, $payload ) {
