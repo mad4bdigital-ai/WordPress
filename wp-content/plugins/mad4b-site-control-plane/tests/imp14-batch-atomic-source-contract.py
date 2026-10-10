@@ -27,6 +27,22 @@ require("ON DUPLICATE KEY UPDATE" not in atomic.split("public static function ac
         "Mutex reservation overwrites an existing owner")
 require("add_option( $lock_key" not in batch,
         "WordPress add_option UPSERT is not an atomic reservation")
+require("self::source_with_lock( $slug, 'append'" in snapshot and
+        "self::source_with_lock( $slug, 'approve'" in snapshot and
+        "self::source_with_lock( $slug, 'export'" in snapshot and
+        "self::source_with_lock( $slug, 'archive'" in snapshot and
+        "function archive_exact_review(" in snapshot and
+        "insert_immutable(" in snapshot and
+        "public static function approved_csv_download()" in review and
+        "if ( true === $result ) exit;" in review,
+        "Single snapshot review/export/archive does not share the exact Profile lock")
+require("exit;" not in snapshot.split("private static function export_approved_csv_unlocked(")[1],
+        "Single-source CSV download exits before releasing the exact owner mutex")
+single_fixture = (P/"tests"/"imp14-single-snapshot-atomic-runtime.php").read_text(encoding="utf8")
+require("imp14-single-snapshot-atomic-runtime.php" in preflight and
+        "archive_exact_review(" in single_fixture and
+        "reserve_signed_nonce(" in single_fixture,
+        "Missing snapshot archive/export/nonce native regression fixture")
 require("MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $store, $record )" in snapshot and
         "MAD4B_SCP_Batch_Atomic_Mutex::insert_immutable( $key, $approval )" in snapshot and
         "add_option( $store, $record" not in snapshot and
