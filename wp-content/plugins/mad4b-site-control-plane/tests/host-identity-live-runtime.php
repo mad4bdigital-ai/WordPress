@@ -15,6 +15,10 @@ function apply_filters( $name, $value, ...$args ) {
 	return call_user_func( $GLOBALS['host_identity_handler'], $args[0] );
 }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+final class MAD4B_SCP_Host_Bridge {
+	public static $test_target = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+	public static function target_fingerprint_readonly() { return self::$test_target; }
+}
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-host-identity-live.php';
 function expect( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: " . $message . "\n" ); exit( 1 ); }
@@ -39,7 +43,7 @@ function make_host_proof( $challenge, $secret, $issued = null ) {
 		'profile_revision' => $challenge['profile_revision'],
 		'profile_digest' => $challenge['profile_digest'],
 		'runner_profile_id' => 'staging-runner-01',
-		'target_fingerprint' => str_repeat( 'b', 64 ),
+		'target_fingerprint' => $challenge['target_fingerprint'],
 		'issued_at' => $issued,
 		'expires_at' => $issued + 30,
 	);
@@ -68,6 +72,15 @@ $other = $site; $other['canonical_origin'] = 'https://clone.example.com';
 expect( ! MAD4B_SCP_Host_Identity_Live::verify(
 	MAD4B_SCP_Host_Identity_Live::challenge( $other, $challenge['nonce'] ), $proof
 ), 'cloned origin must not inherit proof' );
+$old_fp = MAD4B_SCP_Host_Bridge::$test_target;
+MAD4B_SCP_Host_Bridge::$test_target = str_repeat( 'c', 64 );
+expect( ! MAD4B_SCP_Host_Identity_Live::verify(
+	MAD4B_SCP_Host_Identity_Live::challenge( $site, $challenge['nonce'] ), $proof
+), 'same-origin clone on different physical WordPress root must fail' );
+MAD4B_SCP_Host_Bridge::$test_target = '';
+expect( empty( MAD4B_SCP_Host_Identity_Live::challenge( $site, $challenge['nonce'] ) ),
+	'missing physical WordPress root proof must block signer challenge' );
+MAD4B_SCP_Host_Bridge::$test_target = $old_fp;
 $other = $site; $other['wordpress_environment'] = 'production';
 expect( empty( MAD4B_SCP_Host_Identity_Live::challenge( $other, $challenge['nonce'] ) ), 'Production target is denied' );
 $other = $site; $other['origin_match'] = false;
