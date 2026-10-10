@@ -71,7 +71,7 @@ final class MAD4B_SCP_CI_Outage_Attestation {
             'contract', 'repository', 'source_commit_sha', 'archive_sha256',
             'build_fingerprint', 'package_manifest_digest', 'size_bytes',
             'site_uuid', 'site_origin', 'environment', 'issued_at', 'expires_at',
-            'test_gates', 'owner_reviewed',
+            'evidence_bundle_sha256', 'test_gates', 'owner_reviewed',
         ) )
             return self::failure( 'schema_invalid', 'Signed receipt fields or ordering invalid.' );
         if ( self::CONTRACT !== $claims['contract'] ||
@@ -100,6 +100,11 @@ final class MAD4B_SCP_CI_Outage_Attestation {
             $claims['expires_at'] <= $claims['issued_at'] ||
             $claims['expires_at'] - $claims['issued_at'] > self::MAX_LIFETIME )
             return self::failure( 'expired', 'Receipt timestamp or maximum validity invalid.' );
+        if ( ! isset( $manifest['evidence_bundle_sha256'] ) ||
+            ! is_string( $claims['evidence_bundle_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $claims['evidence_bundle_sha256'] ) ||
+            ! hash_equals( (string) $manifest['evidence_bundle_sha256'], $claims['evidence_bundle_sha256'] ) )
+            return self::failure( 'test_bundle_mismatch', 'Native test bundle digest differs.');
         $gates = $claims['test_gates'];
         if ( ! is_array( $gates ) || count( $gates ) !== count( self::REQUIRED_GATES ) ||
             array_keys( $gates ) !== self::REQUIRED_GATES )
