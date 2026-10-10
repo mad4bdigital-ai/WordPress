@@ -33,6 +33,8 @@ final class MAD4B_SCP_CSO_Gateway {
             'change_verify' => array( 'single_write', 'private', array( 'plan' ) ),
             'change_status' => array( 'single_write', 'private', array( 'plan','ticket_id' ) ),
             'change_reconcile' => array( 'single_write', 'private', array( 'plan','ticket_id' ) ),
+            'change_reconcile_plan' => array( 'single_write', 'private', array( 'plan','ticket_id','evidence','agent_public_id','reason' ) ),
+            'change_reconcile_finalize' => array( 'single_write', 'private', array( 'plan','ticket_id','evidence','agent_public_id','recovery_ticket_id' ) ),
             'change_history' => array( 'single_write', 'read', array( 'operation_id','limit','offset' ) ),
             'undo_plan' => array( 'single_write', 'plan', array( 'operation_id','preparation' ) ),
             'bulk_plan' => array( 'bulk', 'private', array( 'plans','selection','canary_size' ) ),
@@ -65,7 +67,7 @@ final class MAD4B_SCP_CSO_Gateway {
         return array(
             'capability_catalog', 'form_prepare', 'typed_validate',
             'field_help', 'field_suggest', 'form_presentation', 'secret_session',
-            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'approval_plan', 'change_commit', 'change_verify', 'change_status', 'change_reconcile', 'bulk_plan', 'bulk_commit', 'workflow_compile', 'workflow_run', 'doctor_plan', 'template_plan'
+            'secret_status', 'secret_rotation_plan', 'draft', 'change_plan', 'approval_plan', 'change_commit', 'change_verify', 'change_status', 'change_reconcile', 'change_reconcile_plan', 'change_reconcile_finalize', 'bulk_plan', 'bulk_commit', 'workflow_compile', 'workflow_run', 'doctor_plan', 'template_plan'
         );
     }
 
@@ -73,7 +75,7 @@ final class MAD4B_SCP_CSO_Gateway {
 
     private static function argument_schema( array $keys ) {
         $properties = array();
-        $objects = array( 'scope','target','form','values','plan','governance','selection','checkpoint','artifact','destination','staging_bundle','preparation','read_preparation','reference','desired_values','diagnostic_input','observation_input','recipe','workflow' );
+        $objects = array( 'scope','target','form','values','plan','governance','selection','checkpoint','artifact','destination','staging_bundle','preparation','read_preparation','reference','desired_values','diagnostic_input','observation_input','recipe','workflow','evidence' );
         $arrays = array( 'plans','nodes','sites','conditions','changes' );
         $integers = array( 'limit','offset','canary_size','max_items','max_nodes','ttl','interval_seconds','ttl_seconds','hours' );
         foreach ( $keys as $key ) {
@@ -186,6 +188,8 @@ final class MAD4B_SCP_CSO_Gateway {
             case 'change_verify': return MAD4B_SCP_CSO_Changes::verify($a['plan']??array());
             case 'change_status': return MAD4B_SCP_CSO_Native_Executor::status($a['plan']??array(),$a['ticket_id']??'');
             case 'change_reconcile': return MAD4B_SCP_CSO_Native_Executor::reconcile_inspect($a['plan']??array(),$a['ticket_id']??'');
+            case 'change_reconcile_plan': return MAD4B_SCP_CSO_Native_Executor::reconcile_approval_plan($a['plan']??array(),$a['ticket_id']??'',$a['evidence']??array(),$a['agent_public_id']??'',$a['reason']??'');
+            case 'change_reconcile_finalize': return MAD4B_SCP_CSO_Native_Executor::reconcile_finalize($a['plan']??array(),$a['ticket_id']??'',$a['evidence']??array(),$a['agent_public_id']??'',$a['recovery_ticket_id']??'');
             case 'change_history': return MAD4B_SCP_CSO_Changes::history($a);
             case 'undo_plan': return MAD4B_SCP_CSO_Changes::undo_plan($a);
             case 'bulk_plan': return MAD4B_SCP_CSO_Bulk::plan($a['plans']??array(),$a['selection']??array(),$a['canary_size']??1);
