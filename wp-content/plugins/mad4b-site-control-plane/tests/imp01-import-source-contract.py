@@ -16,7 +16,7 @@ for name in ("capabilities","plan","review","brand_core_plan","receive_signed",
     check("function "+name+"(" in code,"Missing bounded import ability: "+name)
 for marker in ("MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS","hash_hmac( 'sha256'",
     "hash_equals( $expected, $received )","abs( time() - $data['issued_at'] ) > 300",
-    "mad4b_import_nonce_","! add_option( $nonce_key","MAD4B_SCP_Site_Profile::site_uuid()",
+    "mad4b_import_nonce_","MAD4B_SCP_Batch_Atomic_Mutex::reserve_signed_nonce(","MAD4B_SCP_Site_Profile::site_uuid()",
     "count( $rows ) > min( self::MAX_ROWS, $policy['max_rows'] )","count( $headers ) > self::MAX_COLUMNS",
     "mad4b_import_field_not_allowed","$profile['meta_keys']",
     "source_values_persisted","ready_for_import_execution' => false",
