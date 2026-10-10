@@ -156,6 +156,7 @@ jobs:
           php -l "$root/tests/plugin-update-evidence-runtime.php"
           php "$root/tests/plugin-update-recovery-runtime.php"
           php "$root/tests/plugin-update-evidence-runtime.php"
+          python3 -m py_compile tools/mad4b_sign_plugin_ci_outage.py
           python3 -m py_compile tools/mad4b_publish_offline_staging_candidate.py
           php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
