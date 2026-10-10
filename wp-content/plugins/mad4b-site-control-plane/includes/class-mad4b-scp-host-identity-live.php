@@ -94,6 +94,38 @@ final class MAD4B_SCP_Host_Identity_Live {
 		return is_string( $json ) && sodium_crypto_sign_verify_detached( $signature, $json, $public );
 	}
 
+	/**
+	 * The one configured local Host transport. It cannot choose a key, host,
+	 * URL, command, PHP callback or extra identity source from WordPress data.
+	 * The signed reply is still independently verified by verify().
+	 */
+	private static function local_host_transport( array $challenge ) {
+		$path = defined( 'MAD4B_SCP_HOST_IDENTITY_SOCKET' )
+			? (string) constant( 'MAD4B_SCP_HOST_IDENTITY_SOCKET' ) : '';
+		if ( '' === $path ) return null;
+		// Host-owned socket under a dedicated OS run directory, not webroot
+		// and not a path supplied through MCP, DB, browser or Site Profile.
+		if ( 1 !== preg_match( '#^/(?:var/run|run)/mad4b-host-runner/[a-zA-Z0-9._-]{1,80}\\.sock$#D', $path )
+			|| is_link( $path ) || ! function_exists( 'stream_socket_client' ) ) return null;
+		$message = function_exists( 'wp_json_encode' )
+			? wp_json_encode( $challenge, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+			: json_encode( $challenge, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $message ) || strlen( $message ) > 3072 ) return null;
+		$errno = 0;
+		$errstr = '';
+		$stream = @stream_socket_client( 'unix://' . $path, $errno, $errstr, 0.6, STREAM_CLIENT_CONNECT );
+		if ( ! is_resource( $stream ) ) return null;
+		stream_set_timeout( $stream, 1 );
+		$sent = @fwrite( $stream, $message . "\\n" );
+		if ( ! is_int( $sent ) || $sent !== strlen( $message ) + 1 ) { fclose( $stream ); return null; }
+		$line = @fgets( $stream, 8193 );
+		$extra = is_string( $line ) && strlen( $line ) >= 8192;
+		fclose( $stream );
+		if ( ! is_string( $line ) || $extra || '' === trim( $line ) ) return null;
+		$result = json_decode( $line, true );
+		return is_array( $result ) ? $result : null;
+	}
+
 	/** Read-only dynamic capture. A missing signed response is not enrollment. */
 	public static function observe( array $site ) {
 		$out = array(
@@ -116,7 +148,15 @@ final class MAD4B_SCP_Host_Identity_Live {
 		if ( empty( $challenge ) ) { $out['state'] = 'exact_staging_identity_required'; return $out; }
 		// Only a pre-enrolled trusted Host adapter may satisfy this hook.
 		// This code NEVER calls remote URLs or accepts a caller-chosen trust key.
-		$evidence = apply_filters( self::PROVIDER_FILTER, null, $challenge );
+		// Socket is authoritative when enrolled. No fallback to another
+		// connector/filter if it is configured but temporarily unavailable.
+		if ( defined( 'MAD4B_SCP_HOST_IDENTITY_SOCKET' ) ) {
+			$evidence = self::local_host_transport( $challenge );
+		} else {
+			// Compatibility adapter for an already trusted enrolled Host
+			// provider. Never a second signer or a source of public keys.
+			$evidence = apply_filters( self::PROVIDER_FILTER, null, $challenge );
+		}
 		if ( ! self::verify( $challenge, $evidence ) ) {
 			$out['state'] = 'fresh_host_signature_missing_or_invalid';
 			return $out;
