@@ -431,10 +431,22 @@ final class MAD4B_SCP_Activity_Import_Batches {
             'archived_by' => (int) get_current_user_id(),
             'manifest_sha256' => self::hash( $read['manifest'] ),
             'post_writes' => 0 );
-        if ( ! add_option( $tombstone_key, $audit, '', false ) ||
-            self::hash( get_option( $tombstone_key, false ) ) !== self::hash( $audit ) )
+        if ( ! add_option( $tombstone_key, $audit, '', false ) ) {
+            $old_audit = get_option( $tombstone_key, false );
+            if ( ! is_array( $old_audit ) ||
+                ! isset( $old_audit['batch_id_sha256'], $old_audit['manifest_sha256'] ) ||
+                ! hash_equals( $old_audit['batch_id_sha256'], hash( 'sha256', $id ) ) ||
+                ! hash_equals( $old_audit['manifest_sha256'],
+                    self::hash( $read['manifest'] ) ) )
+                return self::err( 'mad4b_batch_archive_audit_mismatch',
+                    'Stored archive identity differs from this exact source batch.' );
+            // Recover an interrupted archive by repeating only the bounded
+            // cleanup after an immutable matching tombstone was proven.
+        } elseif ( self::hash( get_option( $tombstone_key, false ) ) !==
+            self::hash( $audit ) ) {
             return self::err( 'mad4b_batch_archive_audit_failed',
-                'Audit could not be durably committed. Batch has not been released.' );
+                'Audit was not independently confirmed. Batch has not been released.' );
+        }
         for ( $i = 0; $i < $read['manifest']['expected_chunks']; $i++ ) {
             $chunk_key = $names['chunk_prefix'] . $i;
             delete_option( $chunk_key );
