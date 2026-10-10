@@ -62,8 +62,7 @@ class MAD4B_SCP_Agent_Registry {
 }
 class MAD4B_SCP_Approval_Tickets {
  static function create_pending($agent,$server,$ability,$provider,$fp,$input,$class,$reason,$ttl){
-  $id='123e4567-e89b-42d3-a456-426614174000';
-  if(!empty($GLOBALS['ticket']))$id='123e4567-e89b-42d3-a456-426614174001';
+  $id=sprintf('123e4567-e89b-42d3-a456-%012d',426614174000+count($GLOBALS['ticket']));
   $GLOBALS['ticket'][$id]='pending';return array('ticket_id'=>$id,'status'=>'pending');
  }
  static function authorize_exact($id,...$args){
@@ -85,6 +84,7 @@ class FakeAbility {
   if(!MAD4B_SCP_CSO_Native_Executor::native_permit_matches($payload,true))return new WP_Error('NO_PERMIT');
   $GLOBALS['executions']++;$GLOBALS['title']=$payload['values']['title'];
   $GLOBALS['revision']='revision-new-'.$GLOBALS['executions'];
+  if(!empty($GLOBALS['throw_after_effect']))throw new RuntimeException('fixture crash after write');
   return $GLOBALS['uncertain']?new WP_Error('AFTER_WRITE_UNCERTAIN'):array('status'=>'written');
  }
 }
@@ -146,6 +146,21 @@ ck(!is_wp_error($status2)&&$status2['status']==='needs_reconcile'&&!$status2['re
 $observe2=MAD4B_SCP_CSO_Native_Executor::reconcile_inspect($second,$id2);
 ck(!is_wp_error($observe2)&&$observe2['provider_values_match']&&$observe2['journal_status']==='needs_reconcile'&&!$observe2['effect_verified_independently'],'unknown-effect evidence requires independent resolution');
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit($second,array('ticket_id'=>$id2,'agent_public_id'=>'agent-demo'))),'uncertain effect replay denied');
+// Provider callback may crash after a real side effect. Preserve the ticket
+// and durable uncertain journal without implicitly replaying the same write.
+$m['expected_revision']='revision-new-2';$m['values']['title']='After crash';
+$third=MAD4B_SCP_CSO_Scope::seal($m,MAD4B_SCP_CSO_Changes::CONTRACT);
+$p3=MAD4B_SCP_CSO_Native_Executor::approval_plan($third,'Reviewed crash case','agent-demo');
+$id3=$p3['ticket_id'];$GLOBALS['ticket'][$id3]='approved';
+$GLOBALS['uncertain']=false;$GLOBALS['throw_after_effect']=true;
+$crash=MAD4B_SCP_CSO_Native_Executor::commit($third,array('ticket_id'=>$id3,'agent_public_id'=>'agent-demo'));
+ck(is_wp_error($crash)&&$GLOBALS['executions']===3,'post-effect exception cannot be marked successful');
+$crash_status=MAD4B_SCP_CSO_Native_Executor::status($third,$id3);
+ck(!is_wp_error($crash_status)&&$crash_status['status']==='needs_reconcile'&&!$crash_status['replay_allowed'],
+ 'post-effect crash remains durable and nonreplayable');
+ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::commit($third,array('ticket_id'=>$id3,'agent_public_id'=>'agent-demo'))),
+ 'crashed native write cannot retry ticket');
+$GLOBALS['throw_after_effect']=false;
 $GLOBALS['policy']=false;
 ck(is_wp_error(MAD4B_SCP_CSO_Native_Executor::approval_plan($second,'again','agent-demo')),'revoked policy');
 echo "PASS CSO native exact ticket / journal / permit / uncertain effect / replay\n";
