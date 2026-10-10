@@ -12,8 +12,10 @@ final class MAD4B_SCP_Progressive_Operation_Discovery {
 	const MAX_VARIABLES = 80;
 
 	private static function normalize( $value ) {
-		$value = is_string( $value ) ? strtolower( trim( $value ) ) : '';
-		return substr( preg_replace( '/[^a-z0-9_.-]+/', ' ', $value ), 0, 160 );
+		$value = is_string( $value ) ? trim( $value ) : '';
+		$value = function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+		$safe = preg_replace( '/[^\\p{L}\\p{N}_.-]+/u', ' ', $value );
+		return is_string( $safe ) ? substr( $safe, 0, 160 ) : '';
 	}
 
 	/** The catalog is the authority; no caller-controlled definitions allowed. */
