@@ -236,7 +236,33 @@ final class MAD4B_SCP_Progressive_Requirements {
 		if(!preg_match('#^[a-z][a-z0-9._-]*/[a-z][a-z0-9._-]+$#D',$planner))
 			return new WP_Error('mad4b_progressive_planner_invalid',
 				'Registered operation planner does not map to a recognized Ability.');
+		if ( ! class_exists('MAD4B_SCP_Operation_Pipeline',false) )
+			return new WP_Error('mad4b_progressive_pipeline_unavailable',
+				'Canonical declarative pipeline compiler is not mounted.');
+		$pipeline=MAD4B_SCP_Operation_Pipeline::compile(array('operation'=>$id));
+		if(is_wp_error($pipeline))return $pipeline;
+		if(!is_array($pipeline)||($pipeline['operation_id']??'')!==$id ||
+			!is_array($pipeline['stages']??null))
+			return new WP_Error('mad4b_progressive_pipeline_identity_mismatch',
+				'Declarative compiled operation does not match selected registered descriptor.');
+		$dynamic_gates=array();
+		foreach($pipeline['stages'] as $stage) {
+			if(!is_array($stage)||empty($stage['enabled']))continue;
+			$name=preg_replace('/[^a-z0-9._-]/','_',strtolower((string)($stage['id']??'')));
+			if(''===$name)continue;
+			$post=in_array((string)($stage['type']??''),array('verify','readback','reconcile','compensate'),true);
+			$required=!empty($stage['required']);
+			$dynamic_gates[]=self::gate('pipeline.'.$name,
+				true===($stage['ability_registered']??false),
+				$required?'hard':'advisory',$post?'after_effect':'before_effect');
+		}
+		if(count($dynamic_gates)>self::MAX_GATES-5)
+			return new WP_Error('mad4b_progressive_stage_limit_exceeded',
+				'Registered operation has too many dynamic stages for bounded safe planning.');
 		$digest=hash('sha256',json_encode(array(
+			'pipeline_sha256'=>$pipeline['pipeline_sha256']??'',
+			'catalog_sha256'=>$pipeline['registry_catalog_sha256']??'',
+			'registered_executor'=>$row['executor']??'',
 			'id'=>$id,'planner'=>$planner,
 			'executor'=>$row['executor']??'',
 			'descriptor_bindings'=>$row['capability_descriptor_bindings']??array(),
@@ -245,13 +271,13 @@ final class MAD4B_SCP_Progressive_Requirements {
 			'operation_identity'=>$digest,
 			'canonical_observation_digest'=>$digest,
 			'canonical_ready'=>false,
-			'conditions'=>array(
+			'conditions'=>array_merge($dynamic_gates,array(
 				self::gate('registered_descriptor_verified',true,'hard','before_effect'),
 				self::gate('exact_planner_result_verified',false,'hard','before_effect'),
 				self::gate('operation_native_requirements_satisfied',false,'hard','before_effect'),
 				self::gate('separate_authorized_executor_approval',false,'hard','before_effect'),
 				self::gate('independent_effect_postcondition',false,'postcondition','after_effect')
-			),
+			)),
 			'effect_ability'=>$planner,
 			'effect_kind'=>'request_registered_planner_then_governed_executor',
 			'effect_per_attempt'=>false,
