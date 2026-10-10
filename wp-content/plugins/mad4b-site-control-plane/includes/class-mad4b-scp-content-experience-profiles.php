@@ -772,6 +772,28 @@ final class MAD4B_SCP_Content_Experience_Profiles {
                 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
             ),
             array(
+                'name' => 'mad4b/business-activity-wpai-observation-plan',
+                'label' => 'Plan Staging Observation of an Approved WP All Import Job',
+                'callback' => array( 'MAD4B_SCP_Activity_WPAI_Observer', 'arm_plan' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
+                    'snapshot_sha256' => self::sha_schema(),
+                    'import_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+                ), array( 'profile_slug', 'snapshot_sha256', 'import_id' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
+                'name' => 'mad4b/business-activity-wpai-observation-status',
+                'label' => 'Read WP All Import Hook Observation Without Inferring Success',
+                'callback' => array( 'MAD4B_SCP_Activity_WPAI_Observer', 'status' ),
+                'permission' => array( __CLASS__, 'can_manage_profiles' ),
+                'schema' => self::schema( array(
+                    'import_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+                ), array( 'import_id' ) ),
+                'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
+            ),
+            array(
                 'name' => 'mad4b/business-activity-import-issues-page',
                 'label' => 'Read Paginated Immutable Import Issues and Category Totals',
                 'callback' => array( 'MAD4B_SCP_Activity_Import_Review', 'issues_page' ),
