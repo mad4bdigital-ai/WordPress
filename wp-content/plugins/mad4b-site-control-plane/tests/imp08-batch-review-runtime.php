@@ -1,6 +1,38 @@
 <?php
 /** IMP08 isolated PHP fixture: >500-row-capable multi-part encrypted review. */
 require __DIR__ . '/imp01-import-preview-runtime.php';
+// SQL option store simulation for the atomic batch lock only; source
+// snapshot fixtures still use their independent fake WordPress options.
+$GLOBALS['imp14_sql_options'] = array();
+class IMP14_SQL_Mutex_DB {
+    public $options = 'wp_options';
+    public function prepare( $sql, ...$params ) {
+        return array( 'sql' => $sql, 'params' => $params );
+    }
+    public function get_var( $query ) {
+        $key = $query['params'][0];
+        return array_key_exists( $key, $GLOBALS['imp14_sql_options'] ) ?
+            $GLOBALS['imp14_sql_options'][ $key ] : null;
+    }
+    public function query( $query ) {
+        $sql = $query['sql'];
+        $parts = $query['params'];
+        if ( strpos( $sql, 'INSERT IGNORE INTO' ) !== false ) {
+            if ( isset( $GLOBALS['imp14_sql_options'][ $parts[0] ] ) ) return 0;
+            $GLOBALS['imp14_sql_options'][ $parts[0] ] = $parts[1];
+            return 1;
+        }
+        if ( strpos( $sql, 'DELETE FROM' ) !== false ) {
+            if ( ! isset( $GLOBALS['imp14_sql_options'][ $parts[0] ] ) ||
+                $GLOBALS['imp14_sql_options'][ $parts[0] ] !== $parts[1] )
+                return 0;
+            unset( $GLOBALS['imp14_sql_options'][ $parts[0] ] );
+            return 1;
+        }
+        throw new RuntimeException( 'Unexpected SQL mutation in isolated fixture.' );
+    }
+}
+$GLOBALS['wpdb'] = new IMP14_SQL_Mutex_DB();
 require __DIR__ . '/../includes/class-mad4b-scp-activity-import-batches.php';
 
 function imp08_part( $start, $group ) {
@@ -36,8 +68,8 @@ function imp08_many( $start, $groups, $prefix ) {
 // application-level read that could race another PHP worker.
 $mutex_key = 'mad4b_batch_mutex_' . hash( 'sha256',
     MAD4B_SCP_Site_Profile::site_uuid() . '|pricing' );
-add_option( $mutex_key, array( 'token_sha256' => str_repeat( 'f', 64 ),
-    'operation' => 'append', 'created_at' => gmdate( 'c' ) ), '', false );
+$GLOBALS['imp14_sql_options'][ $mutex_key ] =
+    str_repeat( 'f', 32 ) . '|append|' . time();
 $mutex_readback = MAD4B_SCP_Activity_Import_Batches::mutation_status(
     array( 'profile_slug' => 'pricing' ) );
 ck( ! is_wp_error( $mutex_readback ) &&
@@ -51,7 +83,22 @@ $locked = MAD4B_SCP_Activity_Import_Batches::begin( array(
 ck( is_wp_error( $locked ) &&
     $locked->get_error_code() === 'mad4b_batch_mutation_locked',
     'Concurrent batch mutation bypassed the exact Profile mutex.' );
-delete_option( $mutex_key );
+unset( $GLOBALS['imp14_sql_options'][ $mutex_key ] );
+$first_lock = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'pricing', 'export' );
+ck( !is_wp_error( $first_lock ), 'Atomic export reservation not obtained.' );
+$second_lock = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'pricing', 'archive' );
+ck( is_wp_error( $second_lock ) &&
+    $second_lock->get_error_code() === 'mad4b_batch_mutation_locked',
+    'Archive stole an existing CSV export lock.' );
+$bad_owner = $first_lock;
+$bad_owner['value'] = str_repeat( 'a', 32 ) . '|export|' . time();
+$denied_release = MAD4B_SCP_Batch_Atomic_Mutex::release( $bad_owner );
+ck( is_wp_error( $denied_release ) &&
+    isset( $GLOBALS['imp14_sql_options'][ $mutex_key ] ),
+    'Wrong owner released another PHP worker\'s SQL mutex.' );
+ck( true === MAD4B_SCP_Batch_Atomic_Mutex::release( $first_lock ) &&
+    !isset( $GLOBALS['imp14_sql_options'][ $mutex_key ] ),
+    'Original mutex owner could not release exact SQL reservation.' );
 $incomplete = MAD4B_SCP_Activity_Import_Batches::begin(
     array( 'profile_slug' => 'pricing', 'expected_chunks' => 2,
         'confirmed' => false ) );
@@ -63,7 +110,7 @@ $b = MAD4B_SCP_Activity_Import_Batches::begin(
 ck( !is_wp_error( $b ) && strlen( $b['batch_id'] ) === 32,
     'Encrypted multi-part source inbox not created.' );
 $id = $b['batch_id'];
-ck( false === get_option( $mutex_key, false ),
+ck( !isset( $GLOBALS['imp14_sql_options'][ $mutex_key ] ),
     'Successfully persisted batch did not release its own mutex.' );
 $mutex_released = MAD4B_SCP_Activity_Import_Batches::mutation_status(
     array( 'profile_slug' => 'pricing' ) );
