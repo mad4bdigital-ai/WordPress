@@ -5,7 +5,9 @@ Never activates abilities, installs files, reads secrets or grants release autho
 The optional core seed and both git HEAD leases are needed for cross-repo acceptance.
 """
 import argparse
+import hashlib
 import json
+import zipfile
 import re
 import shutil
 import subprocess
@@ -23,7 +25,7 @@ def git_head(path):
     except (OSError,subprocess.TimeoutExpired):
         return None
 
-def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None, expected_core_head=None, run_php=False):
+def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None, expected_core_head=None, run_php=False, package_zip: Path|None=None):
     plugin_root=plugin_root.resolve()
     checks={}
     def check(key,predicate):
@@ -55,6 +57,9 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
     check("enrolled_binding","deployment_binding_bound" in plugin
           and "deployment_binding_configured" in plugin
           and "deployment_binding_match" in plugin)
+    check("per_blog_cache_fence","SITE_BLOG_LOCAL_BINDING_MISMATCH" in plugin
+          and "get_option( MAD4B_SCP_Site_Profile::OPTION" in plugin
+          and "MAD4B_SCP_Site_Profile::current_origin()" in plugin)
     check("spoof_and_version_guard","REQUEST_SCOPE_MISMATCH" in plugin
           and "BRAND_PROFILE_REVISION_MISSING" in plugin)
     check("no_mode_authority","'execution_authorized' => false" in plugin
@@ -67,7 +72,7 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
           and len(cfg.get("optional_capabilities",[]))>=4
           and cfg.get("failure_classification",{}).get("optional_provider_unavailable")=="CAPABILITY_UNAVAILABLE")
     check("negative_fixture",all(x in test_source for x in
-          ("tenant spoof rejected","mode spoof rejected","multisite cross-blog blocked",
+          ("tenant spoof rejected","mode spoof rejected","switched blog may not reuse static site profile cache",
            "unbound legacy profile blocked","unversioned brand context blocked")))
 
     wp_git=git_head(plugin_root)
@@ -109,6 +114,27 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
     else:
         check("php_native_not_run",False)
 
+    archive_status="NOT_SUPPLIED"
+    if package_zip is not None:
+        try:
+            package_zip=package_zip.resolve()
+            keys=["mad4b-site-control-plane.php",
+                  "includes/class-mad4b-scp-deployment-mode-resolver.php",
+                  "config/deployment-mode-dependencies.json"]
+            with zipfile.ZipFile(package_zip) as archive:
+                names=set(archive.namelist())
+                def matching_member(key):
+                    variants=[key,"mad4b-site-control-plane/"+key]
+                    return next((name for name in variants if name in names),None)
+                if any(matching_member(key) is None for key in keys):
+                    archive_status="MISSING_REQUIRED_PLUGIN_FILES"
+                else:
+                    match=all(hashlib.sha256(archive.read(matching_member(key))).digest() ==
+                              hashlib.sha256((plugin_root/key).read_bytes()).digest() for key in keys)
+                    archive_status="PASS_EXACT_SOURCE" if match else "ARCHIVE_SOURCE_MISMATCH"
+        except (OSError,ValueError,zipfile.BadZipFile):
+            archive_status="INVALID_ARCHIVE"
+        check("packaged_adapter_exact_source",archive_status=="PASS_EXACT_SOURCE")
     passed=sum(checks.values())
     final=passed==len(checks)
     return {"contract":"mad4b.wordpress-dedicated-dependency-audit.v1",
@@ -117,7 +143,7 @@ def inspect(plugin_root: Path, core_seed: Path|None=None, expected_wp_head=None,
             "expected_wp_head":expected_wp_head,"observed_wp_head":wp_git,
             "expected_core_head":expected_core_head,"observed_core_head":core_git,
             "counts":{"passed":passed,"total":len(checks)},
-            "checks":checks,"php_status":php_status,
+            "checks":checks,"php_status":php_status,"package_status":archive_status,
             "operational_acceptance":False,"publication_authorized":False,"production_authorized":False}
 
 if __name__=="__main__":
@@ -127,7 +153,8 @@ if __name__=="__main__":
     parser.add_argument("--wp-head")
     parser.add_argument("--core-head")
     parser.add_argument("--run-php",action="store_true")
+    parser.add_argument("--package-zip",type=Path)
     args=parser.parse_args()
-    out=inspect(args.plugin_root,args.core_seed,args.wp_head,args.core_head,args.run_php)
+    out=inspect(args.plugin_root,args.core_seed,args.wp_head,args.core_head,args.run_php,args.package_zip)
     print(json.dumps(out,ensure_ascii=False,indent=2))
     raise SystemExit(0 if out["status"]=="PASS_STATIC_PINNED" else 1)
