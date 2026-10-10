@@ -510,6 +510,11 @@ final class MAD4B_SCP_Activity_Import_Review {
         $preview = self::inspect( $input );
         if ( is_wp_error( $preview ) ) return $preview;
         $source_mode = $sender['mode'];
+        $mode_plan = MAD4B_SCP_Activity_Import_Modes::plan( array(
+            'profile_slug' => $preview['profile_slug'], 'mode_id' => $source_mode ) );
+        if ( is_wp_error( $mode_plan ) || empty( $mode_plan['eligible_for_staging_review'] ) )
+            return self::error( 'mad4b_import_source_mode_policy_denied',
+                'The administrator has not enabled this intake transport for the exact Profile.' );
         $receipt = MAD4B_SCP_Activity_Import_Snapshot::stage(
             $preview['profile_slug'], $input, $preview, $source_mode, $sender['key_id'] );
         if ( is_wp_error( $receipt ) ) return $receipt;
@@ -591,6 +596,10 @@ final class MAD4B_SCP_Activity_Import_Review {
         if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) ||
             ! MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile ) )
             self::return_to_guide( $slug, 'mad4b_import_site_validation_not_configured' );
+        $mode_plan = MAD4B_SCP_Activity_Import_Modes::plan( array(
+            'profile_slug' => $slug, 'mode_id' => 'admin_csv_upload' ) );
+        if ( is_wp_error( $mode_plan ) || empty( $mode_plan['eligible_for_staging_review'] ) )
+            self::return_to_guide( $slug, 'mad4b_import_source_mode_policy_denied' );
         $fh = fopen( $file['tmp_name'], 'rb' );
         if ( false === $fh ) self::return_to_guide( $slug, 'mad4b_ui_csv_open_failed' );
         $headers = fgetcsv( $fh, 16384, ',', '"', '\\' );
