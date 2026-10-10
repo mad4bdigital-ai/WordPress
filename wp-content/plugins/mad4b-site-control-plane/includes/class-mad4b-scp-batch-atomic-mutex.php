@@ -48,7 +48,7 @@ final class MAD4B_SCP_Batch_Atomic_Mutex {
      */
     public static function insert_immutable( $name, $value ) {
         if ( ! is_string( $name ) ||
-            ! preg_match( '/^mad4b_(?:activity_import_review|import_approval)_[a-f0-9]{64}$/D', $name ) ||
+            ! preg_match( '/^mad4b_(?:activity_import_review|activity_import_archive|import_approval)_[a-f0-9]{64}$/D', $name ) ||
             ! is_array( $value ) || ! function_exists( 'maybe_serialize' ) )
             return self::err( 'mad4b_import_immutable_input_invalid',
                 'An exact generated source receipt and WordPress serialization are required.' );
