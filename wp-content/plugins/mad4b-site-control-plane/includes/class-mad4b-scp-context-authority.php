@@ -301,6 +301,193 @@ final class MAD4B_SCP_Context_Authority {
         );
     }
 
+
+	/** Test optional tenancy metadata WITHOUT treating a missing brand as owned. */
+	private static function legacy_metadata_compatible( array $record, array $scope ) {
+		$fields = array(
+			'tenant_ref' => 'tenant_ref', 'tenant_id' => 'tenant_ref',
+			'blog_id' => 'blog_id', 'network_id' => 'network_id',
+			'environment' => 'environment', 'deployment_mode' => 'deployment_mode',
+		);
+		foreach ( $fields as $key => $trusted ) {
+			if ( ! array_key_exists( $key, $record ) ) continue;
+			if ( ! isset( $scope[ $trusted ] ) || ! is_scalar( $record[ $key ] )
+				|| '' === trim( (string) $record[ $key ] )
+				|| ! hash_equals( (string) $scope[ $trusted ], trim( (string) $record[ $key ] ) ) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Plan one exact unbound legacy folder transfer. Foreign Brand identities
+	 * and competing scoped records are NEVER silently reassigned. Owner must
+	 * independently inspect the original Google Drive folder.
+	 */
+	public static function legacy_owner_transfer_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$source_id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_source_required', 'Select one exact already-stored source ID.' );
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_legacy_transfer_admin_required', 'An administrator must inspect the exact prior source.' );
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		if ( 'staging' !== (string) $site['environment'] )
+			return new WP_Error( 'mad4b_legacy_transfer_staging_only', 'Legacy identity migration is Staging only.' );
+		$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$profile = self::profile();
+		$brand_id = strtolower( trim( (string) ( $profile['brand_id'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{32}$/D', $brand_id )
+			|| ! hash_equals( (string) $scope['brand_ref'], $brand_id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_brand_invalid', 'Current enrolled Brand identity is not exact.' );
+		$sources = self::raw_sources();
+		$assets = self::raw_assets();
+		$source = $sources[ $source_id ] ?? array();
+		if ( ! self::valid_source( $source ) || 'google_drive' !== (string) ( $source['provider'] ?? '' )
+			|| 'governed' !== (string) ( $source['mode'] ?? '' )
+			|| ! hash_equals( $source_id, strtolower( (string) ( $source['source_id'] ?? '' ) ) )
+			|| ! hash_equals( (string) $scope['site_uuid'], strtolower( (string) ( $source['site_uuid'] ?? '' ) ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_source_not_exact', 'Source is not an exact governed Drive source on this Staging site.' );
+		$old_brand = strtolower( trim( (string) ( $source['brand_id'] ?? '' ) ) );
+		if ( '' !== $old_brand ) return new WP_Error( 'mad4b_legacy_transfer_ownership_not_unbound',
+			'Only truly unbound legacy records can be considered; another Brand must use a separate verified migration.' );
+		if ( ! self::legacy_metadata_compatible( $source, $scope ) )
+			return new WP_Error( 'mad4b_legacy_transfer_scope_conflict', 'Source contains conflicting tenant, deployment or network metadata.' );
+		// Require all assets belonging to the selected source to be transferable
+		// together. Any foreign, malformed or mixed row aborts the whole plan.
+		$selected = array();
+		foreach ( $assets as $key => $asset ) {
+			if ( ! is_array( $asset ) || $source_id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			if ( ! self::valid_asset( $asset ) || '' !== strtolower( trim( (string) ( $asset['brand_id'] ?? '' ) ) )
+				|| ! hash_equals( (string) $scope['site_uuid'], strtolower( (string) ( $asset['site_uuid'] ?? '' ) ) )
+				|| 'governed' !== (string) ( $asset['source_mode'] ?? '' )
+				|| ! self::legacy_metadata_compatible( $asset, $scope ) )
+				return new WP_Error( 'mad4b_legacy_transfer_asset_scope_conflict',
+					'Foreign, malformed or mixed-ownership asset prevents bulk transfer.' );
+			$selected[ (string) $key ] = $asset;
+		}
+		if ( ! $selected ) return new WP_Error( 'mad4b_legacy_transfer_assets_required',
+			'No unbound assets were proven for this exact governed source.' );
+		ksort( $selected, SORT_STRING );
+		$external_root = (string) ( $source['external_root_id'] ?? '' );
+		$source_digest = hash( 'sha256', wp_json_encode( $source ) );
+		$assets_digest = hash( 'sha256', wp_json_encode( $selected ) );
+		$basis = array(
+			'contract' => 'mad4b.context-legacy-owner-transfer-plan.v1',
+			'state' => 'owner_and_external_folder_review_required',
+			'site_uuid' => (string) $scope['site_uuid'],
+			'brand_id' => $brand_id,
+			'brand_revision' => (int) ( $profile['revision'] ?? 0 ),
+			'registry_revision' => self::registry_revision(),
+			'source_id' => $source_id,
+			'external_root_id' => $external_root,
+			'source_record_sha256' => $source_digest,
+			'asset_records_sha256' => $assets_digest,
+			'asset_count' => count( $selected ),
+			'owner_review_required' => true,
+			'current_provider_folder_identity_review_required' => true,
+			'one_time_exact_mutation_approval_required' => true,
+			'prior_approvals_invalidated_on_transfer' => true,
+			'new_source_created' => false,
+			'source_write_policy_after_transfer' => 'read_only',
+			'post_transfer_scan_required' => true,
+			'production_mutation_authorized' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		$basis['plan_sha256'] = hash( 'sha256', wp_json_encode( $basis ) );
+		return $basis;
+	}
+
+	/**
+	 * Exact, one-source, Staging-only owner-attested transition. Invoked
+	 * ONLY as an independently approved governed MCP write; the source/asset
+	 * options and current scope are CAS protected by the Context registry lock.
+	 * All inherited approval statuses are invalidated until new review.
+	 */
+	public static function legacy_owner_transfer_apply( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_legacy_transfer_input_invalid', 'Exact transfer input required.' );
+		if ( 'APPROVE EXACT UNBOUND BRAND TRANSFER' !== (string) ( $input['confirmation'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_owner_confirmation_required', 'The exact owner transfer confirmation was not given.' );
+		$source_id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		$expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
+		$reviewed_root = trim( (string) ( $input['reviewed_external_root_id'] ?? '' ) );
+		$evidence = trim( (string) ( $input['owner_evidence_reference'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) || strlen( $evidence ) < 12 ||
+			strlen( $evidence ) > 500 || '' === $reviewed_root )
+			return new WP_Error( 'mad4b_legacy_transfer_evidence_invalid', 'An exact source plan and independently reviewed evidence reference are required.' );
+		return self::with_registry_lock( 'legacy_owner_transfer_apply',
+			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence ) {
+				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
+				if ( is_wp_error( $plan ) ) return $plan;
+				if ( ! hash_equals( (string) $plan['plan_sha256'], $expected )
+					|| ! hash_equals( (string) $plan['brand_id'], strtolower( (string) ( $input['expected_brand_id'] ?? '' ) ) )
+					|| ! hash_equals( (string) $plan['external_root_id'], $reviewed_root ) )
+					return new WP_Error( 'mad4b_legacy_transfer_exact_plan_stale',
+						'Exact source, owner, external folder or registry changed after approval.' );
+				$audit = self::audit_preflight();
+				if ( is_wp_error( $audit ) ) return $audit;
+				$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+				if ( is_wp_error( $scope ) ) return $scope;
+				$sources = self::raw_sources();
+				$assets = self::raw_assets();
+				$source = $sources[ $source_id ];
+				$stamp = array( 'brand_id' => (string) $plan['brand_id'] );
+				foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $key )
+					if ( ! array_key_exists( $key, $source ) ) $stamp[ $key ] = (string) $scope[ $key ];
+				$source = array_merge( $source, $stamp );
+				$source['write_policy'] = 'read_only';
+				$source['status'] = 'selected';
+				$source['last_scan_complete'] = false;
+				$source['last_complete_scan_at'] = '';
+				$source['updated_at'] = gmdate( 'c' );
+				$sources[ $source_id ] = $source;
+				$count = 0;
+				foreach ( $assets as $id => $asset ) {
+					if ( ! is_array( $asset ) || $source_id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+					$asset['brand_id'] = (string) $plan['brand_id'];
+					foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $key )
+						if ( ! array_key_exists( $key, $asset ) ) $asset[ $key ] = (string) $scope[ $key ];
+					$asset['review_status'] = 'unreviewed';
+					$asset['review_decision'] = '';
+					$asset['reviewed_content_hash'] = '';
+					$asset['reviewed_at'] = '';
+					$asset['status'] = 'stale';
+					$asset['updated_at'] = gmdate( 'c' );
+					$assets[ $id ] = $asset;
+					++$count;
+				}
+				if ( $count !== (int) $plan['asset_count'] ) return new WP_Error(
+					'mad4b_legacy_transfer_count_drift', 'Asset set changed during the locked transfer.' );
+				$committed = self::commit_option_changes(
+					array( self::SOURCES_OPTION => $sources, self::ASSETS_OPTION => $assets ),
+					'mad4b_legacy_transfer_commit_failed', 'Could not atomically persist the reviewed legacy transfer.'
+				);
+				if ( is_wp_error( $committed ) ) return $committed;
+				return self::audited_registry_result( array(
+					'contract' => 'mad4b.context-legacy-owner-transfer.v1',
+					'state' => 'transferred_unapproved_requires_fresh_scan',
+					'source_id' => $source_id, 'asset_count' => $count,
+					'brand_id' => (string) $plan['brand_id'],
+					'prior_review_authority_preserved' => false,
+					'new_source_created' => false,
+					'production_mutation' => false,
+				), 'mad4b/context-legacy-owner-transfer', array(
+					'source_id_sha256' => hash( 'sha256', $source_id ),
+					'prior_source_sha256' => (string) $plan['source_record_sha256'],
+					'prior_assets_sha256' => (string) $plan['asset_records_sha256'],
+					'asset_count' => $count,
+					'plan_sha256' => $expected,
+					'evidence_reference_sha256' => hash( 'sha256', $evidence ),
+					'owner_approved_transfer' => true,
+					'prior_reviews_invalidated' => true,
+					'supplier_rights_auto_granted' => false,
+					'production_mutation' => false,
+				), 'ok' );
+			}
+		);
+	}
+
 	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
 		return is_array( $records ) ? $records : array();
