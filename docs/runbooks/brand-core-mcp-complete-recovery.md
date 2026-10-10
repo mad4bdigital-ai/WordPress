@@ -108,6 +108,17 @@ independent authority index.
 | External competitor source | Rights preflight | Public reference does NOT confer reuse, resale or media license |
 | Release and Staging | Exact-head native/DB/browser readback | Required before claim of A-Z operational acceptance |
 
+### Hard authorization gate for legacy transfer
+
+The new `context/legacy-owner-transfer-apply` does **not mount by default**:
+both the governed Context adapter and underlying Context Authority reject
+it unless a Host-controlled Staging configuration explicitly sets
+`MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED=true` after
+independent durable rollback, crash-safety and exact owner-rights acceptance.
+The PHP fixture exercises the refusal and the opt-in test path; that
+fixture is **not** Host certification. Do not set the flag automatically
+from a WordPress Site Profile, MCP caller input, database option or GitHub PR.
+
 ## Explicit remaining blockers
 
 - Tested PHP 7.4/8.3 native fixtures, MySQL/MariaDB race, multisite,
