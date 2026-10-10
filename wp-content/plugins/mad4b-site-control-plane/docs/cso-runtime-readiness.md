@@ -81,6 +81,14 @@ Keep the plugin inside Feature 007, without independent plugin, `master` merge, 
 - `CSO_Operations::doctor_plan` returns bounded blockers tied to the current site. It does not attest runtime, execute repair, start monitoring or grant Production promotion.
 - `cso-storage-adapters-runtime.php` and `cso-template-doctor-runtime.php` are synthetic native fixtures wired into the PHP 7.4/8.3 CI matrix; queued Actions checks are not a PASS.
 
+### Unicode consistency at the native post write boundary
+
+The WordPress post driver now validates strict UTF-8 and uses Unicode code
+points for the 200-character title and 500-character excerpt bounds,
+consistent with the CSO form validator. Arabic text is not rejected merely
+because UTF-8 uses multiple bytes per character. Raw inputs are separately
+bounded by 8192 bytes; unsafe tags and empty titles still fail closed.
+
 ### Dual WordPress / Site Profile environment fence
 
 Native CSO write admission and the core Post driver independently require
