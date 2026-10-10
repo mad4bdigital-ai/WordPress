@@ -6,6 +6,7 @@ R = P.parent.parent.parent
 def read(p): return (P / p).read_text(encoding="utf8")
 ui = read("includes/class-mad4b-scp-activity-import-experience.php")
 review = read("includes/class-mad4b-scp-activity-import-review.php")
+snapshot = read("includes/class-mad4b-scp-activity-import-snapshot.php")
 loader = read("includes/class-mad4b-scp-content-experience-profiles.php")
 preflight = read("tests/feature007-manual-preflight.py")
 fixture = read("tests/imp06-import-ux-runtime.php")
@@ -27,6 +28,7 @@ for token in ("profile_status()", "Select an enabled Profile",
               "wp_nonce_field( 'mad4b_activity_export_approved'",
               "wp_nonce_field( 'mad4b_activity_archive_review'",
               "'can_start_import' => false", "never_auto_execute_or_publish",
+              "acknowledge_warnings", "acknowledged_warning_count",
               "scope readiness"):
     if token == "scope readiness":
         token = "eligible_for_staging_review"
@@ -37,6 +39,10 @@ for token in ("MAD4B_SCP_Activity_Import_Experience::render()",
               "admin_post_mad4b_activity_import_csv",
               "admin_post_mad4b_activity_import_approve"):
     require(token in review, "Legacy intake is not linked to the wizard: "+token)
+for token in ("mad4b_import_warning_acknowledgement_mismatch",
+              "acknowledged_warning_count", "explicit_full_warning_count_ack_required"):
+    require(token in snapshot,
+            "Approval does not bind the full warning count: "+token)
 require("class-mad4b-scp-activity-import-experience.php" in loader,
         "Guided class is not loaded by the plugin")
 for token in ("No source", "Invalid", "blocked", "unreadable",
