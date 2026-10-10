@@ -18,6 +18,11 @@ final class MAD4B_SCP_Admin_Operation_Profiles {
     const MAX_PROFILES = 64;
 
     public static function boot() {
+        // Complement the existing plugin recovery, not a replacement.
+        // Passive coverage never invokes admin callbacks or grants writes.
+        if ( ! class_exists( 'MAD4B_SCP_Admin_Surface_Coverage', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-admin-surface-coverage.php';
+        MAD4B_SCP_Admin_Surface_Coverage::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 40 );
     }
     public static function register_abilities() {
