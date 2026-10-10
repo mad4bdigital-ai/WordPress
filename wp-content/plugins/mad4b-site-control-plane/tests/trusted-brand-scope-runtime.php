@@ -184,6 +184,10 @@ check( is_wp_error( $stale ) && 'mad4b_brand_rename_revision_conflict' === $stal
 
 // A separate SHA-bound legacy source remains quarantined until a real
 // independently approved owner transfer. No foreign source is ever adopted.
+$disabled_transfer = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( array() );
+check( is_wp_error($disabled_transfer) && 'mad4b_legacy_transfer_rollback_certification_required' === $disabled_transfer->get_error_code(),
+    'Uncertified legacy transfer was executed instead of failing closed' );
+define( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED', true );
 $legacy_source_id = hash( 'sha256', 'one-unbound-source' );
 $old_sources = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
 $old_assets = $GLOBALS['mock_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
