@@ -5,6 +5,7 @@ root = Path(__file__).resolve().parents[1]
 read = lambda n: (root / "includes" / n).read_text(encoding="utf8")
 batch = read("class-mad4b-scp-activity-import-batches.php")
 mapping = read("class-mad4b-scp-import-mapping-evolution.php")
+atomic = read("class-mad4b-scp-batch-atomic-mutex.php")
 profiles = read("class-mad4b-scp-content-experience-profiles.php")
 native_batch = (root/"tests"/"imp08-batch-review-runtime.php").read_text(encoding="utf8")
 native_map = (root/"tests"/"imp10-mapping-evolution-runtime.php").read_text(encoding="utf8")
@@ -13,9 +14,9 @@ def require(ok, msg):
     if not ok: raise AssertionError(msg)
 for token in (
     "function locked_mutation(", "'begin', 'append', 'approve', 'archive'",
-    "add_option( $lock_key", "mad4b_batch_mutation_locked",
-    "mad4b_batch_lock_readback_failed", "mad4b_batch_lock_stolen",
-    "mad4b_batch_unlock_unverified", "function mutation_status(",
+    "MAD4B_SCP_Batch_Atomic_Mutex::acquire(",
+    "MAD4B_SCP_Batch_Atomic_Mutex::release(",
+    "mad4b_batch_mutation_locked", "function mutation_status(",
     "automatic_lock_takeover_allowed' => false",
     "function archival_manifest(", "mad4b_batch_archive_manifest_invalid",
     "if ( 'archive' === $operation )", "self::archival_manifest( $slug, $id )",
@@ -23,6 +24,15 @@ for token in (
     "mad4b_batch_archival_in_progress"
 ):
     require(token in batch, "Missing bounded batch safety guard: "+token)
+for token in (
+    "INSERT IGNORE INTO", "1 !== $inserted",
+    "DELETE FROM", "BINARY option_value = BINARY %s",
+    "1 !== $deleted", "get_var(", "wp_cache_delete(",
+    "'begin', 'append', 'approve', 'archive', 'export'"
+):
+    require(token in atomic, "Missing real SQL mutex atomicity contract: "+token)
+require("add_option( $lock_key" not in batch,
+        "WordPress add_option UPSERT must not be trusted as a mutex")
 for func in ("begin", "append", "approve", "archive"):
     require("public static function "+func+"(" in batch and
             "private static function "+func+"_unlocked(" in batch,
