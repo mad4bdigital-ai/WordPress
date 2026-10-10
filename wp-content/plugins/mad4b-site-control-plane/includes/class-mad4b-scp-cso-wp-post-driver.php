@@ -13,6 +13,16 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
     const WRITE = 'mad4b-cso/wp-post-write';
     private static $booted = false;
 
+    // JSON Schema lengths count Unicode code points rather than UTF-8 bytes.
+    // The bounded, strict UTF-8 check matches CSO typed form validation.
+    private static function within_character_limit( $value, $limit ) {
+        if ( ! is_string( $value ) || strlen( $value ) > 8192 ||
+            1 !== preg_match( '//u', $value ) ) return false;
+        $count = function_exists( 'mb_strlen' )
+            ? mb_strlen( $value, 'UTF-8' ) : preg_match_all( '/./us', $value );
+        return false !== $count && $count <= $limit;
+    }
+
     public function provider_key() { return self::PROVIDER; }
 
     public static function boot() {
@@ -139,7 +149,7 @@ final class MAD4B_SCP_CSO_WP_Post_Driver implements MAD4B_SCP_CSO_Storage_Provid
             ! MAD4B_SCP_CSO_Scope::safe_data( $values ) )
             return MAD4B_SCP_CSO_Scope::error( 'POST_WRITE_FIELD_DENIED' );
         foreach ( $values as $field => $value ) {
-            if ( ! is_string( $value ) || strlen( $value ) > ( $field === 'title' ? 200 : 500 ) ||
+            if ( ! self::within_character_limit( $value, $field === 'title' ? 200 : 500 ) ||
                 ( $field === 'title' && trim( $value ) === '' ) ||
                 wp_strip_all_tags( $value ) !== $value )
                 return MAD4B_SCP_CSO_Scope::error( 'POST_WRITE_VALUE_UNSAFE' );
