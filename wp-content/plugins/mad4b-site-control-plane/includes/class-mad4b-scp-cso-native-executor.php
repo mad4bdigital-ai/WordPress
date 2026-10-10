@@ -299,23 +299,39 @@ final class MAD4B_SCP_CSO_Native_Executor {
 
     /** Status is only an owner-bound lookup, never a retry/repair operation. */
     public static function status( $sealed, $ticket_id ) {
-        $bundle = self::material( $sealed );
-        if ( is_wp_error( $bundle ) || ! is_string( $ticket_id ) )
+        // The execution TTL does not hide recovery evidence. Expired plans
+        // may be inspected by their exact actor, but never executed again.
+        if ( ! MAD4B_SCP_CSO_Scope::enabled( 'single_write' ) ||
+            ! MAD4B_SCP_CSO_Scope::first_party_session() ||
+            ! is_array( $sealed ) || ! is_string( $ticket_id ) ||
+            strlen( $ticket_id ) > 128 )
             return self::error( 'NATIVE_STATUS_SCOPE_INVALID' );
-        $plan_sha = MAD4B_SCP_CSO_Scope::digest( $bundle['material'] );
+        $material = MAD4B_SCP_CSO_Scope::unseal(
+            $sealed, MAD4B_SCP_CSO_Changes::CONTRACT );
+        $scope = MAD4B_SCP_CSO_Scope::current();
+        if ( is_wp_error( $material ) || is_wp_error( $scope ) ||
+            ! is_array( $material ) ||
+            ( $material['contract'] ?? '' ) !== MAD4B_SCP_CSO_Changes::CONTRACT ||
+            ! hash_equals( (string) ( $material['scope_fingerprint'] ?? '' ),
+                (string) ( $scope['binding_sha256'] ?? '' ) ) ||
+            ! hash_equals( (string) ( $material['actor_sha256'] ?? '' ),
+                (string) ( $scope['actor_sha256'] ?? '' ) ) )
+            return self::error( 'NATIVE_STATUS_SCOPE_INVALID' );
+        $plan_sha = MAD4B_SCP_CSO_Scope::digest( $material );
         $key = self::journal_key( $ticket_id, $plan_sha );
         $record = get_option( $key, null );
         if ( ! is_array( $record ) ||
             ( $record['contract'] ?? '' ) !== self::CONTRACT . '.journal.v1' ||
             ! hash_equals( (string) ( $record['scope_sha256'] ?? '' ),
-                MAD4B_SCP_CSO_Scope::digest( $bundle['scope'] ) ) ||
+                MAD4B_SCP_CSO_Scope::digest( $scope ) ) ||
             ! hash_equals( (string) ( $record['plan_sha256'] ?? '' ), $plan_sha ) )
             return self::error( 'NATIVE_OPERATION_NOT_OWNED_OR_FOUND' );
         return array( 'contract' => self::CONTRACT . '.status.v1',
             'status' => $record['state'],
             'reason_code' => $record['reason_code'],
             'replay_allowed' => false,
-            'needs_independent_reconcile' => $record['state'] === 'needs_reconcile',
+            'needs_independent_reconcile' => in_array( $record['state'],
+                array( 'needs_reconcile','reserved','inflight' ), true ),
             'mutation_performed' => false );
     }
 }
