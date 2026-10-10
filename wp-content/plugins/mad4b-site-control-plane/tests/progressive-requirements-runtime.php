@@ -105,6 +105,22 @@ MAD4B_SCP_Progressive_Requirements::register_abilities();
 check(isset($GLOBALS['abilities'][MAD4B_SCP_Progressive_Requirements::PLAN_ABILITY]) &&
 	isset($GLOBALS['abilities'][MAD4B_SCP_Progressive_Requirements::LINK_ABILITY]),
 	'read and governed link abilities must both register');
+$inventory=MAD4B_SCP_Progressive_Requirements::discover(array('intent'=>'content.create_draft'));
+check(!is_wp_error($inventory) && 1===$inventory['match_count'] &&
+	'content.create_draft'===$inventory['auto_selection']['id'],
+	'Canonical registry discovery failed');
+$auto=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'auto','mode'=>'detached','intent'=>'content.create_draft'));
+check(!is_wp_error($auto) && 'registry.operation'===$auto['resolved_provider'] &&
+	'content.create_draft'===$auto['resolved_target_operation_id'],
+	'Automatic operation selection did not bind exact registered target');
+$GLOBALS['extra_operation']=true;
+$ambiguous=MAD4B_SCP_Progressive_Requirements::plan(array(
+	'operation_id'=>'auto','mode'=>'linked','intent'=>'content.'));
+check(is_wp_error($ambiguous) &&
+	'mad4b_progressive_auto_ambiguous'===$ambiguous->get_error_code(),
+	'Multiple registered operations were selected without disambiguation');
+$GLOBALS['extra_operation']=false;
 $sha=$GLOBALS['target_sha']=str_repeat('f',40);
 $input=array('operation_id'=>'wordpress.selected_head','mode'=>'detached','attempt'=>1,
 	'candidate_source'=>array('repository'=>'mad4bdigital-ai/WordPress',
