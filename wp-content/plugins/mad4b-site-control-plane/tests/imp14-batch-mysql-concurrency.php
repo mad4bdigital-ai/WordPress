@@ -4,7 +4,11 @@
  * contending for the SAME Profile option lock.
  *
  * Example (on an authorized Staging host, PHP CLI + WordPress installed):
- * php tests/imp14-batch-mysql-concurrency.php --wp-root=/path/to/wordpress
+ * php tests/imp14-batch-mysql-concurrency.php --wp-root=/path/to/wordpress \
+ *   --expected-head=<full-40-char-source-commit> \
+ *   --expected-site-uuid=<enrolled-staging-site-uuid>
+ * A matching bundled source-commit field is a prerequisite, NOT an independent
+ * proof of installed ZIP SHA-256, provider certification or Host attestation.
  *
  * Does not write business posts or run an import. Its lock is a synthetic
  * randomly named source Profile scoped to the enrolled Staging site.
