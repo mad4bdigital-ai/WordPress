@@ -3233,6 +3233,9 @@ def main() -> int:
     bridge_reconcile_p.add_argument("--profile", required=True, type=Path)
     bridge_reconcile_p.add_argument("--stale-seconds", type=int, default=300)
     bridge_reconcile_p.add_argument("--limit", type=int, default=100)
+    identity_p = sub.add_parser("serve-identity")
+    identity_p.add_argument("--profile", required=True, type=Path)
+    identity_p.add_argument("--socket", required=True, type=Path)
     run_p = sub.add_parser("run-job")
     run_p.add_argument("--profile", required=True, type=Path)
     run_p.add_argument("--job", required=True, type=Path)
@@ -3246,6 +3249,12 @@ def main() -> int:
             result = consume_bridge_spool(args.profile, args.limit)
         elif args.command == "reconcile-bridge-spool":
             result = reconcile_bridge_spool(args.profile, args.stale_seconds, args.limit)
+        elif args.command == "serve-identity":
+            # The same enrolled Host Runner profile/key is the only identity
+            # authority. The helper implements only a local Unix transport.
+            from mad4b_host_identity_socket import serve
+            serve(args.profile, args.socket)
+            return 0
         else:
             result = run_job_with_failure_evidence(args.profile, args.job)
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as exc:
