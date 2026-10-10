@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ) require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
 
 /**
  * IMP01: bounded spreadsheet/import preflight and human conflict review.
@@ -508,8 +509,11 @@ final class MAD4B_SCP_Activity_Import_Review {
         // only for STAGING, never a WordPress-post mutation or approval.
         $nonce_key = 'mad4b_import_nonce_' . hash( 'sha256',
             $data['site_uuid'] . '|' . $sender['key_id'] . '|' . $data['nonce'] );
-        if ( ! add_option( $nonce_key, time(), '', false ) )
-            return self::error( 'mad4b_import_webhook_replay', 'Webhook nonce already accepted.' );
+        $nonce_receipt = MAD4B_SCP_Batch_Atomic_Mutex::reserve_signed_nonce(
+            $nonce_key, time() );
+        if ( is_wp_error( $nonce_receipt ) )
+            return self::error( 'mad4b_import_webhook_replay',
+                'Signed webhook nonce was previously accepted or cannot be atomically reserved.' );
         // Nonces remain rejected for the entire signature-validity window,
         // then WordPress Cron may reclaim the stored bounded replay marker.
         if ( function_exists( 'wp_schedule_single_event' ) )
