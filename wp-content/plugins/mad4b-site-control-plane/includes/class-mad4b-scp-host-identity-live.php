@@ -116,7 +116,7 @@ final class MAD4B_SCP_Host_Identity_Live {
 		$stream = @stream_socket_client( 'unix://' . $path, $errno, $errstr, 0.6, STREAM_CLIENT_CONNECT );
 		if ( ! is_resource( $stream ) ) return null;
 		stream_set_timeout( $stream, 1 );
-		$sent = @fwrite( $stream, $message . "\\n" );
+		$sent = @fwrite( $stream, $message . "\n" );
 		if ( ! is_int( $sent ) || $sent !== strlen( $message ) + 1 ) { fclose( $stream ); return null; }
 		$line = @fgets( $stream, 8193 );
 		$extra = is_string( $line ) && strlen( $line ) >= 8192;
