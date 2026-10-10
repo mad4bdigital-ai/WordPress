@@ -85,7 +85,7 @@ final class MAD4B_SCP_Host_Identity_Live {
 		}
 		if ( ! hash_equals( hash( 'sha256', (string) ( $challenge['nonce'] ?? '' ) ), (string) ( $payload['nonce_sha256'] ?? '' ) )
 			|| 1 !== preg_match( '/^[A-Za-z0-9._-]{3,120}$/D', (string) ( $payload['runner_profile_id'] ?? '' ) )
-			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $payload['target_fingerprint'] ?? '' ) ) return false;
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $payload['target_fingerprint'] ?? '' ) ) ) return false;
 		$now = null === $now ? time() : (int) $now;
 		$issued = $payload['issued_at'] ?? null;
 		$expires = $payload['expires_at'] ?? null;
