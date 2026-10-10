@@ -12,6 +12,17 @@ function add_action( $name, $callable, $priority = 10 ) { $GLOBALS['mad4b_previe
 function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_preview_registered'][ $name ] ); }
 function wp_register_ability( $name, $args ) { $GLOBALS['mad4b_preview_registered'][ $name ] = $args; return true; }
 
+final class MAD4B_SCP_Site_Profile {
+    public static function status() {
+        return array(
+            'configured' => true,
+            'environment' => $GLOBALS['mad4b_preview_environment'],
+            'environment_match' => empty( $GLOBALS['mad4b_preview_profile_drift'] ),
+            'origin_match' => empty( $GLOBALS['mad4b_preview_profile_drift'] ),
+            'exact_profile_bound' => true,
+        );
+    }
+}
 final class MAD4B_SCP_Live_Acceptance_Observer {
     public static function build_provenance_status() {
         return array(
@@ -60,6 +71,10 @@ $GLOBALS['mad4b_preview_environment'] = 'production';
 $invalid = MAD4B_SCP_Preview_Matrix::plan();
 check( $invalid['state'] === 'blocked' && $invalid['production_mutation'] === false, 'production_denied' );
 $GLOBALS['mad4b_preview_environment'] = 'staging';
+$GLOBALS['mad4b_preview_profile_drift'] = true;
+$invalid = MAD4B_SCP_Preview_Matrix::plan();
+check( $invalid['state'] === 'blocked', 'site_profile_drift_denied' );
+$GLOBALS['mad4b_preview_profile_drift'] = false;
 $GLOBALS['mad4b_preview_origin'] = 'http://staging.allroyalegypt.com';
 $invalid = MAD4B_SCP_Preview_Matrix::plan();
 check( $invalid['state'] === 'blocked', 'https_required' );
