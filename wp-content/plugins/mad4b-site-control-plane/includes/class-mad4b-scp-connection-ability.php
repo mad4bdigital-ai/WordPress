@@ -227,7 +227,10 @@ final class MAD4B_SCP_Connection_Ability {
 
 		$result['contract'] = self::PREFLIGHT_CONTRACT;
 		$result['diagnostic_scope'] = $scope;
-		$result['complete_runtime_authority_evaluated'] = 'full' === $scope;
+		$result['complete_runtime_authority_evaluated'] = 'full' === $scope &&
+			isset( $result['checks']['write_authority'] ) &&
+			is_array( $result['checks']['write_authority'] ) &&
+			! empty( $result['checks']['write_authority']['ok'] );
 		$result['deferred_scope_checks'] = 'identity' === $scope
 			? array( 'connection', 'write_authority', 'staging_certification', 'operation_discovery' )
 			: array();
