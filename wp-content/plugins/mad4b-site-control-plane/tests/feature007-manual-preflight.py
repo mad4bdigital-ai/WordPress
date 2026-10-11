@@ -133,6 +133,7 @@ FIXTURES = (
     "oauth-consent-projection-view-runtime.php",
     "oauth-consent-fast-first-paint-runtime.php",
     "publication-brand-core-mandatory-runtime.php",
+    "context-remote-owner-review-runtime.php",
     "g7-compensation-safety-runtime.php",
     "g8-automation-slo-runtime.php",
     "g9-resilience-gates-runtime.php",
