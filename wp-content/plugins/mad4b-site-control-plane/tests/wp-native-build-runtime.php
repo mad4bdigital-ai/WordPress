@@ -113,9 +113,10 @@ $written = $archive->invoke( null, $dir . '/',
 assert_native( ! is_wp_error( $written ) &&
     is_file( $zip ), 'Canonical PHP ZIP writer emits a readable file' );
 $bytes = file_get_contents( $zip );
-assert_native( is_string( $bytes ) && substr( $bytes, 0, 4 ) === "PK\x03\x04" &&
-    strpos( $bytes, 'mad4b-site-control-plane/test.php' ) !== false,
-    'Canonical ZIP local header and scoped entry verified' );
+assert_native( is_string( $bytes ) &&
+    hash( 'sha256', $bytes ) ===
+        '316c14c4a36fa12d97ad4eb17c081e3b3a168c87cafee95aebece1b6626c7ea5',
+    'Complete PHP ZIP must match Python canonical ZIP byte-for-byte' );
 if ( class_exists( 'ZipArchive' ) ) {
     $reader = new ZipArchive();
     assert_native( $reader->open( $zip ) === true &&
