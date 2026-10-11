@@ -74,3 +74,17 @@ infer consent from OAuth scope. Stale plans must be discarded.
 - Confirm no OAuth token/scopes/POST changes and no mutation in this PR
 - Verify host operational acceptance separately; source-only changes cannot
   certify actual host isolation
+
+## OAuth authorize 504 diagnosis and first-paint fix — 2026-10-11
+
+**Source finding:** The previously deployed Staging source `b53efafc149874455ab713498ba0399a1b43fd2f` synchronously called `Local_OAuth_Server::consent_grant_projection()` in `render_consent()` for every logged-in OAuth GET. That read-only, non-authorizing helper enumerates runtime/blocked/governance tool catalogs, constructs a write-grant reconciliation plan (with one possible rebuild) and reads Developer/Host evidence. These expensive operations are **not required for OAuth request validation, user identity, PKCE, nonce issuance or displaying the exact requested scopes**.
+
+**Correction in PR #258, source only:** The first consent render now uses an explicit `authority_evaluated=false`, `ready=false` placeholder. Its metrics are visibly `Pending` rather than fabricated `0` or certified green. The existing authenticated, nonce-checked `admin-ajax.php?action=mad4b_oauth_grant_projection` endpoint retains the full independent live readback; it begins after initial document render and polls at most once per minute while visible (with bounded retry backoff). Display/readback has no mutation authority; OAuth approval remains separate from Write/Developer governance. A request-local memo ensures that invalid CIMD metadata redirects never repeat the same remote client metadata GET within one PHP request; persistent trust and cache policy stay unchanged.
+
+**Acceptance / fault isolation (not yet executed):**
+
+1. On a clean exact-head checkout, run `php7.4 -l` and `php8.3 -l` on the entire plugin tree and run `tests/oauth-consent-fast-first-paint-runtime.php` on both engines. Fail closed when an interpreter is missing.
+2. Use authenticated owner Staging Chrome on the actual full `/oauth/mcp/authorize` URL (never publish its `state`, `code_challenge` or session cookies). Measure real navigation TTFB, HTTP status, server request ID and rendered consent. Confirm expected client, scopes, nonce/PKCE, Deny and Approve redirect; never auto-approve in a synthetic health check.
+3. Measure separately the asynchronous `admin-ajax.php` projection latency/errors and verify that pending/failed refresh cannot be interpreted as granted Write authority. Check 1/15/60-second concurrent operator load; rate-limit if FPM is saturated.
+4. Compare nginx `upstream_response_time` with PHP-FPM slowlog/request termination and database slow query log for **the same request ID**. Check `fastcgi_read_timeout`, `request_terminate_timeout`, worker queue exhaustion and external CIMD RTT. A 504 is an nginx/upstream deadline symptom; this code change is not proof that there is no independent host bottleneck.
+5. Deploy only a separately owner-authorized, SHA-and-ZIP-verified Staging build. The installed `b53efa...` binary is still unmodified by this GitHub source patch. Re-read installed identity and verify repeat navigation after deployment; never use an older certified channel target to downgrade Staging, and do not modify Production.
