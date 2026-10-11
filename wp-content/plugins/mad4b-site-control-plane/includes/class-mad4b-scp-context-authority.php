@@ -338,13 +338,20 @@ final class MAD4B_SCP_Context_Authority {
                 ? MAD4B_SCP_Deployment_Mode_Resolver::resolve() : array();
             if ( is_array( $resolver ) &&
                 'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED' === ( $resolver['reason'] ?? '' ) ) {
-                $sources = self::raw_sources();
-                $assets = self::raw_assets();
+                // The regular registry getters normalize corrupt nonarrays
+                // to empty lists. That is unsafe for an unbound inventory:
+                // an invalid persisted option must not become "zero rows".
+                $sources = get_option( self::SOURCES_OPTION, array() );
+                $assets = get_option( self::ASSETS_OPTION, array() );
+                if ( ! is_array( $sources ) || ! is_array( $assets ) )
+                    return new WP_Error( 'mad4b_legacy_census_registry_malformed',
+                        'One or both legacy registry options are not valid arrays.' );
                 $result = self::legacy_unbound_staging_census( $site, $resolver, $sources, $assets );
                 if ( is_wp_error( $result ) ) return $result;
                 // Cross-read guard: unrelated writes must not create a
                 // fabricated stable diagnostic across independent options.
-                if ( $sources !== self::raw_sources() || $assets !== self::raw_assets() )
+                if ( $sources !== get_option( self::SOURCES_OPTION, array() ) ||
+                    $assets !== get_option( self::ASSETS_OPTION, array() ) )
                     return new WP_Error( 'mad4b_legacy_census_snapshot_drift',
                         'Legacy inventory changed during the read; retry after state reconciliation.' );
                 $site_again = MAD4B_SCP_Site_Profile::status();
