@@ -85,6 +85,40 @@ PHP 8.3.35, MariaDB 11.8.9, Control Plane rc.96, installed source
   scoped Session-Safe diagnostics, candidate-vs-live Skills separation,
   G9 manifest repin and exact-source static inventory.
 
+## Residual design objections that are NOT yet closed
+
+- **Concurrent admission of two new builds:** the fixed WP-Cron worker now
+  re-reads persisted current state after taking the per-source file lock.
+  However `start()` is not yet protected by a *site-global atomic admission*
+  lock. Two authorized requests could both observe an idle option and submit
+  conflicting jobs (especially for different source heads). Requires an atomic,
+  TTL/reconciliation-aware owner admission lease and receipt-bound idempotency.
+- **WordPress object cache vs persistent DB:** the after-lock worker read now
+  bypasses request-local `get_option()` caching and queries the prepared
+  `$wpdb->options` row. The current write still uses `update_option()`,
+  so a formal compare-and-swap across concurrent admission and workers has
+  **not** been proved. Do not claim global exactly-once execution.
+- **Cron transport reliability:** 599 files at 4 per tick implies at least
+  150 iterations; WP-Cron is traffic-driven and a bounded timeout on every
+  blob does not bound aggregate completion. Add measurable retry/backoff
+  policy, trusted external worker fallback and storage quota before considering
+  this the default build transport.
+- **Source host portability:** `WP_Native_Build::REPO` and `PLUGIN`
+  remain fixed source family constants even though Ability mounting uses the
+  dynamic Adapter Registry. Supporting arbitrary sites or repositories still
+  needs a reviewed, site-bound source-provider policy with exact trust roots,
+  never unaudited user-provided repository URLs.
+- **Large artifact export:** 8KiB chunks over MCP create an excessive
+  serial round-trip budget; a secure artifact download/data plane is
+  **not implemented**. No arbitrary public download URL should replace it.
+- **Temporary source retention:** no proven bounded garbage collector or
+  per-site disk-budget policy for finished/blocked private workspaces.
+  Over time jobs could accumulate disk use. Needs explicit retention,
+  ownership/identity proof, cleanup receipts and safe rollback.
+- **Upgrade identity:** the plugin header still says `0.4.0-rc.96` across
+  different source SHAs. Operators must use exact commit, package digest and
+  artifact identity rather than the version string alone for freshness.
+
 ## Recommended architecture — dynamic, no static Ability hardcodes
 
 Preserve the trusted Adapter Registry dynamic declarations and original WP
