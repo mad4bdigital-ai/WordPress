@@ -114,6 +114,10 @@ final class MAD4B_SCP_Standalone_Build_Control {
             'adapter_source' => 'certified-provider-profiles.json + runtime-release-policy.json',
             'exact_clean_git_checkout_required' => true,
             'trusted_runner_required' => true,
+            'build_route_policy' => 'wordpress_native_when_eligible_external_fallback',
+            'native_packaging_opt_in' => true,
+            'native_route_ability' => 'mad4b/wp-native-build-plan',
+            'native_route_certifies_release' => false,
             'ci_required_for_build' => false,
             'ci_evidence_optional_for_independent_staging_review' => true,
             'mcp_dispatch_implemented' => true,
@@ -151,12 +155,27 @@ final class MAD4B_SCP_Standalone_Build_Control {
             'profile_digest' => $site['profile_digest'],
             'origin' => $site['origin'],
         );
+        // Prefer the PHP-native build on eligible enrolled Staging for
+        // build-only. Full local-checks still require an independent runner.
+        $native = array();
+        $native_eligible = false;
+        $native_state = 'NOT_RUN';
+        if ( 'build-only' === $profile &&
+            class_exists( 'MAD4B_SCP_WP_Native_Build' ) ) {
+            $native = MAD4B_SCP_WP_Native_Build::capabilities();
+            $native_eligible = is_array( $native ) && ! empty( $native['eligible'] );
+            if ( $native_eligible ) {
+                $observed = MAD4B_SCP_WP_Native_Build::status();
+                if ( is_array( $observed ) && ( $observed['head'] ?? '' ) === $sha )
+                    $native_state = (string) ( $observed['state'] ?? 'NOT_RUN' );
+            }
+        }
         return array(
             'contract' => self::CONTRACT . '.plan.v1',
             'plan_sha256' => hash( 'sha256', (string) wp_json_encode( $binding ) ),
             'source_commit_sha' => $sha,
             'source_checkout_verified' => false,
-            'source_verification_owner' => 'trusted_external_builder',
+            'source_verification_owner' => $native_eligible ? 'wordpress_native_pinned_git_blobs' : 'trusted_external_builder',
             'build_entrypoint' => self::SCRIPT,
             'build_profile' => $profile,
             'native_evidence_entrypoint' => 'tools/mad4b_standalone_evidence.py',
@@ -171,9 +190,16 @@ final class MAD4B_SCP_Standalone_Build_Control {
                 'STANDALONE-BUILD-REPORT.json' ),
             'native_evidence_outputs' => array( 'GATE-RESULTS.json',
                 'NATIVE-TEST-EVIDENCE-BUNDLE.json' ),
-            'next_state' => 'external_trusted_runner_required',
-            'builder_status' => 'NOT_RUN',
-            'mcp_execution_available' => false,
+            'next_state' => $native_eligible ? 'native_build_available_after_owner_approval'
+                : 'external_trusted_runner_required',
+            'builder_status' => $native_eligible ? $native_state : 'NOT_RUN',
+            'build_route_preferred' => $native_eligible ? 'wordpress_native_bounded_build_only'
+                : 'external_trusted_runner',
+            'build_route_fallback' => 'external_trusted_runner',
+            'native_build_ability' => $native_eligible ? 'mad4b/wp-native-build-start' : '',
+            'native_build_blockers' => isset( $native['blockers'] ) ? $native['blockers'] : array(),
+            'external_native_tests_and_attestation_required' => true,
+            'mcp_execution_available' => $native_eligible,
             'queue_request_ability' => self::REQUEST,
             'signed_worker_receipt_required' => true,
             'release_certified' => false,
