@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 817,
+  "changed_file_count": 821,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1628,8 +1628,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ]
+    },
+    {
+      "id": "feature007-20261011-owner-oauth-ai-auto-all",
+      "semantic_unit": "New owner-consented OAuth auto:all approval scope, verified bearer/local issuer gate, AI approval dispatcher decision mode and deterministic negative/positive fixture",
+      "revert_boundary": "Revert new Staging-specific OAuth AI scope and linked AI-Approval policy/fixture; retain preexisting human_only and standing AI Agent policy without escalation",
+      "certification": "source_only_php74_php83_oauth_browser_and_exact_head_staging_e2e_required",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-owner-ai-auto-approval-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "2ec725bace1de72ad75f2eb2d6bc0d1c8a59a7a756b56ef199adcb6013ddd0ee",
+  "changed_paths_sha256": "17b965f5769aae0700f2707038d1f3afcc611c4772c53e9c0000000013a32932",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
