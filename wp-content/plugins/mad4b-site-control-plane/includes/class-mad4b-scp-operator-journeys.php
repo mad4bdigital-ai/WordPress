@@ -40,6 +40,9 @@ final class MAD4B_SCP_Operator_Journeys {
                 'steps' => array(
                     array( 'site', 'mad4b/site-profile-status', 'read' ),
                     array( 'binding_status', 'mad4b/deployment-binding-setup-status', 'read' ),
+                    array( 'native_binding_status', 'mad4b/deployment-binding-native-status', 'read' ),
+                    array( 'native_binding_plan', 'mad4b/deployment-binding-native-plan', 'read' ),
+                    array( 'native_binding_apply', 'mad4b/deployment-binding-native-apply', 'write' ),
                     array( 'binding_plan', 'mad4b/deployment-binding-setup-plan', 'read' ),
                     array( 'binding_apply', 'mad4b/deployment-binding-setup-apply', 'write' ),
                     array( 'binding_verify', 'mad4b/deployment-mode-status', 'read' ),
