@@ -1617,6 +1617,17 @@
         "docs/runbooks/mcp-remote-brand-context-approval.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-remote-owner-review-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261011-brand-context-recovery-lifecycle",
+      "semantic_unit": "Review and correct Brand Core remote recovery DAG: explicit owner review plan/decision, preflight mounted evidence and optional legacy transfer when census is clean",
+      "revert_boundary": "Revert remote recovery DAG and its native reducer/contract tests as one source-owned slice; preserve legacy owner approval, CI and Production gates",
+      "certification": "source_only_php74_php83_and_exact_head_staging_acceptance_required",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ]
     }
   ],
   "changed_paths_sha256": "2ec725bace1de72ad75f2eb2d6bc0d1c8a59a7a756b56ef199adcb6013ddd0ee",
