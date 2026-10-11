@@ -31,6 +31,11 @@ final class MAD4B_SCP_Operational_Remediation {
 		if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery', false ) )
 			require_once __DIR__ . '/class-mad4b-scp-brand-core-remote-recovery.php';
 		MAD4B_SCP_Brand_Core_Remote_Recovery::boot();
+        // Host-free WordPress scratch rehearsal is opt-in per exact Staging
+        // owner approval and never substitutes Host/MariaDB crash evidence.
+        if ( ! class_exists( 'MAD4B_SCP_Native_Recovery', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-native-recovery.php';
+        MAD4B_SCP_Native_Recovery::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
 			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
