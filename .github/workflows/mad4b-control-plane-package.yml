@@ -154,6 +154,7 @@ jobs:
           php -l "$root/tests/selected-head-assistant-recovery-runtime.php"
           php "$root/tests/selected-head-assistant-recovery-runtime.php"
           php -l "$root/includes/class-mad4b-scp-wp-native-build.php"
+          php -l "$root/includes/adapters/class-mad4b-scp-wp-native-build-adapter.php"
           php -l "$root/tests/wp-native-build-runtime.php"
           php "$root/tests/wp-native-build-runtime.php"
           php -l "$root/includes/class-mad4b-scp-wordpress-native-opt-in.php"
