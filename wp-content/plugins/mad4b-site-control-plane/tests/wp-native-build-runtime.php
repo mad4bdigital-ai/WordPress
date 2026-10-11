@@ -111,9 +111,9 @@ assert_native( MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' )
     'Boot automatically self-enrolls the native build adapter in the governed registry' );
 $c::register_abilities();
 $c::register_abilities();
-assert_native( count( $GLOBALS['native_abilities'] ) === 5,
-    'Five idempotently registered governed abilities' );
-foreach ( array( 'capabilities', 'plan', 'status', 'export-chunk' ) as $name ) {
+assert_native( count( $GLOBALS['native_abilities'] ) === 6,
+    'Six idempotently registered governed abilities' );
+foreach ( array( 'capabilities', 'plan', 'status', 'simulate', 'export-chunk' ) as $name ) {
     $a = $GLOBALS['native_abilities'][ $c::PREFIX . $name ];
     assert_native( $a['category'] === 'mad4b-read' &&
         $a['meta']['annotations']['readonly'] === true,
@@ -232,6 +232,67 @@ if ( class_exists( 'ZipArchive' ) ) {
         'Native ZIP remains readable by ZipArchive' );
     $reader->close();
 }
+// The in-WordPress evidence simulator performs independent local file reads
+// but MUST never mint native PHP version-matrix passes or signatures.
+$simulation_sha = str_repeat( 'b', 40 );
+$simulation_dir = sys_get_temp_dir() . '/mad4b-native-' .
+    substr( hash( 'sha256', 'test-site:' . $simulation_sha ), 0, 28 );
+assert_native( mkdir( $simulation_dir, 0700 ) === true,
+    'Create private local simulation workspace' );
+assert_native( copy( $zip, $simulation_dir . '/candidate.zip' ),
+    'Copy canonical fixture ZIP into simulated build workspace' );
+$simulation_zip_sha = hash_file( 'sha256', $simulation_dir . '/candidate.zip' );
+$simulation_zip_bytes = filesize( $simulation_dir . '/candidate.zip' );
+$receipt_data = array(
+    'source_commit_sha' => $simulation_sha,
+    'archive_sha256' => $simulation_zip_sha,
+    'archive_bytes' => $simulation_zip_bytes,
+    'build_fingerprint' => str_repeat( 'c', 64 ),
+    'package_manifest_digest' => str_repeat( 'd', 64 ),
+);
+$receipt_text = json_encode( $receipt_data );
+file_put_contents( $simulation_dir . '/CANONICAL-PACKAGE-RECEIPT.json', $receipt_text );
+$simulation_job = array(
+    'head' => $simulation_sha, 'state' => 'BUILT_UNVERIFIED',
+    'site_uuid' => 'test-site', 'profile_digest' => 'profile-b',
+    'origin' => 'https://staging.example.test',
+    'archive_sha256' => $simulation_zip_sha,
+    'archive_bytes' => $simulation_zip_bytes,
+    'build_fingerprint' => str_repeat( 'c', 64 ),
+    'package_manifest_digest' => str_repeat( 'd', 64 ),
+    'canonical_receipt_sha256' => hash( 'sha256', $receipt_text ),
+    'php_files_token_parsed' => 1,
+    'entries' => array( array( 'path' => 'test.php' ) ),
+);
+$GLOBALS['native_opts'][ $c::OPTION ] = $simulation_job;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $simulation_job;
+$GLOBALS['native_env'] = 'staging';
+assert_native( is_wp_error( $c::simulate( array( 'expected_head' => 'main' ) ) ),
+    'Simulation accepts no mutable Git refs or unknown inputs' );
+$sim = $c::simulate( array( 'expected_head' => $simulation_sha ) );
+assert_native( $sim['state'] === 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED'
+    && !in_array( 'BLOCKED', $sim['local_checks'], true )
+    && $sim['external_gates']['php74_tree_syntax'] === 'NOT_EXECUTED_BY_SIMULATOR'
+    && $sim['external_gates']['php83_tree_syntax'] === 'NOT_EXECUTED_BY_SIMULATOR'
+    && $sim['independent_signature_present'] === false
+    && $sim['release_certified'] === false
+    && $sim['mutation_performed'] === false,
+    'Locally valid ZIP must never become a certified release' );
+file_put_contents( $simulation_dir . '/candidate.zip', 'tampered' );
+$bad_sim = $c::simulate( array( 'expected_head' => $simulation_sha ) );
+assert_native( $bad_sim['state'] === 'LOCAL_SELF_CHECKS_BLOCKED'
+    && $bad_sim['local_checks']['archive_sha256_bytes'] === 'BLOCKED'
+    && $bad_sim['local_checks']['canonical_receipt_sha256_binding'] === 'BLOCKED',
+    'Tampered local ZIP must fail both checksum and signed-boundary approximation' );
+$GLOBALS['native_env'] = 'production';
+assert_native( is_wp_error( $c::simulate( array( 'expected_head' => $simulation_sha ) ) ),
+    'Simulator is unavailable on Production even for read-only package inspection' );
+unset( $GLOBALS['native_opts'][ $c::OPTION ],
+    $GLOBALS['native_db_opts'][ $c::OPTION ] );
+@unlink( $simulation_dir . '/candidate.zip' );
+@unlink( $simulation_dir . '/CANONICAL-PACKAGE-RECEIPT.json' );
+@rmdir( $simulation_dir );
+// The simulator never changes the test's original Production refusal.
 // Regression: the ZIP writer rejects content whose Git blob ID is not bound
 // to the byte stream (in particular, sha1("blob <size>\\0<bytes>")).
 file_put_contents( $dir . '/test.php', '<?php echo 2;' );
