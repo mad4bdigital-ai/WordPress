@@ -352,6 +352,11 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	public static function search( array $input, $transport = 'internal' ) {
+		// Internal callers bypass dispatch(), so reject invalid metadata flags here too.
+		if ( array_key_exists( 'declared_readonly_only', $input ) && ! is_bool( $input['declared_readonly_only'] ) )
+			return new WP_Error( 'mad4b_capability_gateway_read_filter_invalid', 'Read-only discovery filter must be a boolean.' );
+		if ( array_key_exists( 'declared_writeonly_only', $input ) && ! is_bool( $input['declared_writeonly_only'] ) )
+			return new WP_Error( 'mad4b_capability_gateway_write_filter_invalid', 'Mutation-only filter must be a boolean.' );
 		list( $task, $terms ) = self::task_terms( $input );
 		if ( '' === $task && empty( $terms ) ) return new WP_Error( 'mad4b_capability_gateway_task_required', 'Task text or keywords are required for bounded capability search.' );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 25, (int) $input['limit'] ) ) : 12;
@@ -380,7 +385,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 					'description' => method_exists( $ability, 'get_description' ) ? self::bounded_text( $ability->get_description(), 320, true ) : '',
 					'category' => method_exists( $ability, 'get_category' ) ? self::bounded_text( $ability->get_category(), 160 ) : '',
 					'declared_surface' => isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '',
-					'declared_readonly' => array_key_exists( 'readonly', $annotations ) ? (bool) $annotations['readonly'] : null,
+					'declared_readonly' => array_key_exists( 'readonly', $annotations ) && is_bool( $annotations['readonly'] ) ? $annotations['readonly'] : null,
 				);
 			} catch ( Throwable $error ) {
 				continue;
