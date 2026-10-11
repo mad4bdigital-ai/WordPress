@@ -95,13 +95,15 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'operator_role' => 'brand_owner', 'approval' => true,
             ),
             'host_identity' => array(
-                'read' => 'hostinger-reach/status',
-                'next' => '', 'readback' => 'hostinger-reach/status',
+                'read' => 'mad4b/host-doctor',
+                'next' => 'mad4b/host-operation-plan',
+                'readback' => 'mad4b/host-operation-receipt',
                 'executor' => 'enrolled_signed_host_runner', 'operator_role' => 'host_owner',
                 'approval' => true,
             ),
             'durable_db_recovery' => array(
-                'read' => '', 'next' => '', 'readback' => '',
+                'read' => 'mad4b/host-operation-capabilities',
+                'next' => '', 'readback' => '',
                 'executor' => 'independent_host_mariadb_crash_runner',
                 'operator_role' => 'host_owner', 'approval' => true,
             ),
