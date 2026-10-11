@@ -27,6 +27,9 @@ final class MAD4B_SCP_Selected_Head_Update {
         // Optional PHP-native packaging is non-authorizing and Staging-only.
         require_once __DIR__ . '/class-mad4b-scp-wp-native-build.php';
         MAD4B_SCP_WP_Native_Build::boot();
+        // Explicit Staging-only self-certification uses the same protected updater.
+        require_once __DIR__ . '/class-mad4b-scp-wp-native-self-approval.php';
+        MAD4B_SCP_WP_Native_Self_Approval::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 35 );
     }
 
