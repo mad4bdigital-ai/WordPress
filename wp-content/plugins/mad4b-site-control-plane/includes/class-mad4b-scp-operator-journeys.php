@@ -39,12 +39,16 @@ final class MAD4B_SCP_Operator_Journeys {
                 'label' => 'Connect site and confirm permissions', 'risk' => 'high',
                 'steps' => array(
                     array( 'site', 'mad4b/site-profile-status', 'read' ),
+                    array( 'binding_status', 'mad4b/deployment-binding-setup-status', 'read' ),
+                    array( 'binding_plan', 'mad4b/deployment-binding-setup-plan', 'read' ),
+                    array( 'binding_apply', 'mad4b/deployment-binding-setup-apply', 'write' ),
+                    array( 'binding_verify', 'mad4b/deployment-mode-status', 'read' ),
                     array( 'readiness', 'mad4b/write-authority-status', 'read' ),
                     array( 'plan', 'mad4b/staging-write-grant-reconciliation-plan', 'read' ),
                     array( 'execute', 'mad4b/staging-write-grant-reconcile', 'write' ),
                     array( 'verify', 'mad4b/write-authority-status', 'read' ),
                 ),
-                'caution' => 'Available permissions do not authorize a specific mutation. Owner enrollment and exact step-up remain mandatory.',
+                'caution' => 'Deployment binding is a one-time setup if missing; the Host secret stays outside the WordPress database. No step creates or reveals it. The Site Profile bind requires exact owner approval, and available permissions never imply write authority.',
             ),
             'discover_and_automate' => array(
                 'label' => 'Find a remote operation and its executor', 'risk' => 'varies',
