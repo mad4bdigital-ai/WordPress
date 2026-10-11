@@ -51,7 +51,8 @@ final class MAD4B_SCP_Native_Recovery {
                 'description' => 'Host-free exact Staging scratch rehearsal, never crash certification or ownership transfer.',
                 'category' => $spec[2] ? 'mad4b-read' : 'mad4b-admin',
                 'execute_callback' => array( __CLASS__, $spec[1] ),
-                'permission_callback' => $spec[2] ? array( __CLASS__, 'can_read' ) : array( __CLASS__, 'can_write' ),
+                'permission_callback' => $spec[2] ? array( __CLASS__, 'can_read' )
+                    : array( __CLASS__, self::CLEAN === $spec[0] ? 'can_cleanup' : 'can_start' ),
                 'input_schema' => $spec[3],
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array( 'public' => false, 'show_in_rest' => false,
@@ -65,7 +66,13 @@ final class MAD4B_SCP_Native_Recovery {
         return function_exists( 'current_user_can' ) && current_user_can( 'manage_options' )
             && class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_read();
     }
-    public static function can_write( $input = null ) {
+    public static function can_start( $input = null ) {
+        return self::can_write( $input, self::START );
+    }
+    public static function can_cleanup( $input = null ) {
+        return self::can_write( $input, self::CLEAN );
+    }
+    public static function can_write( $input = null, $ability = self::START ) {
         if ( ! self::can_read() || ! current_user_can( 'update_plugins' )
             || ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
@@ -79,9 +86,11 @@ final class MAD4B_SCP_Native_Recovery {
             return new WP_Error( 'mad4b_native_stepup_required', 'Current owner OAuth step-up required.' );
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_native_authorization_unavailable', 'Native governed write authorization missing.' );
-        $ability = is_array( $input ) && isset( $input['job_id'] ) ? self::CLEAN : self::START;
-        return MAD4B_SCP_Authorization::authorize_mutation(
+        if ( ! in_array( $ability, array( self::START, self::CLEAN ), true ) )
+            return self::denied( 'unknown_write_ability' );
+        $authorization = MAD4B_SCP_Authorization::authorize_mutation(
             $ability, 'mad4b-admin', 'core', is_array( $input ) ? $input : array() );
+        return MAD4B_SCP_Authorization::permission_result_from_authorization( $authorization );
     }
     private static function denied( $code ) {
         return new WP_Error( 'mad4b_native_' . $code, 'Exact bound Staging and current governed identity required.' );
@@ -155,7 +164,7 @@ final class MAD4B_SCP_Native_Recovery {
         if ( ! hash_equals( $expected_phrase, (string) ( $input['confirmation'] ?? '' ) )
             || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $input['expected_plan_sha256'] ?? '' ) ) )
             return self::denied( 'confirmation_required' );
-        $auth = self::can_write( $input );
+        $auth = self::can_start( $input );
         if ( is_wp_error( $auth ) || true !== $auth ) return $auth;
         $params = array( 'mode' => $mode, 'reason' => (string) ( $input['reason'] ?? '' ) );
         if ( isset( $input['source_id'] ) ) $params['source_id'] = $input['source_id'];
@@ -163,6 +172,11 @@ final class MAD4B_SCP_Native_Recovery {
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! hash_equals( (string) $plan['plan_sha256'], (string) $input['expected_plan_sha256'] ) )
             return self::denied( 'stale_plan' );
+        $claim = MAD4B_SCP_Authorization::claim_mutation(
+            self::START, 'mad4b-admin', 'core', $input );
+        if ( is_wp_error( $claim ) || ! is_array( $claim )
+            || true !== ( $claim['allowed'] ?? false ) )
+            return is_wp_error( $claim ) ? $claim : self::denied( 'approval_not_claimed' );
         $id = bin2hex( random_bytes( 16 ) );
         $now = time();
         $scratch = array( 'contract' => self::CONTRACT . '.scratch.v1', 'job_id' => $id,
@@ -274,10 +288,15 @@ final class MAD4B_SCP_Native_Recovery {
         if ( ! self::valid_input( $input, array( 'job_id', 'confirmation' ) )
             || ! hash_equals( self::CLEAN_CONFIRM, (string) ( $input['confirmation'] ?? '' ) ) )
             return self::denied( 'cleanup_confirmation_required' );
-        $auth = self::can_write( $input );
+        $auth = self::can_cleanup( $input );
         if ( is_wp_error( $auth ) || true !== $auth ) return $auth;
         $scratch = self::inspect( (string) ( $input['job_id'] ?? '' ) );
         if ( is_wp_error( $scratch ) ) return $scratch;
+        $claim = MAD4B_SCP_Authorization::claim_mutation(
+            self::CLEAN, 'mad4b-admin', 'core', $input );
+        if ( is_wp_error( $claim ) || ! is_array( $claim )
+            || true !== ( $claim['allowed'] ?? false ) )
+            return is_wp_error( $claim ) ? $claim : self::denied( 'approval_not_claimed' );
         if ( ! delete_option( self::OPTION ) || false !== get_option( self::OPTION, false ) )
             return self::denied( 'cleanup_failed' );
         if ( function_exists( 'wp_clear_scheduled_hook' ) )
