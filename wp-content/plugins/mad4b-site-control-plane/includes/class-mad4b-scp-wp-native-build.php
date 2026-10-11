@@ -106,7 +106,8 @@ final class MAD4B_SCP_WP_Native_Build {
         $root = self::private_root();
         $checks = array(
             'exact_staging_opt_in' => self::exact_staging(),
-            'php_ziparchive' => class_exists( 'ZipArchive' ),
+            'php_native_zip_writer' => function_exists( 'pack' ) && function_exists( 'crc32' ),
+            'php_token_parser' => function_exists( 'token_get_all' ) && defined( 'TOKEN_PARSE' ),
             'private_temp_outside_webroot' => false !== $root,
             'safe_https_client' => function_exists( 'wp_safe_remote_get' ),
             'wp_cron' => function_exists( 'wp_schedule_single_event' ),
@@ -161,8 +162,11 @@ final class MAD4B_SCP_WP_Native_Build {
                 MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ||
             ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_native_step_up_required', 'Owner OAuth Step-up required.' );
-        return MAD4B_SCP_Authorization::authorize_mutation(
+        $decision = MAD4B_SCP_Authorization::authorize_mutation(
             self::PREFIX . 'start', 'mad4b-admin', 'core', $input );
+        if ( is_wp_error( $decision ) ) return $decision;
+        return is_array( $decision ) && ! empty( $decision['allowed'] ) ? true :
+            new WP_Error( 'mad4b_native_authorization_denied', 'Exact authorization required.' );
     }
 
     private static function root_for( $sha ) {
@@ -383,7 +387,7 @@ final class MAD4B_SCP_WP_Native_Build {
             'contract' => 'mad4b.build-provenance.v1',
             'control_plane_version' => $m[1], 'source_commit_sha' => $job['head'],
             'build_fingerprint' => $fingerprint, 'package_manifest_digest' => $manifest,
-            'build_workflow' => 'MAD4B WordPress Native Build - Unverified',
+            'build_workflow' => 'MAD4B Canonical Package Builder',
             'build_run_id' => '', 'artifact_identity' => 'mad4b-site-control-plane-' . $m[1] . '-' . $job['head'],
             'mcp_adapter_version' => $adapter, 'mcp_adapter_sha256' => $adapter_sha,
             'package_files' => $rows, 'manifest_file_count' => count( $rows ),
@@ -395,39 +399,12 @@ final class MAD4B_SCP_WP_Native_Build {
             'archive_compression' => 'stored',
             'canonical_archive_identity' => 'mad4b-site-control-plane-' . $m[1] . '-' . $job['head'],
         );
-        // PHP ZipArchive is not assumed byte-identical to the Python canonical
-        // builder. Independent canonical replay and signature remain required.
+        $provenance_json = self::canonical_json( $provenance );
+        if ( is_wp_error( $provenance_json ) ) return $provenance_json;
         $zip_file = $dir . '/candidate.zip';
-        $zip = new ZipArchive();
-        if ( true !== $zip->open( $zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE ) )
-            return new WP_Error( 'mad4b_native_zip_failed', 'Cannot open private package ZIP.' );
-        $assets = array();
-        foreach ( $job['entries'] as $entry ) $assets[] = $entry['path'];
-        $assets[] = 'MAD4B-BUILD-PROVENANCE.json';
-        sort( $assets, SORT_STRING );
-        foreach ( $assets as $name ) {
-            $key = 'mad4b-site-control-plane/' . $name;
-            $ok = $name === 'MAD4B-BUILD-PROVENANCE.json'
-                ? $zip->addFromString( $key,
-                    wp_json_encode( $provenance, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n" )
-                : $zip->addFile( $root . $name, $key );
-            if ( ! $ok || ! $zip->setCompressionName( $key, ZipArchive::CM_STORE ) ) {
-                $zip->close();
-                return new WP_Error( 'mad4b_native_zip_entry_failed', 'ZIP member rejected.' );
-            }
-            if ( method_exists( $zip, 'setMtimeName' ) ) $zip->setMtimeName( $key, 315532800 );
-            if ( method_exists( $zip, 'setExternalAttributesName' ) )
-                $zip->setExternalAttributesName( $key, ZipArchive::OPSYS_UNIX, (0100644 << 16) );
-        }
-        if ( ! $zip->close() || ! is_file( $zip_file ) ||
-            filesize( $zip_file ) > self::MAX_ZIP_BYTES )
-            return new WP_Error( 'mad4b_native_zip_budget', 'ZIP incomplete or exceeds upload budget.' );
-        $verify = new ZipArchive();
-        if ( true !== $verify->open( $zip_file, ZipArchive::RDONLY ) )
-            return new WP_Error( 'mad4b_native_zip_verify', 'ZIP cannot be reopened.' );
-        $valid = $verify->numFiles === count( $assets );
-        $verify->close();
-        if ( ! $valid ) return new WP_Error( 'mad4b_native_zip_verify', 'Archive entry count mismatch.' );
+        $out = self::canonical_archive( $root, $job['entries'],
+            $provenance_json, $zip_file );
+        if ( is_wp_error( $out ) ) return $out;
         $job['state'] = 'BUILT_UNVERIFIED';
         $job['build_state'] = 'BUILT_UNVERIFIED';
         $job['archive_sha256'] = hash_file( 'sha256', $zip_file );
@@ -437,6 +414,90 @@ final class MAD4B_SCP_WP_Native_Build {
         $job['version'] = $m[1];
         $job['php_files_token_parsed'] = $php_parsed;
         $job['finished_at'] = time();
+        return true;
+    }
+
+    /** Python canonical builder parity: sorted JSON keys and two-space indentation. */
+    private static function canonical_json( $data ) {
+        $walk = static function ( $value ) use ( &$walk ) {
+            if ( ! is_array( $value ) ) return $value;
+            $keys = array_keys( $value );
+            if ( $keys !== range( 0, count( $keys ) - 1 ) ) ksort( $value, SORT_STRING );
+            foreach ( $value as $key => $item ) $value[ $key ] = $walk( $item );
+            return $value;
+        };
+        $encoded = json_encode( $walk( $data ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        if ( ! is_string( $encoded ) )
+            return new WP_Error( 'mad4b_native_json_encode', 'Canonical JSON encoding failed.' );
+        return preg_replace_callback( '/^( +)/m', static function ( $m ) {
+            return str_repeat( ' ', (int) ( strlen( $m[1] ) / 2 ) );
+        }, $encoded ) . "\n";
+    }
+
+    /**
+     * Minimal deterministic ZIP_STORED writer reproducing Python's ZipInfo:
+     * 1980-01-01, UNIX 0644 regular files, no extras or comments.
+     * This never executes source, uses shell, or trusts a built package.
+     */
+    private static function canonical_archive( $root, array $entries,
+        $provenance_json, $target ) {
+        if ( ! is_string( $provenance_json ) || strlen( $provenance_json ) > 2097152 )
+            return new WP_Error( 'mad4b_native_provenance_oversize', 'Bounded provenance required.' );
+        $paths = array();
+        foreach ( $entries as $e ) $paths[] = $e['path'];
+        $paths[] = 'MAD4B-BUILD-PROVENANCE.json';
+        sort( $paths, SORT_STRING );
+        $temp = $target . '.tmp';
+        if ( is_link( $target ) || is_link( $temp ) )
+            return new WP_Error( 'mad4b_native_zip_symlink', 'Unsafe ZIP output path.' );
+        $fp = @fopen( $temp, 'wb' );
+        if ( ! $fp ) return new WP_Error( 'mad4b_native_zip_io', 'Private ZIP cannot be written.' );
+        $central = '';
+        $offset = 0;
+        $count = 0;
+        $error = '';
+        foreach ( $paths as $path ) {
+            $name = 'mad4b-site-control-plane/' . $path;
+            $data = $path === 'MAD4B-BUILD-PROVENANCE.json'
+                ? $provenance_json : @file_get_contents( $root . $path );
+            if ( ! is_string( $data ) || strlen( $name ) > 65535 ) {
+                $error = 'bad_archive_source'; break;
+            }
+            $size = strlen( $data );
+            $crc = (int) sprintf( '%u', crc32( $data ) );
+            $local = pack( 'VvvvvvVVVvv', 0x04034b50, 20, 0, 0, 0, 33,
+                $crc, $size, $size, strlen( $name ), 0 );
+            $header = $local . $name;
+            $bytes = strlen( $header ) + $size;
+            if ( $offset + $bytes > self::MAX_ZIP_BYTES ) {
+                $error = 'archive_budget_exceeded'; break;
+            }
+            if ( fwrite( $fp, $header ) !== strlen( $header ) ||
+                fwrite( $fp, $data ) !== $size ) {
+                $error = 'archive_write_failed'; break;
+            }
+            $central .= pack( 'VvvvvvvVVVvvvvvVV', 0x02014b50,
+                788, 20, 0, 0, 0, 33, $crc, $size, $size,
+                strlen( $name ), 0, 0, 0, 0, 0x81a40000, $offset ) . $name;
+            $offset += $bytes;
+            $count++;
+        }
+        if ( ! $error ) {
+            $end = pack( 'VvvvvVVv', 0x06054b50, 0, 0, $count, $count,
+                strlen( $central ), $offset, 0 );
+            if ( $offset + strlen( $central ) + strlen( $end ) > self::MAX_ZIP_BYTES ||
+                fwrite( $fp, $central . $end ) !== strlen( $central ) + strlen( $end ) )
+                $error = 'archive_directory_failed';
+        }
+        fclose( $fp );
+        if ( $error ) {
+            @unlink( $temp );
+            return new WP_Error( 'mad4b_native_zip_failed', $error );
+        }
+        if ( ! @rename( $temp, $target ) ) {
+            @unlink( $temp );
+            return new WP_Error( 'mad4b_native_zip_rename', 'Cannot publish private archive.' );
+        }
         return true;
     }
 
@@ -498,6 +559,7 @@ final class MAD4B_SCP_WP_Native_Build {
             'blocker' => $job['blocker'] ?? '',
             'php_files_token_parsed' => $job['php_files_token_parsed'] ?? 0,
             'php_token_parse_screening_only' => true,
+            'canonical_archive_format' => 'python_zipinfo_stored_unix_0644_v1',
             'canonical_archive_parity_verified' => false,
             'native_php_cli_tests_passed' => false,
             'independent_attestation_verified' => false,
