@@ -71,6 +71,7 @@ $root = dirname( __DIR__ );
 $issuer = file_get_contents( $root . '/includes/class-mad4b-scp-local-oauth-server.php' );
 $bridge = file_get_contents( $root . '/includes/class-mad4b-scp-oauth-resource-bridge.php' );
 $approval = file_get_contents( $root . '/includes/class-mad4b-scp-ai-approval.php' );
+$audit = file_get_contents( $root . '/includes/class-mad4b-scp-approval-tickets.php' );
 oauth_ai_assert( false !== strpos( $issuer, "mad4b:approval:auto:all" )
     && false !== strpos( $issuer, 'AI automatic approval delegation:' )
     && false !== strpos( $issuer, 'CHATGPT_CIMD_CLIENT_ID' )
@@ -80,4 +81,8 @@ oauth_ai_assert( false !== strpos( $approval, "'authorization_mode' => \$oauth_a
     && false !== strpos( $approval, "'context/remote-owner-review-apply'" )
     && false !== strpos( $approval, "'breakglass' ===" ),
     'Scope may delegate ticket decisions but not fake original human ownership or raw SQL Breakglass' );
+oauth_ai_assert( false !== strpos( $audit, "'authorization_mode' => isset( \\$guard['authorization_mode'] )" )
+    && false !== strpos( $audit, "'owner_oauth_delegation_verified' => ! empty( \\$guard['owner_oauth_delegation_verified'] )" )
+    && false !== strpos( $audit, "'approver_type' => 'ai_agent'" ),
+    'All AI decisions must have a distinct delegated-identity audit record, never a human approval' );
 echo "PASS: new owner OAuth scope delegates Staging AI approvals; old tokens and forged identities are denied\\n";
