@@ -166,6 +166,36 @@ must(alternative, "'wordpress_native' => array(", "native alternative domain mis
 must(parity, "'brand_core_wordpress_native_probe' => array(", "native scratch operation not indexed")
 must(parity, "'brand_core_wordpress_native_shadow' => array(", "native shadow operation not indexed")
 must(native_test, "original options unchanged", "scratch refusal fixture missing")
+operator = (root / "includes/class-mad4b-scp-operator-journeys.php").read_text(encoding="utf-8")
+operator_test = (root / "tests/operator-journeys-runtime.php").read_text(encoding="utf-8")
+admin_ux = (root / "includes/class-mad4b-scp-operational-remediation.php").read_text(encoding="utf-8")
+for marker in (
+    "const ABILITY = 'mad4b/operator-journeys'",
+    "'setup_and_permissions' => array(",
+    "'forms_and_integration' => array(",
+    "'brand_core' => array(",
+    "'content_and_drafts' => array(",
+    "'workflows' => array(",
+    "'plugin_upgrades' => array(",
+    "'wordpress_native_recovery' => array(",
+    "'diagnose_and_recover' => array(",
+    "'REGISTERED_NOT_OPERATIONALLY_VERIFIED'",
+    "'execution_authorized' => false",
+    "'live_acceptance_verified' => false",
+    "'one_click_execution_supported' => false",
+):
+    must(operator, marker, "missing operator journey or false completion state")
+must(operator_test, "nine distinct task journeys", "standalone whole-plugin UX fixture missing")
+must(admin_ux, "Choose your goal", "goal-first admin navigation not available")
+must(admin_ux, "Resume job ID", "interrupted native task cannot be resumed from UI")
+must(admin_ux, "is_wp_error( $view )", "diagnostic failure must render usable admin message")
+must(remediation, "MAD4B_SCP_Operator_Journeys::boot();", "task index not registered")
+must(servers, "'mad4b/operator-journeys'", "task catalog absent from MCP read surface")
+must(servers, "'mad4b/native-recovery-status'", "native task state not accessible through MCP")
+must(native, "const STATUS = 'mad4b/native-recovery-status'", "native status tool missing")
+must(native, "SCRATCH_EXPIRED_CLEANUP_AVAILABLE", "expired job recovery missing")
+must(native, "SCRATCH_REQUIRES_INDEPENDENT_READBACK", "active job recovery missing")
+must(native, "'next_ability' => self::STATUS", "new status link missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
