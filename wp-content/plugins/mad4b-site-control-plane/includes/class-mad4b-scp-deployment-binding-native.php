@@ -104,10 +104,6 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             || $parent === $document
             || 0 === strpos( $parent . DIRECTORY_SEPARATOR, $document . DIRECTORY_SEPARATOR ) )
             return array();
-        // Parent must also be strictly outside the document tree, even
-        // if a custom ABSPATH points to a subdirectory of public_html.
-        if ( 0 === strpos( $parent . DIRECTORY_SEPARATOR, $document . DIRECTORY_SEPARATOR ) )
-            return array();
         $subdir = '.mad4b-host-' . substr( hash( 'sha256', $site_uuid . '|' . $root ), 0, 24 );
         return array( 'parent' => $parent, 'dir' => $parent . DIRECTORY_SEPARATOR . $subdir,
             'file' => $parent . DIRECTORY_SEPARATOR . $subdir . DIRECTORY_SEPARATOR . self::FILENAME,
@@ -162,7 +158,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $loc = $snap['location'];
         $key_exists = file_exists( $loc['file'] ) || is_link( $loc['file'] );
         $private_exists = file_exists( $loc['dir'] ) || is_link( $loc['dir'] );
-        $state = '' !== $existing ? 'ALREADY_HAS_PROFILE_BINDING'
+        $state = '' !== $existing
+            ? ( '' !== $host && hash_equals( $existing, $host )
+                ? 'ALREADY_HAS_PROFILE_BINDING' : 'STORED_HOST_BINDING_MISMATCH' )
             : ( '' !== $host ? 'EXTERNAL_HOST_SECRET_ALREADY_CONFIGURED'
                 : ( $key_exists ? 'LOCAL_KEY_EXISTS_NOT_REUSABLE'
                     : ( $private_exists ? 'PRIVATE_DIRECTORY_ALREADY_EXISTS' :
@@ -220,15 +218,25 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             ! @mkdir( $loc['dir'], 0700 ) ) return self::error( 'private_directory_creation_failed' );
         @chmod( $loc['dir'], 0700 );
         $mode = @fileperms( $loc['dir'] );
-        if ( is_link( $loc['dir'] ) || false === $mode || ( $mode & 0077 ) !== 0 )
+        if ( is_link( $loc['dir'] ) || false === $mode || ( $mode & 0077 ) !== 0 ) {
+            @rmdir( $loc['dir'] );
             return self::error( 'private_directory_permissions_failed' );
-        $secret = bin2hex( random_bytes( 48 ) );
+        }
+        try {
+            $secret = bin2hex( random_bytes( 48 ) );
+        } catch ( Throwable $error ) {
+            @rmdir( $loc['dir'] );
+            return self::error( 'random_source_unavailable' );
+        }
         $stream = @fopen( $loc['file'], 'x' );
-        if ( false === $stream ) return self::error( 'key_creation_failed' );
+        if ( false === $stream ) {
+            @rmdir( $loc['dir'] );
+            return self::error( 'key_creation_failed' );
+        }
         @chmod( $loc['file'], 0600 );
         $permissions = @fileperms( $loc['file'] );
         if ( false === $permissions || ( $permissions & 0077 ) !== 0 ) {
-            fclose( $stream ); @unlink( $loc['file'] );
+            fclose( $stream ); @unlink( $loc['file'] ); @rmdir( $loc['dir'] );
             return self::error( 'key_permission_failure' );
         }
         $n = @fwrite( $stream, $secret );
@@ -236,7 +244,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         fclose( $stream );
         if ( strlen( $secret ) !== $n || ! $ok
             || ! hash_equals( $secret, self::read_host_secret( $loc['site_uuid'] ) ) ) {
-            @unlink( $loc['file'] );
+            @unlink( $loc['file'] ); @rmdir( $loc['dir'] );
             return self::error( 'key_persistence_failure' );
         }
         return $secret;
