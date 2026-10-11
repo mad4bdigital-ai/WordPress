@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 821,
+  "changed_file_count": 826,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1637,8 +1637,20 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-owner-ai-auto-approval-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-ai-approval-dashboard-read-model",
+      "semantic_unit": "Feature007 global wp-admin dashboards AI approval status separation: persistent Brand review, optional OAuth AI ticket delegation, attributable approvals and one-time exact write authority",
+      "revert_boundary": "Revert shared wp-admin AI mode projection and fixture plus ChatGPT optional scope projection without changing existing standing Agent/Brand approval policy",
+      "certification": "source_only_PHP74_PHP83_dashboard_browser_readback_pending",
+      "path_globs": [
+        "docs/runbooks/feature007-ai-approval-admin-dashboard-audit.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-ai-approval-dashboard-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "b250f0b6cea62bdcaaae9a8c4fdd370651db4be4eec8d0a8e039c7ad245b7977",
+  "changed_paths_sha256": "0738a3a521947a24e8a670c653bbed5b5a965b1d640bac4dd0410d7b7db37e34",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
