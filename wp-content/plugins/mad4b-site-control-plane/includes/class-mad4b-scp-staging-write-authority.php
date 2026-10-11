@@ -275,6 +275,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$ai_configured = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::ai_review_catalog_eligible();
 		$ai_approval_ability = class_exists( 'MAD4B_SCP_AI_Approval' ) ? MAD4B_SCP_AI_Approval::ABILITY : 'mad4b/approval-ai-decide';
 		$ai_approval_configured = class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::catalog_eligible();
+		$ai_approval_scoped_request = ! $production && class_exists( 'MAD4B_SCP_AI_Approval' )
+			&& MAD4B_SCP_AI_Approval::oauth_auto_all_delegation_active();
 		$policy = array(
 			'approval_policy_contract' => 'mad4b.remote-write-approval-policy.v2',
 			'approval_policy_scope' => $resolved ? 'effective_runtime' : 'capability_definition',
@@ -291,6 +293,9 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'ai_approval_standing_delegation_defined' => true,
 			'ai_approval_standing_delegation_contract' => class_exists( 'MAD4B_SCP_AI_Approval' ) ? MAD4B_SCP_AI_Approval::DELEGATION_CONTRACT : 'mad4b.ai-approval-standing-delegation.v1',
 			'ai_approval_standing_delegation_configured' => $ai_approval_configured,
+			'owner_oauth_ai_auto_approval_effective_for_current_request' => $ai_approval_scoped_request,
+			'owner_oauth_ai_auto_scope' => $production ? '' : 'mad4b:approval:auto:all',
+			'owner_oauth_remote_token_grant_readback' => $ai_approval_scoped_request ? 'verified_current_request' : 'not_verified_on_this_request',
 			'ai_approval_operation_classification_contract' => class_exists( 'MAD4B_SCP_Impact_Policy' ) ? MAD4B_SCP_Impact_Policy::CLASSIFICATION_CONTRACT : 'mad4b.operation-classification.v1',
 			// Keep the baseline-owned package contract literal intact, then extend it
 			// with the separately governed AI approval standing delegation below.
@@ -310,7 +315,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$exceptions = array();
 			if ( ! $production && $active ) $exceptions[] = self::CANDIDATE_BOOTSTRAP_ABILITY;
 			if ( ! $production && $ai_configured ) $exceptions[] = $ai_ability;
-			if ( ! $production && $ai_approval_configured ) $exceptions[] = $ai_approval_ability;
+			if ( ! $production && ( $ai_approval_configured || $ai_approval_scoped_request ) ) $exceptions[] = $ai_approval_ability;
 			$policy['candidate_bootstrap_exception_active'] = ! $production && $active;
 			$policy['all_remote_writes_require_exact_approval'] = empty( $exceptions );
 			$policy['remote_write_approval_policy'] = empty( $exceptions ) ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
