@@ -148,9 +148,12 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
         if ( ! class_exists( 'MAD4B_SCP_Self_Update' ) ||
             ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_self_approval_governance_missing', 'Existing updater and authorization required.' );
-        // Retain the ORIGINAL upload grant and one-time approval.
-        return MAD4B_SCP_Self_Update::can_upload_apply(
-            array( 'channel' => 'wordpress_native_candidate_upload' ) );
+        // Retain the ORIGINAL upload grant and one-time approval. Never
+        // treat an authorization decision envelope as boolean permission.
+        $authority_input = is_array( $input ) ? $input : array();
+        $authority_input['channel'] = 'wordpress_native_candidate_upload';
+        $decision = MAD4B_SCP_Self_Update::can_upload_apply( $authority_input );
+        return MAD4B_SCP_Authorization::permission_result_from_authorization( $decision );
     }
 
     public static function apply( $input = array() ) {
