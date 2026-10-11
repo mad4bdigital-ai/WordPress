@@ -224,4 +224,19 @@ brand_remote_assert( $possible['stages']['brand_approval']['evidence_observed'] 
     && $possible['stages']['draft_acceptance']['evidence_observed'] === false
     && $possible['full_operational_acceptance'] === false,
     'brand approval and signed manifest preflight cannot silently certify installation/draft' );
+// Native recovery functional reducer is a separate WordPress-only
+// rehearsal. No Host Runner and no original Context write is needed.
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-native-recovery.php';
+brand_remote_assert( MAD4B_SCP_Native_Recovery::cross_request_verified(
+    str_repeat( 'a', 32 ), str_repeat( 'b', 32 ), 100, 99, true ),
+    'native cross-request scratch proof can be observed without Host' );
+brand_remote_assert( ! MAD4B_SCP_Native_Recovery::cross_request_verified(
+    str_repeat( 'a', 32 ), str_repeat( 'a', 32 ), 100, 99, true ),
+    'same request is never valid native recovery' );
+brand_remote_assert( ! MAD4B_SCP_Native_Recovery::cross_request_verified(
+    str_repeat( 'a', 32 ), str_repeat( 'b', 32 ), 100, 101, true ),
+    'expired native evidence denied' );
+brand_remote_assert( ! MAD4B_SCP_Native_Recovery::cross_request_verified(
+    str_repeat( 'a', 32 ), str_repeat( 'b', 32 ), 100, 99, false ),
+    'source drift invalidates native shadow' );
 echo "mad4b.site-control-plane.brand-core-remote-recovery.runtime.v1: PASS\n";
