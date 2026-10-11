@@ -46,6 +46,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/legacy-reconciliation-census',
 				'context/legacy-owner-transfer-discover',
 				'context/legacy-owner-transfer-plan',
+				'context/legacy-owner-transfer-evidence',
 				'context/legacy-owner-transfer-readback',
 				'context/brand-reconstruction-plan',
 				'context/recovery-attempt-status',
@@ -169,6 +170,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'context/legacy-owner-transfer-plan',
 			'Plan One Reviewed Unbound Legacy Context Source',
 			'legacy_owner_transfer_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-evidence',
+			'Verify Original Folder and Every Legacy File Before Owner Approval',
+			'legacy_owner_transfer_evidence',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
 		);
@@ -363,8 +371,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'expected_brand_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
 				'reviewed_external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
 				'owner_evidence_reference'=>array('type'=>'string','minLength'=>12,'maxLength'=>500),
+				'expected_provider_proof_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
 				'confirmation'=>array('type'=>'string','enum'=>array('APPROVE EXACT UNBOUND BRAND TRANSFER')),
-			), array('source_id','expected_plan_sha256','expected_brand_id','reviewed_external_root_id','owner_evidence_reference','confirmation')),
+			), array('source_id','expected_plan_sha256','expected_brand_id','reviewed_external_root_id','owner_evidence_reference','expected_provider_proof_sha256','confirmation')),
 			'write', false, true, false
 		);
 		$this->add_ability(
@@ -1008,6 +1017,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 	public function legacy_owner_transfer_plan( $input ) {
 		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan($input);
+	}
+	public function legacy_owner_transfer_evidence( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence( $input );
 	}
 	public function legacy_owner_transfer_readback( $input ) {
 		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback($input);
