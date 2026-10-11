@@ -254,7 +254,11 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             && is_int( $census['source_quarantine_count'] )
             && is_int( $census['asset_quarantine_count'] )
             && $census['source_quarantine_count'] >= 0
-            && $census['asset_quarantine_count'] >= 0;
+            && $census['asset_quarantine_count'] >= 0
+            && false !== ( $census['operational_scope_verified'] ?? null )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $census['scope_fingerprint'] ?? '' ) )
+            && 'UNVERIFIED_DEPLOYMENT_BINDING' !== ( $census['state'] ?? '' );
         $has_census = $has_census && ! $evidence_drift;
         $has_proof = ! $evidence_drift
             && true === ( $proof['folder_membership_verified'] ?? false )
