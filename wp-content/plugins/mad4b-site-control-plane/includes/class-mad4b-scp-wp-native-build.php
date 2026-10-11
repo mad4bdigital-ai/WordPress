@@ -58,6 +58,8 @@ final class MAD4B_SCP_WP_Native_Build {
             array( 'plan', 'Plan Staging native source package', 'plan', true,
                 self::schema( array( 'expected_head' => $sha ), array( 'expected_head' ) ) ),
             array( 'status', 'Read native build status', 'status', true, self::schema() ),
+            array( 'simulate', 'Simulate local package checks without attestation', 'simulate', true,
+                self::schema( array( 'expected_head' => $sha ), array( 'expected_head' ) ) ),
             array( 'export-chunk', 'Export owner-only bounded package chunk', 'export_chunk', true,
                 self::schema( array( 'expected_head' => $sha,
                     'offset' => array( 'type' => 'integer', 'minimum' => 0 ) ),
@@ -740,6 +742,98 @@ final class MAD4B_SCP_WP_Native_Build {
             'independent_attestation_verified' => false,
             'release_certified' => false, 'production_authorized' => false,
             'read_only' => true );
+    }
+
+
+    /**
+     * Owner-independent, read-only, source-bound LOCAL evidence simulation.
+     * Never executes fetched PHP, signs a receipt, or authorizes a release.
+     * All native version-matrix and independent-trust gates remain BLOCKED.
+     */
+    public static function simulate( $input = array() ) {
+        if ( ! is_array( $input ) || count( $input ) !== 1 ||
+            ! isset( $input['expected_head'] ) ||
+            ! is_string( $input['expected_head'] ) ||
+            ! preg_match( '/^[a-f0-9]{40}$/D', $input['expected_head'] ) )
+            return new WP_Error( 'mad4b_native_simulator_invalid_input',
+                'One exact immutable commit is required.' );
+        if ( ! self::exact_staging() )
+            return new WP_Error( 'mad4b_native_simulator_staging_only',
+                'Native simulation is restricted to enrolled Staging.' );
+        $job = self::locked_job_read( true );
+        if ( is_wp_error( $job ) ) return $job;
+        $sha = $input['expected_head'];
+        $site = self::site();
+        $identity_ok = is_array( $job ) && ( $job['head'] ?? '' ) === $sha
+            && ( $job['site_uuid'] ?? '' ) === ( $site['site_uuid'] ?? '' )
+            && ( $job['profile_digest'] ?? '' ) === ( $site['profile_digest'] ?? '' )
+            && ( $job['origin'] ?? '' ) === ( $site['canonical_origin'] ?? '' )
+            && ( $job['state'] ?? '' ) === 'BUILT_UNVERIFIED';
+        $checks = array(
+            'exact_job_site_binding' => $identity_ok ? 'LOCAL_PASS' : 'BLOCKED',
+            'archive_sha256_bytes' => 'BLOCKED',
+            'canonical_receipt_sha256_binding' => 'BLOCKED',
+            'php_token_screening_recorded' => 'BLOCKED',
+        );
+        if ( $identity_ok ) {
+            $dir = self::root_for( $sha );
+            $zip = $dir ? $dir . '/candidate.zip' : '';
+            $receipt_file = $dir ? $dir . '/CANONICAL-PACKAGE-RECEIPT.json' : '';
+            $size = (int) ( $job['archive_bytes'] ?? 0 );
+            $digest = (string) ( $job['archive_sha256'] ?? '' );
+            if ( $zip && $size > 0 && $size <= self::MAX_ZIP_BYTES
+                && preg_match( '/^[a-f0-9]{64}$/D', $digest )
+                && is_file( $zip ) && ! is_link( $zip )
+                && filesize( $zip ) === $size ) {
+                $actual = hash_file( 'sha256', $zip );
+                if ( is_string( $actual ) && hash_equals( $digest, $actual ) )
+                    $checks['archive_sha256_bytes'] = 'LOCAL_PASS';
+            }
+            $receipt_hash = (string) ( $job['canonical_receipt_sha256'] ?? '' );
+            if ( $receipt_file && is_file( $receipt_file ) && ! is_link( $receipt_file )
+                && filesize( $receipt_file ) > 0 && filesize( $receipt_file ) <= 65536
+                && preg_match( '/^[a-f0-9]{64}$/D', $receipt_hash ) ) {
+                $receipt_bytes = file_get_contents( $receipt_file );
+                if ( is_string( $receipt_bytes )
+                    && hash_equals( $receipt_hash, hash( 'sha256', $receipt_bytes ) ) ) {
+                    $receipt = json_decode( $receipt_bytes, true );
+                    if ( is_array( $receipt )
+                        && ( $receipt['source_commit_sha'] ?? '' ) === $sha
+                        && ( $receipt['archive_sha256'] ?? '' ) === $digest
+                        && ( $receipt['archive_bytes'] ?? -1 ) === $size
+                        && ( $receipt['build_fingerprint'] ?? '' ) === ( $job['build_fingerprint'] ?? '' )
+                        && ( $receipt['package_manifest_digest'] ?? '' ) === ( $job['package_manifest_digest'] ?? '' )
+                        && $checks['archive_sha256_bytes'] === 'LOCAL_PASS' )
+                        $checks['canonical_receipt_sha256_binding'] = 'LOCAL_PASS';
+                }
+            }
+            if ( (int) ( $job['php_files_token_parsed'] ?? 0 ) > 0 )
+                $checks['php_token_screening_recorded'] = 'LOCAL_PASS';
+        }
+        $all_local = ! in_array( 'BLOCKED', $checks, true );
+        return array(
+            'contract' => self::CONTRACT . '.simulation.v1',
+            'state' => $all_local ? 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' : 'LOCAL_SELF_CHECKS_BLOCKED',
+            'head' => $sha,
+            'local_checks' => $checks,
+            'external_gates' => array(
+                'g9_delivery_contract' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'php74_tree_syntax' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'php83_tree_syntax' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'canonical_package_receipt' => 'NOT_INDEPENDENTLY_VERIFIED',
+                'isolated_zip_runtime_integrity' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'exact_source_verification' => 'NOT_INDEPENDENTLY_VERIFIED',
+            ),
+            'independent_signature_present' => false,
+            'independent_attestation_verified' => false,
+            'source_php_executed' => false,
+            'native_php_cli_tests_passed' => false,
+            'release_certified' => false,
+            'authorizing' => false,
+            'mutation_performed' => false,
+            'read_only' => true,
+            'production_authorized' => false,
+        );
     }
 
     public static function export_chunk( $input = array() ) {
