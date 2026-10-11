@@ -1,0 +1,81 @@
+<?php
+/* Real gateway metadata filter: read and write candidates remain separate. */
+define( 'ABSPATH', __DIR__ );
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message = '', $data = array() ) { $this->code = $code; }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $x ) { return $x instanceof WP_Error; }
+function wp_json_encode( $x, $flags = 0 ) { return json_encode( $x, $flags ); }
+function add_action( $hook, $callback, $priority = 10 ) {}
+function sanitize_key( $value ) {
+    return strtolower( preg_replace( '/[^a-z0-9_-]/i', '', (string) $value ) );
+}
+class MAD4B_SCP_Policy {
+    public static function can_read() { return true; }
+}
+class MAD4B_SCP_ChatGPT_Tool_Projection {
+    public static function all_site_ability_names() { return array_keys( $GLOBALS['abilities'] ); }
+    public static function can_apply() { return new WP_Error( 'step_up_required' ); }
+}
+class FakeAbility {
+    private $name;
+    private $readonly;
+    public function __construct( $name, $readonly ) {
+        $this->name = $name;
+        $this->readonly = $readonly;
+    }
+    public function get_meta() {
+        $annotations = null === $this->readonly
+            ? array() : array( 'readonly' => $this->readonly );
+        return array( 'annotations' => $annotations, 'mcp' => array(
+            'surface' => 'staging', 'search_aliases' => array( 'approval' ) ) );
+    }
+    public function get_label() { return 'Approval ' . $this->name; }
+    public function get_description() { return 'Discover approval operation'; }
+    public function get_category() { return 'mad4b-read'; }
+}
+function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][ $name ] ); }
+function wp_get_ability( $name ) { return $GLOBALS['abilities'][ $name ]; }
+function check_route( $ok, $why ) {
+    if ( ! $ok ) { fwrite( STDERR, "FAIL: $why\n" ); exit( 1 ); }
+}
+$GLOBALS['abilities'] = array();
+for ( $i = 0; $i < 30; $i++ )
+    $GLOBALS['abilities']['example/approval-read-' . $i] =
+        new FakeAbility( 'example/approval-read-' . $i, true );
+$GLOBALS['abilities']['example/approval-plan'] =
+    new FakeAbility( 'example/approval-plan', false );
+$GLOBALS['abilities']['example/approval-unknown'] =
+    new FakeAbility( 'example/approval-unknown', null );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-unified-capability-gateway.php';
+$gateway = 'MAD4B_SCP_Unified_Capability_Gateway';
+$only_mutating = $gateway::search( array(
+    'task' => 'approval', 'limit' => 5, 'declared_writeonly_only' => true ) );
+check_route( $only_mutating['count'] === 1
+    && $only_mutating['items'][0]['ability_name'] === 'example/approval-plan'
+    && $only_mutating['declared_writeonly_filter_applied']
+    && $only_mutating['search_mode'] === 'bounded_declared_mutation_metadata_relevance',
+    'mutation-only search must find approval writer despite 30 high-scored readers' );
+$only_reads = $gateway::search( array(
+    'task' => 'approval', 'limit' => 5, 'declared_readonly_only' => true ) );
+check_route( $only_reads['count'] === 5
+    && !$only_reads['declared_writeonly_filter_applied']
+    && !in_array( 'example/approval-plan',
+        array_column( $only_reads['items'], 'ability_name' ), true ),
+    'read-only search never leaks a declared mutation' );
+$bad = $gateway::search( array(
+    'task' => 'approval', 'declared_writeonly_only' => true,
+    'declared_readonly_only' => true ) );
+check_route( is_wp_error( $bad ), 'contradictory metadata filters fail closed' );
+$malformed = $gateway::dispatch( array(
+    'action' => 'search', 'task' => 'approval',
+    'declared_writeonly_only' => 'yes' ) );
+check_route( is_wp_error( $malformed )
+    && $malformed->get_error_code() === 'mad4b_capability_gateway_write_filter_invalid',
+    'nonboolean client write filter must be refused' );
+check_route( $only_mutating['authority_effect'] === 'none'
+    && $only_mutating['preparation_required_for_authority_and_schema'],
+    'metadata discovery cannot grant write access or execution' );
+echo "mad4b.site-control-plane.adaptive-capability-filter.runtime.v1: PASS\n";
