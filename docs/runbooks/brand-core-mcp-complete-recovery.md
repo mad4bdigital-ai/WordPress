@@ -120,6 +120,76 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Simplest alternative: one approved WordPress-native Host-local binding
+
+Use the newly added `MAD4B_SCP_Deployment_Binding_Native` when the
+Staging host's PHP user can create a private directory **outside the real
+web document root**. This path requires **NO SSH, NO new connector,
+NO wp-config.php edit, and NO user-visible secret**.
+
+WordPress-native owner workflow:
+1. `mad4b/deployment-binding-native-status {}`: read the current
+   `READY_FOR_OWNER_APPROVAL` or exact refusal reason. It checks
+   the persisted Staging Site Profile, real `ABSPATH`, server
+   `DOCUMENT_ROOT`, and candidate host filesystem parent.
+2. `mad4b/deployment-binding-native-plan {}`: bind a source plan to
+   current Site UUID, origin, environment, record revision and profile
+   digest, and the SHA of an internally derived host file path. **No
+   arbitrary location or secret is accepted in MCP arguments.**
+3. Approve `mad4b/deployment-binding-native-apply` with the
+   original one-use MAD4B owner ticket plus the exact plan fields and
+   `confirmation=BIND...` contract phrase
+   `CREATE HOST-LOCAL STAGING BINDING`. This is **one governed write
+   transaction**, not a request for the owner to copy a password.
+4. On the Staging PHP host itself, the action creates an exclusive
+   `0700` private directory in the parent of WordPress document root
+   and a new `0600` 48-byte CSPRNG binding key file. It never
+   writes the key in the DB, logs, Media Library, GitHub or MCP response.
+   `Site_Profile::deployment_binding_secret()` reads this file
+   on subsequent requests without a configuration edit.
+5. Reuses the existing audited `Site_Profile::commit_record_with_audit`
+   CAS. The update changes only binding digest, revision and timestamp.
+   Same Site UUID, canonical origin, OAuth users, App ID, and all feature
+   flags are retained. It verifies the result and requests a separate
+   new MCP read of site profile and `mad4b/deployment-mode-status`.
+6. A DB commit failure compensates a newly created, unmodified private
+   key file. Replays, key rotation, Production, missing owner ticket,
+   unsafe/missing web document root, nonwritable parent, existing
+   private file, bad directory/file permissions and symlinks are denied.
+
+**Security distinctions and limitations:**
+
+- This is an **on-host key isolated from a DB-only clone**, not a
+  separately enrolled host-owned root trust credential or real
+  MariaDB crash certificate. A full clone of **both WordPress files
+  and its database** may carry this key if backup configuration
+  wrongly includes the adjacent private directory. Keep the private
+  directory excluded from transferable site backups.
+- Auto provisioning is allowed only when the parent of the actual
+  WordPress root is outside `DOCUMENT_ROOT` and writable by PHP.
+  The plugin cannot prove alternate vhost aliases or host ownership;
+  if the host cannot demonstrate the boundary, the native route
+  fails closed and the existing owner-approved protected Host config
+  remains the alternative.
+- On many shared hosts parent directories are intentionally not
+  writable, and on WP-CLI requests `DOCUMENT_ROOT` may be absent:
+  do not invent values or force the creation into `wp-content`.
+  The native path is optional and site-specific.
+- The operation changes only a **binding**. It does not grant new
+  write permissions, approve Brand Core or transfer the original
+  Google Drive assets. After successful Staging binding, independently
+  rerun the trusted Context Census and acceptance evidence.
+- Operators may use the existing `mad4b/deployment-binding-setup-*`
+  flow for an independently provisioned host secret. A key already
+  present or bound is never silently rotated by this native option.
+
+Source tests:
+`tests/deployment-binding-native-runtime.php` runs alongside
+`tests/deployment-binding-setup-runtime.php` in Feature 007's
+PHP 7.4/8.3 CI, and the Brand Core static contract checks
+approval/host isolation. **CI queued is not PASS, and source on GitHub
+is not installed Staging acceptance.**
+
 ## Setup Deployment Binding — host-secret-backed, no site identity replacement
 
 **Primary incident:** All Royal Egypt `https://staging.allroyalegypt.com`
