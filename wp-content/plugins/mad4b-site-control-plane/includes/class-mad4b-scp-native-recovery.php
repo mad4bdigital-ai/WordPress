@@ -7,6 +7,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Native_Recovery {
     const CONTRACT = 'mad4b.wordpress-native-recovery.v1';
+    const STATUS = 'mad4b/native-recovery-status';
     const PLAN = 'mad4b/native-recovery-plan';
     const START = 'mad4b/native-recovery-start';
     const READBACK = 'mad4b/native-recovery-readback';
@@ -34,6 +35,7 @@ final class MAD4B_SCP_Native_Recovery {
             'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ) );
         $jobs = array( 'job_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{32}$' ) );
         $specs = array(
+            array( self::STATUS, 'status', true, self::schema( array() ) ),
             array( self::PLAN, 'plan', true, self::schema( $plan, array( 'mode', 'reason' ) ) ),
             array( self::START, 'start', false, self::schema( array_merge( $plan,
                 array( 'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
@@ -118,6 +120,49 @@ final class MAD4B_SCP_Native_Recovery {
     private static function digest( $record ) {
         return hash( 'sha256', wp_json_encode( $record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
     }
+    /**
+     * Start-here status: no previously saved job ID is needed to recover
+     * an interrupted chat. Reading never mutates options or approves work.
+     */
+    public static function status( $input = array() ) {
+        if ( ! self::can_read() || ! self::valid_input( $input, array() ) )
+            return self::denied( 'status_input' );
+        $site = self::site();
+        if ( is_wp_error( $site ) ) return $site;
+        $scratch = get_option( self::OPTION, null );
+        if ( ! is_array( $scratch ) ) return array(
+            'contract' => self::CONTRACT . '.status.v1',
+            'state' => 'READY_TO_PLAN', 'active_job' => false,
+            'step' => 1, 'steps_total' => 4,
+            'next_ability' => self::PLAN,
+            'available_modes' => array( 'probe', 'shadow' ),
+            'host_required' => false, 'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+        $job = (string) ( $scratch['job_id'] ?? '' );
+        $verified = preg_match( '/^[a-f0-9]{32}$/D', $job ) ? self::inspect( $job ) : self::denied( 'scratch_invalid' );
+        if ( is_wp_error( $verified ) ) return array(
+            'contract' => self::CONTRACT . '.status.v1',
+            'state' => 'SCRATCH_INTEGRITY_OR_SITE_BLOCKED',
+            'active_job' => true, 'next_ability' => '',
+            'recovery_requires_owner_review' => true,
+            'error_code' => $verified->get_error_code(),
+            'no_automatic_delete' => true, 'read_only' => true,
+            'production_authorized' => false );
+        $expired = time() > (int) $scratch['expires_at'];
+        return array(
+            'contract' => self::CONTRACT . '.status.v1',
+            'state' => $expired ? 'SCRATCH_EXPIRED_CLEANUP_AVAILABLE'
+                : 'SCRATCH_REQUIRES_INDEPENDENT_READBACK',
+            'active_job' => true, 'job_id' => $job,
+            'mode' => (string) $scratch['mode'],
+            'expires_at' => (int) $scratch['expires_at'],
+            'step' => $expired ? 4 : 3, 'steps_total' => 4,
+            'next_ability' => $expired ? self::CLEAN : self::READBACK,
+            'separate_owner_approval_for_cleanup' => true,
+            'host_required' => false, 'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+
     public static function plan( $input = array() ) {
         if ( ! self::can_read() || ! self::valid_input( $input, array( 'mode', 'reason', 'source_id' ) ) )
             return self::denied( 'plan_input' );
@@ -172,6 +217,13 @@ final class MAD4B_SCP_Native_Recovery {
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! hash_equals( (string) $plan['plan_sha256'], (string) $input['expected_plan_sha256'] ) )
             return self::denied( 'stale_plan' );
+        // A stale or active scratch must never consume an owner approval
+        // before the operator can read its job ID and clean it up.
+        $occupied = get_option( self::OPTION, null );
+        if ( false !== $occupied && null !== $occupied )
+            return new WP_Error( 'mad4b_native_scratch_occupied',
+                'An earlier scratch exists; inspect native-recovery-status and clean it before starting.',
+                array( 'next_ability' => self::STATUS, 'recovery_action' => self::CLEAN ) );
         $claim = MAD4B_SCP_Authorization::claim_mutation(
             self::START, 'mad4b-write', 'core', $input );
         if ( is_wp_error( $claim ) || ! is_array( $claim )
@@ -297,18 +349,27 @@ final class MAD4B_SCP_Native_Recovery {
         if ( is_wp_error( $claim ) || ! is_array( $claim )
             || true !== ( $claim['allowed'] ?? false ) )
             return is_wp_error( $claim ) ? $claim : self::denied( 'approval_not_claimed' );
+        // Record cleanup intent before deletion. If the final audit fails
+        // after the deletion, report the actual result; do not mislead the
+        // operator into retrying a removal that already happened.
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return self::denied( 'audit_required' );
+        $intent = MAD4B_SCP_Audit::record( self::CLEAN, array(
+            'job_id' => $scratch['job_id'], 'stage' => 'cleanup_intent',
+            'site_uuid' => $scratch['site']['site_uuid'],
+            'production_authorized' => false ), 'success' );
+        if ( is_wp_error( $intent ) ) return self::denied( 'cleanup_intent_audit_failed' );
         if ( ! delete_option( self::OPTION ) || false !== get_option( self::OPTION, false ) )
             return self::denied( 'cleanup_failed' );
         if ( function_exists( 'wp_clear_scheduled_hook' ) )
             wp_clear_scheduled_hook( self::CRON, array( $scratch['job_id'] ) );
-        if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
-            $audit = MAD4B_SCP_Audit::record( self::CLEAN, array(
-                'job_id' => $scratch['job_id'], 'scratch_removed' => true,
-                'site_uuid' => $scratch['site']['site_uuid'],
-                'production_authorized' => false ), 'success' );
-            if ( is_wp_error( $audit ) ) return self::denied( 'cleanup_audit_failed' );
-        }
+        $audit = MAD4B_SCP_Audit::record( self::CLEAN, array(
+            'job_id' => $scratch['job_id'], 'scratch_removed' => true,
+            'site_uuid' => $scratch['site']['site_uuid'],
+            'production_authorized' => false ), 'success' );
         return array( 'contract' => self::CONTRACT . '.cleanup.v1',
+            'state' => is_wp_error( $audit ) ? 'CLEANED_AUDIT_REPAIR_REQUIRED' : 'CLEANED',
+            'audit_recorded' => ! is_wp_error( $audit ),
+            'next_ability' => is_wp_error( $audit ) ? 'mad4b/audit-tail' : self::STATUS,
             'scratch_removed' => true, 'job_id' => $scratch['job_id'],
             'ownership_transferred' => false, 'host_required' => false,
             'production_authorized' => false );
