@@ -64,7 +64,8 @@ class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatg
 class MAD4B_SCP_Authorization {
     public static function execution_callback_started( $ability ) {
         return $ability === MAD4B_SCP_WP_Native_Self_Approval::APPLY
-            && !empty( $GLOBALS['execution_claim'] );
+            && !empty( $GLOBALS['execution_claim'] )
+            && !empty( $GLOBALS['grant'] );
     }
     public static function permission_result_from_authorization( $r ) {
         return is_array( $r ) && !empty( $r['allowed'] )
