@@ -26,7 +26,9 @@ function wp_safe_remote_get( $url, $args = array() ) {
 }
 function wp_schedule_single_event( $when, $hook ) { return true; }
 // Minimal trusted adapter registry facade: no Server core-list edits.
-abstract class MAD4B_SCP_Adapter_Base {}
+abstract class MAD4B_SCP_Adapter_Base {
+    public function provider_key() { return $this->certified_provider_key(); }
+}
 final class MAD4B_SCP_Adapter_Registry {
     private $adapters = array();
     public function register( $adapter ) {
