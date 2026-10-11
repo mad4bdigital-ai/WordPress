@@ -198,6 +198,25 @@ final class MAD4B_SCP_AI_Approval {
 		);
 	}
 
+	/** Shared dashboard advisory; it never issues or refreshes OAuth tokens. */
+	public static function render_admin_status() {
+		$state = self::dashboard_projection();
+		$standing = ! empty( $state['legacy_standing_policy_configured'] );
+		$available = ! empty( $state['oauth_scope_supported'] );
+		$observed = ! empty( $state['oauth_current_request_verified'] );
+		echo '<details class="mad4b-ai-approval-mode-readback" style="margin:10px 0;padding:8px 12px;border:1px solid #c3c4c7;border-radius:4px">';
+		echo '<summary><strong>' . esc_html__( 'AI approval authority', 'mad4b-site-control-plane' ) . '</strong> · ' .
+			esc_html( $observed ? 'Owner OAuth auto-approval verified for this request' : ( $available ? 'Optional owner OAuth auto-approval supported — current token unverified here' : 'Owner OAuth auto-approval unavailable for this environment' ) ) . '</summary>';
+		echo '<p>' . esc_html__( 'Standing Agent approval policy:', 'mad4b-site-control-plane' ) . ' <strong>' .
+			esc_html( $standing ? 'configured (operation-level grants still apply)' : 'not configured' ) . '</strong></p>';
+		if ( $available ) {
+			echo '<p>' . esc_html__( 'Optional OAuth scope:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( $state['optional_owner_oauth_scope'] ) . '</code>. ' .
+				esc_html__( 'Only fresh consent explicitly requested by the ChatGPT client can enable this scope. A WordPress admin session cannot verify scopes already granted to a remote ChatGPT session.', 'mad4b-site-control-plane' ) . '</p>';
+		}
+		echo '<p>' . esc_html__( 'AI decisions are recorded as AI decisions, not human reviews. Original brand ownership attestation, operation grants, one-time ticket identity, and separate Production/Breakglass rules are unchanged.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</details>';
+	}
+
 	private static function exact_input_status( $input ) {
 		$blockers = array();
 		if ( ! is_array( $input ) ) return array( 'blockers' => array( 'ai_approval_exact_input_required' ) );
