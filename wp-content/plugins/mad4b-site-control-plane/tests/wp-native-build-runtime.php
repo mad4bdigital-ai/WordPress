@@ -16,15 +16,26 @@ function wp_has_ability( $name ) { return isset( $GLOBALS['native_abilities'][$n
 function wp_json_encode( $v, $options = 0 ) { return json_encode( $v, $options ); }
 function wp_get_environment_type() { return $GLOBALS['native_env'] ?? 'staging'; }
 function get_option( $name, $default = false ) {
-    if ( $name === 'mad4b_wp_native_source_build_v1' ) {
-        $GLOBALS['native_option_reads'] = (int) ( $GLOBALS['native_option_reads'] ?? 0 ) + 1;
-        if ( ! empty( $GLOBALS['native_switch_job_after_lock'] ) &&
-            $GLOBALS['native_option_reads'] === 2 ) {
-            $GLOBALS['native_opts'][$name]['state'] = 'BUILT_UNVERIFIED';
-        }
-    }
-    return $GLOBALS['native_opts'][$name] ?? $default;
+    // Intentionally return the request-local cache: it might be stale.
+    return $GLOBALS['native_opts'][ $name ] ?? $default;
 }
+function maybe_unserialize( $value ) { return unserialize( $value ); }
+class MAD4B_Native_Test_DB {
+    public $options = 'wp_options';
+    public function prepare( $sql, $key ) { return array( $sql, $key ); }
+    public function get_var( $query ) {
+        $GLOBALS['native_uncached_reads'] = (int) ( $GLOBALS['native_uncached_reads'] ?? 0 ) + 1;
+        $name = $query[1];
+        $record = $GLOBALS['native_db_opts'][ $name ] ?? null;
+        if ( ! empty( $GLOBALS['native_switch_job_after_lock'] ) ) {
+            $record['state'] = 'BUILT_UNVERIFIED';
+            $GLOBALS['native_db_opts'][ $name ] = $record;
+            // Simulate the in-process get_option cache staying stale.
+        }
+        return is_array( $record ) ? serialize( $record ) : null;
+    }
+}
+$GLOBALS['wpdb'] = new MAD4B_Native_Test_DB();
 function update_option( $name, $value, $autoload = null ) {
     $GLOBALS['native_opts'][$name] = $value; return true;
 }
@@ -239,21 +250,26 @@ $job = array( 'state' => 'DISCOVERING', 'head' => $src,
     'origin' => 'https://staging.example.test',
     'expires_at' => time() + 600, 'cursor' => 0, 'entries' => array() );
 $GLOBALS['native_opts'][ $c::OPTION ] = $job;
-$GLOBALS['native_option_reads'] = 0;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $job;
+$GLOBALS['native_uncached_reads'] = 0;
 $GLOBALS['native_switch_job_after_lock'] = true;
 $c::tick();
 assert_native( $c::status()['state'] === 'BUILT_UNVERIFIED',
     'After-lock fresh read must not overwrite superseding job state' );
+assert_native( $GLOBALS['native_uncached_reads'] === 1,
+    'Worker must bypass request-local WP object cache for locked job state' );
 $GLOBALS['native_switch_job_after_lock'] = false;
 // A thrown network transport exception cannot terminate the cron callback
 // or leak exception text. It produces a blocked typed recovery condition.
 $GLOBALS['native_opts'][ $c::OPTION ] = $job;
-$GLOBALS['native_option_reads'] = 0;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $job;
+$GLOBALS['native_uncached_reads'] = 0;
 $c::tick();
 $blocked = $c::status();
 assert_native( $blocked['state'] === 'BLOCKED' &&
     $blocked['blocker'] === 'native_worker_internal_exception',
     'Worker internal exception is caught, bounded and fail closed' );
-unset( $GLOBALS['native_opts'][ $c::OPTION ] );
+unset( $GLOBALS['native_opts'][ $c::OPTION ],
+    $GLOBALS['native_db_opts'][ $c::OPTION ] );
 @unlink( $workspace . '/.lock' ); @rmdir( $workspace );
 echo "PASS: WordPress-native source worker locked state, cron and fail-closed contracts\n";
