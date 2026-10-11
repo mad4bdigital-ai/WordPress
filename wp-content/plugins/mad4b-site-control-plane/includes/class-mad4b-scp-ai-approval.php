@@ -160,6 +160,44 @@ final class MAD4B_SCP_AI_Approval {
 		return true;
 	}
 
+	/**
+	 * Lightweight, non-authorizing status for wp-admin dashboards.
+	 *
+	 * A wp-admin cookie session cannot prove what scopes a DIFFERENT remote
+	 * ChatGPT bearer currently holds. Never present support or consent policy
+	 * as a live OAuth approval. Do not cache bearer state across requests.
+	 */
+	public static function dashboard_projection() {
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
+			? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+		$standing_configured = self::catalog_eligible();
+		$oauth_supported = 'staging' === $environment
+			&& class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			&& class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			&& method_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', 'scopes_for_resource' )
+			&& in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE,
+				MAD4B_SCP_OAuth_Resource_Bridge::scopes_for_resource(
+					MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier() ), true );
+		$current = $oauth_supported && self::oauth_auto_all_delegation_active();
+		return array(
+			'contract' => 'mad4b.ai-approval-admin-projection.v1',
+			'environment' => $environment,
+			'legacy_standing_policy_configured' => $standing_configured,
+			'optional_owner_oauth_scope' => $oauth_supported ? MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE : '',
+			'oauth_scope_supported' => $oauth_supported,
+			'oauth_current_request_verified' => $current,
+			'remote_chatgpt_token_grant_status' => $current ? 'verified_this_request' : 'not_observed_in_admin_request',
+			'reconsent_required_for_new_scope' => $oauth_supported,
+			'delegation_applies_to' => 'governed_exact_staging_approval_tickets',
+			'brand_asset_ai_review_separately_configured' => true,
+			'original_owner_human_attestation_separate' => true,
+			'raw_sql_breakglass_included' => false,
+			'production_ai_auto_approval_included' => false,
+			'mutation_performed' => false,
+			'read_only' => true,
+		);
+	}
+
 	private static function exact_input_status( $input ) {
 		$blockers = array();
 		if ( ! is_array( $input ) ) return array( 'blockers' => array( 'ai_approval_exact_input_required' ) );
