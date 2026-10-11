@@ -53,7 +53,12 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
 }
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt'; }
 class MAD4B_SCP_Authorization {
+    public static $deny_claim = false;
     public static function authorize_mutation( $name, $surface, $provider, $input ) { return true; }
+    public static function permission_result_from_authorization( $decision ) { return $decision === true; }
+    public static function claim_mutation( $name, $surface, $provider, $input ) {
+        return self::$deny_claim ? new WP_Error( 'approval_denied' ) : array( 'allowed' => true );
+    }
 }
 class MAD4B_SCP_Audit {
     public static $fail = false;
@@ -101,6 +106,14 @@ $wrong = MAD4B_SCP_Native_Recovery::start( array( 'mode' => 'probe',
     'confirmation' => 'YES' ) );
 native_assert( is_wp_error( $wrong ) && ! isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
     'wrong approval never writes' );
+MAD4B_SCP_Authorization::$deny_claim = true;
+$blocked = MAD4B_SCP_Native_Recovery::start( array( 'mode' => 'probe',
+    'reason' => 'fixture scratch', 'expected_plan_sha256' => $plan['plan_sha256'],
+    'confirmation' => MAD4B_SCP_Native_Recovery::PROBE_CONFIRM ) );
+native_assert( is_wp_error( $blocked )
+    && ! isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
+    'unsigned or unclaimed approval cannot write scratch' );
+MAD4B_SCP_Authorization::$deny_claim = false;
 $start = MAD4B_SCP_Native_Recovery::start( array( 'mode' => 'probe',
     'reason' => 'fixture scratch', 'expected_plan_sha256' => $plan['plan_sha256'],
     'confirmation' => MAD4B_SCP_Native_Recovery::PROBE_CONFIRM ) );
