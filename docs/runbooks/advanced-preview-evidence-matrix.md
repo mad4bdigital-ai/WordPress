@@ -39,6 +39,15 @@ A read-only GitHub Actions workflow check is available in
 single preflight step, produces `managed-browser-readiness.json`, and
 does not request an MCP plan or open a browser session. The report lists
 credential names and provider eligibility, **never secret values**.
+For `provider=cloudflare` or `provider=auto`, the no-session readiness job
+also calls the official Cloudflare `GET /user/tokens/verify` API, with a bounded
+timeout, using the repository secrets only inside that step. It writes
+`cloudflare-token-verification.json` containing a sanitized token-active
+status and no raw API response, token, account ID, token ID, browser session,
+MCP bearer or RSA signer key. When `provider=cloudflare` is explicitly
+selected, an inactive/missing token fails the readiness job. Token-active
+does **not** prove Browser Rendering Write permission, account/token scope
+binding, live CDP access, available quota or signed MAD4B acceptance.
 Its result is a capacity/configuration hint, NOT an authenticated
 site signer check, provider quota certificate, or Live Acceptance PASS.
 
