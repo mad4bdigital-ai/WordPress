@@ -93,6 +93,10 @@ class MAD4B_SCP_Self_Update {
             && $input['candidate_confirmation'] === 'INSTALL EXACT STAGING CANDIDATE'
             && base64_decode( $input['package_base64'], true ) === 'ZIP',
             'Existing package updater required and retains exact plan' );
+        if ( ( $GLOBALS['updater_mode'] ?? '' ) === 'error' )
+            return new WP_Error( 'simulated_update_rollback' );
+        if ( ( $GLOBALS['updater_mode'] ?? '' ) === 'uncertain' )
+            return array( 'installed' => true, 'readback_verified' => false );
         return array( 'installed' => true, 'readback_verified' => true,
             'rollback_ownership' => 'existing_updater' );
     }
@@ -100,6 +104,10 @@ class MAD4B_SCP_Self_Update {
 class MAD4B_SCP_Audit {
     public static function record( $ability, $summary, $result ) {
         $GLOBALS['audit']++;
+        $GLOBALS['audit_phases'][] = $summary['phase'] ?? '';
+        if ( ! empty( $GLOBALS['fail_terminal_audit'] )
+            && ( $summary['phase'] ?? '' ) !== 'SELF_APPROVED_INSTALLING' )
+            return new WP_Error( 'audit_failed' );
         return ! empty( $GLOBALS['audit_ready'] ) ? true : new WP_Error( 'audit_failed' );
     }
 }
@@ -178,4 +186,24 @@ assert_self_approval( is_array( $accepted ) && !empty( $accepted['installed'] )
     && $accepted['job_id'] === str_repeat( 'e', 32 )
     && $GLOBALS['installs'] === 1 && $GLOBALS['audit'] >= 2,
     'Exact owner-delegated Staging self-approval uses protected installer' );
-echo "PASS: local self-approval, original update gate, tamper, audit, OAuth and Production denial\n";
+assert_self_approval( in_array( 'SELF_APPROVED_INSTALLING', $GLOBALS['audit_phases'], true )
+    && in_array( 'INSTALLED_VERIFIED', $GLOBALS['audit_phases'], true ),
+    'Both acceptance and terminal verified result are durably audited' );
+$GLOBALS['updater_mode'] = 'error';
+$rolled_back = $c::apply( $apply );
+assert_self_approval( is_wp_error( $rolled_back )
+    && in_array( 'INSTALL_FAILED_RECONCILIATION_REQUIRED', $GLOBALS['audit_phases'], true ),
+    'Installer failure is returned and a reconciliation-required state recorded' );
+$GLOBALS['updater_mode'] = 'uncertain';
+$uncertain = $c::apply( $apply );
+assert_self_approval( is_wp_error( $uncertain )
+    && $uncertain->get_error_code() === 'mad4b_self_approval_outcome_uncertain'
+    && in_array( 'INSTALL_OUTCOME_UNCERTAIN', $GLOBALS['audit_phases'], true ),
+    'An unverified install result is never recorded as success' );
+$GLOBALS['updater_mode'] = 'verified';
+$GLOBALS['fail_terminal_audit'] = true;
+$terminal_failure = $c::apply( $apply );
+assert_self_approval( is_wp_error( $terminal_failure )
+    && $terminal_failure->get_error_code() === 'mad4b_self_approval_terminal_audit_uncertain',
+    'Missing terminal audit causes fail-closed reconciliation, not silent success' );
+echo "PASS: self-approval, single execution claim, local evidence, terminal audit, OAuth and Production denial\n";
