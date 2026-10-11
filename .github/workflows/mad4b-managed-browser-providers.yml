@@ -144,6 +144,8 @@ jobs:
           node tools/browser-acceptance/test-mcp-bridge.mjs
           node tools/browser-acceptance/test-evidence-assembler.mjs
           node tools/browser-acceptance/test-worker-environment.mjs
+          node tools/browser-acceptance/test-cloudflare-token.mjs
+          node tools/browser-acceptance/test-workflow-signing-wiring.mjs
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-plan-consumption-ledger.mjs
           node tools/browser-acceptance/test-evidence-envelope.mjs
@@ -176,6 +178,7 @@ jobs:
           node --check tools/browser-acceptance/worker-environment.mjs
           node --check tools/browser-acceptance/test-evidence-assembler.mjs
           node --check tools/browser-acceptance/test-worker-environment.mjs
+          node --check tools/browser-acceptance/test-workflow-signing-wiring.mjs
           node --check tools/browser-acceptance/declarative-capability-driver.mjs
           node --check tools/browser-acceptance/browser-attestation.mjs
           node --check tools/browser-acceptance/test-browser-attestation.mjs
@@ -206,6 +209,57 @@ jobs:
           grep -Fq 'plan.origin' "$driver"
           grep -Fq 'plan.challenge' "$driver"
 
+
+  readiness:
+    name: Non-secret managed-browser provider readiness (no session)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify exact source for manual preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test -z "$(git status --porcelain=v1)"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Contract-only provider preflight with ephemeral scoped provider credentials
+        env:
+          MAD4B_BROWSER_PROVIDER: ${{ inputs.provider }}
+          MAD4B_BROWSER_ALLOW_CREDIT_FALLBACK: ${{ inputs.allow_credit_fallback }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+          BROWSERLESS_REGION: ${{ vars.BROWSERLESS_REGION }}
+          STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
+        run: |
+          node --check tools/browser-acceptance/provider-preflight.mjs
+          node tools/browser-acceptance/test-provider-preflight.mjs
+          node tools/browser-acceptance/provider-preflight.mjs > managed-browser-readiness.json
+      - name: Verify Cloudflare API token without a browser session
+        if: ${{ inputs.provider == 'cloudflare' || inputs.provider == 'auto' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          MAD4B_BROWSER_VERIFY_REQUIRED: ${{ inputs.provider == 'cloudflare' }}
+        run: |
+          node tools/browser-acceptance/verify-cloudflare-token.mjs > cloudflare-token-verification.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: managed-browser-readiness-${{ github.sha }}
+          path: |
+            managed-browser-readiness.json
+            cloudflare-token-verification.json
+          if-no-files-found: warn
+          retention-days: 7
+
   live:
     name: Live site-aware managed browser acceptance
     needs: contract
@@ -217,13 +271,7 @@ jobs:
       MAD4B_BROWSER_PROFILE_ID: ${{ inputs.profile }}
       MAD4B_BROWSER_ALLOW_CREDIT_FALLBACK: ${{ inputs.allow_credit_fallback }}
       MAD4B_MCP_RESOURCE: ${{ vars.MAD4B_MCP_RESOURCE }}
-      MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
-      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
-      BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
       BROWSERLESS_REGION: ${{ vars.BROWSERLESS_REGION }}
-      STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
@@ -248,6 +296,13 @@ jobs:
           node-version: '24'
       - run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
       - name: Require just-in-time MCP bearer and at least one browser provider
+        env:
+          MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+          STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -258,6 +313,14 @@ jobs:
             exit 2
           fi
       - name: Generate fresh plan, execute browser, and reduce evidence through MAD4B MCP
+        env:
+          MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
+          MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64: ${{ secrets.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64 }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+          STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
         run: |
           node tools/browser-acceptance/run-live-site-browser-acceptance.mjs \
             --profile "$MAD4B_BROWSER_PROFILE_ID" \
