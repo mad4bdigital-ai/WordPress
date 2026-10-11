@@ -256,6 +256,45 @@ must(remediation, "MAD4B_SCP_Operational_Acceptance_Evidence::boot();", "new evi
 must(operator, "'mad4b/operational-acceptance-evidence'", "operator task path missing unified evidence")
 must(workflow, "operational-acceptance-evidence-runtime.php", "native PHP matrix missing acceptance runtime")
 must(workflow, "class-mad4b-scp-operational-acceptance-evidence.php", "native PHP lint missing acceptance class")
+binding = (root / "includes/class-mad4b-scp-deployment-binding-setup.php").read_text(encoding="utf-8")
+binding_test = (root / "tests/deployment-binding-setup-runtime.php").read_text(encoding="utf-8")
+for marker in (
+    "const PLAN = 'mad4b/deployment-binding-setup-plan'",
+    "const STATUS = 'mad4b/deployment-binding-setup-status'",
+    "const APPLY = 'mad4b/deployment-binding-setup-apply'",
+    "MAD4B_SCP_Site_Profile::deployment_binding_digest()",
+    "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
+    "MAD4B_SCP_Authorization::authorize_mutation(",
+    "MAD4B_SCP_Authorization::claim_mutation(",
+    "MAD4B_SCP_Site_Profile_Enrollment::can_execute(",
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(",
+    "'existing_binding_must_not_be_replaced'",
+    "'HOST_SECRET_NOT_CONFIGURED'",
+    "'EXACT_STAGING_IDENTITY_BLOCKED'",
+    "expected_site_uuid",
+    "expected_profile_digest",
+    "_mad4b_approval_ticket_id",
+    "'production_authorized' => false",
+):
+    must(binding, marker, "deployment binding setup must keep exact owner and protected Host trust")
+for forbidden in (
+    "random_bytes(", "shell_exec(", "proc_open(", "system(",
+    "file_put_contents(", "update_option(", "wp_remote_post(",
+):
+    if forbidden in binding:
+        raise AssertionError("MCP-side deployment binding must not manufacture or write a Host secret: " + forbidden)
+must(binding_test, "full original identity and feature flags preserved byte-for-byte",
+    "binding setup identity regression fixture missing")
+must(remediation, "MAD4B_SCP_Deployment_Binding_Setup::boot();",
+    "binding setup not registered in canonical remediation plane")
+for ability in (
+    "'mad4b/deployment-binding-setup-status'",
+    "'mad4b/deployment-binding-setup-plan'",
+    "'mad4b/deployment-binding-setup-apply'",
+):
+    must(servers, ability, "binding setup not exposed on governed MCP surface")
+must(workflow, "deployment-binding-setup-runtime.php", "binding fixture not in native PHP matrix")
+must(workflow, "class-mad4b-scp-deployment-binding-setup.php", "binding source not linted in PHP matrix")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
