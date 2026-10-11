@@ -7,7 +7,7 @@ authorize deployment.
 
 ## Owner-delegated self-certification on Staging
 
-**New optional trust policy:** \`site_self_certified_staging\`. The enrolled
+**New optional trust policy:** `site_self_certified_staging`. The enrolled
 Staging WordPress site is explicitly allowed to **accept its own local build
 checks as the evidence basis for a Staging install**. This eliminates the
 external Ed25519 signer and PHP 7.4/8.3 matrix *for this locally self-approved
@@ -16,40 +16,40 @@ CI, master, Production or the conventional signed-candidate lane.
 
 The following are distinct, dynamically enrolled WordPress Abilities:
 
-- \`mad4b/wp-native-build-start\`: owner-approved exact-source ZIP packaging.
-- \`mad4b/wp-native-build-simulate\`: read-only package checks.
-- \`mad4b/wp-native-self-approve-plan\`: read-only, exact build/receipt
+- `mad4b/wp-native-build-start`: owner-approved exact-source ZIP packaging.
+- `mad4b/wp-native-build-simulate`: read-only package checks.
+- `mad4b/wp-native-self-approve-plan`: read-only, exact build/receipt
   and existing governed WordPress updater preflight.
-- \`mad4b/wp-native-self-approve-install\`: **mutating** Staging-only action
+- `mad4b/wp-native-self-approve-install`: **mutating** Staging-only action
   with existing enrolled-owner permissions, OAuth authority step-up,
-  the original governed candidate upload grant and one-time approval, exact
-  plan SHA, explicit \`INSTALL SELF APPROVED PACKAGE ON STAGING\` confirmation
-  and an append-only audit of the accepted trust downgrade.
+  the exact self-approval Ability's ONE governed grant/ticket and execution claim, exact
+  plan SHA, explicit `INSTALL SELF APPROVED PACKAGE ON STAGING` confirmation
+  and append-only pre-install AND terminal outcome audit events.
 
 ### Example MCP plan input
 
-\`\`\`json
+```json
 {
   "expected_head": "<40-character immutable GitHub commit SHA>",
   "reason": "Owner delegates self-certification for this Staging-only install"
 }
-\`\`\`
+```
 
-Review the returned \`eligible\`, \`plan_sha256\`,
-\`evidence_mode=site_self_certified_staging\` and the explicit
-\`independent_signature_present=false\`,
-\`native_php_matrix_executed=false\`, \`release_certified=false\`.
-Only a locally completed \`BUILT_UNVERIFIED\` artifact with matching private
-SHA-256 ZIP bytes, canonical receipt, token-screening count, Staging Site
+Review the returned `eligible`, `plan_sha256`,
+`evidence_mode=site_self_certified_staging` and the explicit
+`independent_signature_present=false`,
+`native_php_matrix_executed=false`, `release_certified=false`.
+Only a locally completed `BUILT_UNVERIFIED` artifact with matching private
+SHA-256 ZIP bytes, canonical receipt, token-screening count, immutable job_id, Staging Site
 Profile and exact repository commit can become eligible. A source commit
 or passing simulated fixture alone is insufficient.
 
-For apply, send the same \`expected_head\` and \`reason\`, reviewed
-\`expected_plan_sha256\` and literal
-\`confirmation="INSTALL SELF APPROVED PACKAGE ON STAGING"\`, plus the
-governance-controlled approval ticket as required by the existing upload
-authority. The code copies the already-built private package into the
-**existing** \`MAD4B_SCP_Self_Update::upload_apply\` path. That path retains
+For apply, send the same `expected_head` and `reason`, reviewed
+`expected_plan_sha256` and literal
+`confirmation="INSTALL SELF APPROVED PACKAGE ON STAGING"`, plus the
+governance-controlled approval ticket for the self-approval Ability as required by the central
+execution wrapper. The code copies the already-built private package into the
+**existing** `MAD4B_SCP_Self_Update::upload_apply` path. That path retains
 source re-resolution, archive/provenance verification, backup, maintenance
 lease, post-update readback and rollback. No new unsafe installer is created.
 
@@ -57,19 +57,59 @@ lease, post-update readback and rollback. No new unsafe installer is created.
 security certification.** Production rejects the action. GitHub Release
 verdicts, main/master branch protection and conventional signed release gates
 are not changed. The option to self-certify does NOT implicitly grant the
-governed upload permission or approve its one-time operation. New source
+self-approval Ability grant or automatically approve its one-time operation. New source
 Abilities become available on the live site only after an independently
 authorized bootstrap installs a package containing them.
 
 Source fixtures:
 
-\`\`\`sh
+```sh
 php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php
 php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php
-\`\`\`
+```
 
 These commands are test instructions and not claims that native PHP 7.4/8.3
 or Staging execution has already passed.
+
+### Lifecycle and first-install bootstrap
+
+1. Exact SHA is selected from GitHub, and a Staging owner with current OAuth
+   starts the existing governed `mad4b/wp-native-build-start` Ability.
+2. WordPress Cron fetches immutable blobs, records their identities and builds
+   a private `BUILT_UNVERIFIED` ZIP + canonical receipt.
+3. `wp-native-self-approve-plan` uses a **fresh DB-backed, twice-read**
+   `verified_snapshot`: `job_id`, Staging profile, source SHA, receipt,
+   archive hash, build fingerprint and exact file-token inventory. A changed
+   job requires an entirely new plan and new one-time ticket.
+4. The **single** owner-approved mutation is
+   `mad4b/wp-native-self-approve-install`. The MAD4B execution boundary
+   claims its one-time ticket BEFORE entering the handler; no nested upload
+   ticket is demanded. Direct PHP entry without that execution claim is denied.
+5. The handler audits `SELF_APPROVED_INSTALLING`, then hands the bounded
+   ZIP bytes to the existing verified Staging updater. It logs one of
+   `INSTALLED_VERIFIED`, `INSTALL_FAILED_RECONCILIATION_REQUIRED`, or
+   `INSTALL_OUTCOME_UNCERTAIN` after the updater returns. In uncertain cases
+   or terminal audit failure it returns a fail-closed reconciliation error
+   rather than an unsafe retry.
+6. Following update, a fresh MCP connection must verify installed SHA, renewed
+   candidate binding, readback, Managed Skills and normal Write Authority.
+   An old candidate binding must not be reused.
+
+**First-install constraint:** The currently installed Control Plane must have
+the Self-Approval Ability in its own code before it can invoke that Ability.
+For the very first activation, use the ALREADY-DEPLOYED governed Staging
+`wp-native-build-start` + `wp-native-build-export-chunk` and
+`control-plane-upload-plan/apply` with exact owner OAuth, plan SHA, one-time
+approval and archive verification; alternatively use the certified Selected
+HEAD install path. This is a one-time bootstrap, **not** an automatic bypass
+or hidden local plugin overwrite. Never run Self-Approval's new code before
+the live site confirms the Ability is registered.
+
+The present self-approval path is **Staging-only** and deliberately never
+satisfies Signed GitHub Release or Production gates. Native PHP 7.4/8.3,
+separate-process verification, installer E2E, rollback and schema checks are
+still recommended as real tests, even though a self-approved Staging install
+does not require an independent release signature.
 
 ## WordPress-local acceptance simulation (non-authorizing)
 
