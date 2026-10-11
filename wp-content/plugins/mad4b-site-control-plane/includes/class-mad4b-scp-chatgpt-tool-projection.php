@@ -48,6 +48,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 						'ability_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 2147483647, 'default' => 0 ),
 						'include_catalog_preflight' => array( 'type' => 'boolean', 'default' => false ),
 						'include_universe_count' => array( 'type' => 'boolean', 'default' => false ),
+						'include_protocol_profile' => array( 'type' => 'boolean', 'default' => false ),
 						'include_recommendations' => array( 'type' => 'boolean', 'default' => false ),
 						'recommendation_quota' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_QUOTA, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA ),
 						'recommendation_hours' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_HOURS, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS ),
@@ -727,6 +728,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$include_page = 'page' === $detail;
 		$include_preflight = ! empty( $input['include_catalog_preflight'] );
 		$include_universe = ! empty( $input['include_universe_count'] );
+		$include_protocol = ! empty( $input['include_protocol_profile'] );
 
 		$state = self::raw_state();
 		$binding_match = self::binding_matches( $state );
@@ -851,8 +853,15 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 
 		// Protocol certification is useful read metadata, but an optional
 		// provider exception cannot erase a healthy projection Summary.
-		$protocol_profile = array();
-		if ( class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ) {
+		// A compact projection status should never start optional protocol
+		// diagnostics by default. Expose an explicit opt-in instead of making
+		// one slow provider take down an otherwise healthy MCP status read.
+		$protocol_profile = array(
+			'contract' => 'mad4b.mcp-protocol-profile.deferred.v1',
+			'ready' => null, 'state' => 'deferred',
+			'read_only' => true, 'authorizing' => false,
+		);
+		if ( $include_protocol && class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ) {
 			try {
 				$protocol_profile = MAD4B_SCP_MCP_Protocol_Profile::status();
 				if ( ! is_array( $protocol_profile ) ) throw new UnexpectedValueException( 'invalid_protocol_status' );
@@ -918,6 +927,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'deep_inspection_action' => 'Use mad4b/chatgpt-tool-projection-discover or detail=page for bounded per-Ability inspection.',
 			'isolation' => self::isolation_contract(),
 			'protocol_profile' => $protocol_profile,
+			'protocol_profile_inspection_performed' => $include_protocol,
 			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
 			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
