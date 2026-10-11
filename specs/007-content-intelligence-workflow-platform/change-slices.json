@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 828,
+  "changed_file_count": 831,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1659,8 +1659,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-control-census-runtime.php",
         "docs/runbooks/feature007-control-ui-coverage-census-20261012.md"
       ]
+    },
+    {
+      "id": "feature007-20261012-context-semantic-drive-approval",
+      "semantic_unit": "Provider-exact operational metadata classification for governed Drive source onboarding, owner transfer and exact asset review; unrecognized brand-bearing fields still fail closed",
+      "revert_boundary": "Revert the Google Drive semantic-contract additions and isolated PHP regression fixture without changing owner proof, Context Authority review or publication guards",
+      "certification": "source_only_php74_php83_staging_approval_and_publication_e2e_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-semantic-source-approval-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "98235032a19e71114488f6e5f71df1ed882bd5a965b3a217a9a4ea8d494d8eec",
+  "changed_paths_sha256": "00000000000000000000000000000000012a8c00cc8b9d4446af2b1714086b43",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
