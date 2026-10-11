@@ -107,7 +107,9 @@ require_contract( ! empty( $boot['valid'] ) &&
     $boot['plugin_hook_registration_phase_ms'] <= 121 &&
     $boot['plugin_bootstrap_total_ms'] >= 219 &&
     $boot['plugin_bootstrap_total_ms'] <= 221 &&
-    $boot['other_plugins_and_gateway_latency_included'] === false &&
+    $boot['gateway_latency_included'] === false &&
+    $boot['pre_plugin_request_can_include_core_and_other_plugins'] === true &&
+    $boot['other_plugin_component_attribution_available'] === false &&
     $boot['mutation_performed'] === false,
     'Plugin bootstrap metrics isolate source module loading and hooks, not external gateway time' );
 echo "PASS: scoped diagnostics / Skills truth / snapshot isolation / bootstrap timing\n";
