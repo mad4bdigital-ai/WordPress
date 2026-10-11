@@ -153,6 +153,7 @@ final class MAD4B_SCP_Read_Consistency {
 							'maxLength' => 64,
 						),
 						'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
+						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity' ), 'default' => 'full' ),
 						'budget_ms' => array(
 							'type' => 'integer',
 							'minimum' => 4000,
@@ -445,6 +446,10 @@ final class MAD4B_SCP_Read_Consistency {
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
+		// Keep full diagnostics as the default for compatibility, while allowing
+		// a low-cost identity-only probe when transport latency is high.
+		$scope = isset( $input['diagnostic_scope'] ) && 'identity' === (string) $input['diagnostic_scope']
+			? 'identity' : 'full';
 		$budget_ms = isset( $input['budget_ms'] )
 			? max( 4000, min( self::MAX_SESSION_SAFE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
@@ -462,6 +467,18 @@ final class MAD4B_SCP_Read_Consistency {
 		$stop_reason = '';
 
 		foreach ( self::bundle_names() as $index => $bundle ) {
+			if ( 'identity' === $scope && 'identity' !== $bundle ) {
+				$partial = true;
+				$sections[ $bundle ] = array(
+					'state' => 'deferred_scope', 'partial' => true,
+					'failed_checks' => array(), 'retryable_checks' => array(),
+					'skipped_budget_checks' => array(), 'session_termination_count' => 0,
+					'check_count' => count( self::session_safe_bundle_checks( $bundle ) ),
+					'evidence_digest' => self::digest( array( 'bundle' => $bundle,
+						'state' => 'deferred_scope', 'generation' => $runtime_generation ) ),
+				);
+				continue;
+			}
 			$elapsed_ms = (int) round( ( microtime( true ) - $started ) * 1000 );
 			$remaining_ms = $budget_ms - $elapsed_ms;
 			if ( $remaining_ms < 1000 ) {
@@ -520,12 +537,15 @@ final class MAD4B_SCP_Read_Consistency {
 
 		$subject_blockers = array();
 		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
-		foreach ( array(
-			'write_authority' => 'effective_authority_ready',
-			'skills_runtime' => 'effective_skill_ready',
-		) as $check_name => $effective_key ) {
-			$summary = isset( $runtime_checks[ $check_name ]['summary'] ) && is_array( $runtime_checks[ $check_name ]['summary'] ) ? $runtime_checks[ $check_name ]['summary'] : array();
-			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
+		// Historical managed-Skills checkpoint is not live certification.
+		// Never mislabel it as a live failure. The independent Skills Ability
+		// remains the canonical source of actual live readiness.
+		if ( isset( $runtime_checks['write_authority'] ) ) {
+			$summary = isset( $runtime_checks['write_authority']['summary'] ) &&
+				is_array( $runtime_checks['write_authority']['summary'] )
+				? $runtime_checks['write_authority']['summary'] : array();
+			if ( empty( $summary['effective_authority_ready'] ) )
+				$subject_blockers[] = 'write_authority_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
 		$operator_summary = self::session_safe_operator_summary( $sections, $partial, $subject_blockers, $after );
@@ -562,6 +582,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'subject_blockers' => $subject_blockers,
 			'operator_summary' => $operator_summary,
 			'subject_live_validation_deferred' => array( 'skills_runtime' ),
+			'diagnostic_scope' => $scope,
+			'live_skills_verified' => false,
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => $diagnostic_elapsed_ms,
@@ -603,7 +625,10 @@ final class MAD4B_SCP_Read_Consistency {
 		$write_ready = array_key_exists( 'effective_authority_ready', $write ) && null !== $write['effective_authority_ready'] ? (bool) $write['effective_authority_ready'] : null;
 		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) && null !== $write['candidate_binding_match'] ? (bool) $write['candidate_binding_match'] : null;
 		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) && null !== $write['current_grant_snapshot_ready'] ? (bool) $write['current_grant_snapshot_ready'] : null;
-		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
+		$skills_checkpoint_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready']
+			? (bool) $skills['effective_skill_ready'] : null;
+		$skills_ready = array_key_exists( 'live_skill_ready', $skills ) && null !== $skills['live_skill_ready']
+			? (bool) $skills['live_skill_ready'] : null;
 		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
 		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
 		$protocol_ready = array_key_exists( 'ready', $protocol ) && null !== $protocol['ready'] ? (bool) $protocol['ready'] : null;
@@ -650,7 +675,10 @@ final class MAD4B_SCP_Read_Consistency {
 			$actions[] = 'deploy_exact_certified_runtime_release';
 			$blocking = true;
 		}
-		if ( false === $skills_ready ) {
+		if ( null === $skills_ready ) {
+			$reasons[] = 'skills_live_validation_deferred';
+			$actions[] = 'read_skills_runtime_certification';
+		} elseif ( false === $skills_ready ) {
 			$reasons[] = 'skills_runtime_not_ready';
 			$actions[] = 'reconcile_managed_skills';
 		}
@@ -693,6 +721,8 @@ final class MAD4B_SCP_Read_Consistency {
 				'read_your_writes' => $read_your_writes,
 				'mcp_protocol_profile_ready' => $protocol_ready,
 				'skills_runtime_ready' => $skills_ready,
+				'skills_candidate_checkpoint_ready' => $skills_checkpoint_ready,
+				'skills_live_validation_deferred' => null === $skills_ready,
 			),
 			'read_only' => true,
 			'authorizing' => false,
