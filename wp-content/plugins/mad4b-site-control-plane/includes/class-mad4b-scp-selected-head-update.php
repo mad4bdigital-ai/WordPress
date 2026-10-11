@@ -323,6 +323,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             'accepted_staging_evidence_modes' => array( 'github_ci_verdict', 'owner_signed_ci_outage' ),
             'independent_evidence_required_if_ci_unavailable' => true,
             'native_six_gate_failures_may_be_ignored' => false,
+            'native_five_gate_failures_may_be_ignored' => false, // compatibility metadata; never permits bypass
             'offline_signer_and_certified_exact_head_manifest_required' => true,
             'ci_queue_state_used_as_authority' => false,
             'reason' => $reason, 'mutation_performed' => false, 'authorizing' => false,
