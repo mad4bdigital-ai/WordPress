@@ -144,6 +144,7 @@ jobs:
           node tools/browser-acceptance/test-mcp-bridge.mjs
           node tools/browser-acceptance/test-evidence-assembler.mjs
           node tools/browser-acceptance/test-worker-environment.mjs
+          node tools/browser-acceptance/test-cloudflare-token.mjs
           node tools/browser-acceptance/test-workflow-signing-wiring.mjs
           node tools/browser-acceptance/test-receipt.mjs
           node tools/browser-acceptance/test-plan-consumption-ledger.mjs
@@ -241,11 +242,21 @@ jobs:
           node --check tools/browser-acceptance/provider-preflight.mjs
           node tools/browser-acceptance/test-provider-preflight.mjs
           node tools/browser-acceptance/provider-preflight.mjs > managed-browser-readiness.json
+      - name: Verify Cloudflare API token without a browser session
+        if: ${{ inputs.provider == 'cloudflare' || inputs.provider == 'auto' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          MAD4B_BROWSER_VERIFY_REQUIRED: ${{ inputs.provider == 'cloudflare' }}
+        run: |
+          node tools/browser-acceptance/verify-cloudflare-token.mjs > cloudflare-token-verification.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: managed-browser-readiness-${{ github.sha }}
-          path: managed-browser-readiness.json
+          path: |
+            managed-browser-readiness.json
+            cloudflare-token-verification.json
           if-no-files-found: warn
           retention-days: 7
 
