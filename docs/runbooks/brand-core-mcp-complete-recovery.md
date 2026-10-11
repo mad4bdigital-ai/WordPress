@@ -120,6 +120,119 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Setup Deployment Binding — host-secret-backed, no site identity replacement
+
+**Primary incident:** All Royal Egypt `https://staging.allroyalegypt.com`
+already has an enrolled Staging Site Profile (UUID, origin, OAuth users,
+app ID, feature flags and current writes). Its independent deployment
+binding is missing. The resolver refuses Brand scope under
+`SITE_DEPLOYMENT_BINDING_NOT_ENROLLED`.
+
+New PR #258 native MCP contract:
+`MAD4B_SCP_Deployment_Binding_Setup` registers:
+
+- `mad4b/deployment-binding-setup-status` — read-only, no key material
+- `mad4b/deployment-binding-setup-plan` — deterministic Staging
+  exact-profile + current host key *digest* plan; returns no plaintext key
+- `mad4b/deployment-binding-setup-apply` — separately approved current
+  owner ChatGPT OAuth step-up and one-time governance claim; atomically
+  advances existing Site Profile revision, changes **only**
+  `deployment_binding_digest`, `revision`, `updated_at`, and
+  preserves UUID, origin, app ID, OAuth users and all existing feature flags
+
+### 1. Host setting: provision independently, outside WordPress
+
+Use Hostinger hPanel, *for the exact Staging hosting account only*:
+Websites → Dashboard → Files → File Manager. Choose "Access all files"
+where permitted, locate the actual Staging WordPress document root and
+protect a **sibling private directory outside** `public_html`. On
+plans with SSH access, you may use an enrolled host terminal. Hostinger
+Agency plans can restrict remote access to `wp-content` and require
+temporarily unlocking `wp-config.php` editing in the File Manager.
+If the host does not permit a directory outside the webroot, use a
+provider-managed protected environment variable/secret service instead.
+**Never** put the secret in Media Library, WP option, database, source,
+chat messages, a public web route or an Actions log.
+
+In an authorized PHP CLI shell on the hosting account, from a trusted
+copy of the repository, run the provisioner **on the host itself**:
+
+```sh
+# Use your actual inspected paths; examples are not authoritative paths.
+mkdir -m 700 /YOUR-HOST-ACCOUNT/private/mad4b-staging
+php tools/mad4b_provision_deployment_binding.php \
+  /YOUR-HOST-ACCOUNT/staging-site/public_html \
+  /YOUR-HOST-ACCOUNT/private/mad4b-staging
+```
+
+The helper demands a real WordPress root, a writable directory that
+is **neither under nor an ancestor of** the public site directory, strict
+private permissions, and an absent target file. It generates 48 bytes
+using PHP `random_bytes`, stores the hex-encoded value only in a
+non-public `0600` PHP file, never prints it and never rotates an
+existing file. The helper prints only a path-bound
+`require_once` line for the existing `wp-config.php`.
+
+Insert that exact `require_once '/actual/private/path/...php';` line
+**before the `require_once ABSPATH . 'wp-settings.php';` bootstrap** in
+the EXISTING Staging `wp-config.php`. Preserve all database salts, URLs,
+environment settings and Site UUID; do not overwrite the config.
+Back up `wp-config.php` to a restricted location first. Confirm PHP
+can read the private file using the same site PHP user. On managed
+hosting with a secure environment-secret feature, inject a CSPRNG key
+there and use the existing
+`MAD4B_SCP_DEPLOYMENT_BINDING` constant or audited
+`mad4b_scp_deployment_binding` filter to read it during WordPress
+bootstrap. Do not derive it from WordPress salts or clone a database key.
+
+### 2. Governed MCP enrollment after hosting configuration is ready
+
+1. Call `mad4b/deployment-binding-setup-status {}`. It should report
+   `READY_FOR_EXACT_OWNER_APPROVAL` and
+   `host_secret_configured=true`. If it reports
+   `HOST_SECRET_NOT_CONFIGURED`, STOP; no WordPress write can provision
+   a truly independent host key. If `STORED_HOST_BINDING_MISMATCH`,
+   STOP; rotation needs a different reviewed process.
+2. Call `mad4b/deployment-binding-setup-plan {}` to obtain exact
+   `plan_sha256`, `expected_profile_digest`,
+   `expected_revision`, and `expected_site_uuid`.
+3. Obtain normal **one-time owner-approved write ticket** for
+   `mad4b/deployment-binding-setup-apply`. The exact ChatGPT OAuth
+   owner step-up, currently bound candidate/grant, capability descriptor,
+   Site Profile CAS and append-only audit must all pass. Supply the
+   readback binding arguments from step 2 plus
+   `confirmation="BIND EXISTING STAGING SITE IDENTITY"` and
+   `_mad4b_approval_ticket_id`. No secret value is an input.
+4. Independently call `mad4b/deployment-binding-setup-status {}`,
+   `mad4b/site-profile-status {}`, then
+   `mad4b/deployment-mode-status {}`; verify
+   `deployment_binding_configured=true`,
+   `deployment_binding_bound=true` and
+   `deployment_binding_match=true`, original UUID and canonical
+   origin unchanged, and no pending mutation. Any remaining
+   `BRAND_PROFILE_UNRESOLVED` is a **separate** blocker, not a reason to
+   pretend identity binding failed.
+5. Reconcile current write/managed-skills candidate bindings if the
+   intentionally incremented Site Profile revision makes current
+   grants stale. Then rerun
+   `context/legacy-reconciliation-census` and
+   `mad4b/operational-acceptance-evidence`.
+   Do not auto transfer quarantined records or approve media rights.
+
+### Safety restrictions and installation state
+
+This PR delivers the operator workflow and host helper **as source**;
+it does **not** modify the active Staging host, write raw server keys,
+approve `developer-filesystem`'s human-only lane, bypass GitHub
+signing or install an uncertified plugin ZIP. New `mad4b-write` tool
+registration requires grant/approval on the **installed** exact head.
+An already bound identity is explicitly **not rotated** by this path.
+
+Tests: `tests/deployment-binding-setup-runtime.php`, in the Feature 007
+PHP 7.4 and 8.3 matrix. The fixture proves no secret in MCP, no
+premature write, fails on old plan/approval/nonadmin/Production,
+preserves original option fields and refuses rotation/replay.
+
 ## Legacy census repair when Staging deployment binding is absent
 
 Incident observed on All Royal Egypt Staging, 11 Oct 2026:
