@@ -33,8 +33,9 @@ function recovery_assert( $pass, $reason ) {
     if ( ! $pass ) { fwrite( STDERR, "FAIL: $reason\n" ); exit( 1 ); }
 }
 $routes = MAD4B_SCP_Recovery_Alternatives::routes();
-recovery_assert( count( $routes ) === 3, 'three independent failure domains' );
-recovery_assert( count( $routes['host_runner'] ) >= 3
+recovery_assert( count( $routes ) === 4, 'four domains including optional Host-free native rehearsal' );
+recovery_assert( count( $routes['wordpress_native'] ) === 2
+    && count( $routes['host_runner'] ) >= 3
     && count( $routes['database_recovery'] ) >= 3
     && count( $routes['candidate_delivery'] ) >= 4,
     'multiple alternatives in each unavailable provider domain' );
@@ -73,6 +74,14 @@ unset( $fall_back['mad4b/staging-offline-attestor-enroll-plan'] );
 $ci2 = MAD4B_SCP_Recovery_Alternatives::assess( $fall_back, 'candidate_delivery' );
 recovery_assert( $ci2['domains']['candidate_delivery']['suggested_read_only_preflight_route']
     === 'standalone_remote_builder', 'discover standalone build runner after offline signature plan unavailable' );
+$native = MAD4B_SCP_Recovery_Alternatives::assess( $mounted, 'wordpress_native' );
+recovery_assert( $native['domains']['wordpress_native']['suggested_read_only_preflight_route']
+    === 'native_staging_scratch', 'Host-free WordPress can be planned as first native route' );
+foreach ( $native['domains']['wordpress_native']['candidates'] as $route ) {
+    recovery_assert( !$route['execution_authorized']
+        && !$route['release_or_rollback_certified'],
+        'WordPress scratch never certifies Host, release or crash recovery' );
+}
 $host = MAD4B_SCP_Recovery_Alternatives::assess( $mounted, 'host_runner' );
 recovery_assert( count( $host['domains'] ) === 1
     && $host['domains']['host_runner']['suggested_read_only_preflight_route']
