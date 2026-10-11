@@ -9,9 +9,27 @@ const workflow = fs.readFileSync(path.join(root, ".github/workflows/mad4b-manage
 const liveStart = workflow.indexOf("\n  live:\n");
 assert.ok(liveStart >= 0, "live job must exist");
 const live = workflow.slice(liveStart);
-const env = live.slice(0, live.indexOf("\n    steps:\n"));
-assert.match(env, /^      MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64: \$\{\{ secrets\.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64 \}\}$/m,
-  "evidence signing private key must enter only governed live job as GitHub secret");
+const jobEnvironment = live.slice(0, live.indexOf("\n    steps:\n"));
+const readinessName = "      - name: Require just-in-time MCP bearer and at least one browser provider";
+const runName = "      - name: Generate fresh plan, execute browser, and reduce evidence through MAD4B MCP";
+assert.ok(live.includes(readinessName) && live.includes(runName), "live steps must exist");
+const readiness = live.slice(live.indexOf(readinessName), live.indexOf(runName));
+const execution = live.slice(live.indexOf(runName));
+const secrets = [
+  "MAD4B_MCP_ACCESS_TOKEN", "CLOUDFLARE_ACCOUNT_ID",
+  "CLOUDFLARE_BROWSER_RUN_API_TOKEN", "BROWSERBASE_API_KEY",
+  "BROWSERLESS_TOKEN", "STEEL_API_KEY", "MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64"
+];
+for (const key of secrets) {
+  const expected = "          " + key + ": " + "${{ secrets." + key + " }}";
+  assert.ok(execution.includes(expected), key + " must be scoped to the live execution step");
+  assert.ok(!jobEnvironment.includes(key + ":"), key + " must not reach checkout, setup-node, npm install or artifact upload");
+}
+assert.ok(!readiness.includes("MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64:"),
+  "private evidence signer must never enter the readiness step");
+for (const key of secrets.filter(x => x !== "MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64")) {
+  assert.ok(readiness.includes("          " + key + ": "), key + " must enter guarded readiness step");
+}
 assert.doesNotMatch(workflow.slice(0, liveStart), /MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64: \$\{\{/,
   "source/static CI must never load the private signing secret");
 assert.match(live, /run-live-site-browser-acceptance\.mjs/, "use canonical site-aware MCP runner");
