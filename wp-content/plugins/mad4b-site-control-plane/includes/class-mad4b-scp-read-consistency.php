@@ -1777,7 +1777,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'plugin_hook_registration_phase_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $module_ready ) * 1000 ) ) : null,
 			'plugin_bootstrap_total_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $boot_start ) * 1000 ) ) : null,
 			'pre_plugin_request_phase_ms' => $phases_valid ? max( 0, (int) round( ( $boot_start - $started ) * 1000 ) ) : null,
-			'other_plugins_and_gateway_latency_included' => false,
+			'gateway_latency_included' => false,
+			'pre_plugin_request_can_include_core_and_other_plugins' => true,
+			'other_plugin_component_attribution_available' => false,
 			'authorizing' => false,
 			'mutation_performed' => false,
 		);
