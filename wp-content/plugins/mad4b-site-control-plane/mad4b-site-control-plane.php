@@ -13,6 +13,12 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
+// Request-local, O(1) bootstrap timing markers. No persistent cache, DB
+// writes, user context, file hashing or authority changes. The registration
+// and initialization phases are measured independently for MCP performance
+// attribution; this does not claim to measure other plugins or proxy latency.
+if ( ! defined( 'MAD4B_SCP_BOOT_START_AT' ) ) define( 'MAD4B_SCP_BOOT_START_AT', microtime( true ) );
+
 define( 'MAD4B_SCP_VERSION', '0.4.0-rc.96' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
@@ -492,6 +498,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-skills-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-upgrade-continuity.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-reconnect-hardening.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin.php';
+if ( ! defined( 'MAD4B_SCP_BOOT_MODULES_READY_AT' ) ) define( 'MAD4B_SCP_BOOT_MODULES_READY_AT', microtime( true ) );
 
 /*
  * Register ordinary wp-admin settings handlers before the heavier runtime
@@ -651,4 +658,5 @@ MAD4B_SCP_MCP_Provider_Isolation::boot_early();
 MAD4B_SCP_Context_Admin_UI::boot();
 register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );
 add_action( 'init', array( 'MAD4B_SCP_Plugin', 'boot' ), -1000000 );
+if ( ! defined( 'MAD4B_SCP_BOOT_HOOKS_READY_AT' ) ) define( 'MAD4B_SCP_BOOT_HOOKS_READY_AT', microtime( true ) );
 unset( $mad4b_passive_admin_read, $mad4b_diagnostic_catalog_target );
