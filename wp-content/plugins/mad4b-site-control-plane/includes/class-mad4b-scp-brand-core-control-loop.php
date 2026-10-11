@@ -36,6 +36,9 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			|| (int) ( $census['asset_quarantine_count'] ?? -1 ) !== (int) ( $context['quarantined_asset_record_count'] ?? -2 );
 		$quarantine = $quarantined_sources + $quarantined_assets > 0;
 		$invalid_snapshot = $counts_drift
+			|| empty( $context['context_fingerprint'] ) || empty( $coverage['context_fingerprint'] )
+			|| ! hash_equals( (string) ( $context['context_fingerprint'] ?? '' ),
+				(string) ( $coverage['context_fingerprint'] ?? '' ) )
 			|| ! isset( $context['registry_revision'], $context['authority_manifest_fingerprint'] )
 			|| (int) ( $context['registry_revision'] ?? -1 ) !== (int) ( $coverage['registry_revision'] ?? -2 )
 			|| empty( $context['authority_manifest_fingerprint'] )
