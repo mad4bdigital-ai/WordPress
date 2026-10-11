@@ -122,6 +122,7 @@ final class MAD4B_SCP_Operator_Journeys {
                 'steps' => array(
                     array( 'diagnose', 'mad4b/session-safe-diagnostics', 'read' ),
                     array( 'work_items', 'mad4b/operational-remediation-status', 'read' ),
+                    array( 'collect_evidence', 'mad4b/operational-acceptance-evidence', 'read' ),
                     array( 'alternatives', 'mad4b/brand-core-recovery-alternatives', 'read' ),
                     array( 'verify', 'mad4b/acceptance-result', 'read' ),
                 ),
