@@ -24,7 +24,7 @@ $sha=str_repeat('a',40);$ziphash=str_repeat('b',64);
 $pair=sodium_crypto_sign_keypair();$private=sodium_crypto_sign_secretkey($pair);
 $GLOBALS['offline_key']=base64_encode(sodium_crypto_sign_publickey($pair));
 $issued=time()-30;
-$gates=array_fill_keys(array('g9_delivery_contract','php83_tree_syntax',
+$gates=array_fill_keys(array('g9_delivery_contract','php74_tree_syntax','php83_tree_syntax',
  'canonical_package_receipt','isolated_zip_runtime_integrity','exact_source_verification'),'PASS');
 $claims=array('contract'=>'mad4b.staging-ci-outage-attestation.v1',
  'repository'=>'mad4bdigital-ai/WordPress','source_commit_sha'=>$sha,
