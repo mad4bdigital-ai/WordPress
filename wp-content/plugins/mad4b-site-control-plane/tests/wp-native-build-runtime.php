@@ -260,6 +260,7 @@ assert_native( copy( $zip, $simulation_dir . '/candidate.zip' ),
 $simulation_zip_sha = hash_file( 'sha256', $simulation_dir . '/candidate.zip' );
 $simulation_zip_bytes = filesize( $simulation_dir . '/candidate.zip' );
 $receipt_data = array(
+    'control_plane_version' => '0.4.0-rc.97',
     'source_commit_sha' => $simulation_sha,
     'archive_sha256' => $simulation_zip_sha,
     'archive_bytes' => $simulation_zip_bytes,
@@ -269,6 +270,9 @@ $receipt_data = array(
 $receipt_text = json_encode( $receipt_data );
 file_put_contents( $simulation_dir . '/CANONICAL-PACKAGE-RECEIPT.json', $receipt_text );
 $simulation_job = array(
+    'job_id' => str_repeat( 'e', 32 ),
+    'version' => '0.4.0-rc.97',
+    'canonical_receipt' => $receipt_data,
     'head' => $simulation_sha, 'state' => 'BUILT_UNVERIFIED',
     'site_uuid' => 'test-site', 'profile_digest' => 'profile-b',
     'origin' => 'https://staging.example.test',
@@ -294,6 +298,28 @@ assert_native( $sim['state'] === 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED'
     && $sim['release_certified'] === false
     && $sim['mutation_performed'] === false,
     'Locally valid ZIP must never become a certified release' );
+$snapshot = $c::verified_snapshot( $simulation_sha );
+assert_native( ! is_wp_error( $snapshot )
+    && $snapshot['job_id'] === str_repeat( 'e', 32 )
+    && $snapshot['canonical_receipt_sha256'] === hash( 'sha256', $receipt_text )
+    && $snapshot['external_release_certified'] === false,
+    'Exact DB-backed snapshot binds local ZIP, receipt, site and job ID' );
+// In-process WordPress option cache is not authority over the persistent job.
+$GLOBALS['native_opts'][ $c::OPTION ]['archive_sha256'] = str_repeat( 'a', 64 );
+$uncached = $c::verified_snapshot( $simulation_sha );
+assert_native( ! is_wp_error( $uncached )
+    && $uncached['archive_sha256'] === $simulation_zip_sha,
+    'Self-approval snapshot ignores stale get_option cache' );
+$GLOBALS['native_opts'][ $c::OPTION ] = $simulation_job;
+// A replaced job identity must never inherit an old signed-off plan.
+$other_job = $simulation_job;
+$other_job['job_id'] = str_repeat( 'f', 32 );
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $other_job;
+$changed_snapshot = $c::verified_snapshot( $simulation_sha );
+assert_native( ! is_wp_error( $changed_snapshot )
+    && $changed_snapshot['job_id'] !== $snapshot['job_id'],
+    'A new local job ID requires a fresh owner-reviewed installation plan' );
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $simulation_job;
 file_put_contents( $simulation_dir . '/candidate.zip', 'tampered' );
 $bad_sim = $c::simulate( array( 'expected_head' => $simulation_sha ) );
 assert_native( $bad_sim['state'] === 'LOCAL_SELF_CHECKS_BLOCKED'
