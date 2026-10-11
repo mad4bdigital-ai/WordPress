@@ -87,6 +87,10 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             $blockers[] = 'local_zip_receipt_or_profile_unverified';
         $status = class_exists( 'MAD4B_SCP_WP_Native_Build' )
             ? MAD4B_SCP_WP_Native_Build::status() : array();
+        if ( ! is_array( $status ) ||
+            ( $status['head'] ?? '' ) !== $sha ||
+            ( $status['state'] ?? '' ) !== 'BUILT_UNVERIFIED' )
+            $blockers[] = 'exact_completed_native_build_required';
         $identity = array(
             'version' => (string) ( $status['canonical_receipt']['control_plane_version'] ?? '' ),
             'source_commit_sha' => $sha,
