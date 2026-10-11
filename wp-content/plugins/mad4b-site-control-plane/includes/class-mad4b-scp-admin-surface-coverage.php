@@ -13,6 +13,9 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
     const INVENTORY = 'mad4b/admin-surface-coverage';
     const BLUEPRINT = 'mad4b/admin-adapter-blueprint';
     const CONTROL_CENSUS = 'mad4b/admin-control-census';
+    const CONTROL_KINDS = array( 'abilities', 'pages', 'menus', 'governed_operations',
+        'admin_post', 'ajax', 'settings', 'rest_routes', 'content_types',
+        'taxonomies', 'blocks', 'cron_hooks' );
     const MAX_PER_KIND = 96;
     const MAX_TOTAL = 512;
     const KINDS = array( 'governed_operations', 'admin_routes', 'admin_menus',
@@ -33,7 +36,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
             array( self::CONTROL_CENSUS, 'Page through Registered UI and MCP Controls', 'control_census',
                 array( 'type' => 'object', 'additionalProperties' => false,
                     'properties' => array(
-                        'kind' => array( 'type' => 'string', 'enum' => array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' ) ),
+                        'kind' => array( 'type' => 'string', 'enum' => self::CONTROL_KINDS ),
                         'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 100000 ),
                         'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 96 ),
                     ) ) ),
@@ -298,7 +301,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'kind', 'offset', 'limit' ) ) )
             return new WP_Error( 'mad4b_control_census_input_invalid', 'Only kind, offset and limit are supported.' );
         $kind = isset( $input['kind'] ) ? (string) $input['kind'] : 'abilities';
-        if ( ! in_array( $kind, array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' ), true ) )
+        if ( ! in_array( $kind, self::CONTROL_KINDS, true ) )
             return new WP_Error( 'mad4b_control_census_kind_invalid', 'Unknown registered Control type.' );
         $offset = isset( $input['offset'] ) ? $input['offset'] : 0;
         $limit = isset( $input['limit'] ) ? $input['limit'] : 50;
@@ -338,6 +341,89 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                     'registered_kind' => 'wp_registered_setting',
                     'wp_admin_ui_binding' => 'field_not_individually_certified',
                     'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        } elseif ( 'menus' === $kind ) {
+            global $menu, $submenu;
+            $registry_ready = is_array( $menu );
+            if ( $registry_ready ) {
+                $menus = $menu;
+                if ( is_array( $submenu ) ) foreach ( $submenu as $items )
+                    if ( is_array( $items ) ) $menus = array_merge( $menus, $items );
+                foreach ( $menus as $entry ) {
+                    if ( ! is_array( $entry ) || ! self::safe_key( $entry[2] ?? null )
+                        || ! current_user_can( (string) ( $entry[1] ?? 'do_not_grant' ) ) ) continue;
+                    $name = (string) $entry[2];
+                    $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                        'registered_kind' => 'visible_wp_admin_menu',
+                        'wp_admin_ui_binding' => 'menu_only_not_interaction_certified',
+                        'mcp_transport_verified' => false, 'write_verified' => false );
+                }
+            }
+        } elseif ( 'governed_operations' === $kind ) {
+            $registry_ready = class_exists( 'MAD4B_SCP_Operation_Registry' );
+            if ( $registry_ready ) {
+                $reg = MAD4B_SCP_Operation_Registry::status();
+                $ops = is_array( $reg ) && is_array( $reg['operations'] ?? null ) ? $reg['operations'] : array();
+                foreach ( $ops as $op ) {
+                    if ( ! is_array( $op ) || ! self::safe_key( $op['id'] ?? null ) ) continue;
+                    $name = (string) $op['id'];
+                    $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                        'registered_kind' => 'governed_operation',
+                        'wp_admin_ui_binding' => 'operation_ui_not_individually_certified',
+                        'planner_registered' => true === ( $op['planner_registered'] ?? false ),
+                        'executor_registered' => true === ( $op['executor_registered'] ?? false ),
+                        'mcp_transport_verified' => false, 'write_verified' => false );
+                }
+            }
+        } elseif ( 'content_types' === $kind || 'taxonomies' === $kind ) {
+            $registry_ready = function_exists( 'content_types' === $kind ? 'get_post_types' : 'get_taxonomies' );
+            if ( $registry_ready ) {
+                $entities = 'content_types' === $kind
+                    ? get_post_types( array( 'show_ui' => true ), 'objects' )
+                    : get_taxonomies( array( 'show_ui' => true ), 'objects' );
+                foreach ( is_array( $entities ) ? $entities : array() as $name => $entity ) {
+                    if ( ! self::safe_key( $name ) ) continue;
+                    $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                        'registered_kind' => 'content_types' === $kind ? 'post_type' : 'taxonomy',
+                        'wp_admin_ui_binding' => 'core_entity_ui_not_browser_certified',
+                        'mcp_transport_verified' => false, 'write_verified' => false );
+                }
+            }
+        } elseif ( 'blocks' === $kind ) {
+            $registry_ready = class_exists( 'WP_Block_Type_Registry' );
+            if ( $registry_ready ) {
+                $blocks = WP_Block_Type_Registry::get_instance()->get_all_registered();
+                foreach ( is_array( $blocks ) ? $blocks : array() as $name => $block ) {
+                    if ( ! self::safe_key( $name ) ) continue;
+                    $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                        'registered_kind' => 'block_type',
+                        'wp_admin_ui_binding' => 'editor_insertion_not_certified',
+                        'mcp_transport_verified' => false, 'write_verified' => false );
+                }
+            }
+        } elseif ( 'rest_routes' === $kind ) {
+            global $wp_rest_server;
+            // No rest_api_init or callback invocations during a passive admin GET.
+            $registry_ready = is_object( $wp_rest_server ) && method_exists( $wp_rest_server, 'get_routes' );
+            if ( $registry_ready ) foreach ( $wp_rest_server->get_routes() as $name => $endpoints ) {
+                if ( ! self::safe_key( $name ) ) continue;
+                $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                    'registered_kind' => 'rest_endpoint',
+                    'wp_admin_ui_binding' => 'api_endpoint_not_admin_ui',
+                    'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        } elseif ( 'cron_hooks' === $kind ) {
+            $registry_ready = function_exists( '_get_cron_array' );
+            if ( $registry_ready ) {
+                $events = _get_cron_array();
+                if ( is_array( $events ) ) foreach ( $events as $hooks )
+                    if ( is_array( $hooks ) ) foreach ( $hooks as $name => $jobs ) {
+                        if ( ! self::safe_key( $name ) ) continue;
+                        $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                            'registered_kind' => 'scheduled_cron_hook',
+                            'wp_admin_ui_binding' => 'cron_job_not_admin_button',
+                            'mcp_transport_verified' => false, 'write_verified' => false );
+                    }
             }
         } else {
             global $wp_filter;
