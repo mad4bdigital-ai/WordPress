@@ -120,6 +120,87 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Unified operational acceptance evidence, read-only by design
+
+PR #258 now adds `mad4b/operational-acceptance-evidence` through the same
+`mad4b-read` MCP and canonical Operational Remediation boot as other
+read-only diagnostics. The user no longer has to combine eight disparate
+status reports manually. Every response includes:
+
+- **Eight bounded stages**: legacy source inventory; original Google Drive
+  file membership; independent owner attestation; fresh signed Host identity;
+  real independent MariaDB restart/rollback certification; exact-source
+  signed package/installed readback; three-category Brand Core review; and
+  persisted native CPT draft acceptance
+- For every stage, its exact registered read/plan/approved-write/readback
+  Ability, mounted/not mounted indicators, any evidence actually observed,
+  missing certification and next read-only planning route
+- A deterministic `snapshot_sha256` bound to the exact Staging Site
+  Profile, original source ID, source/asset registry census, provider
+  membership proof (if requested), brand review coverage, Host challenge
+  (if requested), current installed commit and static route mapping
+- An **independent second WordPress registry and site read**, failing closed
+  as `SNAPSHOT_DRIFT_REPLAN` when another request changed observed
+  WordPress state mid-collection
+- Clear separation of observed facts from legal rights, owner approval,
+  signed release evidence, real MariaDB crash receipt and draft acceptance
+
+### Suggested exact remote flow
+
+1. First call `mad4b/operational-acceptance-evidence` with `{}` to
+   discover installed Abilities and current Brand review/legacy counts. No
+   expensive Google Drive or Host contact runs by default.
+2. Obtain the exact original 64-character source ID from
+   `context/legacy-owner-transfer-discover`, and exact 40-character
+   selected commit from GitHub.
+3. Repeat with `{ "source_id":"<64-hex>",
+   "candidate_sha":"<40-hex>", "include_provider_scan":true }` to scan
+   the **original provider root**, not a guessed replacement Drive folder.
+   A full provider scan may be expensive; this is opt-in.
+4. If a real enrolled Host exists, `"include_host_challenge":true`
+   uses the existing signed Host live verification. It is optional; a
+   verified nonce does **not** substitute for database crash testing.
+5. Preserve the returned `snapshot_sha256`. On a subsequent separate
+   request, send exactly the same options and the
+   `"expected_snapshot_sha256"` value. A mismatch returns
+   `mad4b_operational_evidence_snapshot_changed_replan`; discard the
+   earlier preflight and gather fresh proof.
+6. For missing stages inspect `next_read_or_plan_ability`. If
+   `effectful_ability` is nonempty, its write must still independently
+   satisfy current grant, user step-up, approved exact plan, issuer,
+   one-time ticket, and postcondition readback. **No write is dispatched
+   by the evidence collector.**
+7. Consult `mad4b/brand-core-recovery-alternatives` for fallback options
+   if a normal remote executor cannot run. Alternative discovery is not
+   equivalent independent certification.
+
+### Non-negotiable proof distinctions
+
+- Census observed while 1 source / 12 assets remain quarantined is merely
+  inventory, not a transfer.
+- Google Drive membership proof verifies original identities, not legal
+  ownership, consent or publication rights.
+- The source-transfer postcondition (if any) is exposed only as a
+  *supplemental observation*. It cannot self-issue the missing owner
+  attestation or reuse old approvals.
+- A WordPress Options API scratch PASS is not a MariaDB service crash,
+  cold restart, durable rollback or cross-request loss test.
+- Matching installed Git SHA is not a package signing certificate,
+  accepted CI evidence or independently verified rollback.
+- Existing general acceptance and browser acceptance result endpoints
+  may be consulted separately. Their mere registration does not bind a
+  particular live Brand Core or content receipt to the current site/release.
+- The response intentionally keeps `full_operational_acceptance=false`
+  until those independent signed/legal/approval adapters are actually
+  implemented, enrolled, and verified. Production and Breakglass stay
+  disabled. **Do not change the current legacy transfer hard gates**.
+
+Fixture: `tests/operational-acceptance-evidence-runtime.php`, required
+in the Feature 007 PHP 7.4 / PHP 8.3 CI matrix, plus the existing
+`tests/brand-core-remote-recovery-contract.py` source/privilege guard.
+The standalone fixture is not a real Host, Drive OAuth, MariaDB crash or
+browser acceptance environment.
+
 ## Host-optional native WordPress recovery rehearsal
 
 **New Feature 007 source contract**: `MAD4B_SCP_Native_Recovery` uses
