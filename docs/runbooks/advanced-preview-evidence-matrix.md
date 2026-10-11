@@ -31,6 +31,31 @@ and approved site capability driver. Run the no-secret
 live provider session. A provider's presence in source does not establish
 credential availability, acceptance readiness or free quota.
 
+A read-only GitHub Actions workflow check is available in
+`.github/workflows/mad4b-managed-browser-providers.yml`: manually run
+`workflow_dispatch` on the selected source branch with `live=false`,
+`provider=auto`, and credit fallback disabled. The independent
+`readiness` job reads configured provider credentials only inside its
+single preflight step, produces `managed-browser-readiness.json`, and
+does not request an MCP plan or open a browser session. The report lists
+credential names and provider eligibility, **never secret values**.
+Its result is a capacity/configuration hint, NOT an authenticated
+site signer check, provider quota certificate, or Live Acceptance PASS.
+
+For a fully governed live run, `live=true` requires a fresh short-lived
+`MAD4B_MCP_ACCESS_TOKEN`, a configured provider, and for native site
+provider plans a matching RSA key pair: the WordPress host requires the
+public PEM constant `MAD4B_BROWSER_ATTESTATION_PUBLIC_KEY_PEM`,
+while the GitHub Actions live runner needs
+`MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64` as a secret.
+The private key must never be committed, entered in a conversation,
+or exposed as job-wide environment. Both secrets and provider API
+credentials are now limited to the live execution step (and, where
+necessary, credential-name-only readiness checks) to protect npm
+installation and GitHub Actions artifact upload from secret exposure.
+Neither absence of a signer nor a mismatched RSA SPKI digest may be
+treated as a warning or bypassed.
+
 The authoritative sequence is Site Capability Discovery ->
 `mad4b/browser-acceptance-capabilities` -> fresh
 `mad4b/browser-acceptance-plan` -> provider-neutral bounded browser runner ->
