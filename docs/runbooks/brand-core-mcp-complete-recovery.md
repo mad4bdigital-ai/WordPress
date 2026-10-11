@@ -120,6 +120,90 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## MCP approval transport repair — direct Staging bootstrap (11 Oct 2026)
+
+After the native host-local binding became `READY_FOR_OWNER_APPROVAL`
+on All Royal Egypt Staging, all 95 governed write grants were reconciled
+and Managed Skills returned READY. The two-step write sequence failed at
+the approval ticket bootstrap:
+
+- The MCP connector exposed `mad4b_approval_plan` as a normalized tool
+  but returned `Tool not found: mad4b-approval-plan` on that direct path.
+- `mad4b/write-execute` with
+  `ability_name=mad4b/approval-plan`, pinned schema,
+  classification, authority scope and preparation receipt returned an
+  opaque internal exception.
+- `mad4b/approval-plan-reconcile` returned `found=false`, no
+  pending exact target ticket. This is not a usable approval and must
+  never be replaced with an invented ticket UUID or a skipped gate.
+
+The coding gap was two-tiered in
+`includes/class-mad4b-scp-servers.php`:
+the direct ChatGPT core tools did not register the approval planner, and
+even adding them to the core inventory alone would not work because
+`chatgpt_base_tools()` deliberately allowlists only approved direct
+mutation transports. Adding them to the unrestricted allowlist would
+also risk exposing privileged actions without step-up.
+
+**Bounded code repair:** `chatgpt_approval_bootstrap_tools()` admits
+exactly `mad4b/approval-plan` and, only if currently eligible,
+`mad4b/approval-ai-decide`. Prerequisites: exact Staging environment,
+effective candidate-bound governed Write, registered abilities with
+read-only=false, and a mounted `mad4b-write` target. The tools are
+added to both unified and fallback direct mutation allowlists **and**
+the reviewed **optional** direct step-up set. Existing
+`MAD4B_SCP_MCP_Catalog_Diagnostics` only serializes these privileged
+direct tools under the enrolled client bearer with
+`mad4b:authority:step-up` and keeps required base tools available when
+an optional schema/budget fails.
+
+This fix changes **transport discoverability only**. It does not issue
+OAuth credentials, create an NHI grant, approve a ticket, change AI
+decision policy, alter the target operation or authorize production.
+Existing `MAD4B_SCP_Staging_Write_Planning_Guard` and
+`MAD4B_SCP_Approval_Tickets` still require exact authority checks,
+resource guard, candidate-bound one-time ticket, AI delegation,
+classification, budgets, audit and executed-target readback.
+
+### Deployment and acceptance checklist
+
+1. Certify the immutable PR #258 head and install its ZIP on **Staging
+   only** through an already authorized update path. G9 fingerprint
+   verification must stay strict; CI queues are not PASS.
+2. Reconcile governed Staging Write and Managed Skills to that
+   installed head. Confirm no Developer/Breakglass/Production grants.
+3. Refresh MCP tools/list / reconnect the exact enrolled ChatGPT
+   client, including the existing authority step-up token scope.
+   Read tools/list on a fresh request and verify that
+   `mad4b-approval-plan` appears only when the step-up bearer is
+   current, and disappears without it.
+4. Verify `mad4b/deployment-binding-native-status` returns
+   `READY_FOR_OWNER_APPROVAL` and obtain fresh
+   `deployment-binding-native-plan` data.
+5. Create the exact pending approval ticket with the source-approved
+   `mad4b/approval-plan` input (never fabricate a ticket).
+   Verify `approval-plan-reconcile` for the same agent, target
+   fingerprint and operation payload. If plan returns an opaque
+   error, inspect reconciliation and do not blindly retry a
+   potentially successful mutation.
+6. Use `mad4b/approval-ai-decide` **only if the live
+   `operation-classify` result is `ai_autonomous`** and its
+   configured Agent/NHI/delegation match; otherwise use the human
+   approval handoff and stop automated approval.
+7. Dispatch `mad4b/deployment-binding-native-apply` with the
+   freshly approved one-time UUIDv4 ticket, the same exact plan
+   values and receipt. Follow with an independent new-request
+   `site-profile-status`, `deployment-mode-status`,
+   `legacy-reconciliation-census` and
+   `operational-acceptance-evidence` readback. The Site Profile
+   revision will advance; reconcile identity-bound grants again.
+
+**Live status at source repair:** No ticket had been created, no
+new Host key or WordPress Site Profile mutation was proven. Installing
+source and running E2E remain independent. The fix is a reviewed direct
+transport option; if the connected host does not refresh tools/list
+or rejects the new direct tools, do not bypass authorization.
+
 ## Simplest alternative: one approved WordPress-native Host-local binding
 
 Use the newly added `MAD4B_SCP_Deployment_Binding_Native` when the
