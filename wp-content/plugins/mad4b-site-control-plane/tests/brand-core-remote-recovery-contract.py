@@ -124,6 +124,43 @@ for marker in (
 must(remote, "const ALTERNATIVES_ABILITY = 'mad4b/brand-core-recovery-alternatives'", "alternate read ability missing")
 must(remote, "MAD4B_SCP_Recovery_Alternatives::discover(", "alternative planning not integrated")
 
+native = (root / "includes/class-mad4b-scp-native-recovery.php").read_text(encoding="utf-8")
+native_test = (root / "tests/native-recovery-runtime.php").read_text(encoding="utf-8")
+for marker in (
+    "final class MAD4B_SCP_Native_Recovery",
+    "const OPTION = 'mad4b_scp_native_recovery_scratch_v1'",
+    "const PLAN = 'mad4b/native-recovery-plan'",
+    "const START = 'mad4b/native-recovery-start'",
+    "const READBACK = 'mad4b/native-recovery-readback'",
+    "const CLEAN = 'mad4b/native-recovery-cleanup'",
+    "public static function cross_request_verified(",
+    "add_option( self::OPTION, $scratch, '', false )",
+    "delete_option( self::OPTION )",
+    "'staging' !== ( $x['configured_environment'] ?? '' )",
+    "'staging' !== ( $x['wordpress_environment'] ?? '' )",
+    "MAD4B_SCP_Authorization::authorize_mutation(",
+    "MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence(",
+    "MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan(",
+    "'mariadb_crash_restart_certified' => false",
+    "'rollback_certification_issued' => false",
+    "'ownership_transferred' => false",
+    "'host_required' => false",
+):
+    must(native, marker, "native WordPress-only recovery invariant missing")
+for dangerous in (
+    "shell_exec(", "proc_open(", "system(", "eval(",
+    "wpdb->query(", "wpdb->update(", "wpdb->insert(",
+    "legacy_owner_transfer_apply(", "update_option(",
+    "Plugin_Upgrader(", "wp_remote_post(",
+):
+    if dangerous in native:
+        raise AssertionError("unexpected external execution or non-scratch mutation: " + dangerous)
+for marker in ("native-recovery-plan", "native-recovery-start",
+               "native-recovery-readback", "native-recovery-cleanup"):
+    must(servers, marker, "new Host-free MCP surface not mounted")
+must(remediation, "MAD4B_SCP_Native_Recovery::boot();", "native feature not registered")
+must(alternative, "'wordpress_native' => array(", "native alternative domain missing")
+must(native_test, "original options unchanged", "scratch refusal fixture missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
