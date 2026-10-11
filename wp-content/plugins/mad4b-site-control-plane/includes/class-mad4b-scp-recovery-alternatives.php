@@ -189,6 +189,8 @@ final class MAD4B_SCP_Recovery_Alternatives {
                         ? 'discover_or_certify_exact_provider' : 'inspect_governed_plan_and_independent_receipts',
                     'route_may_be_planned_remotely' => '' !== $route['plan_ability']
                         && true === ( $ability_mounts[ $route['plan_ability'] ] ?? false ),
+                    'complete_semantic_handoff_mounted' => empty( $missing ),
+                    'external_executor_proven' => false,
                     'execution_authorized' => false,
                     'release_or_rollback_certified' => false,
                     'automatic_fallback_allowed' => false,
@@ -198,7 +200,7 @@ final class MAD4B_SCP_Recovery_Alternatives {
             }
             $suggested = '';
             foreach ( $candidates as $candidate ) {
-                if ( $candidate['route_may_be_planned_remotely'] ) {
+                if ( $candidate['complete_semantic_handoff_mounted'] ) {
                     $suggested = $candidate['route_id'];
                     break;
                 }
@@ -206,6 +208,8 @@ final class MAD4B_SCP_Recovery_Alternatives {
             $result[ $group ] = array(
                 'status' => 'ALTERNATIVES_DISCOVERED_NOT_CERTIFIED',
                 'suggested_read_only_preflight_route' => $suggested,
+                'full_semantic_handoff_mounted' => '' !== $suggested,
+                'no_certified_route_yet' => true,
                 'candidates' => $candidates,
                 'no_downgrade_of_required_evidence' => true,
             );
