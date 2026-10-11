@@ -103,6 +103,22 @@ brand_remote_assert( ! is_wp_error( $known_routes )
     && isset( $known_routes['domains']['candidate_delivery'] )
     && !isset( $known_routes['domains']['host_runner'] ),
     'MCP alternate route selector returns only requested domain' );
+$alternatives = MAD4B_SCP_Recovery_Alternatives::assess( array(
+    'mad4b/staging-offline-attestor-enroll-plan' => true,
+    'mad4b/control-plane-selected-head-apply' => true,
+    'mad4b/build-provenance-status' => true,
+), 'candidate_delivery' );
+brand_remote_assert( !is_wp_error( $alternatives )
+    && $alternatives['domains']['candidate_delivery']['suggested_read_only_preflight_route']
+        === 'signed_offline_staging'
+    && !$alternatives['all_remote_steps_execution_certified'],
+    'offline CI fallback discoverable even when primary Actions plan not mounted' );
+$missing_db = MAD4B_SCP_Recovery_Alternatives::assess( array(), 'database_recovery' );
+foreach ( $missing_db['domains']['database_recovery']['candidates'] as $route ) {
+    brand_remote_assert( !$route['execution_authorized']
+        && !$route['automatic_fallback_allowed'],
+        'isolated MariaDB alternative cannot bypass independent crash/rollback test' );
+}
 brand_remote_assert( ! is_wp_error( $normal ) && $normal['state'] === 'REMOTE_RECOVERY_INCOMPLETE',
     'normal plan must be incomplete' );
 brand_remote_assert( $normal['stages']['source_inventory']['evidence_observed'] === true,
