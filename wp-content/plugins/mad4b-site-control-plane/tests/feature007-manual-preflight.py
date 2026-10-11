@@ -127,6 +127,7 @@ FIXTURES = (
     "assistant-read-work-runtime.php",
     "assistant-entrypoint-registration-runtime.php",
     "oauth-consent-projection-view-runtime.php",
+    "oauth-consent-fast-first-paint-runtime.php",
     "g7-compensation-safety-runtime.php",
     "g8-automation-slo-runtime.php",
     "g9-resilience-gates-runtime.php",
