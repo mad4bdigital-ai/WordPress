@@ -108,7 +108,12 @@ final class MAD4B_SCP_Admin_Workspace {
 			$url = add_query_arg( $shortcut[1], $inventory[ $shortcut[0] ]['url'] ) . ( '' !== $shortcut[2] ? '#' . rawurlencode( $shortcut[2] ) : '' );
 			if ( '' !== $url ) echo '<a href="' . esc_url( $url ) . '">' . esc_html( $shortcut[3] ) . '</a>';
 		}
-		echo '</nav><details class="mad4b-workspace-directory"><summary>' . esc_html__( 'All workspaces & setup', 'mad4b-site-control-plane' ) . ' <span>(' . esc_html( (string) count( $inventory ) ) . ')</span></summary>';
+		echo '</nav>';
+		// The status is shared across every registered MAD4B admin screen.
+		// Do not infer live remote OAuth consent from this local browser request.
+		if ( class_exists( 'MAD4B_SCP_AI_Approval' ) && method_exists( 'MAD4B_SCP_AI_Approval', 'render_admin_status' ) )
+			MAD4B_SCP_AI_Approval::render_admin_status();
+		echo '<details class="mad4b-workspace-directory"><summary>' . esc_html__( 'All workspaces & setup', 'mad4b-site-control-plane' ) . ' <span>(' . esc_html( (string) count( $inventory ) ) . ')</span></summary>';
 		echo '<div data-mad4b-directory-controls hidden><label for="mad4b-workspace-filter">' . esc_html__( 'Find a page or setting', 'mad4b-site-control-plane' ) . '</label><input type="search" id="mad4b-workspace-filter" aria-controls="mad4b-workspace-pages" autocomplete="off"><p data-mad4b-directory-empty hidden>' . esc_html__( 'No matching workspace. Clear the search to see all pages.', 'mad4b-site-control-plane' ) . '</p><span class="screen-reader-text" role="status" aria-live="polite" aria-atomic="true" data-mad4b-directory-status data-template="' . esc_attr__( '%d workspaces found', 'mad4b-site-control-plane' ) . '"></span></div>';
 		// Reuse the existing capability-filtered inventory; groups are purely
 		// presentation and cannot expose an unregistered or unauthorized route.
