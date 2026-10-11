@@ -120,6 +120,71 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Host-optional native WordPress recovery rehearsal
+
+**New Feature 007 source contract**: `MAD4B_SCP_Native_Recovery` uses
+the existing WordPress Abilities API + Options API + optional WP-Cron,
+not a Docker process, SSH, external signer or Host Runner. Exposed via:
+
+- `mad4b/native-recovery-plan`: read-only exact Staging rehearsal plan.
+- `mad4b/native-recovery-start`: separately approved, owner-step-up
+  governed write to **one private non-autoloading option only**.
+- `mad4b/native-recovery-readback`: independent new MCP request
+  compares scratch hash, exact WordPress Site Profile binding, fresh
+  request identity, 15-minute expiration and original legacy plan.
+- `mad4b/native-recovery-cleanup`: separately approved removal of **that
+  scratch option only**, with independent MAD4B audit.
+
+Use `mode=probe` to test Option write/read/cleanup without any original
+Brand records. Use `mode=shadow` plus the exact 64-character quarantined
+source ID to independently read the original `legacy_owner_transfer_plan`
+and full original Google Drive `legacy_owner_transfer_evidence` (all
+stored file identities) before writing a small **shadow metadata digest**,
+not the real source or file contents. During the separate-request readback,
+rescan provider evidence and re-check plan and site identity.
+
+Example step order:
+1. Discover `wordpress_native` with
+   `mad4b/brand-core-recovery-alternatives`.
+2. Read exact `mad4b/native-recovery-plan` with `mode=probe`, reason.
+3. Independently approve exact SHA; call
+   `mad4b/native-recovery-start`, confirmation
+   `START STAGING SCRATCH PROBE`. Shadow uses
+   `STAGE BRAND SHADOW ONLY` instead.
+4. **Make a distinct MCP request**, not the same WordPress request, to
+   `mad4b/native-recovery-readback` using the returned `job_id`.
+   Same-request readback is intentionally `WP_NATIVE_INCOMPLETE`.
+5. Approve exact cleanup:
+   `mad4b/native-recovery-cleanup` with
+   `CLEAN STAGING SCRATCH ONLY`; only the private option is removed.
+   WP-Cron may expire old scratch after 15 minutes; it is never a
+   requirement to execute the test or authoritative acceptance.
+
+This proves a **bounded WordPress cross-request functional rehearsal**,
+not MariaDB service crash/restart, durable database backup/restore,
+Host-controlled root identity, legal right to use Drive assets, actual
+ownership transfer or signed package provenance. Do **not** flip
+`MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED` after a scratch
+PASS: legacy `context/legacy-owner-transfer-apply` continues to require
+the separately enrolled signed physical Host and independent rollback
+certification. Any future Host-free owner transition requires **a different
+explicitly reviewed authority contract, genuinely equivalent rollback
+guarantee, owner consent and production isolation**; the scratch route
+cannot authorize it.
+
+The existing WordPress `Plugin_Upgrader`-based, exact-package verified
+Staging updater is still available separately for signed/certified ZIPs.
+It requires no dedicated Host agent when its WordPress-native update
+authority is already enrolled and all original package gates pass.
+Neither the new scratch nor the native updater signs its own independent
+CI receipt.
+
+Source tests: `tests/native-recovery-runtime.php`, plus native reducer
+refusal assertions inside the existing PHP 7.4/8.3 fixture
+`tests/brand-core-remote-recovery-runtime.php`, and strict native
+contract checks in `tests/brand-core-remote-recovery-contract.py`.
+Live acceptance is pending until an exact PR #258 package reaches Staging.
+
 ## Multi-path fallback discovery instead of dead-end blockers
 
 The new `mad4b/brand-core-recovery-alternatives` read-only MCP Ability
