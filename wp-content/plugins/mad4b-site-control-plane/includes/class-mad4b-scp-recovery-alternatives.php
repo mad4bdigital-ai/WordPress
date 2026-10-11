@@ -44,7 +44,7 @@ final class MAD4B_SCP_Recovery_Alternatives {
                     array( 'separate_request', 'option_digest', 'exact_staging_site',
                         'governed_write_approval', 'explicit_cleanup',
                         'no_mariadb_crash_certification', 'no_ownership_transition' ),
-                    'mad4b-admin', 'Functional scratch only: does not replace real database crash or Host acceptance.'
+                    'mad4b-write', 'Functional scratch only: does not replace real database crash or Host acceptance.'
                 ),
                 self::route(
                     'native_brand_shadow', 'Host-free quarantined Brand source shadow rehearsal',
@@ -52,7 +52,7 @@ final class MAD4B_SCP_Recovery_Alternatives {
                     'mad4b/native-recovery-readback', 'wordpress_options_shadow',
                     array( 'original_file_issuer_identity', 'exact_provider_file_proof',
                         'fresh_source_plan', 'independent_owner_approval_for_actual_transfer',
-                        'context_registry_untouched' ), 'mad4b-admin',
+                        'context_registry_untouched' ), 'mad4b-write',
                     'Preserves original legacy transfer gate and does not grant legal ownership.'
                 ),
             ),
