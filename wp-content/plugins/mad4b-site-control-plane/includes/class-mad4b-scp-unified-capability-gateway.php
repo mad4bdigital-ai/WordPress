@@ -172,6 +172,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			foreach ( $input[$key] as $value ) if ( ! is_string( $value ) || strlen( $value ) > 512 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway array entries must be bounded strings.', array( 'status' => 400 ) );
 		}
 		if ( array_key_exists( 'declared_readonly_only', $input ) && ! is_bool( $input['declared_readonly_only'] ) ) return new WP_Error( 'mad4b_capability_gateway_read_filter_invalid', 'Read-only discovery filter must be a boolean.', array( 'status' => 400 ) );
+        if ( array_key_exists( 'declared_writeonly_only', $input ) && ! is_bool( $input['declared_writeonly_only'] ) ) return new WP_Error( 'mad4b_capability_gateway_write_filter_invalid', 'Mutation-only filter must be a boolean.', array( 'status' => 400 ) );
+        if ( ! empty( $input['declared_writeonly_only'] ) && ! empty( $input['declared_readonly_only'] ) ) return new WP_Error( 'mad4b_capability_gateway_contradictory_filters', 'Cannot select both read-only and mutation-only metadata.', array( 'status' => 400 ) );
 		if ( isset( $input['limit'] ) && false === filter_var( $input['limit'], FILTER_VALIDATE_INT ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Search limit must be an integer.', array( 'status' => 400 ) );
 		if ( isset( $input['client_capabilities'] ) ) {
 			if ( ! is_array( $input['client_capabilities'] ) || count( $input['client_capabilities'] ) > 16 ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Client capabilities must be a bounded object.', array( 'status' => 400 ) );
@@ -354,6 +356,10 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		if ( '' === $task && empty( $terms ) ) return new WP_Error( 'mad4b_capability_gateway_task_required', 'Task text or keywords are required for bounded capability search.' );
 		$limit = isset( $input['limit'] ) ? max( 1, min( 25, (int) $input['limit'] ) ) : 12;
 		$readonly_only = true === ( $input['declared_readonly_only'] ?? false );
+        $writeonly_only = true === ( $input['declared_writeonly_only'] ?? false );
+        if ( $readonly_only && $writeonly_only )
+            return new WP_Error( 'mad4b_capability_gateway_contradictory_filters',
+                'Read-only and mutation-only selection conflict.' );
 		$ability_names = MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names();
 		$matches = array();
 		foreach ( $ability_names as $ability_name ) {
@@ -383,6 +389,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			// abilities can crowd out every relevant safe read capability.
 			// This is still provisional metadata, not an execution grant.
 			if ( $readonly_only && true !== $row['declared_readonly'] ) continue;
+            // Filter mutating declarations before top-N. No annotation
+            // means UNKNOWN and is never silently upgraded to write.
+            if ( $writeonly_only && false !== $row['declared_readonly'] ) continue;
 			$score = self::relevance_score( $row, $task, $terms );
 			if ( $score <= 0 ) continue;
 			$row['preparation_required'] = true;
@@ -402,8 +411,11 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'task' => $task,
 			'keywords' => $terms,
 			'search_mode' => $readonly_only
-				? 'bounded_declared_readonly_metadata_relevance' : 'bounded_metadata_only_relevance',
-			'declared_readonly_filter_applied' => $readonly_only,
+                ? 'bounded_declared_readonly_metadata_relevance'
+                : ( $writeonly_only ? 'bounded_declared_mutation_metadata_relevance'
+                    : 'bounded_metadata_only_relevance' ),
+            'declared_readonly_filter_applied' => $readonly_only,
+            'declared_writeonly_filter_applied' => $writeonly_only,
 			'items' => $matches,
 			'count' => count( $matches ),
 			'universe_count' => count( $ability_names ),
