@@ -276,7 +276,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'code_challenge_methods_supported' => array( 'S256' ),
 			'scopes_supported' => $portable_only
 				? array( 'mad4b:read', 'offline_access' )
-				: array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
+				: array_merge( array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ), 'staging' === self::current_environment() ? array( 'mad4b:approval:auto:all' ) : array() ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -852,6 +852,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
 		$step_up_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $validated['scopes'], true );
 		$raw_breakglass_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $validated['scopes'], true );
+		$ai_auto_all_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE, $validated['scopes'], true );
 		$request_description = $raw_breakglass_requested
 			? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
 			: ( $step_up_requested
@@ -864,6 +865,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		if ( $step_up_requested ) {
 			echo '<p><strong>' . esc_html__( 'Authority step-up:', 'mad4b-site-control-plane' ) . '</strong> ' .
 				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update and database-backed governed runtime-gate policy changes only where the current environment policy permits them. It does not itself create write grants, Developer authority, Developer Breakglass authority, Production mutation authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
+				'</p>';
+		}
+		if ( $ai_auto_all_requested ) {
+			echo '<p><strong>' . esc_html__( 'AI automatic approval delegation:', 'mad4b-site-control-plane' ) . '</strong> ' .
+				esc_html__( 'By approving this exact additional OAuth scope, you authorize the named ChatGPT client and its bound Staging AI Agent to approve or reject governed operation tickets automatically, including operations that normally require a human ticket decision. Each operation still requires a valid target, exact grant, matching payload and build, applicable execution permission and audit. This is not a claim that AI is a human reviewer; original asset ownership verification, Production permissions and Breakglass rights are not changed. To revoke future decisions, revoke this OAuth grant; issued access tokens may remain valid until their short expiry.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
 		if ( $raw_breakglass_requested ) {
@@ -1131,7 +1137,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$scope = trim( (string) $scope );
 		if ( strlen( $scope ) > self::MAX_SCOPE_BYTES ) return new WP_Error( 'invalid_scope', 'OAuth scope is too large.' );
 		$items = preg_split( '/\s+/', $scope );
-		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
+		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'mad4b:approval:auto:all', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
 		$scopes = array();
 		foreach ( is_array( $items ) ? $items : array() as $item ) {
 			$item = trim( (string) $item );
@@ -1149,6 +1155,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			$developer = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
 			$developer_breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
 			$has_step_up = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $scopes, true );
+			$has_ai_auto_all = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE, $scopes, true );
 			$has_raw_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $scopes, true );
 			$has_developer = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_SCOPE, $scopes, true );
 			$has_developer_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_BREAKGLASS_SCOPE, $scopes, true );
@@ -1157,6 +1164,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
 				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside an exact eligible governed environment.' );
+			}
+			if ( $has_ai_auto_all ) {
+				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) || ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is bound to the exact ChatGPT OAuth client and canonical MCP resource.' );
+				if ( 'staging' !== self::current_environment() || ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is available only on an enrolled eligible Staging resource.' );
 			}
 			if ( $has_raw_breakglass ) {
 				if ( ! $has_step_up ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope requires the dedicated authority step-up scope.' );
