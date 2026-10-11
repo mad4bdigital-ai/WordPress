@@ -31,6 +31,33 @@ unset( $mad4b_scp_boot_provenance_path );
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-catalog-lifecycle.php';
 register_deactivation_hook( __FILE__, array( 'MAD4B_SCP_Catalog_Lifecycle', 'deactivate' ) );
 
+// Plain GET/HEAD views of WordPress's native plugin-management screens
+// must not parse hundreds of Control Plane modules or start any MAD4B
+// schema, audit, key recovery, provider discovery or background convergence.
+// Upload/install/update/activate/deactivate actions are NOT bypassed: they
+// use update.php, a non-read method, or an explicit action and retain the
+// normal activation/deactivation hook and all fail-closed write gates.
+// Deactivation has already been registered above, so it remains callable.
+$mad4b_native_plugin_page = isset( $GLOBALS['pagenow'] ) && is_string( $GLOBALS['pagenow'] )
+    ? $GLOBALS['pagenow'] : '';
+$mad4b_native_plugin_method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] )
+    ? strtoupper( trim( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+$mad4b_native_plugin_action = isset( $_REQUEST['action'] ) && is_scalar( $_REQUEST['action'] )
+    ? trim( (string) $_REQUEST['action'] ) : '';
+if ( function_exists( 'is_admin' ) && is_admin()
+    && ( ! defined( 'WP_CLI' ) || ! WP_CLI )
+    && ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX )
+    && in_array( $mad4b_native_plugin_page, array( 'plugin-install.php', 'plugins.php', 'update-core.php' ), true )
+    && in_array( $mad4b_native_plugin_method, array( 'GET', 'HEAD' ), true )
+    && '' === $mad4b_native_plugin_action
+) {
+    if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ) {
+        define( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON', 'wordpress_plugin_management_read' );
+    }
+    return;
+}
+unset( $mad4b_native_plugin_page, $mad4b_native_plugin_method, $mad4b_native_plugin_action );
+
 /*
  * Early zero-touch kernel for unrelated REST/admin-AJAX requests.
  *
