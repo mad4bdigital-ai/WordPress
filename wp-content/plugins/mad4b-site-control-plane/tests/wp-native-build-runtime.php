@@ -126,6 +126,17 @@ assert_native( $registry->ability_names( 'admin' ) === array( $ability ) &&
     $registry->ability_names( 'write' ) === array() &&
     $registry->ability_names( 'content' ) === array(),
     'Source Worker enrolls one Admin Ability without duplicate/manual core entries' );
+class MAD4B_SCP_Future_Module_Fixture extends MAD4B_SCP_Adapter_Base {
+    public function id() { return 'future-module'; }
+    public function ability_names() {
+        return array( 'admin' => array( 'future/governed-action' ),
+            'read' => array(), 'write' => array(), 'content' => array() );
+    }
+}
+assert_native( true === $registry->register( new MAD4B_SCP_Future_Module_Fixture() ) &&
+    $registry->ability_names( 'admin' ) === array(
+        $ability, 'future/governed-action' ),
+    'A second future module enrolls without any Server core allowlist edit' );
 $adapter = new MAD4B_SCP_WP_Native_Build_Adapter();
 assert_native( $adapter->provider_key() === 'core' &&
     $adapter->mutation_ability_runtime_eligibility( 'mad4b/unknown' ) instanceof WP_Error,
