@@ -215,6 +215,47 @@ must(native, "const STATUS = 'mad4b/native-recovery-status'", "native status too
 must(native, "SCRATCH_EXPIRED_CLEANUP_AVAILABLE", "expired job recovery missing")
 must(native, "SCRATCH_REQUIRES_INDEPENDENT_READBACK", "active job recovery missing")
 must(native, "'next_ability' => self::STATUS", "new status link missing")
+acceptance = (root / "includes/class-mad4b-scp-operational-acceptance-evidence.php").read_text(encoding="utf-8")
+acceptance_test = (root / "tests/operational-acceptance-evidence-runtime.php").read_text(encoding="utf-8")
+for marker in (
+    "const ABILITY = 'mad4b/operational-acceptance-evidence'",
+    "public static function site_snapshot(",
+    "public static function reduce(",
+    "public static function collect(",
+    "context/legacy-owner-transfer-evidence",
+    "MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback(",
+    "MAD4B_SCP_Context_Authority::brand_core_coverage(",
+    "MAD4B_SCP_Native_Recovery::status()",
+    "MAD4B_SCP_Host_Identity_Live::observe(",
+    "MAD4B_SCP_Context_Authority::legacy_reconciliation_census()",
+    "MAD4B_SCP_Self_Update::current_identity()",
+    "'owner_attestation' => false",
+    "'durable_db_recovery' => false",
+    "'certified_package' => false",
+    "'draft_acceptance' => false",
+    "'full_operational_acceptance' => false",
+    "'owner_transfer_authorized' => false",
+    "'breakglass_authorized' => false",
+    "'production_mutation_authorized' => false",
+    "'mutation_performed' => false",
+    "expected_snapshot_sha256",
+    "SNAPSHOT_DRIFT_REPLAN",
+    "independent_real_mariadb_crash_rollback_executor_and_signed_receipt_missing",
+):
+    must(acceptance, marker, "non-authorizing operational acceptance evidence contract missing")
+for side_effect in (
+    "shell_exec(", "proc_open(", "system(", "eval(", "wp_remote_post(",
+    "wp_insert_post(", "update_option(", "delete_option(",
+    "legacy_owner_transfer_apply(", "control_plane_selected_head_apply(",
+):
+    if side_effect in acceptance:
+        raise AssertionError("unexpected mutation or OS side effect in acceptance read: " + side_effect)
+must(acceptance_test, "eight stages; no inferred completion or mutation", "acceptance runtime test missing")
+must(servers, "'mad4b/operational-acceptance-evidence'", "unified evidence missing from core MCP read tools")
+must(remediation, "MAD4B_SCP_Operational_Acceptance_Evidence::boot();", "new evidence class not booted")
+must(operator, "'mad4b/operational-acceptance-evidence'", "operator task path missing unified evidence")
+must(workflow, "operational-acceptance-evidence-runtime.php", "native PHP matrix missing acceptance runtime")
+must(workflow, "class-mad4b-scp-operational-acceptance-evidence.php", "native PHP lint missing acceptance class")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
