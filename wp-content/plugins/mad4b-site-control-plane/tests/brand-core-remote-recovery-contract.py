@@ -139,6 +139,9 @@ for marker in (
     "'staging' !== ( $x['configured_environment'] ?? '' )",
     "'staging' !== ( $x['wordpress_environment'] ?? '' )",
     "MAD4B_SCP_Authorization::authorize_mutation(",
+    "MAD4B_SCP_Authorization::claim_mutation(",
+    "MAD4B_SCP_Authorization::permission_result_from_authorization(",
+    "MAD4B_SCP_Audit::record(",
     "MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence(",
     "MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan(",
     "'mariadb_crash_restart_certified' => false",
@@ -160,6 +163,8 @@ for marker in ("native-recovery-plan", "native-recovery-start",
     must(servers, marker, "new Host-free MCP surface not mounted")
 must(remediation, "MAD4B_SCP_Native_Recovery::boot();", "native feature not registered")
 must(alternative, "'wordpress_native' => array(", "native alternative domain missing")
+must(parity, "'brand_core_wordpress_native_probe' => array(", "native scratch operation not indexed")
+must(parity, "'brand_core_wordpress_native_shadow' => array(", "native shadow operation not indexed")
 must(native_test, "original options unchanged", "scratch refusal fixture missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
