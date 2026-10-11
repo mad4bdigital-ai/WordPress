@@ -49,6 +49,8 @@ $GLOBALS['abilities']['example/approval-plan'] =
     new FakeAbility( 'example/approval-plan', false );
 $GLOBALS['abilities']['example/approval-unknown'] =
     new FakeAbility( 'example/approval-unknown', null );
+$GLOBALS['abilities']['example/approval-untrusted-annotation'] =
+    new FakeAbility( 'example/approval-untrusted-annotation', 'false' );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-unified-capability-gateway.php';
 $gateway = 'MAD4B_SCP_Unified_Capability_Gateway';
 $only_mutating = $gateway::search( array(
@@ -78,4 +80,19 @@ check_route( is_wp_error( $malformed )
 check_route( $only_mutating['authority_effect'] === 'none'
     && $only_mutating['preparation_required_for_authority_and_schema'],
     'metadata discovery cannot grant write access or execution' );
+$direct_invalid_write = $gateway::search( array(
+    'task' => 'approval', 'declared_writeonly_only' => 'yes' ) );
+check_route( is_wp_error( $direct_invalid_write )
+    && $direct_invalid_write->get_error_code() === 'mad4b_capability_gateway_write_filter_invalid',
+    'direct search rejects nonboolean mutation filter' );
+$direct_invalid_read = $gateway::search( array(
+    'task' => 'approval', 'declared_readonly_only' => 'yes' ) );
+check_route( is_wp_error( $direct_invalid_read )
+    && $direct_invalid_read->get_error_code() === 'mad4b_capability_gateway_read_filter_invalid',
+    'direct search rejects nonboolean readonly filter' );
+check_route( !in_array( 'example/approval-untrusted-annotation',
+    array_column( $only_mutating['items'], 'ability_name' ), true )
+    && !in_array( 'example/approval-untrusted-annotation',
+        array_column( $only_reads['items'], 'ability_name' ), true ),
+    'untrusted readonly annotations never promote to read or mutation' );
 echo "mad4b.site-control-plane.adaptive-capability-filter.runtime.v1: PASS\n";
