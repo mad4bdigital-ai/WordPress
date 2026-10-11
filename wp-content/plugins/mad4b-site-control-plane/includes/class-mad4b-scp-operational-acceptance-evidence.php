@@ -131,6 +131,11 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
             && is_int( $census['source_quarantine_count'] )
             && is_int( $census['asset_quarantine_count'] )
             && $census['source_quarantine_count'] >= 0 && $census['asset_quarantine_count'] >= 0
+            // An unbound WordPress-only census is informative, never a
+            // certified operational-scope or ownership observation.
+            && false !== ( $census['operational_scope_verified'] ?? null )
+            && self::valid_sha( (string) $census['scope_fingerprint'], 64 )
+            && 'UNVERIFIED_DEPLOYMENT_BINDING' !== ( $census['state'] ?? '' )
             && ! $drift;
         $quarantine_clear = $census_ok && 0 === $census['source_quarantine_count']
             && 0 === $census['asset_quarantine_count'];
