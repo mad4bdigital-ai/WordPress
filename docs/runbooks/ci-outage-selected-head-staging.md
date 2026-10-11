@@ -6,6 +6,51 @@ GitHub Actions in `queued`, `pending`, `timed_out` or `unavailable` state **is n
 
 No Production update, master promotion, or GitHub branch-protection bypass is inferred by this Staging-only exception. Failures in **native tests, ZIP validation, source provenance, signer trust, owner approval, WordPress runtime identity, or rollback readiness are still blockers**.
 
+## GitHub Actions queue policy (2026-10-11)
+
+When GitHub Actions remains `queued`/`pending` or fails before creating a
+job, its **terminal success is not required for this Staging path**. The
+alternate evidence route is available without checking or waiting for a GitHub
+queue status: an independently signed, exact-HEAD test bundle is the governing
+evidence. This avoids hardcoding any queue duration or workflow name as an
+authorization signal. Neither a queue count nor a stale CI failure grants
+authority.
+
+There are always two distinct and valid inputs:
+
+- `github_ci_verdict`: independently verified normal, successful CI release
+  verdict and trusted source-specific package.
+- `owner_signed_ci_outage`: exact source / PHP 8.3 / canonical package / ZIP
+  runtime / G9 native tests **all PASS**, independently reviewed and Ed25519
+  signed by an enrolled trusted Staging attestor, within the 24-hour window.
+
+A `FAIL` or `BLOCKED` in any required native gate **cannot** be overridden.
+The alternative is evidence equivalence, not permission to skip tests.
+`BUILT_UNVERIFIED` alone is not enough. No Production, main/master promotion,
+branch protection override, unsafe upload, approval skipping or automatic
+trust creation is permitted.
+
+The WordPress `mad4b/control-plane-selected-head-plan` now advertises both
+accepted evidence modes in its recovery plan; when a candidate manifest is
+missing it recommends `tools/mad4b_standalone_evidence.py` +
+`tools/mad4b_publish_offline_staging_candidate.py` instead of directing the
+owner to a blocked GitHub Workflow. The site cannot assert that the queue is
+down unless that status is observed separately; plan eligibility continues to
+depend on the independently signed manifest and actual runtime protections.
+
+`mad4b/staging-offline-attestor-enroll-apply` uses the governed dynamic
+Admin/Write adapter registry, **not** a hardcoded central Server name.
+Its original owner OAuth authority Step-Up, exact grants/ticket, restricted
+public-key schema and audit/rollback rules remain in force. The adapter
+refuses execution outside the exact enrolled Staging profile. The signing
+**private key never enters WordPress**.
+
+**Bootstrap limitation:** These changes only become live on a site when an
+independently verified exact-source package containing them is installed.
+Existing sites without the newly mountable enrollment Ability may need an
+authorized one-time manual Staging bootstrap. Do not treat source publication
+on GitHub as a live site update.
+
 ## Trust and roles
 
 - **Signer:** a separately operated trusted test machine with PHP 8.3/Docker + local v7 isolated kit. Generate an Ed25519 private signing key *outside WordPress*; do not transmit it to MCP, ChatGPT, GitHub or WordPress.
