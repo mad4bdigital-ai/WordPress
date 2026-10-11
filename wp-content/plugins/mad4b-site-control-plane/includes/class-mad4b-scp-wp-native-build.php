@@ -177,6 +177,10 @@ final class MAD4B_SCP_WP_Native_Build {
             array_diff( array_keys( $input ), array( 'expected_head', 'expected_plan_sha256', 'confirmation' ) ) ||
             ( $input['confirmation'] ?? '' ) !== self::CONFIRM )
             return new WP_Error( 'mad4b_native_start_input', 'Exact opt-in confirmation required.' );
+        // Recheck real owner, OAuth Step-up and exact central write authority in
+        // the execution callback, not only in the Ability permission hook.
+        $access = self::can_start( $input );
+        if ( is_wp_error( $access ) || true !== $access ) return $access;
         $plan = self::plan( array( 'expected_head' => $input['expected_head'] ?? '' ) );
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! hash_equals( $plan['plan_sha256'], (string) ( $input['expected_plan_sha256'] ?? '' ) ) ||
