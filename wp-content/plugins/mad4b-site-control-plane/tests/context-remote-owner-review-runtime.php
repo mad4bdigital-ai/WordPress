@@ -33,6 +33,11 @@ remote_context_expect( is_string( $source ) && is_string( $adapter ) && is_strin
 foreach ( array(
     'remote_owner_review_plan(', 'remote_owner_review_apply(', 'get_current_user_id()', 'current_user_can( \'manage_options\' )',
     "empty( \$identity['approval_ticket_id'] )", 'review_asset_with_actor(', 'reviewed_content_hash',
+    "MAD4B_SCP_Approval_Tickets::get( \$identity['approval_ticket_id'] )",
+    "'executing' !== (string) ( \$ticket['status'] ?? '' )",
+    "'context/remote-owner-review-apply' !== (string) ( \$ticket['ability_name'] ?? '' )",
+    "(int) ( \$ticket['approved_by'] ?? 0 ) !== (int) \$user_id",
+    'mad4b_remote_context_review_human_attestation_required',
 ) as $needle ) {
     remote_context_expect( false !== strpos( $source, $needle ), 'Remote owner cannot bypass exact verified review: ' . $needle );
 }
