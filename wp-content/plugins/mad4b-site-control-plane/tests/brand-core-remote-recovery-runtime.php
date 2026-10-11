@@ -34,7 +34,9 @@ class MAD4B_SCP_Context_Authority {
         $sources = self::$source_count;
         if ( self::$drift_second_census && 0 === self::$census_reads % 2 ) ++$sources;
         return array( 'source_quarantine_count' => $sources,
-            'asset_quarantine_count' => self::$asset_count );
+            'asset_quarantine_count' => self::$asset_count,
+            'scope_fingerprint' => str_repeat( 'b', 64 ),
+            'operational_scope_verified' => true );
     }
     public static function brand_core_coverage() {
         $e = array( 'ready' => self::$ready );
