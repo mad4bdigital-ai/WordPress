@@ -245,6 +245,12 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             'self_approval_outcome' => $outcome,
             'evidence_mode' => 'site_self_certified_staging',
             'job_id' => $plan['job_id'],
+            // Disk readback is not a new MCP runtime/authority acceptance.
+            'installed_disk_readback_verified' => true,
+            'runtime_operational_acceptance_deferred' => true,
+            'post_install_fresh_mcp_readback_required' => true,
+            'candidate_binding_reconciliation_required' =>
+                ! empty( $result['post_update_candidate_rebind_required'] ),
             'independent_attestation_verified' => false,
             'external_release_certified' => false, 'production_authorized' => false ) );
     }
