@@ -231,7 +231,7 @@ final class MAD4B_SCP_Admin_UI {
 			return;
 		}
 		$kind = isset( $_GET['control_kind'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'control_kind' ) ) : 'abilities';
-		$allowed = array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' );
+		$allowed = MAD4B_SCP_Admin_Surface_Coverage::CONTROL_KINDS;
 		if ( ! in_array( $kind, $allowed, true ) ) $kind = 'abilities';
 		$offset = isset( $_GET['control_offset'] ) ? absint( MAD4B_SCP_Admin_Experience::query_string( 'control_offset', '0', 7 ) ) : 0;
 		$offset = min( 100000, $offset );
