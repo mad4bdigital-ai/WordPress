@@ -106,6 +106,35 @@ final class MAD4B_SCP_Operational_Remediation {
         echo '<p class="description">'
             . esc_html__( 'Probe writes only a temporary WordPress option. Shadow stores source fingerprints but does not transfer ownership or certify MariaDB crash recovery. Use separate approved MCP steps to start and clean up.', 'mad4b-site-control-plane' )
             . '</p>';
+        $journeys = class_exists( 'MAD4B_SCP_Operator_Journeys', false )
+            ? MAD4B_SCP_Operator_Journeys::discover() : array();
+        $task_items = is_array( $journeys ) && is_array( $journeys['journeys'] ?? null )
+            ? $journeys['journeys'] : array();
+        echo '<h2>' . esc_html__( 'Choose your goal', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<p class="description">'
+            . esc_html__( 'Expand a journey to see its individual steps and missing tools. Registered tools still require current permission, approval and independent verification.', 'mad4b-site-control-plane' )
+            . '</p>';
+        foreach ( $task_items as $task ) {
+            if ( ! is_array( $task ) ) continue;
+            $steps = is_array( $task['steps'] ?? null ) ? $task['steps'] : array();
+            $missing = is_array( $task['missing_abilities'] ?? null ) ? $task['missing_abilities'] : array();
+            echo '<details style="max-width:1100px;background:#fff;border:1px solid #dcdcde;border-radius:4px;margin:8px 0;padding:12px 16px">';
+            echo '<summary style="cursor:pointer;font-weight:600">' . esc_html( (string) ( $task['label'] ?? '' ) )
+                . ' — ' . esc_html( count( $missing ) ? sprintf( __( '%d integrations missing', 'mad4b-site-control-plane' ), count( $missing ) )
+                    : __( 'Tools registered; not yet verified', 'mad4b-site-control-plane' ) ) . '</summary>';
+            echo '<ol>';
+            foreach ( $steps as $step ) {
+                if ( ! is_array( $step ) ) continue;
+                $mounted = ! empty( $step['mounted'] );
+                echo '<li>' . esc_html( ucfirst( str_replace( '_', ' ', (string) ( $step['label'] ?? '' ) ) ) )
+                    . ': <code dir="ltr">' . esc_html( (string) ( $step['ability_name'] ?? '' ) ) . '</code> — '
+                    . esc_html( $mounted ? __( 'Registered, permission not yet checked', 'mad4b-site-control-plane' )
+                        : __( 'Not registered on this site', 'mad4b-site-control-plane' ) )
+                    . '</li>';
+            }
+            echo '</ol><p class="description">' . esc_html( (string) ( $task['user_guidance'] ?? '' ) )
+                . '</p></details>';
+        }
 		echo '<p><strong>' . esc_html__( 'Integrity', 'mad4b-site-control-plane' ) . ':</strong> '
 			. esc_html( ! empty( $view['diagnostic_integrity_ready'] ) ? 'Verified observation' : 'Blocked: recheck source and providers' ) . '</p>';
 		echo '<p><strong>Source:</strong> <code>' . esc_html( (string) ( $view['source_commit_sha'] ?? '' ) ) . '</code> <strong>Plan:</strong> <code>'
