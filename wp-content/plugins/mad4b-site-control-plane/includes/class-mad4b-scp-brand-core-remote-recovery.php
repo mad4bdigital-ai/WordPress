@@ -11,11 +11,14 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
     const CONTRACT = 'mad4b.brand-core-remote-recovery.v1';
     const STATUS_ABILITY = 'mad4b/brand-core-remote-recovery-status';
     const PREPARE_ABILITY = 'mad4b/brand-core-remote-recovery-prepare';
+    const ALTERNATIVES_ABILITY = 'mad4b/brand-core-recovery-alternatives';
     private static $booted = false;
 
     public static function boot() {
         if ( self::$booted ) return;
         self::$booted = true;
+        if ( ! class_exists( 'MAD4B_SCP_Recovery_Alternatives', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-recovery-alternatives.php';
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
     }
 
@@ -31,6 +34,13 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                     'include_host_challenge' => array( 'type' => 'boolean', 'default' => false ),
                     'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
                 ),
+                'required' => array(),
+            ),
+            self::ALTERNATIVES_ABILITY => array(
+                'label' => 'Discover Governed Alternative Recovery Routes',
+                'callback' => 'alternatives',
+                'properties' => array( 'domain' => array( 'type' => 'string',
+                    'enum' => array( 'all', 'host_runner', 'database_recovery', 'candidate_delivery' ) ) ),
                 'required' => array(),
             ),
             self::PREPARE_ABILITY => array(
@@ -227,7 +237,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 }
             }
         }
-        return self::reduce( $facts, $available );
+        $report = self::reduce( $facts, $available );
+        $report['alternative_routes'] = MAD4B_SCP_Recovery_Alternatives::discover( 'all' );
+        return $report;
     }
 
     /** Pure evidence reducer: capability discovery never becomes approval. */
@@ -373,6 +385,23 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'production_mutation_authorized' => false, 'breakglass_authorized' => false,
             'approval_issued' => false, 'mutation_performed' => false, 'read_only' => true,
         );
+    }
+
+    public static function alternatives( $input = array() ) {
+        if ( ! self::can_read() || ! is_array( $input ) )
+            return self::denial( 'permission_required' );
+        if ( array_diff( array_keys( $input ), array( 'domain' ) ) )
+            return self::denial( 'unexpected_parameter' );
+        $site = class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::status() : array();
+        if ( ! is_array( $site ) || empty( $site['origin_match'] )
+            || empty( $site['environment_match'] )
+            || 'staging' !== (string) ( $site['environment'] ?? '' ) )
+            return self::denial( 'not_exact_staging' );
+        if ( ! class_exists( 'MAD4B_SCP_Recovery_Alternatives', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-recovery-alternatives.php';
+        return MAD4B_SCP_Recovery_Alternatives::discover(
+            (string) ( $input['domain'] ?? 'all' ) );
     }
 
     public static function prepare( $input = array() ) {
