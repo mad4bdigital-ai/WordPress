@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 767,
+  "changed_file_count": 815,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1595,8 +1595,20 @@
         "tools/browser-acceptance/verify-cloudflare-token.mjs",
         "tools/browser-acceptance/test-cloudflare-token.mjs"
       ]
+    },
+    {
+      "id": "feature007-20261011-mandatory-publication-brand-core-runtime",
+      "semantic_unit": "Mandatory reviewed Brand Core publication guard shared by native create, mutation-manager update, and an isolated PHP failure/identity regression",
+      "revert_boundary": "Revert the two core content execution guards and fixture with Brand Core control-loop/runtime counterpart and publication acceptance runbook; never widen any grant",
+      "certification": "source_only_native_php_and_staging_acceptance_required",
+      "path_globs": [
+        "docs/runbooks/mandatory-publication-brand-core-staging.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-core-content-modeling-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/publication-brand-core-mandatory-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "9406c7095ec754f6f19387543d1550cb8da2810e0f296a5f19d2b958d610b96a",
+  "changed_paths_sha256": "307f93cb7f9a55039d32700fa7b94bfd1f1e0bb372a2315875f5795f23348ca5",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
