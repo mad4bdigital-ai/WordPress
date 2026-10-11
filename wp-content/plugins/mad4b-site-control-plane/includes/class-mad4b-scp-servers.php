@@ -61,7 +61,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/scheduler-fair-rank', 'mad4b/scheduler-backlog-status',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives',
                 'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys', 'mad4b/operational-acceptance-evidence',
                 'mad4b/deployment-binding-setup-status', 'mad4b/deployment-binding-setup-plan',
