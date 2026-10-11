@@ -64,6 +64,47 @@ final class MAD4B_SCP_Skill_Abilities {
 			array( __CLASS__, 'skill_get' )
 		);
 
+		// Report blocked authoring Context without exposing assets, instructions or receipts.
+		self::add(
+			'mad4b/skill-context-preflight',
+			'Inspect Skill Context Readiness',
+			array(
+				'type' => 'object',
+				'properties' => array(
+					'level' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Skill_Registry::levels() ),
+					'target' => array( 'type' => 'string', 'maxLength' => 120 ),
+					'name' => array( 'type' => 'string', 'pattern' => '^[a-z0-9]+(?:-[a-z0-9]+)*$' ),
+					'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+					'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				),
+				'required' => array( 'level', 'name' ),
+				'additionalProperties' => false,
+			),
+			array( __CLASS__, 'skill_context_preflight' )
+		);
+
+
+		self::add(
+			'mad4b/brand-content-gate-triage',
+			'Discover Exact Skill and Brand Recovery Route Without Guessing Target',
+			array( 'type' => 'object', 'properties' => array(
+				'intended_ability' => array( 'type' => 'string', 'maxLength' => 191 ),
+				'task_scope' => array( 'type' => 'string', 'maxLength' => 160 ),
+			), 'additionalProperties' => false ),
+			array( __CLASS__, 'brand_content_gate_triage' )
+		);
+
+		self::add(
+			'mad4b/external-source-rights-preflight',
+			'Inspect External Supplier and Media Reuse Rights',
+			array( 'type'=>'object','properties'=>array(
+				'source_url'=>array('type'=>'string','maxLength'=>2048),
+				'intended_use'=>array('type'=>'string','enum'=>array('editorial_reference','commercial_offer','third_party_media')),
+				'post_id'=>array('type'=>'integer','minimum'=>1),
+			),'required'=>array('source_url','intended_use'),'additionalProperties'=>false),
+			array( __CLASS__, 'external_source_rights_preflight' )
+		);
+
 		self::add(
 			'mad4b/skills-export-status',
 			'Get Skills Export Status',
@@ -136,7 +177,7 @@ final class MAD4B_SCP_Skill_Abilities {
 		$name = isset( $input['name'] ) ? $input['name'] : '';
 		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
 		$intended_ability = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
-		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
+		$skill = self::resolve_skill( $level, $target, $name );
 		if ( is_wp_error( $skill ) ) return $skill;
 		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Skill exposure is denied because Context Preflight is unavailable.' );
 
@@ -148,7 +189,15 @@ final class MAD4B_SCP_Skill_Abilities {
 				'This Skill requires governed Brand Context that is not currently ready.',
 				array(
 					'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
-					'context_preflight' => $preflight,
+					// Deliberately redact the raw Context envelope and signed
+					// receipt. Even a blocked preflight may contain eligible
+					// optional assets unrelated to the missing required set.
+					'context_ready' => false,
+					'blockers' => isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array( 'context_not_ready' ),
+					'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( array_map( 'strval', $preflight['missing_context_sets'] ) ) : array(),
+					'next_read_ability' => 'mad4b/skill-context-preflight',
+					'context_envelope_exposed' => false,
+					'context_receipt_exposed' => false,
 				)
 			);
 		}
@@ -159,6 +208,148 @@ final class MAD4B_SCP_Skill_Abilities {
 			'context_preflight' => $preflight,
 			'context_envelope' => isset( $preflight['envelope'] ) ? $preflight['envelope'] : array(),
 			'context_receipt' => isset( $preflight['receipt'] ) ? $preflight['receipt'] : array(),
+		);
+	}
+
+	/** An omitted target may resolve only to one uniquely named registered Skill. */
+	private static function resolve_skill( $level, $target, $name ) {
+		$skill = MAD4B_SCP_Skill_Registry::get_skill( $level, $target, $name );
+		if ( ! is_wp_error( $skill ) || '' !== (string) $target || 'site' === (string) $level ) return $skill;
+		$candidates = MAD4B_SCP_Skill_Registry::list_skills( array( 'level' => $level ) );
+		$matches = array();
+		foreach ( $candidates as $candidate ) {
+			if ( isset( $candidate['name'] ) && (string) $candidate['name'] === (string) $name ) $matches[] = $candidate;
+		}
+		if ( count( $matches ) > 1 ) return new WP_Error( 'mad4b_skill_target_ambiguous', 'Several Skill targets match. Specify the exact target.' );
+		return count( $matches ) === 1
+			? MAD4B_SCP_Skill_Registry::get_skill( $level, (string) $matches[0]['target'], $name )
+			: $skill;
+	}
+
+	/** Read-only, redacted preflight. No Skill body or signed receipt is returned. */
+	public static function skill_context_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$level = isset( $input['level'] ) ? (string) $input['level'] : '';
+		$target = isset( $input['target'] ) ? (string) $input['target'] : '';
+		$name = isset( $input['name'] ) ? (string) $input['name'] : '';
+		$skill = self::resolve_skill( $level, $target, $name );
+		if ( is_wp_error( $skill ) ) return $skill;
+		if ( empty( $skill['enabled'] ) ) return new WP_Error( 'mad4b_skill_disabled', 'Skill is not enabled.' );
+		if ( ! class_exists( 'MAD4B_SCP_Context_Preflight' ) ) return new WP_Error( 'mad4b_skill_context_preflight_unavailable', 'Context preflight service is unavailable.' );
+		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
+		$intended = isset( $input['intended_ability'] ) ? trim( (string) $input['intended_ability'] ) : '';
+		$preflight = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, $task_scope, $intended );
+		if ( is_wp_error( $preflight ) ) return $preflight;
+		$policy = isset( $preflight['effective_policy'] ) && is_array( $preflight['effective_policy'] )
+			? $preflight['effective_policy'] : ( isset( $preflight['policy'] ) && is_array( $preflight['policy'] ) ? $preflight['policy'] : array() );
+		$receipt = isset( $preflight['receipt'] ) && is_array( $preflight['receipt'] ) ? $preflight['receipt'] : array();
+		$ready = ! empty( $preflight['ready'] ) && ! empty( $receipt['ready'] );
+		$blockers = isset( $preflight['blockers'] ) && is_array( $preflight['blockers'] ) ? array_values( array_map( 'strval', $preflight['blockers'] ) ) : array();
+		if ( ! $ready && ! $blockers ) $blockers[] = 'context_receipt_not_ready';
+		return array(
+			'contract' => 'mad4b.skill-context-preflight.v1',
+			'state' => $ready ? 'ready' : 'blocked',
+			'ready' => $ready,
+			'skill_logical_id' => isset( $skill['logical_id'] ) ? (string) $skill['logical_id'] : '',
+			'intended_ability' => $intended,
+			'brand_context_required' => ! empty( $policy['brand_context_required'] ),
+			'required_context_sets' => isset( $policy['effective_required_context_sets'] ) && is_array( $policy['effective_required_context_sets'] )
+				? array_values( $policy['effective_required_context_sets'] ) : ( isset( $policy['required_context_sets'] ) && is_array( $policy['required_context_sets'] ) ? array_values( $policy['required_context_sets'] ) : array() ),
+			'missing_context_sets' => isset( $preflight['missing_context_sets'] ) && is_array( $preflight['missing_context_sets'] ) ? array_values( $preflight['missing_context_sets'] ) : array(),
+			'blockers' => $blockers,
+			'next_action' => $ready ? 'request_skill_get_for_exact_signed_context_receipt' : 'reconcile_and_approve_required_brand_context',
+			'next_ability' => $ready ? 'mad4b/skill-get' : 'context/brand-core-control-loop',
+			'skill_body_exposed' => false,
+			'context_assets_exposed' => false,
+			'context_receipt_issued' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+	}
+
+
+	/**
+	 * A non-authorizing content-gate diagnostic independent of caller-supplied
+	 * Skill name/target. Recover from the exact live Skill registry instead
+	 * of an opaque WP_Error when users do not know a logical Skill identifier.
+	 */
+	public static function brand_content_gate_triage( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'task_scope', 'intended_ability' ) ) )
+			return new WP_Error( 'mad4b_brand_gate_triage_input_invalid', 'Only a bounded task and intended Ability are supported.' );
+		$ability = substr( trim( (string) ( $input['intended_ability'] ?? '' ) ), 0, 191 );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' )
+			? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		$ready = is_array( $coverage ) && ! empty( $coverage['ready'] );
+		$skills = class_exists( 'MAD4B_SCP_Skill_Registry' )
+			? MAD4B_SCP_Skill_Registry::list_skills( array() ) : array();
+		$candidates = array();
+		foreach ( is_array( $skills ) ? $skills : array() as $skill ) {
+			if ( ! is_array( $skill ) || empty( $skill['enabled'] ) ) continue;
+			$policy = $skill['context_policy'] ?? array();
+			if ( empty( $policy['brand_context_required'] ) ) continue;
+			$candidates[] = array(
+				'level' => (string) ( $skill['level'] ?? '' ),
+				'target' => (string) ( $skill['target'] ?? '' ),
+				'name' => (string) ( $skill['name'] ?? '' ),
+				'logical_id' => (string) ( $skill['logical_id'] ?? '' ),
+			);
+			if ( count( $candidates ) >= 25 ) break;
+		}
+		return array(
+			'contract' => 'mad4b.brand-content-gate-triage.v1',
+			'state' => $ready ? 'brand_core_ready_skill_selection_required' : 'brand_core_recovery_required',
+			'brand_core_ready' => $ready,
+			'missing_context_sets' => is_array( $coverage ) ? array_values( $coverage['missing_required_context_sets'] ?? array() ) : array(),
+			'next_ability' => $ready ? 'mad4b/skill-context-preflight' : 'context/brand-core-control-loop',
+			'candidate_skills' => $candidates,
+			'intended_ability' => $ability,
+			'exact_skill_selection_required' => true,
+			'skill_body_exposed' => false, 'signed_receipt_exposed' => false,
+			'owner_approval_automatically_created' => false,
+			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
+
+	/** External source references alone do not provide licensing or resale rights. */
+	public static function external_source_rights_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$url = isset( $input['source_url'] ) ? trim( (string) $input['source_url'] ) : '';
+		$intent = isset( $input['intended_use'] ) ? (string) $input['intended_use'] : '';
+		if ( ! in_array( $intent, array( 'editorial_reference', 'commercial_offer', 'third_party_media' ), true ) ) return new WP_Error( 'mad4b_external_source_intent_invalid', 'Source use purpose is invalid.' );
+		if ( '' === $url || strlen( $url ) > 2048 || ! function_exists( 'wp_parse_url' ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'A valid, bounded absolute source URL is required.' );
+		$scheme = strtolower( (string) wp_parse_url( $url, PHP_URL_SCHEME ) );
+		$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+		if ( ! in_array( $scheme, array( 'http', 'https' ), true ) || '' === $host || '' !== (string) wp_parse_url( $url, PHP_URL_USER ) ) return new WP_Error( 'mad4b_external_source_url_invalid', 'Source must be an HTTP(S) URL without embedded credentials.' );
+		$id = isset( $input['post_id'] ) ? absint( $input['post_id'] ) : 0;
+		if ( $id && ( ! get_post( $id ) || ! current_user_can( 'read_post', $id ) ) ) return new WP_Error( 'mad4b_external_source_post_denied', 'Post is not readable.' );
+		$site_host = function_exists( 'home_url' ) ? strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) : '';
+		$external = '' === $site_host || ! hash_equals( $site_host, $host );
+		$requirements = array();
+		if ( $external && 'commercial_offer' === $intent ) $requirements = array( 'supplier_identity', 'signed_distribution_or_resale_authorization', 'agreement_scope_and_validity', 'sales_channels', 'live_availability_and_price', 'booking_and_refund_responsibility', 'separate_media_rights' );
+		if ( $external && 'third_party_media' === $intent ) $requirements = array( 'asset_owner', 'asset_provenance', 'license_or_permission', 'allowed_use_and_derivatives', 'attribution', 'expiration' );
+		if ( $external && 'editorial_reference' === $intent ) $requirements = array( 'original_editorial_copy', 'source_attribution', 'fact_check', 'no_unlicensed_media', 'no_false_supplier_affiliation' );
+		$coverage = class_exists( 'MAD4B_SCP_Context_Authority' ) && method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ? MAD4B_SCP_Context_Authority::brand_core_coverage() : array();
+		return array(
+			'contract' => 'mad4b.external-source-rights-preflight.v1',
+			'state' => $external ? 'independent_rights_review_required' : 'first_party_origin_detected',
+			'source_host' => $host,
+			'site_host' => $site_host,
+			'external_source' => $external,
+			'intended_use' => $intent,
+			'post_id' => $id,
+			'evidence_requirements' => $requirements,
+			'brand_core_ready' => is_array( $coverage ) && ! empty( $coverage['ready'] ),
+			'brand_core_missing_context_sets' => is_array( $coverage ) && isset( $coverage['missing_required_context_sets'] ) ? $coverage['missing_required_context_sets'] : array(),
+			'supplier_rights_verified' => false,
+			'commercial_reuse_authorized' => false,
+			'licensed_media_verified' => false,
+			'public_source_implies_license' => false,
+			'next_action' => $external ? 'independent_source_rights_review' : 'verify_first_party_origin_and_brand_policy',
+			'network_access_performed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
 		);
 	}
 

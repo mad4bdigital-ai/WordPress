@@ -5,6 +5,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
       - 'specs/007-content-intelligence-workflow-platform/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'plugins/mad4b-wordpress/**'
       - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}
+  group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -36,6 +38,15 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
+      - name: Source federation and dynamic WordPress discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/solution-discovery/federation.mjs
+          node tools/solution-discovery/test-federation.mjs
+          node --check tools/solution-discovery/source-evidence.mjs
+          node tools/solution-discovery/test-source-evidence.mjs
+
       - name: Setup PHP 7.4
         uses: shivammathur/setup-php@v2
         with:
@@ -49,6 +60,21 @@ jobs:
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 \
             | sort -z \
             | xargs -0 -n1 php -l
+
+      - name: Generic discovery PHP 7.4 runtime fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py
+          python3 -m py_compile tools/mad4b-local-ci-parity.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/local-ci-multi-environment-contract.py
+          for scenario in disabled normal master missing uncertified drift bad-archive; do
+            php wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php "$scenario"
+          done
 
       - name: Architecture maintainability and change-slice gate
         shell: bash
@@ -106,6 +132,30 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
           php wp-content/plugins/mad4b-site-control-plane/tests/release-closure-hardening-contract.php
 
+      - name: Admin workspace UI and authority boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py
+          mkdir -p "$RUNNER_TEMP/admin-workspace-fixtures"
+          MAD4B_UI_FIXTURE_DIR="$RUNNER_TEMP/admin-workspace-fixtures" php wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php
+
+      - name: Admin workspace keyboard Arabic RTL and mobile browser fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/mad4b-ui-browser" --no-save --ignore-scripts playwright@1.55.1
+          MAD4B_UI_NODE_MODULES="$RUNNER_TEMP/mad4b-ui-browser/node_modules" \
+          MAD4B_UI_CHROME="$(command -v google-chrome)" \
+          node wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs "$RUNNER_TEMP/admin-workspace-fixtures"
+
+      - name: Upload disposable admin workspace visual fixtures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-workspace-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/admin-workspace-fixtures
+
       - name: Operating flow regression checks
         shell: bash
         run: |
@@ -115,6 +165,26 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
+
+      - name: Auto-Reconcile registry safety and worker policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/auto-reconcile-scenario-registry-runtime.php
+
+      - name: Competitive Experience G1 runtime evidence and semantic classifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php
+          test -z "$(php wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php)"
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
 
       - name: Feature 007 closure foundations and workstream certification
         shell: bash
@@ -584,6 +654,14 @@ jobs:
           tools: wp-cli
           coverage: none
 
+      - name: Adaptive Runtime convergence safety / PHP ${{ matrix.php }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
+
       - name: Lint and execute Adaptive Search runtime/provider contracts
         env:
           ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -607,9 +685,12 @@ jobs:
         run: |
           set -euo pipefail
           WP_PATH="$RUNNER_TEMP/asi-wordpress"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json"
-          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci
+          # Independent disposable suites all run; any failure still blocks this job.
+          failed=0
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/asi-wordpress-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php" --path="$WP_PATH" --user=asi-ci > "$RUNNER_TEMP/admin-pages-${{ matrix.php }}.json" || failed=1
+          wp eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-provider-circuit-breaker.php" --path="$WP_PATH" --user=asi-ci || failed=1
+          exit "$failed"
 
       - name: Bind Adaptive Search gates to exact head and disposable evidence
         env:
@@ -626,3 +707,73 @@ jobs:
             ${{ runner.temp }}/admin-pages-${{ matrix.php }}.json
           if-no-files-found: error
           retention-days: 14
+
+  disposable-database-cas:
+    # Keep the relocated database suite off automatic master push runs.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    name: G8 real CAS / ${{ matrix.database }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '7.4'
+            database: 'mariadb:11.4'
+            database-health-cmd: 'healthcheck.sh --connect --innodb_initialized'
+          - php: '8.3'
+            database: 'mariadb:11.4'
+            database-health-cmd: 'healthcheck.sh --connect --innodb_initialized'
+          - php: '7.4'
+            database: 'mysql:8.4'
+            database-health-cmd: 'mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret'
+          - php: '8.3'
+            database: 'mysql:8.4'
+            database-health-cmd: 'mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret'
+    services:
+      database:
+        image: ${{ matrix.database }}
+        env:
+          MYSQL_ROOT_PASSWORD: g8_ci_only_not_a_site_secret
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: g8_ci_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="${{ matrix.database-health-cmd }}"
+          --health-interval=5s
+          --health-timeout=4s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact head and guard against external DB URLs
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test -z "${G8_CAS_HOST:-}"
+          test -z "${G8_CAS_DATABASE:-}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli
+          coverage: none
+      - name: Prove SQL-level concurrent CAS on disposable table only
+        env:
+          G8_CAS_DISPOSABLE: '1'
+          G8_CAS_HOST: 127.0.0.1
+          G8_CAS_USER: root
+          G8_CAS_PASSWORD: g8_ci_only_not_a_site_secret
+          G8_CAS_DATABASE: g8_ci_contract
+          G8_CAS_PORT: 3306
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+          # Verify the guard rejects a non-disposable DB before connection,
+          # and demand its specific safe-refusal exit code (not any fatal).
+          set +e
+          G8_CAS_DATABASE=forbidden_database php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+          refusal_status=$?
+          set -e
+          test "$refusal_status" -eq 2
+          php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php

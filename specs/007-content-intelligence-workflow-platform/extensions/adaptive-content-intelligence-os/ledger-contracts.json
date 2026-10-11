@@ -1,0 +1,68 @@
+{
+  "contract": "mad4b.aci-os.ledger-contracts.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "ledgers": [
+    {
+      "id": "spec_registry",
+      "owner": "VERSIONED_REPOSITORY",
+      "states": [
+        "OPEN"
+      ],
+      "mutable_by": "REVIEWED_PR_ONLY"
+    },
+    {
+      "id": "execution_ledger",
+      "owner": "MAD4B_OPERATION_JOURNAL",
+      "states": [
+        "NOT_STARTED",
+        "RUNNING",
+        "WAITING_DEPENDENCIES",
+        "NEEDS_REVIEW",
+        "QUARANTINED",
+        "FAILED",
+        "COMPLETED"
+      ],
+      "mutable_by": "GOVERNED_APPEND_ONLY"
+    },
+    {
+      "id": "certification_ledger",
+      "owner": "MAD4B_AUTHORITY_RECEIPTS",
+      "states": [
+        "NOT_RUN",
+        "RUNNING",
+        "FAILED",
+        "PARTIAL",
+        "EXTERNAL_PENDING",
+        "CERTIFIED",
+        "STALE"
+      ],
+      "mutable_by": "GOVERNED_APPEND_ONLY"
+    },
+    {
+      "id": "decision_ledger",
+      "owner": "MAD4B_ARTIFACT_JOURNAL",
+      "states": [
+        "PROPOSED",
+        "REVIEW_REQUIRED",
+        "APPROVED_EXTERNALLY",
+        "REJECTED",
+        "EXPIRED"
+      ],
+      "mutable_by": "GOVERNED_APPEND_ONLY"
+    }
+  ],
+  "scope_key": [
+    "site_uuid",
+    "environment",
+    "runtime_generation",
+    "restore_epoch",
+    "actor_subject",
+    "policy_revision",
+    "artifact_fingerprint",
+    "provider_version",
+    "expiry"
+  ],
+  "no_cross_environment_inheritance": true,
+  "no_promotion_from_spec": true
+}

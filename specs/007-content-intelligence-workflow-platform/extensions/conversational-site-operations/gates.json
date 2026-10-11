@@ -1,0 +1,139 @@
+{
+  "contract": "mad4b.cso01.gates.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "gates": [
+    {
+      "id": "CSO-G0",
+      "name": "spec_integrity",
+      "depends_on": [],
+      "exit_criterion": "spec-validator-reports-zero-faults",
+      "status": "OPEN",
+      "proof_level": "repository",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G1",
+      "name": "site_identity_and_discovery",
+      "depends_on": [
+        "CSO-G0"
+      ],
+      "exit_criterion": "exact-site-schema-provider-inventory-and-denial",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G2",
+      "name": "forms_and_secret_safety",
+      "depends_on": [
+        "CSO-G1"
+      ],
+      "exit_criterion": "field-validation-and-secret-nonexposure",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G3",
+      "name": "changes_and_approvals",
+      "depends_on": [
+        "CSO-G2"
+      ],
+      "exit_criterion": "exact-revision-diff-approval-recheck-and-idempotency",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G4",
+      "name": "orchestration_and_bulk",
+      "depends_on": [
+        "CSO-G3"
+      ],
+      "exit_criterion": "partial-failure-checkpoint-reconcile-compensate",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G5",
+      "name": "content_and_media",
+      "depends_on": [
+        "CSO-G3"
+      ],
+      "exit_criterion": "native-content-meta-taxonomy-media-and-seo-verification",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G6",
+      "name": "multisite_and_tenants",
+      "depends_on": [
+        "CSO-G4"
+      ],
+      "exit_criterion": "tenant-site-boundary-and-nonpropagating-authority",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G7",
+      "name": "operations_monitoring_and_recovery",
+      "depends_on": [
+        "CSO-G4"
+      ],
+      "exit_criterion": "alerts-drift-diagnostics-and-independent-recovery",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G8",
+      "name": "staging_release_promotion",
+      "depends_on": [
+        "CSO-G5",
+        "CSO-G6",
+        "CSO-G7"
+      ],
+      "exit_criterion": "signed-exact-artifact-prod-separate-approval",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G9",
+      "name": "accessible_usability_and_cost",
+      "depends_on": [
+        "CSO-G2"
+      ],
+      "exit_criterion": "rtl-screenreader-slow-network-and-performance",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    },
+    {
+      "id": "CSO-G10",
+      "name": "adversarial_live_acceptance",
+      "depends_on": [
+        "CSO-G8",
+        "CSO-G9"
+      ],
+      "exit_criterion": "external-provider-mixed-fault-and-owner-attestation",
+      "status": "OPEN",
+      "proof_level": "repository_and_external_at_exit",
+      "claim_complete": false,
+      "authorizing": false
+    }
+  ]
+}

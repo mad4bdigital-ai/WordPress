@@ -260,6 +260,26 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return new WP_Error( 'mad4b_provider_candidate_not_found', 'Installed plugin was not found in the provider candidate matrix.' );
 	}
 
+	/**
+	 * Pure risk-policy boundary. Never allow a high-risk or unclassified plugin
+	 * to inherit a read/write support level from adapter metadata alone.
+	 */
+	public static function candidate_risk_gate( $coverage_state, $risk ) {
+		if ( 'excluded_high_risk' === $coverage_state ||
+			in_array( $risk, array( 'high', 'exceptional' ), true ) )
+			return 'dedicated_high_risk_path';
+		if ( ! in_array( $risk, array( 'low', 'medium' ), true ) )
+			return 'risk_classification_required';
+		return '';
+	}
+
+	public static function candidate_read_eligible( $coverage_state, $risk, $active,
+		$adapter_registered, $adapter_available, $read_ability_count, $side_channel_blocked ) {
+		return '' === self::candidate_risk_gate( $coverage_state, $risk ) &&
+			(bool) $active && (bool) $adapter_registered && (bool) $adapter_available &&
+			(int) $read_ability_count > 0 && ! $side_channel_blocked;
+	}
+
 	public static function provider_candidate_matrix() {
 		$coverage = self::coverage();
 		$items = array();
@@ -277,23 +297,27 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$coverage_state = isset( $plugin['coverage_state'] ) ? sanitize_key( (string) $plugin['coverage_state'] ) : 'unknown';
 			$functional_state = isset( $plugin['functional_coverage']['state'] ) ? sanitize_key( (string) $plugin['functional_coverage']['state'] ) : 'inactive';
 			$risk = isset( $plugin['risk'] ) ? sanitize_key( (string) $plugin['risk'] ) : 'unknown';
+			$restriction = self::candidate_risk_gate( $coverage_state, $risk );
 
 			$level = 'L0_inventory';
 			$safe_actions = array( 'inventory', 'status' );
 			$blocked_actions = array( 'auto_register_generated_adapter', 'auto_write_certification', 'auto_create_authority', 'auto_enable_mutation', 'arbitrary_provider_execution' );
 			$next_gate = 'lifecycle_policy_review';
 
-			if ( 'excluded_high_risk' !== $coverage_state ) {
+			if ( '' === $restriction ) {
 				$level = 'L1_lifecycle';
 				$safe_actions[] = 'plugin_lifecycle_plan';
 				$safe_actions[] = 'plugin_update_plan';
 				$next_gate = $active ? 'provider_read_contract' : 'activate_then_reinspect';
 			} else {
 				$blocked_actions[] = 'generic_plugin_lifecycle';
-				$next_gate = 'dedicated_high_risk_path';
+				$blocked_actions[] = 'provider_read';
+				$blocked_actions[] = 'provider_mutation';
+				$next_gate = $restriction;
 			}
 
-			if ( $active && $adapter_registered && $adapter_runtime_available && $read_ability_count > 0 && ! $side_channel_blocked ) {
+			if ( self::candidate_read_eligible( $coverage_state, $risk, $active,
+				$adapter_registered, $adapter_runtime_available, $read_ability_count, $side_channel_blocked ) ) {
 				$level = 'L2_read';
 				$safe_actions[] = 'provider_read';
 				$next_gate = 'provider_mutation_certification';
@@ -323,7 +347,11 @@ final class MAD4B_SCP_Plugin_Discovery {
 				$blocked_actions[] = 'provider_mutation';
 				if ( ! $side_channel_blocked ) $next_gate = 'provider_certification';
 			}
-			if ( ! $adapter_registered && $active ) $next_gate = 'adapter_or_contract_discovery';
+			if ( ! $adapter_registered && $active && '' === $restriction )
+				$next_gate = 'adapter_or_contract_discovery';
+			// Lower-priority adapter hints must never override a restrictive risk
+			// gate. A high-risk plugin remains L0 even if certified or reversible.
+			if ( '' !== $restriction ) $next_gate = $restriction;
 
 			$safe_actions = array_values( array_unique( $safe_actions ) );
 			$blocked_actions = array_values( array_unique( $blocked_actions ) );

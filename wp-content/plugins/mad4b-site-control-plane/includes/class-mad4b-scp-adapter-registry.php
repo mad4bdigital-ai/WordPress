@@ -25,7 +25,7 @@ final class MAD4B_SCP_Adapter_Registry {
 
 	public function register_defaults() {
 		if ( $this->defaults_registered ) return; $this->defaults_registered = true;
-		$classes = array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Dynamic_Content_Adapter', 'MAD4B_SCP_Dynamic_Recovery_Adapter', 'MAD4B_SCP_Context_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter', 'MAD4B_SCP_JetFormBuilder_Adapter', 'MAD4B_SCP_FluentForms_Adapter', 'MAD4B_SCP_WP_Import_Export_Adapter' );
+		$classes = array( 'MAD4B_SCP_ACI01_Read_Adapter', 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Dynamic_Content_Adapter', 'MAD4B_SCP_Dynamic_Recovery_Adapter', 'MAD4B_SCP_Context_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_Remote_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter', 'MAD4B_SCP_JetFormBuilder_Adapter', 'MAD4B_SCP_FluentForms_Adapter', 'MAD4B_SCP_WP_Import_Export_Adapter' );
 		foreach ( $classes as $class ) if ( class_exists( $class ) ) $this->register( new $class() );
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}
@@ -106,7 +106,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
 			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo',
 			'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
+			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
 			'mad4b/skills-list', 'mad4b/skill-get', 'mad4b/skills-export-status', 'mad4b/skills-runtime-certification',
 		);
 	}
@@ -331,7 +331,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		);
 	}
 	public function ability_names( $surface ) {
-		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test' );
+		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test' );
 		foreach ( $this->adapters as $adapter ) { $map = $adapter->ability_names(); if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $names = array_merge( $names, $map[ $surface ] ); }
 		return array_values( array_unique( $names ) );
 	}

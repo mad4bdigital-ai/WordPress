@@ -1,0 +1,12 @@
+# Work package tasks
+- [x] C001 Identify per-site and per-Provider coupling and record capability-first architecture
+- [x] C002 Add native read-only capability atlas across browser provider claims and plugin-family inventories
+- [x] C003 Register the atlas as a governed WordPress read ability with adapter read-surface projection
+- [x] C004 Add a reusable declarative browser Driver for a fixed set of passive, site-independent probes
+- [x] C005 Enforce exact origin/path, fixed selector vocabulary, no arbitrary JS/actions, build/challenge shape and no certificate
+- [x] C006 Provide fixture-driven PHP/JS tests and queue them in the managed browser test workflow
+- [ ] C007 Execute native PHP/Node suites on exact integration HEAD
+- [ ] C008 Implement and certify a generic WordPress Provider with independently signed semantic oracle and evidence reducer
+- [ ] C009 Prove repeated capability tests on two *different* live site implementations with independent browser evidence
+- [ ] C010 Cover API, listing interactions, WPML, commerce, booking, SEO publication and mutations with specialized audited effect policies
+- [ ] C011 Certify network IP firewall/DNS-rebinding controls, assets, build parity and end-to-end rollback before release

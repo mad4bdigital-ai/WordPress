@@ -16,6 +16,10 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	const CRON_HOOK = 'mad4b_scp_adaptive_runtime_observe';
 	const ABILITY = 'mad4b/adaptive-runtime-status';
 	const SLICE_SIZE = 3;
+	const FALLBACK_PROBE_OPTION = 'mad4b_scp_adaptive_runtime_probe_v1';
+	const FALLBACK_PROBE_INTERVAL = 300;
+	const MAX_OBSERVATION_AGE = 7200;
+	const MAX_CLOCK_SKEW = 60;
 	private static $booted = false;
 
 	public static function boot() {
@@ -60,11 +64,22 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		) );
 	}
 
+	private static function breakglass_enabled() {
+		if ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED ) return true;
+		$authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'persisted_status' )
+			? MAD4B_SCP_Staging_Write_Authority::persisted_status()
+			: array();
+		return ! empty( $authority['breakglass_included'] )
+			|| ! empty( $authority['breakglass_auto_enable'] )
+			|| ! empty( $authority['raw_sql_breakglass_enabled'] );
+	}
+
 	private static function eligible() {
 		return class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::configured()
 			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment() && MAD4B_SCP_Site_Profile::origin_enrolled()
 			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::managed_runtime_enabled()
-			&& ! ( defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ) && true === MAD4B_MCP_BREAKGLASS_ENABLED );
+			&& ! self::breakglass_enabled();
 	}
 
 	private static function stamp() {
@@ -78,20 +93,99 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		return is_array( $event ) ? $event : array();
 	}
 
+	/** An unsigned lifecycle event must stay inert before any hash or rewrite. */
+	private static function event_data_safe( $value, $depth = 0, &$nodes = 0 ) {
+		if ( ++$nodes > 512 || $depth > 8 || is_object( $value ) || is_resource( $value ) ) return false;
+		if ( is_array( $value ) ) {
+			if ( count( $value ) > 32 ) return false;
+			foreach ( $value as $key => $member ) {
+				if ( is_string( $key ) && strlen( $key ) > 80 ) return false;
+				if ( ! self::event_data_safe( $member, $depth + 1, $nodes ) ) return false;
+			}
+			return true;
+		}
+		return null === $value || is_bool( $value ) || is_int( $value )
+			|| ( is_float( $value ) && is_finite( $value ) )
+			|| ( is_string( $value ) && strlen( $value ) <= 512 );
+	}
+
+	private static function candidate_binding_fallback_drift() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority', false )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) ) return false;
+		$last_probe = absint( get_option( self::FALLBACK_PROBE_OPTION, 0 ) );
+		if ( $last_probe > 0 && $last_probe > time() - self::FALLBACK_PROBE_INTERVAL ) return false;
+		update_option( self::FALLBACK_PROBE_OPTION, time(), false );
+		$binding = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
+		if ( ! is_array( $binding ) || empty( $binding['required'] ) || empty( $binding['stored_bound'] ) || ! empty( $binding['match'] ) ) return false;
+		$current_complete = 1 === preg_match( '/^[a-f0-9]{40}$/', strtolower( trim( (string) ( $binding['current_source_commit_sha'] ?? '' ) ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_build_fingerprint'] ?? '' ) ) ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/', strtolower( trim( (string) ( $binding['current_package_manifest_digest'] ?? '' ) ) ) )
+			&& '' !== trim( (string) ( $binding['current_artifact_identity'] ?? '' ) );
+		return $current_complete;
+	}
+
+	private static function terminal_event( $event ) {
+		if ( ! is_array( $event ) ) return true;
+		if ( ! array_key_exists( 'failure_state', $event ) ) return array_key_exists( 'failure_code', $event );
+		// Corrupt/unknown failure states never silently downgrade a stop
+		// decision to a retry. Only an explicit bounded retry is nonterminal.
+		return ! is_string( $event['failure_state'] ) || 'RETRY_PENDING' !== $event['failure_state'];
+	}
+
+	private static function lifecycle_fence_current( array $event ) {
+		$current = self::event();
+		return self::event_data_safe( $current ) && ! self::terminal_event( $current )
+			&& is_string( $current['event_id'] ?? null )
+			&& ( $current['event_id'] ?? '' ) === ( $event['event_id'] ?? '' );
+	}
+
 	public static function maybe_schedule() {
-		if ( ! self::eligible() || is_admin() || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+		$admin_lifecycle = false;
+		if ( is_admin() ) {
+			global $pagenow;
+			$screen = isset( $pagenow ) ? sanitize_key( (string) $pagenow ) : '';
+			$action = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( (string) $_REQUEST['action'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- lifecycle classification only.
+			$admin_lifecycle = in_array( $screen, array( 'plugins.php', 'update.php', 'update-core.php', 'plugin-install.php' ), true )
+				|| in_array( $action, array( 'upload-plugin', 'install-plugin', 'update-plugin', 'activate', 'deactivate' ), true );
+		}
+		if ( ! self::eligible() || ( is_admin() && ! $admin_lifecycle ) || ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
 			|| class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
 		$event = self::event();
-		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) self::enqueue();
+		if ( ( $event['build_stamp'] ?? '' ) !== self::stamp() ) {
+			self::enqueue( array( 'source' => 'build_stamp_drift' ) );
+			return;
+		}
+		if ( self::terminal_event( $event ) ) return;
+		if ( self::candidate_binding_fallback_drift() ) self::enqueue( array( 'source' => 'candidate_binding_probe' ) );
 	}
 
 	public static function on_plugin_update( $upgrader, $details ) {
-		if ( is_array( $details ) && 'plugin' === ( $details['type'] ?? '' ) ) self::enqueue();
+		if ( ! is_array( $details ) || 'plugin' !== ( $details['type'] ?? '' ) ) return;
+		$plugins = array();
+		if ( isset( $details['plugins'] ) && is_array( $details['plugins'] ) ) $plugins = $details['plugins'];
+		elseif ( isset( $details['plugin'] ) ) $plugins = array( $details['plugin'] );
+		$self = false;
+		foreach ( $plugins as $plugin ) if ( false !== strpos( (string) $plugin, 'mad4b-site-control-plane' ) ) { $self = true; break; }
+		self::enqueue( array( 'source' => 'wordpress_upgrader', 'self_plugin_update' => $self ) );
 	}
 
-	public static function enqueue( $unused = null ) {
+	public static function enqueue( $context = null ) {
 		if ( ! self::eligible() ) return false;
-		$event = array( 'event_id' => wp_generate_uuid4(), 'build_stamp' => self::stamp(), 'observed_at' => gmdate( 'c' ) );
+		$source = 'runtime_change';
+		$self_plugin_update = false;
+		if ( is_array( $context ) ) {
+			if ( isset( $context['source'] ) ) $source = sanitize_key( (string) $context['source'] );
+			$self_plugin_update = ! empty( $context['self_plugin_update'] );
+		} elseif ( is_string( $context ) && '' !== trim( $context ) ) {
+			$source = 'plugin_activation';
+		}
+		$event = array(
+			'event_id' => wp_generate_uuid4(),
+			'build_stamp' => self::stamp(),
+			'source' => $source,
+			'self_plugin_update' => $self_plugin_update,
+			'observed_at' => gmdate( 'c' ),
+		);
 		update_option( self::EVENT_OPTION, $event, false );
 		return self::schedule( 5 );
 	}
@@ -106,12 +200,165 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 
 	private static function note_failure( $code, $expected_event_id = '' ) {
 		$event = self::event();
+		if ( ! self::event_data_safe( $event ) ) return;
 		if ( ( $event['event_id'] ?? '' ) !== $expected_event_id ) { self::schedule( 5 ); return; }
+		$code = sanitize_key( (string) $code );
+		$policy = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false )
+			&& method_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', 'classify_worker_error' )
+			? MAD4B_SCP_Auto_Reconcile_Scenarios::classify_worker_error( $code )
+			: array( 'decision' => 'REVIEW_REQUIRED', 'policy_id' => 'registry_unavailable', 'policy_source' => 'adaptive_fallback' );
+		$decision = isset( $policy['decision'] ) ? (string) $policy['decision'] : 'REVIEW_REQUIRED';
 		$event['attempts'] = min( 6, (int) ( $event['attempts'] ?? 0 ) + 1 );
-		$event['failure_code'] = sanitize_key( $code );
-		$event['failure_state'] = $event['attempts'] < 6 ? 'RETRY_PENDING' : 'EXTERNAL_ACTION_REQUIRED';
+		$event['failure_code'] = $code;
+		$event['failure_decision'] = $decision;
+		$event['failure_policy_id'] = isset( $policy['policy_id'] ) ? sanitize_key( (string) $policy['policy_id'] ) : '';
+		$event['failure_policy_source'] = isset( $policy['policy_source'] ) ? sanitize_key( (string) $policy['policy_source'] ) : '';
+		$retryable = 'DEFER' === $decision && $event['attempts'] < 6;
+		$event['failure_state'] = $retryable ? 'RETRY_PENDING' : ( 'HARD_BLOCK' === $decision ? 'HARD_BLOCKED' : ( 'REVIEW_REQUIRED' === $decision ? 'REVIEW_REQUIRED' : 'EXTERNAL_ACTION_REQUIRED' ) );
 		update_option( self::EVENT_OPTION, $event, false );
-		if ( $event['attempts'] < 6 ) self::schedule( min( 300, 60 * $event['attempts'] ) );
+		if ( $retryable ) self::schedule( min( 300, 60 * $event['attempts'] ) );
+	}
+
+	/**
+	 * Non-authorizing operator lane. Automatic observation is already owned by
+	 * the bounded worker; no read path dispatches jobs, repairs or grants.
+	 * Only known states can claim a safe lane; unknown states fail closed.
+	 */
+	public static function remediation_lane( array $capability, $current, $worker_available = false ) {
+		$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
+		$action = isset( $capability['next_action'] ) && is_string( $capability['next_action'] ) ? $capability['next_action'] : '';
+		$lane = 'REVIEW_REQUIRED';
+		if ( ! $current || 'STALE_OBSERVATION' === $state ) {
+			// Stale evidence does not imply an automatic worker can run.
+			// A disabled scheduler, Production site or terminal worker failure
+			// must never be represented as safe automatic recovery.
+			$lane = $worker_available ? 'SAFE_AUTO_OBSERVATION' : 'REVIEW_REQUIRED';
+			$action = $worker_available ? 'await_current_provider_observation' : 'inspect_observation_eligibility';
+		} elseif ( 'READ_COMPATIBLE' === $state || 'ACTIVE' === $state ) {
+			$lane = 'NO_OP';
+			$action = '';
+		} elseif ( 'CANARY_REQUIRED' === $state || 'HIGH_RISK_GATED' === $state ) {
+			$lane = 'GOVERNED_CANARY_REQUIRED';
+		} elseif ( 'EXTERNAL_ACTION_REQUIRED' === $state ) {
+			$lane = 'EXTERNAL_ACTION_REQUIRED';
+		}
+		return array(
+			'lane' => $lane, 'next_action' => $action,
+			'worker_may_observe' => 'SAFE_AUTO_OBSERVATION' === $lane,
+			'automatic_mutation_performed' => false, 'authority_created' => false,
+			'production_authorized' => false, 'requires_current_generation' => true,
+		);
+	}
+
+	/**
+	 * Fence before touching managed filesystem or core baselines. A lock is
+	 * necessary but not sufficient: the event, Site Profile and installed
+	 * artifact identity must all remain current at the side-effect boundary.
+	 */
+	private static function worker_fence_current( $lock, array $event, $profile_digest, array $identity ) {
+		if ( is_wp_error( MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lock, 'adaptive_runtime_observation' ) )
+			|| ! self::eligible()
+			|| MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
+			|| ! self::lifecycle_fence_current( $event ) ) return false;
+		$current = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+		return ! empty( $current['runtime_manifest_match'] )
+			&& 1 === preg_match( '/^[a-f0-9]{40}$/D', (string) ( $current['source_commit_sha'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $current['package_manifest_digest'] ?? '' ) )
+			&& ! empty( $current['build_fingerprint'] )
+			&& is_string( $current['artifact_identity'] ?? null )
+			&& '' !== $current['artifact_identity']
+			&& ( $current['artifact_identity'] ?? '' ) === ( $identity['artifact_identity'] ?? '' )
+			&& ( $current['build_fingerprint'] ?? '' ) === ( $identity['build_fingerprint'] ?? '' )
+			&& ( $current['source_commit_sha'] ?? '' ) === ( $identity['source_commit_sha'] ?? '' )
+			&& ( $current['package_manifest_digest'] ?? '' ) === ( $identity['package_manifest_digest'] ?? '' )
+			&& self::lifecycle_fence_current( $event )
+			&& MAD4B_SCP_Site_Profile::profile_digest() === $profile_digest
+			&& self::eligible();
+	}
+
+	/** Exact automatic slice identity; a ticket supplies denial fences, never authority. */
+	private static function automatic_generation( array $event, $profile_digest, array $identity ) {
+		return hash( 'sha256', serialize( array(
+			'event_id' => $event['event_id'] ?? '', 'profile_digest' => $profile_digest,
+			'source_commit_sha' => $identity['source_commit_sha'] ?? '',
+			'build_fingerprint' => $identity['build_fingerprint'] ?? '',
+			'package_manifest_digest' => $identity['package_manifest_digest'] ?? '',
+			'artifact_identity' => $identity['artifact_identity'] ?? '',
+		) ) );
+	}
+
+	private static function guard_automatic_handoff( array $ticket, $lock, array $event, $profile_digest, array $identity ) {
+		if ( ! is_string( $ticket['generation'] ?? null )
+			|| ! hash_equals( self::automatic_generation( $event, $profile_digest, $identity ), $ticket['generation'] ) )
+			return new WP_Error( 'mad4b_automation_observation_generation_drift', 'Automatic handoff no longer belongs to this exact event.' );
+		try { $allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket ); }
+		catch ( Throwable $error ) { return new WP_Error( 'mad4b_automation_ticket_verification_exception', 'Automatic handoff verification failed.' ); }
+		if ( is_wp_error( $allowed ) ) return $allowed;
+		if ( true !== $allowed ) return new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic handoff was not explicitly permitted.' );
+		if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) )
+			return new WP_Error( 'mad4b_automation_worker_fence_lost', 'Automatic handoff lost its exact maintenance fence.' );
+		// Lease/provenance readback must not hide a switch change after the
+		// first ticket check. The independent switch is checked last.
+		try { $allowed = MAD4B_SCP_Automation_SLO::ticket_allowed( $ticket ); }
+		catch ( Throwable $error ) { return new WP_Error( 'mad4b_automation_ticket_verification_exception', 'Automatic handoff verification failed.' ); }
+		return true === $allowed ? true : ( is_wp_error( $allowed ) ? $allowed
+			: new WP_Error( 'mad4b_automation_ticket_denied', 'Automatic handoff was not explicitly permitted.' ) );
+	}
+
+	private static function begin_automatic_handoff( $provider, $capability, $lock, array $event, $profile_digest, array $identity ) {
+		if ( ! class_exists( 'MAD4B_SCP_Automation_SLO', false )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'reserve' )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'ticket_allowed' )
+			|| ! method_exists( 'MAD4B_SCP_Automation_SLO', 'finish_existing' ) )
+			return new WP_Error( 'mad4b_automation_guard_missing', 'Automatic handoff safety admission is unavailable.' );
+		if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) )
+			return new WP_Error( 'mad4b_automation_worker_fence_lost', 'Automatic handoff lost its exact maintenance fence.' );
+		try { $ticket = MAD4B_SCP_Automation_SLO::reserve( $provider, $capability, self::automatic_generation( $event, $profile_digest, $identity ) ); }
+		catch ( Throwable $error ) { return new WP_Error( 'mad4b_automation_admission_exception', 'Automatic handoff admission failed.' ); }
+		if ( is_wp_error( $ticket ) ) return $ticket;
+		if ( ! is_array( $ticket ) || ( $ticket['provider'] ?? '' ) !== $provider || ( $ticket['capability'] ?? '' ) !== $capability )
+			return new WP_Error( 'mad4b_automation_ticket_invalid', 'Automatic admission returned no exact handoff ticket.' );
+		$gate = self::guard_automatic_handoff( $ticket, $lock, $event, $profile_digest, $identity );
+		if ( is_wp_error( $gate ) ) {
+			try { MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $gate ); } catch ( Throwable $error ) {}
+			return $gate;
+		}
+		return $ticket;
+	}
+
+	private static function finish_automatic_handoff( array $ticket, $result, $lock, array $event, $profile_digest, array $identity ) {
+		$gate = self::guard_automatic_handoff( $ticket, $lock, $event, $profile_digest, $identity );
+		if ( is_wp_error( $gate ) ) $result = $gate;
+		if ( ! is_wp_error( $result ) && ! is_array( $result ) )
+			$result = new WP_Error( 'mad4b_automation_handoff_result_invalid', 'Automatic handoff returned an invalid result.' );
+		try { $finished = MAD4B_SCP_Automation_SLO::finish_existing( $ticket, $result ); }
+		catch ( Throwable $error ) { return new WP_Error( 'mad4b_automation_outcome_persist_exception', 'Automatic handoff outcome requires reconciliation.' ); }
+		if ( is_wp_error( $finished ) ) return $finished;
+		if ( true !== $finished ) return new WP_Error( 'mad4b_automation_outcome_persist_invalid', 'Automatic handoff outcome was not durably recorded.' );
+		return $result;
+	}
+
+	/** Only revert a worker-owned checkpoint while its exact seal persists. */
+	private static function restore_worker_checkpoint( $checkpoint_seal, $had_previous, $previous_value ) {
+		if ( '' === $checkpoint_seal ) return;
+		$persisted = get_option( self::OPTION, null );
+		if ( ! is_array( $persisted ) || ! isset( $persisted['seal'] )
+			|| ! hash_equals( $checkpoint_seal, (string) $persisted['seal'] ) ) return;
+		if ( $had_previous ) update_option( self::OPTION, $previous_value, false );
+		elseif ( function_exists( 'delete_option' ) ) delete_option( self::OPTION );
+	}
+
+	private static function core_probe_scheduled( $result, array $identity ) {
+		if ( ! is_array( $result ) || true !== ( $result['scheduled'] ?? null )
+			|| ! in_array( $result['state'] ?? '', array( 'pending_safe_phases', 'self_update_checkpoint_preserved' ), true )
+			|| ! is_array( $result['target_identity'] ?? null ) ) return false;
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $field ) {
+			$expected = $identity[ $field ] ?? null;
+			$actual = $result['target_identity'][ $field ] ?? null;
+			if ( ! is_string( $expected ) || '' === $expected || ! is_string( $actual )
+				|| ! hash_equals( $expected, $actual ) ) return false;
+		}
+		return true;
 	}
 
 	/** Each state follows measured capability evidence, never a version comparison. */
@@ -139,23 +386,121 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$lock = MAD4B_SCP_Runtime_Maintenance_Lease::acquire( 'adaptive_runtime_observation' );
 		if ( is_wp_error( $lock ) ) { self::schedule( 60 ); return; }
 		$event = self::event();
-		if ( empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
+		if ( self::event_data_safe( $event ) && empty( $event['event_id'] ) ) { self::enqueue(); $event = self::event(); }
+		if ( ! self::event_data_safe( $event )
+			|| ! is_string( $event['event_id'] ?? null )
+			|| 1 !== preg_match( '/^[a-zA-Z0-9_-]{1,80}$/D', $event['event_id'] ) ) {
+			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' );
+			return;
+		}
+		if ( self::terminal_event( $event ) ) {
+			MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' );
+			return;
+		}
 		try {
 			$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
-			if ( empty( $identity['runtime_manifest_match'] ) || empty( $identity['build_fingerprint'] ) ) { self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' ); return; }
+			if ( empty( $identity['runtime_manifest_match'] )
+				|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['package_manifest_digest'] ?? '' ) )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) ( $identity['build_fingerprint'] ?? '' ) )
+				|| ! is_string( $identity['artifact_identity'] ?? null )
+				|| '' === $identity['artifact_identity'] ) {
+				self::note_failure( 'installed_package_manifest_unverified', $event['event_id'] ?? '' );
+				return;
+			}
 			$profile_digest = MAD4B_SCP_Site_Profile::profile_digest();
-			$previous = get_option( self::OPTION, array() );
+			$previous_raw = get_option( self::OPTION, null );
+			$previous_had_value = null !== $previous_raw;
+			$previous = is_array( $previous_raw ) ? $previous_raw : array();
 			$registry = self::valid_registry( $previous ) ? $previous : array( 'providers' => array() );
 			$generation = hash( 'sha256', (string) $identity['build_fingerprint'] . ':' . $profile_digest );
-			if ( ( $registry['core_enqueued_build'] ?? '' ) !== $identity['build_fingerprint'] && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
+			$core_checkpoint_dirty = false;
+			$core_checkpoint_seal = '';
+			if ( ( $registry['core_enqueued_generation'] ?? '' ) !== $generation && class_exists( 'MAD4B_SCP_Runtime_Convergence', false ) ) {
 				$checkpoint = get_option( MAD4B_SCP_Runtime_Convergence::CHECKPOINT_OPTION, array() );
-				if ( ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
-					$registry['core_convergence'] = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+				$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority', false ) && method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' )
+					? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status() : array();
+				$continuation = class_exists( 'MAD4B_SCP_Post_Update_Continuation', false ) ? MAD4B_SCP_Post_Update_Continuation::status() : array();
+				$maintenance = method_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease', 'status' ) ? MAD4B_SCP_Runtime_Maintenance_Lease::status() : array( 'active' => false, 'owner' => '' );
+				$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false ) ? MAD4B_SCP_Skill_Runtime_Certification::current_status() : array();
+				$source = isset( $event['source'] ) ? sanitize_key( (string) $event['source'] ) : 'runtime_change';
+				if ( 'self_update' === sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) $source = 'self_update';
+				elseif ( 'runtime_release_set' === sanitize_key( (string) ( $checkpoint['source'] ?? '' ) ) ) $source = 'runtime_release_set';
+				$auto_reconcile = class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios', false ) ? MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate( array(
+					'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+					'candidate_binding' => $binding,
+					'continuation' => $continuation,
+					'maintenance' => $maintenance,
+					'skills_pending' => MAD4B_SCP_Site_Profile::skills_enabled() && empty( $skills['ready'] ),
+					'runtime_identity_complete' => ! empty( $identity['source_commit_sha'] ) && ! empty( $identity['build_fingerprint'] ) && ! empty( $identity['package_manifest_digest'] ),
+					'build_changed' => true,
+					'current_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
+					'stored_version' => trim( (string) get_option( 'mad4b_scp_version', '' ) ),
+					'source' => $source,
+					'breakglass_enabled' => self::breakglass_enabled(),
+				) ) : array( 'decision' => 'REVIEW_REQUIRED', 'scenario_id' => 'registry_unavailable', 'mutation_allowed' => false );
+				$registry['auto_reconcile'] = $auto_reconcile;
+				$decision = isset( $auto_reconcile['decision'] ) ? (string) $auto_reconcile['decision'] : 'REVIEW_REQUIRED';
+				if ( 'SCHEDULE_PROBE' === $decision && ! in_array( $checkpoint['state'] ?? '', array( 'blocked', 'authority_blocked' ), true ) ) {
+					if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) { self::schedule( 5 ); return; }
+					$core_ticket = self::begin_automatic_handoff( 'runtime-convergence', 'enqueue', $lock, $event, $profile_digest, $identity );
+					$core_result = $core_ticket;
+					if ( ! is_wp_error( $core_ticket ) ) {
+						try { $core_result = MAD4B_SCP_Runtime_Convergence::mark_activation_pending(); }
+						catch ( Throwable $error ) { $core_result = new WP_Error( 'mad4b_automation_core_handoff_exception', 'Core automatic handoff failed.' ); }
+						$core_result = self::finish_automatic_handoff( $core_ticket, $core_result, $lock, $event, $profile_digest, $identity );
+					}
+					if ( ! is_wp_error( $core_result ) && self::core_probe_scheduled( $core_result, $identity ) ) {
+						$registry['core_convergence'] = array( 'state' => 'SCHEDULED', 'scheduled' => true, 'source_state' => $core_result['state'], 'production_mutation' => false );
+						$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+						$registry['core_enqueued_generation'] = $generation;
+						$core_checkpoint_dirty = true;
+					} else {
+						$registry['core_convergence'] = array( 'state' => 'DEFERRED', 'scheduled' => false,
+							'error_code' => is_wp_error( $core_result ) ? sanitize_key( (string) $core_result->get_error_code() ) : 'activation_not_scheduled',
+							'source_state' => is_array( $core_result ) && is_string( $core_result['state'] ?? null ) ? sanitize_key( $core_result['state'] ) : '',
+							'production_mutation' => false );
+						self::schedule( 300 );
+					}
+				} elseif ( 'NO_OP' === $decision ) {
+					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+					$registry['core_enqueued_generation'] = $generation;
+					$core_checkpoint_dirty = true;
+				} elseif ( 'DEFER' === $decision ) {
+					$registry['core_convergence'] = array( 'state' => 'DEFERRED', 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
+					self::schedule( 30 );
+				} else {
+					$registry['core_convergence'] = array( 'state' => $decision, 'scenario_id' => $auto_reconcile['scenario_id'] ?? '', 'production_mutation' => false );
+					$registry['core_enqueued_build'] = $identity['build_fingerprint'];
+					$registry['core_enqueued_generation'] = $generation;
+					$core_checkpoint_dirty = true;
 				}
-				$registry['core_enqueued_build'] = $identity['build_fingerprint'];
 			}
 			$cursor = ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['generation'] ?? '' ) === $generation ? (int) ( $registry['cursor'] ?? 0 ) : 0;
 			$epoch = 0 === $cursor ? wp_generate_uuid4() : ( $registry['observation_epoch'] ?? '' );
+			if ( $core_checkpoint_dirty ) {
+				$registry = array_merge( $registry, array(
+					'contract' => self::CONTRACT,
+					'generation' => $generation,
+					'profile_digest' => $profile_digest,
+					'build_stamp' => self::stamp(),
+					'event_id' => $event['event_id'] ?? '',
+					'observation_epoch' => $epoch,
+					'cursor' => $cursor,
+					'state' => 'OBSERVING',
+					'observed_at' => gmdate( 'c' ),
+					'authorizing' => false,
+				) );
+				unset( $registry['seal'] );
+				$registry['seal'] = self::seal( $registry );
+				if ( is_wp_error( MAD4B_SCP_Runtime_Maintenance_Lease::refresh( $lock, 'adaptive_runtime_observation' ) ) ) { self::schedule( 60 ); return; }
+				update_option( self::OPTION, $registry, false );
+				$core_readback = get_option( self::OPTION, array() );
+				if ( ! self::valid_registry( $core_readback )
+					|| ! hash_equals( (string) $generation, (string) ( $core_readback['core_enqueued_generation'] ?? '' ) ) ) { self::schedule( 60 ); return; }
+				$core_checkpoint_seal = isset( $core_readback['seal'] ) ? (string) $core_readback['seal'] : '';
+			}
+
 			$catalog = MAD4B_SCP_Provider_Contracts::all();
 			$providers = array_values( array_filter( array_keys( $catalog ), array( 'MAD4B_SCP_Provider_Compatibility_Certification', 'supports_provider' ) ) ); sort( $providers, SORT_STRING );
 			$registry['providers'] = array_intersect_key( $registry['providers'], array_flip( $providers ) );
@@ -191,19 +536,83 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 				$fabric_generation = hash( 'sha256', wp_json_encode( array( 'package' => $generation, 'graph' => $graph ) ) );
 				if ( ( ( $registry['fabric_generation'] ?? '' ) !== $fabric_generation || 'RECONCILED' !== ( $registry['managed_skills']['state'] ?? '' ) ) && class_exists( 'MAD4B_SCP_Skill_Provider_Discovery', false )
 					&& MAD4B_SCP_Site_Profile::skills_enabled() && class_exists( 'MAD4B_SCP_Schema', false ) && MAD4B_SCP_Schema::is_ready() ) {
-					$skills = MAD4B_SCP_Skill_Provider_Discovery::reconcile();
-					$registry['managed_skills'] = is_wp_error( $skills ) ? array( 'state' => 'RECONCILIATION_REQUIRED', 'error_code' => $skills->get_error_code() ) : array( 'state' => 'RECONCILED' );
+					if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) {
+						self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
+						self::schedule( 5 );
+						return;
+					}
+					$skills_ticket = self::begin_automatic_handoff( 'managed-skills', 'reconcile', $lock, $event, $profile_digest, $identity );
+					$skills = $skills_ticket;
+					if ( ! is_wp_error( $skills_ticket ) ) {
+						try { $skills = MAD4B_SCP_Skill_Provider_Discovery::reconcile(); }
+						catch ( Throwable $error ) { $skills = new WP_Error( 'mad4b_automation_skills_handoff_exception', 'Managed Skills automatic handoff failed.' ); }
+					}
+					// A bounded installer often reports a normal status array even when
+					// the seed pack, audit storage or registry is unavailable. Mere
+					// absence of WP_Error is not evidence of successful convergence.
+					$skills_ready = is_array( $skills ) && 'ready' === ( $skills['state'] ?? '' )
+						&& ! empty( $skills['current_request_observed'] )
+						&& empty( $skills['skipped_conflict'] );
+					try {
+						$inspection = $skills_ready && method_exists( 'MAD4B_SCP_Skill_Provider_Discovery', 'inspect' )
+							? MAD4B_SCP_Skill_Provider_Discovery::inspect() : array( 'ready' => false );
+					} catch ( Throwable $error ) {
+						$skills = new WP_Error( 'mad4b_automation_skills_readback_exception', 'Managed Skills automatic readback failed.' );
+						$skills_ready = false; $inspection = array( 'ready' => false );
+					}
+					$inspection_ready = is_array( $inspection ) && ! empty( $inspection['ready'] )
+						&& 'ready' === ( $inspection['state'] ?? '' );
+					if ( ! is_wp_error( $skills_ticket ) ) {
+						$skills = self::finish_automatic_handoff( $skills_ticket, $skills, $lock, $event, $profile_digest, $identity );
+						$skills_ready = $skills_ready && ! is_wp_error( $skills );
+					}
+					if ( $skills_ready && $inspection_ready ) {
+						$registry['managed_skills'] = array( 'state' => 'RECONCILED', 'readback_verified' => true );
+					} else {
+						$reason = 'skill_result_unverified';
+						if ( is_wp_error( $skills ) ) $reason = sanitize_key( (string) $skills->get_error_code() );
+						elseif ( is_array( $skills ) ) {
+							if ( ! empty( $skills['skipped_conflict'] ) ) $reason = 'skill_reconciliation_conflicts';
+							elseif ( 'ready' !== ( $skills['state'] ?? '' ) ) $reason = sanitize_key( (string) ( $skills['state'] ?? 'skill_result_unverified' ) );
+							elseif ( empty( $skills['current_request_observed'] ) ) $reason = 'skill_receipt_unverified';
+							else $reason = 'skill_mapping_readback_incomplete';
+						}
+						$registry['managed_skills'] = array( 'state' => 'RECONCILIATION_REQUIRED', 'readback_verified' => false, 'reason' => $reason );
+						self::schedule( 300 );
+					}
+
 				}
 				$registry['fabric_generation'] = $fabric_generation;
 			}
 			if ( ! $pending && class_exists( 'MAD4B_SCP_Post_Update_Continuation', false ) && method_exists( 'MAD4B_SCP_Post_Update_Continuation', 'capture_ready_baseline' ) ) {
-				$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock, 'adaptive_runtime_observation' );
+				if ( ! self::worker_fence_current( $lock, $event, $profile_digest, $identity ) ) {
+					self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
+					self::schedule( 5 );
+					return;
+				}
+				$baseline_ticket = self::begin_automatic_handoff( 'runtime-convergence', 'authority-baseline', $lock, $event, $profile_digest, $identity );
+				$baseline = $baseline_ticket;
+				if ( ! is_wp_error( $baseline_ticket ) ) {
+					try { $baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( $lock, 'adaptive_runtime_observation' ); }
+					catch ( Throwable $error ) { $baseline = new WP_Error( 'mad4b_automation_baseline_handoff_exception', 'Automatic authority baseline capture failed.' ); }
+					$baseline = self::finish_automatic_handoff( $baseline_ticket, $baseline, $lock, $event, $profile_digest, $identity );
+				}
 				$registry['authority_baseline'] = is_wp_error( $baseline ) ? array( 'state' => 'NOT_OBSERVED', 'error_code' => $baseline->get_error_code() ) : $baseline;
 			}
 			$postflight = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
 			if ( ! self::eligible() || MAD4B_SCP_Site_Profile::profile_digest() !== $profile_digest
 				|| empty( $postflight['runtime_manifest_match'] ) || ( $postflight['build_fingerprint'] ?? '' ) !== $identity['build_fingerprint']
-				|| ( self::event()['event_id'] ?? '' ) !== ( $event['event_id'] ?? '' ) ) { self::schedule( 5 ); return; }
+				|| ( $postflight['source_commit_sha'] ?? '' ) !== ( $identity['source_commit_sha'] ?? '' )
+				|| ( $postflight['package_manifest_digest'] ?? '' ) !== ( $identity['package_manifest_digest'] ?? '' )
+				|| ( $postflight['artifact_identity'] ?? '' ) !== ( $identity['artifact_identity'] ?? '' )
+				|| ! self::lifecycle_fence_current( $event ) ) {
+				// If this worker persisted only its generation checkpoint before a race was
+				// detected, restore the exact prior value only while that checkpoint is
+				// still the current value. Never overwrite a concurrent writer.
+				self::restore_worker_checkpoint( $core_checkpoint_seal, $previous_had_value, $previous_raw );
+				self::schedule( 5 );
+				return;
+			}
 			$registry = array_merge( $registry, array( 'contract' => self::CONTRACT, 'generation' => $generation, 'profile_digest' => $profile_digest, 'build_stamp' => self::stamp(),
 				'event_id' => $event['event_id'] ?? '', 'observation_epoch' => $epoch, 'cursor' => $pending ? $cursor : 0, 'state' => $pending ? 'OBSERVING' : 'OBSERVED', 'observed_at' => gmdate( 'c' ), 'authorizing' => false ) );
 			unset( $registry['seal'] ); $registry['seal'] = self::seal( $registry );
@@ -212,7 +621,12 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 			$readback = get_option( self::OPTION, array() );
 			if ( ! self::valid_registry( $readback ) || ! hash_equals( $registry['seal'], $readback['seal'] ) ) { self::schedule( 60 ); return; }
 			$latest_event = self::event();
-			if ( isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) { unset( $latest_event['failure_code'], $latest_event['failure_state'], $latest_event['attempts'] ); update_option( self::EVENT_OPTION, $latest_event, false ); }
+			if ( self::event_data_safe( $latest_event ) && ! self::terminal_event( $latest_event )
+				&& isset( $latest_event['failure_code'] ) && ( $latest_event['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) ) {
+				unset( $latest_event['failure_code'], $latest_event['failure_state'], $latest_event['attempts'],
+					$latest_event['failure_decision'], $latest_event['failure_policy_id'], $latest_event['failure_policy_source'] );
+				update_option( self::EVENT_OPTION, $latest_event, false );
+			}
 			self::schedule( $pending ? 5 : 3600 );
 		} catch ( Throwable $error ) { self::note_failure( 'runtime_observation_failed', $event['event_id'] ?? '' ); }
 		finally { MAD4B_SCP_Runtime_Maintenance_Lease::release( $lock, 'adaptive_runtime_observation' ); }
@@ -222,13 +636,25 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 	private static function valid_registry( $registry ) { return is_array( $registry ) && self::CONTRACT === ( $registry['contract'] ?? '' ) && is_array( $registry['providers'] ?? null ) && is_string( $registry['seal'] ?? null ) && hash_equals( self::seal( $registry ), $registry['seal'] ); }
 
 	public static function status( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'provider_id', 'include_capabilities', 'limit', 'after_provider', 'expected_receipt_sha256' ) ) ) {
+			return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Unsupported adaptive runtime selector.' );
+		}
+		foreach ( array( 'provider_id', 'after_provider' ) as $selector ) {
+			if ( isset( $input[ $selector ] ) && ( ! is_string( $input[ $selector ] ) || strlen( $input[ $selector ] ) > 80
+				|| ( '' !== $input[ $selector ] && 1 !== preg_match( '/^[a-z][a-z0-9._-]{0,79}$/D', $input[ $selector ] ) ) ) ) {
+				return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid provider selector.' );
+			}
+		}
+		if ( isset( $input['limit'] ) && ( ! is_int( $input['limit'] ) || $input['limit'] < 1 || $input['limit'] > 20 ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid page limit.' );
+		if ( isset( $input['include_capabilities'] ) && ! is_bool( $input['include_capabilities'] ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid capability selection.' );
+		if ( isset( $input['expected_receipt_sha256'] ) && ( ! is_string( $input['expected_receipt_sha256'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $input['expected_receipt_sha256'] ) ) ) return new WP_Error( 'mad4b_adaptive_runtime_input_invalid', 'Invalid observation digest.' );
 		$registry = get_option( self::OPTION, array() );
 		$valid = self::valid_registry( $registry );
 		if ( ! $valid ) $registry = array( 'state' => 'NOT_OBSERVED', 'providers' => array() );
 		$receipt_sha256 = hash( 'sha256', wp_json_encode( $registry ) );
-		$after = isset( $input['after_provider'] ) ? sanitize_key( (string) $input['after_provider'] ) : '';
+		$after = isset( $input['after_provider'] ) ? $input['after_provider'] : '';
 		if ( '' !== $after && ( ! $valid || ( $input['expected_receipt_sha256'] ?? '' ) !== $receipt_sha256 ) ) return new WP_Error( 'mad4b_adaptive_runtime_page_stale', 'The observation changed between pages. Start with a fresh first page.' );
-		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
+		$provider = isset( $input['provider_id'] ) ? $input['provider_id'] : '';
 		$details = isset( $input['include_capabilities'] ) ? true === $input['include_capabilities'] : '' !== $provider;
 		$limit = isset( $input['limit'] ) ? max( 1, min( 20, (int) $input['limit'] ) ) : 8;
 		ksort( $registry['providers'], SORT_STRING );
@@ -238,31 +664,50 @@ final class MAD4B_SCP_Adaptive_Runtime_Convergence {
 		$has_more = count( $registry['providers'] ) > $limit;
 		$registry['providers'] = array_slice( $registry['providers'], 0, $limit, true );
 		$event = self::event();
-		$current = $valid && ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' ) && ( $registry['build_stamp'] ?? '' ) === self::stamp()
+		$scheduler_disabled = defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON;
+		$worker_blocked = self::terminal_event( $event ) || ! self::event_data_safe( $event )
+			|| ( ! empty( $event['event_id'] ) && ( ! is_string( $event['event_id'] )
+				|| 1 !== preg_match( '/^[a-zA-Z0-9_-]{1,80}$/D', $event['event_id'] ) ) );
+		$enrolled_for_observation = self::eligible();
+		$worker_available = $enrolled_for_observation && ! $scheduler_disabled && ! $worker_blocked;
+		$observed_epoch = is_string( $registry['observed_at'] ?? null ) ? strtotime( $registry['observed_at'] ) : false;
+		$observation_fresh = false !== $observed_epoch && $observed_epoch <= time() + self::MAX_CLOCK_SKEW
+			&& $observed_epoch >= time() - self::MAX_OBSERVATION_AGE;
+		$current = $valid && $observation_fresh && ! $worker_blocked && $enrolled_for_observation && ( $registry['event_id'] ?? '' ) === ( $event['event_id'] ?? '' )
+			&& ( $registry['build_stamp'] ?? '' ) === self::stamp()
 			&& class_exists( 'MAD4B_SCP_Site_Profile', false ) && ( $registry['profile_digest'] ?? '' ) === MAD4B_SCP_Site_Profile::profile_digest();
 		if ( $valid && ! $current ) $registry['state'] = 'STALE_OBSERVATION';
 		foreach ( $registry['providers'] as &$observation ) {
 			if ( ! is_array( $observation ) || ! is_array( $observation['capabilities'] ?? null ) ) { $observation = array( 'state' => 'ISOLATED', 'error_code' => 'malformed_provider_observation', 'capabilities' => array() ); }
 			$observation['observation_current'] = $current && ! empty( $registry['observation_epoch'] ) && ( $observation['observation_epoch'] ?? '' ) === $registry['observation_epoch'];
 			if ( ! $observation['observation_current'] && 'malformed_provider_observation' !== ( $observation['error_code'] ?? '' ) ) $observation['state'] = 'STALE_OBSERVATION';
-			$counts = array();
+			$counts = array(); $lane_counts = array();
 			foreach ( $observation['capabilities'] as &$capability ) {
 				if ( ! is_array( $capability ) ) $capability = array( 'state' => 'ISOLATED', 'next_action' => 'repair_capability_contract' );
 				if ( ! $observation['observation_current'] ) { $capability['last_observed_state'] = $capability['state'] ?? 'ISOLATED'; $capability['state'] = 'STALE_OBSERVATION'; $capability['next_action'] = 'await_current_provider_observation'; }
 				$state = isset( $capability['state'] ) && is_string( $capability['state'] ) ? $capability['state'] : 'ISOLATED';
 				$counts[ $state ] = ( $counts[ $state ] ?? 0 ) + 1;
+				$capability['remediation'] = self::remediation_lane( $capability, $observation['observation_current'], $worker_available );
+				$lane = $capability['remediation']['lane'];
+				$lane_counts[ $lane ] = ( $lane_counts[ $lane ] ?? 0 ) + 1;
 			}
 			unset( $capability );
 			$observation['capability_count'] = count( $observation['capabilities'] );
 			$observation['capability_state_counts'] = $counts;
+			$observation['remediation_lane_counts'] = $lane_counts;
 			if ( ! $details ) unset( $observation['capabilities'], $observation['capability_diff'] );
 		}
 		unset( $observation );
-		$registry['last_worker_failure'] = isset( $event['failure_code'] ) ? array( 'state' => $event['failure_state'] ?? '', 'code' => sanitize_key( $event['failure_code'] ), 'attempts' => (int) ( $event['attempts'] ?? 0 ) ) : array();
+		$registry['last_worker_failure'] = array_key_exists( 'failure_code', $event ) ? array(
+			'state' => is_string( $event['failure_state'] ?? null ) ? $event['failure_state'] : 'REVIEW_REQUIRED',
+			'code' => is_string( $event['failure_code'] ) ? sanitize_key( $event['failure_code'] ) : 'invalid_failure_record',
+			'attempts' => is_int( $event['attempts'] ?? null ) ? max( 0, min( 6, $event['attempts'] ) ) : 0,
+		) : array();
 		unset( $registry['seal'] );
 		return array_merge( $registry, array( 'contract' => self::CONTRACT, 'receipt_integrity_valid' => $valid, 'observation_current' => $current, 'authorizing' => false, 'read_only' => true, 'production_mutation' => false,
 			'page' => array( 'total_provider_count' => $total, 'returned_provider_count' => count( $registry['providers'] ), 'has_more' => $has_more, 'next_after_provider' => $has_more ? array_keys( $registry['providers'] )[ count( $registry['providers'] ) - 1 ] : '', 'receipt_sha256' => $receipt_sha256, 'capability_details_included' => $details ),
 			'canary_policy' => 'actual_disposable_probe_exact_readback_and_rollback_required', 'provider_live_validation_deferred' => true, 'external_evidence_policy' => 'real_current_build_oauth_initialize_and_tools_list_required',
-			'scheduler_state' => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'EXTERNAL_ACTION_REQUIRED' : 'AVAILABLE' ) );
+			'scheduler_state' => $scheduler_disabled ? 'EXTERNAL_ACTION_REQUIRED' : ( ! $enrolled_for_observation ? 'NOT_ELIGIBLE' : ( $worker_blocked ? 'BLOCKED_BY_WORKER_POLICY' : 'AVAILABLE' ) ),
+			'observation_fresh' => $observation_fresh, 'auto_observation_available' => $worker_available ) );
 	}
 }

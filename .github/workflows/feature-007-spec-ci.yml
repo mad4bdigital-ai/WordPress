@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - 'specs/007-content-intelligence-workflow-platform/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/solution-discovery/**'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
+      - 'tools/mad4b_standalone_evidence.py'
+      - 'tools/test_mad4b_standalone_evidence.py'
       - '.github/workflows/feature-007-spec-ci.yml'
       - 'tools/mad4b_recovery_plane.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py'
@@ -16,6 +22,66 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-acceptance.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-fault-guard.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-declarative-adapter-manifest.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-shadow-read.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-canary-certification.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-certification-pack-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/declarative-adapter-manifest-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/provider-shadow-read-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/reversible-canary-certification-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/certification-pack-registry-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g3-registration-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/receipt-crypto-profile-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g4-provider-families.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/domains/**'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g4-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g5-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g6-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ownership-reconciliation.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-operator-journal.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-host-readiness.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-update-acceptance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-action-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-read-surfaces.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-compensation-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-release-acceptance-audit.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g7-workload-measurement.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/g7-*.php'
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,6 +92,9 @@ concurrency:
 
 jobs:
   spec-quality:
+    # These baseline and boundary checks require a pull request's base/head.
+    # Manual hermetic runs do not provide or certify PR/release acceptance.
+    if: github.event_name == 'pull_request'
     name: Feature 007 specification quality
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -42,20 +111,52 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
 
+      - name: Source federation adversarial fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/solution-discovery/federation.mjs
+          node --check tools/solution-discovery/test-federation.mjs
+          node tools/solution-discovery/test-federation.mjs
+          node --check tools/solution-discovery/source-evidence.mjs
+          node tools/solution-discovery/test-source-evidence.mjs
+
       - name: Enforce current baseline ancestry
         shell: bash
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          INTEGRATION_REF="spec/007-competitive-experience-20261006"
           if ! git merge-base --is-ancestor "$BASE" HEAD; then
             echo "BASELINE_STALE"
             git rev-list --left-right --count "$BASE"...HEAD || true
             exit 1
           fi
+
           META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
-          if [ "$META_BASE" != "$BASE" ]; then
-            echo "BASELINE_METADATA_STALE expected_reviewed_parent=$BASE recorded=$META_BASE"
-            exit 1
+          if [ "$BASE_REF" = "master" ]; then
+            if [ "$META_BASE" != "$BASE" ]; then
+              echo "BASELINE_METADATA_STALE expected_reviewed_master_parent=$BASE recorded=$META_BASE"
+              exit 1
+            fi
+          elif [ "$BASE_REF" = "$INTEGRATION_REF" ]; then
+            git fetch --no-tags origin master
+            CURRENT_MASTER="$(git rev-parse FETCH_HEAD)"
+            if ! git merge-base --is-ancestor "$CURRENT_MASTER" "$BASE"; then
+              echo "INTEGRATION_HUB_STALE current_master=$CURRENT_MASTER integration_base=$BASE"
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "$META_BASE" "$BASE"; then
+              echo "INTEGRATION_MASTER_PROVENANCE_INVALID recorded_master_parent=$META_BASE integration_base=$BASE"
+              exit 1
+            fi
+            echo "INTEGRATION_CHILD_BASE_OK current_master=$CURRENT_MASTER integration_base=$BASE recorded_master_parent=$META_BASE"
+          else
+            if ! git merge-base --is-ancestor "$META_BASE" "$BASE"; then
+              echo "BASELINE_METADATA_PROVENANCE_INVALID base_ref=$BASE_REF base=$BASE recorded_master_parent=$META_BASE"
+              exit 1
+            fi
           fi
 
           python - "$BASE" <<'PY'
@@ -121,26 +222,96 @@ jobs:
         env:
           HEAD_BRANCH: ${{ github.head_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           BASE="${{ github.event.pull_request.base.sha }}"
+          VERIFY_BRANCH="$HEAD_BRANCH"
           if ! git cat-file -e "$BASE:tools/verify_feature_boundary.py" 2>/dev/null; then
             echo "ROOT_OF_TRUST_BOOTSTRAP_REQUIRED base=$BASE expected=tools/verify_feature_boundary.py"
             echo "Merge the separately governed repository root-of-trust prerequisite before Feature 007 can pass this gate."
             exit 1
           fi
           git show "$BASE:tools/verify_feature_boundary.py" > /tmp/verify_feature_boundary.py
+
+          # PR #258 is the locked integration hub. Its historical branch name is
+          # spec/007-..., but after child integration it intentionally carries
+          # Feature 007 runtime implementation. For cumulative integration CI only,
+          # evaluate its changed paths under the baseline-owned implementation
+          # boundary. The master pull_request_target/release gates remain unchanged.
+          if [ "$PR_NUMBER" = "258" ] && [ "$HEAD_BRANCH" = "spec/007-competitive-experience-20261006" ]; then
+            VERIFY_BRANCH="feat/007-integration-hub"
+            echo "INTEGRATION_HUB_BOUNDARY_MODE actual_branch=$HEAD_BRANCH verifier_branch=$VERIFY_BRANCH"
+          fi
+
           python3 /tmp/verify_feature_boundary.py \
             --base "$BASE" \
             --head "$HEAD_SHA" \
-            --head-branch "$HEAD_BRANCH" \
+            --head-branch "$VERIFY_BRANCH" \
+            --pr-number "$PR_NUMBER" \
             --output /tmp/MAD4B-FEATURE-BOUNDARY.json
 
       - name: Verify reconciled task ledger
         run: python specs/007-content-intelligence-workflow-platform/reconcile_task_ledger.py --check
 
+      - name: Verify non-authorizing cumulative delivery fingerprints
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_rebind_delivery.py
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/rebind-delivery.py
+
       - name: Validate Feature 007 contracts and gate liveness
         run: python specs/007-content-intelligence-workflow-platform/validate_spec.py
+
+      - name: Validate ACI01 Adaptive Content Intelligence OS Spec Kit
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_design_closure.py
+          python specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_dynamic_core.py
+
+      - name: ACI01 first native read-only intake — PHP disposable contract
+        run: |
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-intake-preview.php
+          php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-intake-preview-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-evidence-preview.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-evidence-read-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-opportunity-preview.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-opportunity-candidate-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-runtime-binding.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-semantic-recipe.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-p0-governed-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-native-relation-audit.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-native-relation-audit-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-recipe-gap.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/aci01-recipe-gap-contract.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-aci01-read-adapter.php
+
+      - name: Reject unsafe competitor evidence and false extension completion
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_delivery_progress.py
+
+      - name: Verify Competitive Experience G1 evidence and classifier contracts
+        run: |
+          python specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_competitive_evidence.py
+          python wp-content/plugins/mad4b-site-control-plane/tests/g1-runtime-evidence-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-competitive-evidence.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-graph.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-policy-classifier.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php
+          test -z "$(php wp-content/plugins/mad4b-site-control-plane/config/competitive-evidence-summary.php)"
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-g1-evidence-graph.php
+
+      - name: Verify Competitive Experience G2 governance contracts
+        run: |
+          python wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py
+          python wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php
 
       - name: Enforce bulk closure hardening contract
         run: python wp-content/plugins/mad4b-site-control-plane/tests/feature007-bulk-closure-hardening-contract.py
@@ -165,3 +336,602 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-cross-fault-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-p0-acceptance-contract.py
 
+  g3-runtime:
+    name: Feature 007 G3 runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G3 contracts and existing canary compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for service in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry provider-canary-execution; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$service.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for contract in declarative-adapter-manifest provider-shadow-read reversible-canary-certification certification-pack-registry g3-registration provider-canary-execution provider-canary-authorization-finalization provider-canary-authorization-surface; do
+            php "$PLUGIN/tests/$contract-contract.php"
+          done
+          python3 "$PLUGIN/tests/receipt-crypto-profile-contract.py"
+
+  g6-runtime:
+    name: Feature 007 G6 private preview (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G6 private planning boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for source in g6-contracts g6-operation-compiler g6-ai-workspace g6-knowledge-admission g6-provider-routing g6-retrieval-evaluation g6-conversation-vault g6-durable-dag-evidence g6-acceptance; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          php "$PLUGIN/tests/g6-private-preview-contract.php"
+          php "$PLUGIN/tests/g6-compiler-denial-runtime.php"
+          php "$PLUGIN/tests/g6-admission-denial-runtime.php"
+          php "$PLUGIN/tests/g6-provider-retrieval-denials.php"
+          php "$PLUGIN/tests/g6-conversation-vault-runtime.php"
+          php "$PLUGIN/tests/g6-durable-dag-evidence.php"
+          python3 "$PLUGIN/tests/g6-delivery-integrity.py"
+
+  g7-runtime:
+    name: Feature 007 G7 ownership safety (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify non-authorizing G7 ownership and current-binding safeguards
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for source in adaptive-operations-context ownership-reconciliation g7-operator-journal g7-host-readiness g7-update-acceptance g7-action-center g7-read-surfaces g7-compensation-audit g7-release-acceptance-audit g7-workload-measurement; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-control-center.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for test in g7-ownership-reconciliation-runtime g7-native-receipt-baseline-runtime g7-operator-journal-runtime g7-update-host-action-runtime g7-read-surfaces-contract g7-compensation-safety-runtime g7-release-metrics-runtime g7-release-missing-dependency-contract g7-spec-delivery-contract; do
+            php "$PLUGIN/tests/$test.php"
+          done
+  g5-runtime:
+    name: Feature 007 G5 runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G5 growth, SEO and external-provider contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          for source in g5-external-providers g5-growth-evidence g5-provider-profiles g5-seo-provider-families g5-acceptance; do
+            php -l "$PLUGIN/includes/class-mad4b-scp-$source.php"
+          done
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          for contract in g5-external-provider-contract g5-growth-evidence-runtime g5-provider-profile-contract g5-seo-provider-family-contract g5-acceptance-contract g5-registration-contract; do
+            php "$PLUGIN/tests/$contract.php"
+          done
+          python3 "$PLUGIN/tests/admin-route-registry-contract.py"
+
+  g4-runtime:
+    name: Feature 007 G4 runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Verify G4 typed provider-family contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-g4-provider-families.php"
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          php "$PLUGIN/tests/g4-provider-family-contract.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-wordpress-domain-coverage.php"
+          for source in "$PLUGIN"/includes/domains/*.php; do php -l "$source"; done
+          for domain in forms commerce builders site-operations wordpress; do
+            php "$PLUGIN/tests/g4-$domain-contract.php"
+          done
+          php "$PLUGIN/tests/g4-domain-coverage-runtime.php"
+          php "$PLUGIN/tests/g4-native-read-bridges-runtime.php"
+
+  g8-automatic-maintenance:
+    name: G8 admission and evidence (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source head
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Prove G8 admission, kill-switch and outcome regression matrix
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-record.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-automation-slo.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-runtime-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-operator-workspace.php"
+          php -l "$PLUGIN/mad4b-site-control-plane.php"
+          php -l "$PLUGIN/tests/g8-automation-slo-runtime.php"
+          php "$PLUGIN/tests/g8-automation-slo-runtime.php"
+          php -l "$PLUGIN/tests/g8-cron-generation-guard.php"
+          php "$PLUGIN/tests/g8-cron-generation-guard.php"
+          php -l "$PLUGIN/tests/g8-cron-guard-missing.php"
+          php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_THROWING_SLO=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_THROWING_WORKER=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=blocked php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=completed php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=pending_manual_resume php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_STATE=waiting_for_exact_runtime_restart php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_STALE_CRON_PAUSED=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_MALICIOUS_CHECKPOINT=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_PENDING_RESTART=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          G8_CHECKPOINT_CAS_RACE=1 php "$PLUGIN/tests/g8-cron-guard-missing.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-supply-provenance.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-schema-migration.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-restore-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-capability-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-g8-compatibility-fuzz.php"
+          php -l "$PLUGIN/tests/g8-extended-runtime.php"
+          php "$PLUGIN/tests/g8-extended-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-adaptive-runtime-convergence.php"
+          php -l "$PLUGIN/tests/g8-adaptive-automatic-handoffs.php"
+          php "$PLUGIN/tests/g8-adaptive-automatic-handoffs.php"
+          php "$PLUGIN/tests/adaptive-runtime-convergence-runtime.php"
+          php "$PLUGIN/tests/certification-pack-registry-contract.php"
+          php "$PLUGIN/tests/crypto-profile-runtime.php"
+          php "$PLUGIN/tests/restore-epoch-runtime.php"
+          php -l "$PLUGIN/tests/g8-mysql-cas-integration.php"
+          php -l "$PLUGIN/tests/g8-staging-acceptance-readonly.php"
+
+  g9-resilience:
+    name: G9 hermetic runtime (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: Lint G9 runtime
+        run: |
+          set -euo pipefail
+          for f in wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-{context,anchor}.php wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-*.php wp-content/plugins/mad4b-site-control-plane/tests/g9-*.php; do php -l "$f" || exit 1; done
+      - name: Verify standalone source builder and MCP read-only contract
+        run: |
+          set -euo pipefail
+          python3 tools/test_mad4b_standalone_build.py
+          python3 tools/test_mad4b_standalone_evidence.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
+      - name: Verify G9 non-authorizing delivery contract
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py
+      - name: Verify G9 source security invariants
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py
+      - name: Run G9 isolation and restore fixtures
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php null
+          php wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php pretend
+
+  ga-gb-assistant-planning:
+    name: GA/GB assistant planning denials (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source checkout
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: Validate bounded assistant planner and regression denials
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-agent-registry.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-planning.php"
+          php -l "$PLUGIN/tests/assistant-planning-runtime.php"
+          php "$PLUGIN/tests/assistant-planning-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-bootstrap-diagnostic.php"
+          php -l "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+          php "$PLUGIN/tests/assistant-bootstrap-diagnostic-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-convergence.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-task-contract.php"
+          php -l "$PLUGIN/tests/assistant-convergence-runtime.php"
+          php "$PLUGIN/tests/assistant-convergence-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-task-journal-bridge.php"
+          php -l "$PLUGIN/tests/assistant-task-journal-bridge-runtime.php"
+          php "$PLUGIN/tests/assistant-task-journal-bridge-runtime.php"
+          php -l "$PLUGIN/tests/operation-journal-exact-cas-runtime.php"
+          php "$PLUGIN/tests/operation-journal-exact-cas-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-read-work-operations.php"
+          php -l "$PLUGIN/tests/assistant-read-work-runtime.php"
+          php "$PLUGIN/tests/assistant-read-work-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-assistant-operator-workspace.php"
+          php -l "$PLUGIN/tests/assistant-operator-workspace-runtime.php"
+          php "$PLUGIN/tests/assistant-operator-workspace-runtime.php"
+          php -l "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
+          php "$PLUGIN/tests/assistant-entrypoint-registration-runtime.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-remote-work-queue.php"
+
+  oauth-operational-ux:
+    name: OAuth consent operating-state denials (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: none
+      - name: OAuth projection view cannot create authority or blank grant names
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLUGIN=wp-content/plugins/mad4b-site-control-plane
+          php -l "$PLUGIN/includes/class-mad4b-scp-oauth-consent-projection-view.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-local-oauth-server.php"
+          php -l "$PLUGIN/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+          php -l "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
+          php "$PLUGIN/tests/oauth-consent-projection-view-runtime.php"
+          python3 "$PLUGIN/tests/oauth-consent-script-syntax.py"
+
+  cso01-read-foundation:
+    name: CSO01 read-only PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Exact source identity
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Native CSO01 read-only adversarial contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          php -l "$root/includes/class-mad4b-scp-cso01-read-foundation.php"
+          php -l "$root/tests/cso01-read-foundation-runtime.php"
+          php -l "$root/tests/cso01-read-foundation-collision-runtime.php"
+          php -l "$root/tests/cso01-read-foundation-registration-runtime.php"
+          php -l "$root/tests/cso01-unified-discovery-funnel-runtime.php"
+          php "$root/tests/cso01-unified-discovery-funnel-runtime.php"
+          php "$root/tests/cso01-read-foundation-runtime.php"
+          php "$root/tests/cso01-read-foundation-collision-runtime.php"
+          php "$root/tests/cso01-read-foundation-registration-runtime.php"
+      - name: Enforce read-only CSO01 source and Spec Kit contracts
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/validate_dynamic_acceptance.py --profile baseline
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/test_dynamic_acceptance.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-foundation.php').read_text()
+          forbidden=('update_option(', 'add_option(', 'delete_option(', 'wp_insert_post(', 'wp_update_post(', 'wpdb->', 'shell_exec(', 'eval(')
+          assert all(token not in p for token in forbidden), 'CSO01 must never mutate WordPress or execute shell code'
+          for name in ('cso/discover', 'cso/form-catalog', 'cso/integration-search', 'cso/integration-inspect', 'cso/form-schema', 'cso/form-validate', 'cso/form-explain'):
+              assert name in p
+          assert "'readonly' => true" in p and "'authorizing' => false" in p
+          print('CSO01 read-only static contract: PASS')
+          PY
+
+  unified-operational-integrity-native:
+    if: github.event_name == 'pull_request'
+    name: Unified Operational Integrity PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact HEAD binding
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Fail-closed operational isolation and migration census
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for name in class-mad4b-scp-operational-integrity.php class-mad4b-scp-operational-scope-guard.php class-mad4b-scp-context-authority.php class-mad4b-scp-content-jobs.php class-mad4b-scp-deployment-mode-resolver.php class-mad4b-scp-brand-core-control-loop.php class-mad4b-scp-skill-abilities.php class-mad4b-scp-progressive-requirements.php class-mad4b-scp-progressive-operation-discovery.php; do
+            php -l "$root/includes/$name"
+          done
+          php -l "$root/includes/adapters/class-mad4b-scp-context-adapter.php"
+          for name in unified-operational-scope-runtime.php operational-integrity-local-runtime.php trusted-brand-scope-runtime.php brand-core-control-loop-runtime.php context-legacy-owner-provider-proof-runtime.php progressive-requirements-runtime.php skill-context-preflight-runtime.php content-job-transaction-fault-runtime.php business-activity-sync-runtime.php deployment-mode-resolver-runtime.php; do
+            php -l "$root/tests/$name"
+            php "$root/tests/$name"
+          done
+      - name: Detect duplicated Context Adapter code before Staging enrollment
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import pathlib, re
+          p=pathlib.Path("wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php")
+          data=p.read_text()
+          methods=re.findall(r"(?:public|private|protected)\\s+(?:static\\s+)?function\\s+([A-Za-z0-9_]+)\\s*\\(", data)
+          assert 1000 < len(data) < 150000, "Context Adapter exceeds safe single-module size"
+          assert data.count("<?php") == 1
+          assert data.count("final class MAD4B_SCP_Context_Adapter") == 1
+          assert len(methods) == len(set(methods)), "PHP Context Adapter duplicate method definition"
+          for ability in ("context/brand-core-control-loop","context/legacy-owner-transfer-discover",
+              "context/legacy-owner-transfer-plan","context/legacy-owner-transfer-evidence","context/legacy-owner-transfer-readback",
+              "context/legacy-owner-transfer-apply"):
+              assert ability in data, f"Missing governed Context ability: {ability}"
+          print("PASS: one Context Adapter class, unique methods, recovery routes")
+          PY
+      - name: Deterministic package negative tests (no ZIP release)
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/deterministic-package-builder-contract.py
+
+  staging-autopilot-gates-native:
+    if: github.event_name == 'pull_request'
+    name: Staging Autopilot Recovery Gates PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact source guard
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Local Staging Autopilot, profile and bootstrap refusal cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for file in "$root/includes/class-mad4b-scp-staging-autopilot.php" "$root/includes/class-mad4b-scp-site-profile-admin.php" "$root/includes/class-mad4b-scp-site-profile.php" "$root/tests/staging-autopilot-runtime.php" "$root/tests/site-profile-wp-config-auto-sync-runtime.php"; do
+            php -l "$file"
+          done
+          php -l "$root/includes/class-mad4b-scp-host-identity-live.php"
+          php -l "$root/includes/class-mad4b-scp-host-bridge.php"
+          php -l "$root/tests/host-bridge-contract.php"
+          php -l "$root/tests/site-profile-lifecycle-matrix-runtime.php"
+          php -l "$root/tests/host-identity-live-runtime.php"
+          php -l "$root/tests/host-identity-socket-denial-runtime.php"
+          php "$root/tests/host-bridge-contract.php"
+          php "$root/tests/site-profile-lifecycle-matrix-runtime.php"
+          php "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/host-identity-live-runtime.php"
+          php "$root/tests/host-identity-socket-denial-runtime.php"
+          php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
+          python3 -m py_compile tools/mad4b_staging_host_preflight.py tools/mad4b_host_runner.py tools/mad4b_host_identity_socket.py
+          python3 "$root/tests/staging-host-preflight-contract.py"
+          python3 "$root/tests/host-identity-signer-contract.py"
+          python3 "$root/tests/host-identity-socket-contract.py"
+
+  cso01-governed-interaction-native:
+    if: github.event_name == 'pull_request'
+    name: CSO01 interaction, first-party and credential boundaries PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exact source guard
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint all CSO01 production and fixture PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          for src in class-mad4b-scp-cso01-read-foundation.php class-mad4b-scp-cso-scope.php class-mad4b-scp-cso-registry.php class-mad4b-scp-cso-forms.php class-mad4b-scp-cso-gateway.php class-mad4b-scp-cso-form-ui.php class-mad4b-scp-cso-secrets.php class-mad4b-scp-cso-storage-adapters.php class-mad4b-scp-cso-drafts.php class-mad4b-scp-cso-changes.php class-mad4b-scp-cso-bulk.php class-mad4b-scp-cso-workflows.php class-mad4b-scp-cso-templates.php class-mad4b-scp-cso-operations.php class-mad4b-scp-cso-native-executor.php class-mad4b-scp-cso-wp-post-driver.php class-mad4b-scp-cso-bulk-runtime.php; do
+            php -l "$root/includes/$src"
+          done
+          for fixture in cso-scope-runtime.php cso-forms-native-runtime.php cso-gateway-runtime.php cso-secrets-runtime.php cso-drafts-runtime.php cso-changes-runtime.php cso-orchestration-plans-runtime.php cso-storage-adapters-runtime.php cso-template-doctor-runtime.php cso-native-executor-runtime.php cso-wp-post-driver-runtime.php cso-bulk-native-runtime.php cso-workflow-native-runtime.php; do
+            php -l "$root/tests/$fixture"
+          done
+      - name: Isolated authorization, form lifecycle and secret handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          php "$root/tests/cso-scope-runtime.php"
+          php "$root/tests/cso-forms-native-runtime.php"
+          php "$root/tests/cso-gateway-runtime.php" normal
+          php "$root/tests/cso-gateway-runtime.php" collision
+          php "$root/tests/cso-gateway-runtime.php" partial
+          php "$root/tests/cso-secrets-runtime.php"
+          php "$root/tests/cso-drafts-runtime.php"
+          php "$root/tests/cso-changes-runtime.php"
+          php "$root/tests/cso-orchestration-plans-runtime.php"
+          php "$root/tests/cso-storage-adapters-runtime.php"
+          php "$root/tests/cso-template-doctor-runtime.php"
+          php "$root/tests/cso-native-executor-runtime.php"
+          php "$root/tests/cso-wp-post-driver-runtime.php"
+          php "$root/tests/cso-bulk-native-runtime.php"
+          php "$root/tests/cso-workflow-native-runtime.php"
+      - name: DOM, spec and dynamic acceptance contracts (not browser attestation)
+        if: matrix.php == '8.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node wp-content/plugins/mad4b-site-control-plane/tests/cso-form-ui-runtime.cjs
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/test_validate.py
+          python3 specs/007-content-intelligence-workflow-platform/extensions/conversational-site-operations/acceptance/validate_dynamic_acceptance.py --profile baseline

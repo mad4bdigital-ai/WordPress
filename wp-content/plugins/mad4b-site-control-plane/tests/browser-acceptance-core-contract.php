@@ -29,6 +29,7 @@ class MAD4B_SCP_Policy {
 	public static function can_read() { return true; }
 }
 
+function home_url( $path = '/' ) { return 'https://staging.egypttourgates.com' . $path; }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-provider-registry.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-browser-acceptance-core.php';
 
@@ -185,8 +186,14 @@ function browser_safe_provider( $id = 'fake-browser' ) {
 			return array(
 				'contract' => 'mad4b.browser-acceptance-result.v1',
 				'provider_id' => $id,
+				'provider_contract' => 'fake.browser-acceptance.v1',
 				'profile_id' => $request['profile_id'],
-				'verification' => array( 'browser_runtime_parity_verified' => ! $diverged ),
+				'suite' => 'browser_runtime',
+				'plan_digest' => $request['plan_digest'],
+				'evidence_digest' => hash( 'sha256', 'fixture-evidence' ),
+				'receipt_signature' => hash( 'sha256', 'fixture-signature' ),
+				'receipt_authorizing' => false,
+				'verification' => array( 'browser_runtime_parity_verified' => ! $diverged, 'verified_through' => ! $diverged ? 'live_browser_runtime' : 'none' ),
 				'infrastructure_failures' => array(),
 				'defect_reasons' => $diverged ? array( 'browser_dataset_ids_mismatch' ) : array(),
 				'incomplete_evidence' => array(),
@@ -224,12 +231,27 @@ $result_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4
 $evidence_schema = $result_schema['properties']['evidence'];
 $case_schema = $evidence_schema['properties']['cases']['items'];
 browser_expect( 8 === (int) $evidence_schema['properties']['cases']['maxItems'], 'browser evidence case limit must match provider MAX_CASES' );
-browser_expect( 15 === (int) $case_schema['maxProperties'], 'browser case schema must include bounded performance evidence without opening arbitrary properties' );
+browser_expect( 21 === (int) $case_schema['maxProperties'], 'browser case schema must bound ETG and generic capability evidence' );
+browser_expect( isset( $case_schema['properties']['capability_id'], $case_schema['properties']['probe_type'], $case_schema['properties']['observed']['properties']['path'], $case_schema['properties']['matches_expected'] ), 'generic capability case fields must be accepted by Core' );
+browser_expect( true === $case_schema['properties']['observed']['additionalProperties'] &&
+    12 === (int) $case_schema['properties']['observed']['maxProperties'],
+    'site-neutral observation data must be extensible but property-bounded; provider owns semantics' );
+browser_expect( isset( $evidence_schema['properties']['build_identity']['properties']['build_fingerprint'] ), 'generic build fingerprint must cross Ability schema' );
+browser_expect( isset( $evidence_schema['properties']['attestation']['properties']['key_id'] ), 'RSA evidence attestation must cross Ability schema' );
+browser_expect( false === $evidence_schema['properties']['attestation']['additionalProperties'], 'attestation must reject unknown fields' );
+browser_expect( '^[a-z][a-z0-9._-]{2,159}$' === $evidence_schema['properties']['contract']['pattern'],
+    'Core must allow bounded future provider Evidence versions without hostname or plugin hard-coding' );
+browser_expect( false === $evidence_schema['additionalProperties'] &&
+    false === $case_schema['additionalProperties'],
+    'site-neutral contracts must still reject arbitrary envelope and case fields' );
+browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_digest']['pattern'], 'plan digest schema must not be truncated' );
+browser_expect( '^[a-f0-9]{64}$' === $result_schema['properties']['plan_signature']['pattern'], 'plan signature schema must not be truncated' );
 $network_schema = $case_schema['properties']['network'];
 browser_expect( isset( $network_schema['properties']['latency_ms'] ), 'browser network schema must expose bounded AJAX latency' );
 $observer_schema = $evidence_schema['properties']['observer'];
 browser_expect( isset( $observer_schema['properties']['execution_mode'] ), 'browser observer schema must expose bounded execution mode' );
-browser_expect( 4 === (int) $observer_schema['maxProperties'], 'browser observer schema property budget drifted' );
+browser_expect( 7 === (int) $observer_schema['maxProperties'], 'browser observer schema must accommodate explicit page/runner JS and epoch' );
+browser_expect( isset( $observer_schema['properties']['plan_issued_at'], $observer_schema['properties']['page_javascript_enabled'], $observer_schema['properties']['runner_javascript_runtime'] ), 'generic signed observer fields missing' );
 $performance_schema = $case_schema['properties']['performance'];
 foreach ( array( 'ttfb_ms', 'ajax_endpoint_latency_ms', 'filter_to_presentation_ms' ) as $metric ) {
 	browser_expect( isset( $performance_schema['properties'][ $metric ] ), 'browser performance metric missing: ' . $metric );
@@ -244,6 +266,7 @@ foreach ( array( 'runtime', 'events', 'network', 'performance', 'rendered', 'url
 
 $capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
 browser_expect( 'mad4b.browser-acceptance-capabilities.v1' === (string) $capabilities['contract'], 'unexpected browser capabilities contract' );
+browser_expect( 'https://staging.egypttourgates.com' === $capabilities['site_origin'], 'canonical authenticated site origin projection missing' );
 browser_expect( 'external_browser_agent' === (string) $capabilities['execution_mode'], 'browser execution ownership drifted' );
 browser_expect( empty( $capabilities['authorizing'] ) && empty( $capabilities['browser_engine_authority'] ), 'browser core opened authority' );
 
@@ -298,6 +321,27 @@ $passed = MAD4B_SCP_Browser_Acceptance_Core::result( array(
 	'evidence' => array( 'force_divergence' => false ),
 ) );
 browser_expect( 'PASS' === (string) $passed['verdict'] && true === (bool) $passed['verification']['browser_runtime_parity_verified'], 'complete matching browser evidence must verify parity' );
+browser_expect( false === $passed['release_ready'] && false === $passed['globally_unique_consumption_proven'],
+    'browser parity PASS is never a release certificate or distributed replay proof' );
+$spoofed_provider = browser_safe_provider();
+$original_reducer = $spoofed_provider['result_callback'];
+$spoofed_provider['result_callback'] = function ( array $request ) use ( $original_reducer ) {
+    $result = $original_reducer( $request );
+    $result['release_ready'] = true;
+    $result['globally_unique_consumption_proven'] = true;
+    return $result;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => $spoofed_provider );
+$spoofed = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+    'provider_id' => 'fake-browser', 'profile_id' => 'tours',
+    'suite' => 'browser_runtime', 'plan_digest' => $plan['plan_digest'],
+    'plan_signature' => $plan['plan_signature'],
+    'evidence' => array( 'force_divergence' => false ),
+) );
+browser_expect( 'BLOCKED' === $spoofed['verdict'] &&
+    in_array( 'provider_pass_receipt_contract_invalid', $spoofed['blocking_reasons'], true ),
+    'provider cannot spoof release readiness or distributed replay proof' );
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
 
 $oversized = MAD4B_SCP_Browser_Acceptance_Core::result( array(
 	'provider_id' => 'fake-browser',
@@ -343,5 +387,101 @@ $unsafe_effect = browser_safe_provider( 'unsafe-effect' );
 $unsafe_effect['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'unsafe-effect' ); $d['seo_mutation'] = true; return $d; };
 $GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'unsafe-effect' => $unsafe_effect );
 browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ), 'browser provider opening SEO mutation must be rejected' );
+
+// Signed digest inputs and explicit selectors must never be normalized.
+$bad_role = browser_safe_provider( 'bad-role' );
+$bad_role['descriptor_callback'] = function () {
+    $descriptor = browser_safe_descriptor( 'bad-role' );
+    $descriptor['selection_role'] = 'force-primary';
+    return $descriptor;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'bad-role' => $bad_role );
+browser_expect( 0 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ),
+    'provider cannot inject arbitrary selection role' );
+$secondary = browser_safe_provider( 'secondary' );
+$secondary['descriptor_callback'] = function () {
+    $descriptor = browser_safe_descriptor( 'secondary' );
+    $descriptor['selection_role'] = 'supplemental';
+    return $descriptor;
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'secondary' => $secondary );
+browser_expect( 1 === count( ( new MAD4B_SCP_Browser_Acceptance_Provider_Registry() )->all() ),
+    'reviewed supplemental selection role is permitted without authority' );
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
+$null_plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => null, 'profile_id' => 'site.v1' ) );
+browser_expect( 'blocked' === $null_plan['state'] && in_array( 'provider_id_invalid', $null_plan['blocking_reasons'], true ), 'explicit null cannot invoke provider auto-selection' );
+foreach ( array( strtoupper( hash( 'sha256', 'x' ) ), ' ' . hash( 'sha256', 'x' ), hash( 'sha256', 'x' ) . ' ' ) as $altered_digest ) {
+	$invalid = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+		'provider_id' => 'fake-browser', 'profile_id' => 'site.v1',
+		'plan_digest' => $altered_digest, 'plan_signature' => hash( 'sha256', 'x' ),
+	) );
+	browser_expect( 'BLOCKED' === $invalid['verdict'] && in_array( 'plan_digest_invalid', $invalid['blocking_reasons'], true ), 'digest case or whitespace normalization forbidden' );
+}
+$plan_schema = $GLOBALS['mad4b_browser_acceptance_registered_abilities']['mad4b/browser-acceptance-plan']['input_schema'];
+browser_expect( false === $plan_schema['additionalProperties'], 'unexpected plan schema properties denied' );
+
+// A provider cannot assert PASS without signed, plan-bound browser evidence.
+$untrusted_pass = browser_safe_provider( 'untrusted-pass' );
+$untrusted_pass['result_callback'] = function ( array $request ) {
+	return array( 'verdict' => 'PASS', 'verification' => array( 'browser_runtime_parity_verified' => true ) );
+};
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'untrusted-pass' => $untrusted_pass );
+$fake_pass = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+	'provider_id' => 'untrusted-pass', 'profile_id' => 'site.v1',
+	'plan_digest' => str_repeat( 'a', 64 ), 'plan_signature' => str_repeat( 'b', 64 ),
+	'evidence' => array( 'proof' => 'unverified' ),
+) );
+browser_expect( 'BLOCKED' === $fake_pass['verdict'] && in_array( 'provider_pass_receipt_contract_invalid', $fake_pass['blocking_reasons'], true ), 'a synthetic PASS must be denied' );
+
+// Core selectors must preserve exact site/provider identity, never normalize.
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'fake-browser' => browser_safe_provider() );
+$dot = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => 'fake-browser', 'profile_id' => 'site.v1' ) );
+browser_expect( 'ready' === $dot['state'] && 'site.v1' === $dot['profile_id'], 'dot-qualified profile stays exact' );
+foreach ( array(
+    array( 'provider_id' => 'FAKE-BROWSER', 'profile_id' => 'site.v1' ),
+    array( 'provider_id' => ' fake-browser', 'profile_id' => 'site.v1' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 'SITE.V1' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 'site.v1 ' ),
+    array( 'provider_id' => 'fake-browser', 'profile_id' => 123 ),
+) as $bad_selector ) {
+    $denied = MAD4B_SCP_Browser_Acceptance_Core::plan( $bad_selector );
+    browser_expect( 'blocked' === $denied['state'], 'non-exact or non-string browser selector rejected' );
+}
+$bad_result = MAD4B_SCP_Browser_Acceptance_Core::result( array(
+    'provider_id' => 'FAKE-BROWSER', 'profile_id' => 'site.v1',
+    'plan_digest' => str_repeat( 'a', 64 ), 'plan_signature' => str_repeat( 'b', 64 ),
+) );
+browser_expect( 'BLOCKED' === $bad_result['verdict'], 'non-exact result provider rejected' );
+
+// Regression: registration must not infer safety from omitted provider metadata.
+$empty = browser_safe_provider( 'empty-descriptor' );
+$empty['descriptor_callback'] = function () { return array(); };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'empty-descriptor' => $empty );
+browser_expect( 0 === count( $registry->all() ), 'empty descriptor rejected' );
+browser_expect( false === $registry->inventory()['providers'][0]['valid'], 'empty descriptor diagnostic' );
+
+$missing = browser_safe_provider( 'missing-safety' );
+$missing['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'missing-safety' ); unset( $d['arbitrary_javascript_input'] ); return $d; };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'missing-safety' => $missing );
+browser_expect( 0 === count( $registry->all() ), 'omitted arbitrary JS flag rejected' );
+
+$string = browser_safe_provider( 'string-safety' );
+$string['descriptor_callback'] = function () { $d = browser_safe_descriptor( 'string-safety' ); $d['arbitrary_url_input'] = 'false'; return $d; };
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'string-safety' => $string );
+browser_expect( 0 === count( $registry->all() ), 'unsafe non-boolean field rejected' );
+
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'Mixed.Case' => browser_safe_provider( 'Mixed.Case' ) );
+browser_expect( 0 === count( $registry->all() ), 'case-normalized provider IDs rejected' );
+
+$duplicate = browser_safe_provider( 'same.provider' );
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = array( 'alias-a' => $duplicate, 'alias-b' => $duplicate );
+browser_expect( 0 === count( $registry->all() ), 'duplicate provider ID rejected' );
+foreach ( $registry->inventory()['providers'] as $item ) browser_expect( false === $item['valid'] && in_array( 'provider_id_duplicate', $item['blocking_reasons'], true ), 'duplicate inventory flagged' );
+
+$overflow = array();
+for ( $n = 0; $n < 33; $n++ ) { $id = 'provider-' . $n; $overflow[ $id ] = browser_safe_provider( $id ); }
+$GLOBALS['mad4b_browser_acceptance_test_providers'] = $overflow;
+browser_expect( 0 === count( $registry->all() ), 'registry overflow rejected' );
+browser_expect( 0 === $registry->inventory()['provider_count'], 'capacity overflow diagnostic' );
 
 echo "MAD4B Browser Acceptance Core contract smoke passed.\n";

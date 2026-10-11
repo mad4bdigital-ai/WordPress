@@ -24,6 +24,8 @@ final class MAD4B_SCP_Host_Bridge {
 		'workspace.file.rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'wordpress_plugin_deploy' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 		'wordpress_plugin_rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'wordpress_environment_sync' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
+		'wordpress_environment_rollback' => array( 'version' => 1, 'risk' => 'reversible_write', 'approval_required' => true ),
 	);
 
 	public static function boot() {
@@ -36,13 +38,16 @@ final class MAD4B_SCP_Host_Bridge {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		self::register( 'mad4b/host-operation-capabilities', 'Host Operation Capabilities', 'capabilities', true );
 		self::register( 'mad4b/host-operation-plan', 'Plan Host Operation', 'plan', true );
+		self::register( 'mad4b/site-profile-environment-reconcile-plan', 'Plan Profile Environment Reconciliation', 'profile_environment_reconcile_plan', true );
 		self::register( 'mad4b/host-operation-apply', 'Apply Host Operation Plan', 'apply', false );
 		self::register( 'mad4b/host-operation-status', 'Host Operation Status', 'status', true );
 		self::register( 'mad4b/host-operation-cancel', 'Cancel Queued Host Operation', 'cancel', false );
 		self::register( 'mad4b/host-operation-repair-plan', 'Plan Host Operation Repair', 'repair_plan', true );
 		self::register( 'mad4b/host-operation-requeue', 'Requeue Host Operation', 'requeue', false );
 		self::register( 'mad4b/host-operation-receipt', 'Read Host Operation Receipt', 'receipt', true );
+		self::register( 'mad4b/host-environment-sync-verification', 'Verify Fresh Host Environment Synchronization', 'environment_sync_verification', true );
 		self::register( 'mad4b/host-doctor', 'Host Runner Doctor', 'doctor', true );
+		self::register( 'mad4b/host-identity-migration-plan', 'Dynamic Host Identity Migration Readiness', 'host_identity_migration_plan', true );
 	}
 
 	private static function register( $name, $label, $method, $readonly ) {
@@ -96,6 +101,130 @@ final class MAD4B_SCP_Host_Bridge {
 		);
 	}
 
+	/**
+	 * Pure migration reducer. A read-only signature is evidence of the Host
+	 * identity for this request, never an authorization for an existing write.
+	 * Neither the legacy HMAC consumer nor the Host Runner job integrity MAC
+	 * can be derived from a host signature.
+	 */
+	public static function identity_migration_decision( array $site, array $host ) {
+		$staging = 'staging' === (string) ( $site['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
+			&& ! empty( $site['wordpress_environment_explicit'] )
+			&& ! empty( $site['origin_match'] ) && ! empty( $site['environment_match'] )
+			&& ! empty( $site['authority_ready'] );
+		$signed = ! empty( $host['verified'] )
+			&& 'fresh_host_identity_verified' === (string) ( $host['state'] ?? '' )
+			&& ! empty( $host['one_authoritative_source'] )
+			&& empty( $host['authorizing'] ) && empty( $host['mutation_performed'] );
+		$legacy = ! empty( $site['deployment_binding_configured'] );
+		$dual = $signed && $legacy;
+		$state = ! $staging ? 'blocked_non_staging_or_inexact_site'
+			: ( $dual ? 'blocked_multiple_host_identity_roots'
+			: ( ! $signed ? 'signed_host_proof_not_verified'
+			: 'signed_host_verified_legacy_consumers_not_migrated' ) );
+		$action = ! $staging ? 'review_exact_staging_profile'
+			: ( $dual ? 'resolve_source_conflict_without_creating_second_secret'
+			: ( ! $signed ? 'establish_fresh_enrolled_host_signature'
+			: 'implement_versioned_signed_host_operation_adapter' ) );
+		$operations = array();
+		foreach ( array(
+			'wordpress_environment_sync' => 'legacy_deployment_hmac_and_host_receipt',
+			'wordpress_environment_rollback' => 'legacy_signed_receipt_and_job_approval',
+			'wordpress_plugin_deploy' => 'host_runner_integrity_mac_and_exact_package',
+			'wordpress_plugin_rollback' => 'host_runner_integrity_mac_and_exact_receipt',
+		) as $id => $legacy_protocol ) {
+			$operations[] = array(
+				'operation_id' => $id,
+				'legacy_protocol' => $legacy_protocol,
+				'new_signed_protocol_accepted' => false,
+				'write_execution_unlocked' => false,
+				'fresh_plan_and_owner_approval_required' => true,
+			);
+		}
+		return array(
+			'contract' => 'mad4b.host-identity-migration-plan.v1',
+			'state' => $state,
+			'next_action_id' => $action,
+			'current_enrolled_host_signer_verified' => $signed,
+			'legacy_deployment_binding_present' => $legacy,
+			'multiple_identity_roots_detected' => $dual,
+			'physical_target_binding_required' => true,
+			'legacy_operations' => $operations,
+			'operation_approval_migrated' => false,
+			'rollout_policy' => array(
+				'one_enrolled_host_signer' => true,
+				'no_implicit_hmac_substitution' => true,
+				'fresh_host_attestation_per_sensitive_operation' => true,
+				'exact_plan_and_host_target_binding' => true,
+				'write_grant_requires_independent_approval' => true,
+				'read_not_apply' => true,
+			),
+			'ready_for_host_write' => false,
+			'authorizing' => false, 'read_only' => true,
+			'mutation_performed' => false, 'production_authorized' => false,
+		);
+	}
+
+	public static function host_identity_migration_plan( $input = array() ) {
+		if ( null === $input ) $input = array();
+		if ( ! is_array( $input ) || ! empty( $input ) )
+			return new WP_Error( 'mad4b_host_identity_migration_input_invalid', 'Only empty read-only discovery input is accepted.' );
+		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		$host = class_exists( 'MAD4B_SCP_Host_Identity_Live' )
+			? MAD4B_SCP_Host_Identity_Live::observe( is_array( $site ) ? $site : array() ) : array();
+		return self::identity_migration_decision(
+			is_array( $site ) ? $site : array(), is_array( $host ) ? $host : array()
+		);
+	}
+
+	/** Profile drives the desired environment; no caller-supplied host values. */
+	public static function profile_environment_reconcile_readiness( array $status ) {
+		if ( 'staging' !== (string) ( $status['configured_environment'] ?? '' ) ) return 'blocked_non_staging_profile';
+		if ( 'host_managed' !== (string) ( $status['environment_sync_mode'] ?? '' ) ) return 'blocked_host_managed_mode_disabled';
+		if ( 'host_aligned' === (string) ( $status['environment_sync_state'] ?? '' ) ) return 'already_aligned';
+		if ( ! empty( $status['wordpress_environment_explicit'] ) ) return 'blocked_explicit_host_conflict';
+		if ( empty( $status['authority_ready'] ) || empty( $status['origin_match'] )
+			|| empty( $status['environment_match'] ) || empty( $status['profile_environment_authoritative'] ) ) return 'blocked_site_identity';
+		if ( empty( $status['deployment_binding_configured'] ) || empty( $status['deployment_binding_bound'] )
+			|| empty( $status['deployment_binding_match'] ) || empty( $status['same_origin_clone_protection'] ) ) return 'blocked_host_binding';
+		if ( 'production' !== (string) ( $status['wordpress_environment'] ?? '' )
+			|| 'awaiting_host_bootstrap' !== (string) ( $status['environment_sync_state'] ?? '' ) )
+			return 'blocked_host_environment_conflict';
+		return 'ready_for_host_plan';
+	}
+
+	public static function profile_environment_reconcile_plan( $input = array() ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'runner_profile_id', 'reason' ) ) )
+			return new WP_Error( 'mad4b_host_profile_reconcile_input_invalid', 'Only exact Host Runner profile and reason are accepted.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_host_profile_reconcile_profile_missing', 'Site Profile unavailable.' );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$decision = is_array( $status ) ? self::profile_environment_reconcile_readiness( $status ) : 'blocked_profile_unavailable';
+		$result = array(
+			'contract' => 'mad4b.site-profile-host-environment-reconcile.v1',
+			'state' => $decision,
+			'desired_wordpress_environment' => 'ready_for_host_plan' === $decision ? 'staging' : '',
+			'host_plan' => array(), 'eligible' => false, 'approval_required' => true,
+			'fresh_wordpress_request_verification_required' => true,
+			'authorizing' => false, 'host_mutation_performed' => false, 'production_authorized' => false,
+		);
+		if ( 'ready_for_host_plan' !== $decision ) return $result;
+		$id = isset( $input['runner_profile_id'] ) ? sanitize_key( (string) $input['runner_profile_id'] ) : '';
+		$reason = isset( $input['reason'] ) ? trim( sanitize_text_field( (string) $input['reason'] ) ) : '';
+		if ( '' === $id || strlen( $reason ) < 3 || strlen( $reason ) > 500 ) {
+			$result['state'] = 'blocked_runner_profile_or_reason_required';
+			return $result;
+		}
+		$plan = self::plan( array( 'operation_id' => 'wordpress_environment_sync',
+			'runner_profile_id' => $id, 'arguments' => array( 'reason' => $reason ) ) );
+		if ( is_wp_error( $plan ) ) { $result['state'] = $plan->get_error_code(); return $result; }
+		$result['state'] = 'host_plan_ready_for_separate_approval';
+		$result['host_plan'] = $plan;
+		$result['eligible'] = true;
+		return $result;
+	}
+
 	public static function plan( $input ) {
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
 		if ( ! isset( self::$operations[ $operation_id ] ) ) return new WP_Error( 'mad4b_host_operation_unknown', 'Host operation is not in the bounded registry.' );
@@ -110,6 +239,14 @@ final class MAD4B_SCP_Host_Bridge {
 		}
 		if ( 'wordpress_plugin_rollback' === $operation_id ) {
 			$args = self::wordpress_plugin_rollback_arguments( $args, $profile_id, $target );
+			if ( is_wp_error( $args ) ) return $args;
+		}
+		if ( 'wordpress_environment_sync' === $operation_id ) {
+			$args = self::wordpress_environment_sync_arguments( $args, $profile_id, $target );
+			if ( is_wp_error( $args ) ) return $args;
+		}
+		if ( 'wordpress_environment_rollback' === $operation_id ) {
+			$args = self::wordpress_environment_rollback_arguments( $args, $profile_id, $target );
 			if ( is_wp_error( $args ) ) return $args;
 		}
 		$plan = array(
@@ -139,6 +276,21 @@ final class MAD4B_SCP_Host_Bridge {
 		$plan_check = self::validate_plan( $plan );
 		if ( is_wp_error( $plan_check ) ) return $plan_check;
 		$operation_id = (string) $plan['operation_id'];
+		if ( 'wordpress_environment_sync' === $operation_id ) {
+			$nested = isset( $plan['arguments']['plan'] ) && is_array( $plan['arguments']['plan'] )
+				? $plan['arguments']['plan'] : array();
+			$target = self::target_identity();
+			if ( is_wp_error( $target ) ) return $target;
+			$expected = self::wordpress_environment_sync_arguments(
+				array( 'reason' => $nested['reason'] ?? '' ), (string) $plan['runner_profile_id'], $target
+			);
+			if ( is_wp_error( $expected ) ) return $expected;
+			if ( ! hash_equals( (string) ( $expected['plan']['plan_sha256'] ?? '' ),
+				(string) ( $nested['plan_sha256'] ?? '' ) ) ) {
+				return new WP_Error( 'mad4b_host_wp_environment_profile_plan_stale',
+					'Host-managed Site Profile or deployment binding changed since the exact plan was reviewed.' );
+			}
+		}
 		$is_write = 'read_only' !== (string) self::$operations[ $operation_id ]['risk'];
 		$approval_ref = isset( $input['approval_ref'] ) ? trim( (string) $input['approval_ref'] ) : '';
 		if ( $is_write && '' === $approval_ref ) return new WP_Error( 'mad4b_host_operation_approval_required', 'Reversible Host operation requires an approval reference.' );
@@ -198,6 +350,8 @@ final class MAD4B_SCP_Host_Bridge {
 				return new WP_Error( 'mad4b_host_job_replay_conflict', 'Host job id already exists with different semantic submission.' );
 			}
 			$existing['replayed'] = true;
+			$existing['host_mutation_performed'] = false;
+			$existing['host_verification_pending'] = true;
 			return $existing;
 		}
 		$write = self::atomic_write( $path, $submission );
@@ -205,6 +359,10 @@ final class MAD4B_SCP_Host_Bridge {
 		$submission['queued'] = true;
 		$submission['replayed'] = false;
 		$submission['mutation_performed'] = true;
+		// This describes the WordPress bridge spool write only. The Host config
+		// remains untouched until independent Host Runner execution and readback.
+		$submission['host_mutation_performed'] = false;
+		$submission['host_verification_pending'] = true;
 		return $submission;
 	}
 
@@ -238,6 +396,135 @@ final class MAD4B_SCP_Host_Bridge {
 		$row = self::read_json( $path );
 		if ( is_wp_error( $row ) ) return $row;
 		return array( 'contract' => 'mad4b.host-operation-receipt-read.v1', 'receipt' => $row, 'mutation_performed' => false );
+	}
+
+	/**
+	 * Independently join the durable Runner receipt to a NEW WordPress request.
+	 * File readback alone is not evidence of a working Staging bootstrap.
+	 * Never returns wp-config contents, binding secret or Host credentials.
+	 */
+	public static function environment_sync_verification( $input ) {
+		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'job_id' ) ) )
+			return new WP_Error( 'mad4b_host_environment_verification_input_invalid', 'Only an exact Host job ID may be inspected.' );
+		$job_id = self::job_id_from_input( $input );
+		if ( is_wp_error( $job_id ) ) return $job_id;
+		$spool = self::spool_root( false );
+		if ( is_wp_error( $spool ) ) return $spool;
+		$receipt_path = $spool . '/receipts/' . $job_id . '.json';
+		if ( is_link( $receipt_path ) || ! is_file( $receipt_path ) )
+			return new WP_Error( 'mad4b_host_environment_receipt_missing', 'Independent Host Runner execution receipt is not yet available.' );
+		$receipt = self::read_json( $receipt_path );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_host_environment_profile_unavailable', 'Exact Site Profile is unavailable.' );
+		$status = MAD4B_SCP_Site_Profile::status();
+		$target = self::target_identity();
+		if ( is_wp_error( $target ) ) return $target;
+		$details = isset( $receipt['result'] ) && is_array( $receipt['result'] ) ? $receipt['result'] : array();
+		$blocking = array();
+		$receipt_ok = 'mad4b.tool-execution-receipt.v1' === (string) ( $receipt['contract'] ?? '' )
+			&& 'mad4b.host-bridge-execution.v1' === (string) ( $receipt['bridge_contract'] ?? '' )
+			&& 'wordpress_environment_sync' === (string) ( $receipt['operation_id'] ?? '' )
+			&& hash_equals( $job_id, (string) ( $receipt['job_id'] ?? '' ) )
+			&& 'staging' === (string) ( $receipt['environment'] ?? '' )
+			&& hash_equals( (string) $target['site_uuid'], (string) ( $receipt['site_uuid'] ?? '' ) )
+			&& true === ( $receipt['mutation_performed'] ?? false )
+			&& 'PASS' === (string) ( $receipt['readback_verdict'] ?? '' )
+			&& true === ( $details['host_file_readback_verified'] ?? false )
+			&& false === ( $details['fresh_wordpress_bootstrap_verified'] ?? true )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['runner_source_sha256'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['plan_sha256'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['authority_ref'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $receipt['target_fingerprint'] ?? '' ) )
+			&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $details['before_sha256'] ?? '' ) )
+			&& '' !== (string) ( $receipt['approval_ref'] ?? '' );
+		// The Bridge spool is WordPress-writeable; even a structurally valid
+		// receipt is untrusted until an independently pinned Host public key
+		// verifies the detached signature of its exact bounded payload.
+		$attestation = isset( $receipt['host_environment_attestation'] ) && is_array( $receipt['host_environment_attestation'] )
+			? $receipt['host_environment_attestation'] : array();
+		$payload = array(
+			'contract' => 'mad4b.host-environment-receipt-payload.v1',
+			'job_id' => $receipt['job_id'] ?? null,
+			'site_uuid' => $receipt['site_uuid'] ?? null,
+			'environment' => $receipt['environment'] ?? null,
+			'operation_id' => $receipt['operation_id'] ?? null,
+			'plan_sha256' => $receipt['plan_sha256'] ?? null,
+			'authority_ref' => $receipt['authority_ref'] ?? null,
+			'approval_ref' => $receipt['approval_ref'] ?? null,
+			'target_fingerprint' => $receipt['target_fingerprint'] ?? null,
+			'runner_source_sha256' => $receipt['runner_source_sha256'] ?? null,
+			'completed_at' => $receipt['completed_at'] ?? null,
+			'readback_verdict' => $receipt['readback_verdict'] ?? null,
+			'mutation_performed' => $receipt['mutation_performed'] ?? null,
+			'result' => array(
+				'before_sha256' => $details['before_sha256'] ?? null,
+				'after_sha256' => $details['after_sha256'] ?? null,
+				'expected_site_profile_digest' => $details['expected_site_profile_digest'] ?? null,
+				'expected_site_profile_revision' => $details['expected_site_profile_revision'] ?? null,
+				'expected_deployment_binding_digest' => $details['expected_deployment_binding_digest'] ?? null,
+				'host_file_readback_verified' => $details['host_file_readback_verified'] ?? null,
+			),
+		);
+		$public_b64 = defined( 'MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64' )
+			? (string) MAD4B_SCP_HOST_ENVIRONMENT_RECEIPT_PUBLIC_KEY_B64 : '';
+		$public = base64_decode( $public_b64, true );
+		$signature = base64_decode( (string) ( $attestation['signature_b64'] ?? '' ), true );
+		$encoded = wp_json_encode( self::canonicalize( $payload ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$sig_ok = function_exists( 'sodium_crypto_sign_verify_detached' )
+			&& 'mad4b.host-environment-ed25519-attestation.v1' === (string) ( $attestation['contract'] ?? '' )
+			&& 'mad4b.host-environment-receipt-payload.v1' === (string) ( $attestation['payload_contract'] ?? '' )
+			&& 'Ed25519' === (string) ( $attestation['algorithm'] ?? '' )
+			&& is_string( $public ) && 32 === strlen( $public )
+			&& is_string( $signature ) && 64 === strlen( $signature )
+			&& is_string( $encoded )
+			&& hash_equals( hash( 'sha256', $public ), (string) ( $attestation['pinned_public_key_sha256'] ?? '' ) )
+			&& sodium_crypto_sign_verify_detached( $signature, $encoded, $public );
+		if ( ! $receipt_ok ) $blocking[] = 'host_receipt_untrusted_or_incomplete';
+		if ( ! $sig_ok ) $blocking[] = 'host_receipt_signature_missing_or_invalid';
+		$profile_ok = ! empty( $status['authority_ready'] ) && ! empty( $status['origin_match'] )
+			&& ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] )
+			&& ! empty( $status['same_origin_clone_protection'] )
+			&& 'staging' === (string) ( $status['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $status['environment'] ?? '' )
+			&& 'host_managed' === (string) ( $status['environment_sync_mode'] ?? '' )
+			&& 'host_aligned' === (string) ( $status['environment_sync_state'] ?? '' )
+			&& hash_equals( (string) ( $status['profile_digest'] ?? '' ), (string) ( $details['expected_site_profile_digest'] ?? '' ) )
+			&& (int) ( $status['revision'] ?? 0 ) > 0
+			&& (int) ( $status['revision'] ?? 0 ) === (int) ( $details['expected_site_profile_revision'] ?? 0 )
+			&& hash_equals( (string) MAD4B_SCP_Site_Profile::deployment_binding_digest(),
+				(string) ( $details['expected_deployment_binding_digest'] ?? '' ) );
+		if ( ! $profile_ok ) $blocking[] = 'current_profile_or_host_binding_not_equal_to_receipt';
+		$bootstrap_ok = ! empty( $status['wordpress_environment_explicit'] )
+			&& 'staging' === (string) ( $status['wordpress_environment'] ?? '' );
+		if ( ! $bootstrap_ok ) $blocking[] = 'wordpress_explicit_staging_not_observed';
+		$config_sha = (string) ( $details['after_sha256'] ?? '' );
+		$config_ok = 1 === preg_match( '/^[a-f0-9]{64}$/D', $config_sha )
+			&& hash_equals( $config_sha, (string) ( $target['wp_config_sha256'] ?? '' ) );
+		if ( ! $config_ok ) $blocking[] = 'wp_config_changed_since_host_receipt';
+		// A call in the SAME PHP request that queued a Host mutation cannot
+		// substitute for independent post-commit WordPress bootstrap evidence.
+		$finished = strtotime( (string) ( $receipt['completed_at'] ?? '' ) );
+		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) && is_numeric( $_SERVER['REQUEST_TIME_FLOAT'] )
+			? (float) $_SERVER['REQUEST_TIME_FLOAT'] : 0.0;
+		$fresh = false !== $finished && $finished > 0 && $started > (float) $finished + 1.0;
+		if ( ! $fresh ) $blocking[] = 'fresh_wordpress_request_after_host_receipt_required';
+		return array(
+			'contract' => 'mad4b.host-environment-sync-verification.v1',
+			'job_id' => $job_id,
+			'ready' => empty( $blocking ),
+			'state' => empty( $blocking ) ? 'VERIFIED_STAGING_HOST_ALIGNED' : 'BLOCKED',
+			'host_file_receipt_verified' => $receipt_ok && $sig_ok,
+			'host_receipt_signature_verified' => $sig_ok,
+			'site_profile_and_binding_verified' => $profile_ok,
+			'wordpress_explicit_staging_verified' => $bootstrap_ok,
+			'wp_config_receipt_hash_verified' => $config_ok,
+			'fresh_wordpress_bootstrap_observed' => $fresh,
+			'blocking_reasons' => $blocking,
+			'mutation_performed' => false,
+			'release_certified' => false,
+			'production_authorized' => false,
+		);
 	}
 
 	public static function cancel( $input ) {
@@ -370,6 +657,118 @@ final class MAD4B_SCP_Host_Bridge {
 			'production_authorized' => false,
 			'mutation_performed' => false,
 		);
+	}
+
+	/**
+	 * MCP exposes only a semantic, signed Host Runner plan, never a host path,
+	 * arbitrary PHP snippet, remote shell or an implicit Production downgrade.
+	 * An approved external Runner owns the actual reversible file edit.
+	 */
+	private static function wordpress_environment_sync_arguments( array $input, $profile_id, array $target ) {
+		if ( array_diff( array_keys( $input ), array( 'reason' ) ) )
+			return new WP_Error( 'mad4b_host_wp_environment_input_invalid', 'Environment synchronization accepts a reason only, not a path, command, value or credential.' );
+		$reason = trim( (string) ( $input['reason'] ?? '' ) );
+		if ( strlen( $reason ) < 3 || strlen( $reason ) > 500 )
+			return new WP_Error( 'mad4b_host_wp_environment_reason_invalid', 'A bounded reason is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_host_wp_environment_profile_unavailable', 'Site Profile is unavailable.' );
+		$status = MAD4B_SCP_Site_Profile::status();
+		if ( ! is_array( $status ) || empty( $status['authority_ready'] ) || empty( $status['origin_match'] ) || empty( $status['environment_match'] )
+			|| empty( $status['deployment_binding_configured'] ) || empty( $status['deployment_binding_bound'] )
+			|| empty( $status['deployment_binding_match'] ) || empty( $status['same_origin_clone_protection'] ) )
+			return new WP_Error( 'mad4b_host_wp_environment_binding_required', 'Exact enrolled origin, authority and unique external Host deployment binding are mandatory.' );
+		if ( 'host_managed' !== (string) ( $status['environment_sync_mode'] ?? '' ) )
+			return new WP_Error( 'mad4b_host_wp_environment_mode_required', 'Host-Managed Sync must be selected and persisted first.' );
+		if ( 'staging' !== (string) ( $status['configured_environment'] ?? '' )
+			|| 'staging' !== (string) $target['environment'] || 'staging' !== (string) ( $status['environment'] ?? '' )
+			|| ! hash_equals( (string) $status['site_uuid'], (string) $target['site_uuid'] ) )
+			return new WP_Error( 'mad4b_host_wp_environment_production_denied', 'Only a verified, bound Staging host may request this operation.' );
+		if ( ! empty( $status['wordpress_environment_explicit'] ) || 'production' !== (string) ( $status['wordpress_environment'] ?? '' )
+			|| 'awaiting_host_bootstrap' !== (string) ( $status['environment_sync_state'] ?? '' ) )
+			return new WP_Error( 'mad4b_host_wp_environment_not_eligible', 'Only the unconfigured implicit WordPress Production default may be synchronized.' );
+		$config_sha = strtolower( trim( (string) ( $target['wp_config_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $config_sha ) )
+			return new WP_Error( 'mad4b_host_wp_environment_config_identity_invalid', 'Host config SHA is unavailable.' );
+		$binding = strtolower( trim( (string) MAD4B_SCP_Site_Profile::deployment_binding_digest() ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $binding ) )
+			return new WP_Error( 'mad4b_host_wp_environment_binding_invalid', 'Host-only deployment identity is missing.' );
+		$plan = array(
+			'contract' => 'mad4b.host-runner-wordpress-environment-sync-plan.v1',
+			'operation_id' => 'wordpress_environment_sync',
+			'operation_version' => 1,
+			'runner_profile_id' => (string) $profile_id,
+			'site_uuid' => (string) $target['site_uuid'],
+			'environment' => 'staging',
+			'target_fingerprint' => (string) $target['target_fingerprint'],
+			'expected_wp_config_sha256' => $config_sha,
+			'expected_wordpress_environment' => 'production',
+			'desired_wordpress_environment' => 'staging',
+			'expected_profile_digest' => (string) $status['profile_digest'],
+			'expected_profile_revision' => (int) $status['revision'],
+			'deployment_binding_digest' => $binding,
+			'change_strategy' => 'guarded_wp_config_insert_before_settings',
+			'backup_before_replace' => true,
+			'rollback_on_failed_readback' => true,
+			'require_new_bootstrap_verification' => true,
+			'caller_supplied_path_allowed' => false,
+			'caller_supplied_php_allowed' => false,
+			'production_authorized' => false,
+			'reason' => $reason,
+		);
+		$plan['plan_sha256'] = self::digest( $plan );
+		return array( 'plan' => $plan );
+	}
+
+	/** The rollback requires an original durable, successful Runner receipt. */
+	private static function wordpress_environment_rollback_arguments( array $input, $profile_id, array $target ) {
+		if ( array_diff( array_keys( $input ), array( 'source_job_id', 'reason' ) ) )
+			return new WP_Error( 'mad4b_host_wp_environment_rollback_input_invalid', 'Rollback only accepts a source job ID and reason.' );
+		$id = strtolower( trim( (string) ( $input['source_job_id'] ?? '' ) ) );
+		$reason = trim( (string) ( $input['reason'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $id ) || strlen( $reason ) < 3 || strlen( $reason ) > 500 )
+			return new WP_Error( 'mad4b_host_wp_environment_rollback_identity_invalid', 'Exact source job and bounded reason are required.' );
+		if ( 'staging' !== (string) $target['environment'] )
+			return new WP_Error( 'mad4b_host_wp_environment_rollback_production_denied', 'Only Staging Host environment rollback is supported.' );
+		$spool = self::spool_root( false );
+		if ( is_wp_error( $spool ) ) return $spool;
+		$receipt_path = $spool . '/receipts/' . $id . '.json';
+		if ( is_link( $receipt_path ) || ! is_file( $receipt_path ) ) return new WP_Error( 'mad4b_host_wp_environment_source_missing', 'Verified Host source receipt is missing.' );
+		$receipt = self::read_json( $receipt_path );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		$result = isset( $receipt['result'] ) && is_array( $receipt['result'] ) ? $receipt['result'] : array();
+		if ( 'wordpress_environment_sync' !== (string) ( $receipt['operation_id'] ?? '' )
+			|| true !== (bool) ( $receipt['mutation_performed'] ?? false )
+			|| 'PASS' !== (string) ( $receipt['readback_verdict'] ?? '' )
+			|| 'staging' !== (string) ( $receipt['environment'] ?? '' )
+			|| (string) $target['site_uuid'] !== (string) ( $receipt['site_uuid'] ?? '' ) )
+			return new WP_Error( 'mad4b_host_wp_environment_source_invalid', 'Source receipt is not a verified same-site Staging sync.' );
+		$before = strtolower( (string) ( $result['before_sha256'] ?? '' ) );
+		$after = strtolower( (string) ( $result['after_sha256'] ?? '' ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $before ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $after )
+			|| ! hash_equals( $after, (string) $target['wp_config_sha256'] ) )
+			return new WP_Error( 'mad4b_host_wp_environment_state_drift', 'Current wp-config identity no longer matches successful source receipt.' );
+		$plan = array(
+			'contract' => 'mad4b.host-runner-wordpress-environment-rollback-plan.v1',
+			'operation_id' => 'wordpress_environment_rollback',
+			'operation_version' => 1,
+			'runner_profile_id' => (string) $profile_id,
+			'site_uuid' => (string) $target['site_uuid'],
+			'environment' => 'staging',
+			'target_fingerprint' => (string) $target['target_fingerprint'],
+			'source_job_id' => $id,
+			'source_receipt_sha256' => hash_file( 'sha256', $receipt_path ),
+			'expected_wp_config_sha256' => $after,
+			'restore_wp_config_sha256' => $before,
+			'backup_before_replace' => true,
+			'rollback_on_failed_readback' => true,
+			'require_new_bootstrap_verification' => true,
+			'caller_supplied_path_allowed' => false,
+			'caller_supplied_php_allowed' => false,
+			'production_authorized' => false,
+			'reason' => $reason,
+		);
+		$plan['plan_sha256'] = self::digest( $plan );
+		return array( 'plan' => $plan );
 	}
 
 	private static function wordpress_plugin_deploy_arguments( array $input, $profile_id, array $target ) {
@@ -572,6 +971,37 @@ final class MAD4B_SCP_Host_Bridge {
 		return true;
 	}
 
+	/** WordPress wp-load.php: first root, then one parent only if parent is not another WP root. */
+	private static function wordpress_config_path( $root ) {
+		$root = rtrim( (string) $root, '/\\' );
+		if ( '' === $root || ! is_dir( $root ) )
+			return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'Verified WordPress root is unavailable.' );
+		$local = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
+		$parent_dir = dirname( $root );
+		$parent = $parent_dir . DIRECTORY_SEPARATOR . 'wp-config.php';
+		if ( is_link( $local ) || is_link( $parent ) || is_link( $parent_dir ) )
+			return new WP_Error( 'mad4b_host_wp_config_link_forbidden', 'Linked WordPress configuration paths are forbidden.' );
+		if ( is_file( $local ) ) return $local;
+		if ( file_exists( $local ) ) return new WP_Error( 'mad4b_host_wp_config_type_invalid', 'Root configuration is not a regular file.' );
+		if ( file_exists( $parent_dir . DIRECTORY_SEPARATOR . 'wp-settings.php' )
+			|| is_link( $parent_dir . DIRECTORY_SEPARATOR . 'wp-settings.php' ) )
+			return new WP_Error( 'mad4b_host_wp_config_parent_root_denied', 'Parent is another WordPress root.' );
+		if ( ! is_file( $parent ) ) return new WP_Error( 'mad4b_host_wp_config_unavailable', 'WordPress configuration identity is unavailable.' );
+		return $parent;
+	}
+
+	/**
+	 * Canonical physical install fingerprint already used by Host Runner job
+	 * validation. Expose only the digest for a fresh, non-authorizing Host
+	 * identity challenge; never expose absolute filesystem paths to MCP.
+	 */
+	public static function target_fingerprint_readonly() {
+		$target = self::target_identity();
+		if ( is_wp_error( $target ) || ! is_array( $target ) ) return '';
+		$fp = (string) ( $target['target_fingerprint'] ?? '' );
+		return 1 === preg_match( '/^[a-f0-9]{64}$/D', $fp ) ? $fp : '';
+	}
+
 	private static function target_identity() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return new WP_Error( 'mad4b_host_site_profile_unavailable', 'Site Profile is unavailable.' );
 		$site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
@@ -579,8 +1009,8 @@ final class MAD4B_SCP_Host_Bridge {
 		$environment = class_exists( 'MAD4B_SCP_Environment' ) ? MAD4B_SCP_Environment::effective() : ( function_exists( 'wp_get_environment_type' ) ? sanitize_key( (string) wp_get_environment_type() ) : 'unknown' );
 		$root = defined( 'ABSPATH' ) ? realpath( ABSPATH ) : false;
 		if ( false === $root ) return new WP_Error( 'mad4b_host_wordpress_root_unavailable', 'WordPress root is unavailable.' );
-		$wp_config = $root . DIRECTORY_SEPARATOR . 'wp-config.php';
-		if ( is_link( $wp_config ) || ! is_file( $wp_config ) ) return new WP_Error( 'mad4b_host_wp_config_unavailable', 'WordPress configuration identity is unavailable.' );
+		$wp_config = self::wordpress_config_path( $root );
+		if ( is_wp_error( $wp_config ) ) return $wp_config;
 		$wp_config_sha256 = hash_file( 'sha256', $wp_config );
 		if ( ! is_string( $wp_config_sha256 ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', $wp_config_sha256 ) ) {
 			return new WP_Error( 'mad4b_host_wp_config_identity_invalid', 'WordPress configuration identity could not be resolved.' );

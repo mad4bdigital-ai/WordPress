@@ -37,6 +37,57 @@ final class MAD4B_SCP_JetEngine_Adapter extends MAD4B_SCP_Adapter_Base {
 		$status['meta_create_mode'] = 'admin_plus_explicit_create_policy_plus_field_policy';
 		return $status;
 	}
+
+	public function content_experience_media_field_candidates( $post_type ) {
+		$post_type = sanitize_key( (string) $post_type );
+		if ( '' === $post_type || ! post_type_exists( $post_type ) || ! function_exists( 'jet_engine' ) ) return array();
+		$engine = jet_engine();
+		if ( ! is_object( $engine ) || ! isset( $engine->meta_boxes ) || ! is_object( $engine->meta_boxes ) || ! method_exists( $engine->meta_boxes, 'get_fields_for_context' ) ) return array();
+		$fields = $engine->meta_boxes->get_fields_for_context( 'post_type', $post_type );
+		if ( ! is_array( $fields ) ) return array();
+
+		$out = array();
+		foreach ( array_slice( $fields, 0, 256 ) as $field ) {
+			if ( ! is_array( $field ) ) continue;
+			$key = isset( $field['name'] ) ? (string) $field['name'] : '';
+			$type = isset( $field['type'] ) ? sanitize_key( (string) $field['type'] ) : '';
+			$format = isset( $field['value_format'] ) ? sanitize_key( (string) $field['value_format'] ) : '';
+			if ( '' === $key || strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) || ! in_array( $type, array( 'media', 'gallery' ), true ) ) continue;
+			if ( ! in_array( $format, array( 'id', 'url', 'both' ), true ) ) {
+				$out[] = array(
+					'key' => $key, 'schema_type' => '', 'protected' => 0 === strpos( $key, '_' ),
+					'suggested_spec' => array(),
+					'evidence' => array(
+						'provider_api' => 'jet_engine.meta_boxes.get_fields_for_context',
+						'provider_field_type' => $type, 'provider_value_format' => $format,
+						'mapping_state' => 'unsupported_or_unknown_value_format',
+					),
+				);
+				continue;
+			}
+			$is_gallery = 'gallery' === $type;
+			$storage = $is_gallery
+				? array( 'id' => 'ids', 'url' => 'urls', 'both' => 'id_url_items' )[ $format ]
+				: array( 'id' => 'id', 'url' => 'url', 'both' => 'id_url' )[ $format ];
+			$out[] = array(
+				'key' => $key,
+				'schema_type' => $is_gallery ? 'array' : ( 'id' === $format ? 'integer' : ( 'url' === $format ? 'string' : 'array' ) ),
+				'protected' => 0 === strpos( $key, '_' ),
+				'suggested_spec' => array(
+					'kind' => $is_gallery ? 'image_gallery' : 'image_id',
+					'storage' => $storage,
+					'max_items' => $is_gallery ? MAD4B_SCP_Content_Experience_Profiles::MAX_MEDIA_GALLERY_ITEMS : 1,
+				),
+				'evidence' => array(
+					'provider_api' => 'jet_engine.meta_boxes.get_fields_for_context',
+					'provider_field_type' => $type,
+					'provider_value_format' => $format,
+					'mapping_state' => 'provider_declared',
+				),
+			);
+		}
+		return $out;
+	}
 	private function exact_field_name( $value ) {
 		$field = (string) $value;
 		if ( '' === $field || strlen( $field ) > 191 || $field !== sanitize_key( $field ) ) return new WP_Error( 'mad4b_jetengine_invalid_field', 'Meta field must already be a canonical WordPress meta key; silent key canonicalization is not allowed.' );

@@ -15,6 +15,11 @@ function expect_true( $condition, $message ) { if ( ! $condition ) { fwrite( STD
 $core_source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-acceptance-core.php' );
 expect_true( false !== strpos( $core_source, "self::add_read_ability( 'mad4b/acceptance-capabilities', 'Get Acceptance Capabilities', array( __CLASS__, 'capabilities' ), array() );" ), 'no-input capabilities ability must not declare an object input schema' );
 expect_true( false !== strpos( $core_source, "'maxProperties' => 8" ), 'selector transport envelope must bound property count' );
+expect_true( false !== strpos( $core_source, "'provider_discovery_state' => empty( $providers ) ? 'no_registered_providers'" ), 'No acceptance providers must be an explicit blocked discovery state' );
+expect_true( false !== strpos( $core_source, "'acceptance_execution_available' => ! empty( $providers )" ), 'Empty acceptance registry must deny execution readiness' );
+expect_true( false !== strpos( $core_source, "'provider_operationally_certified' => false" ), 'Provider discovery must not imply live operational certification' );
+expect_true( false !== strpos( $core_source, "'acceptance_provider_registry_empty'" ), 'Provider inventory must expose the exact missing-provider blocker' );
+
 expect_true( false !== strpos( $core_source, "'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 )" ), 'unsupported selector fields must be bounded strings so Planner can return structured fail-closed evidence' );
 
 function safe_descriptor( $id = 'fake' ) {

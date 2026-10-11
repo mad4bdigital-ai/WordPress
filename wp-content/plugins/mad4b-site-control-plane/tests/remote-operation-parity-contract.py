@@ -330,6 +330,18 @@ required_dispatch_markers = [
     "PREG_SPLIT_NO_EMPTY",
     "self::query_matches( $query, $haystack )",
 ]
+# The compact Enrollment dispatcher must never call its nested mutation
+# directly: it requires the parent-bound, one-time child operation fence.
+for marker in (
+    "MAD4B_SCP_Execution_Fence::with_governed_child(",
+    "'mad4b_enrollment_dispatch_child_fence_unavailable'",
+    "'enrollment_dispatch'",
+):
+    if marker not in dispatch:
+        raise SystemExit("enrollment nested mutation lost governed child permit: " + marker)
+if "$result = $ability->execute( $params );" in dispatch:
+    raise SystemExit("enrollment dispatcher executes a nested mutation without a governed child fence")
+
 for marker in required_dispatch_markers:
     if marker not in dispatch:
         raise SystemExit(f'missing bounded enrollment dispatcher invariant: {marker}')
@@ -379,11 +391,11 @@ for marker in [
 augment = write_authority.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
 for marker in [
     "$mcp_surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';",
-    "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;",
+    "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;",
 ]:
     if marker not in augment:
         raise SystemExit(f'Enrollment dispatcher is no longer isolated from governed-write augmentation: {marker}')
-guard_index = augment.find("if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;")
+guard_index = augment.find("if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;")
 approval_index = augment.find("self::APPROVAL_INPUT_KEY")
 authority_index = augment.find("mad4b_governed_write_authority")
 if min(guard_index, approval_index, authority_index) < 0 or guard_index > approval_index or guard_index > authority_index:

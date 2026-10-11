@@ -23,6 +23,8 @@ final class MAD4B_SCP_Site_Profile {
 	const PRESET_FILE = 'config/site-profile-presets.json';
 	const PRODUCTION_WRITE_CONFIRMATION = 'ENABLE GOVERNED PRODUCTION WRITE';
 	const NONPRODUCTION_OVERRIDE_CONFIRMATION = 'CONFIRM THIS ORIGIN IS NON-PRODUCTION';
+	const ENV_SYNC_PROFILE_ONLY = 'profile_only';
+	const ENV_SYNC_HOST_MANAGED = 'host_managed';
 	const MUTATION_RECONCILIATION_CONTRACT = 'mad4b.site-profile-mutation-reconciliation.v1';
 	const MUTATION_RECONCILE_GRACE_SECONDS = 60;
 	const REVOCATION_AUDIT_OUTBOX_OPTION = 'mad4b_scp_site_profile_revocation_audit_outbox_v1';
@@ -61,19 +63,16 @@ final class MAD4B_SCP_Site_Profile {
 		$source = 'stored';
 		$has_current_record = null !== $record && false !== $record;
 		if ( ! self::valid_record( $record ) ) {
-			if ( $has_current_record ) {
-				$record = array();
-				$source = 'stored_invalid';
-			} else {
+			// Status is a read boundary. Never persist a migration or preset here:
+			// an unattended MCP/REST/Cron read must not change site identity.
+			$record = array();
+			$source = $has_current_record ? 'stored_invalid' : 'none';
+			if ( ! $has_current_record ) {
 				$legacy = get_option( self::LEGACY_OPTION, array() );
-				$migrated = self::migrate_legacy_record( $legacy );
-				if ( ! empty( $migrated ) && self::valid_record( $migrated ) && false !== update_option( self::OPTION, $migrated, false ) ) {
-					$record = $migrated;
-					$source = 'legacy_v1_migrated';
-				} else {
-					$record = self::matching_preset();
-					$source = ! empty( $record ) ? 'preset' : 'none';
-					if ( ! empty( $record ) && self::valid_record( $record ) && false !== update_option( self::OPTION, $record, false ) ) $source = 'preset_migrated';
+				if ( ! empty( self::migrate_legacy_record( $legacy ) ) ) {
+					$source = 'legacy_v1_migration_available';
+				} elseif ( ! empty( self::matching_preset() ) ) {
+					$source = 'preset_enrollment_available';
 				}
 			}
 		}
@@ -81,6 +80,48 @@ final class MAD4B_SCP_Site_Profile {
 		self::$status = self::build_status( self::$profile, $source );
 		self::$bootstrapping = false;
 		return self::$status;
+	}
+
+	/**
+	 * Plan only: show whether a legacy identity can be considered for enrollment.
+	 * No Option writes, authority creation or automatic adoption are possible.
+	 */
+	public static function legacy_migration_plan() {
+		$exists = get_option( self::OPTION, null );
+		if ( null !== $exists && false !== $exists ) return array( 'status' => 'CURRENT_PROFILE_PRESENT', 'write_authorized' => false, 'migration_applied' => false );
+		$candidate = self::migrate_legacy_record( get_option( self::LEGACY_OPTION, array() ) );
+		if ( empty( $candidate ) || ! self::valid_record( $candidate ) ) return array( 'status' => 'NO_ELIGIBLE_LEGACY_PROFILE', 'write_authorized' => false, 'migration_applied' => false );
+		return array( 'status' => 'REVIEW_REQUIRED', 'site_uuid' => (string) $candidate['site_uuid'], 'revision' => (int) $candidate['revision'], 'environment' => (string) $candidate['environment'], 'requires_reenrollment' => true, 'write_authorized' => false, 'migration_applied' => false );
+	}
+
+	/**
+	 * Explicit, admin-only legacy migration with a pending-audit quarantine.
+	 * A preview is never enough to authorize mutation or feature activation.
+	 */
+	public static function apply_legacy_migration( $expected_site_uuid, $expected_revision ) {
+		if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_site_profile_migration_admin_required', 'Administrator permission is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_site_profile_migration_audit_unavailable', 'Append-only audit must be ready before migration.' );
+		if ( null !== get_option( self::OPTION, null ) ) return new WP_Error( 'mad4b_site_profile_migration_destination_exists', 'A current Site Profile already exists.' );
+		$candidate = self::migrate_legacy_record( get_option( self::LEGACY_OPTION, array() ) );
+		if ( empty( $candidate ) || ! self::valid_record( $candidate ) ) return new WP_Error( 'mad4b_site_profile_migration_ineligible', 'No matching legacy identity is eligible for explicit migration.' );
+		if ( ! hash_equals( (string) $candidate['site_uuid'], (string) $expected_site_uuid ) || (int) $candidate['revision'] !== (int) $expected_revision ) return new WP_Error( 'mad4b_site_profile_migration_plan_stale', 'Legacy migration request does not match the current plan.' );
+		// Reuse the exact pending-record reconciliation contract: unknown
+		// finalization must be recoverable using independent audit evidence.
+		$pending = self::build_pending_record( $candidate, null, 'mad4b/site-profile-legacy-migration' );
+		if ( ! self::persist_record_compare_and_swap( null, $pending ) ) return new WP_Error( 'mad4b_site_profile_migration_conflict', 'Site Profile was enrolled concurrently; migration was not applied.' );
+		$audit = MAD4B_SCP_Audit::record( 'mad4b/site-profile-legacy-migration', array(
+			'site_uuid' => $candidate['site_uuid'],
+			'revision' => (int) $candidate['revision'],
+			'mutation_id' => $pending['mutation_id'],
+			'profile_digest' => self::digest_record( self::normalize_record( $candidate ) ),
+			'migration_requires_reenrollment' => true,
+		), 'ok' );
+		if ( is_wp_error( $audit ) ) {
+			if ( ! self::restore_record_compare_and_swap( $pending, null ) ) return new WP_Error( 'mad4b_site_profile_migration_recovery_required', 'Audit failed; migration remains quarantined for reconciliation.' );
+			return new WP_Error( 'mad4b_site_profile_migration_audit_failed', 'Migration was compensated because audit failed.' );
+		}
+		if ( ! self::persist_record_compare_and_swap( $pending, $candidate ) ) return new WP_Error( 'mad4b_site_profile_migration_finalize_required', 'Migration audit succeeded; pending state requires exact reconciliation.' );
+		return array( 'status' => 'MIGRATED_REENROLLMENT_REQUIRED', 'site_uuid' => $candidate['site_uuid'], 'revision' => (int) $candidate['revision'], 'mutation_applied' => true, 'authority_granted' => false );
 	}
 
 	public static function status() {
@@ -137,6 +178,30 @@ final class MAD4B_SCP_Site_Profile {
 	}
 
 	/**
+	 * Host-level synchronization is a supported, opt-in configuration mode,
+	 * not a runtime override or a write-authority grant. A trusted external
+	 * host agent must write WP_ENVIRONMENT_TYPE before WordPress bootstraps.
+	 * WordPress caches wp_get_environment_type() within the request.
+	 *
+	 * This reducer is deliberately pure so refusal scenarios can be tested
+	 * without a WordPress host, external credentials or a mutable wp-config.
+	 */
+	public static function host_environment_sync_assessment( $mode, $desired, $wordpress, $explicit, $identity_ready, $binding_ready ) {
+		if ( self::ENV_SYNC_PROFILE_ONLY === $mode ) return 'profile_only';
+		if ( self::ENV_SYNC_HOST_MANAGED !== $mode ) return 'blocked_invalid_mode';
+		if ( ! $identity_ready ) return 'blocked_profile_identity';
+		if ( 'production' === $desired || ! in_array( $desired, array( 'local', 'development', 'staging' ), true ) ) return 'blocked_production_or_invalid_target';
+		// Reporting explicit WordPress alignment is a read-only fact. A
+		// previously configured host binding is needed to AUTHORIZE a host
+		// mutation, not to recognize a bootstrap already running as Staging.
+		// The separate clone-protection/status fields remain false when no
+		// trusted host identity exists; do not infer Host write eligibility.
+		if ( $explicit ) return hash_equals( $desired, (string) $wordpress ) ? 'host_aligned' : 'blocked_explicit_host_conflict';
+		if ( ! $binding_ready ) return 'blocked_missing_deployment_binding';
+		return 'awaiting_host_bootstrap';
+	}
+
+	/**
 	 * MAD4B effective environment.
 	 *
 	 * WordPress defaults to "production" when WP_ENVIRONMENT_TYPE is absent.
@@ -178,13 +243,18 @@ final class MAD4B_SCP_Site_Profile {
 		$value = '';
 		if ( defined( 'MAD4B_SCP_DEPLOYMENT_BINDING' ) ) {
 			$candidate = constant( 'MAD4B_SCP_DEPLOYMENT_BINDING' );
-			if ( is_string( $candidate ) ) $value = trim( $candidate );
+			if ( is_string( $candidate ) ) $value = $candidate;
 		}
 		if ( '' === $value && function_exists( 'apply_filters' ) ) {
 			$candidate = apply_filters( 'mad4b_scp_deployment_binding', '' );
-			if ( is_string( $candidate ) ) $value = trim( $candidate );
+			if ( is_string( $candidate ) ) $value = $candidate;
 		}
-		if ( '' === $value || strlen( $value ) > 1024 ) return '';
+		// "Configured" must always imply a proof-capable key. Never trim away
+		// whitespace/control bytes: silently normalizing host material can bind
+		// multiple distinct deployments to one credential. Length is a minimum
+		// safety bound, not evidence of entropy; provisioning must use CSPRNG.
+		if ( strlen( $value ) < 32 || strlen( $value ) > 1024
+			|| preg_match( '/[\\x00-\\x20\\x7f]/', $value ) ) return '';
 		return $value;
 	}
 
@@ -294,6 +364,12 @@ final class MAD4B_SCP_Site_Profile {
 		$profile_default_override_requested = '' !== $profile_environment && ! $profile_matches_wordpress && 'production' === $wordpress && ! $wordpress_explicit;
 		$profile_default_override = $profile_default_override_requested && ! empty( $bound['implicit_production_override_confirmed'] );
 		$profile_authoritative = $profile_matches_wordpress || $profile_default_override;
+		$sync_mode = isset( $bound['environment_sync_mode'] ) ? (string) $bound['environment_sync_mode'] : self::ENV_SYNC_PROFILE_ONLY;
+		$binding_ready = ! empty( $bound['deployment_binding_digest'] ) && self::record_deployment_binding_matches( $bound );
+		$sync_state = self::host_environment_sync_assessment(
+			$sync_mode, $profile_environment, $wordpress, $wordpress_explicit,
+			$profile_authoritative && ! empty( $bound['site_uuid'] ), $binding_ready
+		);
 		$effective = $profile_authoritative ? $profile_environment : $wordpress;
 		$source = $profile_default_override
 			? 'exact_site_profile_default_override'
@@ -311,6 +387,10 @@ final class MAD4B_SCP_Site_Profile {
 			'effective_source' => $source,
 			'suggested_environment' => self::suggested_environment(),
 			'wordpress_profile_mismatch' => '' !== $profile_environment && ! $profile_matches_wordpress,
+			'environment_sync_mode' => $sync_mode,
+			'environment_sync_state' => $sync_state,
+			// A bounded *host instruction*, never an executable WordPress update.
+			'host_bootstrap_required' => 'awaiting_host_bootstrap' === $sync_state,
 			'hostname_hint_used_for_authority' => false,
 		);
 	}
@@ -752,6 +832,17 @@ final class MAD4B_SCP_Site_Profile {
 			&& hash_equals( (string) $existing_normalized['canonical_origin'], $origin )
 			&& self::record_deployment_binding_matches( $existing_normalized );
 		$identity_rebound = $existing_valid && ! $existing_identity_matches;
+		$sync_mode = array_key_exists( 'environment_sync_mode', $input )
+			? ( is_string( $input['environment_sync_mode'] ) ? sanitize_key( $input['environment_sync_mode'] ) : '' )
+			: ( $existing_identity_matches && isset( $existing_normalized['environment_sync_mode'] )
+				? $existing_normalized['environment_sync_mode']
+				: ( 'staging' === $environment ? self::ENV_SYNC_HOST_MANAGED : self::ENV_SYNC_PROFILE_ONLY ) );
+		if ( ! in_array( $sync_mode, array( self::ENV_SYNC_PROFILE_ONLY, self::ENV_SYNC_HOST_MANAGED ), true ) ) {
+			return new WP_Error( 'mad4b_site_profile_environment_sync_mode_invalid', 'Unsupported environment synchronization mode.' );
+		}
+		if ( self::ENV_SYNC_HOST_MANAGED === $sync_mode && 'production' === $environment ) {
+			return new WP_Error( 'mad4b_site_profile_host_sync_production_denied', 'Production host environment must be configured explicitly outside WordPress.' );
+		}
 
 		// WordPress reports Production by default when WP_ENVIRONMENT_TYPE is
 		// absent. Reclassifying that implicit default as non-Production is a
@@ -817,6 +908,7 @@ final class MAD4B_SCP_Site_Profile {
 			'site_uuid' => $site_uuid,
 			'revision' => $revision,
 			'environment' => $environment,
+			'environment_sync_mode' => $sync_mode,
 			'canonical_origin' => $origin,
 			'deployment_binding_digest' => $deployment_binding_digest,
 			'implicit_production_override_confirmed' => (bool) $nonproduction_override_confirmed,
@@ -1383,6 +1475,9 @@ final class MAD4B_SCP_Site_Profile {
 			'effective_environment_source' => (string) $resolution['effective_source'],
 			'suggested_environment' => (string) $resolution['suggested_environment'],
 			'wordpress_profile_mismatch' => ! empty( $resolution['wordpress_profile_mismatch'] ),
+			'environment_sync_mode' => (string) $resolution['environment_sync_mode'],
+			'environment_sync_state' => (string) $resolution['environment_sync_state'],
+			'host_bootstrap_required' => ! empty( $resolution['host_bootstrap_required'] ),
 			'hostname_hint_used_for_authority' => false,
 			'configured_environment' => $configured ? (string) $profile['environment'] : '',
 			'current_origin' => $origin,
@@ -1477,6 +1572,8 @@ final class MAD4B_SCP_Site_Profile {
 			if ( 1 !== preg_match( '/^[1-9][0-9]*$/D', (string) $value ) || false === filter_var( $value, FILTER_VALIDATE_INT, array( 'options' => array( 'min_range' => 1 ) ) ) ) return false;
 		}
 		if ( ! in_array( $record['environment'], array( 'local', 'development', 'staging', 'production' ), true ) ) return false;
+		if ( isset( $record['environment_sync_mode'] ) && ( ! is_string( $record['environment_sync_mode'] )
+			|| ! in_array( $record['environment_sync_mode'], array( self::ENV_SYNC_PROFILE_ONLY, self::ENV_SYNC_HOST_MANAGED ), true ) ) ) return false;
 		if ( isset( $record['features'] ) ) {
 			if ( ! is_array( $record['features'] ) ) return false;
 			foreach ( $record['features'] as $value ) if ( ! in_array( $value, array( true, false, 1, 0, '1', '0' ), true ) ) return false;
@@ -1530,6 +1627,9 @@ final class MAD4B_SCP_Site_Profile {
 		$record['site_uuid'] = strtolower( trim( isset( $record['site_uuid'] ) ? (string) $record['site_uuid'] : '' ) );
 		$record['revision'] = max( 1, absint( isset( $record['revision'] ) ? $record['revision'] : 1 ) );
 		$record['environment'] = sanitize_key( isset( $record['environment'] ) ? (string) $record['environment'] : '' );
+		// Keep legacy records' canonical bytes intact until their next governed
+		// save; no implicit migration or digest churn on read.
+		if ( isset( $record['environment_sync_mode'] ) ) $record['environment_sync_mode'] = sanitize_key( $record['environment_sync_mode'] );
 		$record['canonical_origin'] = self::normalize_origin( isset( $record['canonical_origin'] ) ? $record['canonical_origin'] : '' );
 		$record['deployment_binding_digest'] = isset( $record['deployment_binding_digest'] ) && is_string( $record['deployment_binding_digest'] ) ? strtolower( trim( $record['deployment_binding_digest'] ) ) : '';
 		$record['implicit_production_override_confirmed'] = isset( $record['implicit_production_override_confirmed'] ) && true === $record['implicit_production_override_confirmed'];

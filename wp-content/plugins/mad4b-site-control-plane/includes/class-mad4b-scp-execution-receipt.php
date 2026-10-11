@@ -84,7 +84,20 @@ final class MAD4B_SCP_Execution_Receipt {
 		if ( ! class_exists( 'MAD4B_SCP_Crypto_Profile' ) ) return new WP_Error( 'mad4b_execution_receipt_crypto_unavailable', 'Execution receipt cryptographic profile runtime is unavailable.' );
 		$sig = MAD4B_SCP_Crypto_Profile::verify_digest_for_purpose( $receipt['signature'], $expected, 'execution_receipt' );
 		if ( is_wp_error( $sig ) ) return $sig;
-		if ( ! hash_equals( (string)$receipt['signature_profile'], (string)$receipt['signature']['profile_id'] ) ) return new WP_Error( 'mad4b_execution_receipt_signature_profile_mismatch', 'Execution receipt signature profile is not bound to the receipt material.' );
+		if ( ! is_array( $sig ) || true !== ( $sig['valid'] ?? null ) ||
+			( $sig['contract'] ?? null ) !== 'mad4b.detached-signature-verification.v1' ||
+			! is_string( $sig['signed_sha256'] ?? null ) ||
+			! hash_equals( $expected, $sig['signed_sha256'] ) ||
+			! is_string( $sig['profile_id'] ?? null ) ||
+			! is_string( $sig['kid'] ?? null ) ||
+			! is_string( $sig['purpose'] ?? null ) ||
+			! hash_equals( 'execution_receipt', $sig['purpose'] ) ||
+			! hash_equals( (string) ( $receipt['signature']['profile_id'] ?? '' ), $sig['profile_id'] ) ||
+			! hash_equals( (string) ( $receipt['signature']['kid'] ?? '' ), $sig['kid'] ) ) {
+			return new WP_Error( 'mad4b_execution_receipt_signature_verification_invalid', 'Cryptographic verifier did not return an exact positive signature/provenance proof.' );
+		}
+		if ( ! is_string( $receipt['signature_profile'] ?? null ) ||
+			! hash_equals( $receipt['signature_profile'], $sig['profile_id'] ) ) return new WP_Error( 'mad4b_execution_receipt_signature_profile_mismatch', 'Execution receipt signature profile is not bound to the receipt material.' );
 		return array(
 			'contract' => 'mad4b.execution-receipt-verification.v1',
 			'valid' => true,

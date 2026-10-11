@@ -411,7 +411,7 @@ for marker in [
     "Developer approval planning may target only the normal Developer inventory; Breakglass is excluded.",
 ]:
     assert marker in planning, marker
-assert "array( 'enrollment', 'developer-dispatch' )" in write_authority
+assert "array( 'enrollment', 'developer-dispatch', 'write-dispatch' )" in write_authority
 assert "MAD4B_SCP_Impact_Policy::ticket_class_for" in governance
 assert "MAD4B_SCP_Approval_Tickets::create_pending" in governance
 assert "class-mad4b-scp-developer-host-capabilities.php" in plugin

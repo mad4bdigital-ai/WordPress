@@ -1,0 +1,190 @@
+{
+  "contract": "mad4b.feature007-g9-delivery.v1",
+  "status": "REPOSITORY_G9_GUARDED_FOUNDATION_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 288,
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "task_ids": [
+    "T4066",
+    "T4067",
+    "T4068",
+    "T4069",
+    "T4070",
+    "T4091",
+    "T4092",
+    "T4093",
+    "T4094",
+    "T4095"
+  ],
+  "task_status": "PARTIAL",
+  "code_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-context.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-anchor.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-resilience-gates.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-local-reader.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-release-fence.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-fleet-rollout.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-restore-convergence.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-read-surface.php",
+    "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-operational-readiness.php"
+  ],
+  "test_paths": [
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
+    "wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php"
+  ],
+  "spec_paths": [
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md",
+    "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md"
+  ],
+  "source_files_include_real_execution_adapter": false,
+  "runtime_parity_claimed": false,
+  "live_staging_acceptance": false,
+  "live_host_isolation_verified": false,
+  "native_fleet_rollback_dispatched": false,
+  "external_effect_reconciliation_verified": false,
+  "post_restore_acceptance_receipt_issued": false,
+  "all_task_done_claimed": false,
+  "production_authorized": false,
+  "new_grants_created": false,
+  "authorizing": false,
+  "remaining_acceptance": [
+    "Existing governed native executor binding and approved capability descriptor for site-local reservation; no automatic permission creation",
+    "Native executor must produce signed claim operation_id and independently verifiable terminal journal linkage to the G9 reservation; transport request ID and native target fingerprint are independent identities",
+    "Site-local provider native certification and host isolation proof; real health sample windows and effect inventory completeness",
+    "External-effect reconciliation and signed, same-cycle release/rollback and post-restore acceptance receipts",
+    "Staging fault drills on independent websites/multisite plus split-brain, clone, clock rollback, partial rollback and provider outages",
+    "CI results at final exact HEAD, predecessor G7/G8 integration, cumulative Hub proof and explicit owner/merge authorization"
+  ],
+  "native_journal_linkage_provider_implemented": false,
+  "partial_task_ids": [
+    "T4066",
+    "T4067",
+    "T4068",
+    "T4069",
+    "T4070",
+    "T4091",
+    "T4092",
+    "T4093",
+    "T4094",
+    "T4095"
+  ],
+  "evidence_integrity": [
+    {
+      "path": ".github/workflows/feature-007-spec-ci.yml",
+      "sha256": "d3002dfe68f48ae056e6ddd2dd306489a87954e8039f339b368073e7b45ddb6d",
+      "bytes": 52465
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
+      "sha256": "2539a3ad5c82b7febbfe3e5103d3f0146c7eb17339d97f0fae24fa1ea0e7b620",
+      "bytes": 11732
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.md",
+      "sha256": "0010f9594abe709ed27bb9d692532fb356a1cda52f9247bbe6fc592466d29efe",
+      "bytes": 5321
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-review.md",
+      "sha256": "e96325dd0d84e1d779a291410904666914df4101387b86da8854d5b1532843f2",
+      "bytes": 25007
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-fleet-rollout.php",
+      "sha256": "b742ff120c6b5a110b4bf681f9a48a434841a19a63ccf31ab12f4d037acc2401",
+      "bytes": 8482
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-local-reader.php",
+      "sha256": "731a406227de44fb796ebbc623997d1e71a9653927a0b7ada2bf19da48824e7f",
+      "bytes": 2184
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-operational-readiness.php",
+      "sha256": "7c6958fa6deab5c1b9b3c97537bd4f05fc075dd72e6b2d82733d14e0a4d95249",
+      "bytes": 7813
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-read-surface.php",
+      "sha256": "998d235cf6e2e9df10b2558f41cb5f2b145aab98b83f08d281e329c507a8ab34",
+      "bytes": 12048
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-release-fence.php",
+      "sha256": "034390f28d930d227acc13125b2b2368cba095fd8beec20878b0ba394c68d303",
+      "bytes": 29968
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-resilience-gates.php",
+      "sha256": "9ec2d833a4240fb519a62fb5ac859ac246a30e733d3f3d7841837d1eaff534c2",
+      "bytes": 18365
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g9-restore-convergence.php",
+      "sha256": "18e98d95ada91fe8e61c7edfff11bed97f979be590acf479818ac521fd9c1ca1",
+      "bytes": 5703
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-anchor.php",
+      "sha256": "c38e5f0cf3f7f4add8e39e807fbcfcac52d627da3c0cd31f12b7e604e79b7900",
+      "bytes": 15970
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-resilience-context.php",
+      "sha256": "3b19dc8a83ba25c87cc9532ac803c95fc3acb87c39b49eba3916930cea8f9211",
+      "bytes": 13385
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "044e7483a74ef4c13d564694a67eba52b00ab3a96f5af81d80eef146f5984467",
+      "bytes": 45558
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-ability-collision-runtime.php",
+      "sha256": "4b0f077e25400502991736e8d0f5bf871cbe8cd52da7d564c4f28aa273cb3878",
+      "bytes": 1923
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-boot-runtime.php",
+      "sha256": "ad7c5d3fca2633165134e94800f79961454470a2fc6af974560feaed6bc2bef5",
+      "bytes": 2644
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-delivery-contract.py",
+      "sha256": "5e03735c9bb1fb3e44f7e6222e0fec23c3e8171ec8da1658e0758b809fad26a6",
+      "bytes": 9003
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-fleet-rollout-runtime.php",
+      "sha256": "383708a5a26b6fa48f62b349f9866da0ebd649d4389a8244672b6e515adbd469",
+      "bytes": 5763
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-partial-ability-registration-runtime.php",
+      "sha256": "c41742892ff5cb5ce6234bf0638c737d80b2fc4db9b656db1fe7091037345cb4",
+      "bytes": 2782
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-gates-runtime.php",
+      "sha256": "5393b9ab68b372c7a9cfd45147b182cc2b6e07f3ffee2c74358eaf97c8b1b4bd",
+      "bytes": 17987
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-resilience-state-runtime.php",
+      "sha256": "3952a903f1a6cefa1a58fd09f1c9533a68d3d63efae9777a54f45969ea802471",
+      "bytes": 45514
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g9-security-source-contract.py",
+      "sha256": "bfedf60d046acb0fea35bf6141efefd48aefd1fbeaecd009342a790fc77da3a7",
+      "bytes": 16954
+    }
+  ]
+}

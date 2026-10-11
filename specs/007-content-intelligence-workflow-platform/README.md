@@ -169,3 +169,17 @@ The closure program separates:
 Phase 36 in `plan.md` and `tasks.md` is the execution umbrella. Existing phases remain authoritative for detailed semantics; Phase 36 does not duplicate or supersede their contracts.
 
 The first vertical slice cannot close while repository governance is only committed but not externally enforced, protected backup/recovery is unready, the exact installed workflow provider is uncertified, or the ContentJob-to-public-verification chain lacks exact ETG evidence.
+
+## Optional competitive experience extension
+
+[CE01](extensions/competitive-experience/README.md) retains four original competitor ZIPs with source hashes and defines 59 capability requirements, 35 local phases and 175 implementation tasks. Its independent ledger is outside the frozen release scope.
+
+## Optional Adaptive Content Intelligence OS target Spec Kit (ACI01)
+
+[ACI01](extensions/adaptive-content-intelligence-os/README.md) is the full, **non-authorizing** target architecture for multi-site/brand/locale discovery, governed research and evidence, content/experience planning, native Post Meta/WPML relation integrity, independent QA, publication and postpublish learning. It defines 43 requirements, 71 OPEN tasks, 11 local gates, 5 decision loops and bounded provider/economic/authority contracts. This optional documentation extension neither changes the frozen Feature 007/CE01 release denominator nor claims deployed runtime or Production readiness. Its validator and denial tests run in Feature 007 Spec Quality CI.
+
+## Optional Conversational Site Operations Spec Kit (CSO01)
+
+[CSO01](extensions/conversational-site-operations/README.md) specifies the full conversational WordPress operating experience, beyond Universal Conversation Form Bridge: discovery, dynamic fields, Smart Autocomplete, dependent forms, diff/preview, isolated API secret ingress, bulk jobs, workflow DAGs, history/compensation, content/media/SEO, multi-site orchestration, approvals, monitoring, Staging-to-Production planning, reusable templates, contextual help, self-diagnostics, provider certification and lifecycle. The package has **27 functional requirement families, 81 OPEN tasks, 11 OPEN gates, 27 PROPOSED (unregistered) Abilities and 26 negative-tested journeys** plus typed domain JSON Schemas and an offline validator.
+
+This is `SPEC_BACKLOG_ONLY`, explicitly non-authorizing and outside the frozen Feature 007 release/task denominator. It does not register generic option/database writes, collect secrets in ChatGPT, mint Product authority or claim a site deployment or live acceptance. Its schema/security/cross-file consistency is checked by its own `validate.py` and `test_validate.py`; native WP/provider/Host/Browser acceptance remains external.

@@ -133,7 +133,7 @@ function asi_descriptor( $id, $cost = 5, $remaining = 100 ) {
 }
 function asi_policy_nodes( $units = 100, $concurrency = 100 ) { return array( 'nodes' => array( array( 'id' => 'root', 'selectors' => array(), 'monthly_units' => $units, 'daily_units' => $units, 'money_micro' => 100000, 'concurrency' => $concurrency, 'per_minute' => 100 ) ), 'reserve_fraction' => 0, 'burst_multiplier' => 1 ); }
 function asi_profile( $id = 'fixture.search' ) {
-	return array( 'profile_id' => $id, 'brand_id' => 'independent.brand', 'enabled' => true, 'markets' => array( array( 'id' => 'metro', 'country' => 'US', 'provider_locations' => array( 'serpapi' => array( 'id' => 'fixture-city', 'precision' => 'city' ), 'dataforseo' => array( 'id' => '2840', 'precision' => 'country' ) ) ), array( 'id' => 'second', 'country' => 'FR' ) ), 'language_policy' => array( 'desired' => array( 'en', 'fr', 'ar' ) ), 'provider_policy' => array( 'engines' => array( 'google' ), 'devices' => array( 'desktop', 'mobile' ), 'allowed' => array( 'alpha', 'beta' ), 'depth' => 3 ), 'budget_policy' => asi_policy_nodes() );
+	return array( 'profile_id' => $id, 'brand_id' => 'independent.brand', 'enabled' => false, 'markets' => array( array( 'id' => 'metro', 'country' => 'US', 'provider_locations' => array( 'serpapi' => array( 'id' => 'fixture-city', 'precision' => 'city' ), 'dataforseo' => array( 'id' => '2840', 'precision' => 'country' ) ) ), array( 'id' => 'second', 'country' => 'FR' ) ), 'language_policy' => array( 'desired' => array( 'en', 'fr', 'ar' ) ), 'provider_policy' => array( 'engines' => array( 'google' ), 'devices' => array( 'desktop', 'mobile' ), 'allowed' => array( 'alpha', 'beta' ), 'depth' => 3, 'freeze_spend' => true ), 'budget_policy' => asi_policy_nodes() );
 }
 function asi_surface( $kind = 'CONTENT_OBJECT', $id = 1, $language = 'en' ) {
 	return array( 'surface_type' => $kind, 'object_ref' => array( 'kind' => 'fixture', 'id' => $id ), 'public_url' => home_url( '/' . strtolower( $kind ) . '/' . $id . '/' ), 'canonical_url' => home_url( '/' . strtolower( $kind ) . '/' . $id . '/' ), 'title' => 'Surface ' . $id, 'http_state' => 200, 'content_fingerprint' => hash( 'sha256', (string) $id ), 'language' => $language, 'eligibility' => array( 'crawlable' => true, 'robots_txt_allowed' => true, 'indexable' => true, 'canonical_state' => 'self', 'redirect_state' => 'none', 'hreflang_valid' => true, 'meta_robots' => array( 'index', 'follow' ), 'x_robots_header' => array(), 'discoverable' => true ) );
@@ -153,10 +153,20 @@ function asi_reset() {
 	$GLOBALS['fixture_providers'] = array( new ASI_Provider( 'alpha' ), new ASI_Provider( 'beta', 20 ) );
 	add_filter( 'mad4b_scp_search_serp_adapters', static function () { return $GLOBALS['fixture_providers']; } ); MAD4B_SCP_Search_Store::reset(); MAD4B_SCP_Search_Budgets::boot();
 }
+/** Activate a normally-created paused fixture via the real typed control lane. */
+function asi_activate_profile( $id, $revision ) {
+	$unfrozen = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'unfreeze_spend', 'expected_revision' => $revision ) );
+	if ( is_wp_error( $unfrozen ) ) throw new RuntimeException( $unfrozen->get_error_code() );
+	$resumed = MAD4B_SCP_Search_Experience::control( array( 'profile_id' => $id, 'control' => 'resume', 'expected_revision' => $unfrozen['profile']['revision'] ) );
+	if ( is_wp_error( $resumed ) ) throw new RuntimeException( $resumed->get_error_code() );
+	return $resumed;
+}
 function asi_seed() {
 	$raw = asi_profile(); $input = array( 'profile' => $raw, 'expected_revision' => 0 ); $plan = MAD4B_SCP_Search_Runtime::profile_plan( $input );
 	$result = MAD4B_SCP_Search_Runtime::profile_apply( array_merge( $input, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
 	if ( is_wp_error( $result ) ) throw new RuntimeException( $result->get_error_code() );
+	$activated = asi_activate_profile( $raw['profile_id'], $result['profile']['revision'] );
+	if ( empty( $activated['profile']['enabled'] ) || ! empty( $activated['profile']['provider_policy']['freeze_spend'] ) ) throw new RuntimeException( 'fixture_activation_invalid' );
 	$compile_input = array( 'profile_id' => $raw['profile_id'], 'candidates' => array( asi_candidate() ) ); $compile = MAD4B_SCP_Search_Runtime::compile_plan( $compile_input );
 	if ( is_wp_error( $compile ) ) throw new RuntimeException( $compile->get_error_code() );
 	$result = MAD4B_SCP_Search_Runtime::compile_apply( array_merge( $compile_input, array( 'plan_sha256' => $compile['plan_sha256'] ) ) );

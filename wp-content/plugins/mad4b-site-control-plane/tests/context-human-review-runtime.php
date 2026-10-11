@@ -232,6 +232,66 @@ mad4b_review_assert( ! empty( $optional_initial ), 'Optional writer reference mu
 mad4b_review_assert( 'writer_reference' === $optional_initial['category'], 'Writer reference fixture must classify as writer_reference, not Brand Core.', $optional_initial );
 mad4b_review_assert( empty( $optional_initial['required'] ), 'Writer reference fixture must remain optional by default.', $optional_initial );
 
+$optional_raw_original = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['content_complete'] = false;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['normalization_status'] = 'incomplete';
+$incomplete_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $incomplete_review ), 'Incomplete normalized content must never be reviewable.', $incomplete_review );
+mad4b_review_assert( 'mad4b_context_review_content_incomplete' === $incomplete_review->get_error_code(), 'Incomplete Context review must expose the exact repair-first error.', $incomplete_review->get_error_code() );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ] = $optional_raw_original;
+
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['classification_confidence'] = 0.42;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ]['classification_source'] = 'automatic';
+$low_confidence_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( is_wp_error( $low_confidence_review ), 'Low-confidence automatic classification must require explicit Human confirmation.', $low_confidence_review );
+mad4b_review_assert( 'mad4b_context_review_classification_confirmation_required' === $low_confidence_review->get_error_code(), 'Low-confidence Human Review denial must expose the exact confirmation error.', $low_confidence_review->get_error_code() );
+$low_confidence_revision_before_confirmation = MAD4B_SCP_Context_Authority::registry_revision();
+$confirmed_low_confidence_review = MAD4B_SCP_Context_Authority::review_asset(
+	$optional_asset_id,
+	mad4b_review_exact_input(
+		$optional_asset_id,
+		array(
+			'category' => $optional_initial['category'],
+			'authority_class' => $optional_initial['authority_class'],
+			'required' => false,
+			'classification_confirmed' => true,
+			'quality_mode' => 'preserve',
+			'decision' => 'approve',
+		)
+	)
+);
+mad4b_review_assert( ! is_wp_error( $confirmed_low_confidence_review ), 'Explicit Human classification confirmation must unlock the exact content decision.', $confirmed_low_confidence_review );
+mad4b_review_assert( 'human' === ( isset( $confirmed_low_confidence_review['classification_source'] ) ? $confirmed_low_confidence_review['classification_source'] : '' ), 'Confirmed low-confidence classification must become Human-owned.', $confirmed_low_confidence_review );
+mad4b_review_assert( 1.0 === ( isset( $confirmed_low_confidence_review['classification_confidence'] ) ? (float) $confirmed_low_confidence_review['classification_confidence'] : 0.0 ), 'Confirmed low-confidence classification must become exact Human confidence.', $confirmed_low_confidence_review );
+mad4b_review_assert( 'approved' === ( isset( $confirmed_low_confidence_review['review_status'] ) ? $confirmed_low_confidence_review['review_status'] : '' ), 'Confirmed low-confidence review must commit the requested exact decision.', $confirmed_low_confidence_review );
+mad4b_review_assert( isset( $confirmed_low_confidence_review['review_binding']['registry_revision_after'] ) && $low_confidence_revision_before_confirmation + 1 === (int) $confirmed_low_confidence_review['review_binding']['registry_revision_after'], 'Review result must return the exact next registry revision for sequential batch chaining.', $confirmed_low_confidence_review );
+mad4b_review_assert( ! empty( $confirmed_low_confidence_review['review_binding']['authority_manifest_after'] ) && 1 === preg_match( '/^[a-f0-9]{64}$/', (string) $confirmed_low_confidence_review['review_binding']['authority_manifest_after'] ), 'Review result must return the exact next authority manifest for sequential batch chaining.', $confirmed_low_confidence_review );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $optional_asset_id ] = $optional_raw_original;
+
 $optional_escalation_input = mad4b_review_exact_input(
 	$optional_asset_id,
 	array(
@@ -578,18 +638,20 @@ mad4b_review_assert( 'reject' === $optional_reject['review_decision'], 'Reject d
 mad4b_review_assert( ! empty( $optional_reject['review_note'] ), 'Rejected content must retain reviewer rationale.', $optional_reject );
 
 $review_events = array_values( array_filter( $GLOBALS['mad4b_context_audit'], static function ( $row ) { return 'mad4b/context-asset-review' === $row['event']; } ) );
-mad4b_review_assert( 5 === count( $review_events ), 'Three primary approvals plus needs-changes and rejection must each emit one audit event.', $review_events );
-mad4b_review_assert( 'manual' === $review_events[0]['data']['quality_mode'], 'First review audit must record manual quality mode.', $review_events[0] );
-mad4b_review_assert( 'automatic' === $review_events[1]['data']['quality_mode'], 'Second review audit must record automatic quality mode.', $review_events[1] );
-mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[2] );
-mad4b_review_assert( 'needs_changes' === $review_events[3]['data']['decision'] && 'needs_changes' === $review_events[3]['data']['review_status'], 'Needs-changes review audit must preserve exact decision semantics.', $review_events[3] );
-mad4b_review_assert( 'reject' === $review_events[4]['data']['decision'] && 'rejected' === $review_events[4]['data']['review_status'], 'Rejected review audit must preserve exact decision semantics.', $review_events[4] );
-mad4b_review_assert( ! empty( $review_events[3]['data']['review_note'] ) && ! empty( $review_events[4]['data']['review_note'] ), 'Non-approve review audit evidence must retain reviewer rationale.', array( $review_events[3], $review_events[4] ) );
-mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[0]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[0] );
-mad4b_review_assert( ! empty( $review_events[0]['data']['expected_content_hash'] ) && $review_events[0]['data']['expected_content_hash'] === $review_events[0]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[0] );
-mad4b_review_assert( (int) $review_events[0]['data']['registry_revision_after'] === (int) $review_events[0]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[0] );
-mad4b_review_assert( empty( $review_events[0]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[0] );
-mad4b_review_assert( 'wp_admin' === $review_events[0]['data']['actor_type'] && 42 === (int) $review_events[0]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[0] );
-mad4b_review_assert( ! empty( $review_events[0]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[0] );
+mad4b_review_assert( 6 === count( $review_events ), 'Low-confidence Human confirmation, three primary approvals, needs-changes and rejection must each emit one audit event.', $review_events );
+mad4b_review_assert( ! empty( $review_events[0]['data']['low_confidence_classification'] ) && ! empty( $review_events[0]['data']['classification_confirmed'] ), 'Low-confidence Human confirmation must be explicit in append-only review audit evidence.', $review_events[0] );
+mad4b_review_assert( 0.42 === (float) $review_events[0]['data']['previous_classification_confidence'], 'Low-confidence Human confirmation audit must preserve the automatic confidence that required confirmation.', $review_events[0] );
+mad4b_review_assert( 'manual' === $review_events[1]['data']['quality_mode'], 'First primary review audit must record manual quality mode.', $review_events[1] );
+mad4b_review_assert( 'automatic' === $review_events[2]['data']['quality_mode'], 'Second primary review audit must record automatic quality mode.', $review_events[2] );
+mad4b_review_assert( 'automatic' === $review_events[3]['data']['quality_mode'], 'Provider-mutation renewed review must record automatic quality mode.', $review_events[3] );
+mad4b_review_assert( 'needs_changes' === $review_events[4]['data']['decision'] && 'needs_changes' === $review_events[4]['data']['review_status'], 'Needs-changes review audit must preserve exact decision semantics.', $review_events[4] );
+mad4b_review_assert( 'reject' === $review_events[5]['data']['decision'] && 'rejected' === $review_events[5]['data']['review_status'], 'Rejected review audit must preserve exact decision semantics.', $review_events[5] );
+mad4b_review_assert( ! empty( $review_events[4]['data']['review_note'] ) && ! empty( $review_events[5]['data']['review_note'] ), 'Non-approve review audit evidence must retain reviewer rationale.', array( $review_events[4], $review_events[5] ) );
+mad4b_review_assert( MAD4B_SCP_Context_Authority::HUMAN_REVIEW_CONTRACT === $review_events[1]['data']['contract'], 'Human review audit must use the v2 exact-review contract.', $review_events[1] );
+mad4b_review_assert( ! empty( $review_events[1]['data']['expected_content_hash'] ) && $review_events[1]['data']['expected_content_hash'] === $review_events[1]['data']['observed_content_hash'], 'Human review audit must bind expected and observed content hashes.', $review_events[1] );
+mad4b_review_assert( (int) $review_events[1]['data']['registry_revision_after'] === (int) $review_events[1]['data']['registry_revision_before'] + 1, 'Human review audit must record the exact monotonic registry transition.', $review_events[1] );
+mad4b_review_assert( empty( $review_events[1]['data']['required_scope_escalated'] ), 'Already-required Brand Core review must not be mislabeled as a scope escalation.', $review_events[1] );
+mad4b_review_assert( 'wp_admin' === $review_events[1]['data']['actor_type'] && 42 === (int) $review_events[1]['data']['wp_user_id'], 'Human review audit must attribute the WordPress reviewer.', $review_events[1] );
+mad4b_review_assert( ! empty( $review_events[1]['data']['automatic_classification'] ), 'Human review audit must retain automatic classification provenance.', $review_events[1] );
 
 echo "mad4b.site-control-plane.context-human-review.runtime.v12: PASS\n";

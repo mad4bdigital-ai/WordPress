@@ -1,0 +1,466 @@
+{
+  "contract": "mad4b.aci-os.gate-registry.v2",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "gates": [
+    {
+      "id": "ACI-G0",
+      "index": 0,
+      "name": "spec_integrity",
+      "status": "OPEN",
+      "depends_on": [],
+      "requirement_ids": [
+        "ACI-001",
+        "ACI-028",
+        "ACI-042",
+        "ACI-033",
+        "ACI-043",
+        "ACI-005"
+      ],
+      "task_ids": [
+        "ACI-T0001",
+        "ACI-T0002",
+        "ACI-T0003",
+        "ACI-T0004",
+        "ACI-T0005",
+        "ACI-T0006"
+      ],
+      "proof_levels": [
+        "repository"
+      ],
+      "negative_cases": [
+        "spec_false_done",
+        "unowned_change"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G1",
+      "index": 1,
+      "name": "business_context",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G0"
+      ],
+      "requirement_ids": [
+        "ACI-002",
+        "ACI-020",
+        "ACI-001",
+        "ACI-005",
+        "ACI-003",
+        "ACI-004",
+        "ACI-016"
+      ],
+      "task_ids": [
+        "ACI-T0007",
+        "ACI-T0008",
+        "ACI-T0009",
+        "ACI-T0010",
+        "ACI-T0011",
+        "ACI-T0012"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "tenant_context_leak",
+        "missing_brand_context"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G2",
+      "index": 2,
+      "name": "research_evidence",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G0"
+      ],
+      "requirement_ids": [
+        "ACI-006",
+        "ACI-008",
+        "ACI-030",
+        "ACI-010",
+        "ACI-009",
+        "ACI-012"
+      ],
+      "task_ids": [
+        "ACI-T0013",
+        "ACI-T0014",
+        "ACI-T0015",
+        "ACI-T0016",
+        "ACI-T0017",
+        "ACI-T0018"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "provider_spend_race",
+        "external_effect_unknown",
+        "poisoned_scrape"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G3",
+      "index": 3,
+      "name": "opportunity_intelligence",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G1",
+        "ACI-G2"
+      ],
+      "requirement_ids": [
+        "ACI-007",
+        "ACI-013",
+        "ACI-014",
+        "ACI-011",
+        "ACI-010",
+        "ACI-012",
+        "ACI-006"
+      ],
+      "task_ids": [
+        "ACI-T0019",
+        "ACI-T0020",
+        "ACI-T0021",
+        "ACI-T0022",
+        "ACI-T0023",
+        "ACI-T0024"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "evidence_noncomparable",
+        "unsupported_claim"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G4",
+      "index": 4,
+      "name": "native_relation_wpml",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G0"
+      ],
+      "requirement_ids": [
+        "ACI-021",
+        "ACI-024",
+        "ACI-023",
+        "ACI-022",
+        "ACI-025",
+        "ACI-026",
+        "ACI-027",
+        "ACI-042"
+      ],
+      "task_ids": [
+        "ACI-T0025",
+        "ACI-T0026",
+        "ACI-T0027",
+        "ACI-T0028",
+        "ACI-T0029",
+        "ACI-T0030",
+        "ACI-T0031",
+        "ACI-T0032"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native",
+        "live_staging"
+      ],
+      "negative_cases": [
+        "wpml_original_fallback",
+        "wrong_term_namespace",
+        "manual_meta_override"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G5",
+      "index": 5,
+      "name": "blueprint_author",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G1"
+      ],
+      "requirement_ids": [
+        "ACI-013",
+        "ACI-020",
+        "ACI-015",
+        "ACI-016",
+        "ACI-019",
+        "ACI-018"
+      ],
+      "task_ids": [
+        "ACI-T0033",
+        "ACI-T0034",
+        "ACI-T0035",
+        "ACI-T0036",
+        "ACI-T0037",
+        "ACI-T0038"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "writer_rights",
+        "editor_conflict"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G3",
+          "when": "opportunity_research_in_scope"
+        },
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
+    },
+    {
+      "id": "ACI-G6",
+      "index": 6,
+      "name": "writer_quality",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G5"
+      ],
+      "requirement_ids": [
+        "ACI-017",
+        "ACI-018",
+        "ACI-019",
+        "ACI-020",
+        "ACI-031"
+      ],
+      "task_ids": [
+        "ACI-T0039",
+        "ACI-T0040",
+        "ACI-T0041",
+        "ACI-T0042",
+        "ACI-T0043",
+        "ACI-T0044"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "qa_self_approval",
+        "uncited_claim",
+        "unsafe_media"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
+    },
+    {
+      "id": "ACI-G7",
+      "index": 7,
+      "name": "durable_orchestration",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G0"
+      ],
+      "requirement_ids": [
+        "ACI-028",
+        "ACI-029",
+        "ACI-030",
+        "ACI-041",
+        "ACI-036",
+        "ACI-037",
+        "ACI-038",
+        "ACI-040",
+        "ACI-033",
+        "ACI-043"
+      ],
+      "task_ids": [
+        "ACI-T0045",
+        "ACI-T0046",
+        "ACI-T0047",
+        "ACI-T0048",
+        "ACI-T0049",
+        "ACI-T0050",
+        "ACI-T0051"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "duplicate_charges",
+        "restore_epoch_replay",
+        "workflow_privilege_escape"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": []
+    },
+    {
+      "id": "ACI-G8",
+      "index": 8,
+      "name": "governed_publication",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G6",
+        "ACI-G7"
+      ],
+      "requirement_ids": [
+        "ACI-031",
+        "ACI-039",
+        "ACI-019",
+        "ACI-032",
+        "ACI-027",
+        "ACI-018",
+        "ACI-042",
+        "ACI-033",
+        "ACI-043"
+      ],
+      "task_ids": [
+        "ACI-T0052",
+        "ACI-T0053",
+        "ACI-T0054",
+        "ACI-T0055",
+        "ACI-T0056",
+        "ACI-T0057",
+        "ACI-T0058"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native",
+        "live_staging",
+        "real_browser"
+      ],
+      "negative_cases": [
+        "duplicate_publish",
+        "wrong_translation",
+        "missing_browser_readback"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        }
+      ]
+    },
+    {
+      "id": "ACI-G9",
+      "index": 9,
+      "name": "growth_learning",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G2"
+      ],
+      "requirement_ids": [
+        "ACI-034",
+        "ACI-035",
+        "ACI-036"
+      ],
+      "task_ids": [
+        "ACI-T0059",
+        "ACI-T0060",
+        "ACI-T0061",
+        "ACI-T0062",
+        "ACI-T0063",
+        "ACI-T0064"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native"
+      ],
+      "negative_cases": [
+        "seasonal_false_causality",
+        "feedback_flapping"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G8",
+          "when": "new_content_publication_in_scope"
+        }
+      ]
+    },
+    {
+      "id": "ACI-G10",
+      "index": 10,
+      "name": "release_operability",
+      "status": "OPEN",
+      "depends_on": [
+        "ACI-G0",
+        "ACI-G7",
+        "ACI-G8"
+      ],
+      "requirement_ids": [
+        "ACI-033",
+        "ACI-042",
+        "ACI-040",
+        "ACI-021",
+        "ACI-038",
+        "ACI-030",
+        "ACI-041",
+        "ACI-027",
+        "ACI-043"
+      ],
+      "task_ids": [
+        "ACI-T0065",
+        "ACI-T0066",
+        "ACI-T0067",
+        "ACI-T0068",
+        "ACI-T0069",
+        "ACI-T0070",
+        "ACI-T0071"
+      ],
+      "proof_levels": [
+        "repository",
+        "disposable_native",
+        "live_staging",
+        "real_browser",
+        "external_provider",
+        "performance",
+        "release"
+      ],
+      "negative_cases": [
+        "stale_authority",
+        "host_sandbox_missing",
+        "uncertified_provider"
+      ],
+      "authorizing": false,
+      "completion_claimed": false,
+      "conditional_dependencies": [
+        {
+          "gate": "ACI-G4",
+          "when": "native_relation_in_scope"
+        },
+        {
+          "gate": "ACI-G9",
+          "when": "growth_learning_in_scope"
+        }
+      ]
+    }
+  ]
+}

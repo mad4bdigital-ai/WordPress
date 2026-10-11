@@ -436,7 +436,8 @@ final class MAD4B_SCP_Developer_Runtime {
 			if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
 			if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Developer execution requires the prlimit resource-limiter backend.' );
 		}
-		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
+		if ( ! function_exists( 'posix_geteuid' ) ) return new WP_Error( 'mad4b_developer_non_root_identity_unverified', 'Developer execution requires verifiable non-root host identity.' );
+		if ( 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		if ( $breakglass && ! self::breakglass_flag_enabled() ) return new WP_Error( 'mad4b_developer_breakglass_disabled', 'Developer Breakglass is disabled.' );
 		$binding = self::runtime_binding_gate( is_array( $input ) ? $input : array() );
 		if ( is_wp_error( $binding ) ) return $binding;
@@ -549,7 +550,8 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( 'production' === self::environment() || ! self::developer_flag_enabled() || ! self::direct_execution_enabled() || self::kill_switch_enabled() ) {
 			return new WP_Error( 'mad4b_developer_lint_runtime_denied', 'Developer PHP syntax validation requires the enabled non-Production Developer runtime.' );
 		}
-		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
+		if ( ! function_exists( 'posix_geteuid' ) ) return new WP_Error( 'mad4b_developer_non_root_identity_unverified', 'Developer execution requires verifiable non-root host identity.' );
+		if ( 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		$php = defined( 'PHP_BINARY' ) ? (string) PHP_BINARY : '';
 		$prlimit = self::prlimit_binary();
 		if ( '' === $php || ! is_file( $php ) || ! is_executable( $php ) ) return new WP_Error( 'mad4b_developer_php_linter_unavailable', 'PHP parser executable is unavailable.' );
@@ -850,7 +852,8 @@ final class MAD4B_SCP_Developer_Runtime {
 		if ( ! function_exists( 'proc_open' ) ) return new WP_Error( 'mad4b_developer_proc_open_unavailable', 'proc_open is unavailable on this runtime.' );
 		if ( '' === self::prlimit_binary() ) return new WP_Error( 'mad4b_developer_resource_limiter_unavailable', 'Workspace lint requires the Developer resource limiter.' );
 		if ( '' === self::network_sandbox_binary() ) return new WP_Error( 'mad4b_developer_network_isolation_unavailable', 'Workspace lint requires the no-network Developer sandbox backend.' );
-		if ( function_exists( 'posix_geteuid' ) && 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
+		if ( ! function_exists( 'posix_geteuid' ) ) return new WP_Error( 'mad4b_developer_non_root_identity_unverified', 'Developer execution requires verifiable non-root host identity.' );
+		if ( 0 === (int) posix_geteuid() ) return new WP_Error( 'mad4b_developer_root_execution_denied', 'Developer execution under Unix root is forbidden.' );
 		$root = realpath( (string) $workspace_root );
 		$file = realpath( (string) $absolute_file );
 		$wp_root = realpath( ABSPATH );

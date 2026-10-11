@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, pathlib, re, sys
+import json, pathlib, re, subprocess, sys
 from collections import defaultdict, deque
 
 ROOT = pathlib.Path("specs/007-content-intelligence-workflow-platform")
@@ -794,6 +794,12 @@ for rel in ["spec.md","plan.md","coverage-audit.md"]:
     p=require_file(rel)
     if p.exists() and "Production" not in p.read_text(encoding="utf-8"):
         errors.append(f"production_boundary_not_documented:{rel}")
+
+extension_validator = require_file("extensions/competitive-experience/validate.py")
+if extension_validator.exists():
+    result = subprocess.run([sys.executable, str(extension_validator)], text=True, capture_output=True)
+    if result.returncode:
+        errors.append("competitive_experience_extension:" + (result.stderr or result.stdout).strip())
 
 if errors:
     print("FEATURE_007_SPEC_VALIDATION: FAIL")

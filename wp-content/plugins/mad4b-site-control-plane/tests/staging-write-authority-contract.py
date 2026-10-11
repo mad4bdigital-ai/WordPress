@@ -128,9 +128,9 @@ if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
 
 augment_body = write.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
-dispatch_exclusion = "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;"
+dispatch_exclusion = "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;"
 if dispatch_exclusion not in augment_body:
-    raise SystemExit('bounded Enrollment and Developer dispatchers must remain outside governed-write augmentation')
+    raise SystemExit('bounded Enrollment, Developer and governed-write transport dispatchers must remain outside target mutation augmentation')
 if augment_body.find(dispatch_exclusion) > augment_body.find("self::APPROVAL_INPUT_KEY"):
     raise SystemExit('Dispatcher exclusions must run before normal write approval input augmentation')
 for marker in [

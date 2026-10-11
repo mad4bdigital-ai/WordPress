@@ -1,0 +1,665 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex' ) ) require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
+
+/**
+ * IMP08 multi-chunk, encrypted source review inbox. Not a writer, scheduler,
+ * provider lease or globally transactional queue. One open batch per Profile.
+ */
+final class MAD4B_SCP_Activity_Import_Batches {
+    const CONTRACT = 'mad4b.import-batch-review.v1';
+    const MAX_CHUNKS = 10;
+    private static function err( $code, $message ) {
+        return new WP_Error( $code, $message );
+    }
+    private static function hash( $value ) {
+        $json = wp_json_encode( $value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
+    }
+    private static function environment() {
+        return current_user_can( 'manage_options' ) &&
+            MAD4B_SCP_Site_Profile::configured() &&
+            MAD4B_SCP_Site_Profile::origin_enrolled() &&
+            MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
+            MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ) );
+    }
+    private static function key( $slug ) {
+        if ( ! defined( 'MAD4B_ACTIVITY_IMPORT_DATA_KEY' ) ||
+            ! is_string( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) ||
+            strlen( MAD4B_ACTIVITY_IMPORT_DATA_KEY ) < 32 ||
+            ! function_exists( 'openssl_encrypt' ) ||
+            ! function_exists( 'openssl_decrypt' ) ||
+            ! in_array( 'aes-256-gcm', openssl_get_cipher_methods(), true ) )
+            return self::err( 'mad4b_batch_key_missing',
+                'An approved Staging AES-GCM import key is required.' );
+        return hash( 'sha256', MAD4B_ACTIVITY_IMPORT_DATA_KEY . '|' .
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug, true );
+    }
+    private static function names( $slug, $id ) {
+        $base = hash( 'sha256', MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
+        return array(
+            'active' => 'mad4b_batch_active_' . $base,
+            'manifest' => 'mad4b_batch_manifest_' . hash( 'sha256', $base . '|' . $id ),
+            'chunk_prefix' => 'mad4b_batch_chunk_' . hash( 'sha256', $base . '|' . $id ) . '_',
+            'approved' => 'mad4b_batch_approval_' . hash( 'sha256', $base . '|' . $id )
+        );
+    }
+    private static function context( $slug ) {
+        if ( ! self::environment() || ! preg_match( '/^[a-z0-9_-]{2,48}$/D', (string) $slug ) )
+            return self::err( 'mad4b_batch_site_denied', 'Enrolled staging administrator required.' );
+        $p = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $p ) || empty( $p['enabled'] ) )
+            return self::err( 'mad4b_batch_profile_denied', 'Profile is unavailable.' );
+        $c = MAD4B_SCP_Activity_Import_Authority::profile_contract( $p );
+        if ( empty( $c['validation'] ) || empty( $c['enabled_modes'] ) ||
+            ! MAD4B_SCP_Activity_Import_Authority::mode_allowed(
+                $p, 'admin_csv_upload' ) )
+            return self::err( 'mad4b_batch_policy_denied',
+                'The Profile must explicitly permit reviewed CSV source chunks.' );
+        $k = self::key( $slug );
+        if ( is_wp_error( $k ) ) return $k;
+        return array( 'profile' => $p, 'contract' => $c, 'key' => $k );
+    }
+    private static function read_manifest( $slug, $id, $context ) {
+        if ( ! is_string( $id ) || ! preg_match( '/^[a-f0-9]{32}$/D', $id ) )
+            return self::err( 'mad4b_batch_identity_invalid', 'Exact batch ID is required.' );
+        $names = self::names( $slug, $id );
+        $active = get_option( $names['active'], false );
+        $m = get_option( $names['manifest'], false );
+        if ( ! is_string( $active ) || ! hash_equals( $active, $id ) ||
+            ! is_array( $m ) || ! isset( $m['contract'], $m['profile_revision'],
+                $m['profile_authority_sha256'], $m['policy_sha256'] ) ||
+            self::CONTRACT !== $m['contract'] ||
+            (string) $m['profile_revision'] !== (string) $context['profile']['revision'] ||
+            ! hash_equals( (string) $m['profile_authority_sha256'],
+                (string) $context['profile']['authority_sha256'] ) ||
+            ! hash_equals( (string) $m['policy_sha256'],
+                MAD4B_SCP_Activity_Import_Authority::digest(
+                    $context['contract']['validation'] ) ) )
+            return self::err( 'mad4b_batch_profile_changed',
+                'Active batch is missing or governed Profile revision changed.' );
+        // Once an immutable archival intent is written, no append,
+        // approval, verify or CSV export may resurrect the old batch.
+        // Only archive_unlocked may continue audited cleanup.
+        $tombstone = 'mad4b_batch_archive_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $id );
+        if ( false !== get_option( $tombstone, false ) )
+            return self::err( 'mad4b_batch_archival_in_progress',
+                'An archival tombstone exists. Only exact audited cleanup is permitted.' );
+        return array( 'manifest' => $m, 'names' => $names );
+    }
+    /** Read-only visibility for an interrupted or concurrent Profile mutation. */
+    public static function mutation_status( $input = array() ) {
+        $slug = is_array( $input ) && isset( $input['profile_slug'] ) ?
+            (string) $input['profile_slug'] : '';
+        if ( ! self::environment() ||
+            ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            return self::err( 'mad4b_batch_mutex_status_denied',
+                'Enrolled Staging administrator and exact Profile required.' );
+        $observed = MAD4B_SCP_Batch_Atomic_Mutex::observe( $slug );
+        if ( is_wp_error( $observed ) ) return $observed;
+        $held = $observed['held'];
+        $base = hash( 'sha256', MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug );
+        $active = get_option( 'mad4b_batch_active_' . $base, false );
+        $active_valid = is_string( $active ) &&
+            preg_match( '/^[a-f0-9]{32}$/D', $active );
+        $names = $active_valid ? self::names( $slug, $active ) : array();
+        $manifest = $active_valid ?
+            get_option( $names['manifest'], false ) : false;
+        $audit = $active_valid ?
+            get_option( 'mad4b_batch_archive_' . hash( 'sha256',
+                MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+                    $active ), false ) : false;
+        $ts = $held ? $observed['started_at'] : false;
+        return array(
+            'contract' => 'mad4b.import-batch-lock-observation.v1',
+            'profile_slug' => $slug,
+            'mutation_lock_held' => $held,
+            'mutation_operation' => $held ? $observed['operation'] : null,
+            'mutation_lock_sha256' => $held ? $observed['sha256'] : null,
+            'lock_age_seconds' => $held && false !== $ts ?
+                max( 0, time() - $ts ) : null,
+            'active_batch_present' => $active_valid,
+            'active_batch_identity_sha256' => $active_valid ?
+                hash( 'sha256', $active ) : null,
+            'active_manifest_present' => is_array( $manifest ),
+            'archive_tombstone_present' => is_array( $audit ),
+            'safe_for_new_mutation' => !$held,
+            'automatic_lock_takeover_allowed' => false,
+            'automatic_source_import_allowed' => false,
+            'recovery_instruction' => $held ?
+                'Inspect server workers and durable exact batch/archival receipts with an authorized administrator. Never delete a lock solely because it is old.' :
+                'No batch mutation mutex blocks this Profile.',
+            'read_only' => true, 'mutation_performed' => false
+        );
+    }
+    /** Clean up a prior exact, enrolled batch even after Profile policy drift.
+     * This deliberately does not grant source preview or provider execution.
+     */
+    private static function archival_manifest( $slug, $id ) {
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            ! preg_match( '/^[a-f0-9]{32}$/D', $id ) )
+            return self::err( 'mad4b_batch_archive_identity_invalid',
+                'Exact site Profile and batch ID required.' );
+        $keys = self::names( $slug, $id );
+        $active = get_option( $keys['active'], false );
+        $m = get_option( $keys['manifest'], false );
+        if ( ! is_string( $active ) || ! hash_equals( $active, $id ) ||
+            ! is_array( $m ) ||
+            ( $m['contract'] ?? '' ) !== self::CONTRACT ||
+            ( $m['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid() ||
+            ( $m['profile_slug'] ?? '' ) !== $slug ||
+            ( $m['batch_id'] ?? '' ) !== $id ||
+            ! is_int( $m['expected_chunks'] ?? null ) ||
+            $m['expected_chunks'] < 2 ||
+            $m['expected_chunks'] > self::MAX_CHUNKS ||
+            ! isset( $m['profile_revision'], $m['profile_authority_sha256'],
+                $m['policy_sha256'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', (string) $m['policy_sha256'] ) )
+            return self::err( 'mad4b_batch_archive_manifest_invalid',
+                'Stored batch identity or membership cannot be independently verified.' );
+        return array( 'manifest' => $m, 'names' => $keys );
+    }
+    /**
+     * A UNIQUE-key SQL INSERT IGNORE mutex, not WordPress add_option().
+     * No automatic expiration: an interrupted mutation needs exact recovery.
+     * Does NOT fence WP All Import, MSR02 or third-party writers.
+     */
+    private static function locked_mutation( $operation, $input ) {
+        if ( ! is_array( $input ) || ! in_array( $operation,
+            array( 'begin', 'append', 'approve', 'archive' ), true ) )
+            return self::err( 'mad4b_batch_invalid_mutation',
+                'A recognized batch operation and object are required.' );
+        $slug = isset( $input['profile_slug'] ) ?
+            (string) $input['profile_slug'] : '';
+        if ( 'archive' === $operation ) {
+            if ( ! self::environment() ||
+                ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+                return self::err( 'mad4b_batch_archive_site_denied',
+                    'An enrolled Staging administrator is required for cleanup.' );
+        } else {
+            $ctx = self::context( $slug );
+            if ( is_wp_error( $ctx ) ) return $ctx;
+        }
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, $operation );
+        if ( is_wp_error( $lease ) ) return $lease;
+        try {
+            $callee = $operation . '_unlocked';
+            $result = call_user_func( array( __CLASS__, $callee ), $input );
+        } catch ( \Throwable $unexpected ) {
+            // Outcome may be unknown after a partial durable source write.
+            // Preserve the holder's lease for explicit incident investigation.
+            return self::err( 'mad4b_batch_mutation_interrupted',
+                'Unexpected exception. Investigate exact source journal before recovery.' );
+        }
+        $released = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        if ( is_wp_error( $released ) ) return $released;
+        return $result;
+    }
+    public static function begin( $input = array() ) {
+        return self::locked_mutation( 'begin', $input );
+    }
+    public static function append( $input = array() ) {
+        return self::locked_mutation( 'append', $input );
+    }
+    public static function approve( $input = array() ) {
+        return self::locked_mutation( 'approve', $input );
+    }
+    public static function archive( $input = array() ) {
+        return self::locked_mutation( 'archive', $input );
+    }
+    /** Writes only a bounded, non-autoloaded staging manifest. */
+    private static function begin_unlocked( $input = array() ) {
+        if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) ||
+            ! isset( $input['expected_chunks'] ) ||
+            ! is_int( $input['expected_chunks'] ) ||
+            $input['expected_chunks'] < 2 ||
+            $input['expected_chunks'] > self::MAX_CHUNKS )
+            return self::err( 'mad4b_batch_begin_invalid',
+                'Explicitly confirm 2–10 chunks of at most 500 rows each.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $ctx = self::context( $slug );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $id = bin2hex( random_bytes( 16 ) );
+        $names = self::names( $slug, $id );
+        if ( ! add_option( $names['active'], $id, '', false ) )
+            return self::err( 'mad4b_batch_active',
+                'An earlier source batch must be independently completed or archived.' );
+        $manifest = array(
+            'contract' => self::CONTRACT, 'batch_id' => $id,
+            'profile_slug' => $slug, 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'expected_chunks' => $input['expected_chunks'],
+            'profile_revision' => $ctx['profile']['revision'],
+            'profile_authority_sha256' => $ctx['profile']['authority_sha256'],
+            'policy_sha256' => MAD4B_SCP_Activity_Import_Authority::digest(
+                $ctx['contract']['validation'] ),
+            'created_at' => gmdate( 'c' ), 'state' => 'accepting_encrypted_chunks',
+            'provider_write_authorized' => false, 'wordpress_post_writes' => 0 );
+        if ( ! add_option( $names['manifest'], $manifest, '', false ) ||
+            self::hash( get_option( $names['manifest'], false ) ) !== self::hash( $manifest ) ) {
+            delete_option( $names['active'] );
+            return self::err( 'mad4b_batch_manifest_failed',
+                'Batch manifest was not independently persisted.' );
+        }
+        return array( 'contract' => self::CONTRACT, 'batch_id' => $id,
+            'expected_chunks' => $manifest['expected_chunks'],
+            'state' => $manifest['state'], 'post_writes' => 0 );
+    }
+    /** Append immutable, individually authenticated source rows, not content. */
+    private static function append_unlocked( $input = array() ) {
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $id = isset( $input['batch_id'] ) ? (string) $input['batch_id'] : '';
+        $index = isset( $input['chunk_index'] ) ? $input['chunk_index'] : null;
+        if ( ! is_array( $input ) || ! is_int( $index ) || $index < 0 )
+            return self::err( 'mad4b_batch_chunk_index_invalid', 'Nonnegative integer chunk index required.' );
+        $ctx = self::context( $slug );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $read = self::read_manifest( $slug, $id, $ctx );
+        if ( is_wp_error( $read ) ) return $read;
+        if ( $index >= $read['manifest']['expected_chunks'] )
+            return self::err( 'mad4b_batch_chunk_out_of_range', 'Chunk exceeds declared source plan.' );
+        $chunk = isset( $input['source'] ) ? $input['source'] : null;
+        if ( ! is_array( $chunk ) || ! isset( $chunk['profile_slug'] ) ||
+            $chunk['profile_slug'] !== $slug )
+            return self::err( 'mad4b_batch_chunk_profile_mismatch', 'Chunk belongs to another Profile.' );
+        $preview = MAD4B_SCP_Activity_Import_Review::plan( $chunk );
+        if ( is_wp_error( $preview ) ) return $preview;
+        if ( $preview['policy_sha256'] !== $read['manifest']['policy_sha256'] )
+            return self::err( 'mad4b_batch_chunk_policy_drift', 'Site policy differs from batch authority.' );
+        $json = wp_json_encode( $chunk, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        if ( ! is_string( $json ) || strlen( $json ) > 1048576 )
+            return self::err( 'mad4b_batch_chunk_size', 'Each encrypted chunk must be at most 1 MiB.' );
+        $digest = hash( 'sha256', $json );
+        $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+            $id . '|' . $index . '|' . $read['manifest']['policy_sha256'] . '|' . $digest;
+        $nonce = random_bytes( 12 );
+        $tag = '';
+        $cipher = openssl_encrypt( $json, 'aes-256-gcm', $ctx['key'],
+            OPENSSL_RAW_DATA, $nonce, $tag, $aad, 16 );
+        if ( ! is_string( $cipher ) || strlen( $tag ) !== 16 )
+            return self::err( 'mad4b_batch_chunk_encryption', 'Chunk encryption failed.' );
+        $record = array( 'chunk_index' => $index,
+            'payload_sha256' => $digest, 'plan_sha256' => $preview['plan_sha256'],
+            'row_count' => count( $chunk['rows'] ),
+            'nonce' => base64_encode( $nonce ), 'tag' => base64_encode( $tag ),
+            'ciphertext' => base64_encode( $cipher ),
+            'blocking_issue_count' => $preview['block_issue_count'],
+            'warning_issue_count' => $preview['review_issue_count'] );
+        $key = $read['names']['chunk_prefix'] . $index;
+        if ( ! add_option( $key, $record, '', false ) )
+            return self::err( 'mad4b_batch_chunk_already_staged',
+                'Immutable chunk index already exists; refusing overwrite or blind retry.' );
+        if ( self::hash( get_option( $key, false ) ) !== self::hash( $record ) )
+            return self::err( 'mad4b_batch_chunk_readback_failed',
+                'Encrypted chunk write/readback did not match.' );
+        return array( 'contract' => self::CONTRACT, 'batch_id' => $id,
+            'chunk_index' => $index, 'row_count' => $record['row_count'],
+            'chunk_sha256' => $digest, 'blocking_issue_count' => $record['blocking_issue_count'],
+            'warning_issue_count' => $record['warning_issue_count'],
+            'post_writes' => 0, 'mutated_wordpress_posts' => false );
+    }
+    /**
+     * Check all encrypted records and cross-chunk IDs without provider writes.
+     * Full WPML groups must remain together in a chunk under configured policy.
+     */
+    public static function verify( $input = array() ) {
+        if ( ! is_array( $input ) ) return self::err( 'mad4b_batch_input_invalid', 'Object required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $id = isset( $input['batch_id'] ) ? (string) $input['batch_id'] : '';
+        $ctx = self::context( $slug );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $read = self::read_manifest( $slug, $id, $ctx );
+        if ( is_wp_error( $read ) ) return $read;
+        $manifest = $read['manifest'];
+        $policy = $ctx['contract']['validation'];
+        $id_col = $policy['identity_field'];
+        $seen_ids = array(); $seen_groups = array();
+        $rows = 0; $blocks = 0; $warnings = 0; $chunks = array();
+        $all_present = true; $collision_count = 0; $translation_cross_chunk = 0;
+        for ( $i = 0; $i < $manifest['expected_chunks']; $i++ ) {
+            $part = get_option( $read['names']['chunk_prefix'] . $i, false );
+            if ( ! is_array( $part ) ) {
+                $all_present = false;
+                $chunks[] = array( 'index' => $i, 'state' => 'missing' );
+                continue;
+            }
+            $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+                $id . '|' . $i . '|' . $manifest['policy_sha256'] . '|' .
+                $part['payload_sha256'];
+            $json = openssl_decrypt( base64_decode( $part['ciphertext'], true ),
+                'aes-256-gcm', $ctx['key'], OPENSSL_RAW_DATA,
+                base64_decode( $part['nonce'], true ),
+                base64_decode( $part['tag'], true ), $aad );
+            if ( ! is_string( $json ) ||
+                ! hash_equals( $part['payload_sha256'], hash( 'sha256', $json ) ) )
+                return self::err( 'mad4b_batch_chunk_tampered', 'Encrypted chunk failed independent readback.' );
+            $data = json_decode( $json, true );
+            if ( ! is_array( $data ) || ( $data['profile_slug'] ?? '' ) !== $slug )
+                return self::err( 'mad4b_batch_chunk_decode', 'Encrypted chunk has no matching Profile.' );
+            $preview = MAD4B_SCP_Activity_Import_Review::plan( $data );
+            if ( is_wp_error( $preview ) ||
+                ! hash_equals( (string) $part['plan_sha256'],
+                    is_wp_error( $preview ) ? '' : $preview['plan_sha256'] ) )
+                return self::err( 'mad4b_batch_chunk_stale', 'A source chunk no longer passes exact policy review.' );
+            $count = count( $data['rows'] );
+            if ( $count !== (int) $part['row_count'] )
+                return self::err( 'mad4b_batch_chunk_count_changed', 'Source count readback differs.' );
+            foreach ( $data['rows'] as $row ) {
+                $identity = (string) $row[ $id_col ];
+                $id_hash = hash( 'sha256', $identity );
+                if ( isset( $seen_ids[ $id_hash ] ) ) $collision_count++;
+                $seen_ids[ $id_hash ] = true;
+                if ( ! empty( $policy['require_complete_wpml_groups'] ) ) {
+                    $group_hash = hash( 'sha256', (string) $row['_wpml_import_translation_group'] );
+                    if ( isset( $seen_groups[ $group_hash ] ) &&
+                        $seen_groups[ $group_hash ] !== $i ) $translation_cross_chunk++;
+                    $seen_groups[ $group_hash ] = $i;
+                }
+            }
+            $rows += $count;
+            $blocks += $preview['block_issue_count'];
+            $warnings += $preview['review_issue_count'];
+            $chunks[] = array( 'index' => $i, 'state' => 'staged',
+                'row_count' => $count, 'source_sha256' => $part['payload_sha256'],
+                'plan_sha256' => $preview['plan_sha256'] );
+        }
+        $plan = array(
+            'contract' => self::CONTRACT, 'batch_id' => $id,
+            'profile_slug' => $slug, 'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+            'profile_revision' => $manifest['profile_revision'],
+            'profile_authority_sha256' => $manifest['profile_authority_sha256'],
+            'policy_sha256' => $manifest['policy_sha256'],
+            'expected_chunks' => $manifest['expected_chunks'],
+            'chunks' => $chunks, 'total_rows' => $rows,
+            'blocks' => $blocks, 'warnings' => $warnings,
+            'cross_chunk_duplicate_id_count' => $collision_count,
+            'cross_chunk_wpml_group_split_count' => $translation_cross_chunk,
+            'all_chunks_present' => $all_present,
+            'ready_for_manual_batch_review' =>
+                $all_present && $blocks === 0 && $collision_count === 0 &&
+                $translation_cross_chunk === 0,
+            'provider_import_certified' => false,
+            'cross_provider_write_fence_certified' => false,
+            'rollback_certified' => false,
+            'automatic_execution_allowed' => false,
+            'read_only' => true, 'mutation_performed' => false );
+        $plan['plan_sha256'] = self::hash( $plan );
+        return $plan;
+    }
+    /**
+     * Manual-only batch approval: binds every immutable page and complete
+     * nonblocking warning count. Never authorizes WP All Import execution.
+     */
+    private static function approve_unlocked( $input = array() ) {
+        if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) ||
+            ! is_int( $input['acknowledged_warning_count'] ?? null ) ||
+            ! is_string( $input['plan_sha256'] ?? null ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $input['plan_sha256'] ) )
+            return self::err( 'mad4b_batch_approval_invalid',
+                'Explicit exact plan hash, full warning count and confirmation required.' );
+        $v = self::verify( $input );
+        if ( is_wp_error( $v ) ) return $v;
+        if ( ! $v['ready_for_manual_batch_review'] ||
+            ! hash_equals( $v['plan_sha256'], $input['plan_sha256'] ) ||
+            $v['warnings'] !== $input['acknowledged_warning_count'] )
+            return self::err( 'mad4b_batch_approval_stale',
+                'All source chunks, identity groups and warning totals must match the exact review plan.' );
+        $names = self::names( $v['profile_slug'], $v['batch_id'] );
+        $record = array(
+            'contract' => 'mad4b.import-batch-manual-approval.v1',
+            'batch_id' => $v['batch_id'], 'profile_slug' => $v['profile_slug'],
+            'site_uuid' => $v['site_uuid'],
+            'plan_sha256' => $v['plan_sha256'],
+            'warning_count_acknowledged' => $input['acknowledged_warning_count'],
+            'approved_at' => gmdate( 'c' ),
+            'approved_by' => (int) get_current_user_id(),
+            'authorization_scope' => 'manual_csv_chunk_export_only',
+            'post_writes' => 0, 'provider_execution_authorized' => false );
+        if ( ! add_option( $names['approved'], $record, '', false ) )
+            return self::err( 'mad4b_batch_already_approved',
+                'Manual source approval already exists; reread its immutable receipt.' );
+        if ( self::hash( get_option( $names['approved'], false ) ) !==
+            self::hash( $record ) )
+            return self::err( 'mad4b_batch_approval_readback_failed',
+                'Could not independently read back the approval record.' );
+        return $record;
+    }
+    /**
+     * Produce a validated bounded CSV page only after independent re-review,
+     * exact manual approval and absence of blockers/cross-chunk duplicates.
+     */
+    /**
+     * Reserve this Profile for the entire approval/readback/CSV handoff,
+     * preventing archive or append until the stream is completely written.
+     */
+    public static function export_chunk( $slug, $id, $index ) {
+        if ( ! self::environment() ) return self::err( 'mad4b_batch_export_site_denied',
+            'An enrolled Staging administrator is required to export.' );
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( $slug, 'export' );
+        if ( is_wp_error( $lease ) ) return $lease;
+        try {
+            $result = self::export_chunk_unlocked( $slug, $id, $index );
+        } catch ( \Throwable $unexpected ) {
+            return self::err( 'mad4b_batch_export_interrupted',
+                'Download outcome is unknown. Lock retained for investigation.' );
+        }
+        $released = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        if ( is_wp_error( $released ) ) return $released;
+        return $result;
+    }
+    private static function export_chunk_unlocked( $slug, $id, $index ) {
+        if ( ! is_int( $index ) || $index < 0 || $index >= self::MAX_CHUNKS )
+            return self::err( 'mad4b_batch_export_index', 'Valid integer chunk required.' );
+        $ctx = self::context( $slug );
+        if ( is_wp_error( $ctx ) ) return $ctx;
+        $v = self::verify( array( 'profile_slug' => $slug, 'batch_id' => $id ) );
+        if ( is_wp_error( $v ) ) return $v;
+        if ( ! $v['ready_for_manual_batch_review'] ||
+            $index >= $v['expected_chunks'] )
+            return self::err( 'mad4b_batch_export_not_ready',
+                'Entire batch must pass review before exporting any chunk.' );
+        $names = self::names( $slug, $id );
+        $approved = get_option( $names['approved'], false );
+        if ( ! is_array( $approved ) ||
+            ! isset( $approved['plan_sha256'], $approved['authorization_scope'] ) ||
+            'manual_csv_chunk_export_only' !== $approved['authorization_scope'] ||
+            ! hash_equals( $approved['plan_sha256'], $v['plan_sha256'] ) ||
+            $approved['warning_count_acknowledged'] !== $v['warnings'] )
+            return self::err( 'mad4b_batch_export_unapproved',
+                'Current full-batch source approval is absent or stale.' );
+        $part = get_option( $names['chunk_prefix'] . $index, false );
+        if ( ! is_array( $part ) ) return self::err( 'mad4b_batch_chunk_missing', 'Chunk not found.' );
+        $aad = MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' .
+            $id . '|' . $index . '|' . $v['policy_sha256'] . '|' .
+            $part['payload_sha256'];
+        $json = openssl_decrypt( base64_decode( $part['ciphertext'], true ),
+            'aes-256-gcm', $ctx['key'], OPENSSL_RAW_DATA,
+            base64_decode( $part['nonce'], true ),
+            base64_decode( $part['tag'], true ), $aad );
+        if ( ! is_string( $json ) ||
+            ! hash_equals( $part['payload_sha256'], hash( 'sha256', $json ) ) )
+            return self::err( 'mad4b_batch_export_tampered', 'Source ciphertext is invalid.' );
+        $source = json_decode( $json, true );
+        if ( ! is_array( $source ) || ! isset( $source['headers'], $source['rows'] ) )
+            return self::err( 'mad4b_batch_export_shape', 'Source cannot be exported.' );
+        if ( headers_sent() ) return self::err( 'mad4b_batch_export_headers_sent',
+            'Download headers have already been sent.' );
+        $stream = fopen( 'php://temp/maxmemory:2097152', 'w+b' );
+        if ( !$stream ) return self::err( 'mad4b_batch_export_buffer', 'CSV buffer unavailable.' );
+        if ( false === fputcsv( $stream, $source['headers'] ) ) {
+            fclose( $stream );
+            return self::err( 'mad4b_batch_export_encoding', 'Cannot encode CSV header.' );
+        }
+        foreach ( $source['rows'] as $row ) {
+            $values = array();
+            foreach ( $source['headers'] as $header ) {
+                $value = isset( $row[ $header ] ) ? (string) $row[ $header ] : '';
+                if ( preg_match( '/^[=+@]/', ltrim( $value ) ) ||
+                    preg_match( '/^-(?!\\d+(?:\\.\\d+)?$)/', ltrim( $value ) ) ||
+                    preg_match( '/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/', $value ) ) {
+                    fclose( $stream );
+                    return self::err( 'mad4b_batch_csv_unsafe',
+                        'Source cell contains a forbidden spreadsheet formula or control value.' );
+                }
+                $values[] = $value;
+            }
+            if ( false === fputcsv( $stream, $values ) ) {
+                fclose( $stream );
+                return self::err( 'mad4b_batch_export_encoding', 'Cannot encode a CSV row.' );
+            }
+        }
+        $length = ftell( $stream );
+        if ( ! is_int( $length ) || $length < 1 || $length > 2097152 ) {
+            fclose( $stream );
+            return self::err( 'mad4b_batch_export_oversize', 'Encoded CSV exceeds 2 MiB.' );
+        }
+        rewind( $stream );
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="mad4b-approved-batch-' .
+            substr( $id, 0, 10 ) . '-part-' . ( $index + 1 ) . '.csv"' );
+        header( 'X-Content-Type-Options: nosniff' );
+        header( 'Content-Length: ' . $length );
+        $written = fpassthru( $stream );
+        fclose( $stream );
+        if ( ! is_int( $written ) || $written !== $length )
+            return self::err( 'mad4b_batch_export_partial_transfer',
+                'The stream was not delivered completely. Inspect transport logs.' );
+        return true;
+    }
+    public static function status( $input = array() ) {
+        $v = self::verify( $input );
+        if ( is_wp_error( $v ) ) return $v;
+        $names = self::names( $v['profile_slug'], $v['batch_id'] );
+        $approval = get_option( $names['approved'], false );
+        $v['approved_for_manual_chunk_export'] =
+            is_array( $approval ) &&
+            isset( $approval['plan_sha256'], $approval['authorization_scope'],
+                $approval['warning_count_acknowledged'] ) &&
+            'manual_csv_chunk_export_only' === $approval['authorization_scope'] &&
+            hash_equals( $v['plan_sha256'], $approval['plan_sha256'] ) &&
+            $v['ready_for_manual_batch_review'] &&
+            $v['warnings'] === $approval['warning_count_acknowledged'];
+        return $v;
+    }
+    public static function download_admin() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Staging administrator access required.' );
+        $slug = isset( $_POST['profile_slug'] ) ?
+            sanitize_key( wp_unslash( $_POST['profile_slug'] ) ) : '';
+        $id = isset( $_POST['batch_id'] ) ?
+            sanitize_text_field( wp_unslash( $_POST['batch_id'] ) ) : '';
+        $part = isset( $_POST['chunk_index'] ) ?
+            absint( wp_unslash( $_POST['chunk_index'] ) ) : null;
+        if ( ! preg_match( '/^[a-f0-9]{32}$/D', $id ) ||
+            ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) )
+            wp_die( 'Exact batch identity and Profile required.' );
+        check_admin_referer( 'mad4b_batch_export_' . $slug . '_' . $id,
+            'mad4b_batch_export_nonce' );
+        $exported = self::export_chunk( $slug, $id, $part );
+        if ( is_wp_error( $exported ) )
+            wp_die( esc_html( $exported->get_error_message() ) );
+        exit;
+    }
+    /**
+     * Explicit archival creates a nonautoloaded audit tombstone before
+     * releasing the per-Profile active slot. An archived approval cannot run.
+     */
+    private static function archive_unlocked( $input = array() ) {
+        if ( ! is_array( $input ) || true !== ( $input['confirmed'] ?? false ) )
+            return self::err( 'mad4b_batch_archive_confirmation',
+                'Explicit administrative archive confirmation required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $id = isset( $input['batch_id'] ) ? (string) $input['batch_id'] : '';
+        $read = self::archival_manifest( $slug, $id );
+        $names = self::names( $slug, $id );
+        $tombstone_key = 'mad4b_batch_archive_' . hash( 'sha256',
+            MAD4B_SCP_Site_Profile::site_uuid() . '|' . $slug . '|' . $id );
+        if ( is_wp_error( $read ) ) {
+            // If a process crashed after deleting the manifest but before
+            // releasing the slot, recover only from an independently persisted
+            // exact-ID tombstone. Never guess the source page count.
+            $audit = get_option( $tombstone_key, false );
+            $active = get_option( $names['active'], false );
+            $manifest = get_option( $names['manifest'], false );
+            if ( ! is_array( $audit ) ||
+                ! isset( $audit['batch_id_sha256'], $audit['expected_chunks'] ) ||
+                ! is_string( $active ) || ! hash_equals( $active, $id ) ||
+                false !== $manifest ||
+                ! hash_equals( (string) $audit['batch_id_sha256'],
+                    hash( 'sha256', $id ) ) ||
+                ! is_int( $audit['expected_chunks'] ) ||
+                $audit['expected_chunks'] < 2 ||
+                $audit['expected_chunks'] > self::MAX_CHUNKS )
+                return $read;
+            for ( $i = 0; $i < $audit['expected_chunks']; $i++ ) {
+                $key = $names['chunk_prefix'] . $i;
+                delete_option( $key );
+                if ( false !== get_option( $key, false ) )
+                    return self::err( 'mad4b_batch_archive_recovery_cleanup',
+                        'Recovery cannot verify encrypted page removal.' );
+            }
+            delete_option( $names['approved'] );
+            if ( false !== get_option( $names['approved'], false ) )
+                return self::err( 'mad4b_batch_archive_recovery_approval',
+                    'Recovery cannot verify approval removal.' );
+            delete_option( $names['active'] );
+            if ( false !== get_option( $names['active'], false ) )
+                return self::err( 'mad4b_batch_archive_recovery_release',
+                    'Recovery cannot verify active slot release.' );
+            return array( 'contract' => self::CONTRACT,
+                'state' => 'archived_after_interrupted_cleanup',
+                'batch_id_sha256' => hash( 'sha256', $id ),
+                'audit_recorded' => true, 'wordpress_post_writes' => 0 );
+        }
+        $audit = array( 'batch_id_sha256' => hash( 'sha256', $id ),
+            'profile_slug' => $slug, 'archived_at' => gmdate( 'c' ),
+            'archived_by' => (int) get_current_user_id(),
+            'manifest_sha256' => self::hash( $read['manifest'] ),
+            'expected_chunks' => $read['manifest']['expected_chunks'],
+            'post_writes' => 0 );
+        if ( ! add_option( $tombstone_key, $audit, '', false ) ) {
+            $old_audit = get_option( $tombstone_key, false );
+            if ( ! is_array( $old_audit ) ||
+                ! isset( $old_audit['batch_id_sha256'], $old_audit['manifest_sha256'] ) ||
+                ! hash_equals( $old_audit['batch_id_sha256'], hash( 'sha256', $id ) ) ||
+                ! hash_equals( $old_audit['manifest_sha256'],
+                    self::hash( $read['manifest'] ) ) )
+                return self::err( 'mad4b_batch_archive_audit_mismatch',
+                    'Stored archive identity differs from this exact source batch.' );
+            // Recover an interrupted archive by repeating only the bounded
+            // cleanup after an immutable matching tombstone was proven.
+        } elseif ( self::hash( get_option( $tombstone_key, false ) ) !==
+            self::hash( $audit ) ) {
+            return self::err( 'mad4b_batch_archive_audit_failed',
+                'Audit was not independently confirmed. Batch has not been released.' );
+        }
+        for ( $i = 0; $i < $read['manifest']['expected_chunks']; $i++ ) {
+            $chunk_key = $names['chunk_prefix'] . $i;
+            delete_option( $chunk_key );
+            if ( false !== get_option( $chunk_key, false ) )
+                return self::err( 'mad4b_batch_archive_chunk_cleanup_failed',
+                    'Archive audit exists, but encrypted chunk deletion is not verified. Active Profile remains blocked.' );
+        }
+        delete_option( $names['approved'] );
+        if ( false !== get_option( $names['approved'], false ) )
+            return self::err( 'mad4b_batch_archive_approval_cleanup_failed',
+                'Manual approval could not be deleted. Batch remains blocked.' );
+        delete_option( $names['manifest'] );
+        if ( false !== get_option( $names['manifest'], false ) )
+            return self::err( 'mad4b_batch_archive_manifest_cleanup_failed',
+                'Manifest cleanup not independently verified. Batch remains blocked.' );
+        delete_option( $names['active'] );
+        if ( false !== get_option( $names['active'], false ) )
+            return self::err( 'mad4b_batch_archive_release_unverified',
+                'Batch archival recorded but profile lock release is not verified.' );
+        return array( 'contract' => self::CONTRACT, 'state' => 'archived',
+            'batch_id_sha256' => hash( 'sha256', $id ),
+            'audit_recorded' => true, 'wordpress_post_writes' => 0 );
+    }
+
+}
+
+if ( function_exists( 'add_action' ) )
+    add_action( 'admin_post_mad4b_activity_batch_export',
+        array( 'MAD4B_SCP_Activity_Import_Batches', 'download_admin' ) );

@@ -1,0 +1,438 @@
+{
+  "contract": "mad4b.cso01.requirements.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "requirements": [
+    {
+      "id": "CSO-R001",
+      "name": "Site Explorer",
+      "description": "Read-only inventory of site, plugin, theme, CPT, taxonomy, option, meta and native Ability availability with capability provenance; never enumerate arbitrary private storage.",
+      "primary_gate": "CSO-G1",
+      "operation_family": "site_discover",
+      "negative_case": "unknown plugin or stale inventory denies write",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T001",
+        "CSO-T002",
+        "CSO-T003"
+      ]
+    },
+    {
+      "id": "CSO-R002",
+      "name": "Universal Form Bridge",
+      "description": "Build chat-facing forms from certified typed descriptors for options, post/term/user meta, CPTs, relationships and approved custom adapters; no arbitrary SQL.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "form_schema",
+      "negative_case": "unknown dynamic field defaults to read-only",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T004",
+        "CSO-T005",
+        "CSO-T006"
+      ]
+    },
+    {
+      "id": "CSO-R003",
+      "name": "Smart Autocomplete",
+      "description": "Resolve terms, posts, linked records and select options by exact scoped queries with paging, language and cardinality.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "form_suggest",
+      "negative_case": "cross-tenant suggestion forbidden",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T007",
+        "CSO-T008",
+        "CSO-T009"
+      ]
+    },
+    {
+      "id": "CSO-R004",
+      "name": "Dependency-aware Forms",
+      "description": "Apply declarative conditional visibility, validation and required-if constraints without executing untrusted plugin expressions.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "form_validate",
+      "negative_case": "hidden-field injection rejected",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T010",
+        "CSO-T011",
+        "CSO-T012"
+      ]
+    },
+    {
+      "id": "CSO-R005",
+      "name": "Visual Diff and Preview",
+      "description": "Render redacted before/after values, post-render preview and estimated side effects bound to exact object revision.",
+      "primary_gate": "CSO-G3",
+      "operation_family": "change_plan",
+      "negative_case": "preview must not mutate or claim publication",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T013",
+        "CSO-T014",
+        "CSO-T015"
+      ]
+    },
+    {
+      "id": "CSO-R006",
+      "name": "Secure Credentials Center",
+      "description": "Collect API keys through short-lived first-party HTTPS secret handoff with origin binding and no chat/MCP plaintext; verify, rotate and revoke.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "secret_session",
+      "negative_case": "secret must never appear in chat logs or receipt",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T016",
+        "CSO-T017",
+        "CSO-T018"
+      ]
+    },
+    {
+      "id": "CSO-R007",
+      "name": "Bulk Operations",
+      "description": "Scope and preview batches, canary first, individual idempotency keys, quotas, checkpoint per item and stop-on-error policy.",
+      "primary_gate": "CSO-G4",
+      "operation_family": "bulk_plan",
+      "negative_case": "partial success never reported as all success",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T019",
+        "CSO-T020",
+        "CSO-T021"
+      ]
+    },
+    {
+      "id": "CSO-R008",
+      "name": "Conversation Workflow Builder",
+      "description": "Compile natural-language intent to a typed, reviewable DAG of certified operations, conditions, waits, triggers and compensation.",
+      "primary_gate": "CSO-G4",
+      "operation_family": "workflow_compile",
+      "negative_case": "prompt injection cannot create capabilities",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T022",
+        "CSO-T023",
+        "CSO-T024"
+      ]
+    },
+    {
+      "id": "CSO-R009",
+      "name": "History, Reconcile and Rollback",
+      "description": "Maintain immutable redacted pre/post fingerprints, journal and supported per-provider compensation with unrecoverable disclosures.",
+      "primary_gate": "CSO-G4",
+      "operation_family": "change_history",
+      "negative_case": "unknown commit state prohibits blind retry",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T025",
+        "CSO-T026",
+        "CSO-T027"
+      ]
+    },
+    {
+      "id": "CSO-R010",
+      "name": "Content and Media Studio",
+      "description": "Draft posts, pages, tours/products and approved CPTs; native meta, taxonomy, relations, galleries, alt text, SEO and WPML parity.",
+      "primary_gate": "CSO-G5",
+      "operation_family": "content_plan",
+      "negative_case": "media rights and publish permission checked",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T028",
+        "CSO-T029",
+        "CSO-T030"
+      ]
+    },
+    {
+      "id": "CSO-R011",
+      "name": "Multi-site Command Center",
+      "description": "Inventory many sites and stage policy/template diffs per site with isolation, per-site grants and rollback evidence.",
+      "primary_gate": "CSO-G6",
+      "operation_family": "multisite_plan",
+      "negative_case": "one-site grant does not grant another site",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T031",
+        "CSO-T032",
+        "CSO-T033"
+      ]
+    },
+    {
+      "id": "CSO-R012",
+      "name": "Approval and Delegation Center",
+      "description": "Explain blast radius and Before/After, route to role owners, timebox exact plan hash and enforce dual-control where required.",
+      "primary_gate": "CSO-G3",
+      "operation_family": "approval_plan",
+      "negative_case": "self-approval forbidden for segregated roles",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T034",
+        "CSO-T035",
+        "CSO-T036"
+      ]
+    },
+    {
+      "id": "CSO-R013",
+      "name": "Monitoring and Smart Alerts",
+      "description": "Monitor drift, failures, expiration, performance and content changes with opt-in conditional alerts and deduplicated incident states.",
+      "primary_gate": "CSO-G7",
+      "operation_family": "monitor_plan",
+      "negative_case": "stale monitoring evidence cannot claim online",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T037",
+        "CSO-T038",
+        "CSO-T039"
+      ]
+    },
+    {
+      "id": "CSO-R014",
+      "name": "Staging to Production Promotion",
+      "description": "Produce independently certified exact-source diffs and signed artifact plans; require separate production authority and test proof.",
+      "primary_gate": "CSO-G8",
+      "operation_family": "promotion_plan",
+      "negative_case": "staging approval never authorizes Production",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T040",
+        "CSO-T041",
+        "CSO-T042"
+      ]
+    },
+    {
+      "id": "CSO-R015",
+      "name": "Reusable Templates",
+      "description": "Version signed form/workflow templates with semantic field mapping and compatibility migration; no hidden credential reuse.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "template_plan",
+      "negative_case": "template cannot carry authority or secrets",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T043",
+        "CSO-T044",
+        "CSO-T045"
+      ]
+    },
+    {
+      "id": "CSO-R016",
+      "name": "Contextual Help and Troubleshooting",
+      "description": "Explain each field, storage mapping, ownership, side effects, and next safe remediation from certified metadata.",
+      "primary_gate": "CSO-G9",
+      "operation_family": "form_explain",
+      "negative_case": "unknown behavior clearly labelled unknown",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T046",
+        "CSO-T047",
+        "CSO-T048"
+      ]
+    },
+    {
+      "id": "CSO-R017",
+      "name": "Self Diagnostics and Guided Recovery",
+      "description": "Identify failing provider, schema, host, runtime, plugin and stored state; plan one fenced action with independent readback.",
+      "primary_gate": "CSO-G7",
+      "operation_family": "doctor_plan",
+      "negative_case": "disabled Host/Developer lane cannot silently execute",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T049",
+        "CSO-T050",
+        "CSO-T051"
+      ]
+    },
+    {
+      "id": "CSO-R018",
+      "name": "Conversation Intent and Session Continuity",
+      "description": "Retain redacted draft intent and resumable form sessions with TTL, actor/site fencing and explicit confirmation on commit.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "form_draft",
+      "negative_case": "old-session replay rejected",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T052",
+        "CSO-T053",
+        "CSO-T054"
+      ]
+    },
+    {
+      "id": "CSO-R019",
+      "name": "Dynamic Storage Adapter Registry",
+      "description": "Register vendor/version-specific adapters that preserve plugin hooks, sanitizers and transactions; run conformance before writes.",
+      "primary_gate": "CSO-G1",
+      "operation_family": "adapter_certify_plan",
+      "negative_case": "unrecognized table fails closed",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T055",
+        "CSO-T056",
+        "CSO-T057"
+      ]
+    },
+    {
+      "id": "CSO-R020",
+      "name": "Localization, RTL and Accessibility",
+      "description": "Provide keyboard/screen-reader/RTL forms, accessible validation and localized terms without corrupting machine identifiers.",
+      "primary_gate": "CSO-G9",
+      "operation_family": "form_accessibility_report",
+      "negative_case": "missing labels and focus traps block",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T058",
+        "CSO-T059",
+        "CSO-T060"
+      ]
+    },
+    {
+      "id": "CSO-R021",
+      "name": "Workflow Quality and Usage Telemetry",
+      "description": "Measure completion, abandonment, retries, latency and cost with redacted audit and tenant retention policies.",
+      "primary_gate": "CSO-G9",
+      "operation_family": "ux_metrics_plan",
+      "negative_case": "no secret/value leakage in analytics",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T061",
+        "CSO-T062",
+        "CSO-T063"
+      ]
+    },
+    {
+      "id": "CSO-R022",
+      "name": "Policy and Data Governance",
+      "description": "Pin issuer, subject, site UUID, origin, environment, source SHA, role, capability and data residency for every operation.",
+      "primary_gate": "CSO-G1",
+      "operation_family": "policy_explain",
+      "negative_case": "cross-origin or stale source denies",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T064",
+        "CSO-T065",
+        "CSO-T066"
+      ]
+    },
+    {
+      "id": "CSO-R023",
+      "name": "Durable Cross-plugin Orchestration",
+      "description": "Use saga/checkpoints, dependency DAG, compensating ops, independent readback, concurrency and crash recovery.",
+      "primary_gate": "CSO-G4",
+      "operation_family": "workflow_plan",
+      "negative_case": "no impossible global database atomicity promise",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T067",
+        "CSO-T068",
+        "CSO-T069"
+      ]
+    },
+    {
+      "id": "CSO-R024",
+      "name": "Drift and Lifecycle Management",
+      "description": "Compare desired/actual options and deployed plugin changes; suspend stale adapters and queue human owner decisions.",
+      "primary_gate": "CSO-G7",
+      "operation_family": "drift_plan",
+      "negative_case": "changed plugin schema invalidates stale form",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T070",
+        "CSO-T071",
+        "CSO-T072"
+      ]
+    },
+    {
+      "id": "CSO-R025",
+      "name": "Credential Lifecycle and Rotation",
+      "description": "Manage expiry, least-privilege scopes, provider-bound rotation and zero-plaintext verification receipts.",
+      "primary_gate": "CSO-G2",
+      "operation_family": "secret_rotate_plan",
+      "negative_case": "rotation never echoes old or new value",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T073",
+        "CSO-T074",
+        "CSO-T075"
+      ]
+    },
+    {
+      "id": "CSO-R026",
+      "name": "Event Trigger and Webhook Automation",
+      "description": "Use authenticated event providers with signature, replay nonce, ordering and per-site rate limits.",
+      "primary_gate": "CSO-G4",
+      "operation_family": "trigger_plan",
+      "negative_case": "spoofed webhook never mutates",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T076",
+        "CSO-T077",
+        "CSO-T078"
+      ]
+    },
+    {
+      "id": "CSO-R027",
+      "name": "Commerce and Custom Object Integration",
+      "description": "Support products, orders and arbitrary custom objects only through certified provider APIs and business validation hooks.",
+      "primary_gate": "CSO-G5",
+      "operation_family": "object_contract",
+      "negative_case": "payment/order side effects need distinct policy",
+      "status": "OPEN",
+      "evidence_class": "DESIGN_DERIVED",
+      "mutations_enabled": false,
+      "task_ids": [
+        "CSO-T079",
+        "CSO-T080",
+        "CSO-T081"
+      ]
+    }
+  ]
+}

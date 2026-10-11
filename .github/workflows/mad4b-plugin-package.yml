@@ -30,6 +30,24 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      - name: Fail closed on any distributable PHP parse error
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          test -d "$root"
+          command -v php >/dev/null
+          count=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" >/dev/null || {
+              echo "Blocking invalid PHP source: $file" >&2
+              exit 1
+            }
+            count=$((count + 1))
+          done < <(find "$root" -type f -name '*.php' -print0 | sort -z)
+          test "$count" -gt 0
+          echo "Full plugin PHP syntax preflight PASS: $count files"
+
       - name: Verify certified MCP dependency disk integrity contract
         shell: bash
         run: |
@@ -39,6 +57,49 @@ jobs:
           php -l "$root/tests/dependency-mcp-adapter-integrity-runtime.php"
           php "$root/tests/dependency-mcp-adapter-integrity-runtime.php"
           python3 "$root/tests/dependency-certified-runtime-contract.py"
+
+      - name: Verify Staging Autopilot and guarded WordPress config sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-staging-autopilot.php"
+          php -l "$root/includes/class-mad4b-scp-site-profile-admin.php"
+          php -l "$root/includes/class-mad4b-scp-wp-config-environment-sync.php"
+          php -l "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/staging-autopilot-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-selected-head-update.php"
+          php -l "$root/tests/selected-head-assistant-recovery-runtime.php"
+          php "$root/tests/selected-head-assistant-recovery-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-wordpress-native-opt-in.php"
+          php -l "$root/tests/wordpress-native-candidate-policy-runtime.php"
+          php "$root/tests/wordpress-native-candidate-policy-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-manual-workflow-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-operational-remediation.php"
+          php -l "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php -l "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-admin-operation-profiles.php"
+          php -l "$root/tests/admin-operation-profiles-runtime.php"
+          php "$root/tests/admin-operation-profiles-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-admin-surface-coverage.php"
+          php -l "$root/tests/admin-surface-coverage-runtime.php"
+          php "$root/tests/admin-surface-coverage-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-ci-outage-attestation.php"
+          php -l "$root/tests/ci-outage-attestation-runtime.php"
+          php "$root/tests/ci-outage-attestation-runtime.php"
+          php -l "$root/tests/ci-outage-selected-head-runtime.php"
+          php "$root/tests/ci-outage-selected-head-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-update-recovery.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-update-evidence.php"
+          php -l "$root/tests/plugin-update-recovery-runtime.php"
+          php -l "$root/tests/plugin-update-evidence-runtime.php"
+          php "$root/tests/plugin-update-recovery-runtime.php"
+          php "$root/tests/plugin-update-evidence-runtime.php"
+          python3 -m py_compile tools/mad4b_sign_plugin_ci_outage.py
+          python3 -m py_compile tools/mad4b_publish_offline_staging_candidate.py
+          php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
       - name: Verify general-distribution package contract
         shell: bash

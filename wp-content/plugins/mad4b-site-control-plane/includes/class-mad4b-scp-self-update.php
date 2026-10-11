@@ -432,6 +432,17 @@ final class MAD4B_SCP_Self_Update {
 		$admin = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $admin ) || ! $admin ) return $admin;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
+		if ( is_array( $input ) && isset( $input['channel'] ) && in_array( $input['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
+			// A generic admin grant is not sufficient for an unpromoted PR build.
+			// Require an enrolled owner/admin's same-app OAuth step-up authority.
+			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Exact Staging candidate upload requires enrolled owner/admin OAuth step-up authority.' );
+			}
+		}
 		if ( ! self::environment_allowed( true ) ) return new WP_Error( 'mad4b_self_update_staging_only', 'Remote Control Plane file upload is Staging-only.' );
 		if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ) return new WP_Error( 'mad4b_authorization_unavailable', 'MAD4B central authorization is unavailable.' );
 		return MAD4B_SCP_Authorization::authorize_mutation(
@@ -709,6 +720,20 @@ final class MAD4B_SCP_Self_Update {
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
 			),
+			'optional_selected_head_update' => array(
+				'supported' => class_exists( 'MAD4B_SCP_Selected_Head_Update' ),
+				'enabled' => defined( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' )
+					&& true === constant( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' ),
+				'default' => false,
+				'automatic_update' => false,
+				'production_allowed' => false,
+				'source_types' => array( 'pull_request', 'branch', 'commit' ),
+				'plan_ability' => 'mad4b/control-plane-selected-head-plan',
+				'apply_ability' => 'mad4b/control-plane-selected-head-apply',
+				'certified_package_required' => true,
+				'caller_package_url_allowed' => false,
+				'mutation_performed' => false,
+			),
 			'governed_file_upload' => array(
 				'ready' => (bool) $remote_ready,
 				'staging_only' => true,
@@ -822,32 +847,78 @@ final class MAD4B_SCP_Self_Update {
 		$input = is_array( $input ) ? $input : array();
 		$identity = self::normalize_requested_identity( $input );
 		if ( is_wp_error( $identity ) ) return $identity;
+		$channel = isset( $input['channel'] ) ? (string) $input['channel'] : 'governed_file_upload';
+		if ( ! in_array( $channel, array( 'governed_file_upload', 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
+			return new WP_Error( 'mad4b_self_update_upload_channel_invalid', 'Unknown Control Plane upload channel.' );
+		}
+		$staging_candidate = in_array( $channel, array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true );
+		$wordpress_native = 'wordpress_native_candidate_upload' === $channel;
 
 		$current = self::installed_identity();
 		$blockers = array();
-		$release_manifest = self::fetch_manifest( true );
+		$release_manifest = array();
+		$candidate_source = array();
 
 		if ( ! self::environment_allowed( true ) ) $blockers[] = 'staging_enrolled_write_profile_required';
 		if ( ! current_user_can( 'update_plugins' ) ) $blockers[] = 'update_plugins_capability_required';
 		if ( $identity['size_bytes'] < 1 || $identity['size_bytes'] > self::MAX_UPLOAD_BYTES ) $blockers[] = 'archive_size_out_of_bounds';
 		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $identity['source_commit_sha'] ) ) $blockers[] = 'already_on_exact_source_commit';
 		if ( ! empty( $current['version'] ) && version_compare( $current['version'], $identity['version'], '>' ) ) $blockers[] = 'target_version_older_than_runtime';
-		if ( is_wp_error( $release_manifest ) ) {
-			$blockers[] = 'governed_release_manifest_unavailable';
-		} else {
-			foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
-				if ( ! isset( $release_manifest[ $field ] ) || ! hash_equals( (string) $release_manifest[ $field ], (string) $identity[ $field ] ) ) {
-					$blockers[] = 'target_not_current_governed_release:' . $field;
+
+		if ( $staging_candidate ) {
+			// This is an explicit, owner-governed Staging opt-in. It is NEVER an
+			// alternate Production update feed or an arbitrary archive URL.
+			if ( ! $wordpress_native && ( ! defined( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' )
+				|| true !== constant( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED' ) ) ) {
+				$blockers[] = 'staging_candidate_host_opt_in_required';
+			}
+			if ( ! $wordpress_native && ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'wordpress_environment_explicit' )
+				|| ! MAD4B_SCP_Site_Profile::wordpress_environment_explicit()
+				|| ! function_exists( 'wp_get_environment_type' )
+				|| 'staging' !== wp_get_environment_type() ) ) {
+				$blockers[] = 'explicit_wordpress_staging_environment_required';
+			}
+			$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+			if ( $wordpress_native && ( ! class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) ||
+				! MAD4B_SCP_WordPress_Native_Opt_In::enabled() ) )
+				$blockers[] = 'wordpress_native_site_opt_in_required';
+			if ( ! $wordpress_native && ( ! is_array( $site ) || empty( $site['deployment_binding_configured'] )
+				|| empty( $site['same_origin_clone_protection'] ) ) ) {
+				$blockers[] = 'exact_site_deployment_binding_required';
+			}
+			require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-source-selector.php';
+			$resolved = MAD4B_SCP_Staging_Source_Selector::resolve(
+				isset( $input['candidate_source'] ) ? $input['candidate_source'] : null
+			);
+			if ( is_wp_error( $resolved ) ) {
+				$blockers[] = $resolved->get_error_code();
+			} else {
+				$candidate_source = $resolved;
+				if ( ! hash_equals( $identity['source_commit_sha'], $resolved['resolved_sha'] ) ) {
+					$blockers[] = 'staging_candidate_source_sha_mismatch';
 				}
 			}
-			if ( (int) $release_manifest['size_bytes'] !== (int) $identity['size_bytes'] ) $blockers[] = 'target_not_current_governed_release:size_bytes';
+		} else {
+			// The established release channel remains unchanged and root-trusted.
+			$release_manifest = self::fetch_manifest( true );
+			if ( is_wp_error( $release_manifest ) ) {
+				$blockers[] = 'governed_release_manifest_unavailable';
+			} else {
+				foreach ( array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest' ) as $field ) {
+					if ( ! isset( $release_manifest[ $field ] ) || ! hash_equals( (string) $release_manifest[ $field ], (string) $identity[ $field ] ) ) {
+						$blockers[] = 'target_not_current_governed_release:' . $field;
+					}
+				}
+				if ( (int) $release_manifest['size_bytes'] !== (int) $identity['size_bytes'] ) $blockers[] = 'target_not_current_governed_release:size_bytes';
+			}
 		}
 
 		$plan = array(
 			'contract' => self::PLAN_CONTRACT,
 			'plugin' => plugin_basename( MAD4B_SCP_FILE ),
 			'operation' => 'replace',
-			'channel' => 'governed_file_upload',
+			'channel' => $channel,
 			'current' => $current,
 			'target' => $identity,
 			'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
@@ -858,15 +929,23 @@ final class MAD4B_SCP_Self_Update {
 			'archive_integrity_required' => true,
 			'embedded_provenance_required' => true,
 			'rollback_on_failed_readback' => true,
-			'release_channel_bound' => true,
-			'release_channel' => is_wp_error( $release_manifest ) ? array() : self::public_manifest( $release_manifest ),
+			'release_channel_bound' => ! $staging_candidate,
 			'production_allowed' => false,
+			'release_channel' => is_array( $release_manifest ) ? ( empty( $release_manifest ) ? array() : self::public_manifest( $release_manifest ) ) : array(),
 			'eligible' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'reason' => isset( $input['reason'] ) ? sanitize_text_field( (string) $input['reason'] ) : '',
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
+		if ( $staging_candidate ) {
+			$plan['candidate_source'] = $candidate_source;
+			$plan['staging_only'] = true;
+			$plan['host_opt_in_required'] = ! $wordpress_native;
+			$plan['wordpress_native_admin_opt_in_required'] = $wordpress_native;
+			$plan['host_runner_required'] = ! $wordpress_native;
+			$plan['general_governed_write_authority_required'] = true;
+		}
 		sort( $plan['blockers'], SORT_STRING );
 		$plan['plan_sha256'] = self::digest( $plan );
 		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
@@ -877,15 +956,32 @@ final class MAD4B_SCP_Self_Update {
 		$input = is_array( $input ) ? $input : array();
 		$expected = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/', $expected ) ) return new WP_Error( 'mad4b_self_update_plan_digest_required', 'expected_plan_sha256 from the reviewed upload plan is required.' );
+		// Defense in depth: even direct internal callers must present the same
+		// enrolled administrator OAuth step-up required by the Ability gate.
+		if ( isset( $input['channel'] ) && in_array( $input['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true ) ) {
+			if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+				|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+				|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) {
+				return new WP_Error( 'mad4b_self_update_staging_owner_step_up_required', 'Staging candidate apply requires enrolled owner/admin OAuth step-up.' );
+			}
+		}
+
 
 		$plan_input = $input;
-		unset( $plan_input['package_base64'], $plan_input['expected_plan_sha256'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
+		unset( $plan_input['package_base64'], $plan_input['expected_plan_sha256'], $plan_input['candidate_confirmation'], $plan_input['_mad4b_approval_ticket_id'], $plan_input['_mad4b_context_receipt'] );
 		$plan = self::upload_plan( $plan_input );
 		if ( is_wp_error( $plan ) ) return $plan;
 		if ( ! hash_equals( $plan['plan_sha256'], $expected ) ) {
 			return new WP_Error( 'mad4b_self_update_plan_changed', 'Control Plane upload plan changed since review.', array( 'current_plan_sha256' => $plan['plan_sha256'], 'expected_plan_sha256' => $expected ) );
 		}
 		if ( empty( $plan['eligible'] ) ) return new WP_Error( 'mad4b_self_update_preflight_blocked', 'Control Plane upload preflight blocked the mutation.', array( 'blockers' => $plan['blockers'] ) );
+		$staging_candidate = in_array( $plan['channel'], array( 'staging_candidate_upload', 'wordpress_native_candidate_upload' ), true );
+		if ( $staging_candidate && ( ! isset( $input['candidate_confirmation'] )
+			|| 'INSTALL EXACT STAGING CANDIDATE' !== $input['candidate_confirmation'] ) ) {
+			return new WP_Error( 'mad4b_self_update_staging_confirmation_required', 'Explicit reviewed Staging candidate confirmation is required.' );
+		}
 
 		$encoded = isset( $input['package_base64'] ) ? preg_replace( '/\s+/', '', (string) $input['package_base64'] ) : '';
 		if ( '' === $encoded ) return new WP_Error( 'mad4b_self_update_file_required', 'package_base64 is required.' );
@@ -913,11 +1009,22 @@ final class MAD4B_SCP_Self_Update {
 			return $verified;
 		}
 
-		$apply_target = array_merge(
+		// Re-resolve mutable PR/branch at the last admission point. A moving
+		// source can never silently change the exact approved artifact.
+		if ( $staging_candidate ) {
+			require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-staging-source-selector.php';
+			$fresh = MAD4B_SCP_Staging_Source_Selector::resolve( $plan_input['candidate_source'] );
+			if ( is_wp_error( $fresh ) || ! hash_equals( $plan['target']['source_commit_sha'],
+				is_array( $fresh ) && isset( $fresh['resolved_sha'] ) ? (string) $fresh['resolved_sha'] : '' ) ) {
+				@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				return new WP_Error( 'mad4b_self_update_staging_source_changed', 'Staging PR or branch changed after plan verification; submit a new exact candidate.' );
+			}
+		}
+		$apply_target = $staging_candidate ? $plan['target'] : array_merge(
 			$plan['target'],
 			isset( $plan['release_channel'] ) && is_array( $plan['release_channel'] ) ? $plan['release_channel'] : array()
 		);
-		$result = self::apply_verified_archive( $tmp, $apply_target, 'governed_file_upload', $expected, $verified );
+		$result = self::apply_verified_archive( $tmp, $apply_target, $staging_candidate ? 'governed_staging_candidate_upload' : 'governed_file_upload', $expected, $verified );
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
 	}
@@ -1438,7 +1545,16 @@ final class MAD4B_SCP_Self_Update {
 		if ( in_array( $code, array( 'mad4b_post_update_continuation_transport_unavailable', 'mad4b_post_update_continuation_foreign_transport_unreviewed', 'mad4b_post_update_continuation_write_side_channel_detected' ), true ) ) {
 			$message .= ' ' . __( 'The live MCP transport inventory must be verified before the update can proceed.', 'mad4b-site-control-plane' );
 		} elseif ( 'mad4b_self_update_continuation_prior_authority_drift' === $code ) {
-			$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
+			$current_authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'current_execution_readiness' )
+				? MAD4B_SCP_Staging_Write_Authority::current_execution_readiness()
+				: array();
+			$current_authority_ready = is_array( $current_authority ) && ! empty( $current_authority['ready'] );
+			if ( $current_authority_ready ) {
+				$message = __( 'The previous MAD4B update attempt was blocked before installation, but current governed write authority is ready. No plugin files were changed. Retry the update using the current exact plan.', 'mad4b-site-control-plane' );
+			} else {
+				$message .= ' ' . __( 'Governed write authority must be reconciled to the currently installed build before updating.', 'mad4b-site-control-plane' );
+			}
 		} elseif ( isset( $_GET['mad4b_update_maintenance_state'] ) && '' !== sanitize_key( wp_unslash( $_GET['mad4b_update_maintenance_state'] ) ) ) {
 			$message .= ' ' . __( 'Another governed maintenance operation is active; try again after it finishes.', 'mad4b-site-control-plane' );
 		}
@@ -2833,6 +2949,12 @@ final class MAD4B_SCP_Self_Update {
 				'package_manifest_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 				'size_bytes' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => self::MAX_UPLOAD_BYTES ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+				'channel' => array( 'type' => 'string', 'enum' => array( 'governed_file_upload', 'staging_candidate_upload', 'wordpress_native_candidate_upload' ) ),
+				'candidate_source' => array( 'type' => 'object', 'properties' => array(
+					'repository' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 140 ),
+					'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit' ) ),
+					'reference' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 120 ),
+				), 'required' => array( 'repository', 'type', 'reference' ), 'additionalProperties' => false ),
 			),
 			'required' => array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes', 'reason' ),
 			'additionalProperties' => false,
@@ -2843,6 +2965,7 @@ final class MAD4B_SCP_Self_Update {
 		$schema = self::plan_schema();
 		$schema['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
 		$schema['properties']['package_base64'] = array( 'type' => 'string', 'minLength' => 16, 'maxLength' => (int) ceil( self::MAX_UPLOAD_BYTES * 4 / 3 ) + 16 );
+		$schema['properties']['candidate_confirmation'] = array( 'type' => 'string', 'enum' => array( 'INSTALL EXACT STAGING CANDIDATE' ) );
 		$schema['required'][] = 'expected_plan_sha256';
 		$schema['required'][] = 'package_base64';
 		return $schema;

@@ -1,0 +1,125 @@
+{
+  "contract": "mad4b.competitive-admin-ui-delivery.v1",
+  "status": "REPOSITORY_UI_IMPLEMENTED_ACCEPTANCE_PENDING",
+  "spec_pr": 258,
+  "spec_anchor": "a9a4b337faca8da01892576a7a59647b05cf758f",
+  "implementation_branch": "feat/007-admin-workspace-ui-20261006",
+  "separate_implementation_pr_required": true,
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "live_browser_acceptance": false,
+  "runtime_parity_claimed": false,
+  "partial_task_ids": [
+    "T3906",
+    "T3907",
+    "T3908",
+    "T3909",
+    "T4061"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php",
+      "sha256": "18ed434c4834b23a85ceec9a2a4f8adea20a6fb1a280383688a476ff5045bef6"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
+      "sha256": "9b205909fbcd47780d5c614400e62be8753ac07d21060afd978e34318bd40d49"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-experience.php",
+      "sha256": "0b450abf2be3ca836effa6f7f89f9d67af8ccd2c09c06ed983134a13b731757d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php",
+      "sha256": "e7d8e6e56bc8410b5d0b0cce2a4028d1704601ef4dec07aafe5c5b1c70af16b3"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
+      "sha256": "fe695a6489ddbc7278c6b8122a4984d07f68e70245d3022efa794b2454c75cbd"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
+      "sha256": "b7b090efb4b2a2e0cec6d6830a3e836c45cd32abb3c29f21e84048b13e2350eb"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
+      "sha256": "c97fd4f9ebe2eb79cd75a147431b730fbd25d444fbcf9496a5fa956ad23b8d6c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php",
+      "sha256": "ea4827dee4eabd971ec45f56a270c436f1dbb64cb259523fc8762255aaca779c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.css",
+      "sha256": "7a93f4ce634f49dd3e882a20172da95f7cfacf61a3c2ff968e9d7f3ad05ef9bd"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.js",
+      "sha256": "f097578941d9794ae90027a0835e612097b72404aeefb55ba705894eab2cf5fa"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/languages/mad4b-site-control-plane-ar.po",
+      "sha256": "9f861d5f9c679d2c31f9d9ec050c7b1f623dc431c58a6e13f72f3730ee4d239b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/languages/mad4b-site-control-plane-ar.mo",
+      "sha256": "8173dff76128e780a7179b3c2cc23bbf2b322319604400e493602efcb6905f19"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+      "sha256": "567a4054af6e8b3c6589cbdb2cd938f9e139503a1d4243fa276df9d7d89a4ce3"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/README.md",
+      "sha256": "e92439bac99d0a48d59496f8ca04c6e20cc91f49eb79eede3d212e3e69fc80b5"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php",
+      "sha256": "9efa5f55f5b6d94b7f4317f33d9274f78074d8c21d8cf0267c6d42d9c752c4cb"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",
+      "sha256": "5220e7923e4ad1487a7eeabd9f06431a0a22648e3f9f9073ce2f85d4a5e77711"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs",
+      "sha256": "468d2974daa69275049d4c830e9ed12763825ab530c9ea5bbb7a2b54053d4e1d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "sha256": "57e108b615319790d77d2099f4e6dff18360dfa4a6e2455926d1f47cc4906f77"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
+      "sha256": "3c58d093de3b47380ee21d22a2d30ed67f5becaad91484bde9918271f3ce1156"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
+      "sha256": "d7036b6318c3ef3827862e26bd5e551a4496c3d2aa6b6bd990850eae03f62db2"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",
+      "sha256": "519dd7cb297ed063bb84928c3493bc75ebbef2ba8c31ddee95113c7b5ae12f37"
+    }
+  ],
+  "design_skill": {
+    "repository": "nextlevelbuilder/ui-ux-pro-max-skill",
+    "commit": "477bcb28c9812b385cb51a4605ddf30d7b2266e2",
+    "path": ".claude/skills/ui-ux-pro-max/SKILL.md",
+    "applied_domains": [
+      "keyboard focus navigation",
+      "error recovery empty states"
+    ],
+    "product_direction": "WordPress native controls and system fonts; automated IoT/marketing product matches were rejected as inapplicable"
+  },
+  "remaining_acceptance": [
+    "Real Staging browser journeys for all pages, subjects, expiry, concurrent saves and existing provider configuration.",
+    "Adaptive verified onboarding and complete field/action/readback inventory.",
+    "Broader GA4/GSC/research providers, actual external consent and context authority.",
+    "Per-plan repair/history/conflict receipts, executable remediation policy and measured autonomy denominator.",
+    "Exact post-merge release packaging and deployment readback; Production remains unauthorized."
+  ]
+}

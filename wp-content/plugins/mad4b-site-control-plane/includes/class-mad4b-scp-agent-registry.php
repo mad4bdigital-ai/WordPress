@@ -216,3 +216,6 @@ final class MAD4B_SCP_Agent_Registry {
 		);
 	}
 }
+
+// Assistant bootstrap now lives explicitly in the main plugin entrypoint.
+// Agent Registry must never implicitly register operational abilities.

@@ -97,6 +97,21 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		elseif ( is_string( $message ) && '' !== $message ) echo '<div class="notice notice-success"><p>' . esc_html( $message ) . '</p></div>';
 
 		self::render_status( $status );
+		$certificate = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		if ( empty( $certificate['ready'] ) || empty( $certificate['build_identity_current'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills need verification', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority.', 'mad4b-site-control-plane' );
+			echo '</p></div>';
+		}
+		if ( empty( $status['editor_enabled'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills editor is disabled', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified.', 'mad4b-site-control-plane' );
+			echo '</p></div>';
+		}
+		if ( isset( $status['storage_writable'] ) && false === $status['storage_writable'] ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 		self::render_reconcile_managed( $status );
 		self::render_snapshot_note();
 		self::render_skill_table( $skills );

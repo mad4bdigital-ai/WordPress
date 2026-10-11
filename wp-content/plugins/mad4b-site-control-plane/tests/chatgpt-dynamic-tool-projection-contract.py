@@ -57,6 +57,7 @@ for marker in [
 ]:
     require(marker in INSPECTOR, f"canonical Ability fail-closed invariant missing: {marker}")
 require("MAD4B_SCP_Ability_Contract_Inspector::inspect" in PROJECTION, "projection does not consume the canonical Ability inspector")
+require("provider_for_capability_descriptor" in INSPECTOR, "canonical Ability inspection still depends on transient runtime mount eligibility")
 
 # A pre-tool denial must arm the final callback seal requirement before any
 # same-priority filter can overwrite the returned WP_Error.
@@ -199,3 +200,16 @@ for marker in [
 
 for token in ("catalog_preflight_error_code","mad4b_catalog_preflight_exception","is_wp_error( $catalog_preflight )"):
     require(token in PROJECTION, f"projection status fail-soft catalog preflight guard missing: {token}")
+
+# Status must not take the table-backed catalog path on routine MCP Summary
+# reads. Every optional diagnostic that can throw is redacted and fail-soft.
+for marker in (
+    "'reason' => 'summary_metadata_only'",
+    "'measurements_deferred' => true",
+    "if ( $include_preflight ) {",
+    "'mad4b_catalog_storage_diagnostic_unavailable'",
+    "'mad4b_protocol_diagnostic_unavailable'",
+    "'storage' => $storage,",
+    "'protocol_profile' => $protocol_profile,",
+):
+    require(marker in PROJECTION, f"projection status lost bounded/fail-soft safeguard: {marker}")

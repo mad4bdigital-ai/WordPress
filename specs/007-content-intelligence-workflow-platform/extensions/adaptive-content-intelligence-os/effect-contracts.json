@@ -1,0 +1,86 @@
+{
+  "contract": "mad4b.aci-os.effect-contracts.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "authority_owner": "existing_MAD4B",
+  "effects": [
+    {
+      "id": "PURE_READ",
+      "required_evidence": [
+        "site_scope",
+        "source_rights",
+        "freshness"
+      ],
+      "authority_guard": "READ_ONLY_POLICY",
+      "budget_policy": "NONE",
+      "unknown_effect_state": "NEEDS_EVIDENCE",
+      "compensation": "N/A",
+      "spec_planner_allowed": false
+    },
+    {
+      "id": "PAID_EXTERNAL",
+      "required_evidence": [
+        "provider_certification",
+        "account_binding",
+        "cost_quote",
+        "budget_reservation",
+        "idempotency",
+        "consent"
+      ],
+      "authority_guard": "MAD4B_PAID_ADMISSION",
+      "budget_policy": "SHARED_ACCOUNT_SITE_JOB_CAS",
+      "unknown_effect_state": "QUARANTINED",
+      "compensation": "PROVIDER_DEFINED",
+      "spec_planner_allowed": false
+    },
+    {
+      "id": "WORDPRESS_MUTATION",
+      "required_evidence": [
+        "current_grant",
+        "exact_site",
+        "field_ownership",
+        "CAS",
+        "approval",
+        "native_readback",
+        "browser_readback"
+      ],
+      "authority_guard": "MAD4B_NATIVE_COMMIT",
+      "budget_policy": "OPERATION_BOUND",
+      "unknown_effect_state": "QUARANTINED",
+      "compensation": "GOVERNED_ROLLBACK",
+      "spec_planner_allowed": false
+    },
+    {
+      "id": "HOST_MUTATION",
+      "required_evidence": [
+        "host_isolation",
+        "step_up",
+        "deployment_binding",
+        "approved_plan",
+        "rollback"
+      ],
+      "authority_guard": "MAD4B_HOST_AUTHORITY",
+      "budget_policy": "HOST_BOUND",
+      "unknown_effect_state": "QUARANTINED",
+      "compensation": "HOST_GOVERNED",
+      "spec_planner_allowed": false
+    },
+    {
+      "id": "IRREVERSIBLE_EXTERNAL",
+      "required_evidence": [
+        "owner_approval",
+        "consent",
+        "impact_assessment",
+        "cost_limit",
+        "remote_reconciliation"
+      ],
+      "authority_guard": "MAD4B_HIGH_IMPACT",
+      "budget_policy": "FULL_RESERVATION",
+      "unknown_effect_state": "QUARANTINED",
+      "compensation": "NONE",
+      "spec_planner_allowed": false
+    }
+  ],
+  "unknown_effect": "DENIED",
+  "no_fallback_privilege_escalation": true
+}

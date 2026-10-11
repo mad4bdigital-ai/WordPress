@@ -27,6 +27,7 @@ final class MAD4B_SCP_Developer_Host_Capabilities {
 		if ( ! $proc_open ) $process_blockers[] = 'proc_open_unavailable';
 		if ( '' === $prlimit ) $process_blockers[] = 'resource_limiter_unavailable';
 		if ( true === $root_state ) $process_blockers[] = 'root_execution_denied';
+		if ( null === $root_state ) $process_blockers[] = 'non_root_identity_unverified';
 
 		$no_network_blockers = $process_blockers;
 		if ( '' === $sandbox ) {

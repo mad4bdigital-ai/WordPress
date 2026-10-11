@@ -8,6 +8,10 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
+      - 'tools/mad4b_standalone_evidence.py'
+      - 'tools/test_mad4b_standalone_evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -23,6 +27,10 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
+      - 'tools/mad4b_standalone_build.py'
+      - 'tools/test_mad4b_standalone_build.py'
+      - 'tools/mad4b_standalone_evidence.py'
+      - 'tools/test_mad4b_standalone_evidence.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -63,6 +71,15 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           echo "Packaging exact source: $SOURCE_SHA"
+
+      - name: Verify independent deterministic build helper and read-only MCP contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_mad4b_standalone_build.py
+          python3 tools/test_mad4b_standalone_evidence.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-standalone-build-control.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
 
       - name: Verify release-evidence trigger symmetry
         shell: bash
@@ -122,6 +139,49 @@ jobs:
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/release-candidate-identity-contract.py
+
+      - name: Verify Staging Autopilot and guarded WordPress config sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-staging-autopilot.php"
+          php -l "$root/includes/class-mad4b-scp-site-profile-admin.php"
+          php -l "$root/includes/class-mad4b-scp-wp-config-environment-sync.php"
+          php -l "$root/tests/staging-autopilot-runtime.php"
+          php "$root/tests/staging-autopilot-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-selected-head-update.php"
+          php -l "$root/tests/selected-head-assistant-recovery-runtime.php"
+          php "$root/tests/selected-head-assistant-recovery-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-wordpress-native-opt-in.php"
+          php -l "$root/tests/wordpress-native-candidate-policy-runtime.php"
+          php "$root/tests/wordpress-native-candidate-policy-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-manual-workflow-bridge.php"
+          php -l "$root/includes/class-mad4b-scp-operational-remediation.php"
+          php -l "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php "$root/tests/manual-workflow-bridge-policy-runtime.php"
+          php -l "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php "$root/tests/manual-workflow-bridge-apply-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-admin-operation-profiles.php"
+          php -l "$root/tests/admin-operation-profiles-runtime.php"
+          php "$root/tests/admin-operation-profiles-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-admin-surface-coverage.php"
+          php -l "$root/tests/admin-surface-coverage-runtime.php"
+          php "$root/tests/admin-surface-coverage-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-ci-outage-attestation.php"
+          php -l "$root/tests/ci-outage-attestation-runtime.php"
+          php "$root/tests/ci-outage-attestation-runtime.php"
+          php -l "$root/tests/ci-outage-selected-head-runtime.php"
+          php "$root/tests/ci-outage-selected-head-runtime.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-update-recovery.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-update-evidence.php"
+          php -l "$root/tests/plugin-update-recovery-runtime.php"
+          php -l "$root/tests/plugin-update-evidence-runtime.php"
+          php "$root/tests/plugin-update-recovery-runtime.php"
+          php "$root/tests/plugin-update-evidence-runtime.php"
+          python3 -m py_compile tools/mad4b_sign_plugin_ci_outage.py
+          python3 -m py_compile tools/mad4b_publish_offline_staging_candidate.py
+          php "$root/tests/site-profile-wp-config-auto-sync-runtime.php"
 
       - name: Verify Feature 007 release root-trust contract
         shell: bash

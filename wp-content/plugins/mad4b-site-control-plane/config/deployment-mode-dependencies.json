@@ -1,0 +1,164 @@
+{
+  "contract": "mad4b.wordpress-dedicated-dependencies.v1",
+  "status": "STAGED_REFERENCE_REQUIRE_NATIVE_STAGING_ACCEPTANCE",
+  "common_contract": "mad4b.context-deployment-mode.v1",
+  "adapter_contract": "mad4b.deployment-mode-resolution.v1",
+  "adapter_min_version": "1.1.0",
+  "modes": [
+    "shared_multi_tenant",
+    "dedicated_isolated",
+    "dedicated_autonomous",
+    "wordpress_dedicated"
+  ],
+  "host_default": "wordpress_dedicated",
+  "identity_precedence": [
+    "site_profile.site_uuid",
+    "context_authority.brand_id",
+    "wordpress.blog_id",
+    "wordpress.network_id"
+  ],
+  "required_for_identity": [
+    {
+      "id": "wordpress_site_profile",
+      "class": "MAD4B_SCP_Site_Profile",
+      "contract": "mad4b.site-profile.v2",
+      "requirements": [
+        "configured",
+        "origin_match",
+        "environment_match",
+        "authority_ready",
+        "deployment_binding_bound",
+        "deployment_binding_configured",
+        "deployment_binding_match",
+        "revision",
+        "blog_local_site_option_uuid_revision_and_origin_match",
+        "site_profile_static_cache_not_authoritative_across_switch_to_blog"
+      ]
+    },
+    {
+      "id": "brand_context",
+      "class": "MAD4B_SCP_Context_Authority",
+      "contract": "mad4b.brand-context-profile.v1",
+      "requirements": [
+        "matching_site_uuid",
+        "brand_id",
+        "revision"
+      ]
+    },
+    {
+      "id": "wordpress_site_context",
+      "requirements": [
+        "get_current_blog_id",
+        "get_current_network_id",
+        "environment"
+      ]
+    }
+  ],
+  "required_for_mcp_discovery": [
+    {
+      "id": "wordpress_abilities_api",
+      "functions": [
+        "wp_register_ability",
+        "wp_has_ability"
+      ]
+    },
+    {
+      "id": "mad4b_existing_read_policy",
+      "class": "MAD4B_SCP_Policy",
+      "method": "can_read"
+    },
+    {
+      "id": "official_mcp_adapter_runtime",
+      "impact": "Transport must be observed and independently accepted; Abilities API alone does not prove MCP readiness"
+    }
+  ],
+  "optional_capabilities": [
+    {
+      "id": "google_drive_provider",
+      "impact": "Drive sources unavailable only; no fallback to another tenant"
+    },
+    {
+      "id": "woocommerce_provider",
+      "impact": "Commerce capabilities unavailable only"
+    },
+    {
+      "id": "elementor_jetengine",
+      "impact": "Dynamic content capabilities unavailable only"
+    },
+    {
+      "id": "seo_provider",
+      "impact": "SEO evidence unavailable only"
+    },
+    {
+      "id": "wpml",
+      "impact": "Translation capabilities unavailable only"
+    }
+  ],
+  "invariants": {
+    "never_promote_unbound_site": true,
+    "never_select_tenant_from_request": true,
+    "never_select_brand_from_request": true,
+    "no_auto_promotion_on_provider_failure": true,
+    "no_cross_blog_context_leak": true,
+    "no_production_mutation_without_separate_grant": true,
+    "no_wp_plugin_dependency_for_platform_modes": true,
+    "no_credential_materialization": true,
+    "site_cache_cannot_cross_blog": true,
+    "optional_provider_detection_is_not_certification": true
+  },
+  "failure_classification": {
+    "missing_required_identity": "BLOCKED",
+    "missing_abilities_api": "MCP_DISCOVERY_BLOCKED",
+    "optional_provider_unavailable": "CAPABILITY_UNAVAILABLE",
+    "clone_or_environment_drift": "QUARANTINE",
+    "stale_contract_revision": "REVALIDATE",
+    "ambiguous_multi_brand": "SELECT_BRAND_WITH_GOVERNED_REGISTRY_NOT_AUTO_GUESS"
+  },
+  "verification": {
+    "native_php_fixture": "tests/deployment-mode-resolver-runtime.php",
+    "native_python_contract": "tests/deployment-mode-dependencies-contract.py",
+    "php_lint": "php -l includes/class-mad4b-scp-deployment-mode-resolver.php",
+    "packaging": "tests/build-deterministic-control-plane-package.py",
+    "operational_acceptance": "PENDING",
+    "package_source_match": "optional --package-zip, exact three critical files compared"
+  },
+  "conditional_for_mutation": [
+    {
+      "id": "wordpress_role_capability",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "mad4b_existing_governed_write_authority",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "exact_host_environment_postcondition_readback",
+      "required_when": "any_write_requested"
+    },
+    {
+      "id": "owner_or_delegated_approval",
+      "required_when": "sensitive_operation_requested"
+    },
+    {
+      "id": "production_promotion_separate_grant",
+      "required_when": "production_mutation_requested"
+    }
+  ],
+  "host_compatibility": {
+    "wordpress_header_requires_at_least": "6.9",
+    "php_header_requires_at_least": "7.4",
+    "source": "mad4b-site-control-plane.php plugin header",
+    "installation_runtime_must_be_checked": true
+  },
+  "mcp_release_pair": {
+    "policy_source": "config/runtime-release-policy.json",
+    "current_target_adapter_version": "0.7.0",
+    "supported_transition_versions": [
+      "0.6.1",
+      "0.7.0"
+    ],
+    "pair_certification_required": true,
+    "adapter_status_is_not_certification": true,
+    "production_auto_apply": false
+  }
+}

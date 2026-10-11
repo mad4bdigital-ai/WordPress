@@ -9,8 +9,22 @@ function get_option( $name, $default = false ) { return $GLOBALS['options'][$nam
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][$name] ); }
 function wp_get_ability( $name ) { return $GLOBALS['abilities'][$name] ?? null; }
 function wp_get_abilities() { throw new RuntimeException( 'Registration notice scanned the Ability universe' ); }
-class MAD4B_SCP_MCP_Catalog_Diagnostics { static function preflight() { throw new RuntimeException( 'Registration notice rebuilt the MCP catalog' ); } }
-class MAD4B_SCP_Catalog_Object_Store { static function status() { return array( 'indexed_bytes' => 0, 'indexed_objects' => 0 ); } }
+class MAD4B_SCP_MCP_Catalog_Diagnostics {
+ const MAX_TOOLS = 36; const MAX_SERIALIZED_TOOL_BYTES = 98304;
+ static function optional_projections( $catalog ) { return array(); }
+ static function preflight() { throw new RuntimeException( 'Deep MCP catalog inspection failed' ); }
+}
+class MAD4B_SCP_Catalog_Object_Store {
+ public static $status_calls = 0; public static $throw_on_status = false;
+ static function status() {
+  ++self::$status_calls;
+  if ( self::$throw_on_status ) throw new RuntimeException( 'Simulated deep catalog storage backend failure' );
+  return array( 'indexed_bytes' => 0, 'indexed_objects' => 0 );
+ }
+}
+class MAD4B_SCP_MCP_Protocol_Profile {
+ static function status() { throw new RuntimeException( 'Simulated optional protocol provider failure' ); }
+}
 class WP_Error {
  private $code; private $message; private $data;
  function __construct( $code, $message, $data = array() ) { $this->code = $code; $this->message = $message; $this->data = $data; }
@@ -34,7 +48,8 @@ class MAD4B_SCP_Execution_Fence {
 }
 class MAD4B_SCP_Servers {
  static function chatgpt_base_tools() { return array(); } static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
- static function core_tools( $server ) { return array(); } static function provider_for_ability( $server, $ability ) { return 'fixture'; }
+ static function core_tools( $server ) { return array(); } static function provider_for_ability( $server, $ability ) { return 'runtime-fixture'; }
+ static function provider_for_capability_descriptor( $server, $ability ) { return 'fixture'; }
 }
 class Ability {
  protected $execute_callback; protected $permission_callback;
@@ -76,3 +91,27 @@ $protected_tool = new class( $GLOBALS['abilities'][$name] ) {
 $callbacks = MAD4B_SCP_ChatGPT_Tool_Projection::callback_identity( $protected_tool );
 if ( ! is_array( $callbacks ) || 2 !== count( $callbacks ) || ! is_callable( $callbacks[0] ) || ! is_callable( $callbacks[1] ) ) throw new RuntimeException( 'Protected callback identity unavailable on supported PHP' );
 echo "PASS protected reflection: Adapter Ability and callbacks accessible on PHP 7.4+\n";
+
+// A summary-only status request must remain available even when optional
+// catalog storage and protocol diagnostics would throw an exception.
+$before_status_calls = MAD4B_SCP_Catalog_Object_Store::$status_calls;
+MAD4B_SCP_Catalog_Object_Store::$throw_on_status = true;
+$summary = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'detail' => 'summary' ) );
+if ( ! is_array( $summary ) || empty( $summary['bounded_status'] )
+    || ! empty( $summary['catalog_preflight_performed'] )
+    || empty( $summary['storage']['measurements_deferred'] )
+    || 'summary_metadata_only' !== $summary['storage']['reason']
+    || MAD4B_SCP_Catalog_Object_Store::$status_calls !== $before_status_calls
+    || 'mad4b_protocol_diagnostic_unavailable' !== $summary['protocol_profile']['blocker']
+    || empty( $summary['read_only'] ) || ! empty( $summary['mutation_performed'] ) ) {
+    throw new RuntimeException( 'Summary unexpectedly ran deep storage SQL or lost fail-soft protocol metadata' );
+}
+$deep = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'include_catalog_preflight' => true ) );
+if ( empty( $deep['catalog_preflight_performed'] )
+    || 'mad4b_catalog_preflight_exception' !== $deep['catalog_preflight_error_code']
+    || 'mad4b_catalog_storage_diagnostic_unavailable' !== $deep['storage']['error_code']
+    || MAD4B_SCP_Catalog_Object_Store::$status_calls !== $before_status_calls + 1
+    || empty( $deep['read_only'] ) || ! empty( $deep['mutation_performed'] ) ) {
+    throw new RuntimeException( 'Explicit deep storage/catalog failure did not degrade safely' );
+}
+echo "PASS projection summary remains bounded and deep dependencies fail soft\\n";

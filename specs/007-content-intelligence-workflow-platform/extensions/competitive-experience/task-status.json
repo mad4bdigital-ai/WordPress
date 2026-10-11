@@ -1,0 +1,1392 @@
+{
+  "contract": "mad4b.competitive-experience-task-status.v1",
+  "overrides": {
+    "T3956": {
+      "status": "PARTIAL",
+      "reason": "Nonce-bound admin proposal reviews and an owner-scoped encrypted conversation vault exist; prompt-library UX, approved tool dispatch, key lifecycle and Staging/browser ownership acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3957": {
+      "status": "PARTIAL",
+      "reason": "Reviewed adapter metadata routing filters capability, region, privacy, cost and current binding without model execution; live provider consent, availability, bounded fallback and charged-cost readback remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3958": {
+      "status": "PARTIAL",
+      "reason": "Typed content, translation, image, video and audio proposal intents carry bounded context/region/cost metadata without generation or publication; licensed media generation, egress/file handling and publish acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3959": {
+      "status": "PARTIAL",
+      "reason": "Redacted plan previews and internal owner-only conversation export primitives exist; complete approval-card cancellation/export journeys and independently enforced per-user usage accounting remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3960": {
+      "status": "PARTIAL",
+      "reason": "Bounded generated arguments and injected authority fields are rejected by proposal/compiler denial fixtures; actual paid-provider failure, partial-generation and prompt-injection runtime acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3961": {
+      "status": "PARTIAL",
+      "reason": "Source metadata admission pins tenant, source/artifact hashes, declared rights, expiry, privacy and revocation; document/PDF parsing, chunk ingestion and independently verified source/asset permissions remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3962": {
+      "status": "PARTIAL",
+      "reason": "Tenant, deleted-source and embedding-generation metadata are checked in knowledge/retrieval denial foundations; vector backend execution, embeddings generation and physical deletion/readback conformance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3963": {
+      "status": "PARTIAL",
+      "reason": "Bounded retrieval/citation evaluation retains exact source lineage and treats retrieved instructions as untrusted; live retrieval quality, freshness and independent source permission/readback acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3964": {
+      "status": "PARTIAL",
+      "reason": "Typed form-proposal and form-schema metadata reject unbounded or non-admitted inputs without submissions/function execution; real form configuration, upload/PII handling, residency and cost certification remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3965": {
+      "status": "PARTIAL",
+      "reason": "Executable metadata/argument denial fixtures cover poisoned retrieval, foreign tenants, stale or deleted sources and private proposal boundaries; malicious-PDF parsing, live vector deletion recovery and real form-submission acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T4016": {
+      "status": "PARTIAL",
+      "reason": "Schema-derived CPT/meta/content candidates use registered native structure without business hardcode; complete taxonomy/media/SEO/language/builder coverage and accepted profile materialization remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T4017": {
+      "status": "PARTIAL",
+      "reason": "Reviewed typed strategies compile a bounded acyclic dependency DAG and reject unknown primitives/providers; registered strategies for every content/meta/taxonomy/media/SEO/translation/publication primitive and their runtime acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T4018": {
+      "status": "PARTIAL",
+      "reason": "Plans pin current job/profile/provider/object state, permission/effect aggregates and guarded idempotency, with whole-plan revalidation; native compensation and independent postconditions for every dependent step remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T4019": {
+      "status": "PARTIAL",
+      "reason": "Compilation binds existing ContentJob/WorkflowProvider state and durable dependency records are inspected fail closed; verified dependent postconditions, native execution/compensation receipts and provider replacement acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T4020": {
+      "status": "PARTIAL",
+      "reason": "Compiler fixtures reject cycles, foreign CPT inputs, stale plans, missing providers, permission aggregation and unapproved publication; real multi-provider approved workflow and rollback acceptance remain pending.",
+      "evidence_refs": [
+        "g6-delivery.json",
+        "g6-delivery.md"
+      ]
+    },
+    "T3976": {
+      "status": "PARTIAL",
+      "reason": "Capability-local observations and semantic diff distinguish identity, compatible structure, behavior and eligibility drift; deployed provider/version recertification and same-cycle impact acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T3977": {
+      "status": "PARTIAL",
+      "reason": "Candidate changes remain fenced for existing governed canary/readback/rollback lanes and do not authorize provider-wide disablement; actual signed provider canary, independent readback and rollback promotion acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T3978": {
+      "status": "PARTIAL",
+      "reason": "Automatic enqueue, Managed Skills reconciliation and baseline capture use exact generation, lease, current eligibility and independent SLO tickets without new grants; live exact inventory/catalog reconciliation acceptance remains pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T3979": {
+      "status": "PARTIAL",
+      "reason": "Passive live-acceptance observation checks current external initialize/tools-list and frontend evidence with explicit consent/context/host handoffs; real MCP/browser evidence refresh and distinct frontend sampling remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T3980": {
+      "status": "PARTIAL",
+      "reason": "Hermetic acceptance/automatic-handoff fixtures and an enrolled-Staging read-only evidence script exist; exact deployed-build MCP/browser acceptance, three genuine frontend samples and signed canary/rollback receipts remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4071": {
+      "status": "PARTIAL",
+      "reason": "SLO admission/outcome ledger exposes explicit workload counters and honest measurement limits; receipt-causal repair success, false repair, precise MTTR, quarantine/rollback/intervention/cost certification remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4072": {
+      "status": "PARTIAL",
+      "reason": "Per-site/provider/capability attempts, cooldowns and bounded buckets provide deterministic denial reasons; actual sustained Staging error-budget and clock/concurrency acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4073": {
+      "status": "PARTIAL",
+      "reason": "Bounded in-flight admission, scope isolation and circuit/cooldown decisions are enforced through durable CAS; real queue storm, worker-pressure and provider-outage acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4074": {
+      "status": "PARTIAL",
+      "reason": "Independent durable global/provider/capability switches fence actual automatic handoffs and Cron mutation boundaries while retaining passive/manual paths; live revocation and in-flight outcome reconciliation remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4075": {
+      "status": "PARTIAL",
+      "reason": "Executable denial fixtures cover flapping, stale/paused Cron, exhausted budgets, owner pause, ticket races and kill-switch bypass; real multi-worker load and deployed fault acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4076": {
+      "status": "PARTIAL",
+      "reason": "Supply provenance inspects exact channel/source/hash/signer/revocation/dependency and mirror pins using existing data-pack verification; real deployed signed artifacts, revocation and key rotation acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4077": {
+      "status": "PARTIAL",
+      "reason": "Provenance binds candidate generation and certification-pack identity as non-authorizing evidence; live certification/promote readback and independently accepted supply-chain lifecycle remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4078": {
+      "status": "PARTIAL",
+      "reason": "Downgrades, mirror omissions/mismatch, substituted dependencies and unexpected sources produce capability-local quarantine evidence; representative deployed provider/source attack acceptance remains pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4079": {
+      "status": "PARTIAL",
+      "reason": "Read-only runtime provenance and revocation status supplies bounded reasons/remediation evidence; complete operator/update acceptance journeys and live revocation freshness remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4080": {
+      "status": "PARTIAL",
+      "reason": "Hermetic provenance denials and existing crypto/pack verifier fixtures reject unsigned, revoked, foreign, downgraded or tampered artifacts without grants; final exact-head and enrolled-Staging signature acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4081": {
+      "status": "PARTIAL",
+      "reason": "Code-owned observation-registry migration steps provide versioned compatibility and semantic dry-run plans; broader active registry/policy/manifest migration coverage and Staging approval acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4082": {
+      "status": "PARTIAL",
+      "reason": "Owned observation-registry migration snapshots, prestate hashes, CAS cutover and reversible receipts exist; real database concurrency/interruption and independent physical rollback/readback acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4083": {
+      "status": "PARTIAL",
+      "reason": "Declared N/N-1 observation readers retain unknown fields and deny undeclared older generations; deployed mixed-worker compatibility and restored registry acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4084": {
+      "status": "PARTIAL",
+      "reason": "Migration inspection rejects silent risk/authority downgrade and keeps active capability authority outside observation-registry changes; governed cross-domain migration review/approval acceptance remains pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4085": {
+      "status": "PARTIAL",
+      "reason": "Migration fixtures cover partial/interrupted transitions, stale readers, unknown fields, downgrade and invalid restored snapshots; actual disposable MySQL/MariaDB and Staging fault acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4086": {
+      "status": "PARTIAL",
+      "reason": "Deterministic seeded inert schema/annotation fixtures classify malformed and hidden-effect contradictions without executing candidates; full certified provider boundary corpus and runtime compatibility acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4087": {
+      "status": "PARTIAL",
+      "reason": "Timeout, cancellation, duplicate, concurrency and provider-error cases are reproducible inert fixture data; actual isolated provider/process fault injection and multi-worker timing acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4088": {
+      "status": "PARTIAL",
+      "reason": "Differential descriptor/fixture evaluation compares candidate and certified semantics without placing candidate responses into active traffic; actual isolated provider/version differential acceptance remains pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4089": {
+      "status": "PARTIAL",
+      "reason": "Fuzz findings carry reproducible seed/input digests and capability-local proposed canary/quarantine reasons without policy mutation; independently reviewed native policy/canary evidence linkage remains pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4090": {
+      "status": "PARTIAL",
+      "reason": "Fuzz admission rejects Production/shared/paid/irreversible contexts and executable values, with no provider or arbitrary-code dispatch; real disposable harness isolation and blind-retry fault acceptance remain pending.",
+      "evidence_refs": [
+        "g8-delivery.json",
+        "g8-delivery.md"
+      ]
+    },
+    "T4066": {
+      "status": "PARTIAL",
+      "reason": "Exact site/cohort/runtime/restore release-ring previews and site-local reservation fences exist without implicit Production authority; real native governed release executor binding and pilot acceptance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4067": {
+      "status": "PARTIAL",
+      "reason": "Bounded fleet inventory/diff retains independent verified site/provider/grant/binding observations without borrowing authority; real Multisite/fleet inventory and independent per-site readback acceptance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4068": {
+      "status": "PARTIAL",
+      "reason": "Pilot health thresholds and per-site fleet receipt/partial-rollback observations fail closed on missing evidence; native rollout/rollback dispatch and real health-window/outcome certification remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4069": {
+      "status": "PARTIAL",
+      "reason": "Site-local durable reservation CAS, exact generation/operation identity and native journal/receipt inspection fence duplicate or stale rollout workers; production-like distributed executor/idempotency acceptance remains pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4070": {
+      "status": "PARTIAL",
+      "reason": "Executable resilience/fleet fixtures reject stale cohorts, split brain, cross-site identity bleed, provider mismatch and incomplete outcomes; real independent-site partial-rollback and missing-evidence fault drills remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4091": {
+      "status": "PARTIAL",
+      "reason": "Fresh resilience observations bind DB/files/runtime package/Site Profile/registry facets to the external restore epoch; real partial-restoration and same-cycle host/provider readback acceptance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4092": {
+      "status": "PARTIAL",
+      "reason": "Current epoch/anchor checks fence stale mutable reservation assumptions and preserve history as evidence; complete native lease/receipt/candidate-binding invalidation and governed restore acceptance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4093": {
+      "status": "PARTIAL",
+      "reason": "Passive current artifact/provider/host/identity observations enumerate exact quarantine, graph and grant reconciliation prerequisites; native graph rebuild, exact local authority reconciliation and write-return acceptance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4094": {
+      "status": "PARTIAL",
+      "reason": "Bounded external-effect comparison retains unresolved/untrusted effects and quarantine even for an empty claimed inventory; independent provider-effect reconciliation and governed post-restore acceptance receipt issuance remain pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T4095": {
+      "status": "PARTIAL",
+      "reason": "Adversarial source/runtime fixtures cover cloned origins, clock rollback, stale grants, partial restore, revoked/foreign evidence and unrewound effects without authority replay; real Staging recovery/host/fleet fault certification remains pending.",
+      "evidence_refs": [
+        "g9-delivery.json",
+        "g9-delivery.md"
+      ]
+    },
+    "T3906": {
+      "status": "PARTIAL",
+      "reason": "Registered page/section inventory and shared directory implemented; field-level operability receipts remain pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3907": {
+      "status": "PARTIAL",
+      "reason": "Read-only setup path and registered handoffs implemented; adaptive verified first-operation journey remains pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3908": {
+      "status": "PARTIAL",
+      "reason": "Descriptor-driven existing SERP credential setup is prominent with exact persisted feedback; broader analytics/provider enrollment remains pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T3909": {
+      "status": "PARTIAL",
+      "reason": "Canonical workspace links, Arabic translation, RTL/mobile/focus and external notice handoffs implemented; real Staging browser journeys remain pending.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md"
+      ]
+    },
+    "T4061": {
+      "status": "PARTIAL",
+      "reason": "Operator action cards and L0-L5 reference implemented without dispatch or claimed repair; per-plan receipts and autonomy evaluation remain pending. Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "ui-delivery.json",
+        "ui-delivery.md",
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T3901": {
+      "status": "PARTIAL",
+      "reason": "Reproducible archive verification, immutable package fingerprints and guarded packaged evidence are implemented; exact-head child CI remains an external integration invariant.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3902": {
+      "status": "PARTIAL",
+      "reason": "Capability comparison separates static evidence, marketed claims, MAD4B foundation and runtime-certified parity; representative external/runtime acceptance remains required where applicable.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3903": {
+      "status": "PARTIAL",
+      "reason": "Append-only evidence history v2 now provides generation chaining, fail-closed retention, previous-known-good pointers, drift alerts and acknowledgement lifecycle; live multi-generation acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3904": {
+      "status": "PARTIAL",
+      "reason": "Operator evidence view now supports search plus status, evidence-class, workstream and runtime-parity filters, expandable evidence, remaining-task reasons, acceptance gaps and history context; real browser acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3905": {
+      "status": "PARTIAL",
+      "reason": "Tamper, archive, evidence-resource, history-chain and documentation-only completion denials are CI-bound; exact-head child CI remains the terminal external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4001": {
+      "status": "PARTIAL",
+      "reason": "Runtime Candidate Graph v2 is provenance-bound with immutable generation, site/environment envelope, semantic dimensions, explicit edges and collector contract provenance; representative runtime acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4002": {
+      "status": "PARTIAL",
+      "reason": "Bounded structural discovery now declares per-collector lifecycle, sensitivity, provenance, budgets and completeness/truncation semantics while avoiding callback or endpoint execution; Staging acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4003": {
+      "status": "PARTIAL",
+      "reason": "Unknown-plugin candidates and descriptive database/endpoint inventory remain non-executing and non-secret, with bounded discovery and no row/schema reads; unknown-provider Staging acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4004": {
+      "status": "PARTIAL",
+      "reason": "Semantic graph diff validates the before envelope and propagates provider/component/ability/operation/workflow impact transitively using the existing dependency-impact foundation while isolating unrelated reads; Staging drift acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4005": {
+      "status": "PARTIAL",
+      "reason": "Fail-closed tests cover fabricated/cross-site/oversized snapshots, lifecycle ambiguity, truncation, sensitive cron names, unknown code and non-authorizing discovery; exact-head CI remains the external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4006": {
+      "status": "PARTIAL",
+      "reason": "Deterministic semantic features and versioned Policy Proposal contracts include input/output schema digests, capability/resource/effect/reversibility and provenance; live runtime acceptance remains separate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4007": {
+      "status": "PARTIAL",
+      "reason": "Confidence, missing/contradictory evidence, provenance, classifier version and conformance reasons are explicit and never treated as safety proof; Staging evidence remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4008": {
+      "status": "PARTIAL",
+      "reason": "Auto-classification is limited to conformance-bound zero-effect reads with non-secret input/output, acceptable data classification, capability/resource constraints and trusted artifact/generation-bound receipts; real conformance-source acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4009": {
+      "status": "PARTIAL",
+      "reason": "Owner review is append-only, audit-fail-closed, digest-verified, exact graph/proposal-bound and protected by expected-revision CAS plus token/revision fencing and readback; admin/browser concurrency acceptance remains pending.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T4010": {
+      "status": "PARTIAL",
+      "reason": "Denials cover confidence-only promotion, unsafe GET, lying annotations, secret output, privileged reads, forged/untrusted/stale conformance and risk downgrade; exact-head CI remains the external integration gate.",
+      "evidence_refs": [
+        "g1-delivery.json",
+        "g1-delivery.md"
+      ]
+    },
+    "T3911": {
+      "status": "PARTIAL",
+      "reason": "Recovery preview now exposes exact target, before/after digests, expiry, verification and a plan digest without rollback payload disclosure; broader provider-specific reversal descriptors remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3912": {
+      "status": "PARTIAL",
+      "reason": "Preview evaluates expiry, recoverability, subject/agent binding and current post-state drift while keeping execution unavailable; atomic single-use recovery execution remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3913": {
+      "status": "PARTIAL",
+      "reason": "Exact before/after hashes and post-state readback are surfaced for the supported core post path; typed provider-specific metadata/taxonomy/builder readback remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3914": {
+      "status": "PARTIAL",
+      "reason": "Governance UI now explains recovery blockers, readback state, expiry and non-execution boundaries; richer irreversible-side-effect and reconciliation UX remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3915": {
+      "status": "PARTIAL",
+      "reason": "Repository denial contract forbids mutation calls, grant changes and rollback payload exposure from the G2 read-only surface; live concurrency/stale-provider/partial-rollback acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3916": {
+      "status": "PARTIAL",
+      "reason": "Per-agent workspace now composes exact effective grants, redacted subject bindings, environment/server constraints and recent activity without alternate authority.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3917": {
+      "status": "PARTIAL",
+      "reason": "G2 now combines exact effective-access projection with a reviewed authority-reduction planner bound to agent revision, exact target state and plan SHA-256; richer permission-editor UI, per-object conflict explanations and live role-demotion/deletion invalidation remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3918": {
+      "status": "PARTIAL",
+      "reason": "Reviewed plan/apply/readback is implemented for authority-reducing changes only: disable agent, disable subject and revoke an exact allow grant. Apply requires exact plan SHA-256, expected revision where applicable, explicit confirmation, post-change readback and append-only audit; authority expansion, grant creation, enable/restore and inferred grants are intentionally unsupported. Live concurrency and Staging acceptance remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3919": {
+      "status": "PARTIAL",
+      "reason": "My Access projection now reports redacted subjects/effective access/activity and the reviewed reduction workflow supports disable-agent, disable-subject and exact allow-grant revoke journeys. Real token/session revocation, last-session detail, browser UX and live audit attribution acceptance remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3920": {
+      "status": "PARTIAL",
+      "reason": "Static and runtime contracts deny wildcard/automatic grants, authority expansion, enable/restore paths and stale plan application while preserving exact-grant boundaries. Live wrong-subject/resource/issuer/server, stale-grant, role-promotion shortcut and automatic-mount denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3921": {
+      "status": "PARTIAL",
+      "reason": "Read-only and reviewed-step-up consent presets are explicit, exceptional scopes are excluded, and generic full access is denied; real external consent acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3922": {
+      "status": "PARTIAL",
+      "reason": "Consent projection is generation-digested and declares request-time scope/subject revalidation requirements; end-to-end tools/list and tools/call generation enforcement remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3923": {
+      "status": "PARTIAL",
+      "reason": "Projection requires external re-consent for new scopes and reports revocation/rotation capabilities without bypass; real revoked/expired/rotated session acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3924": {
+      "status": "PARTIAL",
+      "reason": "Client compatibility projection exposes PKCE, bounded client profiles, refresh/revocation and no dynamic registration exposure; real client initialize/list/call acceptance remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3925": {
+      "status": "PARTIAL",
+      "reason": "Repository contracts deny generic full access and hidden scope expansion; refresh replay, foreign Origin, resource/audience drift and stale-generation live denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3951": {
+      "status": "PARTIAL",
+      "reason": "Bounded server-side mutation history search supports agent, ability, object, status, date and stable before-id paging with site-local scope evidence.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3952": {
+      "status": "PARTIAL",
+      "reason": "History exposes redacted before/after integrity hashes and changed-state evidence without raw private content; richer typed field-level visual diffs remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3953": {
+      "status": "PARTIAL",
+      "reason": "History links mutation, parent mutation, request, approval, verification and recovery eligibility evidence; complete audit/execution/readback receipt graph remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3954": {
+      "status": "PARTIAL",
+      "reason": "History emits a portable export digest and audit retention/storage evidence while explicitly reporting legal-hold support as unavailable; governed legal-hold lifecycle remains pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T3955": {
+      "status": "PARTIAL",
+      "reason": "Repository contracts forbid rollback payloads, secrets/tokens and rollback authority from history; live unauthorized/mixed-site/private-object/truncated-snapshot denials remain pending.",
+      "evidence_refs": [
+        "g2-delivery.json",
+        "g2-delivery.md"
+      ]
+    },
+    "T4011": {
+      "status": "PARTIAL",
+      "reason": "Signed immutable manifest v1 and bounded schemas are implemented; provider-specific bindings and migration acceptance remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4012": {
+      "status": "PARTIAL",
+      "reason": "Interpreter produces a non-authorizing typed plan over admitted strategy IDs; real execution/readback integration remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4013": {
+      "status": "PARTIAL",
+      "reason": "Purpose-specific signature, artifact, descriptor, generation and input/effect/cost checks are implemented; live provider and key-revocation acceptance remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4014": {
+      "status": "PARTIAL",
+      "reason": "Private admin preview reports typed plan provenance without dispatch; operator browser acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4015": {
+      "status": "PARTIAL",
+      "reason": "Executable tokens, arbitrary bindings and invalid schema/signature inputs are rejected by contract fixtures; adversarial real provider acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4021": {
+      "status": "PARTIAL",
+      "reason": "Bounded exact-input dual-read runner returns active output only and discards candidate output; real provider workload acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4022": {
+      "status": "PARTIAL",
+      "reason": "Canonical semantics, errors, latency, privacy and explicit zero-cost sampling are compared under bounded workload policy; field-level provider comparators and real quotas remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4023": {
+      "status": "PARTIAL",
+      "reason": "Signed zero-effect/non-secret claims, certified read descriptors and governed child execution are required; actual provider effect and quota proof remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4024": {
+      "status": "PARTIAL",
+      "reason": "Generation-bound signed comparison receipts report eligibility without grants, mounts or promotion; integration with existing certified read exposure remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4025": {
+      "status": "PARTIAL",
+      "reason": "Contract fixtures reject mismatched inputs, private output, invalid sample bounds, stale generations and denied child authority; real provider denial acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4026": {
+      "status": "PARTIAL",
+      "reason": "Existing governed canary wrapper admits exact signed L3 Staging site, subject, input and disposable-target bindings; live one-time authority acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4027": {
+      "status": "PARTIAL",
+      "reason": "Adapter opt-in captures native target/state/effects and invokes one canary operation; real isolated fixture provisioning and invariant coverage remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4028": {
+      "status": "PARTIAL",
+      "reason": "Cleanup executes in finally and exact state/effect readback is required; real hook/external-effect restoration and cancellation acceptance remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4029": {
+      "status": "PARTIAL",
+      "reason": "Signed receipt binds current build, artifact, contract, recipe, subject, environment, generation and restore epoch; real signing/revocation consumer acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4030": {
+      "status": "PARTIAL",
+      "reason": "Exception, generation drift, production, foreign subject and failed cleanup fixtures prohibit receipts and blind retry; real authority/cancellation denials remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4031": {
+      "status": "PARTIAL",
+      "reason": "Typed signed immutable pack envelopes and bounded registry are implemented; per-type provider interpreters and key lifecycle acceptance remain pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4032": {
+      "status": "PARTIAL",
+      "reason": "Data pack versions remain separate from PHP releases and preview/status do not activate executors; runtime consumer integration remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4033": {
+      "status": "PARTIAL",
+      "reason": "Artifact/schema/site/environment/generation/restore bindings, revocation tombstones, monotonic versions and locked registry writes are implemented; live concurrent install/restore acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4034": {
+      "status": "PARTIAL",
+      "reason": "Only proven monotonic restrictive/equal policy overlays are auto-refresh eligible; mislabeled or authority-bearing payloads require governed review and consumer acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T4035": {
+      "status": "PARTIAL",
+      "reason": "Tamper, schema, replay, revoked, stale, foreign and retention overflow denials are contract-tested; live database/key/restore adversarial acceptance remains pending.",
+      "evidence_refs": [
+        "g3-delivery.json",
+        "g3-delivery.md"
+      ]
+    },
+    "T3931": {
+      "status": "PARTIAL",
+      "reason": "Bounded native plugin/version inventory, independent prerequisites and installed typed provider registration exist. Full CF7/WPForms/Gravity/Fluent/JetFormBuilder native definition/version integration remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3932": {
+      "status": "PARTIAL",
+      "reason": "Provider-owned schemas and serialization facts feed exact generation/object preflight plans; canonical native metadata reads are bridged. Native form configuration serialization/apply/readback remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3933": {
+      "status": "PARTIAL",
+      "reason": "Independent submission object/field/consent/mask/retention preflight gates and bounded requests exist. Actual provider entry reads, PII masking, export/delete review and dispatch remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3934": {
+      "status": "PARTIAL",
+      "reason": "Definition metadata and entry prerequisites remain independent; unsupported/premium/absent definition contracts fail closed. Native Flamingo/premium readiness and safe real submission preview acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3935": {
+      "status": "PARTIAL",
+      "reason": "Hermetic denial fixtures cover secrets, nested/repeat IDs, choices, upload policy, absent definitions and irreversible deletion planning. Actual native form/entry/upload/egress acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3936": {
+      "status": "PARTIAL",
+      "reason": "Typed catalog/private/financial contracts separate commerce effects; the existing certified product read is bridged. Variations, attributes, orders/customers/coupons/reporting/fulfillment provider implementations remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3937": {
+      "status": "PARTIAL",
+      "reason": "Exact object/field/mask/pagination/HPOS prerequisites fail closed; product identity/read permission is checked through canonical governance. Actual HPOS/order store compatibility and native PII read acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3938": {
+      "status": "PARTIAL",
+      "reason": "Unique bounded catalog batches bind parent/revision and per-field stock/hook gates; no native batch mutation is dispatched. Disposable provider inventory/tax/hook canaries and exact readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3939": {
+      "status": "PARTIAL",
+      "reason": "Shipping/tax/gateway/webhook/notification/refund/payment proposals carry independent explicit gates and no automatic execution/undo. Native financial/private effects and owner-gated acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3940": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny duplicate products, foreign parents, stale revisions, stock races, hook uncertainty, PII leaks and payment effects through catalog scope. Real concurrency/native-hook/payment acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3941": {
+      "status": "PARTIAL",
+      "reason": "Typed provider format/serialization contracts and dynamic plugin coverage are registered without vendor branches in the shared planner. Full Divi4/Divi5/Kadence/FSE native readers and serializers remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3942": {
+      "status": "PARTIAL",
+      "reason": "Canonical Elementor native tree outline observation and bounded structural preflight bind parent IDs, lock/revision and template scope. Full native controls/template/clone structural diff and live lock acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3943": {
+      "status": "PARTIAL",
+      "reason": "Typed node/control schema and allocated fresh clone-ID gates exist; unproven control mutations fail closed. Provider-owned text/image/widget/template serialization, dispatch and rendered readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3944": {
+      "status": "PARTIAL",
+      "reason": "Plans and observational readback never create approved receipts or infer rollback from history. Compact rendered previews, governed native clone/undo and exact approved receipt acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3945": {
+      "status": "PARTIAL",
+      "reason": "Fixtures cover tree cycles/orphans, unsupported formats/controls, stale/locked editors, clone-ID collisions, template scope and secret leakage. Real mixed-shortcode/block providers and partial rollback acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3966": {
+      "status": "PARTIAL",
+      "reason": "Bounded typed backup/cache/migration/security/redirect inventory and independent preflight risk families exist. Actual native operational provider capabilities and site inventory acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3967": {
+      "status": "PARTIAL",
+      "reason": "Exact artifact path/hash/restore epoch/protected-receipt preflight denies archive aliases and installer credentials; restore readiness cannot execute a restore. Native artifact inspection/backup triggering and restore convergence remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3968": {
+      "status": "PARTIAL",
+      "reason": "Bounded cache targets and same-origin redirect paths require scope/readback; complete graphs deny loops, aliases and global purge widening. Native cache/redirect mutation and frontend readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3969": {
+      "status": "PARTIAL",
+      "reason": "Masked security diagnostics/review handoffs require local object scope and prevent self-lockout; no ban or host installation is dispatched. Actual native logs/redaction/lockout/restore review acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3970": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny archive path abuse, old restore epochs, redirects/loops, cache blast radius, self-lockout and external capability inference. Real provider archive/installer/restore/purge/security acceptance remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3971": {
+      "status": "PARTIAL",
+      "reason": "Runtime CPT/taxonomy collectors report bounded completeness and native object kinds without exposing values or admitting uncovered objects. Full users/comments/media/menus/revisions/ACF native object schema coverage remains pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3972": {
+      "status": "PARTIAL",
+      "reason": "Explicit source language, parent identity, existing ancestry, translation group and object authority guard bounded hierarchy proposals. Native WPML/generic language resolvers, dry-run diffs and exact readback remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3973": {
+      "status": "PARTIAL",
+      "reason": "Provider-owned field/effect/schema gates prevent sensitive roles, foreign fields, object ownership and unsafe media URL changes. Actual hierarchy/meta/menu/media providers and bounded governed dispatch remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3974": {
+      "status": "PARTIAL",
+      "reason": "Optional private collections require availability, object masks, bounded pagination and exact timezone. Native BuddyPress/Events Calendar integration and actual private-object acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3975": {
+      "status": "PARTIAL",
+      "reason": "Fixtures deny ancestry cycles/orphans, cross-language/group ambiguity, role escalation, unsafe media URLs, missing optional providers and private communications. Native licensing handoffs and provider live acceptance remain pending.",
+      "evidence_refs": [
+        "g4-delivery.json",
+        "g4-delivery.md"
+      ]
+    },
+    "T3926": {
+      "status": "PARTIAL",
+      "reason": "Repository foundation provides the generic retained-observation adapter contract plus GA4 and Search Console reference profiles with exact subject/property/capability provenance; live provider capture remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3927": {
+      "status": "PARTIAL",
+      "reason": "Required Semrush, SE Ranking and Ahrefs research reference profiles are defined while the existing SERP provider mesh is reused; native research adapters and representative provider acceptance remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3928": {
+      "status": "PARTIAL",
+      "reason": "Growth evidence binds site/property/query/surface, market, language, window, attribution, currency, freshness, sampling, cost and source generation before comparison; live cross-provider evidence remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3929": {
+      "status": "PARTIAL",
+      "reason": "Growth Providers admin routing, bounded setup schemas, explicit consent boundaries and existing Search-account handoff are implemented without credential values or secret handles; persisted browser enrollment acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3930": {
+      "status": "PARTIAL",
+      "reason": "Runtime contracts deny missing consent, mixed dimensions/currencies/windows, partial or thresholded samples, uncertain charges/budgets and contradictory observations; live adversarial provider acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3946": {
+      "status": "PARTIAL",
+      "reason": "A six-provider SEO family preflight covers Rank Math, Yoast, AIOSEO, SEOPress, Slim SEO and The SEO Framework without inferring execution from presence; provider-native adapters beyond existing foundations remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3947": {
+      "status": "PARTIAL",
+      "reason": "SEO plans bind reviewed title/description/focus/schema/social/canonical/robots fields to post/term/archive, language, provider and rendered-surface context with coexistence preservation gates; native field provenance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3948": {
+      "status": "PARTIAL",
+      "reason": "SEO plans remain non-executing and require provider-native schema/serialization, exact stored readback, exact rendered readback, current authority and impact approval; admitted native apply/readback remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3949": {
+      "status": "PARTIAL",
+      "reason": "SEO readiness exposes applicability, installed identity, denied execution and required rendered/coexistence acceptance without claiming provider parity; browser/rendered evidence remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T3950": {
+      "status": "PARTIAL",
+      "reason": "Repository gates require coexistence preservation, archive/language scope, cache-generation freshness, stored/rendered parity and no signal-direct mutation; live serialization/cache/language fault acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4056": {
+      "status": "PARTIAL",
+      "reason": "Generic pinned server-code adapter descriptors cover account/scopes/quota/economics/rights/health-relevant generation/capabilities/effects while required provider families are reference profiles rather than a closed allowlist; live adapters remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4057": {
+      "status": "PARTIAL",
+      "reason": "Adapter-owned reviewed setup schemas drive account/property/profile previews and Search continues to reuse its encrypted connection authority; persisted provider setup and account-test acceptance remain pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4058": {
+      "status": "PARTIAL",
+      "reason": "Existing Search execution retains budget/circuit-breaker ownership while retained G5 reads require zero-cost descriptors and evidence cost receipts block uncertain reconciliation; live provider error/cost normalization remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4059": {
+      "status": "PARTIAL",
+      "reason": "Configuration packs are limited to the pinned stored-evidence protocol and existing reviewed Search path; unknown protocols cannot become generic endpoints, while additional providers require reviewed server code; live pack acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4060": {
+      "status": "PARTIAL",
+      "reason": "Contracts keep new scopes behind external consent, credentials opaque, generic HTTP disabled and client-defined provider identity denied; live missing-rights/cost/consent/protocol adversarial acceptance remains pending.",
+      "evidence_refs": [
+        "g5-delivery.json",
+        "g5-delivery.md"
+      ]
+    },
+    "T4036": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4037": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4038": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4039": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4040": {
+      "status": "PARTIAL",
+      "reason": "Repository-only ownership/CAS preflight exists; typed native consumer and live Staging parity are not independently accepted.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4041": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4042": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4043": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4044": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4045": {
+      "status": "PARTIAL",
+      "reason": "Redacted journal and signed receipt consistency audit exist; Undo execution and independent external-effects/readback are not certified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4046": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4047": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4048": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4049": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4050": {
+      "status": "PARTIAL",
+      "reason": "Site-bound runtime/graph observations and recertification blockers exist; release acceptance receipt and rollback rehearsal are missing.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4051": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4052": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4053": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4054": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4055": {
+      "status": "PARTIAL",
+      "reason": "Expiring host prerequisite observation exists; a genuinely isolated sandbox execution and host attestation are unverified.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4063": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4064": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    },
+    "T4065": {
+      "status": "PARTIAL",
+      "reason": "Read-only operator projection/metrics diagnostics exist; safe dispatch and verified receipt-deduplicated automation outcomes are not implemented.",
+      "evidence_refs": [
+        "g7-delivery.json",
+        "g7-delivery.md"
+      ]
+    }
+  },
+  "documentation_only_completion_forbidden": true
+}

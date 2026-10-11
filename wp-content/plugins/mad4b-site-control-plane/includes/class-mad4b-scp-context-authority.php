@@ -275,6 +275,529 @@ final class MAD4B_SCP_Context_Authority {
 		return self::authorized_assets_from_records( self::raw_assets(), $sources, $site );
 	}
 
+    /** Aggregate only; does not expose or adopt quarantined legacy data. */
+    public static function legacy_reconciliation_census() {
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ||
+            ! class_exists( 'MAD4B_SCP_Policy', false ) || ! MAD4B_SCP_Policy::can_read() )
+            return new WP_Error( 'mad4b_legacy_census_permission_denied', 'Administrator read permission required.' );
+        $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+        if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+        $sources = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_sources() );
+        if ( is_wp_error( $sources ) ) return $sources;
+        $assets = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_assets() );
+        if ( is_wp_error( $assets ) ) return $assets;
+        $fresh = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, false );
+        if ( is_wp_error( $fresh ) ) return $fresh;
+        return array(
+            'contract' => 'mad4b.context-legacy-reconciliation-census.v1',
+            'sources' => $sources['counts'],
+            'assets' => $assets['counts'],
+            'source_quarantine_count' => $sources['quarantined'],
+            'asset_quarantine_count' => $assets['quarantined'],
+            'scope_fingerprint' => $checkpoint['fingerprint'],
+            'read_only' => true,
+            'mutation_performed' => false,
+            'migration_authorized' => false,
+        );
+    }
+
+
+	/**
+	 * Privileged read-only candidate discovery. Unbound is not owned:
+	 * visibility of an old folder does not grant migration rights.
+	 */
+	public static function legacy_owner_transfer_discover( $input = array() ) {
+		if ( ! is_array( $input ) || $input )
+			return new WP_Error( 'mad4b_legacy_transfer_discover_input_invalid', 'Only empty read-only inventory requests are accepted.' );
+		if ( ! current_user_can( 'manage_options' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_discover_admin_required', 'Exact administrator review required.' );
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$rows = array();
+		$foreign_or_conflicted = 0;
+		foreach ( self::raw_sources() as $key => $source ) {
+			if ( ! is_array( $source ) ) { ++$foreign_or_conflicted; continue; }
+			$id = (string) ( $source['source_id'] ?? '' );
+			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $id ) ) { ++$foreign_or_conflicted; continue; }
+			$review = self::legacy_owner_transfer_plan( array( 'source_id' => $id ) );
+			if ( is_wp_error( $review ) ) { ++$foreign_or_conflicted; continue; }
+			$rows[] = array(
+				'source_id' => $id,
+				'external_root_id' => (string) $review['external_root_id'],
+				'asset_count' => (int) $review['asset_count'],
+				'plan_sha256' => (string) $review['plan_sha256'],
+				'status' => 'owner_and_external_folder_review_required',
+			);
+		}
+		return array( 'contract' => 'mad4b.context-legacy-owner-transfer-discovery.v1',
+			'eligible_unbound_candidates' => $rows,
+			'candidate_count' => count( $rows ),
+			'foreign_or_conflicted_records' => $foreign_or_conflicted,
+			'brand_ownership_asserted' => false, 'migration_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false );
+	}
+
+	/** Test optional tenancy metadata WITHOUT treating a missing brand as owned. */
+	private static function legacy_metadata_compatible( array $record, array $scope ) {
+		$fields = array(
+			'tenant_ref' => 'tenant_ref', 'tenant_id' => 'tenant_ref',
+			'blog_id' => 'blog_id', 'network_id' => 'network_id',
+			'environment' => 'environment', 'deployment_mode' => 'deployment_mode',
+		);
+		foreach ( $fields as $key => $trusted ) {
+			if ( ! array_key_exists( $key, $record ) ) continue;
+			if ( ! isset( $scope[ $trusted ] ) || ! is_scalar( $record[ $key ] )
+				|| '' === trim( (string) $record[ $key ] )
+				|| ! hash_equals( (string) $scope[ $trusted ], trim( (string) $record[ $key ] ) ) ) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Plan one exact unbound legacy folder transfer. Foreign Brand identities
+	 * and competing scoped records are NEVER silently reassigned. Owner must
+	 * independently inspect the original Google Drive folder.
+	 */
+	public static function legacy_owner_transfer_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$source_id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source_id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_source_required', 'Select one exact already-stored source ID.' );
+		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_legacy_transfer_admin_required', 'An administrator must inspect the exact prior source.' );
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		if ( 'staging' !== (string) $site['environment'] )
+			return new WP_Error( 'mad4b_legacy_transfer_staging_only', 'Legacy identity migration is Staging only.' );
+		$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$profile = self::profile();
+		$brand_id = strtolower( trim( (string) ( $profile['brand_id'] ?? '' ) ) );
+		if ( ! preg_match( '/^[a-f0-9]{32}$/D', $brand_id )
+			|| ! hash_equals( (string) $scope['brand_ref'], $brand_id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_brand_invalid', 'Current enrolled Brand identity is not exact.' );
+		$sources = self::raw_sources();
+		$assets = self::raw_assets();
+		$source = $sources[ $source_id ] ?? array();
+		if ( ! self::valid_source( $source ) || 'google_drive' !== (string) ( $source['provider'] ?? '' )
+			|| 'governed' !== (string) ( $source['mode'] ?? '' )
+			|| ! hash_equals( $source_id, strtolower( (string) ( $source['source_id'] ?? '' ) ) )
+			|| ! hash_equals( (string) $scope['site_uuid'], strtolower( (string) ( $source['site_uuid'] ?? '' ) ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_source_not_exact', 'Source is not an exact governed Drive source on this Staging site.' );
+		// Verify the persisted source identity was generated by the original
+		// context adapter. A valid-looking random SHA is not a valid source.
+		$source_root = (string) ( $source['external_root_id'] ?? '' );
+		$canonical_source_id = hash( 'sha256',
+			(string) $scope['site_uuid'] . '|google_drive|governed|' . $source_root . '|' );
+		if ( ! hash_equals( $canonical_source_id, $source_id )
+			|| ! hash_equals( $source_id, (string) ( $source['source_id'] ?? '' ) )
+			|| '' !== (string) ( $source['task_scope'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_source_identity_not_canonical',
+				'Legacy source ID, exact site, mode and managed folder do not match the original canonical identity.' );
+		$old_brand = strtolower( trim( (string) ( $source['brand_id'] ?? '' ) ) );
+		if ( '' !== $old_brand ) return new WP_Error( 'mad4b_legacy_transfer_ownership_not_unbound',
+			'Only truly unbound legacy records can be considered; another Brand must use a separate verified migration.' );
+		if ( ! self::legacy_metadata_compatible( $source, $scope ) )
+			return new WP_Error( 'mad4b_legacy_transfer_scope_conflict', 'Source contains conflicting tenant, deployment or network metadata.' );
+		// Require all assets belonging to the selected source to be transferable
+		// together. Any foreign, malformed or mixed row aborts the whole plan.
+		$selected = array();
+		foreach ( $assets as $key => $asset ) {
+			if ( ! is_array( $asset ) || $source_id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			if ( ! self::valid_asset( $asset ) || '' !== strtolower( trim( (string) ( $asset['brand_id'] ?? '' ) ) )
+				|| ! hash_equals( (string) $scope['site_uuid'], strtolower( (string) ( $asset['site_uuid'] ?? '' ) ) )
+				|| 'governed' !== (string) ( $asset['source_mode'] ?? '' )
+				|| ! self::legacy_metadata_compatible( $asset, $scope ) )
+				return new WP_Error( 'mad4b_legacy_transfer_asset_scope_conflict',
+					'Foreign, malformed or mixed-ownership asset prevents bulk transfer.' );
+			$canonical_asset_id = hash( 'sha256', $source_id . '|' . (string) ( $asset['file_id'] ?? '' ) );
+			if ( ! hash_equals( $canonical_asset_id, (string) ( $asset['asset_id'] ?? '' ) )
+				|| ! hash_equals( (string) $key, $canonical_asset_id ) )
+				return new WP_Error( 'mad4b_legacy_transfer_asset_identity_not_canonical',
+					'Legacy asset registry key does not match original source and Google Drive file identity.' );
+			$selected[ (string) $key ] = $asset;
+		}
+		if ( ! $selected ) return new WP_Error( 'mad4b_legacy_transfer_assets_required',
+			'No unbound assets were proven for this exact governed source.' );
+		ksort( $selected, SORT_STRING );
+		$external_root = (string) ( $source['external_root_id'] ?? '' );
+		$source_digest = hash( 'sha256', wp_json_encode( $source ) );
+		$assets_digest = hash( 'sha256', wp_json_encode( $selected ) );
+		$basis = array(
+			'contract' => 'mad4b.context-legacy-owner-transfer-plan.v1',
+			'state' => 'owner_and_external_folder_review_required',
+			'site_uuid' => (string) $scope['site_uuid'],
+			'brand_id' => $brand_id,
+			'brand_revision' => (int) ( $profile['revision'] ?? 0 ),
+			'registry_revision' => self::registry_revision(),
+			'source_id' => $source_id,
+			'external_root_id' => $external_root,
+			'source_record_sha256' => $source_digest,
+			'asset_records_sha256' => $assets_digest,
+			'asset_count' => count( $selected ),
+			'owner_review_required' => true,
+			'current_provider_folder_identity_review_required' => true,
+			'one_time_exact_mutation_approval_required' => true,
+			'prior_approvals_invalidated_on_transfer' => true,
+			'new_source_created' => false,
+			'source_write_policy_after_transfer' => 'read_only',
+			'post_transfer_scan_required' => true,
+			'production_mutation_authorized' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		$basis['plan_sha256'] = hash( 'sha256', wp_json_encode( $basis ) );
+		return $basis;
+	}
+
+	/**
+	 * Read-only independent identity evidence for a quarantined original Drive
+	 * folder. This proves membership, NOT legal ownership or editorial consent.
+	 * A full provider scan is required; truncated or ambiguous results fail closed.
+	 */
+	public static function legacy_owner_transfer_evidence( $input = array() ) {
+		$plan = self::legacy_owner_transfer_plan( $input );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) )
+			return new WP_Error( 'mad4b_legacy_proof_provider_unavailable', 'The original Drive provider is unavailable.' );
+		$source = self::raw_sources()[ $plan['source_id'] ] ?? array();
+		$recursive = ! empty( $source['recursive'] );
+		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $plan['external_root_id'], $recursive );
+		if ( is_wp_error( $scan ) ) return $scan;
+		return self::legacy_owner_provider_proof( $plan, self::raw_assets(), $scan, $recursive );
+	}
+
+	/** Pure exact-set comparison shared by the read-only evidence and locked write preflight. */
+	public static function legacy_owner_provider_proof( $plan, $stored_assets, $scan, $recursive ) {
+		if ( ! is_array( $plan ) || ! is_array( $stored_assets ) || ! is_array( $scan )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $plan['plan_sha256'] ?? '' ) )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $plan['source_id'] ?? '' ) )
+			|| empty( $plan['external_root_id'] ) || ! isset( $plan['asset_count'] )
+			|| ! is_int( $plan['asset_count'] ) || $plan['asset_count'] < 1 )
+			return new WP_Error( 'mad4b_legacy_proof_plan_invalid', 'Exact original source plan is required.' );
+		if ( true !== ( $scan['complete'] ?? null ) || ! empty( $scan['truncated'] )
+			|| ! isset( $scan['folder'], $scan['assets'] ) || ! is_array( $scan['folder'] )
+			|| ! is_array( $scan['assets'] ) || (bool) ( $scan['recursive'] ?? null ) !== (bool) $recursive
+			|| ! hash_equals( (string) $plan['external_root_id'], (string) ( $scan['folder']['id'] ?? '' ) )
+			|| 'application/vnd.google-apps.folder' !== (string) ( $scan['folder']['mimeType'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_proof_incomplete_or_wrong_folder',
+				'Complete original-folder metadata and recursive scope must match the approved plan.' );
+		$expected = array();
+		foreach ( $stored_assets as $key => $asset ) {
+			if ( ! is_array( $asset ) || $plan['source_id'] !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			$file_id = (string) ( $asset['file_id'] ?? '' );
+			$asset_id = hash( 'sha256', (string) $plan['source_id'] . '|' . $file_id );
+			if ( '' === $file_id || isset( $expected[ $file_id ] )
+				|| ! hash_equals( $asset_id, (string) $key )
+				|| ! hash_equals( $asset_id, (string) ( $asset['asset_id'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_legacy_proof_registry_ambiguous', 'Stored asset IDs are duplicated or no longer canonical.' );
+			$expected[ $file_id ] = true;
+		}
+		if ( count( $expected ) !== $plan['asset_count'] )
+			return new WP_Error( 'mad4b_legacy_proof_registry_count_changed', 'The original asset set changed since planning.' );
+		$observed = array();
+		foreach ( $scan['assets'] as $item ) {
+			if ( ! is_array( $item ) || '' === (string) ( $item['file_id'] ?? '' ) )
+				return new WP_Error( 'mad4b_legacy_proof_provider_item_invalid', 'Provider returned an invalid file record.' );
+			$file_id = (string) $item['file_id'];
+			if ( isset( $observed[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_proof_duplicate_provider_identity', 'Provider inventory repeats a file ID.' );
+			$observed[ $file_id ] = $item;
+		}
+		$matched = array();
+		foreach ( $expected as $file_id => $unused ) {
+			if ( ! isset( $observed[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_proof_file_missing', 'An original file is not in the current complete Drive folder inventory.' );
+			$item = $observed[ $file_id ];
+			if ( '' === (string) ( $item['parent_folder_id'] ?? '' )
+				|| 'application/vnd.google-apps.shortcut' === (string) ( $item['mimeType'] ?? '' ) )
+				return new WP_Error( 'mad4b_legacy_proof_file_indirect', 'Shortcuts or unknown file parentage do not establish original folder membership.' );
+			$matched[ $file_id ] = array(
+				'parent' => (string) $item['parent_folder_id'],
+				'mime' => (string) ( $item['mimeType'] ?? '' ),
+				'version' => (string) ( $item['modifiedTime'] ?? '' ),
+				'content_sha256' => (string) ( $item['content_hash'] ?? '' ),
+			);
+		}
+		ksort( $matched, SORT_STRING );
+		$material = array( 'contract' => 'mad4b.context-legacy-provider-proof.v1',
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'source_id' => (string) $plan['source_id'],
+			'external_root_id' => (string) $plan['external_root_id'],
+			'recursive' => (bool) $recursive,
+			'matched_assets' => $matched );
+		$digest = hash( 'sha256', wp_json_encode( $material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return array( 'contract' => 'mad4b.context-legacy-provider-proof.v1',
+			'state' => 'PROVIDER_IDENTITY_VERIFIED_OWNER_APPROVAL_PENDING',
+			'source_id' => (string) $plan['source_id'],
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'provider_proof_sha256' => $digest,
+			'original_folder_id' => (string) $plan['external_root_id'],
+			'matched_file_count' => count( $matched ),
+			'provider_file_count' => count( $observed ),
+			'folder_membership_verified' => true,
+			'legal_owner_or_rights_verified' => false,
+			'independent_owner_approval_required' => true,
+			'rollback_certification_required' => true,
+			'migration_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false );
+	}
+
+	/**
+	 * Exact, one-source, Staging-only owner-attested transition. Invoked
+	 * ONLY as an independently approved governed MCP write; the source/asset
+	 * options and current scope are CAS protected by the Context registry lock.
+	 * All inherited approval statuses are invalidated until new review.
+	 */
+	public static function legacy_owner_transfer_apply( $input ) {
+		if ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) || true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required', 'Legacy ownership writes remain disabled until independent rollback and Host acceptance are certified.' );
+		// An operator-set flag is not proof of the current physical Host.
+		// Verify the nonce-bound existing enrolled Host Runner independently
+		// for THIS mutation, with no alternate key or source of authority.
+		if ( ! class_exists( 'MAD4B_SCP_Host_Identity_Live' ) ||
+			! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_host_proof_unavailable',
+				'The enrolled Host identity verifier is unavailable.' );
+		$host_identity = MAD4B_SCP_Host_Identity_Live::observe( MAD4B_SCP_Site_Profile::status() );
+		if ( ! is_array( $host_identity ) || empty( $host_identity['verified'] ) )
+			return new WP_Error( 'mad4b_legacy_transfer_host_proof_required',
+				'A fresh independently verified enrolled Host Runner proof is required, in addition to rollback certification.' );
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_legacy_transfer_input_invalid', 'Exact transfer input required.' );
+		if ( 'APPROVE EXACT UNBOUND BRAND TRANSFER' !== (string) ( $input['confirmation'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_owner_confirmation_required', 'The exact owner transfer confirmation was not given.' );
+		$source_id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		$expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
+		$reviewed_root = trim( (string) ( $input['reviewed_external_root_id'] ?? '' ) );
+		$evidence = trim( (string) ( $input['owner_evidence_reference'] ?? '' ) );
+		$expected_provider_proof = strtolower( trim( (string) ( $input['expected_provider_proof_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_provider_proof ) || strlen( $evidence ) < 12 ||
+			strlen( $evidence ) > 500 || '' === $reviewed_root )
+			return new WP_Error( 'mad4b_legacy_transfer_evidence_invalid', 'An exact source plan and independently reviewed evidence reference are required.' );
+		// Independent real provider read: an operator-supplied folder string is
+		// never enough to convert unbound records into Brand-owned records.
+		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_unavailable', 'Existing enrolled Google Drive provider is not available.' );
+		$folder = MAD4B_SCP_Google_Drive_Context::get_folder( $reviewed_root );
+		if ( is_wp_error( $folder ) ) return $folder;
+		if ( ! is_array( $folder ) || ! hash_equals( $reviewed_root, (string) ( $folder['id'] ?? '' ) )
+			|| 'application/vnd.google-apps.folder' !== (string) ( $folder['mimeType'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_transfer_folder_mismatch', 'Independent Google Drive folder identity could not be verified.' );
+		// A folder existing is not proof that each old asset still belongs
+		// within it. Require a bounded, complete scan and identity match;
+		// incomplete provider results must never authorize reassignment.
+		$stored_source = self::raw_sources()[ $source_id ] ?? array();
+		if ( ! is_array( $stored_source ) ||
+			! hash_equals( $reviewed_root, (string) ( $stored_source['external_root_id'] ?? '' ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_root_drift', 'Original source folder changed before Provider verification.' );
+		$provider_scan = MAD4B_SCP_Google_Drive_Context::scan_folder(
+			$reviewed_root, ! empty( $stored_source['recursive'] ) );
+		if ( is_wp_error( $provider_scan ) ) return $provider_scan;
+		if ( ! is_array( $provider_scan ) || empty( $provider_scan['complete'] ) ||
+			! isset( $provider_scan['assets'] ) || ! is_array( $provider_scan['assets'] ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_scan_incomplete',
+				'Complete bounded Drive inventory is required; no assets may be adopted after a truncated scan.' );
+		$observed_file_ids = array();
+		foreach ( $provider_scan['assets'] as $candidate ) {
+			$file_id = is_array( $candidate ) ? (string) ( $candidate['file_id'] ?? '' ) : '';
+			if ( '' !== $file_id ) $observed_file_ids[ $file_id ] = true;
+		}
+		$expected_count = 0;
+		foreach ( self::raw_assets() as $old_asset ) {
+			if ( ! is_array( $old_asset ) ||
+				$source_id !== (string) ( $old_asset['source_id'] ?? '' ) ) continue;
+			++$expected_count;
+			$file_id = (string) ( $old_asset['file_id'] ?? '' );
+			if ( '' === $file_id || ! isset( $observed_file_ids[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_transfer_provider_asset_missing',
+					'At least one quarantined asset could not be verified inside the original Drive source folder.' );
+		}
+		if ( $expected_count < 1 )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_asset_inventory_empty',
+				'No matching existing assets were verified in the original provider folder.' );
+		// The independently reviewed provider proof is bound to the SAME
+		// exact plan and observed file/version set. A free-form owner note
+		// is not proof of provider identity or business ownership.
+		$preflight_plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
+		if ( is_wp_error( $preflight_plan ) ) return $preflight_plan;
+		$provider_proof = self::legacy_owner_provider_proof(
+			$preflight_plan, self::raw_assets(), $provider_scan, ! empty( $stored_source['recursive'] ) );
+		if ( is_wp_error( $provider_proof ) ) return $provider_proof;
+		if ( ! hash_equals( (string) $provider_proof['plan_sha256'], $expected )
+			|| ! hash_equals( (string) $provider_proof['provider_proof_sha256'], $expected_provider_proof ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_proof_stale',
+				'The operator-reviewed source and external inventory evidence changed. Refresh proof and approval.' );
+		$provider_inventory_digest = $provider_proof['provider_proof_sha256'];
+		return self::with_registry_lock( 'legacy_owner_transfer_apply',
+			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest ) {
+				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
+				if ( is_wp_error( $plan ) ) return $plan;
+				if ( ! hash_equals( (string) $plan['plan_sha256'], $expected )
+					|| ! hash_equals( (string) $plan['brand_id'], strtolower( (string) ( $input['expected_brand_id'] ?? '' ) ) )
+					|| ! hash_equals( (string) $plan['external_root_id'], $reviewed_root ) )
+					return new WP_Error( 'mad4b_legacy_transfer_exact_plan_stale',
+						'Exact source, owner, external folder or registry changed after approval.' );
+				$audit = self::audit_preflight();
+				if ( is_wp_error( $audit ) ) return $audit;
+				$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+				if ( is_wp_error( $scope ) ) return $scope;
+				$sources = self::raw_sources();
+				$assets = self::raw_assets();
+				$source = $sources[ $source_id ];
+				$stamp = array( 'brand_id' => (string) $plan['brand_id'] );
+				foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $key )
+					if ( ! array_key_exists( $key, $source ) ) $stamp[ $key ] = (string) $scope[ $key ];
+				$source = array_merge( $source, $stamp );
+				$source['write_policy'] = 'read_only';
+				$source['status'] = 'selected';
+				$source['last_scan_complete'] = false;
+				$source['last_complete_scan_at'] = '';
+				$source['updated_at'] = gmdate( 'c' );
+				$sources[ $source_id ] = $source;
+				$count = 0;
+				foreach ( $assets as $id => $asset ) {
+					if ( ! is_array( $asset ) || $source_id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+					$asset['brand_id'] = (string) $plan['brand_id'];
+					foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $key )
+						if ( ! array_key_exists( $key, $asset ) ) $asset[ $key ] = (string) $scope[ $key ];
+					$asset['review_status'] = 'unreviewed';
+					$asset['review_decision'] = '';
+					$asset['reviewed_content_hash'] = '';
+					$asset['reviewed_at'] = '';
+					// No old Agent/owner review is inherited across an
+					// identity change, including stale-evidence overrides.
+					foreach ( array( 'review_actor_type', 'review_agent_public_id',
+						'review_note', 'reviewed_by', 'review_evidence_sha256',
+						'generation_evidence_stale_override',
+						'generation_evidence_reviewed_current_digest',
+					) as $approval_field ) unset( $asset[ $approval_field ] );
+					$asset['status'] = 'stale';
+					$asset['updated_at'] = gmdate( 'c' );
+					$assets[ $id ] = $asset;
+					++$count;
+				}
+				if ( $count !== $expected_count )
+					return new WP_Error( 'mad4b_legacy_transfer_provider_registry_count_drift',
+						'Registry changed after external Drive inventory; refresh identity and repeat preflight.' );
+				if ( $count !== (int) $plan['asset_count'] ) return new WP_Error(
+					'mad4b_legacy_transfer_count_drift', 'Asset set changed during the locked transfer.' );
+				$committed = self::commit_option_changes(
+					array( self::SOURCES_OPTION => $sources, self::ASSETS_OPTION => $assets ),
+					'mad4b_legacy_transfer_commit_failed', 'Could not atomically persist the reviewed legacy transfer.'
+				);
+				if ( is_wp_error( $committed ) ) return $committed;
+				$read_source = self::raw_sources();
+				$read_assets = self::raw_assets();
+				$selected_postcount = 0;
+				if ( ! isset( $read_source[ $source_id ] )
+					|| ! hash_equals( (string) $plan['brand_id'], (string) ( $read_source[ $source_id ]['brand_id'] ?? '' ) )
+					|| 'read_only' !== (string) ( $read_source[ $source_id ]['write_policy'] ?? '' ) )
+					return new WP_Error( 'mad4b_legacy_transfer_source_readback_failed',
+						'New registry binding could not be independently read back; compensate before accepting.' );
+				foreach ( $read_assets as $post_asset ) {
+					if ( ! is_array( $post_asset ) ||
+						$source_id !== (string) ( $post_asset['source_id'] ?? '' ) ) continue;
+					++$selected_postcount;
+					if ( ! hash_equals( (string) $plan['brand_id'], (string) ( $post_asset['brand_id'] ?? '' ) )
+						|| 'unreviewed' !== (string) ( $post_asset['review_status'] ?? '' )
+						|| '' !== (string) ( $post_asset['reviewed_content_hash'] ?? '' )
+						|| 'stale' !== (string) ( $post_asset['status'] ?? '' ) )
+						return new WP_Error( 'mad4b_legacy_transfer_assets_readback_failed',
+							'Exact newly transferred assets have not been independently verified as unapproved.' );
+				}
+				if ( $selected_postcount !== $count )
+					return new WP_Error( 'mad4b_legacy_transfer_asset_count_readback_failed',
+						'Source asset count changed before the transfer was accepted.' );
+				return self::audited_registry_result( array(
+					'contract' => 'mad4b.context-legacy-owner-transfer.v1',
+					'state' => 'transferred_unapproved_requires_fresh_scan',
+					'source_id' => $source_id, 'asset_count' => $count,
+					'brand_id' => (string) $plan['brand_id'],
+					'prior_review_authority_preserved' => false,
+					'new_source_created' => false,
+					'production_mutation' => false,
+				), 'mad4b/context-legacy-owner-transfer', array(
+					'source_id_sha256' => hash( 'sha256', $source_id ),
+					'prior_source_sha256' => (string) $plan['source_record_sha256'],
+					'prior_assets_sha256' => (string) $plan['asset_records_sha256'],
+					'asset_count' => $count,
+					'plan_sha256' => $expected,
+					'evidence_reference_sha256' => hash( 'sha256', $evidence ),
+					'verified_provider_file_count' => $expected_count,
+					'provider_inventory_digest' => $provider_inventory_digest,
+					'provider_scan_complete' => true,
+					'owner_approved_transfer' => true,
+					'prior_reviews_invalidated' => true,
+					'supplier_rights_auto_granted' => false,
+					'production_mutation' => false,
+				), 'ok' );
+			}
+		);
+	}
+
+	/** Independent postcondition read; never accepts a caller-supplied owner. */
+	public static function legacy_owner_transfer_readback( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
+		if ( ! current_user_can( 'manage_options' ) ||
+			1 !== preg_match( '/^[a-f0-9]{64}$/D', $id ) )
+			return new WP_Error( 'mad4b_legacy_transfer_readback_denied',
+				'Administrator and exact SHA-bound legacy source ID required.' );
+		$scope = MAD4B_SCP_Operational_Scope_Guard::require_current();
+		if ( is_wp_error( $scope ) ) return $scope;
+		$source = self::raw_sources()[ $id ] ?? array();
+		$brand = strtolower( (string) ( $scope['brand_ref'] ?? '' ) );
+		$expected_id = is_array( $source )
+			? hash( 'sha256', (string) $scope['site_uuid'] . '|google_drive|governed|' .
+				(string) ( $source['external_root_id'] ?? '' ) . '|' ) : '';
+		$source_valid = is_array( $source ) && self::valid_source( $source )
+			&& hash_equals( $expected_id, $id )
+			&& 'google_drive' === (string) ( $source['provider'] ?? '' )
+			&& 'governed' === (string) ( $source['mode'] ?? '' )
+			&& 'read_only' === (string) ( $source['write_policy'] ?? '' )
+			&& 'selected' === (string) ( $source['status'] ?? '' )
+			&& empty( $source['last_scan_complete'] )
+			&& hash_equals( $brand, strtolower( (string) ( $source['brand_id'] ?? '' ) ) )
+			&& MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $source, $scope );
+		$items = 0; $unreviewed = 0; $foreign = 0; $prior_review_still_present = 0;
+		foreach ( self::raw_assets() as $key => $asset ) {
+			if ( ! is_array( $asset ) || $id !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			++$items;
+			$canonical_asset_id = hash( 'sha256', $id . '|' . (string) ( $asset['file_id'] ?? '' ) );
+			$approval_present = 'approved' === (string) ( $asset['review_status'] ?? '' )
+				|| '' !== (string) ( $asset['reviewed_content_hash'] ?? '' )
+				|| ! empty( $asset['review_agent_public_id'] )
+				|| ! empty( $asset['generation_evidence_stale_override'] );
+			if ( $approval_present ) ++$prior_review_still_present;
+			if ( self::valid_asset( $asset )
+				&& hash_equals( $canonical_asset_id, (string) $key )
+				&& hash_equals( $canonical_asset_id, (string) ( $asset['asset_id'] ?? '' ) )
+				&& 'stale' === (string) ( $asset['status'] ?? '' )
+				&& 'unreviewed' === (string) ( $asset['review_status'] ?? '' )
+				&& ! $approval_present
+				&& MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $asset, $scope ) )
+				++$unreviewed;
+			else ++$foreign;
+		}
+		$ready = $source_valid && $items > 0 && $items === $unreviewed && 0 === $foreign;
+		return array(
+			'contract' => 'mad4b.context-legacy-owner-transfer-readback.v1',
+			'state' => $ready ? 'transferred_unapproved_requires_fresh_scan' : 'blocked_or_changed',
+			'ready_for_fresh_source_scan' => $ready,
+			'existing_source_verified' => $source_valid,
+			'asset_count' => $items,
+			'unreviewed_asset_count' => $unreviewed,
+			'foreign_or_approved_asset_count' => $foreign,
+			'prior_review_evidence_still_present_count' => $prior_review_still_present,
+			'old_approvals_reused' => $ready ? false : null,
+			'registry_revision' => self::registry_revision(),
+			'provider_readback_performed' => false,
+			'cross_request_crash_recovery_certified' => false,
+			'content_ready_for_publication' => false,
+			'supplier_rights_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false,
+		);
+	}
+
 	private static function raw_sources() {
 		$records = get_option( self::SOURCES_OPTION, array() );
 		return is_array( $records ) ? $records : array();
@@ -288,11 +811,22 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_sources_from_records( array $records, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid ) return array();
+		$profile = self::profile();
+		$brand_id = isset( $profile['brand_id'] ) ? strtolower( trim( (string) $profile['brand_id'] ) ) : '';
+		$verified_scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+			? MAD4B_SCP_Operational_Scope_Guard::require_current()
+			: new WP_Error( 'mad4b_scope_guard_missing', 'Verified identity unavailable.' );
+		if ( is_wp_error( $verified_scope ) || '' === $site_uuid ||
+			! hash_equals( $site_uuid, (string) $verified_scope['site_uuid'] ) ||
+			! hash_equals( $brand_id, (string) $verified_scope['brand_ref'] ) ||
+			! preg_match( '/^[a-f0-9]{32}$/', $brand_id ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_source( $record ) ) continue;
 			$record_site_uuid = strtolower( trim( (string) $record['site_uuid'] ) );
 			if ( ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
+			$record_brand_id = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+			if ( '' === $record_brand_id || ! hash_equals( $brand_id, $record_brand_id ) ) continue;
+            if ( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $record, $verified_scope ) ) continue;
 			$policy = isset( $record['write_policy'] ) ? sanitize_key( (string) $record['write_policy'] ) : 'read_only';
 			if ( ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true ) ) $policy = 'read_only';
 			if ( 'task_attachment' === ( isset( $record['mode'] ) ? (string) $record['mode'] : '' ) ) $policy = 'read_only';
@@ -305,13 +839,23 @@ final class MAD4B_SCP_Context_Authority {
 	private static function authorized_assets_from_records( array $records, array $sources, array $site ) {
 		$out = array();
 		$site_uuid = isset( $site['site_uuid'] ) ? strtolower( trim( (string) $site['site_uuid'] ) ) : '';
-		if ( '' === $site_uuid ) return array();
+		$verified_scope = class_exists( 'MAD4B_SCP_Operational_Scope_Guard', false )
+			? MAD4B_SCP_Operational_Scope_Guard::require_current()
+			: new WP_Error( 'mad4b_scope_guard_missing', 'Verified identity unavailable.' );
+		if ( is_wp_error( $verified_scope ) || '' === $site_uuid ||
+			! hash_equals( $site_uuid, (string) $verified_scope['site_uuid'] ) ) return array();
 		foreach ( $records as $key => $record ) {
 			if ( ! self::valid_asset( $record ) ) continue;
 			$record_site_uuid = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
 			if ( '' === $record_site_uuid || ! hash_equals( $site_uuid, $record_site_uuid ) ) continue;
 			$source_id = isset( $record['source_id'] ) ? (string) $record['source_id'] : '';
 			if ( '' === $source_id || ! isset( $sources[ $source_id ] ) ) continue;
+			// Unbound legacy assets need reviewed ownership; never adopt by source ID alone.
+			$asset_brand_id = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+			if ( '' === $asset_brand_id ||
+				! hash_equals( strtolower( (string) $sources[ $source_id ]['brand_id'] ), $asset_brand_id ) ||
+				! hash_equals( strtolower( (string) $verified_scope['brand_ref'] ), $asset_brand_id ) ) continue;
+            if ( ! MAD4B_SCP_Operational_Scope_Guard::record_metadata_matches( $record, $verified_scope ) ) continue;
 			$source_mode = isset( $sources[ $source_id ]['mode'] ) ? (string) $sources[ $source_id ]['mode'] : '';
 			$asset_mode = isset( $record['source_mode'] ) ? (string) $record['source_mode'] : '';
 			if ( '' === $source_mode || '' === $asset_mode || ! hash_equals( $source_mode, $asset_mode ) ) continue;
@@ -436,10 +980,10 @@ final class MAD4B_SCP_Context_Authority {
 		return $count;
 	}
 
-	public static function save_profile( $brand_name ){
+	public static function save_profile( $brand_name, array $options = array() ){
 		return self::with_registry_lock(
 			'save_profile',
-			static function () use ( $brand_name ) {
+			static function () use ( $brand_name, $options ) {
 			$site = self::site_binding();
 			if ( is_wp_error( $site ) ) return $site;
 			$audit_ready = self::audit_preflight();
@@ -447,11 +991,31 @@ final class MAD4B_SCP_Context_Authority {
 			$brand_name = trim( sanitize_text_field( (string) $brand_name ) );
 			if ( '' === $brand_name ) return new WP_Error( 'mad4b_brand_context_name_required', 'Brand name is required.' );
 			$current = self::profile();
+			$old_brand_id = isset( $current['brand_id'] ) ? strtolower( (string) $current['brand_id'] ) : '';
+			if ( '' !== $old_brand_id && ! preg_match( '/^[a-f0-9]{32}$/', $old_brand_id ) ) {
+				return new WP_Error( 'mad4b_brand_identity_invalid', 'Stored brand identity is invalid. Explicit recovery is required.' );
+			}
+			$renaming = ! empty( $current ) && ! hash_equals( (string) $current['brand_name'], $brand_name );
+			if ( $renaming ) {
+				$expected_id = isset( $options['expected_brand_id'] ) ? strtolower( trim( (string) $options['expected_brand_id'] ) ) : '';
+				$expected_revision = isset( $options['expected_revision'] ) ? absint( $options['expected_revision'] ) : 0;
+				if ( empty( $options['confirm_identity_preserving_rename'] ) || '' === $expected_id || ! hash_equals( $old_brand_id, $expected_id ) ) {
+					return new WP_Error( 'mad4b_brand_rename_confirmation_required', 'Confirm this is the same business under a new display name, with the current exact brand identity. Brand replacement requires separate reviewed migration.' );
+				}
+				if ( $expected_revision !== (int) $current['revision'] ) {
+					return new WP_Error( 'mad4b_brand_rename_revision_conflict', 'Brand Profile changed since the rename form was opened. Refresh and review before retrying.' );
+			}
+			}
+			// First enrollment uses an opaque ID, not a name-based alias able to
+			// re-adopt abandoned sources after profile removal / re-enrollment.
+			$brand_id = '' !== $old_brand_id ? $old_brand_id : strtolower( str_replace( '-', '', wp_generate_uuid4() ) );
+			if ( ! preg_match( '/^[a-f0-9]{32}$/', $brand_id ) ) return new WP_Error( 'mad4b_brand_identity_generation_failed', 'Unable to create a canonical brand identity.' );
 			$revision = isset( $current['revision'] ) ? max( 1, absint( $current['revision'] ) + 1 ) : 1;
 			$record = array(
 				'contract' => self::PROFILE_CONTRACT,
 				'site_uuid' => $site['site_uuid'],
-				'brand_id' => self::brand_id( $site['site_uuid'], $brand_name ),
+				// Renaming is not a transfer of authority. Preserve the persisted identity.
+				'brand_id' => $brand_id,
 				'brand_name' => $brand_name,
 				'revision' => $revision,
 				'status' => 'configured',
@@ -471,6 +1035,9 @@ final class MAD4B_SCP_Context_Authority {
 					'brand_id' => (string) $record['brand_id'],
 					'revision' => (int) $record['revision'],
 					'created' => empty( $current ),
+					'identity_preserved' => ! empty( $current ),
+					'identity_preserving_rename' => $renaming,
+					'brand_transfer_performed' => false,
 				),
 				'ok'
 			);
@@ -489,6 +1056,20 @@ final class MAD4B_SCP_Context_Authority {
 				if ( empty( $profile ) ) return new WP_Error( 'mad4b_brand_context_profile_required', 'Configure the Brand Context Profile before adding sources.' );
 				$audit_ready = self::audit_preflight();
 				if ( is_wp_error( $audit_ready ) ) return $audit_ready;
+				// MCP-managed source writes carry two exact identity assertions.
+				// Validate while the same registry lock used for persistence is held.
+				if ( array_key_exists( 'expected_registry_revision', $input ) &&
+					(int) $input['expected_registry_revision'] !== self::registry_revision() )
+					return new WP_Error( 'mad4b_context_source_registry_revision_stale',
+						'Source registry changed after review; replan against current authority.' );
+				if ( array_key_exists( 'expected_authority_manifest_fingerprint', $input ) ) {
+					$claimed = (string) $input['expected_authority_manifest_fingerprint'];
+					$current_manifest = self::authority_manifest_fingerprint();
+					if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $claimed ) ||
+						! hash_equals( $current_manifest, $claimed ) )
+						return new WP_Error( 'mad4b_context_source_authority_manifest_stale',
+							'Source authority manifest changed; reviewed plan cannot be reused.' );
+				}
 
 				$provider = sanitize_key( isset( $input['provider'] ) ? $input['provider'] : '' );
 				$mode = sanitize_key( isset( $input['mode'] ) ? $input['mode'] : 'governed' );
@@ -506,6 +1087,14 @@ final class MAD4B_SCP_Context_Authority {
 				$authorized_sources = self::sources();
 				$sources = self::raw_sources();
 				$source_id = hash( 'sha256', $site['site_uuid'] . '|' . $provider . '|' . $mode . '|' . $external_root_id . '|' . $task_scope );
+				// Legacy IDs are site-scoped. Never overwrite an invisible source owned by
+				// another brand, even if the external folder and mode match.
+				if ( isset( $sources[ $source_id ] ) ) {
+					$stored_brand = isset( $sources[ $source_id ]['brand_id'] ) ? strtolower( trim( (string) $sources[ $source_id ]['brand_id'] ) ) : '';
+					if ( '' === $stored_brand || ! hash_equals( strtolower( (string) $profile['brand_id'] ), $stored_brand ) ) {
+						return new WP_Error( 'mad4b_context_source_brand_collision', 'This source belongs to another or unverified brand. Review its ownership before migration.' );
+					}
+				}
 				$current = isset( $authorized_sources[ $source_id ] ) ? $authorized_sources[ $source_id ] : array();
 				if ( ! isset( $sources[ $source_id ] ) && count( $sources ) >= self::MAX_SOURCES ) {
 					return new WP_Error(
@@ -592,7 +1181,16 @@ final class MAD4B_SCP_Context_Authority {
 				$records = self::raw_assets();
 				$previous = array();
 				foreach ( $records as $asset_id => $record ) {
-					if ( isset( $record['source_id'] ) && hash_equals( $source_id, (string) $record['source_id'] ) ) $previous[ (string) $asset_id ] = $record;
+					if ( ! isset( $record['source_id'] ) || ! hash_equals( $source_id, (string) $record['source_id'] ) ) continue;
+					// A scan can reuse prior approval evidence and mint absence decisions.
+					// A foreign or unbound asset must not participate in either operation.
+					$record_brand = isset( $record['brand_id'] ) ? strtolower( trim( (string) $record['brand_id'] ) ) : '';
+					$record_site = isset( $record['site_uuid'] ) ? strtolower( trim( (string) $record['site_uuid'] ) ) : '';
+					if ( '' === $record_brand || ! hash_equals( strtolower( (string) $source['brand_id'] ), $record_brand ) ||
+						'' === $record_site || ! hash_equals( strtolower( (string) $source['site_uuid'] ), $record_site ) ) {
+						return new WP_Error( 'mad4b_context_scan_foreign_asset_quarantined', 'Scan halted: prior assets include unverified or different-brand ownership. Review registry lineage before an authorized rescan.' );
+					}
+					$previous[ (string) $asset_id ] = $record;
 				}
 
 				$scan_started_at = isset( $scan['started_at'] ) ? sanitize_text_field( (string) $scan['started_at'] ) : gmdate( 'c' );
@@ -864,6 +1462,9 @@ final class MAD4B_SCP_Context_Authority {
 						array( 'limit' => self::MAX_ASSETS, 'stored_asset_count' => count( $records ) )
 					);
 				}
+				if ( isset( $records[ $normalized['asset_id'] ] ) && empty( self::asset( $normalized['asset_id'] ) ) ) {
+					return new WP_Error( 'mad4b_context_asset_brand_collision', 'Asset identity is already reserved outside the current trusted brand scope.' );
+				}
 				$existing = isset( $records[ $normalized['asset_id'] ] ) && is_array( $records[ $normalized['asset_id'] ] ) ? $records[ $normalized['asset_id'] ] : array();
 				$review_source = ! empty( $preserve ) ? $preserve : $existing;
 
@@ -929,12 +1530,14 @@ final class MAD4B_SCP_Context_Authority {
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $old_asset_id ] ) ) return new WP_Error( 'mad4b_context_recreate_original_missing', 'Original Context asset is missing from the registry.' );
 				$original = $records[ $old_asset_id ];
+				if ( empty( self::asset( $old_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_mismatch', 'Original Context asset is outside the current brand.' );
 				if ( ! hash_equals( (string) $original['source_id'], $source_id ) ) return new WP_Error( 'mad4b_context_recreate_source_mismatch', 'Original Context asset is not bound to the requested source.' );
 				if ( 'unavailable' !== ( isset( $original['status'] ) ? (string) $original['status'] : '' ) ) return new WP_Error( 'mad4b_context_recreate_original_not_unavailable', 'Only an unavailable Context asset can be atomically replaced.' );
 
 				$normalized = self::normalize_asset( $source, $provider_asset );
 				if ( is_wp_error( $normalized ) ) return $normalized;
 				if ( $old_asset_id === (string) $normalized['asset_id'] ) return new WP_Error( 'mad4b_context_recreate_identity_collision', 'Recreated provider asset unexpectedly reused the unavailable asset identity.' );
+				if ( isset( $records[ $normalized['asset_id'] ] ) && empty( self::asset( $normalized['asset_id'] ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_collision', 'Replacement identity is reserved by another brand.' );
 				if ( ! isset( $records[ $normalized['asset_id'] ] ) && count( $records ) >= self::MAX_ASSETS ) {
 					return new WP_Error(
 						'mad4b_context_asset_registry_capacity_limit',
@@ -997,6 +1600,7 @@ final class MAD4B_SCP_Context_Authority {
 				if ( ! in_array( $category, array( 'tone_of_voice', 'editorial_guidelines' ), true ) ) return new WP_Error( 'mad4b_brand_generated_category_invalid', 'Generated Brand Context category is invalid.' );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_generated_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$records[ $asset_id ]['category'] = $category;
 				$records[ $asset_id ]['authority_class'] = 'brand_authority';
 				$records[ $asset_id ]['required'] = true;
@@ -1033,6 +1637,7 @@ final class MAD4B_SCP_Context_Authority {
 				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
 				if ( empty( $current['materialization_receipt_sha256'] ) || ! hash_equals( strtolower( (string) $current['materialization_receipt_sha256'] ), $receipt_sha256 ) ) return new WP_Error( 'mad4b_brand_rollback_receipt_binding_drift', 'Generated Brand Context receipt binding changed; rollback denied.' );
@@ -1080,6 +1685,7 @@ final class MAD4B_SCP_Context_Authority {
 				$receipt_sha256 = strtolower( trim( (string) $receipt_sha256 ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( 'rollback_pending' !== ( isset( $current['status'] ) ? (string) $current['status'] : '' ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_state_drift', 'Generated Brand Context asset is not in rollback_pending state.' );
 				if ( empty( $current['rollback_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['rollback_artifact_id'] ), $artifact_id ) ) return new WP_Error( 'mad4b_brand_rollback_cancel_artifact_drift', 'Rollback intent Artifact binding changed.' );
@@ -1106,6 +1712,7 @@ final class MAD4B_SCP_Context_Authority {
 				$asset_id = strtolower( trim( (string) $asset_id ) );
 				$records = self::raw_assets();
 				if ( ! isset( $records[ $asset_id ] ) ) return new WP_Error( 'mad4b_brand_rollback_asset_missing', 'Generated Brand Context asset is missing from the registry.' );
+				if ( empty( self::asset( $asset_id ) ) ) return new WP_Error( 'mad4b_context_asset_brand_mismatch', 'Asset is outside the current trusted brand scope.' );
 				$current = $records[ $asset_id ];
 				if ( ! $allow_unmarked ) {
 					if ( empty( $current['generated_artifact_id'] ) || ! hash_equals( strtolower( (string) $current['generated_artifact_id'] ), strtolower( (string) $artifact_id ) ) ) return new WP_Error( 'mad4b_brand_rollback_artifact_binding_drift', 'Generated Brand Context Artifact binding changed; rollback denied.' );
@@ -1145,6 +1752,17 @@ final class MAD4B_SCP_Context_Authority {
 			}
 			if ( ! empty( $new_asset['asset_id'] ) ) {
 				$new_asset_id = (string) $new_asset['asset_id'];
+				$old_asset = self::asset( $old_asset_id );
+				$source_id = isset( $old_asset['source_id'] ) ? (string) $old_asset['source_id'] : '';
+				$source = self::source( $source_id );
+				$expected_id = ! empty( $new_asset['file_id'] ) ? hash( 'sha256', $source_id . '|' . (string) $new_asset['file_id'] ) : '';
+				if ( empty( $source ) || ! self::valid_asset( $new_asset ) || '' === $expected_id || ! hash_equals( $expected_id, $new_asset_id ) ||
+					! hash_equals( $source_id, (string) $new_asset['source_id'] ) ||
+					! hash_equals( (string) $source['site_uuid'], (string) ( isset( $new_asset['site_uuid'] ) ? $new_asset['site_uuid'] : '' ) ) ||
+					! hash_equals( (string) $source['brand_id'], (string) ( isset( $new_asset['brand_id'] ) ? $new_asset['brand_id'] : '' ) ) ) {
+					return new WP_Error( 'mad4b_context_recreate_scope_mismatch', 'Replacement asset identity and brand ownership must match the original source.' );
+				}
+				if ( isset( $records[ $new_asset_id ] ) && empty( self::asset( $new_asset_id ) ) ) return new WP_Error( 'mad4b_context_recreate_brand_collision', 'Replacement asset identity is held outside the current brand.' );
 				if ( ! isset( $records[ $new_asset_id ] ) && count( $records ) >= self::MAX_ASSETS ) {
 					return new WP_Error(
 						'mad4b_context_asset_registry_capacity_limit',
@@ -1354,6 +1972,17 @@ final class MAD4B_SCP_Context_Authority {
 			if ( ! hash_equals( (string) $site['site_uuid'], (string) $source['site_uuid'] ) ) return new WP_Error( 'mad4b_context_source_site_mismatch', 'Context source is not bound to this Site Profile.' );
 			$assets = self::raw_assets();
 			$removed_assets = 0;
+			// Refuse destructive deletion when historical asset ownership is not
+			// exact. Preserve the complete registry for a separate review/migration.
+			foreach ( $assets as $asset ) {
+				if ( ! isset( $asset['source_id'] ) || ! hash_equals( $source_id, (string) $asset['source_id'] ) ) continue;
+				$asset_site = isset( $asset['site_uuid'] ) ? strtolower( trim( (string) $asset['site_uuid'] ) ) : '';
+				$asset_brand = isset( $asset['brand_id'] ) ? strtolower( trim( (string) $asset['brand_id'] ) ) : '';
+				if ( '' === $asset_site || ! hash_equals( strtolower( (string) $source['site_uuid'] ), $asset_site ) ||
+					'' === $asset_brand || ! hash_equals( strtolower( (string) $source['brand_id'] ), $asset_brand ) ) {
+					return new WP_Error( 'mad4b_context_remove_foreign_asset_quarantined', 'Source removal blocked: an asset has unverified or foreign brand ownership. Inspect lineage before a governed migration.' );
+				}
+			}
 			foreach ( $assets as $asset_id => $asset ) {
 				if ( isset( $asset['source_id'] ) && hash_equals( $source_id, (string) $asset['source_id'] ) ) {
 					unset( $assets[ $asset_id ] );
@@ -1483,6 +2112,34 @@ final class MAD4B_SCP_Context_Authority {
 					array( 'asset_id' => $asset_id, 'source_mode' => $source_mode )
 				);
 			}
+			$normalization_status = isset( $asset['normalization_status'] ) ? sanitize_key( (string) $asset['normalization_status'] ) : ( ! empty( $asset['content_complete'] ) ? 'ready' : 'incomplete' );
+			if ( empty( $asset['content_complete'] ) || ! in_array( $normalization_status, array( 'ready', 'reused' ), true ) ) {
+				return new WP_Error(
+					'mad4b_context_review_content_incomplete',
+					'Context Review requires complete normalized source content. Repair or rescan the source before reviewing this asset.',
+					array( 'asset_id' => $asset_id, 'normalization_status' => $normalization_status )
+				);
+			}
+			$classification_confidence = isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0;
+			$classification_source = isset( $asset['classification_source'] ) ? sanitize_key( (string) $asset['classification_source'] ) : '';
+			$low_confidence_classification = $classification_confidence < 0.60 && 'human' !== $classification_source;
+			if ( $low_confidence_classification ) {
+				$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
+				if ( 'ai_agent' === $actor_type ) {
+					return new WP_Error(
+						'mad4b_context_ai_review_classification_confirmation_required',
+						'Delegated AI review cannot approve a low-confidence automatic classification. Human classification confirmation is required first.',
+						array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence )
+					);
+				}
+				if ( 'wp_admin' === $actor_type && empty( $input['classification_confirmed'] ) ) {
+					return new WP_Error(
+						'mad4b_context_review_classification_confirmation_required',
+						'Low-confidence Context classification requires explicit human confirmation before the content decision can be committed.',
+						array( 'asset_id' => $asset_id, 'classification_confidence' => $classification_confidence )
+					);
+				}
+			}
 
 			$registry_revision_before = self::registry_revision();
 			$authority_manifest_before = self::authority_manifest_fingerprint( $records );
@@ -1506,6 +2163,30 @@ final class MAD4B_SCP_Context_Authority {
 			$previous_review_status = isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed';
 			$decision = sanitize_key( isset( $input['decision'] ) ? (string) $input['decision'] : 'approve' );
 			if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) ) return new WP_Error( 'mad4b_context_review_decision_invalid', 'Context review decision must be approve, needs_changes, or reject.' );
+			// Operational documents that quote Brand Core terminology are not
+			// sufficient evidence of owner-issued strategy, voice or editorial
+			// authority. Automatically classified references need explicit
+			// human classification before delegated AI can review them.
+			if ( 'approve' === $decision
+				&& in_array( $category, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true )
+				&& 'brand_authority' === $authority
+				&& 'automatic_heuristic' === $previous_classification_source ) {
+				$title = (string) ( isset( $asset['title'] ) ? $asset['title'] : '' );
+				$operational = 1 === preg_match( '/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i', $title );
+				if ( $operational ) {
+					$actor_type = isset( $actor['actor_type'] ) ? sanitize_key( (string) $actor['actor_type'] ) : '';
+					if ( 'ai_agent' === $actor_type ) return new WP_Error(
+						'brand_strategy' === $category ? 'mad4b_context_ai_brand_strategy_source_human_review_required' : 'mad4b_context_ai_brand_core_operational_human_review_required',
+						'Operational source cannot become Brand Core Authority from delegated AI review alone. Human classification is required.',
+						array( 'asset_id' => $asset_id, 'category' => $category )
+					);
+					if ( 'wp_admin' === $actor_type && empty( $input['classification_confirmed'] ) ) return new WP_Error(
+						'brand_strategy' === $category ? 'mad4b_context_brand_strategy_source_confirmation_required' : 'mad4b_context_brand_core_operational_confirmation_required',
+						'Confirm operational source is genuinely authoritative before approving it as Brand Core.',
+						array( 'asset_id' => $asset_id, 'category' => $category )
+					);
+				}
+			}
 			$generated_brand_asset = ! empty( $asset['generated_artifact_id'] ) || 'brand_context_builder' === $previous_classification_source;
 			$generation_freshness = null;
 			$stale_override = false;
@@ -1565,7 +2246,7 @@ final class MAD4B_SCP_Context_Authority {
 					? (string) $input['quality_mode']
 					: ( '' !== $quality_input ? 'manual' : ( ! empty( $current_quality['human_override'] ) ? 'manual' : 'automatic' ) )
 			);
-			$quality_modes = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? array( 'preserve' ) : array( 'automatic', 'manual' );
+			$quality_modes = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? array( 'preserve' ) : array( 'preserve', 'automatic', 'manual' );
 			if ( ! in_array( $quality_mode, $quality_modes, true ) ) return new WP_Error( 'mad4b_context_quality_mode_invalid', 'Quality mode is invalid for this review actor.' );
 			if ( ( 'approve' !== $decision || $governance_changed || 'manual' === $quality_mode ) && '' === $review_note ) return new WP_Error( 'mad4b_context_review_note_required', 'A review note is required for rejection, requested changes, classification/authority changes, required-scope changes, or manual quality overrides.' );
 			$automatic = isset( $asset['quality_auto_score'] ) ? (int) $asset['quality_auto_score'] : ( isset( $current_quality['automatic_score'] ) ? (int) $current_quality['automatic_score'] : null );
@@ -1637,8 +2318,16 @@ final class MAD4B_SCP_Context_Authority {
 			$context_fingerprint_after = self::context_fingerprint( $records, $sources );
 			$review_event = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? 'mad4b/context-asset-ai-review' : 'mad4b/context-asset-review';
 			$review_contract = 'ai_agent' === ( isset( $actor['actor_type'] ) ? (string) $actor['actor_type'] : '' ) ? self::AI_REVIEW_CONTRACT : self::HUMAN_REVIEW_CONTRACT;
+			$public_asset = $asset;
+			$public_asset['review_binding'] = array(
+				'registry_revision_before' => $registry_revision_before,
+				'registry_revision_after' => $registry_revision_before + 1,
+				'authority_manifest_before' => $authority_manifest_before,
+				'authority_manifest_after' => $authority_manifest_after,
+				'content_hash' => $current_content_hash,
+			);
 			$result = self::audited_registry_result(
-				$asset,
+				$public_asset,
 				$review_event,
 				array(
 					'contract' => $review_contract,
@@ -1668,6 +2357,10 @@ final class MAD4B_SCP_Context_Authority {
 					'previous_category' => $previous_category,
 					'category' => $category,
 					'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
+					'previous_classification_source' => $previous_classification_source,
+					'previous_classification_confidence' => $classification_confidence,
+					'low_confidence_classification' => $low_confidence_classification,
+					'classification_confirmed' => ! empty( $input['classification_confirmed'] ),
 					'previous_authority_class' => $previous_authority,
 					'authority_class' => $authority,
 					'previous_required' => $previous_required,
@@ -1690,7 +2383,7 @@ final class MAD4B_SCP_Context_Authority {
 			if ( is_wp_error( $result ) ) return $result;
 			if ( $generated_brand_asset && 'approve' === $decision && class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 				$job_transition = MAD4B_SCP_Brand_Context_Builder::complete_generation_job_for_asset( $asset );
-				$result['generation_job_transition'] = is_wp_error( $job_transition )
+				$result['result']['generation_job_transition'] = is_wp_error( $job_transition )
 					? array( 'ready' => false, 'error_code' => $job_transition->get_error_code() )
 					: array( 'ready' => true, 'job' => isset( $job_transition['job'] ) ? $job_transition['job'] : array() );
 			}
@@ -1931,6 +2624,11 @@ final class MAD4B_SCP_Context_Authority {
 			'registry_revision' => self::registry_revision(),
 			'raw_source_count' => count( $raw_sources ),
 			'raw_asset_count' => count( $raw_assets ),
+			// Counts only; never expose foreign record identities through the status API.
+			'quarantined_source_record_count' => max( 0, count( $raw_sources ) - count( $sources ) ),
+			'quarantined_asset_record_count' => max( 0, count( $raw_assets ) - count( $assets ) ),
+			'ownership_review_required' => count( $raw_sources ) > count( $sources ) || count( $raw_assets ) > count( $assets ),
+			'ownership_migration_automatic' => false,
 			'source_registry_capacity_exceeded' => count( $raw_sources ) > self::MAX_SOURCES,
 			'asset_registry_capacity_exceeded' => count( $raw_assets ) > self::MAX_ASSETS,
 			'context_fingerprint' => self::context_fingerprint( $assets, $sources ),
@@ -1965,7 +2663,7 @@ final class MAD4B_SCP_Context_Authority {
 	public static function classify_asset( $name, $path = '', $content = '' ) {
 		$haystack = strtolower( trim( (string) $name . ' ' . (string) $path . ' ' . substr( (string) $content, 0, 6000 ) ) );
 		$rules = array(
-			 'brand_strategy' => array( 'brand strategy', 'brand core', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
+			 'brand_strategy' => array( 'brand strategy', 'brand core', 'core brand identity', 'brand identity', 'brand plan', 'استراتيجية العلامة', 'استراتيجية البراند', 'جوهر العلامة' ),
 			 'brand_positioning' => array( 'positioning', 'brand position', 'تموضع العلامة', 'التموضع' ),
 			 'audience_persona' => array( 'persona', 'audience', 'customer profile', 'buyer profile', 'الجمهور', 'شخصية العميل', 'العميل المثالي' ),
 			 'tone_of_voice' => array( 'tone of voice', 'tone-of-voice', 'brand voice', 'tov', 'نبرة الصوت', 'نبرة العلامة', 'أسلوب الكتابة' ),
@@ -1989,6 +2687,27 @@ final class MAD4B_SCP_Context_Authority {
 			$hits = 0;
 			foreach ( $needles as $needle ) if ( false !== strpos( $haystack, $needle ) ) ++$hits;
 			if ( $hits > $best_hits ) { $best = $category; $best_hits = $hits; }
+		}
+		// Operational/connector inventories often quote "brand strategy" while
+		// describing data plumbing, not the approved commercial Brand Strategy.
+		// When only document body text produced a strategy hit, never elevate
+		// an operational document into mandatory Brand Authority automatically.
+		// An explicit human-classified asset is preserved by the caller and can
+		// still be reviewed via the separate Context review authority surface.
+		if ( in_array( $best, array( 'brand_strategy', 'tone_of_voice', 'editorial_guidelines' ), true ) ) {
+			$title_path = strtolower( trim( (string) $name . ' ' . (string) $path ) );
+			$named_authority = false;
+			foreach ( $rules[ $best ] as $needle ) {
+				if ( false !== strpos( $title_path, $needle ) ) { $named_authority = true; break; }
+			}
+			$operational_title = 1 === preg_match(
+				'/\\b(wordpress|wp-json|connector|mcp|configuration|snapshot|workflow|import|export|api|operational|operations|publish preparation|data store|database)\\b/i',
+				(string) $name . ' ' . (string) $path
+			);
+			if ( ! $named_authority && $operational_title ) {
+				$best = 'uncategorized';
+				$best_hits = 0;
+			}
 		}
 		$confidence = 0.35;
 		if ( 1 === $best_hits ) $confidence = 0.72;
@@ -2313,10 +3032,6 @@ final class MAD4B_SCP_Context_Authority {
 		return ! empty( $record['asset_id'] ) && ! empty( $record['source_id'] ) && ! empty( $record['file_id'] );
 	}
 
-	private static function brand_id( $site_uuid, $brand_name ) {
-		return substr( hash( 'sha256', strtolower( trim( (string) $site_uuid ) ) . '|' . strtolower( trim( (string) $brand_name ) ) ), 0, 32 );
-	}
-
 	private static function bounded_external_id( $value ) {
 		$value = trim( sanitize_text_field( (string) $value ) );
 		if ( '' === $value || strlen( $value ) > 255 || ! preg_match( '/^[A-Za-z0-9_\-\.]+$/', $value ) ) return '';
@@ -2357,12 +3072,29 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	private static function with_registry_lock( $operation, $callback ) {
+		// Initial Brand enrollment/rename establishes identity. All other
+		// registry writes require the same exact revision-bound scope as jobs.
+		$checkpoint = null;
+		if ( 'save_profile' !== (string) $operation ) {
+			$checkpoint = class_exists( 'MAD4B_SCP_Operational_Integrity', false )
+				? MAD4B_SCP_Operational_Integrity::capture()
+				: new WP_Error( 'mad4b_scope_integrity_missing', 'Verified operational scope is unavailable.' );
+			if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		}
 		$lock = self::acquire_registry_lock( $operation );
 		if ( is_wp_error( $lock ) ) return $lock;
 		$snapshot = self::registry_option_snapshot();
 		try {
 			$result = call_user_func( $callback );
 			if ( is_wp_error( $result ) ) return self::compensate_registry_error( $snapshot, $operation, $result, 'callback' );
+			// Recheck site, brand, revision and actor before registry revision/audit.
+			// A drift forces the existing registry snapshot compensation path.
+			if ( null !== $checkpoint ) {
+				$rechecked = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint );
+				if ( is_wp_error( $rechecked ) ) {
+					return self::compensate_registry_error( $snapshot, $operation, $rechecked, 'scope_drift' );
+				}
+			}
 
 			$wrapped = self::is_audited_registry_result( $result );
 			$public_result = $wrapped ? $result['result'] : $result;

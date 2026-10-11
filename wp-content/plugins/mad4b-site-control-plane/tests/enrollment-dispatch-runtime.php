@@ -14,6 +14,11 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function current_user_can( $capability ) { return 'manage_options' === (string) $capability; }
 function get_current_user_id() { return 7; }
+function get_option( $name, $default = false ) {
+    // Missing managed-Skills lock is an empty observation, not an authorization.
+    if ( 'mad4b_scp_remote_skills_reconciliation_lock_v1' === (string) $name ) return array();
+    return $default;
+}
 
 class WP_Error {
     private $code;
@@ -191,11 +196,38 @@ $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::HUMAN ] = n
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SYSTEM ] = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, array() );
 MAD4B_SCP_Servers::$mounted = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 
+// Simulate the exact parent-bound single-use child permit; the production
+// runtime uses MAD4B_SCP_Execution_Fence rather than this isolated fixture.
+final class MAD4B_SCP_Execution_Fence {
+    public static $parent_active = true;
+    public static $pending = false;
+    public static $child_calls = array();
+    public static function with_governed_child( $name, $input, $callback, $reason = 'dispatcher' ) {
+        if ( ! self::$parent_active ) return new WP_Error( 'mad4b_child_operation_parent_required' );
+        if ( self::$pending ) return new WP_Error( 'mad4b_child_operation_permit_pending' );
+        self::$pending = true;
+        self::$child_calls[] = array( 'name' => $name, 'input' => $input, 'reason' => $reason );
+        try { return call_user_func( $callback ); }
+        finally { self::$pending = false; }
+    }
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php';
 
 $discover = MAD4B_SCP_Enrollment_Dispatch::discover( array() );
 mad4b_assert( 1 === (int) $discover['count'], 'dispatcher discovery must expose only operator-role non-human Staging operations' );
 mad4b_assert( isset( $discover['operations']['managed_skills_reconciliation'] ), 'managed Skills reconciliation was not discoverable' );
+$preflight = $discover['operations']['managed_skills_reconciliation']['execution_preflight'];
+mad4b_assert( 'mad4b.enrollment-skills-preflight.v1' === $preflight['contract'], 'discovery lost the bounded managed-Skills preflight' );
+mad4b_assert( 'blocked' === $preflight['state'] && false === $preflight['structurally_ready'],
+    'partial Site Profile without status() was incorrectly treated as ready' );
+mad4b_assert( in_array( 'site_profile_not_authoritative_staging', $preflight['blockers'], true )
+    && in_array( 'skills_disabled_for_site', $preflight['blockers'], true ),
+    'missing authoritative Site Profile did not fail closed' );
+mad4b_assert( false === $preflight['authorization_performed'] && false === $preflight['permission_evaluated']
+    && false === $preflight['execution_performed'] && false === $preflight['mutation_performed']
+    && false === $preflight['production_mutation_allowed'],
+    'read-only discovery preflight widened authority or claimed execution' );
 mad4b_assert( ! isset( $discover['operations']['external_executor_work_claim'] ), 'external executor lease claim leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['human_decision_test'] ), 'human-decision operation leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['system_test'] ), 'system caller operation leaked into ChatGPT dispatcher' );
@@ -238,6 +270,44 @@ mad4b_assert( true === $result['operation_invoked'], 'dispatcher did not report 
 mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote explicit target no-op mutation evidence' );
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
 mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'enrollment dispatch skipped its exact governed child permit' );
+$child = MAD4B_SCP_Execution_Fence::$child_calls[0];
+mad4b_assert( MAD4B_SCP_Remote_Operation_Parity::SKILLS === $child['name'], 'child permit was issued for a different ability' );
+mad4b_assert( $execute_input['input'] === $child['input'] && 'enrollment_dispatch' === $child['reason'], 'child permit did not bind the exact caller payload' );
+mad4b_assert( false === MAD4B_SCP_Execution_Fence::$pending, 'child permit leaked after execution' );
+
+// A missing parent must never fall back to direct target execution. The
+// managed-Skills adapter returns a bounded uncertain-error envelope.
+MAD4B_SCP_Execution_Fence::$parent_active = false;
+$without_parent = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( is_array( $without_parent ) && 'target_error_reconciliation_required' === $without_parent['state'], 'missing parent did not fail closed' );
+mad4b_assert( 'mad4b_child_operation_parent_required' === $without_parent['target_error_code'], 'missing parent was not preserved as redacted error code' );
+mad4b_assert( null === $without_parent['mutation_performed'] && false === $without_parent['blind_retry_allowed'], 'missing parent was misclassified as a safe retry' );
+mad4b_assert( 1 === $skills->calls && 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'missing parent executed a child target' );
+MAD4B_SCP_Execution_Fence::$parent_active = true;
+
+
+$sensitive_target = new MAD4B_Test_Ability(
+    mad4b_test_meta(),
+    $schema,
+    new WP_Error( 'mad4b_remote_skill_editor_disabled', 'INTERNAL_SECRET_MESSAGE', array( 'secret' => 'DO_NOT_DISCLOSE' ) )
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $sensitive_target;
+$failure_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$failure_input = $execute_input;
+$failure_input['expected_registration_digest'] = $failure_info['registration_digest'];
+$failure_input['expected_dispatch_policy_digest'] = $failure_info['dispatch_policy_digest'];
+$failure_input['expected_input_schema_sha256'] = $failure_info['input_schema_sha256'];
+$blocked = MAD4B_SCP_Enrollment_Dispatch::execute( $failure_input );
+mad4b_assert( is_array( $blocked ) && true === $blocked['failed'] && false === $blocked['ready'], 'failed managed Skills unexpectedly reported success' );
+mad4b_assert( 'target_error_reconciliation_required' === $blocked['state'], 'failed managed Skills omitted reconciliation state' );
+mad4b_assert( 'mad4b_remote_skill_editor_disabled' === $blocked['target_error_code'], 'bounded managed Skills target failure code missing' );
+mad4b_assert( true === $blocked['reconciliation_required'] && false === $blocked['blind_retry_allowed'], 'managed Skills target error permitted blind retry' );
+mad4b_assert( null === $blocked['mutation_performed'] && 'unknown_after_target_error' === $blocked['mutation_evidence_source'], 'unknown target side-effects were fabricated' );
+mad4b_assert( ! array_key_exists( 'result', $blocked ) && ! array_key_exists( 'target_error_data', $blocked ) && ! array_key_exists( 'target_error_message', $blocked ), 'managed Skills failure disclosed sensitive target material' );
+mad4b_assert( false === strpos( wp_json_encode( $blocked ), 'DO_NOT_DISCLOSE' ) && false === strpos( wp_json_encode( $blocked ), 'INTERNAL_SECRET_MESSAGE' ), 'sensitive target message/data leaked' );
+mad4b_assert( 1 === $sensitive_target->calls && 1 === $skills->calls, 'bounded target invocation count drifted' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $skills;
 
 $bad = $execute_input;
 $bad['expected_registration_digest'] = str_repeat( 'f', 64 );

@@ -642,7 +642,14 @@ $record_rejection = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'rec
 $record_rejection->setAccessible( true ); $record_rejection->invoke( null, $rejected_grant );
 $scope_evidence = MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status();
 mad4b_oauth_assert( ! empty( $scope_evidence ) && false === $scope_evidence['tokens_persisted'] && false === $scope_evidence['authorizing'], 'Rejection evidence claimed token storage or authority.' );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_RULE_REVISION === (int) $scope_evidence['rule_revision'], 'Scope diagnostic is not bound to active normalization rules.' );
 $sealed_scope_evidence = get_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION );
+$legacy_scope_evidence = $sealed_scope_evidence;
+unset( $legacy_scope_evidence['seal'], $legacy_scope_evidence['rule_revision'] );
+$legacy_scope_evidence['seal'] = hash_hmac( 'sha256', wp_json_encode( $legacy_scope_evidence ), wp_salt( 'auth' ) );
+update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $legacy_scope_evidence );
+mad4b_oauth_assert( array() === MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status(), 'Legacy scope diagnostic survived a normalization-rule revision.' );
+update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $sealed_scope_evidence );
 $altered = $sealed_scope_evidence; $altered['unsupported_scopes'] = array( 'FORGED_SCOPE' ); update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $altered );
 mad4b_oauth_assert( array() === MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status(), 'Tampered scope diagnostic was accepted.' );
 update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $sealed_scope_evidence );

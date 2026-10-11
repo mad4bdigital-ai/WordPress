@@ -147,3 +147,87 @@ for text in (runtime, schema, lease, reconnect, resilience):
 assert "blind_mutation_replay_after_transport_reinitialize' => false" in reconnect
 
 print("mad4b.post-update-bottleneck-hardening.v2: PASS")
+
+
+# Dynamic auto-reconciliation coverage.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+continuation = (ROOT / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
+scenario_registry = (ROOT / "includes" / "class-mad4b-scp-auto-reconcile-scenarios.php").read_text(encoding="utf-8")
+
+# Runtime Convergence consumes the central registry; it must not define a
+# second scenario universe or a second extension filter.
+for token in [
+    "MAD4B_SCP_Auto_Reconcile_Scenarios::registry",
+    "MAD4B_SCP_Auto_Reconcile_Scenarios::evaluate",
+    "central_reconciliation_scenario",
+    "reconciliation_context",
+    "build_provenance_drift",
+    "MAD4B_SCP_BOOT_PROVENANCE_SHA256",
+    "mad4b_scp_boot_provenance_sha256",
+    "authority_delta' => 'zero_required",
+    "mutation_class' => 'candidate_binding_only",
+    "production_allowed' => false",
+    "breakglass_allowed' => false",
+]:
+    assert token in runtime_convergence, f"missing centralized auto-reconciliation runtime token: {token}"
+
+assert "mad4b_scp_auto_reconciliation_scenarios" not in runtime_convergence
+assert "private static function combine_reconciliation_disposition" in runtime_convergence
+assert "registry_safety_ceiling_then_exact_zero_delta_preflight" in runtime_convergence
+assert "MAD4B_SCP_Staging_Write_Authority::persisted_status()" in runtime_convergence
+assert "'breakglass_enabled' => (bool) $breakglass_enabled" in runtime_convergence
+assert "mad4b_scp_auto_reconcile_scenarios" in scenario_registry
+for scenario in (
+    "manual_or_same_version_package_drift",
+    "trusted_reinstall_or_rollback_probe",
+    "native_or_release_set_continuation",
+    "same_version_package_replacement",
+    "forward_package_update",
+    "rollback_or_reinstall",
+):
+    assert scenario in scenario_registry, f"missing central auto-reconciliation scenario: {scenario}"
+
+# Extension descriptors are data-only selectors. They may add scenarios but
+# cannot provide executors or override the central authority envelope.
+assert "apply_filters( 'mad4b_scp_auto_reconcile_scenarios', array() )" in scenario_registry
+for token in (
+    "'mutation_allowed' => false",
+    "'authority_expansion_allowed' => false",
+    "'zero_delta_required_for_rebind' => true",
+    "MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind",
+):
+    assert token in scenario_registry, f"central scenario registry missing invariant: {token}"
+
+compat_view = runtime_convergence.split("public static function reconciliation_scenario_registry()", 1)[1].split("private static function reconciliation_context", 1)[0]
+assert "MAD4B_SCP_Auto_Reconcile_Scenarios::registry" in compat_view
+assert "apply_filters(" not in compat_view
+for forbidden in ("execute_callback", "grant_mutation_allowed", "subject_mutation_allowed", "agent_mutation_allowed"):
+    assert forbidden not in compat_view, f"compatibility view unexpectedly accepts authority field: {forbidden}"
+
+assert "observed_reconciliation_preflight" in continuation
+for token in [
+    "$result['disposition'] = 'AUTO_REBIND'",
+    "$result['disposition'] = 'REVIEW_REQUIRED'",
+    "'disposition' => 'HARD_BLOCK'",
+    "$result['disposition'] = 'DEFER'",
+    "'grant_mutation_allowed' => false",
+    "'subject_mutation_allowed' => false",
+    "'agent_mutation_allowed' => false",
+]:
+    assert token in continuation, f"missing fail-closed observed reconciliation token: {token}"
+
+
+# Observed-release auto-reconciliation retries only transient dependencies.
+runtime_convergence = (ROOT / "includes" / "class-mad4b-scp-runtime-convergence.php").read_text(encoding="utf-8")
+for token in [
+    "private static function observed_release_error_policy",
+    "mad4b_observed_release_identity_mismatch",
+    "mad4b_observed_release_integrity_required",
+    "_(?:pointer|manifest)_fetch_failed",
+    "mad4b_self_update_manifest_not_cached",
+    "automatic_bounded_reconciliation_retry",
+    "explicit_review_after_retry_exhaustion",
+    "bounded_retry_exhausted",
+    "MAX_TRANSIENT_RETRIES",
+]:
+    assert token in runtime_convergence, f"missing observed-release retry policy token: {token}"

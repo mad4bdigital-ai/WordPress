@@ -184,6 +184,7 @@ def main() -> int:
                     "--output-zip", str(base / "unsafe.zip"),
                     "--version", VERSION,
                     "--source-sha", SOURCE,
+                    "--adapter-version", "0.6.1",
                     "--adapter-sha", ADAPTER,
                 ],
                 stdout=subprocess.PIPE,
@@ -192,6 +193,8 @@ def main() -> int:
             )
             if result.returncode == 0:
                 raise AssertionError("builder accepted symlinked package content")
+            if "symlinks are forbidden" not in result.stderr:
+                raise AssertionError("test must prove symlink rejection, not fail on an unrelated CLI error")
 
     print("mad4b.deterministic-control-plane-package.contract.v1: PASS")
     return 0

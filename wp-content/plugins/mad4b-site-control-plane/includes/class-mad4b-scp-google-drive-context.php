@@ -19,6 +19,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
 	const SCOPE_DIAGNOSTIC_OPTION = 'mad4b_scp_google_scope_diagnostic_v1';
+	const SCOPE_DIAGNOSTIC_RULE_REVISION = 2;
 	const SCOPE_DIAGNOSTIC_CONTRACT = 'mad4b.google-scope-rejection.v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
@@ -67,7 +68,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
-	const MAX_SCAN_WALL_SECONDS = 15;
+	const MAX_SCAN_WALL_SECONDS = 10;
 	const REFRESH_FAILURE_COOLDOWN_SECONDS = 60;
 	const MAX_TEXT_BYTES = 262144;
 	const MAX_BINARY_BYTES = 16777216;
@@ -3137,6 +3138,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$data['observed_at'] = time();
 		$data['expires_at'] = time() + 86400;
 		$data['error_code'] = sanitize_key( $error->get_error_code() );
+		$data['rule_revision'] = self::SCOPE_DIAGNOSTIC_RULE_REVISION;
 		$data['seal'] = hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) );
 		self::write_option( self::SCOPE_DIAGNOSTIC_OPTION, $data );
 	}
@@ -3147,7 +3149,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! is_array( $data ) || self::SCOPE_DIAGNOSTIC_CONTRACT !== ( $data['contract'] ?? '' ) || ! is_string( $data['seal'] ?? null ) || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
 		$seal = $data['seal']; unset( $data['seal'] );
 		$grants = self::workspace_grants_status();
-		if ( ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
+		if ( ! isset( $data['rule_revision'] ) || self::SCOPE_DIAGNOSTIC_RULE_REVISION !== (int) $data['rule_revision']
+			|| ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
 			|| ( $data['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid()
 			|| ( $data['auth_mode'] ?? '' ) !== self::auth_mode()
 			|| ( $data['grant_sha256'] ?? '' ) !== $grants['grant_sha256']
@@ -3818,4 +3821,95 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( delete_option( $name ) ) return true;
 		return false === get_option( $name, false );
 	}
+    /**
+     * Narrow, server-internal Google Docs transport for governed Business
+     * Activity profile fields. Reuses the existing encrypted Google OAuth
+     * lifecycle rather than creating another credential store or exposing
+     * bearer tokens through abilities or chat.
+     */
+    public static function activity_docs_request( $method, array $source, array $binding, $payload = null ) {
+        if ( ! current_user_can( 'manage_options' ) ||
+            ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+            ! MAD4B_SCP_Site_Profile::configured() ||
+            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
+            ! isset( $binding['site_uuid'] ) ||
+            (string) $binding['site_uuid'] !== (string) MAD4B_SCP_Site_Profile::site_uuid() )
+            return new WP_Error( 'mad4b_activity_docs_site_authority_denied', 'Governed enrolled site administrator required.' );
+        if ( ! isset( $binding['profile']['activity_contract']['sync_targets'] ) ||
+            ! is_array( $binding['profile']['activity_contract']['sync_targets'] ) ||
+            ! isset( $source['source_ref'], $source['provider'], $source['purpose'], $source['resource_kind'] ) ||
+            'google_drive' !== $source['provider'] || 'record_data' !== $source['purpose'] ||
+            'drive_document' !== $source['resource_kind'] ||
+            ! is_string( $source['source_ref'] ) ||
+            ! preg_match( '/^[A-Za-z0-9_-]{8,180}$/D', $source['source_ref'] ) )
+            return new WP_Error( 'mad4b_activity_docs_source_invalid', 'Only exact configured record-data Google Docs sources can use this transport.' );
+        $allowed = false;
+        foreach ( $binding['profile']['activity_contract']['sync_targets'] as $target ) {
+            if ( ! is_array( $target ) || 'google_drive' !== ( $target['provider'] ?? '' ) ||
+                'record_data' !== ( $target['purpose'] ?? '' ) ||
+                'drive_document' !== ( $target['resource_kind'] ?? '' ) ) continue;
+            if ( 'entity_post_meta' === ( $target['resource_binding_mode'] ?? 'static' ) ) {
+                $meta_key = isset( $target['resource_binding_meta_key'] ) ? (string) $target['resource_binding_meta_key'] : '';
+                $entity = isset( $binding['entity_id'] ) ? (string) $binding['entity_id'] : '';
+                if ( ctype_digit( $entity ) && (int) $entity > 0 &&
+                    in_array( $meta_key, (array) $binding['profile']['meta_keys'], true ) &&
+                    current_user_can( 'edit_post', (int) $entity ) &&
+                    (string) get_post_meta( (int) $entity, $meta_key, true ) === $source['source_ref'] )
+                    $allowed = true;
+            } elseif ( isset( $target['source_ref'] ) && (string) $target['source_ref'] === $source['source_ref'] ) {
+                $allowed = true;
+            }
+        }
+        if ( ! $allowed )
+            return new WP_Error( 'mad4b_activity_docs_binding_mismatch', 'Google document ID is not bound to the current Activity profile.' );
+        $connection = self::connection_status();
+        if ( empty( $connection['read_available'] ) )
+            return new WP_Error( 'mad4b_activity_docs_read_scope_missing', 'Managed Google Drive read connection is unavailable.' );
+        $method = strtoupper( (string) $method );
+        if ( ! in_array( $method, array( 'GET', 'POST' ), true ) )
+            return new WP_Error( 'mad4b_activity_docs_method_denied', 'Only Google Docs GET or revision-bound batchUpdate is permitted.' );
+        if ( 'POST' === $method ) {
+            if ( empty( $connection['write_available'] ) )
+                return new WP_Error( 'mad4b_activity_docs_write_scope_missing', 'Managed Google Drive write scope is not granted.' );
+            if ( ! is_array( $payload ) || array_diff( array_keys( $payload ), array( 'requests', 'writeControl' ) ) ||
+                ! isset( $payload['writeControl']['requiredRevisionId'], $payload['requests'] ) ||
+                ! is_string( $payload['writeControl']['requiredRevisionId'] ) ||
+                ! preg_match( '/^[A-Za-z0-9._:-]{1,160}$/D', $payload['writeControl']['requiredRevisionId'] ) ||
+                ! is_array( $payload['requests'] ) || count( $payload['requests'] ) > 2 ||
+                count( $payload['requests'] ) < 1 )
+                return new WP_Error( 'mad4b_activity_docs_cas_required', 'Exact Docs requiredRevisionId and bounded paragraph updates are mandatory.' );
+            foreach ( $payload['requests'] as $request ) {
+                if ( ! is_array( $request ) || count( $request ) !== 1 )
+                    return new WP_Error( 'mad4b_activity_docs_request_invalid', 'Unapproved Google Docs operation.' );
+                $kind = (string) array_key_first( $request );
+                if ( ! in_array( $kind, array( 'insertText', 'deleteContentRange' ), true ) )
+                    return new WP_Error( 'mad4b_activity_docs_request_kind_denied', 'Only bounded named-field text edits are permitted.' );
+                if ( 'insertText' === $kind ) {
+                    $v = $request['insertText'];
+                    if ( ! is_array( $v ) || ! isset( $v['text'], $v['location']['index'] ) ||
+                        ! is_string( $v['text'] ) || strlen( $v['text'] ) > 4000 ||
+                        false !== strpos( $v['text'], "\n" ) ||
+                        ! is_int( $v['location']['index'] ) || $v['location']['index'] < 1 )
+                        return new WP_Error( 'mad4b_activity_docs_insert_invalid', 'Google Docs text insertion exceeds exact field bounds.' );
+                } else {
+                    $v = $request['deleteContentRange'];
+                    if ( ! is_array( $v ) || ! isset( $v['range']['startIndex'], $v['range']['endIndex'] ) ||
+                        ! is_int( $v['range']['startIndex'] ) || ! is_int( $v['range']['endIndex'] ) ||
+                        $v['range']['startIndex'] < 1 ||
+                        $v['range']['endIndex'] <= $v['range']['startIndex'] ||
+                        $v['range']['endIndex'] - $v['range']['startIndex'] > 4000 )
+                        return new WP_Error( 'mad4b_activity_docs_delete_invalid', 'Google Docs text removal exceeds exact field bounds.' );
+                }
+            }
+        }
+        $url = self::DOCS_API . '/documents/' . rawurlencode( $source['source_ref'] ) .
+            ( 'POST' === $method ? ':batchUpdate' : '' );
+        $body = 'POST' === $method ? wp_json_encode( $payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) : null;
+        if ( 'POST' === $method && ! is_string( $body ) )
+            return new WP_Error( 'mad4b_activity_docs_body_invalid', 'Bounded Docs patch could not be encoded.' );
+        return self::authorized_json_request( $method, $url, $body,
+            'POST' === $method ? 'application/json' : '', 'mad4b_activity_docs_provider_failed' );
+    }
+
 }

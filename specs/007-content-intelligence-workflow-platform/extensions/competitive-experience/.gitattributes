@@ -1,0 +1,3 @@
+# Verbatim user inputs: preserve original CRLF and intentional Markdown spacing.
+source-comparison-report.ar.md -text whitespace=-blank-at-eol,-blank-at-eof
+source-adaptive-operations-proposal.ar.md -text whitespace=-blank-at-eol,-blank-at-eof

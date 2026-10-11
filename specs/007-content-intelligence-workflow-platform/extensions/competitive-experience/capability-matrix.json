@@ -1,0 +1,2583 @@
+{
+  "contract": "mad4b.competitive-capability-matrix.v1",
+  "baseline_source_sha": "32e32a94ddb1b7864f8924ad22cb0b03199856be",
+  "authorizing": false,
+  "parity_measure": "verified capability behavior and operator journey, not displayed tool count",
+  "workstreams": [
+    {
+      "id": "benchmarks",
+      "family": "CPBEN",
+      "phase": 0,
+      "title": "Evidence and reproducible comparison",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3901",
+        "T3902",
+        "T3903",
+        "T3904",
+        "T3905"
+      ],
+      "dependencies": [],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "operator-journeys",
+      "family": "CPUX",
+      "phase": 1,
+      "title": "Complete setup and admin journeys",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "dependencies": [
+        "benchmarks"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "recovery",
+      "family": "CPUNDO",
+      "phase": 2,
+      "title": "User-facing undo and verified readback",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3911",
+        "T3912",
+        "T3913",
+        "T3914",
+        "T3915"
+      ],
+      "dependencies": [
+        "benchmarks"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "identity",
+      "family": "CPNHI",
+      "phase": 3,
+      "title": "NHI and per-agent permissions",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3916",
+        "T3917",
+        "T3918",
+        "T3919",
+        "T3920"
+      ],
+      "dependencies": [
+        "benchmarks"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "consent",
+      "family": "CPOAUTH",
+      "phase": 4,
+      "title": "Granular OAuth and client compatibility",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3921",
+        "T3922",
+        "T3923",
+        "T3924",
+        "T3925"
+      ],
+      "dependencies": [
+        "identity"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "growth",
+      "family": "CPGROW",
+      "phase": 5,
+      "title": "Analytics and competitive search intelligence",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "dependencies": [
+        "consent"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "forms",
+      "family": "CPFORMS",
+      "phase": 6,
+      "title": "Forms and private submission operations",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3931",
+        "T3932",
+        "T3933",
+        "T3934",
+        "T3935"
+      ],
+      "dependencies": [
+        "identity"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "commerce",
+      "family": "CPWC",
+      "phase": 7,
+      "title": "Commerce capability breadth",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "dependencies": [
+        "identity",
+        "recovery"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "builders",
+      "family": "CPBUILD",
+      "phase": 8,
+      "title": "Builders and site-editor parity",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "dependencies": [
+        "recovery"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "seo",
+      "family": "CPSEO",
+      "phase": 9,
+      "title": "SEO provider family and rendered provenance",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3946",
+        "T3947",
+        "T3948",
+        "T3949",
+        "T3950"
+      ],
+      "dependencies": [
+        "growth",
+        "builders"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "history",
+      "family": "CPHIST",
+      "phase": 10,
+      "title": "Visual change history and evidence export",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3951",
+        "T3952",
+        "T3953",
+        "T3954",
+        "T3955"
+      ],
+      "dependencies": [
+        "recovery",
+        "identity"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "ai-applications",
+      "family": "CPAIBASE",
+      "phase": 11,
+      "title": "Optional AI workspace and governed model use",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "dependencies": [
+        "consent"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "knowledge",
+      "family": "CPRAG",
+      "phase": 12,
+      "title": "Grounded knowledge and AI forms",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3961",
+        "T3962",
+        "T3963",
+        "T3964",
+        "T3965"
+      ],
+      "dependencies": [
+        "ai-applications",
+        "forms"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "site-operations",
+      "family": "CPOPS",
+      "phase": 13,
+      "title": "Backup, cache, migration, security and redirects",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "dependencies": [
+        "identity",
+        "recovery"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "wordpress-breadth",
+      "family": "CPCORE",
+      "phase": 14,
+      "title": "Core, multilingual, custom fields and community",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "dependencies": [
+        "identity"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "convergence",
+      "family": "CPCONV",
+      "phase": 15,
+      "title": "Capability-local convergence and external acceptance",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "dependencies": [
+        "consent",
+        "growth",
+        "builders",
+        "seo",
+        "site-operations"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head tests plus real provider/browser evidence where applicable"
+    },
+    {
+      "id": "runtime-graph-v2",
+      "family": "ACFGRAPH",
+      "phase": 16,
+      "title": "Runtime Candidate Graph v2",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4001",
+        "T4002",
+        "T4003",
+        "T4004",
+        "T4005"
+      ],
+      "dependencies": [
+        "benchmarks"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "semantic-classifier",
+      "family": "ACFCLASS",
+      "phase": 17,
+      "title": "Semantic Classification Engine",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4006",
+        "T4007",
+        "T4008",
+        "T4009",
+        "T4010"
+      ],
+      "dependencies": [
+        "runtime-graph-v2",
+        "identity"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "declarative-adapters",
+      "family": "ACFMAN",
+      "phase": 18,
+      "title": "Declarative Adapter Manifest",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4011",
+        "T4012",
+        "T4013",
+        "T4014",
+        "T4015"
+      ],
+      "dependencies": [
+        "semantic-classifier"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "operation-synthesis",
+      "family": "ACFSYNTH",
+      "phase": 19,
+      "title": "Dynamic Operation Synthesis and Workflow Compiler",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4016",
+        "T4017",
+        "T4018",
+        "T4019",
+        "T4020"
+      ],
+      "dependencies": [
+        "declarative-adapters",
+        "wordpress-breadth"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "shadow-certification",
+      "family": "ACFSHADOW",
+      "phase": 20,
+      "title": "Shadow Certification for Reads",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4021",
+        "T4022",
+        "T4023",
+        "T4024",
+        "T4025"
+      ],
+      "dependencies": [
+        "semantic-classifier"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "reversible-canary",
+      "family": "ACFCANARY",
+      "phase": 21,
+      "title": "Reversible Canary Engine",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4026",
+        "T4027",
+        "T4028",
+        "T4029",
+        "T4030"
+      ],
+      "dependencies": [
+        "recovery",
+        "declarative-adapters"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "certification-packs",
+      "family": "ACFPACK",
+      "phase": 22,
+      "title": "Versioned Runtime Registry and Certification Packs",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4031",
+        "T4032",
+        "T4033",
+        "T4034",
+        "T4035"
+      ],
+      "dependencies": [
+        "shadow-certification",
+        "reversible-canary"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "ownership-reconciliation",
+      "family": "ACFOWN",
+      "phase": 23,
+      "title": "Ownership-aware Three-Way Reconciliation",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4036",
+        "T4037",
+        "T4038",
+        "T4039",
+        "T4040"
+      ],
+      "dependencies": [
+        "runtime-graph-v2",
+        "history"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "universal-journal",
+      "family": "ACFJOURNAL",
+      "phase": 24,
+      "title": "Universal Mutation Journal",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4041",
+        "T4042",
+        "T4043",
+        "T4044",
+        "T4045"
+      ],
+      "dependencies": [
+        "history",
+        "recovery"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "update-acceptance",
+      "family": "ACFUPDATE",
+      "phase": 25,
+      "title": "Update Acceptance and Safe Remediation Pipeline",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4046",
+        "T4047",
+        "T4048",
+        "T4049",
+        "T4050"
+      ],
+      "dependencies": [
+        "runtime-graph-v2",
+        "certification-packs",
+        "ownership-reconciliation"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "host-capability-registry",
+      "family": "ACFHOST",
+      "phase": 26,
+      "title": "Host Capability Registry",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4051",
+        "T4052",
+        "T4053",
+        "T4054",
+        "T4055"
+      ],
+      "dependencies": [
+        "runtime-graph-v2"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "external-provider-framework",
+      "family": "ACFEXT",
+      "phase": 27,
+      "title": "External Provider Framework",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4056",
+        "T4057",
+        "T4058",
+        "T4059",
+        "T4060"
+      ],
+      "dependencies": [
+        "growth",
+        "declarative-adapters"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "operator-action-center",
+      "family": "ACFACT",
+      "phase": 28,
+      "title": "Operator Action Center and Autonomy Evaluation",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4061",
+        "T4062",
+        "T4063",
+        "T4064",
+        "T4065"
+      ],
+      "dependencies": [
+        "update-acceptance",
+        "host-capability-registry",
+        "external-provider-framework",
+        "operator-journeys"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implemented behavior, verified autonomy boundary and required real provider/external acceptance"
+    },
+    {
+      "id": "release-fleet-promotion",
+      "family": "ACFROLL",
+      "phase": 29,
+      "title": "Release Rings and Fleet/Multisite Promotion",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4066",
+        "T4067",
+        "T4068",
+        "T4069",
+        "T4070"
+      ],
+      "dependencies": [
+        "update-acceptance",
+        "certification-packs",
+        "operator-action-center"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "automation-slo-control",
+      "family": "ACFSLO",
+      "phase": 30,
+      "title": "Automation SLOs, Error Budgets and Kill Switch",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "dependencies": [
+        "operator-action-center",
+        "update-acceptance"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "supply-chain-trust",
+      "family": "ACFSUPPLY",
+      "phase": 31,
+      "title": "Supply-chain Provenance and Trust",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "dependencies": [
+        "runtime-graph-v2",
+        "certification-packs"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "registry-schema-migration",
+      "family": "ACFMIGRATE",
+      "phase": 32,
+      "title": "Registry and Policy Schema Migration",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "dependencies": [
+        "certification-packs",
+        "supply-chain-trust"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "compatibility-fuzzing",
+      "family": "ACFFUZZ",
+      "phase": 33,
+      "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
+      "priority": "P1",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "dependencies": [
+        "semantic-classifier",
+        "declarative-adapters",
+        "reversible-canary"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    },
+    {
+      "id": "restore-dr-convergence",
+      "family": "ACFDR",
+      "phase": 34,
+      "title": "Restore and Disaster-Recovery Convergence",
+      "priority": "P0",
+      "status": "PARTIAL",
+      "task_ids": [
+        "T4091",
+        "T4092",
+        "T4093",
+        "T4094",
+        "T4095"
+      ],
+      "dependencies": [
+        "update-acceptance",
+        "ownership-reconciliation",
+        "certification-packs",
+        "release-fleet-promotion"
+      ],
+      "release_blocker": false,
+      "runtime_completion_requires": "exact-head implementation, verified non-authorizing boundaries and real runtime/external acceptance"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "CE001",
+      "title": "Immutable competitor package archive",
+      "workstream_id": "benchmarks",
+      "family": "CPBEN",
+      "evidence_ids": [
+        "SRC-RM-IDENTITY"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Preserve four original uploaded packages and make their feature evidence reproducible.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3901",
+        "T3902",
+        "T3903",
+        "T3904",
+        "T3905"
+      ],
+      "acceptance": [
+        "Original SHA-256 and every file member digest match; license/version identity retained."
+      ],
+      "denial_cases": [
+        "ZIP replacement, traversal, duplicate or symlink member, oversized expansion."
+      ]
+    },
+    {
+      "id": "CE002",
+      "title": "Evidence-based comparison and progress",
+      "workstream_id": "benchmarks",
+      "family": "CPBEN",
+      "evidence_ids": [
+        "SRC-EASY-COUNTS",
+        "SRC-MO-SECURITY-CLAIMS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Compare capability semantics and usable journeys; track marketed, bundled and runtime states independently.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3901",
+        "T3902",
+        "T3903",
+        "T3904",
+        "T3905"
+      ],
+      "acceptance": [
+        "Every row maps archive evidence, MAD4B foundation, task owner and acceptance; no count-based superiority score."
+      ],
+      "denial_cases": [
+        "Unverified Pro/marketing promoted to available, docs-only DONE or stale source hash."
+      ]
+    },
+    {
+      "id": "CE003",
+      "title": "Guided first useful operation",
+      "workstream_id": "operator-journeys",
+      "family": "CPUX",
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-MO-NHI"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Reduce setup friction through connection, safe read/draft, reviewed plan, approved execution and eligible undo.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "acceptance": [
+        "Real browser completes first authorized draft/read with no dead-end status page."
+      ],
+      "denial_cases": [
+        "Missing consent/Brand authority shown as ready; permissions increased by onboarding."
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
+    },
+    {
+      "id": "CE004",
+      "title": "Provider credential and profile discoverability",
+      "workstream_id": "operator-journeys",
+      "family": "CPUX",
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-EASY-GA4",
+        "SRC-EASY-DFS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Generalize rc.95 SerpApi/DataForSEO setup to all admitted provider-specific credential and account fields.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "acceptance": [
+        "Every provider has reachable setup, save/readback, explicit test and selected account/profile state; GET sends zero HTTP requests."
+      ],
+      "denial_cases": [
+        "Secrets reflected in DOM/audit, paid request on render, arbitrary account endpoint."
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
+    },
+    {
+      "id": "CE005",
+      "title": "Every admin page, legacy route and external action",
+      "workstream_id": "operator-journeys",
+      "family": "CPUX",
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-RM-HEALTH"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-route-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Audit all registered tabs/controls and explain taxonomy/license/host/consent actions with Arabic RTL accessibility.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3906",
+        "T3907",
+        "T3908",
+        "T3909",
+        "T3910"
+      ],
+      "acceptance": [
+        "Every page has operable save, empty/denied/error states and a canonical URL; license changes remain vendor/owner handoffs."
+      ],
+      "denial_cases": [
+        "Frontend 404 alias, false save success, stale view, automatic license deactivation or host binary install."
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
+    },
+    {
+      "id": "CE006",
+      "title": "Receipt-backed Undo workspace",
+      "workstream_id": "recovery",
+      "family": "CPUNDO",
+      "evidence_ids": [
+        "SRC-RM-UNDO-TTL",
+        "SRC-RM-UNDO-DRIFT"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Provide understandable reverse preview and eligibility above the existing governed reversal service.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3911",
+        "T3912",
+        "T3913",
+        "T3914",
+        "T3915"
+      ],
+      "acceptance": [
+        "Current object/field digests, expiry, actor, exact reversal plan and one-time readback receipt bind the action."
+      ],
+      "denial_cases": [
+        "Post-write drift, expired receipt, second consumption, revoked actor, irreversible external effect."
+      ]
+    },
+    {
+      "id": "CE007",
+      "title": "Exact write readback and recovery uncertainty",
+      "workstream_id": "recovery",
+      "family": "CPUNDO",
+      "evidence_ids": [
+        "SRC-RM-READBACK",
+        "SRC-RM-UNDO-DRIFT"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Unify typed stored/emitted readback and reconciliation before retry across object/provider operations.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3911",
+        "T3912",
+        "T3913",
+        "T3914",
+        "T3915"
+      ],
+      "acceptance": [
+        "Partial/dropped fields and possible external effect produce explicit uncertain/reconciling states."
+      ],
+      "denial_cases": [
+        "Retry after unknown side effect, fabricated rollback, mismatched expected state."
+      ]
+    },
+    {
+      "id": "CE008",
+      "title": "NHI/agent permission editor and My Access",
+      "workstream_id": "identity",
+      "family": "CPNHI",
+      "evidence_ids": [
+        "SRC-MO-NHI",
+        "SRC-MO-WRITE-GUARD"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Expose agent/role/object/risk/transport permissions while reusing existing authority and exact grants.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3916",
+        "T3917",
+        "T3918",
+        "T3919",
+        "T3920"
+      ],
+      "acceptance": [
+        "Named identities show effective per-object access and clear disable/revoke outcomes."
+      ],
+      "denial_cases": [
+        "Wildcard authority, read/exist writer, deleted/demoted user, alternate NHI authority."
+      ]
+    },
+    {
+      "id": "CE009",
+      "title": "Agent attribution, scope conflict and lifecycle",
+      "workstream_id": "identity",
+      "family": "CPNHI",
+      "evidence_ids": [
+        "SRC-MO-NHI",
+        "SRC-EASY-SCOPED-CALL"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identity-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Explain conflicting scopes/roles and bind requests/audit to the current client and subject.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3916",
+        "T3917",
+        "T3918",
+        "T3919",
+        "T3920"
+      ],
+      "acceptance": [
+        "Role/subject/resource drift invalidates next admission and pending commit."
+      ],
+      "denial_cases": [
+        "Wrong server, cross-site token, restored revoked identity, last-known-role fallback."
+      ]
+    },
+    {
+      "id": "CE010",
+      "title": "Granular consent and safe presets",
+      "workstream_id": "consent",
+      "family": "CPOAUTH",
+      "evidence_ids": [
+        "SRC-EASY-CONSENT",
+        "SRC-EASY-SCOPED-CALL"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Expose read-only and reviewed defaults with explicit selected capability/object/risk scope differences.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3921",
+        "T3922",
+        "T3923",
+        "T3924",
+        "T3925"
+      ],
+      "acceptance": [
+        "tools/list and tools/call both revalidate selected scope against current authority."
+      ],
+      "denial_cases": [
+        "Generic full access token, stale catalog, hidden scope expansion, mounting discovered writes."
+      ]
+    },
+    {
+      "id": "CE011",
+      "title": "OAuth and MCP client/session compatibility",
+      "workstream_id": "consent",
+      "family": "CPOAUTH",
+      "evidence_ids": [
+        "SRC-RM-PKCE",
+        "SRC-EASY-SCOPED-CALL"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-local-oauth-consent-ui.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Test real client initialize/list/call, PKCE/refresh/revocation/session/Origin semantics independently of transport availability.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3921",
+        "T3922",
+        "T3923",
+        "T3924",
+        "T3925"
+      ],
+      "acceptance": [
+        "Exact resource/issuer/subject/client/build session receipt supports external acceptance."
+      ],
+      "denial_cases": [
+        "Refresh replay, revoked token, Origin mismatch, foreign audience, fabricated external receipt."
+      ]
+    },
+    {
+      "id": "CE012",
+      "title": "GA4 measurement and property selection",
+      "workstream_id": "growth",
+      "family": "CPGROW",
+      "evidence_ids": [
+        "SRC-EASY-GA4"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add governed analytics reporting with dimension/metric/property discovery and explicit account selection.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "acceptance": [
+        "Property, attribution window, consent, sampling and freshness appear in every report."
+      ],
+      "denial_cases": [
+        "Cross-property data, unsupported dimensions, stale token, hidden sampling."
+      ]
+    },
+    {
+      "id": "CE013",
+      "title": "Search Console queries and index observations",
+      "workstream_id": "growth",
+      "family": "CPGROW",
+      "evidence_ids": [
+        "SRC-EASY-GSC"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add clicks/impressions/query/page/site/sitemap/index-observation contracts to Search evidence.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "acceptance": [
+        "Verified site scope and language/market/window provenance survive normalization."
+      ],
+      "denial_cases": [
+        "Unverified site, conflicting windows, mixed URL identities, signal-as-publication authority."
+      ]
+    },
+    {
+      "id": "CE014",
+      "title": "Keyword, backlink, competitor and AI visibility adapters",
+      "workstream_id": "growth",
+      "family": "CPGROW",
+      "evidence_ids": [
+        "SRC-EASY-SEMRUSH",
+        "SRC-EASY-SERANKING",
+        "SRC-EASY-AHREFS",
+        "SRC-EASY-DFS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-search-intelligence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add Semrush/SE Ranking/Ahrefs breadth without coupling Search core to vendor-specific fields or count targets.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3926",
+        "T3927",
+        "T3928",
+        "T3929",
+        "T3930"
+      ],
+      "acceptance": [
+        "Provider-specific quotas/currency/rights and equivalent-comparison limits are explicit; existing SerpApi/DataForSEO are reused."
+      ],
+      "denial_cases": [
+        "Unknown paid cost, quota mismatch, mixed currency, unsupported Ahrefs parity, automatic content write."
+      ]
+    },
+    {
+      "id": "CE015",
+      "title": "Form/schema/configuration provider family",
+      "workstream_id": "forms",
+      "family": "CPFORMS",
+      "evidence_ids": [
+        "SRC-MO-FORMS",
+        "SRC-RM-WPFORMS",
+        "SRC-RM-CF7"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Cover CF7/WPForms/Gravity/Fluent/JetFormBuilder with provider-specific native contracts.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3931",
+        "T3932",
+        "T3933",
+        "T3934",
+        "T3935"
+      ],
+      "acceptance": [
+        "Form fields/repeaters/required/choices and owned configuration survive plan/readback."
+      ],
+      "denial_cases": [
+        "Absent premium runtime, foreign serialization, invalid nested field, unreviewed hook."
+      ]
+    },
+    {
+      "id": "CE016",
+      "title": "Private submissions, retention and export/delete",
+      "workstream_id": "forms",
+      "family": "CPFORMS",
+      "evidence_ids": [
+        "SRC-RM-WPFORMS",
+        "SRC-RM-CF7"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Separate public form schema from privileged submission/PII operations and irreversible deletion.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3931",
+        "T3932",
+        "T3933",
+        "T3934",
+        "T3935"
+      ],
+      "acceptance": [
+        "Object/field-level consent, masked previews, bounded export and deletion review are enforced."
+      ],
+      "denial_cases": [
+        "PII leak, private uploads, hidden Flamingo dependence, deletion marked reversible."
+      ]
+    },
+    {
+      "id": "CE017",
+      "title": "Products, variations, attributes and bounded batch",
+      "workstream_id": "commerce",
+      "family": "CPWC",
+      "evidence_ids": [
+        "SRC-EASY-WC-PRODUCT"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Expand native commerce catalog operations with independent stock/hook/risk contracts.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "acceptance": [
+        "HPOS/applicable runtime and product/variation identity readback; disposable reversible canaries."
+      ],
+      "denial_cases": [
+        "Stock race, cross-product variation, duplicate batch, unsupported schema."
+      ]
+    },
+    {
+      "id": "CE018",
+      "title": "Orders, customers, coupons and reports",
+      "workstream_id": "commerce",
+      "family": "CPWC",
+      "evidence_ids": [
+        "SRC-EASY-WC-ORDER"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Split financial/private reads from admitted reversible order fields and customer changes.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "acceptance": [
+        "PII masking, current object authorization and per-field effects classify every operation."
+      ],
+      "denial_cases": [
+        "Customer leak, amount/payment change promoted by structural test, notification replay."
+      ]
+    },
+    {
+      "id": "CE019",
+      "title": "Shipping, taxes, gateways, webhooks and refunds",
+      "workstream_id": "commerce",
+      "family": "CPWC",
+      "evidence_ids": [
+        "SRC-EASY-WC-WEBHOOK",
+        "SRC-EASY-WC-ORDER"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Track high-risk external/financial surfaces separately; unsupported refund/gateway work stays gated.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T3936",
+        "T3937",
+        "T3938",
+        "T3939",
+        "T3940"
+      ],
+      "acceptance": [
+        "Each effect has explicit risk/authority and honest non-reversible classification; no blanket commerce certification."
+      ],
+      "denial_cases": [
+        "Payment/refund auto-promotion, unbounded webhook URL, secret leak, undo claim for money movement."
+      ]
+    },
+    {
+      "id": "CE020",
+      "title": "Elementor structural operations and templates",
+      "workstream_id": "builders",
+      "family": "CPBUILD",
+      "evidence_ids": [
+        "SRC-RM-ELEMENTOR",
+        "SRC-RM-EDITOR-LOCK"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Extend admitted clone/outline/widget/template operations over existing builder foundations.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "acceptance": [
+        "Fresh element IDs, editor locks, structural diffs and exact rendered readback."
+      ],
+      "denial_cases": [
+        "Stale editor, dynamic secret reference, malformed tree, cross-template scope."
+      ]
+    },
+    {
+      "id": "CE021",
+      "title": "Divi 4/5 format-aware operations",
+      "workstream_id": "builders",
+      "family": "CPBUILD",
+      "evidence_ids": [
+        "SRC-RM-DIVI",
+        "SRC-RM-EDITOR-LOCK"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add a second independently certified builder adapter with shortcode/block distinction.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "acceptance": [
+        "Dry-run replace/clone/library operations preserve format and regenerate identities."
+      ],
+      "denial_cases": [
+        "Mixed/unsupported format, broken shortcodes, active editor, failed rollback."
+      ]
+    },
+    {
+      "id": "CE022",
+      "title": "Kadence and Gutenberg/FSE templates/styles",
+      "workstream_id": "builders",
+      "family": "CPBUILD",
+      "evidence_ids": [
+        "SRC-MO-KADENCE",
+        "SRC-EASY-FSE"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-media.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add provider-native block/tree/style/template contracts and site-editor scope boundaries.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3941",
+        "T3942",
+        "T3943",
+        "T3944",
+        "T3945"
+      ],
+      "acceptance": [
+        "Nested block structure, template/theme identity and reusable-block references verified."
+      ],
+      "denial_cases": [
+        "Unregistered blocks, unintended global style blast radius, theme drift, template takeover."
+      ]
+    },
+    {
+      "id": "CE023",
+      "title": "Six-provider field-level SEO family",
+      "workstream_id": "seo",
+      "family": "CPSEO",
+      "evidence_ids": [
+        "SRC-EASY-SEO",
+        "SRC-EASY-SEO-HEAD"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-seo-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Generalize Rank Math/SEO foundation across Yoast/AIOSEO/SEOPress/Slim SEO/The SEO Framework.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3946",
+        "T3947",
+        "T3948",
+        "T3949",
+        "T3950"
+      ],
+      "acceptance": [
+        "Provider native APIs and per-field ownership; title/meta/social/schema/robots/canonical readback."
+      ],
+      "denial_cases": [
+        "Foreign provider overwrite, absent runtime, incompatible schema, generic post-meta shortcut."
+      ]
+    },
+    {
+      "id": "CE024",
+      "title": "Rendered head, language and archive verification",
+      "workstream_id": "seo",
+      "family": "CPSEO",
+      "evidence_ids": [
+        "SRC-EASY-SEO-HEAD",
+        "SRC-RM-REDIRECT"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-seo-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Unify stored-versus-emitted provenance for posts/terms/archives and language/canonical conflicts.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3946",
+        "T3947",
+        "T3948",
+        "T3949",
+        "T3950"
+      ],
+      "acceptance": [
+        "Rendered and stored semantics are compared on exact surface/language/cache generation."
+      ],
+      "denial_cases": [
+        "Stale head, wrong language, shadowed source treated authoritative, SEO signal direct mutation."
+      ]
+    },
+    {
+      "id": "CE025",
+      "title": "Visual timeline and structured diffs",
+      "workstream_id": "history",
+      "family": "CPHIST",
+      "evidence_ids": [
+        "SRC-EASY-HISTORY"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Expose bounded object/actor/client/date history rather than requiring audit payload interpretation.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "READ_ONLY",
+      "task_ids": [
+        "T3951",
+        "T3952",
+        "T3953",
+        "T3954",
+        "T3955"
+      ],
+      "acceptance": [
+        "Stable paging and per-object authorization reveal meaningful typed before/after differences."
+      ],
+      "denial_cases": [
+        "Cross-site/private object read, forged history, history presented as guaranteed undo."
+      ]
+    },
+    {
+      "id": "CE026",
+      "title": "Redaction, retention and portable evidence",
+      "workstream_id": "history",
+      "family": "CPHIST",
+      "evidence_ids": [
+        "SRC-EASY-REDACTION",
+        "SRC-EASY-HISTORY"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Preserve evidence integrity while redacting secret/PII fields and supporting governed exports.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3951",
+        "T3952",
+        "T3953",
+        "T3954",
+        "T3955"
+      ],
+      "acceptance": [
+        "No API key/token/private field in diff; retained/exported digest chain stays verifiable."
+      ],
+      "denial_cases": [
+        "Secret diff, legal-hold deletion, truncated mandatory identity, exported history creates authority."
+      ]
+    },
+    {
+      "id": "CE027",
+      "title": "Optional AI Workspace and approval cards",
+      "workstream_id": "ai-applications",
+      "family": "CPAIBASE",
+      "evidence_ids": [
+        "SRC-AI-WORKSPACE"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add a user-facing conversational layer that invokes existing governed tools through exact reviewed plans.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "acceptance": [
+        "Conversation ownership, tool arguments/diffs and approvals bind to live subject/revision."
+      ],
+      "denial_cases": [
+        "Model request grants access, generic shell/PHP exposure, foreign conversation, automatic publish."
+      ]
+    },
+    {
+      "id": "CE028",
+      "title": "Governed model routing and usage controls",
+      "workstream_id": "ai-applications",
+      "family": "CPAIBASE",
+      "evidence_ids": [
+        "SRC-AI-MODELS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Choose admitted models by capabilities/privacy/residency/cost with bounded fallback.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "SCOPED_EXTERNAL_READ",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "acceptance": [
+        "Per-request usage reservation, provider provenance and retry reconciliation."
+      ],
+      "denial_cases": [
+        "Silent provider/privacy switch, unpriced generation, budget overspend, retry after uncertain charge."
+      ]
+    },
+    {
+      "id": "CE029",
+      "title": "Copilot, translation, media and audio/video proposals",
+      "workstream_id": "ai-applications",
+      "family": "CPAIBASE",
+      "evidence_ids": [
+        "SRC-AI-MEDIA-CLAIM",
+        "SRC-AI-AUDIO-PRO"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-runtime.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Track broader AI Engine application claims as optional proposals with independent availability and rights proof.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3956",
+        "T3957",
+        "T3958",
+        "T3959",
+        "T3960"
+      ],
+      "acceptance": [
+        "Generated content/assets are previews until approved desired-state publication; paid media evidence is separate."
+      ],
+      "denial_cases": [
+        "Advertised Pro becomes bundled-certified, missing media rights, unsafe uploads, automatic voice tool authority."
+      ]
+    },
+    {
+      "id": "CE030",
+      "title": "Knowledge/PDF ingestion, retrieval and vector stores",
+      "workstream_id": "knowledge",
+      "family": "CPRAG",
+      "evidence_ids": [
+        "SRC-AI-RAG-PRO"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add optional RAG above Context Authority with approved sources and tenant/field filtering.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3961",
+        "T3962",
+        "T3963",
+        "T3964",
+        "T3965"
+      ],
+      "acceptance": [
+        "Source/chunk lineage, deletion, freshness, embeddings/model generation and grounded citations verified."
+      ],
+      "denial_cases": [
+        "Poisoned source instructions, private-source leak, malicious PDF, cross-tenant vector, stale retrieval."
+      ]
+    },
+    {
+      "id": "CE031",
+      "title": "AI forms and bounded function calling",
+      "workstream_id": "knowledge",
+      "family": "CPRAG",
+      "evidence_ids": [
+        "SRC-AI-FORMS-PRO",
+        "SRC-AI-WORKSPACE"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Track Pro application feature separately and govern form input/function output/cost boundaries.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3961",
+        "T3962",
+        "T3963",
+        "T3964",
+        "T3965"
+      ],
+      "acceptance": [
+        "Each tool call uses existing authority and every file/PII field is explicitly admitted."
+      ],
+      "denial_cases": [
+        "Arbitrary API/function exposure, file/path injection, new authority from form content, hidden paid execution."
+      ]
+    },
+    {
+      "id": "CE032",
+      "title": "Backup and migration artifacts",
+      "workstream_id": "site-operations",
+      "family": "CPOPS",
+      "evidence_ids": [
+        "SRC-RM-BACKUP",
+        "SRC-RM-MIGRATION"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add backup inventory/trigger and migration package inspection to existing recovery boundaries.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "acceptance": [
+        "Exact package/root/restore epoch and protected receipt handoff; installer details masked."
+      ],
+      "denial_cases": [
+        "Installer credential leak, arbitrary archive path, rollback resurrects authority, automatic restore."
+      ]
+    },
+    {
+      "id": "CE033",
+      "title": "Cache inspection and bounded purge",
+      "workstream_id": "site-operations",
+      "family": "CPOPS",
+      "evidence_ids": [
+        "SRC-RM-CACHE"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Extend existing cache capability governance to W3 Total Cache and future providers.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "acceptance": [
+        "Purge plan states targets/blast radius and fresh frontend readback."
+      ],
+      "denial_cases": [
+        "Uncertified purge, arbitrary URL, host cache bypass, whole-site purge inferred from narrow grant."
+      ]
+    },
+    {
+      "id": "CE034",
+      "title": "Security status, lockouts and policy claims",
+      "workstream_id": "site-operations",
+      "family": "CPOPS",
+      "evidence_ids": [
+        "SRC-RM-SECURITY",
+        "SRC-MO-SECURITY-CLAIMS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Expose safe security diagnostics; independently evaluate DLP/injection/anomaly/reputation claims before adopting controls.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "acceptance": [
+        "Sensitive logs masked; ban/unban and security changes use exact review and self-lockout checks."
+      ],
+      "denial_cases": [
+        "Marketing treated behavioral proof, self-lockout, PII security log, arbitrary firewall allow."
+      ]
+    },
+    {
+      "id": "CE035",
+      "title": "Redirect and link management",
+      "workstream_id": "site-operations",
+      "family": "CPOPS",
+      "evidence_ids": [
+        "SRC-RM-REDIRECT"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add provider-native redirect inventory/diff/apply with language and cache-aware acceptance.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3966",
+        "T3967",
+        "T3968",
+        "T3969",
+        "T3970"
+      ],
+      "acceptance": [
+        "No loops/open redirects; exact origin/target/status/bound scope readback."
+      ],
+      "denial_cases": [
+        "Loop, open redirect, dangerous scheme, external egress or foreign-language takeover."
+      ]
+    },
+    {
+      "id": "CE036",
+      "title": "Multilingual taxonomy hierarchy reconciliation",
+      "workstream_id": "wordpress-breadth",
+      "family": "CPCORE",
+      "evidence_ids": [
+        "SRC-EASY-TERM"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Address observed WPML out-of-sync taxonomies through scoped plan/diff rather than a blind sync action.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "acceptance": [
+        "Explicit source-language/parent/translation groups; dry-run counts and exact applied hierarchy readback."
+      ],
+      "denial_cases": [
+        "Hierarchy cycles, orphan/cross-language parents, unbound all-taxonomy mutation, license mismatch auto repair."
+      ]
+    },
+    {
+      "id": "CE037",
+      "title": "Core content/media/menus/users and ACF completeness",
+      "workstream_id": "wordpress-breadth",
+      "family": "CPCORE",
+      "evidence_ids": [
+        "SRC-EASY-ACF",
+        "SRC-RM-READBACK"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Map remaining object operations and field ownership without equating generic meta CRUD to native provider parity.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "acceptance": [
+        "Each field/object capability has schema, object permission, native readback and admitted risk."
+      ],
+      "denial_cases": [
+        "Role escalation, sensitive user meta, unsafe media URL, foreign ACF field serialization."
+      ]
+    },
+    {
+      "id": "CE038",
+      "title": "Community and event operations",
+      "workstream_id": "wordpress-breadth",
+      "family": "CPCORE",
+      "evidence_ids": [
+        "SRC-EASY-COMMUNITY",
+        "SRC-EASY-EVENTS"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-media-adapter.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Add optional BuddyPress/Events Calendar adapters after site applicability and privacy admission.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3971",
+        "T3972",
+        "T3973",
+        "T3974",
+        "T3975"
+      ],
+      "acceptance": [
+        "Private messages/members remain object-authorized; event timezones and pagination are explicit."
+      ],
+      "denial_cases": [
+        "Private thread leak, cross-group access, timezone corruption, absent provider auto-certification."
+      ]
+    },
+    {
+      "id": "CE039",
+      "title": "Capability-local provider recertification",
+      "workstream_id": "convergence",
+      "family": "CPCONV",
+      "evidence_ids": [
+        "SRC-RM-HEALTH",
+        "SRC-MO-WRITE-GUARD"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Reuse rc.95 discovery/diff/risk controls and extend per-capability behavioral proof without static patch allowlists.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "acceptance": [
+        "Unknown artifact becomes structural candidate; only eligible canary/readback/rollback evidence can promote matching capability."
+      ],
+      "denial_cases": [
+        "Version-only provider-wide disable, read drift blocks unrelated capability, automatic grants/mounts, unknown high-risk promotion."
+      ]
+    },
+    {
+      "id": "CE040",
+      "title": "External handshake, browser and passive performance acceptance",
+      "workstream_id": "convergence",
+      "family": "CPCONV",
+      "evidence_ids": [
+        "SRC-EASY-ONBOARDING",
+        "SRC-RM-HEALTH"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-behavioral-recertification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FULL_PARITY_UNVERIFIED",
+      "delta": "Refresh valid external build-bound receipts and collect bounded performance samples through actual providers.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T3976",
+        "T3977",
+        "T3978",
+        "T3979",
+        "T3980"
+      ],
+      "acceptance": [
+        "Initialize/tools/list same session/build; real browser routes/actions and at least three comparable frontend samples."
+      ],
+      "denial_cases": [
+        "Local status called external proof, stale snapshot, fabricated samples, Google re-consent or host binary install automated."
+      ]
+    },
+    {
+      "id": "CE041",
+      "title": "Runtime Candidate Graph v2",
+      "workstream_id": "runtime-graph-v2",
+      "family": "ACFGRAPH",
+      "evidence_ids": [
+        "SRC-AO-01"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement provenance-bound provider/component/capability/operation/schema/precondition/effect/reversal/evidence graph snapshots with immutable generation identities.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4001",
+        "T4002",
+        "T4003",
+        "T4004",
+        "T4005"
+      ],
+      "acceptance": [
+        "Discover registered symbols, hooks, REST routes, Abilities, MCP descriptors, CPTs/taxonomies/meta, schemas, cron and admin pages through bounded trusted readers.",
+        "Implement unknown-plugin candidate packages and descriptive database/endpoint inventory without invoking unknown code, exposing settings secrets or creating writes.",
+        "Implement semantic pre/post graph diff and isolate removed/changed capabilities plus dependent workflows while preserving unrelated compatible reads."
+      ],
+      "denial_cases": [
+        "GATE Prove false annotations/GET methods, lazy-loader effects, stale workers, schema disappearance, secret schemas and unknown side effects never gain authority."
+      ]
+    },
+    {
+      "id": "CE042",
+      "title": "Semantic Classification Engine",
+      "workstream_id": "semantic-classifier",
+      "family": "ACFCLASS",
+      "evidence_ids": [
+        "SRC-AO-02"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement deterministic evidence features for namespace/action/schema/annotations/capabilities/resources/effects/reversibility and a versioned Policy Proposal contract.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4006",
+        "T4007",
+        "T4008",
+        "T4009",
+        "T4010"
+      ],
+      "acceptance": [
+        "Implement confidence, contradictory/missing evidence, provenance and classifier-version traces; confidence and operation names are never safety proof.",
+        "Separate runtime-discovered facts from reviewed policy overlay; only admitted zero-effect/non-secret read recipes may auto-classify after actual conformance.",
+        "Implement owner review for new write/unknown/high-risk proposals and record scope/risk/authority differences without altering grants or mounts."
+      ],
+      "denial_cases": [
+        "GATE Prove confidence-only promotion, unsafe GET, lying read annotations, schema-based privilege inference and risk downgrade fail closed."
+      ]
+    },
+    {
+      "id": "CE043",
+      "title": "Declarative Adapter Manifest",
+      "workstream_id": "declarative-adapters",
+      "family": "ACFMAN",
+      "evidence_ids": [
+        "SRC-AO-03"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement immutable declarative manifest schemas for bindings/input/output/preconditions/effects/readback/rollback and explicit reviewed executor IDs.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4011",
+        "T4012",
+        "T4013",
+        "T4014",
+        "T4015"
+      ],
+      "acceptance": [
+        "Implement schema-driven adapters only through already admitted typed executor strategies; discovered symbols/routes cannot become arbitrary invocation targets.",
+        "Implement manifest signature/version/capability/artifact/generation validation and static effect/egress/secret/cost checks before interpretation.",
+        "Expose manifest preview, supported strategy limits, rejected bindings and exact execution/readback provenance without generating or activating PHP."
+      ],
+      "denial_cases": [
+        "GATE Reject arbitrary function/class/route names, eval/shell/PHP, generic HTTP, malicious templates and undeclared external or authority effects."
+      ]
+    },
+    {
+      "id": "CE044",
+      "title": "Dynamic Operation Synthesis and Workflow Compiler",
+      "workstream_id": "operation-synthesis",
+      "family": "ACFSYNTH",
+      "evidence_ids": [
+        "SRC-AO-04"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-registry.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement schema-derived candidate Content Experience profiles for newly observed CPTs/taxonomies/meta/media/SEO/language/builder bindings.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4016",
+        "T4017",
+        "T4018",
+        "T4019",
+        "T4020"
+      ],
+      "acceptance": [
+        "Compile content/meta/taxonomy/media/SEO/translation/publication primitives into typed dependency DAGs with provider/capability resolution.",
+        "Implement plan pinning, exact object and input diffs, effect/permission aggregation, idempotency/fencing and compensation boundaries before approved execution.",
+        "Bind compiled workflows to existing WorkflowProvider/ContentJob services; provider replacement produces a new plan and invalidates affected approvals."
+      ],
+      "denial_cases": [
+        "GATE Prove arbitrary CPT business hardcode, circular plan, removed provider, privilege aggregation, silent replan and publication without authority are rejected."
+      ]
+    },
+    {
+      "id": "CE045",
+      "title": "Shadow Certification for Reads",
+      "workstream_id": "shadow-certification",
+      "family": "ACFSHADOW",
+      "evidence_ids": [
+        "SRC-AO-05"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement bounded dual-read shadow recipes over current certified and candidate paths with candidate results excluded from the user-facing active result.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4021",
+        "T4022",
+        "T4023",
+        "T4024",
+        "T4025"
+      ],
+      "acceptance": [
+        "Compare object/field/semantic/error/latency/privacy/cost results using policy-defined sample counts, workload coverage and tolerances.",
+        "Require proven non-mutating/non-secret behavior and quota/cost authority before shadow execution; uncertain read effects prohibit sampling.",
+        "Issue generation-bound structural/read behavioral receipts and promote only existing eligible read exposure with no new grants/tool mounts."
+      ],
+      "denial_cases": [
+        "GATE Reject insufficient/correlated/stale samples, hidden external cost/effect, private-field leakage, mismatched objects and inconsistent candidate results."
+      ]
+    },
+    {
+      "id": "CE046",
+      "title": "Reversible Canary Engine",
+      "workstream_id": "reversible-canary",
+      "family": "ACFCANARY",
+      "evidence_ids": [
+        "SRC-AO-06"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement explicit autonomy L3 canary admission tied to pre-existing Staging authority, approved recipe, exact disposable target and bounded effect/cost.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4026",
+        "T4027",
+        "T4028",
+        "T4029",
+        "T4030"
+      ],
+      "acceptance": [
+        "Provision isolated fixtures, capture native pre-state, execute candidate operation once, read exact stored/emitted state and evaluate invariants.",
+        "Restore through the certified rollback strategy and prove exact original state including hooks/external effects; always record cleanup/outcome uncertainty.",
+        "Issue signed exact capability/artifact/schema/recipe/subject/environment/generation behavioral receipts with expiry and revocation."
+      ],
+      "denial_cases": [
+        "GATE Prove stale authority, shared/live targets, financial effects, evidence failure, incomplete restoration and cancellation never auto-promote or blindly retry."
+      ]
+    },
+    {
+      "id": "CE047",
+      "title": "Versioned Runtime Registry and Certification Packs",
+      "workstream_id": "certification-packs",
+      "family": "ACFPACK",
+      "evidence_ids": [
+        "SRC-AO-07"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement independently versioned signed immutable packs for policy overlays, manifests, acceptance/rollback recipes, Skills/profiles and provider evidence.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4031",
+        "T4032",
+        "T4033",
+        "T4034",
+        "T4035"
+      ],
+      "acceptance": [
+        "Separate PHP engine releases from data policy, certification evidence and Skill/profile revisions with trusted compatible schema interpreters.",
+        "Implement exact artifact/capability/schema/site/environment binding, chain/key revocation, expiry, anti-replay/rollback protection and atomic registry activation.",
+        "Keep restrictive/equal non-authorizing refresh eligible for automation; risk downgrade, new authority, grants or activation eligibility require governed review."
+      ],
+      "denial_cases": [
+        "GATE Reject tampered/unsigned/revoked/expired/foreign packs, incompatible interpreters, stale artifacts, partial install and replay after restore."
+      ]
+    },
+    {
+      "id": "CE048",
+      "title": "Ownership-aware Three-Way Reconciliation",
+      "workstream_id": "ownership-reconciliation",
+      "family": "ACFOWN",
+      "evidence_ids": [
+        "SRC-AO-08"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-provider-discovery.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement resource/field ownership and lineage over Last Managed, Current Runtime and Desired Policy state with exact revision/CAS contracts.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4036",
+        "T4037",
+        "T4038",
+        "T4039",
+        "T4040"
+      ],
+      "acceptance": [
+        "Distinguish managed drift, human-owned edits, provider drift and ambiguous conflict across profiles/bindings/workflows/schemas/SEO/settings/Skills.",
+        "Generate bounded repair plans for proven owned non-authorizing fields; preserve/rebase valid human deltas only inside explicit unlocked policy.",
+        "Route locked/ambiguous/security-sensitive changes to review; never overwrite human Skills, reset authority, resume observations or unfreeze spend by inference."
+      ],
+      "denial_cases": [
+        "GATE Prove missing baseline, concurrent edit, changed owner, human language addition, centrally locked field, secret/authority field and partial apply preserve safety."
+      ]
+    },
+    {
+      "id": "CE049",
+      "title": "Universal Mutation Journal",
+      "workstream_id": "universal-journal",
+      "family": "ACFJOURNAL",
+      "evidence_ids": [
+        "SRC-AO-09"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-context.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement one human-readable journal projection linking operation/actor/agent/why/objects/pre-state/post-state/provider/capability/authority and reversal evidence.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4041",
+        "T4042",
+        "T4043",
+        "T4044",
+        "T4045"
+      ],
+      "acceptance": [
+        "Bind every admitted mutation outcome to current execution, readback, uncertainty and external effects using existing audit/journal services.",
+        "Expose Undo eligibility/expiry, preview, visual diff and exact governed compensation without creating a second execution or authority system.",
+        "Preserve redaction, tenant/object access, integrity, retention and durable receipt ordering across archive/export/restore."
+      ],
+      "denial_cases": [
+        "GATE Prove history-only rollback, forged authority links, truncation, external irreversible effects, failed receipts and stale current state cannot report success."
+      ]
+    },
+    {
+      "id": "CE050",
+      "title": "Update Acceptance and Safe Remediation Pipeline",
+      "workstream_id": "update-acceptance",
+      "family": "ACFUPDATE",
+      "evidence_ids": [
+        "SRC-AO-10"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Capture pre-update artifact/graph/workflows/authority/schema/topology/performance and observe post-update generation without changing update authorization.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4046",
+        "T4047",
+        "T4048",
+        "T4049",
+        "T4050"
+      ],
+      "acceptance": [
+        "Classify no drift/read drift/changed reversible write/removed capability/authority or topology change/side channel with explicit isolated outcomes.",
+        "Compile exact bounded remediation/test/recertification plans under approved autonomy policy and preserve unrelated capabilities/session safety.",
+        "Verify registry/Skills/catalog/current eligible-grant projection and issue Update Acceptance Receipt; release rollback needs a preauthorized exact recovery plan."
+      ],
+      "denial_cases": [
+        "GATE Inject partial update, stale worker, lost rollback, changed authority/DB topology, new side channel and uncertain API effect; block/reconcile without retry widening."
+      ]
+    },
+    {
+      "id": "CE051",
+      "title": "Host Capability Registry",
+      "workstream_id": "host-capability-registry",
+      "family": "ACFHOST",
+      "evidence_ids": [
+        "SRC-AO-11"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-developer-host-capabilities.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement versioned host observations for filesystem/process/network sandbox/wp-cli/cron/loopback/memory/disk/PHP extensions/database features.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4051",
+        "T4052",
+        "T4053",
+        "T4054",
+        "T4055"
+      ],
+      "acceptance": [
+        "Bind observations to exact host/environment profile and trusted bounded probe provenance with expiry; unknown/missing values stay unknown.",
+        "Derive execution eligibility from actual prlimit plus admitted network sandbox capability without host-specific fallback code or binaries installation.",
+        "Expose one external host remediation action and a read-only recheck; host authority remains separate from WordPress/Staging write authority."
+      ],
+      "denial_cases": [
+        "GATE Reject forged tool availability, stale host profile, unsandboxed execution, generic process probes and automatic host package installation."
+      ]
+    },
+    {
+      "id": "CE052",
+      "title": "External Provider Framework",
+      "workstream_id": "external-provider-framework",
+      "family": "ACFEXT",
+      "evidence_ids": [
+        "SRC-AO-12"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement generic descriptors for credentials/account/scopes/quota/economics/rate/rights/health/capability/effects/reconciliation behind registered pinned adapters.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4056",
+        "T4057",
+        "T4058",
+        "T4059",
+        "T4060"
+      ],
+      "acceptance": [
+        "Generate provider setup/account/property/profile screens from reviewed field schemas and reuse encrypted secret handles and explicit account tests.",
+        "Implement contract-specific response/error/cost normalization, account-bound budgets, circuit breaking and uncertain-charge reconciliation without arbitrary HTTP.",
+        "Support configuration packs for Drive/SERP/analytics/research providers only through available reviewed protocol strategies; novel API behavior requires code review."
+      ],
+      "denial_cases": [
+        "GATE Prove new scope requires external consent, missing cost/rights stay blocked, opaque credentials never echo and unknown protocols cannot be generic outbound calls."
+      ]
+    },
+    {
+      "id": "CE053",
+      "title": "Operator Action Center and Autonomy Evaluation",
+      "workstream_id": "operator-action-center",
+      "family": "ACFACT",
+      "evidence_ids": [
+        "SRC-AO-13"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
+      ],
+      "baseline_assessment": "EXISTING_FOUNDATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Implement L0–L5 autonomy policy views with exact prerequisites and per-plan states AUTO_REPAIRED, APPROVAL_REQUIRED, EXTERNAL_ACTION_REQUIRED and RECONCILIATION_REQUIRED.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4061",
+        "T4062",
+        "T4063",
+        "T4064",
+        "T4065"
+      ],
+      "acceptance": [
+        "Dispatch only safe non-authorizing already-policy-admitted remediation; require one explicit review/consent/host action for blocked plans.",
+        "Expose cause, scope, evidence, next step, user-owned conflict, attempt/readback/rollback history and capability-local blast radius.",
+        "Measure verified automation/intervention/MTTR/failure/cost rates on an explicit eligible-workload denominator; 90–95 percent remains an aspiration, not claimed readiness."
+      ],
+      "denial_cases": [
+        "GATE Prove manual governance cannot be hidden as success, retry loops are bounded, human authority is not inferred and all reported repaired outcomes have real verification."
+      ],
+      "ui_delivery_ref": "ui-delivery.json"
+    },
+    {
+      "id": "CE054",
+      "title": "Release Rings and Fleet/Multisite Promotion",
+      "workstream_id": "release-fleet-promotion",
+      "family": "ACFROLL",
+      "evidence_ids": [
+        "SRC-ARCH-01"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Extend exact update acceptance into site-local release rings and cohort promotion without copying authority across sites.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4066",
+        "T4067",
+        "T4068",
+        "T4069",
+        "T4070"
+      ],
+      "acceptance": [
+        "Implement exact site/cohort/generation release-ring identities with site-local authority; no implicit Production ring.",
+        "Implement pilot-ring health thresholds, bounded cohorts, per-site receipts and partial rollback state.",
+        "Implement distributed rollout fencing/idempotency so duplicate workers cannot promote or rollback the same site twice."
+      ],
+      "denial_cases": [
+        "GATE stale cohort, split brain, cross-site authority bleed, provider mismatch, partial rollback and missing site evidence."
+      ]
+    },
+    {
+      "id": "CE055",
+      "title": "Automation SLOs, Error Budgets and Kill Switch",
+      "workstream_id": "automation-slo-control",
+      "family": "ACFSLO",
+      "evidence_ids": [
+        "SRC-ARCH-02"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-health-view.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Bound self-healing with measured SLOs, retry budgets, cooldowns, backpressure and an independent kill switch.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4071",
+        "T4072",
+        "T4073",
+        "T4074",
+        "T4075"
+      ],
+      "acceptance": [
+        "Define automation SLOs over explicit eligible workload: repair success, false repair, MTTR, quarantine, rollback failure, intervention and cost.",
+        "Implement backpressure, queue isolation and circuit breaking for repeated self-heal failures.",
+        "Implement durable kill switch stopping L2-L4 automatic actions while preserving L0-L1 observation and governed manual paths."
+      ],
+      "denial_cases": [
+        "GATE flapping drift, metric loss, queue storms, exhausted budgets and kill-switch bypass."
+      ]
+    },
+    {
+      "id": "CE056",
+      "title": "Supply-chain Provenance and Trust",
+      "workstream_id": "supply-chain-trust",
+      "family": "ACFSUPPLY",
+      "evidence_ids": [
+        "SRC-ARCH-03"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Bind runtime/provider/policy artifacts to source-channel, hash, signer/revocation and dependency provenance without treating provenance as authority.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4076",
+        "T4077",
+        "T4078",
+        "T4079",
+        "T4080"
+      ],
+      "acceptance": [
+        "Implement source-channel/hash/signer/revocation/dependency provenance for runtime/provider/policy artifacts.",
+        "Implement downgrade, mirror mismatch, dependency substitution and unexpected source detection with capability-local quarantine.",
+        "Expose provenance/revocation status in operator/update acceptance views with bounded remediation."
+      ],
+      "denial_cases": [
+        "GATE unsigned, revoked, downgraded, foreign or dependency-tampered artifacts; signatures cannot create grants or promotion."
+      ]
+    },
+    {
+      "id": "CE057",
+      "title": "Registry and Policy Schema Migration",
+      "workstream_id": "registry-schema-migration",
+      "family": "ACFMIGRATE",
+      "evidence_ids": [
+        "SRC-ARCH-04"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-provider-contract.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Evolve signed policy/manifests/registry schemas using explicit reversible migrations and semantic-diff guards.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4081",
+        "T4082",
+        "T4083",
+        "T4084",
+        "T4085"
+      ],
+      "acceptance": [
+        "Implement versioned registry/policy/manifest migration DAGs with compatibility declarations and dry-run semantic diffs.",
+        "Support declared mixed-generation worker windows without dropping unknown fields or reinterpreting stale evidence.",
+        "Require governed review for migrations that lower risk, change authority semantics or make prior ineligible capability executable."
+      ],
+      "denial_cases": [
+        "GATE partial migration, stale workers, unknown fields, downgrade, restored old registries and interrupted cutover."
+      ]
+    },
+    {
+      "id": "CE058",
+      "title": "Adversarial Compatibility Fuzzing and Chaos Certification",
+      "workstream_id": "compatibility-fuzzing",
+      "family": "ACFFUZZ",
+      "evidence_ids": [
+        "SRC-ARCH-05"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-canary-execution.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Add disposable adversarial schema/behavior/concurrency/fault testing around candidate capabilities before broader certification.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "CAPABILITY_LOCAL_MIXED",
+      "task_ids": [
+        "T4086",
+        "T4087",
+        "T4088",
+        "T4089",
+        "T4090"
+      ],
+      "acceptance": [
+        "Implement deterministic disposable schema/property fuzz cases for boundary, malformed-response, contradictory annotation and hidden-effect conditions.",
+        "Implement differential compatibility fuzzing across certified and candidate versions without candidate output entering active responses.",
+        "Feed reproducible fuzz findings into policy/canary/quarantine evidence without automatic authority changes."
+      ],
+      "denial_cases": [
+        "GATE fuzzing Production/shared objects, paid/irreversible effects, arbitrary code or blind retries."
+      ]
+    },
+    {
+      "id": "CE059",
+      "title": "Restore and Disaster-Recovery Convergence",
+      "workstream_id": "restore-dr-convergence",
+      "family": "ACFDR",
+      "evidence_ids": [
+        "SRC-ARCH-06"
+      ],
+      "mad4b_baseline_paths": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php"
+      ],
+      "baseline_assessment": "ARCHITECTURE_DERIVATION_FUTURE_EXTENSION_UNVERIFIED",
+      "delta": "Treat restore/time-travel as a new operational epoch requiring rediscovery, authority rebinding and external-effect reconciliation before writes resume.",
+      "implementation_status": "PARTIAL",
+      "runtime_parity_claimed": false,
+      "risk_class": "HIGH_RISK_EXPLICIT_GATE",
+      "task_ids": [
+        "T4091",
+        "T4092",
+        "T4093",
+        "T4094",
+        "T4095"
+      ],
+      "acceptance": [
+        "Implement restore-epoch detection across DB, files, runtime package, Site Profile and registry generations.",
+        "Rebuild current artifact/provider/host graphs and reconcile exact site-local grants/authority before writes return.",
+        "Implement external-effect reconciliation for actions not rewound by local restore and issue post-restore acceptance receipt."
+      ],
+      "denial_cases": [
+        "GATE cloned origins, clock rollback, stale grants, partial restore, revoked providers and unrewound effects; never replay authority."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,253 @@
+{
+  "contract": "mad4b.competitive-g4-delivery.v1",
+  "status": "REPOSITORY_G4_FOUNDATION_AND_PREFLIGHT_IMPLEMENTED_PROVIDER_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 283,
+  "subordinate_preflight_pr": 284,
+  "implementation_branch": "feat/007-g4-forms-commerce-builders-siteops-breadth-20261007",
+  "subordinate_preflight_branch": "feat/007-g4-wordpress-domain-preflight-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "20552e34a75c601c247e36edc0dbc86ff4aa230a",
+  "reviewed_master_ancestor": "dccb0889799eb255f0d64d6959d9687252801c5b",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "provider_family_contract": "mad4b.g4-provider-family-catalog.v1",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_provider_acceptance": false,
+  "live_browser_acceptance": false,
+  "native_mutation_dispatch_implemented": false,
+  "capability_ids": [
+    "CE015",
+    "CE016",
+    "CE017",
+    "CE018",
+    "CE019",
+    "CE020",
+    "CE021",
+    "CE022",
+    "CE032",
+    "CE033",
+    "CE034",
+    "CE035",
+    "CE036",
+    "CE037",
+    "CE038"
+  ],
+  "partial_task_ids": [
+    "T3931",
+    "T3932",
+    "T3933",
+    "T3934",
+    "T3935",
+    "T3936",
+    "T3937",
+    "T3938",
+    "T3939",
+    "T3940",
+    "T3941",
+    "T3942",
+    "T3943",
+    "T3944",
+    "T3945",
+    "T3966",
+    "T3967",
+    "T3968",
+    "T3969",
+    "T3970",
+    "T3971",
+    "T3972",
+    "T3973",
+    "T3974",
+    "T3975"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g4-provider-families.php",
+      "sha256": "41f22a5a5c68b69f1227d0c17da9678222b18503865e8b29da4112ea449a136c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "2a2a8c7aa4b5cbe99b5470367bfc92c8460468497a0dadc72acb070f86baacd7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
+      "sha256": "4af4b16ecdcff71fb366540ad92f01146fd03bae3ab12ed3fb40de2e02079f51"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
+      "sha256": "44123551ae96606d5cd06191e87f87526e2b4daafede0a2a4203ff7164e170d4"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
+      "sha256": "51481033f3cff1e4beb4c3ed80f286429fb0a4d3de0384157b9d95aebcd241ab"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
+      "sha256": "a9ef86a1760026eba15343cc8dd97494e4b7b27342add99ea73ad5ed6cf86738"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-form-provider-adapters.php",
+      "sha256": "9e878eb73a87292c364715120ebb2be50406bf01a57af60b92349ac1d82ce5e3"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-woocommerce-adapter.php",
+      "sha256": "1ffa7df66a34326975394c8845a8f7d1a66ac206aa36661d258d6d91cfa81368"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "sha256": "a211b1671fccd6a67c18d998f9d30e45dc7de2a50aec3acf69b2272c3271ba94"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php",
+      "sha256": "2a7de1ca27b86585e0e9dad596b1635d9c18d677c12c3a3435a956763a62d2bd"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
+      "sha256": "0216bb51909a863a2ec8c7260a66571b27cdb83236fef7ce267ae7930d231ba8"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-domain-coverage.php",
+      "sha256": "cdcaa5041bb7c717fcf7eb7441e8db911c0ab29432bea4c3373867e943c74498"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-builders.php",
+      "sha256": "e8ea51cd19477b26f3b803389c3cbe33d4ca5c0907ec01a925508aa2a03e8022"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-commerce.php",
+      "sha256": "d05bda626fa2d7295a0818c1429d992b5922b2e1c9fd240057d57cdfb75a0903"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-contracts.php",
+      "sha256": "610d6f1ee6a97591cc0774bcd7d392761e93980622d866a46be1ce2c3ff792fb"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-forms.php",
+      "sha256": "0b075b2a54592fe5afaa190731e1fc27bd7f7131c56708998e9fdce76068baa3"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-native-providers.php",
+      "sha256": "2e75da8ad979a68e00ae7e92a535fc42c8bcf0acf5474477a60d50785859d4f9"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-site-operations.php",
+      "sha256": "f85503302cc11b7b59fbb6f40dd1d6807905fa02aca8f3537c873576a0fa1e5d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/domains/class-mad4b-scp-domain-wordpress.php",
+      "sha256": "4eadcaa6948d48dd421c4764c1da2807e4f2088bdbbc1acf06b0bfcb3942ac15"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/wordpress-domain-catalog.json",
+      "sha256": "9fa66f8ee7b589648b5d532c093ee6838943b1c22b6b9c6854d5816c25e13272"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-provider-family-contract.php",
+      "sha256": "b4f50ebc4a68f08148db7ed4e6dd610c4d71b74057e9209cf1524b93022dd79b"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-builders-contract.php",
+      "sha256": "83ec78538aeaf78551b3ab7cec547ff803a865da20a739170de5aa355d788fc7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-commerce-contract.php",
+      "sha256": "8d8152c42124e10d4a89ef1fd82d179ff67d257af0a1317046fa787428b1e5cf"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-coverage-runtime.php",
+      "sha256": "680170ea667e8c47ef0d185dc94794a7313aa527d07c43dde15ad9e09e04df79"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-domain-fixture.php",
+      "sha256": "2d3ebd257c689f1ca555db633c84993e7014ff98f37aa93718be39530802a181"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-forms-contract.php",
+      "sha256": "cb804cb3bf0a31f7773df4e532a3b098a5a0228189cd18e76eaf8f06eb7c48b8"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-native-read-bridges-runtime.php",
+      "sha256": "0d7b7602c6930668b50446b0e7a58e0364a45115f10db3abe195cbd79ffabbe7"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-site-operations-contract.php",
+      "sha256": "c7fb716795590e726233afe7a3792d29b2b604ffb6559aa552e4f0d7d2bc8c6e"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g4-wordpress-contract.php",
+      "sha256": "8d99baaa68d5f5dad04c5e1bfef7a5779da874821aac5c6ed2e364c66c16b9a5"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
+      "sha256": "8eadb0e8711c3ee2f13fabdc1c8924c9ac7075bf327ea63200c9e2febdcf184f"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "f33165bdbbc0683ddb12bc3a68f39f7891d7719b99a4b8c16831c258e68a7a09"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "876c4b428dfef541794d9ccf3e906612092c74b7e6fd06a953e72abc5fba73d1"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
+      "sha256": "41ae3c56a25425f971015c8ccbd06a80100b87fddf03812ee258c22947c9b132"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g4-delivery.md",
+      "sha256": "4c1e8d63f044443cd374f9c159ba300f7c04e3f97fbc105e6625955d778351f0"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
+      "sha256": "8bf650a96efcec16479b28f5c7716bd93ed551e13502ddc8016ad4f202e9cea5"
+    }
+  ],
+  "acceptance_contracts": [
+    "typed_exact_provider_family_membership_and_unknown_provider_fail_closed",
+    "provider_version_readiness_uses_existing_certified_contracts_without_execution",
+    "submission_customer_order_private_message_sensitive_authority_separation",
+    "refund_gateway_and_other_financial_effects_never_claim_undo",
+    "restore_is_readiness_only_and_never_replays_stale_authority",
+    "builder_revision_editor_lock_template_scope_and_dynamic_data_leakage_gates",
+    "cache_redirect_media_egress_and_blast_radius_bounds",
+    "wpml_source_language_parent_duplicate_translation_group_evidence",
+    "no_generic_shell_raw_sql_arbitrary_http_grants_mounts_or_production_authority",
+    "all_g4_plans_are_non_authorizing_and_execution_false",
+    "compiled_provider_owned_schema_inspection_permission_and_serialization",
+    "private_admin_non_authorizing_inventory_plan_and_observation",
+    "exact_runtime_artifact_descriptor_target_state_actor_expiry_binding",
+    "governed_canonical_read_child_only_no_mutation_dispatch",
+    "complete_bounded_graph_cycles_orphans_parent_language_translation_identity",
+    "independent_private_field_masks_consent_and_financial_effect_gates",
+    "narrow_cache_backup_redirect_security_scope_and_restore_epoch",
+    "no_raw_provider_values_diagnostics_or_approved_receipt",
+    "no_plugin_presence_or_fixture_runtime_acceptance_inference",
+    "wordpress_domain_overlay_cannot_widen_g4_provider_identity",
+    "wordpress_domain_discovery_reuses_g4_readiness_without_duplicate_plugin_scanner"
+  ],
+  "remaining_acceptance": [
+    "Provider-native discovery, inventory, schema and exact-version runtime probes for each admitted G4 family.",
+    "Provider-native plan/apply/readback executors for admitted reversible mutations; exact authority and impact approval remain separate.",
+    "WooCommerce HPOS/object-level/stock/hook canaries and explicit external financial-effect handoffs.",
+    "Elementor/Divi/Kadence/Gutenberg tree serialization, editor-lock, fresh-ID and semantic-readback acceptance.",
+    "Backup/cache/migration/security/redirect provider adapters including restore, loop, purge-blast-radius and self-lockout fault fixtures.",
+    "WordPress/WPML/ACF/BuddyPress/Events object ownership, multilingual hierarchy, private data and malicious media URL denial fixtures.",
+    "Exact-head child CI and governance, then cumulative Hub CI and representative Staging/browser acceptance.",
+    "Production remains unauthorized.",
+    "Exact-head technical CI, owner attestation, separate child merge authorization and cumulative Hub CI.",
+    "Native provider contract, schema, permission, serialization and readback implementation for all remaining domain capabilities; metadata bridges do not establish writable or private-record coverage.",
+    "Native guarded apply, disposable Staging canaries, stock/order/hook concurrency, independent financial/external effects, rendered/frontend readback and exact rollback/uncertainty acceptance.",
+    "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
+    "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
+    "G5\u2013G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
+  ]
+}

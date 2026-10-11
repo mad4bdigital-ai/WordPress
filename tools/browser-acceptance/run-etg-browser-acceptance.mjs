@@ -14,6 +14,7 @@ import {
   rankProviderCandidates
 } from "./scheduler.mjs";
 import { runBrowserPlan, validatePlan } from "./etg-driver.mjs";
+import { createEvidenceAssembler } from "./evidence-assembler.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -55,8 +56,7 @@ function chunkCases(candidate) {
 
 async function executeInProvider(candidate) {
   const chunks = chunkCases(candidate);
-  const cases = [];
-  let envelope = null;
+  const assembled = createEvidenceAssembler(plan, "etg.dfsb.browser-acceptance-evidence.v1");
 
   for (const caseChunk of chunks) {
     const now = Math.floor(Date.now() / 1000);
@@ -79,14 +79,13 @@ async function executeInProvider(candidate) {
         providerId: candidate.id,
         plan: { ...plan, cases: caseChunk, case_count: caseChunk.length }
       });
-      if (!envelope) envelope = partial;
-      cases.push(...partial.cases);
+      assembled.add(partial, caseChunk);
     } finally {
       await connection.release();
     }
   }
 
-  return { ...envelope, cases };
+  return assembled.finish();
 }
 
 for (const candidate of candidates) {

@@ -227,6 +227,8 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			'developer_breakglass_requested' => false,
 			'generic_raw_sql_breakglass_requested' => false,
 			'write_ready' => $effective,
+			'self_confirmation_state' => $effective ? 'current_write_state_verified' : 'current_write_state_blocked',
+			'self_confirmation_scope' => 'current_state_not_prior_commit_receipt',
 			'write_checkpoint_ready' => $checkpoint_ready,
 			'write_grants_ready' => $grant_snapshot_ready,
 			'write_current_readiness_blockers' => is_array( $write ) && isset( $write['current_readiness_blockers'] ) && is_array( $write['current_readiness_blockers'] ) ? $write['current_readiness_blockers'] : array( 'write_reconciliation_plan_unavailable' ),
@@ -251,6 +253,8 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				$binding = isset( $write['candidate_binding'] ) && is_array( $write['candidate_binding'] ) ? $write['candidate_binding'] : array();
 				$checkpoint_ready = ! empty( $write['effective_ready'] );
 				$grants_ready = ! empty( $write['current_ready'] );
+				$already_current = $checkpoint_ready && $grants_ready
+					&& ( empty( $binding['required'] ) || ! empty( $binding['match'] ) );
 				return array(
 					'contract' => 'mad4b.staging-write-authority-convergence-handshake.v1',
 					'write_authority_contract' => self::CONTRACT,
@@ -262,7 +266,9 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 					'developer_breakglass_requested' => false,
 					'generic_raw_sql_breakglass_included' => false,
 					'observed_at' => isset( $after['observed_at'] ) ? (string) $after['observed_at'] : gmdate( 'c' ),
-					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ),
+					'ready_to_apply' => ! empty( $plan['ready_to_apply'] ) && ! $already_current,
+					'already_current' => $already_current,
+					'self_confirmation_scope' => 'current_state_not_prior_commit_receipt',
 					'hard_blockers' => self::compact_string_list( isset( $plan['hard_blockers'] ) ? $plan['hard_blockers'] : array(), 16 ),
 					'write_ready' => $checkpoint_ready && $grants_ready,
 					'write_checkpoint_ready' => $checkpoint_ready,
@@ -286,7 +292,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 						'expected_profile_digest' => isset( $plan['site_profile_digest'] ) ? (string) $plan['site_profile_digest'] : '',
 						'confirmation' => self::CONFIRMATION,
 					),
-					'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_write_only_handshake' : 'repair_blockers_then_request_fresh_handshake',
+					'client_action' => $already_current ? 'readback_current_authority' : ( ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_write_only_handshake' : 'repair_blockers_then_request_fresh_handshake' ),
 					'deep_reads_available_via_governed_dispatch' => true,
 				);
 			},
@@ -498,10 +504,35 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				if ( is_wp_error( $noop ) ) return self::fail_closed( 'noop_audit_failed', new WP_Error( 'mad4b_staging_write_authority_noop_audit_failed', 'Already-current Write authority evidence could not be committed.' ) );
 			}
 
+			$confirmation = self::confirm_live_postconditions( $plan, array(
+				'write_tool_count' => $write_plan['write_tool_count'],
+				'write_inventory_fingerprint' => $write_plan['write_inventory_fingerprint'],
+				'grant_rows_fingerprint' => $write_plan['grant_rows_fingerprint'],
+			) );
+			if ( is_wp_error( $confirmation ) || empty( $confirmation['verified'] ) )
+				return self::fail_closed( 'same_cycle_confirmation_unverified', is_wp_error( $confirmation )
+					? $confirmation : new WP_Error( 'mad4b_staging_write_postcondition_unverified',
+						'Exact current Write authority cannot be independently verified.' ) );
+			$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-verified', array(
+				'contract' => self::CONTRACT, 'plan_sha256' => $plan['plan_sha256'],
+				'source_commit_sha' => $plan['source_commit_sha'], 'site_uuid' => $plan['site_uuid'],
+				'postcondition_receipt_sha256' => $confirmation['receipt_sha256'],
+				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
+				'developer_authority_mutation' => false, 'developer_breakglass_mutation' => false,
+				'breakglass_included' => false, 'production_mutation' => false,
+			), 'ok' );
+			if ( is_wp_error( $completion ) )
+				return self::fail_closed( 'postcondition_audit_failed', new WP_Error(
+					'mad4b_staging_write_postcondition_audit_failed', 'Durable completion audit failed; reconcile before retry.' ) );
+
 			return array(
 				'contract' => self::CONTRACT,
 				'state' => 'governed_staging_write_authority_ready',
 				'write_ready' => true,
+				'verified_current_state' => true,
+				'confirmation_scope' => 'same_request_state_not_external_release',
+				'confirmation' => $confirmation,
+				'blind_retry_allowed' => false,
 				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
 				'candidate_binding_result' => is_array( $bind ) ? $bind : array(),
 				'candidate_binding_lineage' => array(
@@ -516,6 +547,97 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 		} finally {
 			self::$running = false;
 		}
+	}
+
+
+	/**
+	 * Pure, non-authorizing readback predicate. Caller-provided data must not
+	 * be treated as a signed, independently collected runtime certificate.
+	 */
+	public static function evaluate_postconditions( array $expected, array $observed ) {
+		$binding = isset( $observed['binding'] ) && is_array( $observed['binding'] ) ? $observed['binding'] : array();
+		$write = isset( $observed['write'] ) && is_array( $observed['write'] ) ? $observed['write'] : array();
+		$current = isset( $observed['current'] ) && is_array( $observed['current'] ) ? $observed['current'] : array();
+		$site = isset( $observed['site'] ) && is_array( $observed['site'] ) ? $observed['site'] : array();
+		$build = isset( $observed['provenance'] ) && is_array( $observed['provenance'] ) ? $observed['provenance'] : array();
+		$grants = isset( $expected['write_snapshot'] ) && is_array( $expected['write_snapshot'] ) ? $expected['write_snapshot'] : array();
+		$checks = array();
+		$checks['site'] = ! empty( $expected['site_uuid'] ) && ! empty( $expected['site_profile_digest'] )
+			&& 'staging' === ( isset( $site['environment'] ) ? (string) $site['environment'] : '' )
+			&& ! empty( $site['write_enabled'] ) && empty( $site['raw_sql_breakglass_enabled'] )
+			&& hash_equals( (string) $expected['site_uuid'], isset( $site['site_uuid'] ) ? (string) $site['site_uuid'] : '' )
+			&& hash_equals( (string) $expected['site_profile_digest'], isset( $site['site_profile_digest'] ) ? (string) $site['site_profile_digest'] : '' )
+			&& isset( $expected['site_profile_revision'], $site['site_profile_revision'] )
+			&& (int) $expected['site_profile_revision'] === (int) $site['site_profile_revision'];
+		$checks['candidate'] = ! empty( $binding['required'] ) && ! empty( $binding['match'] )
+			&& 'complete' === ( isset( $binding['identity_completeness'] ) ? (string) $binding['identity_completeness'] : '' );
+		$checks['provenance'] = true;
+		foreach ( array(
+			'source_commit_sha' => 'stored_source_commit_sha',
+			'build_fingerprint' => 'stored_build_fingerprint',
+			'package_manifest_digest' => 'stored_package_manifest_digest',
+			'artifact_identity' => 'stored_artifact_identity',
+		) as $field => $stored ) {
+			$value = isset( $expected[ $field ] ) ? (string) $expected[ $field ] : '';
+			$checks['candidate'] = $checks['candidate'] && '' !== $value
+				&& hash_equals( $value, isset( $binding[ $stored ] ) ? (string) $binding[ $stored ] : '' );
+			$checks['provenance'] = $checks['provenance'] && '' !== $value
+				&& hash_equals( $value, isset( $build[ $field ] ) ? (string) $build[ $field ] : '' );
+		}
+		$checks['current'] = ! empty( $current['ready'] ) && ! empty( $current['cheap_effective'] )
+			&& ! empty( $current['current_grant_snapshot_ready'] ) && ! empty( $current['candidate_binding_match'] )
+			&& empty( $current['candidate_bootstrap_exception'] )
+			&& isset( $current['blockers'] ) && is_array( $current['blockers'] ) && empty( $current['blockers'] );
+		$checks['grants'] = ! empty( $write['current_ready'] ) && ! empty( $write['effective_ready'] )
+			&& isset( $write['write_tool_count'], $write['exact_grants_existing'], $grants['write_tool_count'] )
+			&& (int) $write['write_tool_count'] > 0
+			&& (int) $write['write_tool_count'] === (int) $write['exact_grants_existing']
+			&& (int) $write['write_tool_count'] === (int) $grants['write_tool_count'];
+		foreach ( array( 'write_inventory_fingerprint', 'grant_rows_fingerprint' ) as $field )
+			$checks['grants'] = $checks['grants'] && ! empty( $grants[ $field ] ) && isset( $write[ $field ] )
+				&& hash_equals( (string) $grants[ $field ], (string) $write[ $field ] );
+		foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count',
+			'unreviewed_stale_allow_grants_count', 'broad_environment_grants_count',
+			'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants',
+			'global_registry_wildcard_grants' ) as $field )
+			$checks['grants'] = $checks['grants'] && isset( $write[ $field ] ) && 0 === (int) $write[ $field ];
+		$checks['breakglass'] = empty( $write['breakglass_included'] );
+		return array(
+			'contract' => 'mad4b.staging-write-postcondition-evaluation.v1',
+			'verified' => ! in_array( false, $checks, true ), 'checks' => $checks,
+			'evidence_origin' => 'caller_supplied_not_trusted',
+			'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
+
+	/** Build an exact same-request readback; never retries a mutation. */
+	private static function confirm_live_postconditions( array $expected, array $write_snapshot ) {
+		$build = self::provenance();
+		if ( is_wp_error( $build ) ) return $build;
+		$expected['write_snapshot'] = $write_snapshot;
+		$receipt = self::evaluate_postconditions( $expected, array(
+			'provenance' => $build,
+			'site' => array(
+				'environment' => MAD4B_SCP_Site_Profile::current_environment(),
+				'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(),
+				'site_profile_revision' => MAD4B_SCP_Site_Profile::revision(),
+				'site_profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+				'write_enabled' => MAD4B_SCP_Site_Profile::write_enabled(),
+				'raw_sql_breakglass_enabled' => self::generic_raw_sql_breakglass_gate_enabled(),
+			),
+			'binding' => MAD4B_SCP_Staging_Write_Authority::candidate_binding_status(),
+			'write' => MAD4B_SCP_Staging_Write_Authority::reconciliation_plan(),
+			'current' => MAD4B_SCP_Staging_Write_Authority::current_execution_readiness(),
+		) );
+		$receipt['evidence_origin'] = 'same_request_server_readback';
+		$receipt['plan_sha256'] = $expected['plan_sha256'];
+		$receipt['source_commit_sha'] = $expected['source_commit_sha'];
+		$receipt['site_uuid'] = $expected['site_uuid'];
+		$receipt['observed_at'] = gmdate( 'c' );
+		$json = wp_json_encode( $receipt, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) ) return new WP_Error( 'mad4b_staging_write_receipt_encode_failed', 'Postcondition receipt encoding failed.' );
+		$receipt['receipt_sha256'] = hash( 'sha256', $json );
+		return $receipt;
 	}
 
 	private static function write_plan() {

@@ -43,19 +43,22 @@ final class MAD4B_SCP_Search_Experience {
 		if ( ! current_user_can( 'manage_options' ) || ! MAD4B_SCP_Policy::can_read() ) return;
 		$id = MAD4B_SCP_Search_Profile_Admin::selected_id();
 		$model = MAD4B_SCP_Search_Runtime::status( array( 'profile_id' => $id ) );
-		echo '<div class="wrap"><h1>Search Intelligence</h1>';
+		MAD4B_SCP_Admin_Experience::styles();
+		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Search Intelligence', 'mad4b-site-control-plane' ) . '</h1>';
+		echo '<p class="description">' . esc_html__( 'Configure a paused profile, connect a provider and review the budget before capturing search observations.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><a class="button button-secondary" href="' . esc_url( MAD4B_SCP_Admin_Workspace::link( self::PAGE_SLUG, array( 'section' => 'providers', 'profile_id' => $id ), 'search-providers' ) ) . '">' . esc_html__( 'Add or manage search API credentials', 'mad4b-site-control-plane' ) . '</a></p>';
 		MAD4B_SCP_Search_Profile_Admin::render( $id );
 		if ( is_wp_error( $model ) ) { echo '<p>' . esc_html( $model->get_error_message() ) . '</p></div>'; return; }
-		echo '<h2>' . esc_html( $model['headline'] ) . '</h2><nav aria-label="Search Intelligence sections">';
-		foreach ( $model['sections'] as $s ) echo '<a style="margin-right:16px" href="' . esc_url( $s['url'] . '&profile_id=' . rawurlencode( $id ) ) . '">' . esc_html( $s['label'] ) . '</a>';
+		$section = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'section', 'overview', 96 ) );
+		if ( ! in_array( $section, MAD4B_SCP_Search_Context::policy()['section_order'], true ) ) $section = 'overview';
+		echo '<h2>' . esc_html( $model['headline'] ) . '</h2><nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Search Intelligence sections', 'mad4b-site-control-plane' ) . '">';
+		foreach ( $model['sections'] as $s ) echo '<a class="nav-tab' . ( $section === $s['id'] ? ' nav-tab-active' : '' ) . '"' . ( $section === $s['id'] ? ' aria-current="page"' : '' ) . ' href="' . esc_url( add_query_arg( 'profile_id', $id, $s['url'] ) ) . '">' . esc_html( $s['label'] ) . '</a>';
 		echo '</nav>';
 		foreach ( $model['blockers'] as $blocker ) echo '<div class="notice notice-warning"><p>' . esc_html( $blocker ) . '</p></div>';
 		echo '<table class="widefat"><caption>Current search state</caption><thead><tr><th scope="col">Metric</th><th scope="col">Value</th></tr></thead><tbody>';
 		foreach ( $model['metrics'] as $m ) echo '<tr><th scope="row">' . esc_html( str_replace( '_', ' ', $m['id'] ) ) . '</th><td>' . esc_html( (string) $m['value'] ) . '</td></tr>';
 		echo '</tbody></table>';
 		foreach ( $model['recommended_actions'] as $a ) echo '<p>' . esc_html( $a ) . '</p>';
-		$section = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'section', 'overview', 96 ) );
-		if ( ! in_array( $section, MAD4B_SCP_Search_Context::policy()['section_order'], true ) ) $section = 'overview';
 		// Connection setup is useful before the first profile exists.
 		if ( 'providers' === $section || ! $id ) MAD4B_SCP_Search_Provider_Connections::render( $id );
 		if ( $id ) {
@@ -64,8 +67,9 @@ final class MAD4B_SCP_Search_Experience {
 			foreach ( $rows as $row ) echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th><td>' . esc_html( $row['value'] ) . '</td></tr>';
 			echo '</tbody></table>';
 		}
-		if ( $id && MAD4B_SCP_Search_Runtime::can_configure() ) {
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '">';
+		$control_profile = $id ? MAD4B_SCP_Search_Context::profile( $id ) : null;
+		if ( $id && MAD4B_SCP_Search_Runtime::can_configure() && is_array( $control_profile ) && isset( $control_profile['revision'] ) ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="mad4b_search_control"><input type="hidden" name="profile_id" value="' . esc_attr( $id ) . '"><input type="hidden" name="expected_revision" value="' . esc_attr( (string) $control_profile['revision'] ) . '">';
 			wp_nonce_field( 'mad4b_search_control' );
 			echo '<label for="mad4b-search-control">Operator control</label> <select id="mad4b-search-control" name="control">';
 			foreach ( array( 'disable_provider' => 'Disable provider', 'enable_provider' => 'Enable provider', 'pin' => 'Pin target', 'unpin' => 'Unpin target', 'mute' => 'Mute target', 'unmute' => 'Unmute target', 'refresh' => 'Request refresh' ) as $value => $label ) echo '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
@@ -79,19 +83,14 @@ final class MAD4B_SCP_Search_Experience {
 		$id = isset( $input['profile_id'] ) ? $input['profile_id'] : ''; $control = isset( $input['control'] ) ? $input['control'] : '';
 		$p = MAD4B_SCP_Search_Context::profile( $id ); if ( is_wp_error( $p ) ) return $p;
 		if ( in_array( $control, array( 'pause', 'resume', 'freeze_spend', 'unfreeze_spend', 'disable_provider', 'enable_provider' ), true ) ) {
-			if ( isset( $input['expected_revision'] ) && (int) $input['expected_revision'] !== (int) $p['revision'] ) return MAD4B_SCP_Search_Contracts::error( 'search_control_stale' );
-			$policy = MAD4B_SCP_Search_Context::policy(); $raw = array_intersect_key( $p, array_flip( $policy['profile_fields'] ) );
-			if ( 'pause' === $control ) $raw['enabled'] = false;
-			if ( 'resume' === $control ) $raw['enabled'] = true;
-			if ( 'freeze_spend' === $control || 'unfreeze_spend' === $control ) $raw['provider_policy']['freeze_spend'] = 'freeze_spend' === $control;
-			if ( 'disable_provider' === $control ) { if ( empty( $input['provider_id'] ) || ! MAD4B_SCP_Search_Contracts::id( $input['provider_id'] ) ) return MAD4B_SCP_Search_Contracts::error( 'provider_id_invalid' ); $raw['provider_policy']['disabled'][] = $input['provider_id']; }
-			if ( 'enable_provider' === $control ) $raw['provider_policy']['disabled'] = array_values( array_diff( $raw['provider_policy']['disabled'], array( isset( $input['provider_id'] ) ? $input['provider_id'] : '' ) ) );
-			$args = array( 'profile' => $raw, 'expected_revision' => $p['revision'] ); $plan = MAD4B_SCP_Search_Context::plan( $args );
-			if ( is_wp_error( $plan ) ) return $plan;
-			$result = MAD4B_SCP_Search_Context::apply( array_merge( $args, array( 'plan_sha256' => $plan['plan_sha256'] ) ) );
+			// State changes are built by the typed domain lane, never via the
+			// generic profile_apply API. The domain validates the revision,
+			// reconstructs persisted fields and fences reentrant control.
+			$result = MAD4B_SCP_Search_Context::control_transition( $input );
 			if ( is_wp_error( $result ) ) return $result;
 			$verify = MAD4B_SCP_Search_Context::verify( array( 'profile_id' => $id ) );
-			if ( is_wp_error( $verify ) || empty( $verify['valid'] ) || ! isset( $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
+			$quarantined_safe = ! empty( $result['safe_control_identity_quarantined'] ) && in_array( $control, array( 'pause', 'freeze_spend', 'disable_provider' ), true );
+			if ( is_wp_error( $verify ) || ( empty( $verify['valid'] ) && ! $quarantined_safe ) || ! isset( $verify['profile_sha256'], $result['profile']['profile_sha256'] ) || ! hash_equals( (string) $result['profile']['profile_sha256'], (string) $verify['profile_sha256'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'pause' === $control && ! empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'resume' === $control && empty( $result['profile']['enabled'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );
 			if ( 'freeze_spend' === $control && empty( $result['profile']['provider_policy']['freeze_spend'] ) ) return MAD4B_SCP_Search_Contracts::error( 'search_control_readback_failed' );

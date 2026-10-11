@@ -65,8 +65,13 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 
 	public static function capabilities() {
 		$inventory = self::registry()->inventory();
+		$registered = self::registry()->all();
+		$origin = function_exists( 'home_url' ) ? rtrim( (string) home_url( '/' ), '/' ) : '';
+		$site_discovery = class_exists( 'MAD4B_SCP_Site_Capability_Discovery' )
+			? MAD4B_SCP_Site_Capability_Discovery::observe( $origin, $registered )
+			: array( 'contract' => 'mad4b.site-capability-discovery.v1', 'discovery_complete' => false, 'certification_issued' => false, 'blocking_reasons' => array( 'site_discovery_class_missing' ), 'read_only' => true, 'authorizing' => false );
 		$providers = array();
-		foreach ( self::registry()->all() as $provider_id => $provider ) {
+		foreach ( $registered as $provider_id => $provider ) {
 			$capabilities = array();
 			try { $capabilities = call_user_func( $provider['capabilities_callback'] ); }
 			catch ( Throwable $error ) { $capabilities = array( 'error' => 'provider_capabilities_exception' ); }
@@ -85,7 +90,10 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'transport_authority' => false,
 			'browser_engine_authority' => false,
 			'execution_mode' => 'external_browser_agent',
+			'site_origin' => $origin,
+			'site_discovery' => $site_discovery,
 			'provider_count' => count( $providers ),
+			'operator_preference' => class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ? MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection() : array(),
 			'providers' => $providers,
 			'registry' => $inventory,
 		);
@@ -99,12 +107,27 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		try { $plan = call_user_func( $provider['plan_callback'], array( 'profile_id' => $validated['profile_id'], 'suite' => 'browser_runtime' ) ); }
 		catch ( Throwable $error ) { return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_plan_exception' ) ); }
 		if ( ! is_array( $plan ) ) return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_plan_invalid' ) );
+		if ( 'ready' === ( isset( $plan['state'] ) ? $plan['state'] : '' ) ) {
+			$valid_plan = isset( $plan['contract'], $plan['provider_id'], $plan['provider_contract'], $plan['profile_id'], $plan['suite'], $plan['plan_digest'], $plan['plan_signature'] )
+				&& 'mad4b.browser-acceptance-plan.v1' === $plan['contract']
+				&& $provider['provider_id'] === $plan['provider_id']
+				&& $provider['contract'] === $plan['provider_contract']
+				&& $validated['profile_id'] === $plan['profile_id']
+				&& 'browser_runtime' === $plan['suite']
+				&& is_string( $plan['plan_digest'] ) && preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_digest'] )
+				&& is_string( $plan['plan_signature'] ) && preg_match( '/^[a-f0-9]{64}$/D', $plan['plan_signature'] )
+				&& ( ! isset( $plan['authorizing'] ) || false === $plan['authorizing'] )
+				&& ( ! isset( $plan['read_only'] ) || true === $plan['read_only'] );
+			if ( ! $valid_plan ) return self::blocked_plan( $validated['provider_id'], $validated['profile_id'], array( 'provider_ready_plan_contract_invalid' ) );
+		}
 		$plan['provider_id'] = $provider['provider_id'];
 		$plan['provider_contract'] = $provider['contract'];
 		$plan['profile_id'] = $validated['profile_id'];
 		$plan['suite'] = 'browser_runtime';
 		$plan['authorizing'] = false;
 		$plan['read_only'] = true;
+		$plan['release_ready'] = false;
+		$plan['globally_unique_consumption_proven'] = false;
 		return $plan;
 	}
 
@@ -123,12 +146,37 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		try { $result = call_user_func( $provider['result_callback'], $request ); }
 		catch ( Throwable $error ) { return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_result_exception' ) ); }
 		if ( ! is_array( $result ) ) return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_result_invalid' ) );
+		if ( 'PASS' === ( isset( $result['verdict'] ) ? $result['verdict'] : '' ) ) {
+			$verified = null !== $validated['evidence']
+				&& isset( $result['contract'], $result['provider_id'], $result['provider_contract'], $result['profile_id'], $result['suite'], $result['plan_digest'] )
+				&& 'mad4b.browser-acceptance-result.v1' === $result['contract']
+				&& $provider['provider_id'] === $result['provider_id']
+				&& $provider['contract'] === $result['provider_contract']
+				&& $validated['profile_id'] === $result['profile_id']
+				&& 'browser_runtime' === $result['suite']
+				&& is_string( $result['plan_digest'] ) && hash_equals( $validated['plan_digest'], $result['plan_digest'] )
+				&& isset( $result['evidence_digest'], $result['receipt_signature'] )
+				&& is_string( $result['evidence_digest'] ) && preg_match( '/^[a-f0-9]{64}$/D', $result['evidence_digest'] )
+				&& is_string( $result['receipt_signature'] ) && preg_match( '/^[a-f0-9]{64}$/D', $result['receipt_signature'] )
+				&& true === ( isset( $result['verification']['browser_runtime_parity_verified'] ) ? $result['verification']['browser_runtime_parity_verified'] : null )
+				&& 'live_browser_runtime' === ( isset( $result['verification']['verified_through'] ) ? $result['verification']['verified_through'] : '' )
+				&& false === ( isset( $result['receipt_authorizing'] ) ? $result['receipt_authorizing'] : null )
+				&& ( ! isset( $result['release_ready'] ) || false === $result['release_ready'] )
+				&& ( ! isset( $result['globally_unique_consumption_proven'] ) || false === $result['globally_unique_consumption_proven'] )
+				&& ( ! isset( $result['authorizing'] ) || false === $result['authorizing'] )
+				&& ( ! isset( $result['read_only'] ) || true === $result['read_only'] );
+			if ( ! $verified ) return self::blocked_result( $provider['provider_id'], $validated['profile_id'], array( 'provider_pass_receipt_contract_invalid' ) );
+		}
 		$result['provider_id'] = $provider['provider_id'];
 		$result['provider_contract'] = $provider['contract'];
 		$result['profile_id'] = $validated['profile_id'];
 		$result['suite'] = 'browser_runtime';
 		$result['authorizing'] = false;
 		$result['read_only'] = true;
+		// Browser observations are not a distributed consume or release receipt.
+		// Even an installed provider cannot upgrade Core into release authority.
+		$result['release_ready'] = false;
+		$result['globally_unique_consumption_proven'] = false;
 		return $result;
 	}
 
@@ -138,7 +186,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$unknown = array_diff( array_keys( $input ), array( 'provider_id', 'profile_id', 'suite' ) );
 		if ( $unknown ) $reasons[] = 'unsupported_request_fields';
 		$provider_id = self::clean_id( isset( $input['provider_id'] ) ? $input['provider_id'] : '' );
-		if ( isset( $input['provider_id'] ) && '' === $provider_id ) $reasons[] = 'provider_id_invalid';
+		if ( array_key_exists( 'provider_id', $input ) && '' === $provider_id ) $reasons[] = 'provider_id_invalid';
 		$profile_id = self::clean_id( isset( $input['profile_id'] ) ? $input['profile_id'] : '' );
 		if ( '' === $profile_id ) $reasons[] = 'profile_id_required';
 		$suite = self::clean_id( isset( $input['suite'] ) ? $input['suite'] : 'browser_runtime' );
@@ -158,8 +206,9 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		$reasons = $selector['blocking_reasons'];
 		$unknown = array_diff( array_keys( $input ), array( 'provider_id', 'profile_id', 'suite', 'plan_digest', 'plan_signature', 'evidence' ) );
 		if ( $unknown ) $reasons[] = 'unsupported_request_fields';
-		$plan_digest = isset( $input['plan_digest'] ) && is_scalar( $input['plan_digest'] ) ? strtolower( trim( (string) $input['plan_digest'] ) ) : '';
-		$plan_signature = isset( $input['plan_signature'] ) && is_scalar( $input['plan_signature'] ) ? strtolower( trim( (string) $input['plan_signature'] ) ) : '';
+		// Signature-bound values are canonical bytes, never silently converted.
+		$plan_digest = isset( $input['plan_digest'] ) && is_string( $input['plan_digest'] ) ? $input['plan_digest'] : '';
+		$plan_signature = isset( $input['plan_signature'] ) && is_string( $input['plan_signature'] ) ? $input['plan_signature'] : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_digest ) ) $reasons[] = 'plan_digest_invalid';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $plan_signature ) ) $reasons[] = 'plan_signature_invalid';
 		$evidence = array_key_exists( 'evidence', $input ) ? $input['evidence'] : null;
@@ -220,6 +269,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'state' => 'blocked',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 		);
 	}
@@ -233,6 +284,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			'suite' => 'browser_runtime',
 			'authorizing' => false,
 			'read_only' => true,
+			'release_ready' => false,
+			'globally_unique_consumption_proven' => false,
 			'verification' => array( 'browser_runtime_parity_verified' => false ),
 			'blocking_reasons' => array_values( array_unique( array_filter( $reasons ) ) ),
 			'infrastructure_failures' => array(),
@@ -252,8 +305,8 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
 			),
 			'required' => array( 'profile_id' ),
-			'maxProperties' => 8,
-			'additionalProperties' => array( 'type' => 'string', 'maxLength' => 256 ),
+			'maxProperties' => 3,
+			'additionalProperties' => false,
 		);
 	}
 
@@ -289,7 +342,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		);
 		$case_schema = array(
 			'type' => 'object',
-			'maxProperties' => 15,
+			'maxProperties' => 21,
 			'properties' => array(
 				'contract' => $string160,
 				'case_id' => array( 'type' => 'string', 'maxLength' => 128 ),
@@ -388,6 +441,25 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 				),
 				'blocked_events' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $blocked_event_schema ),
 				'history_calls' => array( 'type' => 'array', 'maxItems' => 32, 'items' => $history_call_schema ),
+				// Generic capability evidence is bounded; provider validates semantics.
+				'capability_id' => $string160,
+				'probe_type' => $string160,
+				'http_status' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 599 ),
+				'observed' => array(
+					// Site-neutral observation DATA is bounded by size/depth/nodes.
+					// No site-supplied scripts/selectors are executable by Core.
+					// Provider reducers validate their own strict semantic keys.
+					'type' => 'object', 'maxProperties' => 12,
+					'properties' => array(
+						'path' => $string2048,
+						'title_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
+						'marker_key' => $string160,
+						'count' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 5000 ),
+					),
+					'additionalProperties' => true,
+				),
+				'matches_expected' => array( 'type' => 'boolean' ),
+				'certification_issued' => array( 'type' => 'boolean' ),
 			),
 			'required' => array( 'case_id' ),
 			'additionalProperties' => false,
@@ -404,27 +476,62 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 			),
 			'additionalProperties' => false,
 		);
+		$hex64 = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' );
+		$attestation_schema = array(
+			'type' => 'object', 'maxProperties' => 3,
+			'properties' => array(
+				'algorithm' => array( 'type' => 'string', 'enum' => array( 'rsa-sha256' ) ),
+				'key_id' => array( 'type' => 'string', 'maxLength' => 80, 'pattern' => '^rsa-spki-sha256:[a-f0-9]{64}$' ),
+				'signature' => array( 'type' => 'string', 'minLength' => 32, 'maxLength' => 1400, 'pattern' => '^[A-Za-z0-9+/]+={0,2}$' ),
+			),
+			'required' => array( 'algorithm', 'key_id', 'signature' ),
+			'additionalProperties' => false,
+		);
 		return array(
 			'type' => 'object',
 			'properties' => array(
 				'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
 				'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ),
 				'suite' => array( 'type' => 'string', 'enum' => array( 'browser', 'browser_runtime' ) ),
-				'plan_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
-				'plan_signature' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+				'plan_digest' => $hex64,
+				'plan_signature' => $hex64,
 				'evidence' => array(
-					'type' => 'object',
-					'maxProperties' => 9,
+					'type' => 'object', 'maxProperties' => 9,
 					'properties' => array(
-						'contract' => $string160,
-						'plan_digest' => array( 'type' => 'string', 'maxLength' => 64 ),
-						'plan_signature' => array( 'type' => 'string', 'maxLength' => 64 ),
+						// The Core validates a bounded envelope; the selected registered
+						// provider validates the exact versioned Evidence contract.
+						// Never hard-code ETG or a particular site's contract here.
+						'contract' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 160, 'pattern' => '^[a-z][a-z0-9._-]{2,159}$' ),
+						'plan_digest' => $hex64,
+						'plan_signature' => $hex64,
 						'origin' => $string2048,
-						'build_identity' => array( 'type' => 'object', 'maxProperties' => 2, 'properties' => array( 'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ), 'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ) ), 'additionalProperties' => false ),
-						'observer' => array( 'type' => 'object', 'maxProperties' => 4, 'properties' => array( 'contract' => $string160, 'javascript_runtime' => array( 'type' => 'boolean' ), 'browser_engine' => $string80, 'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ) ), 'additionalProperties' => false ),
+						'build_identity' => array(
+							'type' => 'object', 'maxProperties' => 3,
+							'properties' => array(
+								'git_sha' => array( 'type' => 'string', 'maxLength' => 64 ),
+								'tree_sha' => array( 'type' => 'string', 'maxLength' => 64 ),
+								'build_fingerprint' => $hex64,
+							),
+							'additionalProperties' => false,
+						),
+						'observer' => array(
+							'type' => 'object', 'maxProperties' => 7,
+							'properties' => array(
+								'contract' => $string160,
+								'javascript_runtime' => array( 'type' => 'boolean' ),
+								'runner_javascript_runtime' => array( 'type' => 'boolean' ),
+								'page_javascript_enabled' => array( 'type' => 'boolean' ),
+								'browser_engine' => $string160,
+								'execution_mode' => array( 'type' => 'string', 'enum' => array( 'external_browser_agent', 'local_interactive_browser', 'self_hosted_browser_agent', 'managed_browser_agent' ) ),
+								'plan_issued_at' => array( 'type' => 'integer', 'minimum' => 1 ),
+							),
+							'additionalProperties' => false,
+						),
 						'challenge' => $challenge_schema,
-						'cases' => array( 'type' => 'array', 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+						'cases' => array( 'type' => 'array', 'minItems' => 1, 'maxItems' => self::MAX_CASES, 'items' => $case_schema ),
+						'attestation' => $attestation_schema,
 					),
+					'required' => array( 'contract', 'plan_digest', 'plan_signature', 'origin', 'build_identity', 'observer', 'cases' ),
 					'additionalProperties' => false,
 				),
 			),
@@ -440,7 +547,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 	}
 
 	private static function clean_id( $value ) {
-		$value = strtolower( trim( (string) $value ) );
-		return preg_match( '/^[a-z0-9][a-z0-9._\-]{0,63}$/', $value ) ? $value : '';
+		if ( ! is_string( $value ) ) return '';
+		return preg_match( '/^[a-z0-9][a-z0-9._\\-]{0,63}$/D', $value ) ? $value : '';
 	}
 }

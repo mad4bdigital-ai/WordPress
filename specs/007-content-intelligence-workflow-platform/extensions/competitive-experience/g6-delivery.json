@@ -1,0 +1,178 @@
+{
+  "contract": "mad4b.competitive-g6-delivery.v1",
+  "status": "REPOSITORY_FOUNDATION_PARTIAL_EXTERNAL_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 287,
+  "implementation_branch": "feat/007-g6-ai-knowledge-synthesis-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "51e1f08ad5aafbea1656a0325f1070b438586c98",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "provider_execution_certified": false,
+  "vector_ingestion_certified": false,
+  "dependency_execution_certified": false,
+  "live_browser_acceptance": false,
+  "scope_task_ids": [
+    "T3956",
+    "T3957",
+    "T3958",
+    "T3959",
+    "T3960",
+    "T3961",
+    "T3962",
+    "T3963",
+    "T3964",
+    "T3965",
+    "T4016",
+    "T4017",
+    "T4018",
+    "T4019",
+    "T4020"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-contracts.php",
+      "sha256": "149e80d6c126c408fe69d4e733783d27e88d5311398d08699c5fe6e786bd79b2",
+      "bytes": 10644
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-operation-compiler.php",
+      "sha256": "cdce053dd7361e524cfa8494371ac2803be03e4e715cb6043d77c2f35be5bef0",
+      "bytes": 35884
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-ai-workspace.php",
+      "sha256": "4cb49ec7aa73a91ba9e3576f0c871f13530328a6bb50ef8c4e4ffe14202a92e7",
+      "bytes": 3559
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-knowledge-admission.php",
+      "sha256": "4e871500ccdf731dd3c32c0c23f5e77c39490f3d1f0be0f795609b40eff9b501",
+      "bytes": 4360
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-provider-routing.php",
+      "sha256": "9c53bfba3ee1510eed134fbffa4644e13d09ef02ec9ae400dc7fa09ca3aade8d",
+      "bytes": 7486
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-retrieval-evaluation.php",
+      "sha256": "330d46745326b830e60615f98f4495eb7694a6329f6671d4c3d541f3015c85bc",
+      "bytes": 6054
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-acceptance.php",
+      "sha256": "b487272d21ad0e3353ea7f9ee1618776853dbe777aafe800f0d1a8d73a5b78e0",
+      "bytes": 17219
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "2a2a8c7aa4b5cbe99b5470367bfc92c8460468497a0dadc72acb070f86baacd7",
+      "bytes": 45148
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",
+      "sha256": "2b88b35321ec6062fd1f7d61f1e45ac5addeb4ddf709f3b76ca26ed825bee582",
+      "bytes": 25213
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-durable-dag-evidence.php",
+      "sha256": "31e6448a83cf5bac279237382a705a89d17d2a92a50db66e57900301690f072c",
+      "bytes": 8793
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-private-preview-contract.php",
+      "sha256": "33a3971603d76589c43c0093383bb47f42a8d9c90eb576afa589703efba29d45",
+      "bytes": 9031
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-compiler-denial-runtime.php",
+      "sha256": "10e79d05b68fc13d855f8109f6f8791581071ad25539207353d5a7adbd22426a",
+      "bytes": 18110
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-admission-denial-runtime.php",
+      "sha256": "fb99951486f8d538e2ccf9b7d19c214d54077d5fbc7550f9e1f7407777e17389",
+      "bytes": 5094
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-provider-retrieval-denials.php",
+      "sha256": "3217eaab30c210232a4774612bf25653f94eaf5a8ecbe290e8253e41c556cb00",
+      "bytes": 8889
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
+      "sha256": "57e108b615319790d77d2099f4e6dff18360dfa4a6e2455926d1f47cc4906f77",
+      "bytes": 14264
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-delivery-integrity.py",
+      "sha256": "8056b02cde36ce4af9075c93b4442911d42c41c74f5bd5ca536ce0dc7dedd2f6",
+      "bytes": 1475
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-conversation-vault-runtime.php",
+      "sha256": "89be7bc93bd00945c0f1cc1f5326c67f2db5b990a68229320c993845e178430b",
+      "bytes": 18006
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-durable-dag-evidence.php",
+      "sha256": "3e0b3cfb0cece0b0648aec737b0a1c1708345822badbc05697d0bff919cfc185",
+      "bytes": 7835
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.md",
+      "sha256": "a59338630000c288459999dafbaab32e9b74e22dc3f5f5e7232b8211b09e8e03",
+      "bytes": 5507
+    }
+  ],
+  "acceptance_contracts": [
+    "bounded_reviewed_dag",
+    "private_redacted_review",
+    "metadata_only_provider_router",
+    "tenant_rights_residency_and_citation_denial",
+    "no_paid_model_or_vector_ingestion",
+    "no_dep_execution_without_journal_and_fresh_approval",
+    "admin_route_smoke_and_php_matrix"
+  ],
+  "external_acceptance_required": [
+    "certify_live_model_accounts_consents_regions_and_cost_readbacks",
+    "staging_encryption_key_rotation_purge_backup_and_export_governance",
+    "private_conversation_and_prompt_library_end_to_end",
+    "licensed_documents_and_vector_tenant_isolation_source_deletion",
+    "journal_verified_provider_postconditions_with_approval_and_rollback",
+    "staging_provider_browser_and_hub_cumulative_certification"
+  ],
+  "partial_task_ids": [
+    "T3956",
+    "T3957",
+    "T3958",
+    "T3959",
+    "T3960",
+    "T3961",
+    "T3962",
+    "T3963",
+    "T3964",
+    "T3965",
+    "T4016",
+    "T4017",
+    "T4018",
+    "T4019",
+    "T4020"
+  ],
+  "runtime_parity_claimed": false,
+  "new_grants_created": false,
+  "all_task_done_claimed": false,
+  "workflow_paths": [
+    {
+      "path": ".github/workflows/feature-007-spec-ci.yml",
+      "sha256": "c162189bb78edd176552e540d2c0970f4a8c5af3831303cba968120f4b6aea5c",
+      "bytes": 47972
+    }
+  ]
+}

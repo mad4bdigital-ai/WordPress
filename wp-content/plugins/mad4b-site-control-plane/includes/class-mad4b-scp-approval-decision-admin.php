@@ -194,6 +194,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		$candidate = self::current_candidate();
 		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Approval Decisions', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Human-only decision inbox. GET is read-only; every POST revalidates the exact Site Profile, deployed build, provider and one-time ticket before changing state.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p class="description">' . esc_html__( 'Before approving: identify the operation, affected provider and target, review the precise mutation plan and its rollback evidence. Unknown impact is never assumed safe.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( isset( $_GET['mad4b_decision_result'] ) ) {
 			$code = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_result' ) );
 			$status = isset( $_GET['mad4b_decision_status'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_status' ) ) : '';
@@ -234,7 +235,16 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 			$payload = isset( $row['payload_sha256'] ) ? strtolower( (string) $row['payload_sha256'] ) : '';
 			$binding_ok = ! empty( $row['binding_exact'] );
 			$effective = isset( $row['effective_status'] ) ? (string) $row['effective_status'] : ( isset( $row['status'] ) ? (string) $row['status'] : '' );
-			echo '<tr><td><code>' . esc_html( $ticket_id ) . '</code></td><td><code>' . esc_html( isset( $row['ability_name'] ) ? $row['ability_name'] : '' ) . '</code></td><td><strong>' . esc_html( $effective ) . '</strong></td><td>' . esc_html( isset( $row['expires_at'] ) ? $row['expires_at'] : '' ) . '</td><td>' . esc_html( $binding_ok ? 'exact current site/build' : 'missing/stale' ) . '</td><td>';
+			$ability_name = isset( $row['ability_name'] ) && is_string( $row['ability_name'] ) ? $row['ability_name'] : '';
+			$provider_name = isset( $row['provider'] ) && is_string( $row['provider'] ) ? $row['provider'] : '';
+			$target = isset( $row['target_fingerprint'] ) && is_string( $row['target_fingerprint'] ) ? $row['target_fingerprint'] : '';
+			echo '<tr><td><code>' . esc_html( $ticket_id ) . '</code></td><td><code>' . esc_html( $ability_name ) . '</code>';
+			echo '<details class="mad4b-approval-impact"><summary>' . esc_html__( 'Review exact decision boundary', 'mad4b-site-control-plane' ) . '</summary>';
+			echo '<p><strong>' . esc_html__( 'Provider:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( '' !== $provider_name ? $provider_name : 'not_observed' ) . '</code></p>';
+			echo '<p><strong>' . esc_html__( 'Target fingerprint:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( '' !== $target ? $target : 'not_observed' ) . '</code></p>';
+			echo '<p><strong>' . esc_html__( 'Payload binding:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $payload ) . '</code></p>';
+			echo '<p>' . esc_html__( 'This ticket identifies an exact proposed operation. The current inbox does not independently prove before/after changes, rollback availability, or outcome. Review the operation plan and its owner before approving.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '</details></td><td><strong>' . esc_html( $effective ) . '</strong></td><td>' . esc_html( isset( $row['expires_at'] ) ? $row['expires_at'] : '' ) . '</td><td>' . esc_html( $binding_ok ? 'exact current site/build' : 'missing/stale' ) . '</td><td>';
 			if ( $allow_decisions && ! empty( $row['actionable'] ) ) {
 				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:flex;gap:6px">';
 				foreach ( array( 'action' => self::ACTION, 'ticket_id' => $ticket_id, 'expected_payload_sha256' => $payload, 'expected_candidate_sha' => $candidate['source_commit_sha'], 'expected_build_fingerprint' => $candidate['build_fingerprint'] ) as $name => $value ) echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';

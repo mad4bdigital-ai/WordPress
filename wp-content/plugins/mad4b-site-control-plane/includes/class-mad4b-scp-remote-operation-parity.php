@@ -1295,6 +1295,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
 		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
 		$properties['browser_evidence'] = array( 'type' => 'object', 'maxProperties' => 9, 'additionalProperties' => true );
+		$properties['build_receipt'] = array( 'type' => 'object', 'additionalProperties' => false,
+			'required' => array( 'claims_b64', 'signature_b64' ),
+			'properties' => array(
+				'claims_b64' => array( 'type' => 'string', 'maxLength' => 8192 ),
+				'signature_b64' => array( 'type' => 'string', 'maxLength' => 128 ),
+			),
+		);
 		return array(
 			'type' => 'object',
 			'properties' => $properties,
@@ -1478,6 +1485,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $job ) ) return $job;
 		$operation_id = isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '';
 		if ( 'browser_acceptance_execution' === $operation_id ) return self::complete_browser_acceptance_work( $input, $job );
+		if ( 'standalone_source_build' === $operation_id ) {
+			if ( ! class_exists( 'MAD4B_SCP_Standalone_Build_Control', false ) )
+				return new WP_Error( 'mad4b_build_verifier_unavailable', 'Signed build verifier is not loaded.' );
+			$verified = MAD4B_SCP_Standalone_Build_Control::complete_signed_job( $input, $job );
+			if ( is_wp_error( $verified ) ) return $verified;
+			$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
+				'operation_id' => 'standalone_source_build',
+				'job_id' => (string) $input['job_id'],
+				'verification' => 'pinned_ed25519_job_bound_runner_receipt',
+				'release_certified' => false, 'production_mutation' => false,
+			) );
+			return is_wp_error( $audit ) ? $audit : $verified;
+		}
 		if ( 'frontend_performance_sampling' !== $operation_id ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
 
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
@@ -2020,9 +2040,16 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $provenance ) ) return $provenance;
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return new WP_Error( 'mad4b_browser_acceptance_core_unavailable', 'Browser Acceptance Core is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
-		$provider_id = sanitize_key( isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '' );
-		$profile_id = sanitize_key( isset( $input['profile_id'] ) ? (string) $input['profile_id'] : '' );
-		if ( '' === $provider_id || '' === $profile_id ) return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires bounded provider_id and profile_id selectors.' );
+		$provider_id = isset( $input['provider_id'] ) && is_string( $input['provider_id'] ) ? strtolower( trim( $input['provider_id'] ) ) : '';
+		$profile_id = isset( $input['profile_id'] ) && is_string( $input['profile_id'] ) ? strtolower( trim( $input['profile_id'] ) ) : '';
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $provider_id )
+			|| ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $profile_id ) ) {
+			return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires exact bounded provider_id and profile_id selectors.' );
+		}
+		if ( class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ) {
+			$operator_guard = MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id );
+			if ( is_wp_error( $operator_guard ) ) return $operator_guard;
+		}
 		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => $provider_id, 'profile_id' => $profile_id, 'suite' => 'browser_runtime' ) );
 		if ( ! is_array( $plan ) || 'ready' !== ( isset( $plan['state'] ) ? (string) $plan['state'] : '' ) ) return new WP_Error( 'mad4b_browser_acceptance_plan_not_ready', 'Browser Acceptance plan is not ready.', array( 'plan' => is_array( $plan ) ? $plan : array() ) );
 		$plan_digest = strtolower( trim( (string) ( isset( $plan['plan_digest'] ) ? $plan['plan_digest'] : '' ) ) );
