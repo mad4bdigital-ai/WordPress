@@ -103,3 +103,78 @@ WordPress source edits cannot directly fix those components.
   the new request modes through the **live** MCP endpoint.
 - Preserve the independent signed CI-outage Staging update path if the GitHub
   queue is unavailable; no Production/mutation safety bypass.
+
+## Full bottleneck inventory — static evidence and priority
+
+The exact PR source (before future optimization) contains **377 literal direct
+`require_once` statements** in the main plugin, **375 unique imported
+paths**, about **9.1 MB total referenced PHP source bytes** (not resident RAM),
+and **115 appearances of bootstrap-family method calls**. Some imports and
+bootstrap actions run conditionally; size/count are *potential parsing and
+autoload pressure*, **not measurements of actual time spent**. WordPress Core,
+Query Monitor, WPML, JetEngine, other plugins, and the gateway add their own
+costs. Do not assume the 6,223 total PHP files are all MAD4B.
+
+The three largest directly imported sources in that inventory were:
+
+| Candidate | Static source bytes |
+| --- | ---: |
+| `includes/class-mad4b-scp-google-drive-context.php` | 247,775 |
+| `includes/class-mad4b-scp-context-authority.php` | 214,651 |
+| `includes/class-mad4b-scp-context-admin-ui.php` | 209,524 |
+
+These are candidates for measured **lazy-loading and route-specific isolation**;
+they must **not** be omitted from boot blindly because their classes/hooks may
+be required for the exact MCP Ability and current security policy. There are
+also two duplicate path references (Site Profile and MCP Request Scope);
+`require_once` prevents duplicate execution, so do not assign them double
+parse cost.
+
+The new `MAD4B_SCP_BOOT_START_AT`, `BOOT_MODULES_READY_AT`, and
+`BOOT_HOOKS_READY_AT` constants create three read-only timing boundaries in
+the plugin entrypoint. `session-safe-diagnostics` now reports
+`plugin_bootstrap_phases` with module loading, hook registration, total
+plugin bootstrap, and pre-plugin request time. Absence/invalid chronology is
+`valid=false`, not a manufactured zero-latency PASS. **These times will only
+appear after the new package is installed.**
+
+The reusable, source-driven inventory can run without GitHub Actions,
+network, a working WordPress DB, PHP or any signing authority:
+
+```bash
+python tools/mad4b_mcp_bottleneck_inventory.py --repository-root . --output mcp-inventory.json
+```
+
+To compare another exact-source release use `--baseline` pointing to an
+independently saved prior inventory. This script is observational and creates
+no authorization, deployment or release verdict.
+
+### Prioritized root-cause matrix
+
+| Bottleneck candidate | Observed support | Action / acceptance |
+| --- | --- | --- |
+| MCP client → gateway/proxy/connector | ~18.7s discrepancy in one sample, origin unknown | Capture matched trace IDs and timestamp stages before assigning blame |
+| Pre-callback PHP WordPress bootstrap | ~3.8s observed before/around 57ms diagnostics | Measure per-plugin phases, PHP-FPM queue time, loaded plugin hooks |
+| Large eager MAD4B plugin source and boot | 377 direct imports, ~9.1MB static PHP source, 115 bootstrap call appearances | Route-scoped classmap/autoload pilot **only after profiling and regression tests** |
+| Database / options / meta / object cache | 425 requests in one PHP sample; Query Monitor DB collector active | Identify top SQL fingerprints, count and aggregate time; inspect persistent object cache and autoload options |
+| Postmeta and termmeta lookups | Explicit two relevant composite indexes reported ready on Staging | **Do not re-create indexes.** Query-profile first, compare prior exact build |
+| WPML, JetEngine, SEO, WooCommerce, third-party hooks | Many plugins included in WordPress request but no caller-level attribution yet | QM tagged caller/component comparison, controlled route and plugin-level timing |
+| Schema/catalog creation and WordPress Abilities registration | Many dynamically mountable abilities and adapter providers | Inspect tools/list serialization, schema and registry generation frequency, request-local caches |
+| Managed Skills / current write-grant checks | Full diagnostics can run live grant scans and historical checkpoints | Default light mode for availability probe; deep only when requested; never cache auth truth across requests |
+| Query Monitor / telemetry / shutdown | QM active with DB drop-in; MCP surface intentionally avoids full QM collection | Verify one-marker-only MCP capture; opt in to bounded profiling when evidence is needed |
+| WP-Cron / scheduled workers / queue | Update/build/maintenance workers exist, queue depth and PHP worker saturation unmeasured | Correlate Cron and PHP-FPM occupancy/locks, avoid synchronous work in MCP reads |
+| OPcache/preload, PHP-FPM and object cache | No live authoritative settings or hit-rate evidence here | Collect config/hit rates before tuning limits, do not assume caches enabled |
+| Frontend performance | Fresh build shows **zero** eligible frontend acceptance samples | Run required controlled canaries; no frontend pass claim |
+| GitHub Actions queue | 61 queued runs at observation | CI-independent native acceptance path; not a site request latency explanation |
+
+Staging's read-only `mad4b/admin-query-performance-status` reported both
+`wp_postmeta(post_id,meta_key)` and `wp_termmeta(term_id,meta_key)`
+equivalent indexes present and `ready=true`. Query Monitor 4.0.7 attribution
+was also active, but only one MCP coverage marker and **no frontend samples**
+were present. Avoid unnecessary DDL and unsupported frontend claims.
+
+Performance acceptance requires repeating enough representative read-only
+requests to report medians/p95 and failure rates, with source/generation pinned,
+plus a separately sampled frontend baseline and caller-grouped DB time.
+One successful request and nine source-level invariants cannot establish
+tail latency or outage elimination.
