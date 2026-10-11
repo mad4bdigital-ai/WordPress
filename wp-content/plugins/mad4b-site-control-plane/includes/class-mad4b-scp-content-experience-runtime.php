@@ -269,6 +269,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				);
 			}
 			$current_state_sha256 = self::post_state_hash( $post );
+			// An update can change an already-public post without a separate
+			// publish operation. All such live edits must observe the same
+			// reviewed Brand Core preflight as a publish transition.
+			if ( 'update' === $operation && in_array( (string) $post->post_status, array( 'publish', 'private', 'future' ), true ) ) {
+				if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core recovery guard is unavailable.' );
+				$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+			}
 		}
 
 		if ( 'create' === $operation ) {
@@ -589,6 +597,18 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				$mutated = true;
 				update_post_meta( $post_id, self::CREATION_BINDING_META, $binding );
 			} elseif ( 'update' === $operation ) {
+				// The first live mutation occurs here, before meta, taxonomy or
+				// helper operations. Recheck the plan-bound reviewed context.
+				if ( is_array( $plan['publication_brand_core'] ) ) {
+					$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+					if ( is_wp_error( $brand_now ) ) return $brand_now;
+					if ( ! is_array( $brand_now )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+						|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+						return new WP_Error( 'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed before live content update.' );
+				}
 				$update = array( 'ID' => $post_id );
 				foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order' ) as $field ) if ( null !== $normalized[ $field ] ) $update[ $field ] = $normalized[ $field ];
 				if ( count( $update ) > 1 ) {
@@ -639,6 +659,18 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
 				$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
 				if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
+			}
+			// Recheck after helper, media and taxonomy writes. A live update
+			// must not finish verified against revoked Brand Core authority.
+			if ( 'update' === $operation && is_array( $plan['publication_brand_core'] ) ) {
+				$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_now ) ) return self::compensated_error( $brand_now, $before );
+				if ( ! is_array( $brand_now )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed during live content update.' ), $before );
 			}
 			$verified = self::verify_plan_readback( $profile, $plan, $post_id );
 			if ( is_wp_error( $verified ) ) return self::compensated_error( $verified, $before );
