@@ -601,7 +601,11 @@ final class MAD4B_SCP_Servers {
         // all other privileged direct operations, and preflight can drop them
         // without blocking the base connector if their DTO is unavailable.
         $tools = array_values( array_unique( array_merge(
-            $tools, self::chatgpt_approval_bootstrap_tools() ) ) );
+            // Bootstrap pending tickets and gated decisions before optional
+            // enrollment convenience steps. The 36-tool MCP limit may
+            // exclude the last optional entries; never exclude the fixed
+            // read/write dispatcher transport to make room.
+            self::chatgpt_approval_bootstrap_tools(), $tools ) ) );
         return $tools;
     }
 
