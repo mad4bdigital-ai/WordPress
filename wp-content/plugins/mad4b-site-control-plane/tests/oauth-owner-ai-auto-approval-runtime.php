@@ -23,7 +23,7 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
     public static $bearer = true;
     public static $client = true;
     public static $scopes = array( 'mad4b:read', self::AI_AUTO_ALL_SCOPE );
-    public static function issuer_fingerprint_for_issuer( $issuer ) { return hash( 'sha256', 'oauth-issuer' . "\\0" . rtrim( $issuer, '/' ) ); }
+    public static function issuer_fingerprint_for_issuer( $issuer ) { return hash( 'sha256', 'oauth-issuer' . "\0" . rtrim( $issuer, '/' ) ); }
     public static function verified_bearer_active() { return self::$bearer; }
     public static function verified_bearer_has_scope( $v ) { return in_array( $v, self::$scopes, true ); }
     public static function verified_bearer_client_is( $v ) {
