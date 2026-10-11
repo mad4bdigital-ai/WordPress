@@ -63,7 +63,7 @@ final class MAD4B_SCP_Operator_Journeys {
                     array( 'prepare', 'mad4b/operational-remediation-prepare', 'read' ),
                     array( 'verify', 'mad4b/remote-operation-parity-status', 'read' ),
                 ),
-                'caution' => 'Discover and prepare are read-only. A separate exact registered write ability and its approval must be selected; there is no generic execute button.',
+                'caution' => 'Automatic discovery and route selection are read-only. A client must use the fresh schema-pinned governed dispatcher and exact independent owner approval for every mutation; failed writes require readback, never blind retry.',
             ),
             'forms_and_integration' => array(
                 'label' => 'Find a form or inspect a plugin integration', 'risk' => 'read_only',
