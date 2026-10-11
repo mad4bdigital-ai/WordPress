@@ -126,9 +126,12 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'operator_role' => 'release_owner', 'approval' => true,
             ),
             'brand_approval' => array(
-                'read' => 'context/brand-core-coverage',
-                'next' => 'context/source-scan-plan', 'readback' => 'context/brand-core-coverage',
-                'executor' => 'governed_context_review', 'operator_role' => 'brand_reviewer',
+                'read' => 'context/review-queue',
+                'preflight' => 'context/remote-owner-review-plan',
+                'next' => 'context/remote-owner-review-apply',
+                'readback' => 'context/brand-core-coverage',
+                'executor' => 'governed_context_owner_oauth_with_separate_human_ticket',
+                'operator_role' => 'brand_owner',
                 'approval' => true,
             ),
             'draft_acceptance' => array(
@@ -317,6 +320,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             $preflight = (string) ( $spec['preflight'] ?? $read );
             $next = $spec['next'];
             $read_registered = '' !== $read && ! empty( $abilities[ $read ] );
+            $preflight_registered = '' !== $preflight && ! empty( $abilities[ $preflight ] );
             $next_registered = '' !== $next && ! empty( $abilities[ $next ] );
             $external = in_array( $id, array( 'host_identity', 'durable_db_recovery' ), true );
             $missing_executor = '' === $next && $external && ! $verified[ $id ];
@@ -329,6 +333,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             if ( $evidence_drift ) $stage_blockers[] = 'cross_read_snapshot_drift';
             if ( ! $site_ready ) $stage_blockers[] = 'exact_staging_required';
             if ( ! $read_registered && '' !== $read ) $stage_blockers[] = 'remote_read_ability_not_mounted';
+            if ( ! $preflight_registered && '' !== $preflight ) $stage_blockers[] = 'remote_preflight_ability_not_mounted';
             if ( ! $next_registered && '' !== $next ) $stage_blockers[] = 'remote_executor_not_mounted';
             if ( $missing_executor ) $stage_blockers[] = 'independent_signed_host_executor_required';
             if ( 'source_inventory' === $id && ! $has_census ) $stage_blockers[] = 'fresh_census_required';
@@ -353,7 +358,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'read_ability' => $read, 'preflight_ability' => $preflight,
                 'apply_ability' => $next,
                 'readback_ability' => $spec['readback'],
-                'read_registered' => $read_registered, 'apply_registered' => $next_registered,
+                'read_registered' => $read_registered,
+                'preflight_registered' => $preflight_registered, 'apply_registered' => $next_registered,
                 'executor' => $spec['executor'], 'operator_role' => $spec['operator_role'],
                 'separate_approval_required' => $spec['approval'],
                 'upstream_stages' => $dependencies[ $id ],
