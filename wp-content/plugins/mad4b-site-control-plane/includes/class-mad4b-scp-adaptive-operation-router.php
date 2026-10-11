@@ -158,8 +158,9 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             $name = (string) ( $row['ability_name'] ?? '' );
             $execution = is_array( $row['execution'] ?? null ) ? $row['execution'] : array();
             $lane = (string) ( $execution['expected_execution_lane'] ?? '' );
-            $surface = $lane;
-            if ( 'enrollment' === $lane ) $surface = 'write';
+            if ( '' === $lane && 'requires_operation_resolution' === ( $execution['state'] ?? '' )
+                && 'mad4b/enrollment-execute' === ( $execution['dispatch_tool'] ?? '' ) )
+                $lane = 'enrollment';
             $is_read = 'read' === $lane;
             if ( 'read' === $intent && ! $is_read ) continue;
             if ( 'write' === $intent && $is_read ) continue;
@@ -185,8 +186,10 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             // particular, an indeterminate write may already have committed.
             $unconfirmed_write = ! $is_read && '' !== $failed;
             if ( $unconfirmed_write || $route_name === $failed ) $eligible = false;
+            // Safe-first selection: discovery never jumps directly to a
+            // mutation when an exact registered read planner is available.
             $score = (int) ( $ranking[ $name ] ?? 0 ) * 10
-                + ( $is_read ? 3 : 0 );
+                + ( $is_read && 'auto' === $intent ? 1000 : ( $is_read ? 3 : 0 ) );
             $ranked[] = array(
                 'ability_name' => $name, 'score' => $score,
                 'execution_lane' => $lane,
@@ -261,11 +264,15 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         // higher in a semantically ambiguous task search.
         if ( $write_in_doubt ) $ready = false;
         $best_row = $ready ? $best['prepared'] : array();
+        $resolution_required = $ready && 'enrollment' === $best['execution_lane'];
+        $developer_isolation_required = $ready && 'developer' === $best['execution_lane'];
         return array(
             'contract' => self::CONTRACT,
             'state' => $write_in_doubt ? 'PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK'
+                : ( $developer_isolation_required ? 'ISOLATED_DEVELOPER_STEP_UP_REQUIRED'
+                : ( $resolution_required ? 'ENROLLMENT_OPERATION_ID_AND_DIGESTS_REQUIRED'
                 : ( $ready ? 'ROUTE_SELECTED_REQUIRES_EXECUTION_REVALIDATION'
-                : 'NO_VERIFIED_ROUTE_AVAILABLE' ),
+                : 'NO_VERIFIED_ROUTE_AVAILABLE' ) ) ),
             'mode' => $with_plan ? 'schema_pinned_route_plan' : 'bounded_route_discovery',
             'selected' => $ready ? array(
                 'ability_name' => $best['ability_name'],
@@ -280,6 +287,8 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 'classification_sha256' => (string) ( $best_row['classification_sha256'] ?? '' ),
                 'descriptor_sha256' => (string) ( $best_row['descriptor_sha256'] ?? '' ),
                 'client_tool_visibility' => 'UNVERIFIED_UNTIL_HOST_TOOLS_LIST',
+                'enrollment_operation_resolution_required' => $resolution_required,
+                'developer_isolated_step_up_required' => $developer_isolation_required,
                 'direct_tool_catalog_candidate' => in_array(
                     $best['ability_name'], $base, true ),
                 'direct_tool_is_execution_authority' => false,
