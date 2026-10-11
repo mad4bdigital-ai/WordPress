@@ -15,6 +15,78 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 	private static function safe_bool( $value ) { return true === $value; }
 
 	/**
+	 * Mandatory, fail-closed publication dependency. A request for publication
+	 * automatically discovers the next governed Brand recovery step, but this
+	 * check never mints approvals, transfers quarantined ownership or writes.
+	 *
+	 * Invoked by all MAD4B-managed live post transitions, not by unrelated
+	 * WordPress admin/editor actions. Returns a review-bound identity that a
+	 * caller can include in its exact execution plan.
+	 */
+	public static function publication_preflight( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$operation = isset( $input['operation'] ) ? sanitize_key( (string) $input['operation'] ) : 'publish';
+		$post_type = isset( $input['post_type'] ) ? sanitize_key( (string) $input['post_type'] ) : '';
+		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) || ! method_exists( 'MAD4B_SCP_Context_Authority', 'brand_core_coverage' ) ) {
+			return new WP_Error( 'mad4b_publication_brand_core_runtime_unavailable', 'Brand Core authority is required before governed publication.' );
+		}
+		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+		if ( is_wp_error( $coverage ) ) return $coverage;
+		if ( ! is_array( $coverage ) || empty( $coverage['coverage'] ) || ! is_array( $coverage['coverage'] ) ) {
+			return new WP_Error( 'mad4b_publication_brand_core_snapshot_unavailable', 'Brand Core coverage cannot be verified.' );
+		}
+		$missing = array(); $conflicting = array(); $identities = array();
+		foreach ( self::REQUIRED as $category ) {
+			$row = isset( $coverage['coverage'][ $category ] ) && is_array( $coverage['coverage'][ $category ] ) ? $coverage['coverage'][ $category ] : array();
+			$assets = isset( $row['eligible_assets'] ) && is_array( $row['eligible_assets'] ) ? $row['eligible_assets'] : array();
+			if ( empty( $row['ready'] ) || empty( $assets ) ) $missing[] = $category;
+			if ( ! empty( $row['conflict'] ) ) $conflicting[] = $category;
+			foreach ( $assets as $asset ) {
+				if ( ! is_array( $asset ) || empty( $asset['review_binding_exact'] )
+					|| ! isset( $asset['content_hash'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $asset['content_hash'] ) ) {
+					$missing[] = $category;
+					continue;
+				}
+				$identities[] = $category . ':' . ( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' ) . ':' . (string) $asset['content_hash'];
+			}
+		}
+		$missing = array_values( array_unique( $missing ) );
+		$conflicting = array_values( array_unique( $conflicting ) );
+		if ( empty( $missing ) && empty( $conflicting ) && ! empty( $coverage['ready'] )
+			&& isset( $coverage['registry_revision'], $coverage['context_fingerprint'], $coverage['authority_manifest_fingerprint'] ) ) {
+			sort( $identities, SORT_STRING );
+			return array(
+				'contract' => 'mad4b.publication-brand-core-preflight.v1',
+				'ready' => true, 'operation' => $operation, 'post_type' => $post_type,
+				'registry_revision' => (int) $coverage['registry_revision'],
+				'context_fingerprint' => (string) $coverage['context_fingerprint'],
+				'authority_manifest_fingerprint' => (string) $coverage['authority_manifest_fingerprint'],
+				'reviewed_asset_fingerprint' => hash( 'sha256', implode( '|', $identities ) ),
+				'mutation_performed' => false,
+			);
+		}
+		// Automatic recovery routing is read-only. Actual approved recovery uses
+		// the separately authorized mutation/AI-review lane and exact readback.
+		$route = self::status();
+		$state = is_array( $route ) && isset( $route['state'] ) ? (string) $route['state'] : 'RECOVERY_EVIDENCE_UNAVAILABLE';
+		$next = is_array( $route ) && isset( $route['next_ability'] ) ? (string) $route['next_ability'] : 'context/brand-core-coverage';
+		return new WP_Error(
+			'mad4b_publication_brand_core_recovery_required',
+			'Publication is blocked until the three first-party Brand Core categories have independently reviewed exact current authority.',
+			array(
+				'state' => 'BLOCKED_BRAND_CORE_RECOVERY', 'recovery_state' => $state,
+				'operation' => $operation, 'post_type' => $post_type,
+				'missing_categories' => $missing, 'conflicting_categories' => $conflicting,
+				'next_ability' => $next,
+				'approval_required_per_mutation' => true,
+				'ownership_auto_approval_allowed' => false,
+				'production_auto_approval_allowed' => false,
+				'mutation_performed' => false,
+			)
+		);
+	}
+
+	/**
 	 * Pure reducer for native tests and recovery without fabricated evidence.
 	 * Quarantined records are prioritised before any source creation.
 	 */
