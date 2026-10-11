@@ -218,4 +218,26 @@ $terminal_failure = $c::apply( $apply );
 assert_self_approval( is_wp_error( $terminal_failure )
     && $terminal_failure->get_error_code() === 'mad4b_self_approval_terminal_audit_uncertain',
     'Missing terminal audit causes fail-closed reconciliation, not silent success' );
+// Structural regression: only the original Staging approval bootstrap pair
+// may be directly exposed without looking like a leaked target schema.
+// The runtime certification still requires original authorization plus final
+// execution fence; this assertion is NOT a live WordPress security test.
+$scp_include_root = dirname( __DIR__ ) . '/includes/';
+$bootstrap_servers = file_get_contents( $scp_include_root . 'class-mad4b-scp-servers.php' );
+$bootstrap_truth = file_get_contents( $scp_include_root . 'class-mad4b-scp-live-truth.php' );
+$bootstrap_cert = file_get_contents( $scp_include_root . 'class-mad4b-scp-write-runtime-certification.php' );
+assert_self_approval( is_string( $bootstrap_servers ) &&
+    strpos( $bootstrap_servers, 'function verified_direct_approval_bootstrap_tool(' ) !== false &&
+    strpos( $bootstrap_servers, "'mad4b/approval-plan', 'mad4b/approval-ai-decide'" ) !== false &&
+    strpos( $bootstrap_servers, 'final_execution_wrapper_verified( $ability_name )' ) !== false &&
+    strpos( $bootstrap_servers, "self::chatgpt_approval_bootstrap_tools(), true" ) !== false &&
+    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-write', $ability_name )" ) !== false &&
+    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-chatgpt', $ability_name )" ) !== false,
+    'Only the enrolled Staging approval-bootstrap pair may pass a fenced direct-schema exception' );
+assert_self_approval( is_string( $bootstrap_truth ) && is_string( $bootstrap_cert ) &&
+    strpos( $bootstrap_truth, 'verified_direct_approval_bootstrap_tool( $ability_name )' ) !== false &&
+    strpos( $bootstrap_cert, 'verified_direct_approval_bootstrap_tool( $ability_name )' ) !== false &&
+    strpos( $bootstrap_truth, 'direct_write_schema_leaks' ) !== false &&
+    strpos( $bootstrap_cert, 'direct_write_schema_leaks' ) !== false,
+    'Both certification paths must fail closed on other directly exposed write schemas' );
 echo "PASS: self-approval, single execution claim, local evidence, terminal audit, OAuth and Production denial\n";
