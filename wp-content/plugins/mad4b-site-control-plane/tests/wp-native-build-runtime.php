@@ -105,7 +105,8 @@ file_put_contents( $dir . '/test.php', '<?php echo 1;' );
 $archive = $reflect->getMethod( 'canonical_archive' );
 $zip = $dir . '/test.zip';
 $written = $archive->invoke( null, $dir . '/',
-    array( array( 'path' => 'test.php' ) ), '',
+    array( array( 'path' => 'test.php', 'bytes' => 13,
+        'sha' => '74e80946d0da8372c10f17874a564f2ece67fa67' ) ), '',
     $zip );
 // Empty provenance is still a valid archive entry for the reference fixture;
 // the golden ZIP below tests just one file, so use a separate local
