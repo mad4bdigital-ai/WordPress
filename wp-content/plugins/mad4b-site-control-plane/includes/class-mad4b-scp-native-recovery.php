@@ -56,7 +56,7 @@ final class MAD4B_SCP_Native_Recovery {
                 'input_schema' => $spec[3],
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array( 'public' => false, 'show_in_rest' => false,
-                    'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $spec[2] ? 'read' : 'admin' ),
+                    'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $spec[2] ? 'read' : 'write' ),
                     'annotations' => array( 'readonly' => $spec[2], 'destructive' => ! $spec[2],
                         'idempotent' => $spec[2] ) ),
             ) );
@@ -89,7 +89,7 @@ final class MAD4B_SCP_Native_Recovery {
         if ( ! in_array( $ability, array( self::START, self::CLEAN ), true ) )
             return self::denied( 'unknown_write_ability' );
         $authorization = MAD4B_SCP_Authorization::authorize_mutation(
-            $ability, 'mad4b-admin', 'core', is_array( $input ) ? $input : array() );
+            $ability, 'mad4b-write', 'core', is_array( $input ) ? $input : array() );
         return MAD4B_SCP_Authorization::permission_result_from_authorization( $authorization );
     }
     private static function denied( $code ) {
@@ -173,7 +173,7 @@ final class MAD4B_SCP_Native_Recovery {
         if ( ! hash_equals( (string) $plan['plan_sha256'], (string) $input['expected_plan_sha256'] ) )
             return self::denied( 'stale_plan' );
         $claim = MAD4B_SCP_Authorization::claim_mutation(
-            self::START, 'mad4b-admin', 'core', $input );
+            self::START, 'mad4b-write', 'core', $input );
         if ( is_wp_error( $claim ) || ! is_array( $claim )
             || true !== ( $claim['allowed'] ?? false ) )
             return is_wp_error( $claim ) ? $claim : self::denied( 'approval_not_claimed' );
@@ -293,7 +293,7 @@ final class MAD4B_SCP_Native_Recovery {
         $scratch = self::inspect( (string) ( $input['job_id'] ?? '' ) );
         if ( is_wp_error( $scratch ) ) return $scratch;
         $claim = MAD4B_SCP_Authorization::claim_mutation(
-            self::CLEAN, 'mad4b-admin', 'core', $input );
+            self::CLEAN, 'mad4b-write', 'core', $input );
         if ( is_wp_error( $claim ) || ! is_array( $claim )
             || true !== ( $claim['allowed'] ?? false ) )
             return is_wp_error( $claim ) ? $claim : self::denied( 'approval_not_claimed' );
