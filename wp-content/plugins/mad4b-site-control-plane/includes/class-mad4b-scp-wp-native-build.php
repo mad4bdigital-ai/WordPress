@@ -412,6 +412,33 @@ final class MAD4B_SCP_WP_Native_Build {
         $job['build_fingerprint'] = $fingerprint;
         $job['package_manifest_digest'] = $manifest;
         $job['version'] = $m[1];
+        $receipt = array(
+            'contract' => 'mad4b.deterministic-control-plane-package.v1',
+            'archive_format_contract' => 'mad4b.deterministic-zip.v1',
+            'archive_compression' => 'stored',
+            'source_commit_sha' => $job['head'],
+            'control_plane_version' => $m[1],
+            'package_manifest_digest' => $manifest,
+            'build_fingerprint' => $fingerprint,
+            'archive_sha256' => $job['archive_sha256'],
+            'archive_bytes' => $job['archive_bytes'],
+            'manifest_file_count' => count( $rows ),
+            'archive_file_count' => count( $rows ) + 1,
+            'manifest_excluded_files' => array( 'MAD4B-BUILD-PROVENANCE.json' ),
+            'package_file_count' => count( $rows ) + 1,
+            'package_file_count_semantics' => 'archive_file_count_including_provenance',
+            'producer_metadata_external' => true,
+            'deterministic_archive' => true,
+        );
+        $receipt_json = self::canonical_json( $receipt );
+        if ( is_wp_error( $receipt_json ) )
+            return $receipt_json;
+        $receipt_path = $dir . '/CANONICAL-PACKAGE-RECEIPT.json';
+        if ( is_link( $receipt_path ) ||
+            file_put_contents( $receipt_path, $receipt_json, LOCK_EX ) !== strlen( $receipt_json ) )
+            return new WP_Error( 'mad4b_native_receipt_write', 'Canonical receipt unavailable.' );
+        $job['canonical_receipt'] = $receipt;
+        $job['canonical_receipt_sha256'] = hash( 'sha256', $receipt_json );
         $job['php_files_token_parsed'] = $php_parsed;
         $job['finished_at'] = time();
         return true;
@@ -444,7 +471,11 @@ final class MAD4B_SCP_WP_Native_Build {
         if ( ! is_string( $provenance_json ) || strlen( $provenance_json ) > 2097152 )
             return new WP_Error( 'mad4b_native_provenance_oversize', 'Bounded provenance required.' );
         $paths = array();
-        foreach ( $entries as $e ) $paths[] = $e['path'];
+        $expected = array();
+        foreach ( $entries as $e ) {
+            $paths[] = $e['path'];
+            $expected[ $e['path'] ] = $e;
+        }
         $paths[] = 'MAD4B-BUILD-PROVENANCE.json';
         sort( $paths, SORT_STRING );
         $temp = $target . '.tmp';
@@ -464,6 +495,13 @@ final class MAD4B_SCP_WP_Native_Build {
                 $error = 'bad_archive_source'; break;
             }
             $size = strlen( $data );
+            if ( $path !== 'MAD4B-BUILD-PROVENANCE.json' &&
+                ( ! isset( $expected[ $path ] ) ||
+                $size !== (int) $expected[ $path ]['bytes'] ||
+                ! hash_equals( (string) $expected[ $path ]['sha'],
+                    sha1( 'blob ' . $size . "\\0" . $data ) ) ) {
+                $error = 'staged_source_changed_during_zip'; break;
+            }
             $crc = (int) sprintf( '%u', crc32( $data ) );
             $local = pack( 'VvvvvvVVVvv', 0x04034b50, 20, 0, 0, 0, 33,
                 $crc, $size, $size, strlen( $name ), 0 );
@@ -556,6 +594,8 @@ final class MAD4B_SCP_WP_Native_Build {
             'archive_bytes' => $job['archive_bytes'] ?? 0,
             'build_fingerprint' => $job['build_fingerprint'] ?? '',
             'package_manifest_digest' => $job['package_manifest_digest'] ?? '',
+            'canonical_receipt' => $job['canonical_receipt'] ?? array(),
+            'canonical_receipt_sha256' => $job['canonical_receipt_sha256'] ?? '',
             'blocker' => $job['blocker'] ?? '',
             'php_files_token_parsed' => $job['php_files_token_parsed'] ?? 0,
             'php_token_parse_screening_only' => true,
