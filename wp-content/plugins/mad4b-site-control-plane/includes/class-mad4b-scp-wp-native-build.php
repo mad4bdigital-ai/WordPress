@@ -499,7 +499,7 @@ final class MAD4B_SCP_WP_Native_Build {
                 ( ! isset( $expected[ $path ] ) ||
                 $size !== (int) $expected[ $path ]['bytes'] ||
                 ! hash_equals( (string) $expected[ $path ]['sha'],
-                    sha1( 'blob ' . $size . "\\0" . $data ) ) ) {
+                    sha1( 'blob ' . $size . "\0" . $data ) ) ) ) {
                 $error = 'staged_source_changed_during_zip'; break;
             }
             $crc = (int) sprintf( '%u', crc32( $data ) );
