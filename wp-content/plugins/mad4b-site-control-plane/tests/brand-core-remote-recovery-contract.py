@@ -4,6 +4,8 @@ root = Path(__file__).resolve().parents[1]
 remote = (root / "includes/class-mad4b-scp-brand-core-remote-recovery.php").read_text(encoding="utf-8")
 remediation = (root / "includes/class-mad4b-scp-operational-remediation.php").read_text(encoding="utf-8")
 parity = (root / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
+servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+host_bridge = (root / "includes/class-mad4b-scp-host-bridge.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/feature-007-spec-ci.yml").read_text(encoding="utf-8")
 runbook = (root.parents[2] / "docs/runbooks/brand-core-mcp-complete-recovery.md").read_text(encoding="utf-8")
 
@@ -82,6 +84,27 @@ for marker in (
     "'production_policy' => 'deny'",
 ):
     must(parity, marker, "remote discovery contract missing")
+
+for marker in (
+    "'mad4b/brand-core-remote-recovery-status'",
+    "'mad4b/brand-core-remote-recovery-prepare'",
+    "'mad4b/host-doctor'",
+    "'mad4b/host-operation-plan'",
+    "'mad4b/host-operation-apply'",
+):
+    must(servers, marker, "missing separate governed Host/Brand MCP mount")
+
+for marker in (
+    "MAD4B_SCP_Authorization::claim_mutation( 'mad4b/host-operation-apply'",
+    "'approval_required' => (bool) self::$operations[ $operation_id ]['approval_required']",
+    "'production_authorized' => false",
+):
+    must(host_bridge, marker, "signed Host job authorization cannot be bypassed")
+
+must(remote, "'preflight' => 'mad4b/host-operation-plan'", "Host plan must precede apply")
+must(remote, "'next' => 'mad4b/host-operation-apply'", "Host executor must be separately governed")
+must(remote, "'evidence_drift' => false", "status must begin with empty drift")
+must(remote, "'cross_read_snapshot_drift'", "cross-source readback drift must fail closed")
 
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
