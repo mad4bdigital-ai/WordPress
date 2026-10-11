@@ -135,6 +135,7 @@ final class MAD4B_SCP_Admin_UI {
 
 		$tabs = array(
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
+            'tasks' => __( 'Tasks & Workflows', 'mad4b-site-control-plane' ),
 			'agents' => __( 'Agents & Access', 'mad4b-site-control-plane' ),
 			'approvals' => __( 'Approvals', 'mad4b-site-control-plane' ),
 			'mutations' => __( 'Mutations & Recovery', 'mad4b-site-control-plane' ),
@@ -164,6 +165,7 @@ final class MAD4B_SCP_Admin_UI {
 		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
 		if ( 'overview' === $tab ) self::render_overview( $snapshot );
+        if ( 'tasks' === $tab ) self::render_tasks();
 		if ( 'agents' === $tab ) self::render_agents( $snapshot, $agent_public_id );
 		if ( 'approvals' === $tab ) self::render_approvals( $snapshot['approvals'] );
 		if ( 'mutations' === $tab ) { self::render_mutations( $snapshot['mutations'] ); self::render_recovery_preview( $snapshot['recovery_preview'] ); }
@@ -172,6 +174,46 @@ final class MAD4B_SCP_Admin_UI {
 		if ( 'audit' === $tab ) self::render_audit( $snapshot );
 		echo '</div>';
 	}
+
+    private static function render_tasks() {
+        if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) ) {
+            echo '<div class="notice notice-warning"><p>'
+                . esc_html__( 'The task index is not installed on this plugin version.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        $map = MAD4B_SCP_Operator_Journeys::discover();
+        if ( is_wp_error( $map ) || ! is_array( $map ) ) {
+            echo '<div class="notice notice-error"><p>'
+                . esc_html__( 'Unable to inspect task routes. Retry after checking site permissions.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        echo '<h2>' . esc_html__( 'What do you want to do?', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<p>' . esc_html__( 'Pick a goal. Follow the steps in order, checking the exact authority and result after each operation. These cards never approve or execute anything.', 'mad4b-site-control-plane' ) . '</p>';
+        foreach ( $map['journeys'] as $journey ) {
+            if ( ! is_array( $journey ) ) continue;
+            $missing = is_array( $journey['missing_abilities'] ?? null ) ? $journey['missing_abilities'] : array();
+            echo '<details style="max-width:1100px;margin:8px 0;padding:12px 16px;border:1px solid #c3c4c7;border-radius:4px">';
+            echo '<summary style="cursor:pointer"><strong>'
+                . esc_html( (string) ( $journey['label'] ?? '' ) ) . '</strong> — '
+                . esc_html( $missing ? __( 'Integration needed', 'mad4b-site-control-plane' )
+                    : __( 'Tools listed — not yet executed', 'mad4b-site-control-plane' ) )
+                . '</summary><ol>';
+            foreach ( $journey['steps'] as $step ) {
+                echo '<li>' . esc_html( ucfirst( str_replace( '_', ' ', (string) ( $step['label'] ?? '' ) ) ) )
+                    . ' <code dir="ltr">' . esc_html( (string) ( $step['ability_name'] ?? '' ) )
+                    . '</code> — ' . esc_html( ! empty( $step['mounted'] )
+                        ? __( 'Registered', 'mad4b-site-control-plane' )
+                        : __( 'Not registered', 'mad4b-site-control-plane' ) ) . '</li>';
+            }
+            echo '</ol><p class="description">' . esc_html( (string) ( $journey['user_guidance'] ?? '' ) )
+                . '</p></details>';
+        }
+        echo '<p class="description">'
+            . esc_html__( 'For unresolved Staging gates, open the Operational Remediation submenu. For actual writes, use the separately governed MCP ability.', 'mad4b-site-control-plane' )
+            . '</p>';
+    }
 
 	private static function render_overview( array $snapshot ) {
 		$authority = $snapshot['authority'];
