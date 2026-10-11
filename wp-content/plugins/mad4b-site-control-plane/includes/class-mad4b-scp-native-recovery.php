@@ -180,6 +180,19 @@ final class MAD4B_SCP_Native_Recovery {
             delete_option( self::OPTION );
             return self::denied( 'scratch_write_readback_failed' );
         }
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) {
+            if ( get_option( self::OPTION, array() ) === $scratch ) delete_option( self::OPTION );
+            return self::denied( 'audit_required' );
+        }
+        $audit = MAD4B_SCP_Audit::record( self::START, array(
+            'job_id' => $id, 'site_uuid' => $plan['site']['site_uuid'],
+            'plan_sha256' => $plan['plan_sha256'],
+            'mode' => $mode, 'scratch_only' => true,
+            'context_registry_modified' => false, 'production_authorized' => false ), 'success' );
+        if ( is_wp_error( $audit ) ) {
+            if ( get_option( self::OPTION, array() ) === $scratch ) delete_option( self::OPTION );
+            return self::denied( 'audit_write_failed' );
+        }
         $scheduled = function_exists( 'wp_schedule_single_event' )
             ? (bool) wp_schedule_single_event( $scratch['expires_at'], self::CRON, array( $id ) ) : false;
         return array( 'contract' => self::CONTRACT . '.start.v1', 'job_id' => $id,
@@ -269,6 +282,13 @@ final class MAD4B_SCP_Native_Recovery {
             return self::denied( 'cleanup_failed' );
         if ( function_exists( 'wp_clear_scheduled_hook' ) )
             wp_clear_scheduled_hook( self::CRON, array( $scratch['job_id'] ) );
+        if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
+            $audit = MAD4B_SCP_Audit::record( self::CLEAN, array(
+                'job_id' => $scratch['job_id'], 'scratch_removed' => true,
+                'site_uuid' => $scratch['site']['site_uuid'],
+                'production_authorized' => false ), 'success' );
+            if ( is_wp_error( $audit ) ) return self::denied( 'cleanup_audit_failed' );
+        }
         return array( 'contract' => self::CONTRACT . '.cleanup.v1',
             'scratch_removed' => true, 'job_id' => $scratch['job_id'],
             'ownership_transferred' => false, 'host_required' => false,
