@@ -151,7 +151,7 @@ final class MAD4B_SCP_Servers {
                 // fenced; cataloguing this does not grant Host authority.
                 'mad4b/host-operation-apply',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
-                'mad4b/deployment-binding-setup-apply',
+                'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
