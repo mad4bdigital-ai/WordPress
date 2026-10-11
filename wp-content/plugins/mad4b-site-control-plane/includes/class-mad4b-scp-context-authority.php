@@ -2104,6 +2104,125 @@ final class MAD4B_SCP_Context_Authority {
 		);
 	}
 
+	/**
+	 * Bounded, read-only review candidate for an authenticated remote owner.
+	 * This is not a mutation ticket, owner attestation or approval decision.
+	 */
+	public static function remote_owner_review_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		$asset_id = isset( $input['asset_id'] ) ? strtolower( trim( (string) $input['asset_id'] ) ) : '';
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $asset_id ) )
+			return new WP_Error( 'mad4b_remote_context_review_asset_id_invalid', 'Exact Context asset ID is required.' );
+		$site = self::site_binding();
+		if ( is_wp_error( $site ) ) return $site;
+		$asset = self::asset( $asset_id );
+		if ( ! is_array( $asset ) || ! $asset ) return new WP_Error( 'mad4b_remote_context_review_asset_not_authorized', 'Asset does not exist in the authorized site-bound Context registry.' );
+		if ( 'governed' !== ( isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '' ) )
+			return new WP_Error( 'mad4b_remote_context_review_task_attachment_denied', 'Task attachments cannot become Brand Authority.' );
+		if ( empty( $asset['content_complete'] ) || ! in_array( (string) ( $asset['normalization_status'] ?? '' ), array( 'ready', 'reused' ), true ) )
+			return new WP_Error( 'mad4b_remote_context_review_source_incomplete', 'Review requires complete normalized first-party content.' );
+		$hash = strtolower( (string) ( $asset['content_hash'] ?? '' ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', $hash ) )
+			return new WP_Error( 'mad4b_remote_context_review_hash_unavailable', 'Review requires exact content hash.' );
+		$site_uuid = isset( $site['site_uuid'] ) ? (string) $site['site_uuid'] : '';
+		$registry_revision = self::registry_revision();
+		$manifest = self::authority_manifest_fingerprint();
+		$source_id = isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '';
+		$basis = array( 'contract' => 'mad4b.remote-context-review-plan.v1', 'site_uuid' => $site_uuid,
+			'asset_id' => $asset_id, 'source_id' => $source_id,
+			'content_hash' => $hash, 'registry_revision' => $registry_revision,
+			'authority_manifest_fingerprint' => $manifest,
+			'category' => (string) ( $asset['category'] ?? '' ),
+			'authority_class' => (string) ( $asset['authority_class'] ?? '' ),
+			'required' => ! empty( $asset['required'] ) );
+		$plan_sha256 = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return array_merge( $basis, array(
+			'plan_sha256' => $plan_sha256,
+			'title' => (string) ( $asset['title'] ?? '' ),
+			'content_excerpt' => substr( (string) ( $asset['content_excerpt'] ?? '' ), 0, 1500 ),
+			'review_status' => (string) ( $asset['review_status'] ?? 'unreviewed' ),
+			'classification_source' => (string) ( $asset['classification_source'] ?? '' ),
+			'classification_confidence' => (float) ( $asset['classification_confidence'] ?? 0 ),
+			'owner_confirmation_required' => true,
+			'one_time_governed_mutation_ticket_required' => true,
+			'next_write_ability' => 'context/remote-owner-review-apply',
+			'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+		) );
+	}
+
+	/**
+	 * MCP equivalent of the admin's exact asset decision for a REAL, locally
+	 * mapped administrator OAuth subject. Never turn an AI token into a human.
+	 * All approvals remain governed by the normal write dispatcher ticket.
+	 */
+	public static function remote_owner_review_apply( $input ) {
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_context_review_input_invalid', 'Structured review input is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) )
+			return new WP_Error( 'mad4b_remote_context_review_identity_unavailable', 'Authenticated OAuth identity runtime is required.' );
+		$identity = MAD4B_SCP_Identity_Context::current();
+		$user_id = get_current_user_id();
+		if ( is_wp_error( $identity ) || ! is_array( $identity ) || empty( $identity['authenticated'] )
+			|| 'oauth2_bearer' !== ( $identity['auth_method'] ?? '' )
+			|| ! $user_id || (int) ( $identity['wp_user_id'] ?? 0 ) !== (int) $user_id
+			|| ! current_user_can( 'manage_options' )
+			|| empty( $identity['subject_fingerprint'] ) ) {
+			return new WP_Error( 'mad4b_remote_context_review_owner_oauth_required', 'Remote human Context review requires a directly mapped administrator OAuth identity, not an AI-only token.' );
+		}
+		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		if ( ! is_array( $site ) || 'staging' !== ( $site['environment'] ?? '' ) || empty( $site['origin_match'] ) || empty( $site['environment_match'] ) )
+			return new WP_Error( 'mad4b_remote_context_review_staging_binding_required', 'Remote owner review requires exact Staging Site Profile binding.' );
+		if ( ( $input['confirmation'] ?? '' ) !== 'I REVIEWED EXACT BRAND SOURCE' )
+			return new WP_Error( 'mad4b_remote_context_review_owner_confirmation_required', 'Explicit confirmation of the exact reviewed first-party source is required.' );
+		$plan = self::remote_owner_review_plan( array( 'asset_id' => $input['asset_id'] ?? '' ) );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $input['expected_plan_sha256'] ?? '' ) )
+			|| ! hash_equals( (string) $plan['plan_sha256'], (string) $input['expected_plan_sha256'] ) )
+			return new WP_Error( 'mad4b_remote_context_review_plan_drift', 'Exact reviewed asset/site/registry plan changed. Refresh approval evidence.' );
+		if ( empty( $identity['approval_ticket_id'] ) )
+			return new WP_Error( 'mad4b_remote_context_review_ticket_required', 'Separate exact one-time governed write approval is required.' );
+		$decision = sanitize_key( (string) ( $input['decision'] ?? '' ) );
+		if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) )
+			return new WP_Error( 'mad4b_remote_context_review_decision_invalid', 'Review decision must be explicit.' );
+		$category = isset( $input['category'] ) ? sanitize_key( (string) $input['category'] ) : $plan['category'];
+		$authority = isset( $input['authority_class'] ) ? sanitize_key( (string) $input['authority_class'] ) : $plan['authority_class'];
+		$required = array_key_exists( 'required', $input ) ? true === $input['required'] : $plan['required'];
+		// Reclassification of operational material is NOT a side effect of
+		// review: require separate human classification in wp-admin until a
+		// signed original-source owner-evidence protocol is independently proved.
+		if ( $category !== $plan['category'] || $authority !== $plan['authority_class'] || $required !== $plan['required']
+			|| ! empty( $input['classification_confirmed'] ) || ! empty( $input['approve_stale_generation_evidence'] ) )
+			return new WP_Error( 'mad4b_remote_context_review_reclassification_denied', 'Remote review preserves existing category/authority/scope and does not bypass source classification or stale evidence.' );
+		$review_input = array(
+			'category' => $plan['category'], 'authority_class' => $plan['authority_class'],
+			'required' => $plan['required'], 'required_scope_confirmed' => false,
+			'classification_confirmed' => false, 'quality_mode' => 'preserve',
+			'decision' => $decision, 'review_note' => isset( $input['review_note'] ) ? (string) $input['review_note'] : '',
+			'expected_content_hash' => $plan['content_hash'],
+			'expected_registry_revision' => $plan['registry_revision'],
+			'expected_authority_manifest_fingerprint' => $plan['authority_manifest_fingerprint'],
+		);
+		$actor = array( 'actor_type' => 'wp_admin', 'wp_user_id' => (int) $user_id,
+			'agent_public_id' => '', 'subject_fingerprint' => (string) $identity['subject_fingerprint'],
+			'issuer_fingerprint' => (string) ( $identity['issuer_fingerprint'] ?? '' ),
+			'client_fingerprint' => (string) ( $identity['client_fingerprint'] ?? '' ),
+			'session_fingerprint' => (string) ( $identity['session_fingerprint'] ?? '' ),
+			'identity_method' => 'oauth2_bearer_remote_owner' );
+		$result = self::review_asset_with_actor( $plan['asset_id'], $review_input, $actor );
+		if ( is_wp_error( $result ) ) return $result;
+		$readback = self::asset( $plan['asset_id'] );
+		$expected_status = 'approve' === $decision ? 'approved' : ( 'reject' === $decision ? 'rejected' : 'needs_changes' );
+		if ( ! is_array( $readback ) || (string) ( $readback['review_status'] ?? '' ) !== $expected_status
+			|| ! hash_equals( (string) $plan['content_hash'], (string) ( $readback['reviewed_content_hash'] ?? '' ) ) )
+			return new WP_Error( 'mad4b_remote_context_review_readback_mismatch', 'Remote review result did not match the exact persisted asset state.' );
+		return array( 'contract' => 'mad4b.remote-context-review-receipt.v1',
+			'asset_id' => $plan['asset_id'], 'decision' => $decision,
+			'current_review_status' => $expected_status, 'reviewed_content_hash' => $plan['content_hash'],
+			'owner_oauth_verified' => true, 'readback_verified' => true,
+			'registry_revision' => self::registry_revision(),
+			'authority_manifest_fingerprint' => self::authority_manifest_fingerprint(),
+			'audit' => $result, 'mutation_performed' => true );
+	}
+
 	public static function review_asset( $asset_id, array $input ) {
 		return self::review_asset_with_actor(
 			$asset_id,
