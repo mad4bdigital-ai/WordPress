@@ -280,6 +280,7 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 			if ( ! is_array( $brand_now )
 				|| ! hash_equals( (string) $brand_preflight['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
 				|| ! hash_equals( (string) $brand_preflight['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+				|| ! hash_equals( (string) $brand_preflight['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
 				|| (int) $brand_preflight['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
 				return new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed before public post creation.' );
 		}
