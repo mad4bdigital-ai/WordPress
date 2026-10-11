@@ -251,9 +251,15 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         }
         $best = $selected[0] ?? null;
         $ready = is_array( $best ) && ! empty( $best['eligible'] );
-        $write_in_doubt = '' !== $request['failed_transport']
-            && ( 'write' === $request['intent']
-                || ( $best && 'read' !== $best['execution_lane'] ) );
+        $write_in_doubt = in_array( $request['failed_transport'],
+            array( 'write-execute', 'enrollment-execute', 'developer-execute' ), true )
+            || ( '' !== $request['failed_transport'] &&
+                ( 'write' === $request['intent']
+                    || ( $best && 'read' !== $best['execution_lane'] ) ) );
+        // A client-side failure cannot prove whether a mutation committed.
+        // Never return a ready-to-replay route, even if a read tool now ranks
+        // higher in a semantically ambiguous task search.
+        if ( $write_in_doubt ) $ready = false;
         $best_row = $ready ? $best['prepared'] : array();
         return array(
             'contract' => self::CONTRACT,
@@ -274,6 +280,9 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 'classification_sha256' => (string) ( $best_row['classification_sha256'] ?? '' ),
                 'descriptor_sha256' => (string) ( $best_row['descriptor_sha256'] ?? '' ),
                 'client_tool_visibility' => 'UNVERIFIED_UNTIL_HOST_TOOLS_LIST',
+                'direct_tool_catalog_candidate' => in_array(
+                    $best['ability_name'], $base, true ),
+                'direct_tool_is_execution_authority' => false,
             ) : null,
             'candidates' => $rows,
             'candidate_count' => count( $rows ),
@@ -289,6 +298,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             ),
             'requires_exact_owner_approval_for_mutations' => true,
             'no_direct_host_tool_guarantee' => true,
+            'routing_selection_is_not_authority' => true,
             'never_auto_executes' => true,
             'client_claims_authoritative' => false,
             'breakglass_auto_enabled' => false,
