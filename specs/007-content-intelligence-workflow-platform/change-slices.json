@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 826,
+  "changed_file_count": 828,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1649,8 +1649,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-plugin-control-ui-exhaustive-census",
+      "semantic_unit": "Paginated 12-family WordPress Control inventory and admin UI coverage disclosure, native DOM census with no execution overclaims",
+      "revert_boundary": "Revert new Control census fixture and UI coverage runbook; existing admin surface route/Ability registrations remain separately controlled",
+      "certification": "source_only_native_php74_php83_wp_disposable_dom_and_staging_browser_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-control-census-runtime.php",
+        "docs/runbooks/feature007-control-ui-coverage-census-20261012.md"
+      ]
     }
   ],
-  "changed_paths_sha256": "0738a3a521947a24e8a670c653bbed5b5a965b1d640bac4dd0410d7b7db37e34",
+  "changed_paths_sha256": "98235032a19e71114488f6e5f71df1ed882bd5a965b3a217a9a4ea8d494d8eec",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
