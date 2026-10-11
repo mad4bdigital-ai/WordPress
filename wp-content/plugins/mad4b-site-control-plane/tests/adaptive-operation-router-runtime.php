@@ -137,4 +137,35 @@ require_route( is_wp_error( $router::plan( array(
 MAD4B_SCP_Policy::$can = false;
 require_route( is_wp_error( $router::plan( array( 'ability_name' => 'example/trip-plan' ) ) ),
     'canonical policy reader remains mandatory' );
+$safe_direct_visibility = $router::plan( array(
+    'ability_name' => 'example/trip-apply', 'intent' => 'write',
+    'failed_transport' => 'direct', 'failure_code' => 'tool_not_found' ) );
+require_route( $safe_direct_visibility['selected'] === null
+    && $safe_direct_visibility['failure_resolution']['state'] === 'DIRECT_CLIENT_VISIBILITY_UNVERIFIED'
+    && $safe_direct_visibility['failure_resolution']['automatic_retry_allowed'] === false
+    && $safe_direct_visibility['failure_resolution']['requires_original_one_time_approval_for_mutation']
+    && $safe_direct_visibility['transport_options'][0]['mode'] === 'canonical_governed_dispatch',
+    'tool not found advises governed original lane but never blindly reruns writes' );
+$denied_lane = $router::failure_advice( array(
+    'failed_transport' => 'write-execute',
+    'failure_code' => 'approval_denied' ) );
+require_route( $denied_lane['state'] === 'AUTHORITY_DENIAL_NO_ALTERNATE_EXECUTION'
+    && !$denied_lane['automatic_retry_allowed'],
+    'authorization denial cannot be disguised as recoverable transport failure' );
+$internal = $router::failure_advice( array(
+    'failed_transport' => 'write-execute',
+    'failure_code' => 'tool_internal_error' ) );
+require_route( $internal['state'] === 'TRANSPORT_RESULT_INDETERMINATE'
+    && $internal['requires_independent_readback'],
+    'unknown write result requires independent receipt before another attempt' );
+require_route( is_wp_error( $router::plan( array(
+    'task' => 'create trip', 'intent' => 'auto', 'phase' => 'execute' ) ) ),
+    'natural language task never silently authorizes effectful phase' );
+$explicit_execution = $router::plan( array(
+    'ability_name' => 'example/trip-apply', 'phase' => 'execute', 'intent' => 'write' ) );
+require_route( $explicit_execution['selected']['route'] === 'write-execute'
+    && $explicit_execution['selection_strategy'] ===
+        'live_registered_ability_metadata_schema_pinned_canonical_lane'
+    && $explicit_execution['transport_options'][0]['verified_in_host_tools_list'] === false,
+    'exact write route is only an untrusted until execution revalidates' );
 echo "mad4b.site-control-plane.adaptive-operation-router.runtime.v1: PASS\n";
