@@ -1740,6 +1740,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'diagnostic_budget_ratio' => $budget_ratio,
 			'request_elapsed_ms' => $request_elapsed_ms,
 			'request_overhead_ms' => max( 0, $request_elapsed_ms - $diagnostic_elapsed_ms ),
+			'plugin_bootstrap_phases' => isset( $metrics['plugin_bootstrap_phases'] ) && is_array( $metrics['plugin_bootstrap_phases'] )
+				? $metrics['plugin_bootstrap_phases'] : array( 'valid' => false ),
 			'db_query_count' => isset( $metrics['db_query_count'] ) ? max( 0, (int) $metrics['db_query_count'] ) : 0,
 			'included_file_count' => isset( $metrics['included_file_count'] ) ? max( 0, (int) $metrics['included_file_count'] ) : 0,
 			'memory_usage_bytes' => isset( $metrics['memory_usage_bytes'] ) ? max( 0, (int) $metrics['memory_usage_bytes'] ) : 0,
@@ -1762,8 +1764,26 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function request_metrics() {
 		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
 		$elapsed_ms = max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) );
+		// The main plugin stamps these O(1) request-local phase boundaries.
+		// Durations are observations, not a substitute for gateway tracing or
+		// proof that all PHP request overhead belongs to MAD4B.
+		$boot_start = defined( 'MAD4B_SCP_BOOT_START_AT' ) ? (float) MAD4B_SCP_BOOT_START_AT : 0.0;
+		$module_ready = defined( 'MAD4B_SCP_BOOT_MODULES_READY_AT' ) ? (float) MAD4B_SCP_BOOT_MODULES_READY_AT : 0.0;
+		$hooks_ready = defined( 'MAD4B_SCP_BOOT_HOOKS_READY_AT' ) ? (float) MAD4B_SCP_BOOT_HOOKS_READY_AT : 0.0;
+		$phases_valid = $boot_start > 0 && $module_ready >= $boot_start && $hooks_ready >= $module_ready;
+		$bootstrap_phases = array(
+			'valid' => $phases_valid,
+			'plugin_module_load_phase_ms' => $phases_valid ? max( 0, (int) round( ( $module_ready - $boot_start ) * 1000 ) ) : null,
+			'plugin_hook_registration_phase_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $module_ready ) * 1000 ) ) : null,
+			'plugin_bootstrap_total_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $boot_start ) * 1000 ) ) : null,
+			'pre_plugin_request_phase_ms' => $phases_valid ? max( 0, (int) round( ( $boot_start - $started ) * 1000 ) ) : null,
+			'other_plugins_and_gateway_latency_included' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 		return array(
 			'request_elapsed_ms' => $elapsed_ms,
+			'plugin_bootstrap_phases' => $bootstrap_phases,
 			'memory_usage_bytes' => function_exists( 'memory_get_usage' ) ? (int) memory_get_usage( true ) : 0,
 			'peak_memory_bytes' => function_exists( 'memory_get_peak_usage' ) ? (int) memory_get_peak_usage( true ) : 0,
 			'included_file_count' => function_exists( 'get_included_files' ) ? count( get_included_files() ) : 0,
