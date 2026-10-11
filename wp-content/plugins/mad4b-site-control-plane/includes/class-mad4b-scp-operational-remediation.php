@@ -50,6 +50,9 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false ) )
             require_once __DIR__ . '/class-mad4b-scp-deployment-binding-native.php';
         MAD4B_SCP_Deployment_Binding_Native::boot();
+        if ( ! class_exists( 'MAD4B_SCP_Adaptive_Operation_Router', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-adaptive-operation-router.php';
+        MAD4B_SCP_Adaptive_Operation_Router::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
 			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
