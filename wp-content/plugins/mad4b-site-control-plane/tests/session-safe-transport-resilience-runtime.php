@@ -27,6 +27,7 @@ require_contract( $ability['meta']['annotations']['readonly'] === true &&
     'Diagnostics remain read-only without authority escalation' );
 
 $method = new ReflectionMethod( 'MAD4B_SCP_Read_Consistency', 'session_safe_operator_summary' );
+$method->setAccessible( true ); // PHP 7.4 reflection of private fixture method.
 $sections = array( 'runtime' => array( 'checks' => array(
     'write_authority' => array( 'summary' => array(
         'effective_authority_ready' => true,
