@@ -27,6 +27,12 @@ final class MAD4B_SCP_WP_Native_Build {
         // lifecycle; the Servers class dynamically discovers the declared
         // Admin mutation and its original governed Write execution lane.
         add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 10, 1 );
+        // Also enroll immediately when the registry was created before this
+        // module's boot order. Registration is idempotent by adapter id.
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false ) &&
+            method_exists( 'MAD4B_SCP_Adapter_Registry', 'instance' ) ) {
+            self::register_adapter( MAD4B_SCP_Adapter_Registry::instance() );
+        }
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
         add_action( self::HOOK, array( __CLASS__, 'tick' ) );
     }
