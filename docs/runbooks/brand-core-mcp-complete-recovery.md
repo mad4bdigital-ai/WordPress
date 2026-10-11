@@ -36,6 +36,47 @@ independent authority index.
 2. When quarantine exists, call `context/legacy-reconciliation-census` and
    `context/legacy-owner-transfer-discover` using the current administrator.
    Both read-only. A foreign or mixed-owned record MUST NOT be adopted.
+### Independent provider identity proof (new read-only acceptance)
+
+The old legacy plan by itself does not prove Google Drive ownership. For
+one `source_id` returned by discovery, use
+`context/legacy-owner-transfer-evidence` with exactly `{ "source_id": "<64-hex>" }`
+**after** the read-only plan. It re-reads the original folder and performs
+a bounded, *complete* recursive provider inventory. A successful report must
+show `folder_membership_verified=true`, an exact match to the stored
+`asset_count` (historically 12 for All Royal Egypt), and a
+`provider_proof_sha256` bound to the original source plan, unchanged provider
+file IDs, parent identities, MIME types, content hashes and modified versions.
+Provider extras can exist; all original files must be present. Missing IDs,
+duplicate IDs, different folder identity, truncated API listing, changed
+recursive scope, shortcuts and unknown parentage all block adoption.
+
+**Membership is not legal ownership, supplier rights, or editorial approval.**
+The evidence reports `legal_owner_or_rights_verified=false` and
+`independent_owner_approval_required=true`; it changes nothing in Drive or
+WordPress. The existing governed owner/Host approval workflow must independently
+confirm the original owner and business scope. Never use the file title,
+general Drive access or a free-form note alone as owner attestation.
+
+The separately approved Staging-only
+`context/legacy-owner-transfer-apply` now **requires**
+`expected_provider_proof_sha256` in addition to its exact plan digest, Brand
+ID, original folder ID, evidence reference and confirmation. Immediately
+before the locked registry mutation it rescans the actual provider and
+recomputes this proof, rejecting `mad4b_legacy_transfer_provider_proof_stale`
+when any verified file identity or version changed. Re-run the evidence read
+and obtain a new approval; never auto-refresh the proof inside the write.
+The Host-signed fresh identity, one-time approval and independently certified
+durable rollback gates are unchanged and cannot be replaced by this proof.
+
+Native refusal fixture:
+`tests/context-legacy-owner-provider-proof-runtime.php` (12 original
+assets + one unrelated extra; missing, truncated, duplicate, shortcut, wrong
+folder, parent, scope, canonical IDs, content version drift). Run this in PHP
+7.4 and 8.3, followed by independent real provider 403/429/timeouts and
+database crash/restart/rollback certification. GitHub Actions with zero
+executed jobs is not an acceptance receipt.
+
 3. For **one truly unbound** legacy governed Drive source, call
    `context/legacy-owner-transfer-plan` using its exact stored source SHA.
    Review owner, original folder, site/brand identity, tenant, every asset,
