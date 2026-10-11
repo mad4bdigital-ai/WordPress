@@ -581,6 +581,36 @@ final class MAD4B_SCP_WP_Native_Build {
         return is_string( $raw ) ? sha1( 'blob ' . strlen( $raw ) . "\0" . $raw ) : '';
     }
 
+    /**
+     * Read the persisted job under its filesystem lock, bypassing the
+     * request-local WordPress option cache. A second get_option() alone is not
+     * a cross-process fresh read when a worker already cached old state.
+     */
+    private static function locked_job_read() {
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) ||
+            ! function_exists( 'maybe_unserialize' ) )
+            return new WP_Error( 'mad4b_native_job_db_unavailable',
+                'Current worker state cannot be read independently of cache.' );
+        try {
+            $sql = $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                self::OPTION );
+            $raw = $wpdb->get_var( $sql );
+        } catch ( Throwable $error ) {
+            return new WP_Error( 'mad4b_native_job_db_read_failed',
+                'Current worker state unavailable; no mutation attempted.' );
+        }
+        if ( ! is_string( $raw ) )
+            return new WP_Error( 'mad4b_native_job_db_missing',
+                'Current worker state is missing from persistent storage.' );
+        $value = maybe_unserialize( $raw );
+        return is_array( $value ) ? $value :
+            new WP_Error( 'mad4b_native_job_db_invalid',
+                'Current worker state is not a valid record.' );
+    }
+
     public static function tick() {
         if ( ! self::exact_staging() ) return;
         $observed = get_option( self::OPTION, array() );
@@ -598,7 +628,8 @@ final class MAD4B_SCP_WP_Native_Build {
             // must reload canonical state AFTER obtaining its per-source lock;
             // otherwise a delayed worker can roll back another tick's cursor
             // or execute work belonging to a superseding job.
-            $job = get_option( self::OPTION, array() );
+            $job = self::locked_job_read();
+            if ( is_wp_error( $job ) ) return;
             if ( ! is_array( $job ) ||
                 ( $job['head'] ?? '' ) !== $observed['head'] ||
                 ! in_array( $job['state'] ?? '',
