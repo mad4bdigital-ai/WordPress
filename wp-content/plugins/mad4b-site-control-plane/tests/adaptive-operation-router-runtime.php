@@ -46,7 +46,10 @@ class MAD4B_SCP_Unified_Capability_Gateway {
         $items = array();
         foreach ( $input['ability_names'] as $name ) {
             $read = substr( $name, -5 ) === '-plan';
-            $lane = $read ? 'read' : 'write';
+            $enrollment = strpos( $name, 'example/enroll-' ) === 0;
+            $developer = strpos( $name, 'example/developer-' ) === 0;
+            $lane = $enrollment ? 'enrollment' :
+                ( $developer ? 'developer' : ( $read ? 'read' : 'write' ) );
             $items[] = array(
                 'ability_name' => $name, 'execution_eligible' => true,
                 'preparation_receipt_ready' => true,
@@ -56,9 +59,12 @@ class MAD4B_SCP_Unified_Capability_Gateway {
                 'classification_sha256' => str_repeat( 'b', 64 ),
                 'authority_scope_sha256' => str_repeat( 'c', 64 ),
                 'classification' => $read ? 'read' : 'write',
-                'execution' => array( 'state' => 'governed_dispatch',
-                    'expected_execution_lane' => $lane,
-                    'dispatch_tool' => $read ? 'mad4b/read-execute' : 'mad4b/write-execute',
+                'execution' => array( 'state' => $enrollment
+                    ? 'requires_operation_resolution' : 'governed_dispatch',
+                    'expected_execution_lane' => $enrollment ? '' : $lane,
+                    'dispatch_tool' => $enrollment ? 'mad4b/enrollment-execute'
+                        : ( $developer ? 'mad4b/developer-execute'
+                        : ( $read ? 'mad4b/read-execute' : 'mad4b/write-execute' ) ),
                     'expected_input_schema_sha256' => str_repeat( 'a', 64 ),
                     'expected_classification_sha256' => str_repeat( 'b', 64 ) ),
             );
@@ -137,6 +143,24 @@ require_route( is_wp_error( $router::plan( array(
 MAD4B_SCP_Policy::$can = false;
 require_route( is_wp_error( $router::plan( array( 'ability_name' => 'example/trip-plan' ) ) ),
     'canonical policy reader remains mandatory' );
+$enrollment = $router::plan( array(
+    'ability_name' => 'example/enroll-managed-skills', 'intent' => 'write' ) );
+require_route( $enrollment['state'] === 'ENROLLMENT_OPERATION_ID_AND_DIGESTS_REQUIRED'
+    && $enrollment['selected']['route'] === 'enrollment-execute'
+    && $enrollment['selected']['enrollment_operation_resolution_required'],
+    'enrollment operations require exact operation ID plus original registration digests' );
+$dev = $router::plan( array(
+    'ability_name' => 'example/developer-filesystem', 'intent' => 'write' ) );
+require_route( $dev['state'] === 'ISOLATED_DEVELOPER_STEP_UP_REQUIRED'
+    && $dev['selected']['route'] === 'developer-execute'
+    && $dev['selected']['developer_isolated_step_up_required'],
+    'developer lane cannot be changed into ordinary write approval' );
+$enrollment_doubt = $router::plan( array(
+    'ability_name' => 'example/enroll-managed-skills', 'intent' => 'write',
+    'failed_transport' => 'enrollment-execute', 'failure_code' => 'timeout' ) );
+require_route( $enrollment_doubt['selected'] === null
+    && $enrollment_doubt['state'] === 'PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK',
+    'indeterminate enrollment completion cannot be replayed' );
 $safe_direct_visibility = $router::plan( array(
     'ability_name' => 'example/trip-apply', 'intent' => 'write',
     'failed_transport' => 'direct', 'failure_code' => 'tool_not_found' ) );
