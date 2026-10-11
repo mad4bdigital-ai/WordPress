@@ -107,12 +107,14 @@ function assert_native( $condition, $why ) {
 $c = 'MAD4B_SCP_WP_Native_Build';
 $c::boot();
 assert_native( MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' )
-    === array( $c::PREFIX . 'start' ),
+    === array( $c::PREFIX . 'start', MAD4B_SCP_WP_Native_Self_Approval::APPLY ),
     'Boot automatically self-enrolls the native build adapter in the governed registry' );
 $c::register_abilities();
 $c::register_abilities();
-assert_native( count( $GLOBALS['native_abilities'] ) === 6,
-    'Six idempotently registered governed abilities' );
+MAD4B_SCP_WP_Native_Self_Approval::register_abilities();
+MAD4B_SCP_WP_Native_Self_Approval::register_abilities();
+assert_native( count( $GLOBALS['native_abilities'] ) === 8,
+    'Eight idempotently registered governed abilities including self-approval' );
 foreach ( array( 'capabilities', 'plan', 'status', 'simulate', 'export-chunk' ) as $name ) {
     $a = $GLOBALS['native_abilities'][ $c::PREFIX . $name ];
     assert_native( $a['category'] === 'mad4b-read' &&
@@ -156,12 +158,26 @@ assert_native( is_wp_error( $c::export_chunk( array(
 $c::tick();
 assert_native( $c::status()['state'] === 'NOT_RUN',
     'Cron never invents a job or starts itself' );
+$selfplan = MAD4B_SCP_WP_Native_Self_Approval::plan( array(
+    'expected_head' => $sha, 'reason' => 'Review local self-certification risk' ) );
+assert_native( ! is_wp_error( $selfplan ) && ! $selfplan['eligible'] &&
+    $selfplan['evidence_mode'] === 'site_self_certified_staging' &&
+    $selfplan['independent_signature_present'] === false &&
+    $selfplan['native_php_matrix_executed'] === false &&
+    $selfplan['release_certified'] === false,
+    'Self-approval never asserts independent CI or signs a missing package' );
+assert_native( is_wp_error( MAD4B_SCP_WP_Native_Self_Approval::plan( array(
+    'expected_head' => 'master', 'reason' => 'unsafe source' ) ) ),
+    'Self-approval refuses moving branch names' );
+assert_native( is_wp_error( MAD4B_SCP_WP_Native_Self_Approval::apply( array(
+    'expected_head' => $sha, 'reason' => 'Not approved', 'confirmation' => 'AUTO APPROVE' ) ) ),
+    'Self-approval mutation refuses unknown confirmation' );
 // Real dynamic registration contract: no central Server ability allowlist.
 $registry = new MAD4B_SCP_Adapter_Registry();
 $c::register_adapter( $registry );
 $c::register_adapter( $registry );
 $ability = $c::PREFIX . 'start';
-assert_native( $registry->ability_names( 'admin' ) === array( $ability ) &&
+assert_native( $registry->ability_names( 'admin' ) === array( $ability, MAD4B_SCP_WP_Native_Self_Approval::APPLY ) &&
     $registry->ability_names( 'write' ) === array() &&
     $registry->ability_names( 'content' ) === array(),
     'Source Worker enrolls one Admin Ability without duplicate/manual core entries' );
@@ -174,7 +190,7 @@ class MAD4B_SCP_Future_Module_Fixture extends MAD4B_SCP_Adapter_Base {
 }
 assert_native( true === $registry->register( new MAD4B_SCP_Future_Module_Fixture() ) &&
     $registry->ability_names( 'admin' ) === array(
-        $ability, 'future/governed-action' ),
+        $ability, MAD4B_SCP_WP_Native_Self_Approval::APPLY, 'future/governed-action' ),
     'A second future module enrolls without any Server core allowlist edit' );
 $adapter = new MAD4B_SCP_WP_Native_Build_Adapter();
 assert_native( $adapter->provider_key() === 'core' &&
