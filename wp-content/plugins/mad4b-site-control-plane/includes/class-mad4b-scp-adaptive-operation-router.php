@@ -128,12 +128,33 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 'declared_readonly_only' => 'read' === $request['intent'],
             ) );
             if ( is_wp_error( $matches ) ) return $matches;
+            $items = (array) ( $matches['items'] ?? array() );
+            // Query the declared-readonly index ONLY when the auto top-N
+            // was dominated by mutations. This avoids a second full scan
+            // in the normal case while giving safe planners a fair chance.
+            if ( 'auto' === $request['intent'] ) {
+                $has_read = false;
+                foreach ( $items as $candidate )
+                    if ( true === ( $candidate['declared_readonly'] ?? null ) ) {
+                        $has_read = true;
+                        break;
+                    }
+                if ( ! $has_read ) {
+                    $reads = MAD4B_SCP_Unified_Capability_Gateway::search( array(
+                        'task' => $request['task'],
+                        'limit' => $request['max_candidates'],
+                        'declared_readonly_only' => true ) );
+                    if ( ! is_wp_error( $reads ) )
+                        $items = array_merge( (array) ( $reads['items'] ?? array() ), $items );
+                }
+            }
             $names = array(); $ranking = array();
-            foreach ( (array) ( $matches['items'] ?? array() ) as $row ) {
+            foreach ( $items as $row ) {
                 $ability = (string) ( $row['ability_name'] ?? '' );
                 if ( '' === $ability || isset( $ranking[ $ability ] ) ) continue;
                 $names[] = $ability;
                 $ranking[ $ability ] = (int) ( $row['relevance_score'] ?? 0 );
+                if ( count( $names ) >= self::MAX_CANDIDATES ) break;
             }
         }
         if ( empty( $names ) ) return array( 'names' => array(),
