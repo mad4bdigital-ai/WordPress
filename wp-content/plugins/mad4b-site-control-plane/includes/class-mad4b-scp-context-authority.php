@@ -275,13 +275,86 @@ final class MAD4B_SCP_Context_Authority {
 		return self::authorized_assets_from_records( self::raw_assets(), $sources, $site );
 	}
 
+    /**
+     * Privacy-preserving diagnostic when a pre-binding Staging profile still
+     * has old source/asset options. It cannot classify ANY record as owned:
+     * there is no independent deployment identity yet.
+     *
+     * Keeping read-only recovery visible is not equivalent to relaxing the
+     * Operational Integrity or approved legacy transfer gate.
+     */
+    public static function legacy_unbound_staging_census( $site, $resolver, $source_rows, $asset_rows ) {
+        if ( ! is_array( $site ) || ! is_array( $resolver ) ||
+            'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED' !== (string) ( $resolver['reason'] ?? '' ) ||
+            'staging' !== (string) ( $site['configured_environment'] ?? '' ) ||
+            'staging' !== (string) ( $site['environment'] ?? '' ) ||
+            empty( $site['origin_match'] ) || empty( $site['environment_match'] ) ||
+            empty( $site['authority_ready'] ) ||
+            ! empty( $site['deployment_binding_configured'] ) ||
+            ! empty( $site['deployment_binding_bound'] ) ||
+            ! is_array( $source_rows ) || ! is_array( $asset_rows ) ||
+            count( $source_rows ) > 1000 || count( $asset_rows ) > 1000 )
+            return new WP_Error( 'mad4b_legacy_census_unbound_unsafe',
+                'Unbound diagnostic requires exact Staging and a bounded source/asset inventory.' );
+        $counts = static function( $n ) {
+            return array(
+                'already_owned' => 0, 'owner_unknown' => 0,
+                'foreign_scope' => 0, 'conflicting_metadata' => 0,
+                'malformed' => 0, 'scope_unverified' => $n,
+            );
+        };
+        return array(
+            'contract' => 'mad4b.context-legacy-reconciliation-census.v1',
+            'state' => 'UNVERIFIED_DEPLOYMENT_BINDING',
+            'sources' => $counts( count( $source_rows ) ),
+            'assets' => $counts( count( $asset_rows ) ),
+            'source_quarantine_count' => count( $source_rows ),
+            'asset_quarantine_count' => count( $asset_rows ),
+            'scope_fingerprint' => '',
+            'operational_scope_verified' => false,
+            'deployment_binding_configured' => false,
+            'deployment_binding_bound' => false,
+            'next_safe_action' => 'enroll_independent_deployment_binding_and_reverify_scope',
+            'read_only' => true, 'mutation_performed' => false,
+            'migration_authorized' => false,
+            'legal_rights_verified' => false,
+            'owner_attestation_verified' => false,
+            'no_ownership_classification_performed' => true,
+        );
+    }
+
     /** Aggregate only; does not expose or adopt quarantined legacy data. */
     public static function legacy_reconciliation_census() {
         if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ||
             ! class_exists( 'MAD4B_SCP_Policy', false ) || ! MAD4B_SCP_Policy::can_read() )
             return new WP_Error( 'mad4b_legacy_census_permission_denied', 'Administrator read permission required.' );
         $checkpoint = MAD4B_SCP_Operational_Integrity::capture();
-        if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+        if ( is_wp_error( $checkpoint ) ) {
+            // Only the explicitly un-enrolled Staging binding can degrade to
+            // privacy-preserving counts. All other integrity errors fail shut.
+            $site = class_exists( 'MAD4B_SCP_Site_Profile' )
+                ? MAD4B_SCP_Site_Profile::status() : array();
+            $resolver = class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' )
+                ? MAD4B_SCP_Deployment_Mode_Resolver::resolve() : array();
+            if ( is_array( $resolver ) &&
+                'SITE_DEPLOYMENT_BINDING_NOT_ENROLLED' === ( $resolver['reason'] ?? '' ) ) {
+                $sources = self::raw_sources();
+                $assets = self::raw_assets();
+                $result = self::legacy_unbound_staging_census( $site, $resolver, $sources, $assets );
+                if ( is_wp_error( $result ) ) return $result;
+                // Cross-read guard: unrelated writes must not create a
+                // fabricated stable diagnostic across independent options.
+                if ( $sources !== self::raw_sources() || $assets !== self::raw_assets() )
+                    return new WP_Error( 'mad4b_legacy_census_snapshot_drift',
+                        'Legacy inventory changed during the read; retry after state reconciliation.' );
+                $site_again = MAD4B_SCP_Site_Profile::status();
+                if ( ! is_array( $site_again ) || $site !== $site_again )
+                    return new WP_Error( 'mad4b_legacy_census_site_drift',
+                        'Site Profile changed during the read.' );
+                return $result;
+            }
+            return $checkpoint;
+        }
         $sources = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_sources() );
         if ( is_wp_error( $sources ) ) return $sources;
         $assets = MAD4B_SCP_Operational_Scope_Guard::legacy_reconciliation_census( self::raw_assets() );
@@ -295,6 +368,8 @@ final class MAD4B_SCP_Context_Authority {
             'source_quarantine_count' => $sources['quarantined'],
             'asset_quarantine_count' => $assets['quarantined'],
             'scope_fingerprint' => $checkpoint['fingerprint'],
+            'state' => 'TRUSTED_SCOPE_VERIFIED',
+            'operational_scope_verified' => true,
             'read_only' => true,
             'mutation_performed' => false,
             'migration_authorized' => false,
