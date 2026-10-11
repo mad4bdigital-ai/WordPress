@@ -206,6 +206,16 @@ final class MAD4B_SCP_Native_Recovery {
         if ( $site !== ( $scratch['site'] ?? null ) ) return self::denied( 'site_drift' );
         return $scratch;
     }
+    /** Pure reducer; tests do not forge a live WordPress readback. */
+    public static function cross_request_verified( $writer, $reader, $expires_at,
+        $now, $legacy_exact ) {
+        return is_string( $writer ) && is_string( $reader )
+            && 1 === preg_match( '/^[a-f0-9]{32}$/D', $writer )
+            && 1 === preg_match( '/^[a-f0-9]{32}$/D', $reader )
+            && ! hash_equals( $writer, $reader )
+            && is_int( $expires_at ) && is_int( $now )
+            && $now <= $expires_at && true === $legacy_exact;
+    }
     public static function readback( $input = array() ) {
         if ( ! self::can_read() || ! self::valid_input( $input, array( 'job_id' ) ) )
             return self::denied( 'read_denied' );
@@ -220,7 +230,9 @@ final class MAD4B_SCP_Native_Recovery {
             $legacy_exact = is_array( $current ) && hash_equals(
                 (string) $scratch['legacy_plan_sha256'], (string) ( $current['plan_sha256'] ?? '' ) );
         }
-        $passed = $separate && $fresh && $legacy_exact;
+        $passed = self::cross_request_verified(
+            (string) $scratch['writer_request_marker'], self::request_marker(),
+            (int) $scratch['expires_at'], time(), $legacy_exact );
         return array( 'contract' => self::CONTRACT . '.readback.v1',
             'job_id' => $scratch['job_id'], 'mode' => $scratch['mode'],
             'state' => $passed ? 'WP_NATIVE_CROSS_REQUEST_VERIFIED' : 'WP_NATIVE_INCOMPLETE',
