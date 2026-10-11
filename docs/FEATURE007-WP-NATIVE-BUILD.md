@@ -5,6 +5,72 @@ the existing external `standalone_source_build` runner. It is not enabled as
 the default release channel, does not execute downloaded source and does not
 authorize deployment.
 
+## Owner-delegated self-certification on Staging
+
+**New optional trust policy:** \`site_self_certified_staging\`. The enrolled
+Staging WordPress site is explicitly allowed to **accept its own local build
+checks as the evidence basis for a Staging install**. This eliminates the
+external Ed25519 signer and PHP 7.4/8.3 matrix *for this locally self-approved
+Staging lane*, but does not claim those tests ran or create a certificate for
+CI, master, Production or the conventional signed-candidate lane.
+
+The following are distinct, dynamically enrolled WordPress Abilities:
+
+- \`mad4b/wp-native-build-start\`: owner-approved exact-source ZIP packaging.
+- \`mad4b/wp-native-build-simulate\`: read-only package checks.
+- \`mad4b/wp-native-self-approve-plan\`: read-only, exact build/receipt
+  and existing governed WordPress updater preflight.
+- \`mad4b/wp-native-self-approve-install\`: **mutating** Staging-only action
+  with existing enrolled-owner permissions, OAuth authority step-up,
+  the original governed candidate upload grant and one-time approval, exact
+  plan SHA, explicit \`INSTALL SELF APPROVED PACKAGE ON STAGING\` confirmation
+  and an append-only audit of the accepted trust downgrade.
+
+### Example MCP plan input
+
+\`\`\`json
+{
+  "expected_head": "<40-character immutable GitHub commit SHA>",
+  "reason": "Owner delegates self-certification for this Staging-only install"
+}
+\`\`\`
+
+Review the returned \`eligible\`, \`plan_sha256\`,
+\`evidence_mode=site_self_certified_staging\` and the explicit
+\`independent_signature_present=false\`,
+\`native_php_matrix_executed=false\`, \`release_certified=false\`.
+Only a locally completed \`BUILT_UNVERIFIED\` artifact with matching private
+SHA-256 ZIP bytes, canonical receipt, token-screening count, Staging Site
+Profile and exact repository commit can become eligible. A source commit
+or passing simulated fixture alone is insufficient.
+
+For apply, send the same \`expected_head\` and \`reason\`, reviewed
+\`expected_plan_sha256\` and literal
+\`confirmation="INSTALL SELF APPROVED PACKAGE ON STAGING"\`, plus the
+governance-controlled approval ticket as required by the existing upload
+authority. The code copies the already-built private package into the
+**existing** \`MAD4B_SCP_Self_Update::upload_apply\` path. That path retains
+source re-resolution, archive/provenance verification, backup, maintenance
+lease, post-update readback and rollback. No new unsafe installer is created.
+
+**This is an explicit owner-accepted reduction in test independence, not a
+security certification.** Production rejects the action. GitHub Release
+verdicts, main/master branch protection and conventional signed release gates
+are not changed. The option to self-certify does NOT implicitly grant the
+governed upload permission or approve its one-time operation. New source
+Abilities become available on the live site only after an independently
+authorized bootstrap installs a package containing them.
+
+Source fixtures:
+
+\`\`\`sh
+php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php
+php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php
+\`\`\`
+
+These commands are test instructions and not claims that native PHP 7.4/8.3
+or Staging execution has already passed.
+
 ## WordPress-local acceptance simulation (non-authorizing)
 
 On Staging, the read-only `mad4b/wp-native-build-simulate` Ability provides a
