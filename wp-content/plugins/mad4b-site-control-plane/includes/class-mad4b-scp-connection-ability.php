@@ -53,6 +53,7 @@ final class MAD4B_SCP_Connection_Ability {
 							'include_operation_discovery' => array( 'type' => 'boolean', 'default' => false ),
 							'include_staging_certification' => array( 'type' => 'boolean', 'default' => false ),
 							'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
+							'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'identity', 'full' ), 'default' => 'full' ),
 							'budget_ms' => array( 'type' => 'integer', 'minimum' => 1000, 'maximum' => 30000, 'default' => 12000 ),
 						),
 						'additionalProperties' => false,
@@ -75,7 +76,14 @@ final class MAD4B_SCP_Connection_Ability {
 
 	public static function execute() {
 		if ( ! class_exists( 'MAD4B_SCP_Connection_Status' ) ) return new WP_Error( 'mad4b_connection_status_unavailable', 'MAD4B connection readiness service is unavailable.' );
-		return MAD4B_SCP_Connection_Status::status();
+		try {
+			return MAD4B_SCP_Connection_Status::status();
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_connection_status_runtime_failure',
+				'Connection status could not complete; inspect compact preflight.',
+				array( 'status' => 503, 'retryable' => true, 'read_only' => true,
+					'mutation_performed' => false, 'raw_exception_exposed' => false ) );
+		}
 	}
 
 	public static function preflight( $input = array() ) {
@@ -85,6 +93,7 @@ final class MAD4B_SCP_Connection_Ability {
 		}
 
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
+		$scope = isset( $input['diagnostic_scope'] ) && 'identity' === (string) $input['diagnostic_scope'] ? 'identity' : 'full';
 		$budget_ms = isset( $input['budget_ms'] ) ? absint( $input['budget_ms'] ) : MAD4B_SCP_Connector_Resilience::DEFAULT_REQUEST_BUDGET_MS;
 		$include_discovery = ! empty( $input['include_operation_discovery'] );
 		$include_certification = ! empty( $input['include_staging_certification'] );
@@ -168,6 +177,14 @@ final class MAD4B_SCP_Connection_Ability {
 			},
 		);
 
+		// During a transport incident the caller can verify the site and exact
+		// installed package without invoking current-grants and peer scans.
+		// This is never a substitute for full write-authority acceptance.
+		if ( 'identity' === $scope ) {
+			unset( $checks['connection'], $checks['write_authority'] );
+			$include_certification = false;
+			$include_discovery = false;
+		}
 		if ( $include_certification ) {
 			$checks['staging_certification'] = static function () {
 				return class_exists( 'MAD4B_SCP_Staging_Certification' )
@@ -189,12 +206,32 @@ final class MAD4B_SCP_Connection_Ability {
 			};
 		}
 
-		$result = MAD4B_SCP_Connector_Resilience::run_checks( $checks, array(
-			'budget_ms' => $budget_ms,
-			'retry_transient' => $retry,
-		) );
+		try {
+			$result = MAD4B_SCP_Connector_Resilience::run_checks( $checks, array(
+				'budget_ms' => $budget_ms,
+				'retry_transient' => $retry,
+			) );
+			if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'invalid_preflight_result' );
+		} catch ( Throwable $error ) {
+			// Diagnostic failure is explicitly partial, never a successful
+			// status and never permission to retry a mutation.
+			$result = array(
+				'state' => 'partial', 'partial' => true, 'checks' => array(),
+				'failed_checks' => array_keys( $checks ), 'retryable_checks' => array(),
+				'error_code' => 'mad4b_preflight_internal_exception',
+				'error_class' => get_class( $error ),
+				'read_only' => true, 'mutation_performed' => false,
+				'raw_exception_exposed' => false,
+			);
+		}
 
 		$result['contract'] = self::PREFLIGHT_CONTRACT;
+		$result['diagnostic_scope'] = $scope;
+		$result['complete_runtime_authority_evaluated'] = 'full' === $scope;
+		$result['deferred_scope_checks'] = 'identity' === $scope
+			? array( 'connection', 'write_authority', 'staging_certification', 'operation_discovery' )
+			: array();
+		$result['full_readiness_inferred_from_identity_only'] = false;
 		$result['payload_profile'] = 'compact';
 		$result['included_staging_certification'] = $include_certification;
 		$result['included_operation_discovery'] = $include_discovery;
