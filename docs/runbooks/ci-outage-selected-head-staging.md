@@ -20,7 +20,7 @@ There are always two distinct and valid inputs:
 
 - `github_ci_verdict`: independently verified normal, successful CI release
   verdict and trusted source-specific package.
-- `owner_signed_ci_outage`: exact source / PHP 8.3 / canonical package / ZIP
+- `owner_signed_ci_outage`: exact source / PHP 7.4 + 8.3 / canonical package / ZIP
   runtime / G9 native tests **all PASS**, independently reviewed and Ed25519
   signed by an enrolled trusted Staging attestor, within the 24-hour window.
 
@@ -55,26 +55,28 @@ on GitHub as a live site update.
 
 - **Signer:** a separately operated trusted test machine with PHP 8.3/Docker + local v7 isolated kit. Generate an Ed25519 private signing key *outside WordPress*; do not transmit it to MCP, ChatGPT, GitHub or WordPress.
 - **WordPress owner:** enroll only its raw 32-byte Ed25519 *public* key once using the new scoped MCP Abilities `mad4b/staging-offline-attestor-enroll-plan` then `mad4b/staging-offline-attestor-enroll-apply`, with current Site Profile identity, exact plan SHA, dedicated governed Write ability grant, enrolled administrator, ChatGPT OAuth authority step-up and explicit `ENROLL STAGING OFFLINE ATTESTOR` confirmation.
-- **Verifier:** `MAD4B_SCP_CI_Outage_Attestation::verify()` uses pinned public key from the WordPress option and PHP sodium to verify receipt signature. The receipt must match immutable GitHub package source commit, archive SHA-256, build fingerprint, package manifest digest, ZIP size, site UUID, origin, literal `staging`, evidence-bundle SHA-256 and five named PASS gates. Receipt is valid at most **24 hours**. Changed key or absent independent native tests fail closed.
-- **GitHub publisher:** `tools/mad4b_publish_offline_staging_candidate.py` validates exact locally built deterministic ZIP, exact canonical receipt, five gate outcomes, native evidence bundle digest and signed PR-head identity. It creates immutable, source-named ZIP and manifest; optionally publishes them to the *already existing* GitHub Release `mad4b-site-control-plane-update-channel` via authenticated `gh` CLI. No Actions run is needed. Neither master pointer nor old manifest is replaced, and it refuses existing asset overwrite.
+- **Verifier:** `MAD4B_SCP_CI_Outage_Attestation::verify()` uses pinned public key from the WordPress option and PHP sodium to verify receipt signature. The receipt must match immutable GitHub package source commit, archive SHA-256, build fingerprint, package manifest digest, ZIP size, site UUID, origin, literal `staging`, evidence-bundle SHA-256 and six named PASS gates. Receipt is valid at most **24 hours**. Changed key or absent independent native tests fail closed.
+- **GitHub publisher:** `tools/mad4b_publish_offline_staging_candidate.py` validates exact locally built deterministic ZIP, exact canonical receipt, six gate outcomes, native evidence bundle digest and signed PR-head identity. It creates immutable, source-named ZIP and manifest; optionally publishes them to the *already existing* GitHub Release `mad4b-site-control-plane-update-channel` via authenticated `gh` CLI. No Actions run is needed. Neither master pointer nor old manifest is replaced, and it refuses existing asset overwrite.
 
 ## Native test requirements (not waived)
 
 Verify *on the exact selected source HEAD*:
 
 1. `g9_delivery_contract=PASS`: all source fingerprints and isolation/denial gates.
-2. `php83_tree_syntax=PASS`: lint full plugin source under actual PHP 8.3.
-3. `canonical_package_receipt=PASS`: deterministic official builder and SHA-256 receipt.
-4. `isolated_zip_runtime_integrity=PASS`: independent runtime manifest/ZIP verification.
-5. `exact_source_verification=PASS`: PR head equals immutable source commit and artifact provenance.
+2. `php74_tree_syntax=PASS`: lint full plugin source under actual PHP 7.4. A PHP 8.3 result never substitutes for this gate.
+3. `php83_tree_syntax=PASS`: lint full plugin source under actual PHP 8.3.
+4. `canonical_package_receipt=PASS`: deterministic official builder and SHA-256 receipt.
+5. `isolated_zip_runtime_integrity=PASS`: independent runtime manifest/ZIP verification.
+6. `exact_source_verification=PASS`: PR head equals immutable source commit and artifact provenance.
 
-`Build-MAD4B-F007-Selected-PR-Latest-v7.ps1` is an established source of native evidence but **an individual successful run only proves what that run checked**; evaluate the five exact gates and retain a source-bound evidence bundle. Do not turn a failed test into `PASS` or sign partial source evidence. The owner must review the complete bundle; the publisher does not manufacture test outcomes.
+`Build-MAD4B-F007-Selected-PR-Latest-v7.ps1` is an established source of native evidence but **an individual successful run only proves what that run checked**; evaluate the six exact gates and retain a source-bound evidence bundle. Do not turn a failed test into `PASS` or sign partial source evidence. The owner must review the complete bundle; the publisher does not manufacture test outcomes.
 
 Example `gate-results.json`:
 
 ```json
 {
   "g9_delivery_contract": "PASS",
+  "php74_tree_syntax": "PASS",
   "php83_tree_syntax": "PASS",
   "canonical_package_receipt": "PASS",
   "isolated_zip_runtime_integrity": "PASS",
@@ -107,7 +109,7 @@ python tools/mad4b_publish_offline_staging_candidate.py `
 
 The tool emits the **public** key for scoped owner enrollment and writes the signed exact-SHA GitHub release ZIP and manifest. After enrollment and independent review, rerun with `--publish-to-github` to publish those exact immutable assets. The fixed GH CLI release tag must already exist. If the selected PR HEAD moves, the publisher blocks and the signer must repeat tests/signing on the new HEAD.
 
-No GitHub Actions terminal verdict is queried by this path. For continued unattended, compliant publishing, use an authorized independent runner to run the same five native tests and sign reports; the signer must remain outside any untrusted WordPress process.
+No GitHub Actions terminal verdict is queried by this path. For continued unattended, compliant publishing, use an authorized independent runner to run the same six native tests and sign reports; the signer must remain outside any untrusted WordPress process.
 
 ## MCP update
 
