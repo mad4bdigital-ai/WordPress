@@ -234,6 +234,48 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         } );
         return $ranked;
     }
+    /**
+     * Recommends a safe next diagnostic, never a retry. A client can
+     * report its error text but cannot assert that a write did not happen.
+     * No failure name, even TOOL_NOT_FOUND, automatically bypasses the
+     * original one-time approval and post-write readback.
+     */
+    public static function failure_advice( array $request ) {
+        $transport = (string) ( $request['failed_transport'] ?? '' );
+        $reason = sanitize_key( (string) ( $request['failure_code'] ?? '' ) );
+        if ( '' === $transport ) return array(
+            'state' => 'NO_FAILURE_REPORTED',
+            'next_action' => 'prepare_fresh_exact_route_and_verify_host_visibility',
+            'automatic_retry_allowed' => false,
+        );
+        if ( preg_match( '/(authorization|permission|approval|scope|replay|grant|policy|forbidden|denied|token|consent)/', $reason ) )
+            return array(
+                'state' => 'AUTHORITY_DENIAL_NO_ALTERNATE_EXECUTION',
+                'next_action' => 'inspect_original_authorization_and_owner_approval',
+                'requires_independent_readback' => true,
+                'automatic_retry_allowed' => false,
+            );
+        if ( 'direct' === $transport
+            && in_array( $reason, array( 'tool_not_found', 'method_not_found',
+                'unregistered_tool', 'host_tool_not_found' ), true ) )
+            return array(
+                'state' => 'DIRECT_CLIENT_VISIBILITY_UNVERIFIED',
+                'next_action' => 'refresh_host_tools_list_and_prepare_canonical_governed_dispatch',
+                'canonical_dispatch_not_authority' => true,
+                'requires_original_one_time_approval_for_mutation' => true,
+                'automatic_retry_allowed' => false,
+            );
+        return array(
+            'state' => 'TRANSPORT_RESULT_INDETERMINATE',
+            'next_action' => in_array( $transport,
+                array( 'write-execute', 'enrollment-execute', 'developer-execute', 'direct' ), true )
+                ? 'query_independent_mutation_receipt_before_any_new_approval'
+                : 'rediscover_exact_read_ability_with_fresh_receipt',
+            'requires_independent_readback' => true,
+            'automatic_retry_allowed' => false,
+        );
+    }
+
     public static function discover( $input = array() ) {
         return self::resolve( $input, false );
     }
@@ -244,6 +286,12 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         if ( ! self::can_read() ) return self::blocked( 'read_permission_denied' );
         $request = self::normalize( $input );
         if ( is_wp_error( $request ) ) return $request;
+        // A natural-language task cannot silently escalate from a planning
+        // request into an effectful execution. Only an explicit write intent
+        // or an exact registered operation/Ability can select that lane.
+        if ( '' !== $request['task'] && 'execute' === $request['phase']
+            && 'auto' === $request['intent'] )
+            return self::blocked( 'explicit_write_intent_required' );
         $sources = self::sources( $request );
         if ( is_wp_error( $sources ) ) return $sources;
         if ( empty( $sources['names'] ) ) return array(
@@ -285,6 +333,36 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         // higher in a semantically ambiguous task search.
         if ( $write_in_doubt ) $ready = false;
         $best_row = $ready ? $best['prepared'] : array();
+        $failure = self::failure_advice( $request );
+        // Never treat a host-provided failure label as proof that a
+        // mutation was not delivered. Alternatives are diagnostic only.
+        $transport_options = array();
+        if ( $best && isset( $best['prepared'] ) && is_array( $best['prepared'] ) ) {
+            $original = $best['prepared'];
+            $transport_options[] = array(
+                'mode' => 'canonical_governed_dispatch',
+                'tool' => (string) $best['dispatch_tool'],
+                'mounted_in_server_catalog' => in_array( $best['dispatch_tool'], $base, true ),
+                'verified_in_host_tools_list' => false,
+                'may_execute_without_original_approval' => false,
+            );
+            if ( in_array( $best['ability_name'], $base, true ) )
+                $transport_options[] = array(
+                    'mode' => 'direct_tool',
+                    'tool' => $best['ability_name'],
+                    'mounted_in_server_catalog' => true,
+                    'verified_in_host_tools_list' => false,
+                    'requires_tools_list_refresh_on_not_found' => true,
+                    'may_execute_without_original_approval' => false,
+                );
+            if ( ! empty( $original['projection_eligible'] ) )
+                $transport_options[] = array(
+                    'mode' => 'explicit_schema_pinned_projection',
+                    'tool' => $best['ability_name'],
+                    'requires_separate_projection_plan_apply_and_host_refresh' => true,
+                    'may_execute_without_original_approval' => false,
+                );
+        }
         $resolution_required = $ready && 'enrollment' === $best['execution_lane'];
         $developer_isolation_required = $ready && 'developer' === $best['execution_lane'];
         return array(
@@ -320,6 +398,9 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 ? array( 'id' => $request['operation'],
                     'planner' => $sources['operation']['planner'] ?? '',
                     'executor' => $sources['operation']['executor'] ?? '' ) : null,
+            'failure_resolution' => $failure,
+            'transport_options' => $transport_options,
+            'selection_strategy' => 'live_registered_ability_metadata_schema_pinned_canonical_lane',
             'fallback_policy' => array(
                 'read_transport_failure' => 'rediscover_and_prepare_fresh_receipt',
                 'mutation_transport_failure' => 'no_blind_retry_query_independent_readback',
