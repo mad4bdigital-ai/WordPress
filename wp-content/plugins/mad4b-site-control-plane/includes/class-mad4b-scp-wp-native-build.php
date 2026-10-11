@@ -624,7 +624,8 @@ final class MAD4B_SCP_WP_Native_Build {
         $path = $dir ? $dir . '/candidate.zip' : '';
         if ( ! $path || ! is_file( $path ) || is_link( $path ) ||
             filesize( $path ) !== ( $job['archive_bytes'] ?? -1 ) ||
-            ! hash_equals( (string) $job['archive_sha256'], hash_file( 'sha256', $path ) ) )
+            ( 0 === $offset && ! hash_equals( (string) $job['archive_sha256'],
+                hash_file( 'sha256', $path ) ) ) )
             return new WP_Error( 'mad4b_native_export_drift', 'Package integrity changed.' );
         $size = filesize( $path );
         if ( $offset > $size )
@@ -642,6 +643,7 @@ final class MAD4B_SCP_WP_Native_Build {
             'archive_sha256' => $job['archive_sha256'],
             'data_base64' => base64_encode( $bytes ),
             'build_state' => 'BUILT_UNVERIFIED', 'certified' => false,
+            'recipient_must_verify_full_archive_sha256' => true,
             'production_authorized' => false );
     }
 }
