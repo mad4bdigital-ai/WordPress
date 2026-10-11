@@ -84,6 +84,18 @@ final class MAD4B_SCP_Mutation_Manager {
 			if ( ! current_user_can( $cap ) ) return new WP_Error( 'mad4b_cannot_publish', 'Current user cannot publish this post type.' );
 		}
 
+		// Every managed transition to live, and edits remaining live, require
+		// the current exact three-category Brand Core review before mutation.
+		$target_live = isset( $update['post_status'] )
+			? in_array( (string) $update['post_status'], array( 'publish', 'private', 'future' ), true )
+			: in_array( (string) $post->post_status, array( 'publish', 'private', 'future' ), true );
+		$brand_preflight = null;
+		if ( $target_live ) {
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core guard unavailable.' );
+			$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'publish', 'post_type' => (string) $post->post_type ) );
+			if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+		}
+
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
 		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
@@ -147,6 +159,19 @@ final class MAD4B_SCP_Mutation_Manager {
 				return $error;
 			}
 			$dynamic_acceptance_sha256 = isset( $input['dynamic_acceptance_sha256'] ) ? strtolower( trim( (string) $input['dynamic_acceptance_sha256'] ) ) : '';
+		}
+
+		if ( $target_live ) {
+			$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'publish', 'post_type' => (string) $post->post_type ) );
+			$brand_drift = is_wp_error( $brand_now ) || ! is_array( $brand_now )
+				|| ! hash_equals( (string) $brand_preflight['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+				|| ! hash_equals( (string) $brand_preflight['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+				|| (int) $brand_preflight['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 );
+			if ( $brand_drift ) {
+				$error = is_wp_error( $brand_now ) ? $brand_now : new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed before post mutation.' );
+				self::update_record( $mutation_id, array( 'status' => 'failed', 'error_code' => $error->get_error_code() ) );
+				return $error;
+			}
 		}
 
 		$result = wp_update_post( wp_slash( $update ), true );
