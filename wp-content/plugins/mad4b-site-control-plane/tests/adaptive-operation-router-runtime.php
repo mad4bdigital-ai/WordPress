@@ -88,11 +88,11 @@ require_route( $write['state'] === 'ROUTE_SELECTED_REQUIRES_EXECUTION_REVALIDATI
     && $write['selected']['client_tool_visibility'] === 'UNVERIFIED_UNTIL_HOST_TOOLS_LIST'
     && $write['requires_exact_owner_approval_for_mutations']
     && !$write['production_auto_write_enabled']
-    && !$write['never_auto_executes'] === false,
+    && $write['never_auto_executes'] === true,
     'write route metadata never issues permission or executes' );
 $auto = $router::plan( array( 'task' => 'create trip', 'intent' => 'auto' ) );
-require_route( $auto['selected']['ability_name'] === 'example/trip-apply',
-    'dynamic semantic selection ranks actual registered metadata' );
+require_route( $auto['selected']['ability_name'] === 'example/trip-plan',
+    'automatic semantic selection prefers safe read planning when available' );
 $semantic = $router::plan( array( 'operation' => 'create_trip', 'intent' => 'read' ) );
 require_route( $semantic['selected']['ability_name'] === 'example/trip-plan',
     'exact operation resolver uses registered planner rather than guessing names' );
