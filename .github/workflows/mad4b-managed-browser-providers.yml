@@ -219,14 +219,7 @@ jobs:
       MAD4B_BROWSER_PROFILE_ID: ${{ inputs.profile }}
       MAD4B_BROWSER_ALLOW_CREDIT_FALLBACK: ${{ inputs.allow_credit_fallback }}
       MAD4B_MCP_RESOURCE: ${{ vars.MAD4B_MCP_RESOURCE }}
-      MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
-      MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64: ${{ secrets.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64 }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
-      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
-      BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
       BROWSERLESS_REGION: ${{ vars.BROWSERLESS_REGION }}
-      STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
     steps:
       - name: Checkout exact ref
         uses: actions/checkout@v4
@@ -251,6 +244,13 @@ jobs:
           node-version: '24'
       - run: npm install --no-save playwright-core @browserbasehq/sdk steel-sdk
       - name: Require just-in-time MCP bearer and at least one browser provider
+        env:
+          MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+          STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -261,6 +261,14 @@ jobs:
             exit 2
           fi
       - name: Generate fresh plan, execute browser, and reduce evidence through MAD4B MCP
+        env:
+          MAD4B_MCP_ACCESS_TOKEN: ${{ secrets.MAD4B_MCP_ACCESS_TOKEN }}
+          MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64: ${{ secrets.MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64 }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BROWSER_RUN_API_TOKEN: ${{ secrets.CLOUDFLARE_BROWSER_RUN_API_TOKEN }}
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERLESS_TOKEN: ${{ secrets.BROWSERLESS_TOKEN }}
+          STEEL_API_KEY: ${{ secrets.STEEL_API_KEY }}
         run: |
           node tools/browser-acceptance/run-live-site-browser-acceptance.mjs \
             --profile "$MAD4B_BROWSER_PROFILE_ID" \
