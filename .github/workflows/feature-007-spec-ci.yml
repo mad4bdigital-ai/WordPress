@@ -805,6 +805,7 @@ jobs:
             php -l "$root/tests/$name"
             php "$root/tests/$name"
           done
+          python3 "$root/tests/brand-core-remote-recovery-contract.py"
       - name: Detect duplicated Context Adapter code before Staging enrollment
         shell: bash
         run: |
