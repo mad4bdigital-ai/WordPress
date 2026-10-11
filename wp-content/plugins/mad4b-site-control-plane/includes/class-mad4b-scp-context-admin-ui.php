@@ -1090,9 +1090,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 			}
 		}
 		$ai_ready = 'human_and_ai' === $mode && ! empty( $status['ready'] );
-		$mode_label = 'human_and_ai' === $mode ? ( $ai_ready ? 'Human + AI · AI ready' : 'Human + AI · AI blocked' ) : 'Human only';
+		$mode_label = 'human_and_ai' === $mode ? ( $ai_ready ? 'Brand review: Human + AI · ready' : 'Brand review: Human + AI · blocked' ) : 'Brand review: Human only';
 
-		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval workflow', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Human approval always remains available. Delegated AI review is additive, Staging-only and exact-bound.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( $mode_label ) . '</span></div>';
+		echo '<div id="mad4b-context-review-policy" class="mad4b-scp-panel mad4b-context-review-policy"><div class="mad4b-context-review-policy-head"><div><h2>' . esc_html__( 'Approval workflow', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'This panel controls review of Brand Context assets, not general operation-ticket AI decisions. The optional owner OAuth auto:all scope has independent consent and cannot prove source ownership.', 'mad4b-site-control-plane' ) . '</p></div><span class="mad4b-context-badge">' . esc_html( $mode_label ) . '</span></div>';
 		echo '<form class="mad4b-context-review-policy-form" data-mad4b-original-mode="' . esc_attr( $mode ) . '" data-mad4b-original-agent="' . esc_attr( $configured_agent ) . '"' . MAD4B_SCP_Admin_Settings_Persistence::view_attributes( 'context-review-policy', array(
 			'revision' => (int) ( $context_profile['revision'] ?? 0 ), 'mode' => $mode, 'ai_agent_public_id' => $configured_agent,
 		) ) . ' method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
