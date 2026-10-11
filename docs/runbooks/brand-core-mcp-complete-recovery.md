@@ -24,6 +24,94 @@ certified live on this PR HEAD**. No Production promotion or automatic approval.
   original business strategy authorship, external rights, or original source
   ownership.
 
+## Remote-first operator workflow (source implementation)
+
+Feature 007 now exposes a **read-only, stage-bound orchestration layer**
+`mad4b/brand-core-remote-recovery-status` and
+`mad4b/brand-core-remote-recovery-prepare` through the canonical
+Operational Remediation class. Both are administrator-only, exact-Staging
+read operations; they **do not** run host commands, create approval tickets,
+fetch arbitrary URLs, certify DB crash results, or execute WordPress writes.
+
+The status endpoint supports an optional exact original `source_id`
+(64-character SHA), `include_provider_scan=true`,
+`include_host_challenge=true`, and exact `candidate_sha` (40-character Git
+SHA) for selected-head planning. Source IDs, scan results, host identity and
+Candidate Release Plan are read independently from the original provider and
+the enrolled site; the caller cannot submit arbitrary `ready=true` facts.
+A full Drive inventory may be costly; it is **opt-in** per request. Only
+`original_file_identity` can consume the complete provider proof. The
+host flag invokes an independent current nonce-signature observation; no
+cached/forged Host flag is accepted.
+
+Eight isolated stages are returned, each with its exact existing owning
+read/plan, governed native effectful ability, independent readback,
+prerequisite stages, operator role, approval requirement, currently mounted
+ability markers, and blockers:
+
+1. `source_inventory` — `context/legacy-reconciliation-census` and
+   `context/legacy-owner-transfer-discover`
+2. `original_file_identity` — `context/legacy-owner-transfer-evidence`;
+   100% of original stored file IDs and original Drive root must match
+3. `owner_attestation` — exact owner decision, one-time approval ticket,
+   `context/legacy-owner-transfer-apply` then independent
+   `context/legacy-owner-transfer-readback`; no inherited reviews
+4. `host_identity` — enrolled signed Host Runner challenge plus
+   `mad4b/host-doctor`, `mad4b/host-operation-plan` and native Host receipt
+5. `durable_db_recovery` — **separate signed, isolated MariaDB
+   crash/restart/race/rollback certification executor still required**.
+   No WordPress option, simulated PHP test or generic host command may
+   satisfy this gate
+6. `certified_package` — remotely plan the explicit immutable SHA with
+   `mad4b/control-plane-selected-head-plan`, then a separately approved
+   certified `mad4b/control-plane-selected-head-apply` and exact installed
+   source/manifest readback; a remote plan is not an install receipt
+7. `brand_approval` — complete source scan, governed review and
+   `context/brand-core-coverage`; quarantine must be zero before approval
+8. `draft_acceptance` — independently authorized native Content
+   Orchestration create-draft, then CPT/taxonomy independent readback; not
+   publication or competitor-rights evidence
+
+A stage handoff requires `stage_id` and
+`expected_plan_sha256`, and must re-evaluate the same exact live evidence.
+Use matching `source_id`, `candidate_sha`,
+`include_provider_scan`, and `include_host_challenge` flags
+when repeating the observation. If provider contents, site binding, coverage,
+Host signature or candidate plan changed, reject the stale handoff. Handoff
+never exposes a dispatchable write token or bypasses individual ability
+permissions, exact approval tickets and current Host/release certification.
+Its `ready_for_dispatch` and `approval_issued` remain false.
+
+### Remote availability is not remote acceptance
+
+- **Mounted** = discovery of a separately governed action on the installed
+  version, not authority to run it or proof that its external executor works.
+- **Host transport connected** = current nonce-signed Host response from
+  the existing enrolled trust root; a source implementation or online
+  desktop device name is not sufficient.
+- **DB acceptance** = independent, real isolated MariaDB crash/restart,
+  interrupted multi-option write and recovery evidence from an enrolled,
+  signed Host executor. The current WordPress bridge does not implement this
+  Host-side certification workflow; this stage must remain visibly blocked.
+- **Package accepted** = immutable exact-HEAD certified artifact and signed
+  verdict/accepted offline CI outage evidence, plus installed-hash and
+  rollback readback. Queued/cancelled Actions and an older rc.95 artifact
+  cannot satisfy the current PR candidate.
+- **All stages operationally ready** = only when every individual external
+  receipt and original authoritative readback is verified. The coordination
+  layer cannot self-sign or assert final acceptance.
+
+A remotely managed Host bridge can avoid wp-admin/manual shell steps **only
+after** a trusted Host transport and its executor have been enrolled. The
+ability to bootstrap a missing OS-level Host Runner and its signing trust
+root is not established solely by WordPress MCP. Never auto-grant or
+remote-install a Host identity into a machine controlled by a different
+owner. Keep Production, Breakglass and raw SQL disabled.
+
+Native refusal tests:
+`tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
+matrix. This isolated fixture is not a live MariaDB/Host certification.
+
 ## Control loop — keep one source of truth
 
 Use the existing WordPress Context Authority + the selected, managed Google
