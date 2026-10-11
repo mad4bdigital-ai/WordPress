@@ -63,6 +63,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives',
+                'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback',
                 'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
@@ -147,6 +148,7 @@ final class MAD4B_SCP_Servers {
                 // Existing Host Bridge is native signed-job and exact-approval
                 // fenced; cataloguing this does not grant Host authority.
                 'mad4b/host-operation-apply',
+                'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
 			)
