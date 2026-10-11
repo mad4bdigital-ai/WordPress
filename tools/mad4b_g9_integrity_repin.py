@@ -3,6 +3,8 @@
 
 Default is check-only. --apply requires independently reviewed exact workflow
 SHA-256, a clean committed workflow, and zero unrelated G9 integrity drift.
+--commit-pair additionally supports an *uncommitted* reviewed workflow change:
+validate both working-tree files, then commit workflow and G9 manifest ATOMICALLY.
 No broad source refresh, no automatic promotion, no release certification.
 """
 from __future__ import annotations
@@ -56,7 +58,11 @@ def main() -> None:
                         help="Repin only after external workflow review")
     parser.add_argument("--reviewed-workflow-sha256", default="",
                         help="Exact SHA-256 reviewed by the source owner")
+    parser.add_argument("--commit-pair", action="store_true",
+                        help="Atomic reviewed workflow + G9 record Git commit")
     a = parser.parse_args()
+    if a.commit_pair and not a.apply:
+        stop("--commit-pair requires --apply")
     root = a.repo_root.resolve(strict=True)
     manifest_path = root / MANIFEST
     raw = file_bytes(root, MANIFEST)
@@ -92,8 +98,17 @@ def main() -> None:
     branch = git(root, "branch", "--show-current")
     if branch in {"main", "master", "production", "release"} or not branch:
         stop("repin only on named nonproduction feature branches")
-    git(root, "diff", "--exit-code", "HEAD", "--", WORKFLOW)
-    git(root, "diff", "--cached", "--exit-code", "--", WORKFLOW)
+    before_head = git(root, "rev-parse", "HEAD")
+    if a.commit_pair:
+        if not git(root, "diff", "--name-only", "HEAD", "--", WORKFLOW):
+            stop("--commit-pair requires an uncommitted reviewed workflow change")
+        if git(root, "diff", "--cached", "--name-only"):
+            stop("clear staging area before atomic pair commit; unrelated staged files rejected")
+        if git(root, "diff", "--name-only", "HEAD", "--", MANIFEST):
+            stop("G9 manifest must be clean before guarded paired repin")
+    else:
+        git(root, "diff", "--exit-code", "HEAD", "--", WORKFLOW)
+        git(root, "diff", "--cached", "--exit-code", "--", WORKFLOW)
     contract = runpy.run_path(str(root / SECURITY_TEST))
     if contract.get("WORKFLOW") != WORKFLOW or not callable(contract.get("verify_g9_workflow")):
         stop("security source contract missing")
@@ -120,7 +135,23 @@ def main() -> None:
     except BaseException:
         manifest_path.write_bytes(raw)
         raise
-    print("G9 REPIN: PASS (only reviewed workflow SHA/bytes; verify git diff and commit)")
+    if a.commit_pair:
+        if git(root, "rev-parse", "HEAD") != before_head:
+            stop("HEAD changed during reviewed pair preparation; no Git commit created")
+        git(root, "add", "--", WORKFLOW, MANIFEST)
+        git(root, "commit", "-m",
+            "ci(feature007): update reviewed workflow and G9 fingerprint atomically",
+            "--only", "--", WORKFLOW, MANIFEST)
+        after_head = git(root, "rev-parse", "HEAD")
+        if after_head == before_head:
+            stop("atomic workflow + G9 commit did not advance HEAD")
+        changed = set(git(root, "diff-tree", "--no-commit-id", "--name-only",
+                          "-r", after_head).splitlines())
+        if changed != {WORKFLOW, MANIFEST}:
+            stop("unexpected atomic commit scope: " + repr(sorted(changed)))
+        print("G9 PAIRED COMMIT: PASS (HEAD=%s; workflow and G9 manifest in ONE commit)" % after_head)
+    else:
+        print("G9 REPIN: PASS (only reviewed workflow SHA/bytes; verify git diff and commit)")
     print("No CI PASS, Staging deployment, release approval, or Production access asserted.")
 
 
