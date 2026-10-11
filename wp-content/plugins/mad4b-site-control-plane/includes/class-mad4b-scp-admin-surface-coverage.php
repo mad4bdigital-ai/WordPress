@@ -12,6 +12,7 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
     const CONTRACT = 'mad4b.admin-surface-coverage.v1';
     const INVENTORY = 'mad4b/admin-surface-coverage';
     const BLUEPRINT = 'mad4b/admin-adapter-blueprint';
+    const CONTROL_CENSUS = 'mad4b/admin-control-census';
     const MAX_PER_KIND = 96;
     const MAX_TOTAL = 512;
     const KINDS = array( 'governed_operations', 'admin_routes', 'admin_menus',
@@ -29,6 +30,13 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                 array( 'type' => 'object', 'additionalProperties' => false,
                     'properties' => array( 'include_details' => array( 'type' => 'boolean' ),
                         'scan_mode' => array( 'type' => 'string', 'enum' => array( 'fast', 'deep' ) ) ) ) ),
+            array( self::CONTROL_CENSUS, 'Page through Registered UI and MCP Controls', 'control_census',
+                array( 'type' => 'object', 'additionalProperties' => false,
+                    'properties' => array(
+                        'kind' => array( 'type' => 'string', 'enum' => array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' ) ),
+                        'offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 100000 ),
+                        'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 96 ),
+                    ) ) ),
             array( self::BLUEPRINT, 'Propose Reviewed MCP Adapter for Missing Admin Operation', 'blueprint',
                 array( 'type' => 'object', 'additionalProperties' => false,
                     'required' => array( 'surface_id', 'snapshot_sha256', 'purpose' ),
@@ -278,6 +286,94 @@ final class MAD4B_SCP_Admin_Surface_Coverage {
                     if ( self::safe_key( $name ) ) $sources['cron_hooks'][$name] = array();
         }
         return $sources;
+    }
+
+    /**
+     * Untruncated, paginated runtime Control register; discovery is NOT UI
+     * parity or execution permission. Read only already registered metadata.
+     */
+    public static function control_census( $input = array() ) {
+        if ( ! current_user_can( 'manage_options' ) )
+            return new WP_Error( 'mad4b_control_census_admin_required', 'Administrator required to inspect registered controls.' );
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'kind', 'offset', 'limit' ) ) )
+            return new WP_Error( 'mad4b_control_census_input_invalid', 'Only kind, offset and limit are supported.' );
+        $kind = isset( $input['kind'] ) ? (string) $input['kind'] : 'abilities';
+        if ( ! in_array( $kind, array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' ), true ) )
+            return new WP_Error( 'mad4b_control_census_kind_invalid', 'Unknown registered Control type.' );
+        $offset = isset( $input['offset'] ) ? $input['offset'] : 0;
+        $limit = isset( $input['limit'] ) ? $input['limit'] : 50;
+        if ( ! is_int( $offset ) || $offset < 0 || $offset > 100000
+            || ! is_int( $limit ) || $limit < 1 || $limit > 96 )
+            return new WP_Error( 'mad4b_control_census_page_invalid', 'Bounded integer pagination required.' );
+        $rows = array();
+        $registry_ready = true;
+        if ( 'abilities' === $kind ) {
+            $registry_ready = function_exists( 'wp_get_abilities' );
+            if ( $registry_ready ) foreach ( (array) wp_get_abilities() as $name => $ability ) {
+                if ( ! self::safe_key( $name ) ) continue;
+                $rows[ $name ] = array(
+                    'name' => self::mask( $name ), 'registered' => true,
+                    'registered_kind' => 'wordpress_ability',
+                    'wp_admin_ui_binding' => 'not_individually_certified',
+                    'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        } elseif ( 'pages' === $kind ) {
+            $registry_ready = class_exists( 'MAD4B_SCP_Admin_Workspace' );
+            if ( $registry_ready ) foreach ( MAD4B_SCP_Admin_Workspace::inventory() as $slug => $page ) {
+                if ( ! self::safe_key( $slug ) ) continue;
+                $rows[ $slug ] = array(
+                    'name' => self::mask( $slug ), 'registered' => true,
+                    'registered_kind' => 'wp_admin_page',
+                    'wp_admin_ui_binding' => 'route_registered_not_browser_certified',
+                    'page_title' => (string) ( $page['title'] ?? '' ),
+                    'admin_url' => (string) ( $page['url'] ?? '' ),
+                    'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        } elseif ( 'settings' === $kind ) {
+            global $wp_registered_settings;
+            $registry_ready = is_array( $wp_registered_settings );
+            if ( $registry_ready ) foreach ( $wp_registered_settings as $name => $setting ) {
+                if ( ! self::safe_key( $name ) ) continue;
+                $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                    'registered_kind' => 'wp_registered_setting',
+                    'wp_admin_ui_binding' => 'field_not_individually_certified',
+                    'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        } else {
+            global $wp_filter;
+            $registry_ready = is_array( $wp_filter );
+            $prefix = 'admin_post' === $kind ? 'admin_post_' : 'wp_ajax_';
+            if ( $registry_ready ) foreach ( array_keys( $wp_filter ) as $hook ) {
+                if ( ! is_string( $hook ) || 0 !== strpos( $hook, $prefix ) ) continue;
+                if ( 'ajax' === $kind && 0 === strpos( $hook, 'wp_ajax_nopriv_' ) ) continue;
+                $name = substr( $hook, strlen( $prefix ) );
+                if ( ! self::safe_key( $name ) ) continue;
+                $rows[ $name ] = array( 'name' => self::mask( $name ), 'registered' => true,
+                    'registered_kind' => 'admin_post' === $kind ? 'admin_post_hook' : 'authenticated_ajax_hook',
+                    'wp_admin_ui_binding' => 'control_event_not_individually_certified',
+                    'mcp_transport_verified' => false, 'write_verified' => false );
+            }
+        }
+        ksort( $rows, SORT_STRING );
+        $total = count( $rows );
+        $items = array_values( array_slice( $rows, $offset, $limit, true ) );
+        // The census counts registered metadata. It cannot see every widget,
+        // event listener, dynamically injected field, shortcode or third-party
+        // UI until the disposable WordPress DOM/browser acceptance runs.
+        return array(
+            'contract' => 'mad4b.admin-control-census.v1',
+            'kind' => $kind, 'registry_ready' => $registry_ready,
+            'total_count' => $total, 'offset' => $offset, 'limit' => $limit,
+            'returned_count' => count( $items ),
+            'next_offset' => ( $offset + count( $items ) < $total ) ? ( $offset + count( $items ) ) : null,
+            'items' => $items,
+            'coverage_claim' => 'registration_inventory_only',
+            'unobserved_controls' => array( 'javascript_generated', 'rendered_form_fields',
+                'button_event_handlers', 'frontend_editors', 'third_party_screen_controls' ),
+            'all_ui_controls_verified' => false, 'each_ability_has_equivalent_wp_admin_ui' => false,
+            'all_mcp_operations_tested' => false,
+            'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
+        );
     }
 
     public static function inventory( $input = array() ) {
