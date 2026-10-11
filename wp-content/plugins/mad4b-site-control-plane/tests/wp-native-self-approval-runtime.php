@@ -37,6 +37,13 @@ class MAD4B_SCP_WP_Native_Build {
             'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' : 'LOCAL_SELF_CHECKS_BLOCKED',
             'local_checks' => array( 'archive_sha256_bytes' => $GLOBALS['verified'] ? 'LOCAL_PASS' : 'BLOCKED' ) );
     }
+    public static function verified_snapshot( $sha ) {
+        if ( ! $GLOBALS['verified'] ) return new WP_Error( 'mock_local_evidence_unverified' );
+        return array_merge( self::status(), array(
+            'job_id' => str_repeat( 'e', 32 ),
+            'version' => '0.4.0-rc.97',
+            'local_checks' => array( 'archive_sha256_bytes' => 'LOCAL_PASS' ) ) );
+    }
     public static function status() {
         return array( 'head' => str_repeat( 'a', 40 ), 'state' => 'BUILT_UNVERIFIED',
             'canonical_receipt' => array( 'control_plane_version' => '0.4.0-rc.97' ),
@@ -55,6 +62,10 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
 }
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt'; }
 class MAD4B_SCP_Authorization {
+    public static function execution_callback_started( $ability ) {
+        return $ability === MAD4B_SCP_WP_Native_Self_Approval::APPLY
+            && !empty( $GLOBALS['execution_claim'] );
+    }
     public static function permission_result_from_authorization( $r ) {
         return is_array( $r ) && !empty( $r['allowed'] )
             && ( $r['reason_code'] ?? '' ) === 'preflight_allowed';
@@ -81,7 +92,8 @@ class MAD4B_SCP_Self_Update {
             && $input['candidate_confirmation'] === 'INSTALL EXACT STAGING CANDIDATE'
             && base64_decode( $input['package_base64'], true ) === 'ZIP',
             'Existing package updater required and retains exact plan' );
-        return array( 'installed' => true, 'rollback_ownership' => 'existing_updater' );
+        return array( 'installed' => true, 'readback_verified' => true,
+            'rollback_ownership' => 'existing_updater' );
     }
 }
 class MAD4B_SCP_Audit {
@@ -104,6 +116,7 @@ $GLOBALS['oauth'] = true;
 $GLOBALS['grant'] = true;
 $GLOBALS['verified'] = true;
 $GLOBALS['audit_ready'] = true;
+$GLOBALS['execution_claim'] = true;
 $GLOBALS['package_bytes'] = 'ZIP';
 $GLOBALS['installs'] = 0;
 $GLOBALS['audit'] = 0;
@@ -114,7 +127,7 @@ assert_self_approval( is_wp_error( $c::plan( array(
     'A mutable Git source is never eligible' );
 $GLOBALS['verified'] = false;
 $bad = $c::plan( $args );
-assert_self_approval( ! $bad['eligible'] && in_array( 'local_zip_receipt_or_profile_unverified',
+assert_self_approval( ! $bad['eligible'] && in_array( 'mock_local_evidence_unverified',
     $bad['blockers'], true ), 'Incomplete local evidence cannot self-certify' );
 $GLOBALS['verified'] = true;
 $plan = $c::plan( $args );
@@ -145,6 +158,10 @@ $GLOBALS['audit_ready'] = false;
 assert_self_approval( is_wp_error( $c::apply( $apply ) ) &&
     $GLOBALS['installs'] === 0, 'Failed audit blocks self-certified update' );
 $GLOBALS['audit_ready'] = true;
+$GLOBALS['execution_claim'] = false;
+assert_self_approval( is_wp_error( $c::apply( $apply ) ) &&
+    $GLOBALS['installs'] === 0, 'Direct internal call without claimed execution cannot install' );
+$GLOBALS['execution_claim'] = true;
 $GLOBALS['env'] = 'production';
 $production = $c::plan( $args );
 assert_self_approval( ! $production['eligible'] &&
@@ -156,6 +173,8 @@ assert_self_approval( is_array( $accepted ) && !empty( $accepted['installed'] )
     && $accepted['evidence_mode'] === 'site_self_certified_staging'
     && $accepted['independent_attestation_verified'] === false
     && $accepted['production_authorized'] === false
-    && $GLOBALS['installs'] === 1 && $GLOBALS['audit'] > 0,
+    && $accepted['self_approval_outcome'] === 'INSTALLED_VERIFIED'
+    && $accepted['job_id'] === str_repeat( 'e', 32 )
+    && $GLOBALS['installs'] === 1 && $GLOBALS['audit'] >= 2,
     'Exact owner-delegated Staging self-approval uses protected installer' );
 echo "PASS: local self-approval, original update gate, tamper, audit, OAuth and Production denial\n";
