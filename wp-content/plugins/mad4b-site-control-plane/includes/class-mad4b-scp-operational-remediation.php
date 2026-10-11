@@ -61,8 +61,48 @@ final class MAD4B_SCP_Operational_Remediation {
 		if ( ! current_user_can( 'manage_options' ) )
 			wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		$view = self::status( array( 'include_live_acceptance' => false ) );
+        if ( is_wp_error( $view ) || ! is_array( $view ) ) {
+            $error_code = is_wp_error( $view ) ? $view->get_error_code() : 'invalid_diagnostic';
+            echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' )
+                . '</h1><div class="notice notice-error"><p>'
+                . esc_html__( 'The diagnostic could not be loaded. No changes were made. Check the site profile, then retry.', 'mad4b-site-control-plane' )
+                . '</p><p><code>' . esc_html( $error_code ) . '</code></p></div></div>';
+            return;
+        }
 		echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Observed diagnostic only. Provider installation, host commands, Browser execution, Brand approval, WordPress writes and release acceptance require separate governed steps.', 'mad4b-site-control-plane' ) . '</p>';
+        $items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
+        echo '<div class="notice notice-info inline"><p><strong>'
+            . esc_html__( 'Operator summary', 'mad4b-site-control-plane' )
+            . '</strong></p><p>' . esc_html(
+                sprintf( __( '%d unresolved tasks. This page is a read-only guide, not a release or approval.', 'mad4b-site-control-plane' ), count( $items ) )
+            ) . '</p></div>';
+        echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<ol><li>' . esc_html__( 'Discover the required operation and identify its owner.', 'mad4b-site-control-plane' )
+            . '</li><li>' . esc_html__( 'Check prerequisites and plan the exact change.', 'mad4b-site-control-plane' )
+            . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
+            . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
+            . '</li></ol>';
+        echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
+        $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
+            ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );
+        if ( is_wp_error( $native ) ) {
+            echo '<div class="notice notice-warning inline"><p>'
+                . esc_html__( 'WordPress-native rehearsal is not available for this user or site. Check Staging identity and plugin version.', 'mad4b-site-control-plane' )
+                . ' <code>' . esc_html( $native->get_error_code() ) . '</code></p></div>';
+        } else {
+            $state = (string) ( $native['state'] ?? 'unknown' );
+            $action = (string) ( $native['next_ability'] ?? '' );
+            echo '<p><strong>' . esc_html__( 'Current step', 'mad4b-site-control-plane' )
+                . ':</strong> <code>' . esc_html( $state ) . '</code></p>';
+            if ( $action ) echo '<p><strong>' . esc_html__( 'Next MCP tool', 'mad4b-site-control-plane' )
+                . ':</strong> <code dir="ltr">' . esc_html( $action ) . '</code></p>';
+            if ( ! empty( $native['job_id'] ) ) echo '<p><strong>' . esc_html__( 'Resume job ID', 'mad4b-site-control-plane' )
+                . ':</strong> <code dir="ltr">' . esc_html( $native['job_id'] ) . '</code></p>';
+        }
+        echo '<p class="description">'
+            . esc_html__( 'Probe writes only a temporary WordPress option. Shadow stores source fingerprints but does not transfer ownership or certify MariaDB crash recovery. Use separate approved MCP steps to start and clean up.', 'mad4b-site-control-plane' )
+            . '</p>';
 		echo '<p><strong>' . esc_html__( 'Integrity', 'mad4b-site-control-plane' ) . ':</strong> '
 			. esc_html( ! empty( $view['diagnostic_integrity_ready'] ) ? 'Verified observation' : 'Blocked: recheck source and providers' ) . '</p>';
 		echo '<p><strong>Source:</strong> <code>' . esc_html( (string) ( $view['source_commit_sha'] ?? '' ) ) . '</code> <strong>Plan:</strong> <code>'
@@ -72,7 +112,6 @@ final class MAD4B_SCP_Operational_Remediation {
 			. esc_html( implode( ', ', array_slice( $issues, 0, 15 ) ) ) . '</p></div>';
 		echo '<h2>' . esc_html__( 'Unresolved evidence and remediation owners', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<table class="widefat striped"><thead><tr><th>Gate</th><th>Owner</th><th>Remediation</th><th>Executor evidence</th></tr></thead><tbody>';
-		$items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
 		foreach ( array_slice( $items, 0, self::MAX_GATES ) as $item ) {
 			if ( ! is_array( $item ) ) continue;
 			$paths = is_array( $item['paths'] ?? null ) ? $item['paths'] : array();
