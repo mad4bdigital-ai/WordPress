@@ -126,6 +126,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             $matches = MAD4B_SCP_Unified_Capability_Gateway::search( array(
                 'task' => $request['task'], 'limit' => $request['max_candidates'],
                 'declared_readonly_only' => 'read' === $request['intent'],
+                'declared_writeonly_only' => 'write' === $request['intent'],
             ) );
             if ( is_wp_error( $matches ) ) return $matches;
             $items = (array) ( $matches['items'] ?? array() );
