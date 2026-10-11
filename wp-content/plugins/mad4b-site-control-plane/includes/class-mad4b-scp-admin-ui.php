@@ -42,7 +42,7 @@ final class MAD4B_SCP_Admin_UI {
         // unavailable; the task map is strictly read-only and static.
         $section = sanitize_key( (string) $section );
         if ( in_array( $section, array( 'tasks', 'controls' ), true ) ) return array(
-            'section' => 'tasks', 'read_only' => true,
+            'section' => $section, 'read_only' => true,
             'release_certified' => false, 'mutation_performed' => false );
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
 			return new WP_Error( 'mad4b_admin_ui_schema_unavailable', 'Governance schema is unavailable.' );
