@@ -120,6 +120,57 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Multi-path fallback discovery instead of dead-end blockers
+
+The new `mad4b/brand-core-recovery-alternatives` read-only MCP Ability
+accepts only `domain=all|host_runner|database_recovery|candidate_delivery`.
+It compares currently mounted native Ability names with the same
+`MAD4B_SCP_Recovery_Alternatives` policy registry used by
+`mad4b/brand-core-remote-recovery-status`. Each candidate reports its
+independent plan, separately authorized effectful Ability, readback,
+executor, missing integrations and exact required evidence. The selected
+recommendation is **only a preferred read-only preflight**, never an
+autonomous write and never a successful certification.
+
+| Failure domain | Alternatives in descending discovery preference | What remains mandatory |
+| --- | --- | --- |
+| Host Runner unavailable | Reconnect existing signed Host Bridge; reconcile/requeue previously authorized semantic Host jobs; independent host-owned SSH or managed agent with the same pinned Host identity | No new trust root from WordPress, current signed nonce, exact enrolled Staging target, owner consent, host job receipt |
+| MariaDB crash/rollback certification unavailable | Disposable remote MariaDB fault-injection lab; separate provider-managed Staging clone; future typed Host Runner database probe (not currently implemented) | Exact engine/schema, real interrupted cross-request writes, restart and restore, race test, hashes, independently signed receipt. No crashes against site DB or Production |
+| GitHub Actions stuck or cancelled | Standard terminal green GitHub verdict; owner-enrolled, independently signed five-gate offline Staging CI-outage candidate; signed standalone external build worker followed by independent release certification; WordPress native update only when the *exact intended* release is already certified | Immutable exact HEAD, complete native test evidence, approved public signing key and freshness, correct ZIP provenance, Staging-specific authority, backup and rollback, deployed SHA readback |
+
+Dynamic registry candidates are also suggested by matching **enrolled operation
+capability tags** against the problem domain. They always remain
+`UNTRUSTED_EQUIVALENCE_CANDIDATE`, even if their executor registration
+reports eligible. A host agent, external connector, self-hosted runner or
+new provider **cannot** become a permitted fallback solely because its name
+or tool exists. Its exact evidence contract, owner grant, fresh runtime
+identity and source/restore scope must be certified separately.
+
+Use this search loop: (1) discover current alternatives, (2) pick the
+highest-ranked available *preflight*, (3) inspect missing evidence and
+separately enroll provider/Host authority if needed, (4) run the genuine
+independent tests and obtain original signed approval, (5) use only the
+existing exact native execution Ability, (6) perform fresh independent
+readback. If no alternative satisfies the original contract, report a
+specific external integration gap rather than auto-lowering hard gates.
+
+For GitHub CI outage see `docs/runbooks/ci-outage-selected-head-staging.md`.
+An approved offline signer is a pre-existing certified alternative **only
+after** the actual signer/key/evidence channel is enrolled. Neither local
+simulation nor an unsigned archive is a recognized certificate.
+
+### Test and rollout status
+- `tests/recovery-alternatives-runtime.php`: independent refusal and
+  candidate-priority fixture.
+- `tests/brand-core-remote-recovery-runtime.php`: the existing PHP 7.4/8.3
+  matrix fixture now includes fallback route assertions.
+- `tests/brand-core-remote-recovery-contract.py`: existing static CI
+  guard now inspects nonauthorizing fallback implementation.
+- **GitHub Actions queue state is not PASS**. The independent fixture should
+  also be added to the workflow when workflow editing is admitted. The
+  tests and the new Ability are not live on Staging until a certified
+  selected-head package is installed and read back.
+
 ## Control loop — keep one source of truth
 
 Use the existing WordPress Context Authority + the selected, managed Google
