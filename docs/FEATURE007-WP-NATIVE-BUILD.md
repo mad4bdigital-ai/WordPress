@@ -88,3 +88,41 @@ php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-r
 Acceptance for any exact PR head additionally requires live Staging run,
 canonical archive comparison, external attestation, install/readback and
 rollback evidence. **Source delivery alone is not runtime certification.**
+
+
+## G9 workflow fingerprint drift — mandatory paired updates
+
+The G9 verifier intentionally locks `.github/workflows/feature-007-spec-ci.yml`
+to exact SHA-256 and byte length recorded in `g9-delivery.json`. Any later
+workflow edit without the corresponding evidence change fails before PHP lint.
+
+When editing the workflow, use the **one-commit** guarded local command rather
+than publishing the workflow first and repinning afterward:
+
+```powershell
+$Sha = (Get-FileHash ".github/workflows/feature-007-spec-ci.yml" -Algorithm SHA256).Hash.ToLowerInvariant()
+python tools/mad4b_g9_integrity_repin.py --apply --commit-pair --reviewed-workflow-sha256 $Sha
+```
+
+Run from the feature repository root with the changed workflow still **uncommitted**
+and with no other staged changes. The script requires source-owner SHA review,
+checks every G9 evidence fingerprint, validates the workflow security contract,
+runs the full G9 delivery validator, and commits only the workflow and G9
+manifest together. It refuses other fingerprint drift, unknown branches,
+Production/main/master/release branches, unreviewed changes and dirty index.
+This does **not** claim CI, Staging acceptance, or release approval.
+
+For already committed workflow edits, the older `--apply` (without
+`--commit-pair`) remains a reviewed repair route:
+
+```powershell
+$Sha = (Get-FileHash ".github/workflows/feature-007-spec-ci.yml" -Algorithm SHA256).Hash.ToLowerInvariant()
+python tools/mad4b_g9_integrity_repin.py --apply --reviewed-workflow-sha256 $Sha
+git diff --check
+git add specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json
+git commit -m "fix(feature007): repin reviewed G9 workflow evidence"
+```
+
+That recovery is intentionally two commits and only for existing drift.
+**New workflow updates must use the paired path.** No build kit should
+silently modify pinned source or claim to certify a dirty checkout.
