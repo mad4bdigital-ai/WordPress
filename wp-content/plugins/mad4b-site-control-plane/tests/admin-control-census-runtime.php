@@ -24,6 +24,29 @@ class MAD4B_SCP_Admin_Workspace {
         'mad4b-control-plane-context' => array( 'title' => 'Brand Context', 'url' => 'https://example.test/wp-admin/admin.php?page=mad4b-control-plane-context' ),
     ); }
 }
+class MAD4B_SCP_Operation_Registry {
+    public static function status() {
+        return array( 'operations' => array(
+            array( 'id' => 'wordpress.preview.tour', 'planner_registered' => true, 'executor_registered' => false ),
+        ) );
+    }
+}
+function get_post_types( $args, $output ) { return array( 'post' => (object)array(), 'tours' => (object)array() ); }
+function get_taxonomies( $args, $output ) { return array( 'category' => (object)array() ); }
+class WP_Block_Type_Registry {
+    public static function get_instance() { return new self(); }
+    public function get_all_registered() { return array( 'core/paragraph' => new stdClass() ); }
+}
+class Control_Test_REST_Server {
+    public function get_routes() { return array( '/wp/v2/posts' => array( array( 'methods' => 'GET' ) ) ); }
+}
+function _get_cron_array() {
+    return array( 10 => array( 'mad4b_cleanup_job' => array( 'secret-args' => array( 'secret' => 'not-exposed' ) ) ) );
+}
+$GLOBALS['wp_rest_server'] = new Control_Test_REST_Server();
+$GLOBALS['menu'] = array( array( 'MAD4B', 'manage_options', 'mad4b-control-plane' ),
+    array( 'Restricted', 'delete_users', 'restricted-admin' ) );
+$GLOBALS['submenu'] = array();
 $GLOBALS['wp_registered_settings'] = array( 'blogname'=>array(), 'smtp_api_key'=>array() );
 $GLOBALS['wp_filter'] = array( 'admin_post_submit_review'=>new stdClass(),
     'wp_ajax_live_search'=>new stdClass(),
@@ -61,6 +84,22 @@ $actions = $class::control_census( array( 'kind' => 'admin_post' ) );
 $ajax = $class::control_census( array( 'kind' => 'ajax' ) );
 control_check( $actions['total_count'] === 1 && $ajax['total_count'] === 1,
     'Administrative hooks are separately registered and no-privilege AJAX is not promoted' );
+$governed = $class::control_census( array( 'kind' => 'governed_operations' ) );
+$blocks = $class::control_census( array( 'kind' => 'blocks' ) );
+$content_types = $class::control_census( array( 'kind' => 'content_types' ) );
+$taxonomies = $class::control_census( array( 'kind' => 'taxonomies' ) );
+$cron = $class::control_census( array( 'kind' => 'cron_hooks' ) );
+$rest = $class::control_census( array( 'kind' => 'rest_routes' ) );
+$menus = $class::control_census( array( 'kind' => 'menus' ) );
+control_check( $governed['total_count'] === 1 && $governed['items'][0]['executor_registered'] === false,
+    'Governed operation has planner but missing executor, never fake UI execution parity' );
+control_check( $blocks['total_count'] === 1 && $content_types['total_count'] === 2
+    && $taxonomies['total_count'] === 1 && $rest['total_count'] === 1
+    && $cron['total_count'] === 1,
+    'Every WordPress control family must be observable through bounded pagination' );
+control_check( $menus['total_count'] === 1 && $cron['items'][0]['name'] === 'mad4b_cleanup_job'
+    && ! isset( $cron['items'][0]['args'] ),
+    'Never enumerate inaccessible admin menu or scheduled job arguments' );
 $settings = $class::control_census( array( 'kind' => 'settings' ) );
 control_check( $settings['total_count'] === 2 && $settings['items'][1]['name'] !== 'smtp_api_key',
     'Registered settings are discoverable without leaking credential names/values' );
@@ -73,6 +112,11 @@ control_check( is_wp_error( $class::control_census( array( 'kind' => 'all_and_ex
 $GLOBALS['controls_admin'] = false;
 control_check( is_wp_error( $class::control_census() ), 'Non-admin users cannot enumerate privileged Controls' );
 $plugin = dirname( __DIR__ );
+$bootstrap = file_get_contents( $plugin . '/mad4b-site-control-plane.php' );
+control_check( is_string( $bootstrap )
+    && false !== strpos( $bootstrap, "includes/class-mad4b-scp-admin-surface-coverage.php" )
+    && false !== strpos( $bootstrap, 'MAD4B_SCP_Admin_Surface_Coverage::boot()' ),
+    'Real main-plugin bootstrap must load the Control census Ability/registry before rendering the UI' );
 $ui = file_get_contents( $plugin . '/includes/class-mad4b-scp-admin-ui.php' );
 control_check( is_string( $ui ) && false !== strpos( $ui, "'controls' => __( 'Controls Coverage'" )
     && false !== strpos( $ui, 'MAD4B_SCP_Admin_Surface_Coverage::control_census(' ),
