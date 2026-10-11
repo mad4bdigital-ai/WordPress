@@ -54,9 +54,11 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt'; }
 class MAD4B_SCP_Authorization {
     public static $deny_claim = false;
+    public static $claims = 0;
     public static function authorize_mutation( $name, $surface, $provider, $input ) { return true; }
     public static function permission_result_from_authorization( $decision ) { return $decision === true; }
     public static function claim_mutation( $name, $surface, $provider, $input ) {
+        ++self::$claims;
         return self::$deny_claim ? new WP_Error( 'approval_denied' ) : array( 'allowed' => true );
     }
 }
@@ -87,16 +89,20 @@ function native_assert( $pass, $why ) {
     if ( ! $pass ) { fwrite( STDERR, 'FAIL: ' . $why . PHP_EOL ); exit( 1 ); }
 }
 MAD4B_SCP_Native_Recovery::register_abilities();
-native_assert( count( $GLOBALS['abilities'] ) === 4, 'four separately permissioned native abilities' );
+native_assert( count( $GLOBALS['abilities'] ) === 5, 'five separately permissioned native abilities with resume status' );
 foreach ( $GLOBALS['abilities'] as $name => $spec ) {
     native_assert( $spec['input_schema']['additionalProperties'] === false,
         'reject caller command strings, arbitrary SQL and foreign plugin options' );
     native_assert( $spec['meta']['mcp']['public'] === false,
         'no public REST or unauthenticated MCP' );
-    native_assert( in_array( $name, array( 'mad4b/native-recovery-plan',
+    native_assert( in_array( $name, array( 'mad4b/native-recovery-status', 'mad4b/native-recovery-plan',
         'mad4b/native-recovery-start', 'mad4b/native-recovery-readback',
         'mad4b/native-recovery-cleanup' ), true ), 'exact semantic allowlist' );
 }
+$idle = MAD4B_SCP_Native_Recovery::status();
+native_assert( is_array( $idle ) && $idle['state'] === 'READY_TO_PLAN'
+    && $idle['next_ability'] === MAD4B_SCP_Native_Recovery::PLAN,
+    'new user sees clear first step without a prior job id' );
 $plan = MAD4B_SCP_Native_Recovery::plan( array( 'mode' => 'probe', 'reason' => 'fixture scratch' ) );
 native_assert( is_array( $plan ) && $plan['requires_host_runner'] === false
     && $plan['ownership_transferred'] === false && $plan['mariadb_crash_certified'] === false,
@@ -121,10 +127,17 @@ native_assert( is_array( $start ) && $start['host_required'] === false
     && $start['context_registry_modified'] === false
     && isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
     'scratch created without Host, originals untouched' );
+$resumable = MAD4B_SCP_Native_Recovery::status();
+native_assert( $resumable['active_job'] && $resumable['job_id'] === $start['job_id']
+    && $resumable['next_ability'] === MAD4B_SCP_Native_Recovery::READBACK,
+    'interrupted chat can rediscover the active recovery job' );
+$claims_before_occupied = MAD4B_SCP_Authorization::$claims;
 $second_start = MAD4B_SCP_Native_Recovery::start( array( 'mode' => 'probe',
     'reason' => 'fixture scratch', 'expected_plan_sha256' => $plan['plan_sha256'],
     'confirmation' => MAD4B_SCP_Native_Recovery::PROBE_CONFIRM ) );
 native_assert( is_wp_error( $second_start ), 'concurrent scratch denied' );
+native_assert( $claims_before_occupied === MAD4B_SCP_Authorization::$claims,
+    'occupied scratch is detected before consuming a new approval claim' );
 $same_request = MAD4B_SCP_Native_Recovery::readback( array( 'job_id' => $start['job_id'] ) );
 native_assert( $same_request['state'] === 'WP_NATIVE_INCOMPLETE' &&
     $same_request['independent_request_observed'] === false,
@@ -143,8 +156,16 @@ native_assert( is_wp_error( MAD4B_SCP_Native_Recovery::cleanup(
     array( 'job_id' => $start['job_id'], 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) ) ),
     'non-owner denied scratch cleanup' );
 $GLOBALS['admin'] = true;
+MAD4B_SCP_Audit::$fail = true;
+$blocked_cleanup = MAD4B_SCP_Native_Recovery::cleanup( array(
+    'job_id' => $start['job_id'],
+    'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
+native_assert( is_wp_error( $blocked_cleanup )
+    && isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
+    'audit intent failure refuses cleanup before deleting the scratch' );
+MAD4B_SCP_Audit::$fail = false;
 $clean = MAD4B_SCP_Native_Recovery::cleanup( array(
-    'job_id' => $start['job_id'], 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
+    'job_id' => $start['job_id', 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
 native_assert( is_array( $clean ) && $clean['scratch_removed']
     && ! isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] )
     && $GLOBALS['options']['legacy_real_option']['protected'] === true,
