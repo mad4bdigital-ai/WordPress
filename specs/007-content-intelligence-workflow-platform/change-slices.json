@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 764,
+  "changed_file_count": 765,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1590,7 +1590,8 @@
         "docs/runbooks/advanced-preview-evidence-matrix.md",
         ".github/workflows/mad4b-preview-matrix-ci.yml",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-preview-matrix.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/preview-matrix-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/preview-matrix-runtime.php",
+        "tools/browser-acceptance/test-workflow-signing-wiring.mjs"
       ]
     }
   ],
