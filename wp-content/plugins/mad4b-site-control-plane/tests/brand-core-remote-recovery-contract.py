@@ -332,6 +332,35 @@ for marker in (
     must(servers, marker, "native host binding missing from typed MCP servers")
 must(workflow, "deployment-binding-native-runtime.php", "native binding PHP matrix missing")
 must(workflow, "class-mad4b-scp-deployment-binding-native.php", "native binding PHP lint missing")
+# Regression: exact Staging approval-bootstrap Tools must be reachable
+# on the compact ChatGPT MCP surface *and* retain normal bearer step-up
+# visibility, NHI claims, AI-delegation checks, and budget isolation.
+for marker in (
+    "private static function chatgpt_approval_bootstrap_tools()",
+    "MAD4B_SCP_Staging_Write_Authority::effective()",
+    "MAD4B_SCP_AI_Approval::catalog_eligible()",
+    "self::ability_is_mounted( 'mad4b-write', $ability_name )",
+    "false === $annotations['readonly']",
+    "self::chatgpt_approval_bootstrap_tools()",
+    "self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap",
+    "self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap",
+    "'mad4b/approval-plan', 'mad4b/approval-ai-decide'",
+):
+    must(servers, marker, "approval bootstrap routing must be limited to guarded Staging abilities")
+catalog = (root / "includes/class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
+must(catalog, "if ( ( $direct_step_up || ( $dynamic && ! $dynamic_readonly ) ) && ! $step_up_visible ) continue;",
+    "direct approval bootstrap must stay hidden without current OAuth authority step-up")
+must(catalog, "MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()",
+    "direct approval bootstrap must be optional and protected at MCP preflight")
+planning_guard = (root / "includes/class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
+must(planning_guard, "MAD4B_SCP_Approval_Tickets::bind_ticket_to_current_candidate(",
+    "planned approval must remain candidate-bound")
+must(planning_guard, "MAD4B_SCP_Authorization::authorize_mutation(",
+    "approval planner NHI authorization must not be skipped")
+ai_gate = (root / "includes/class-mad4b-scp-ai-approval.php").read_text(encoding="utf-8")
+must(ai_gate, "'ai_autonomous' !==", "AI approval must deny other risk lanes")
+must(ai_gate, "ai_approval_exact_nhi_grant_missing",
+    "AI decision must keep exact grant requirement")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
