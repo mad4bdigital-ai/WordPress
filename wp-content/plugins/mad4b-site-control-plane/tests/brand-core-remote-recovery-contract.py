@@ -295,6 +295,43 @@ for ability in (
     must(servers, ability, "binding setup not exposed on governed MCP surface")
 must(workflow, "deployment-binding-setup-runtime.php", "binding fixture not in native PHP matrix")
 must(workflow, "class-mad4b-scp-deployment-binding-setup.php", "binding source not linted in PHP matrix")
+native_binding = (root / "includes/class-mad4b-scp-deployment-binding-native.php").read_text(encoding="utf-8")
+native_binding_test = (root / "tests/deployment-binding-native-runtime.php").read_text(encoding="utf-8")
+site_profile = (root / "includes/class-mad4b-scp-site-profile.php").read_text(encoding="utf-8")
+for marker in (
+    "const STATUS = 'mad4b/deployment-binding-native-status'",
+    "const PLAN = 'mad4b/deployment-binding-native-plan'",
+    "const APPLY = 'mad4b/deployment-binding-native-apply'",
+    "MAD4B_SCP_Authorization::authorize_mutation(",
+    "MAD4B_SCP_Authorization::claim_mutation(",
+    "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
+    "MAD4B_SCP_Site_Profile_Enrollment::can_execute(",
+    "'staging' !== ( $site['configured_environment'] ?? '' )",
+    "'production_authorized' => false",
+    "'independent_host_attestation_certified' => false",
+    "function private_location(",
+    "fileperms(",
+    "random_bytes( 48 )",
+    "'x' )",
+):
+    must(native_binding, marker, "missing safe one-approved host-local binding contract")
+for forbidden in ("update_option(", "wp_remote_post(", "shell_exec(", "proc_open("):
+    if forbidden in native_binding:
+        raise AssertionError("native host binding must not write arbitrary WordPress options or execute shell: " + forbidden)
+must(native_binding_test, "single approved WordPress native transaction creates and binds key",
+    "native binding integration fixture missing")
+must(site_profile, "MAD4B_SCP_Deployment_Binding_Native::read_host_secret(",
+    "host-local secret is not automatically read during WordPress boot")
+must(remediation, "MAD4B_SCP_Deployment_Binding_Native::boot();",
+    "native binding not mounted in canonical boot")
+for marker in (
+    "'mad4b/deployment-binding-native-status'",
+    "'mad4b/deployment-binding-native-plan'",
+    "'mad4b/deployment-binding-native-apply'",
+):
+    must(servers, marker, "native host binding missing from typed MCP servers")
+must(workflow, "deployment-binding-native-runtime.php", "native binding PHP matrix missing")
+must(workflow, "class-mad4b-scp-deployment-binding-native.php", "native binding PHP lint missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
