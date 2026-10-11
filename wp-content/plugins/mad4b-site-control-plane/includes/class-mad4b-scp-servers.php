@@ -63,7 +63,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives',
-                'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback',
+                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback',
                 'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
