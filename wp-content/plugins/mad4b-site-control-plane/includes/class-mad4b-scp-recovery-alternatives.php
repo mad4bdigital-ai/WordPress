@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Recovery_Alternatives {
     const CONTRACT = 'mad4b.recovery-alternatives.v1';
-    const DOMAINS = array( 'host_runner', 'database_recovery', 'candidate_delivery' );
+    const DOMAINS = array( 'host_runner', 'database_recovery', 'candidate_delivery', 'wordpress_native' );
 
     private static function route( $id, $label, $plan, $apply, $readback, $executor,
         $evidence, $authority, $notes, $external = false ) {
@@ -36,6 +36,26 @@ final class MAD4B_SCP_Recovery_Alternatives {
     /** Static policy anchors; ability registration is checked dynamically. */
     public static function routes() {
         return array(
+            'wordpress_native' => array(
+                self::route(
+                    'native_staging_scratch', 'Host-free WordPress-only cross-request scratch rehearsal',
+                    'mad4b/native-recovery-plan', 'mad4b/native-recovery-start',
+                    'mad4b/native-recovery-readback', 'wordpress_options_scratch',
+                    array( 'separate_request', 'option_digest', 'exact_staging_site',
+                        'governed_write_approval', 'explicit_cleanup',
+                        'no_mariadb_crash_certification', 'no_ownership_transition' ),
+                    'mad4b-admin', 'Functional scratch only: does not replace real database crash or Host acceptance.'
+                ),
+                self::route(
+                    'native_brand_shadow', 'Host-free quarantined Brand source shadow rehearsal',
+                    'mad4b/native-recovery-plan', 'mad4b/native-recovery-start',
+                    'mad4b/native-recovery-readback', 'wordpress_options_shadow',
+                    array( 'original_file_issuer_identity', 'exact_provider_file_proof',
+                        'fresh_source_plan', 'independent_owner_approval_for_actual_transfer',
+                        'context_registry_untouched' ), 'mad4b-admin',
+                    'Preserves original legacy transfer gate and does not grant legal ownership.'
+                ),
+            ),
             'host_runner' => array(
                 self::route(
                     'enrolled_host_bridge', 'Existing enrolled signed Host Bridge',
@@ -231,6 +251,7 @@ final class MAD4B_SCP_Recovery_Alternatives {
             'host_runner' => array( 'host', 'runner', 'remote-executor' ),
             'database_recovery' => array( 'database', 'mariadb', 'rollback', 'crash-recovery' ),
             'candidate_delivery' => array( 'build', 'package', 'release', 'signed', 'ci' ),
+            'wordpress_native' => array( 'native', 'scratch', 'shadow' ),
         );
         if ( 'all' !== $domain && ! isset( $terms[ $domain ] ) ) return array();
         if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false ) ) return array();
