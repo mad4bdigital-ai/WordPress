@@ -42,6 +42,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static $booted = false;
 	private static $runtime_error = null;
 	private static $public_jwk_request_cache = null;
+	/** Request-local CIMD lookup, including errors; never a persistent authority cache. */
+	private static $cimd_request_lookup = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -1202,7 +1204,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$clients = self::clients();
 		if ( isset( $clients[ $client_id ] ) ) return $clients[ $client_id ];
 		if ( ! self::cimd_client_id_allowed( $client_id ) ) return null;
-		return self::fetch_cimd_client( $client_id );
+		// Error redirects can validate the same client twice. Re-fetching its
+		// external metadata serially doubles the network stall on failure.
+		// Cache only for this HTTP request; later OAuth sessions revalidate.
+		if ( array_key_exists( $client_id, self::$cimd_request_lookup ) )
+			return self::$cimd_request_lookup[ $client_id ];
+		self::$cimd_request_lookup[ $client_id ] = self::fetch_cimd_client( $client_id );
+		return self::$cimd_request_lookup[ $client_id ];
 	}
 
 	private static function cimd_supported() {
