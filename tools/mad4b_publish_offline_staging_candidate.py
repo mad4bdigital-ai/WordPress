@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 REPO = "mad4bdigital-ai/WordPress"
 TAG = "mad4b-site-control-plane-update-channel"
 CONTRACT = "mad4b.staging-ci-outage-attestation.v1"
-GATES = ("g9_delivery_contract", "php83_tree_syntax", "canonical_package_receipt",
+GATES = ("g9_delivery_contract", "php74_tree_syntax", "php83_tree_syntax", "canonical_package_receipt",
          "isolated_zip_runtime_integrity", "exact_source_verification")
 HEX40 = re.compile(r"^[a-f0-9]{40}$")
 HEX64 = re.compile(r"^[a-f0-9]{64}$")
@@ -110,9 +110,9 @@ def main() -> None:
     if not version or len(version) > 64:
         fail("Canonical package version invalid.")
     if set(evidence) != set(GATES) or any(evidence.get(k) != "PASS" for k in GATES):
-        fail("Offline evidence must contain five exact native PASS gates, reviewed independently.")
+        fail("Offline evidence must contain six exact native PASS gates, reviewed independently.")
     # The signed SHA commits to the bytes of the complete evidence bundle,
-    # not merely the names of five asserted PASS gates.
+    # not merely the names of six asserted PASS gates.
     evidencehash = sha(args.native_test_bundle)
     if not HEX64.fullmatch(evidencehash):
         fail("Invalid test evidence archive hash.")
