@@ -17,6 +17,43 @@ function wp_register_ability( $ability, $definition ) {
     $GLOBALS['attestor_abilities'][ $ability ] = $definition;
 }
 function wp_json_encode( $data, $flags = 0 ) { return json_encode( $data, $flags ); }
+$GLOBALS['attestor_opts'] = array();
+function get_option( $key, $default = '' ) {
+    return array_key_exists( $key, $GLOBALS['attestor_opts'] )
+        ? $GLOBALS['attestor_opts'][ $key ] : $default;
+}
+function update_option( $key, $value, $autoload = false ) {
+    $GLOBALS['attestor_opts'][ $key ] = $value; return true;
+}
+function wp_cache_delete( $key, $group = '' ) { return true; }
+class Attestor_Test_DB {
+    public $options = 'wp_options';
+    public function prepare( $sql, ...$params ) {
+        return array_merge( array( $sql ), $params );
+    }
+    public function get_var( $q ) { return $GLOBALS['attestor_opts'][ $q[1] ] ?? null; }
+    public function query( $q ) {
+        $sql = $q[0]; $name = $q[1];
+        if ( strpos( $sql, 'INSERT IGNORE INTO' ) !== false ) {
+            if ( isset( $GLOBALS['attestor_opts'][ $name ] ) ) return 0;
+            $GLOBALS['attestor_opts'][ $name ] = $q[2]; return 1;
+        }
+        if ( strpos( $sql, 'DELETE FROM' ) !== false ) {
+            if ( ! isset( $GLOBALS['attestor_opts'][ $name ] ) ||
+                $GLOBALS['attestor_opts'][ $name ] !== $q[2] ) return 0;
+            unset( $GLOBALS['attestor_opts'][ $name ] ); return 1;
+        }
+        return false;
+    }
+}
+$GLOBALS['wpdb'] = new Attestor_Test_DB();
+class MAD4B_SCP_Audit {
+    public static function record( $kind, $fields, $status ) {
+        return empty( $GLOBALS['attestor_audit_fail'] ) ? true :
+            new WP_Error( 'fixture_audit_unavailable' );
+    }
+}
+
 abstract class MAD4B_SCP_Adapter_Base {
     public function provider_key() { return $this->certified_provider_key(); }
 }
@@ -52,6 +89,7 @@ class MAD4B_SCP_Site_Profile {
     );
     public static function status() { return self::$site; }
     public static function user_is_enrolled( $id ) { return $id === 77; }
+    public static function site_uuid() { return self::$site['site_uuid']; }
 }
 class MAD4B_SCP_Policy {
     public static function can_mutate() { return true; }
@@ -115,4 +153,45 @@ $server = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-ser
 attestor_expect( is_string( $server ) &&
     strpos( $server, "'" . $name . "'" ) === false,
     'Attestor Ability must never appear as a fixed central Server entry' );
+
+/* Native simulated SQL enrollment: exact owner lock, independent readback and
+ * audit rollback are checked without enrolling any real key or site. */
+MAD4B_SCP_Site_Profile::$site['configured_environment'] = 'staging';
+MAD4B_SCP_Authorization::$allowed = true;
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-batch-atomic-mutex.php';
+$public = base64_encode( sodium_crypto_sign_publickey( sodium_crypto_sign_keypair() ) );
+$enrollment = array( 'public_key_base64' => $public, 'reason' => 'Fixture trust enrollment' );
+$plan = MAD4B_SCP_CI_Outage_Attestation::enroll_plan( $enrollment );
+$apply = array_merge( $enrollment, array(
+    'expected_plan_sha256' => $plan['plan_sha256'],
+    'confirmation' => MAD4B_SCP_CI_Outage_Attestation::ENROLL_CONFIRM ) );
+$lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'offline-attestor', 'approve' );
+attestor_expect( !is_wp_error( $lease ), 'A trust owner acquires the SQL mutex' );
+$denied = MAD4B_SCP_CI_Outage_Attestation::enroll_apply( $apply );
+attestor_expect( is_wp_error( $denied ) &&
+    $denied->get_error_code() === 'mad4b_enroll_admission_locked',
+    'A competing trust enrollment cannot overwrite the current owner' );
+attestor_expect( true === MAD4B_SCP_Batch_Atomic_Mutex::release( $lease ),
+    'Exact owner releases trust mutex' );
+$success = MAD4B_SCP_CI_Outage_Attestation::enroll_apply( $apply );
+attestor_expect( !is_wp_error( $success ) && $success['readback_verified'] &&
+    get_option( MAD4B_SCP_CI_Outage_Attestation::KEY_OPTION, '' ) === $public,
+    'Governed enrollment commits only after independent SQL readback' );
+$second = MAD4B_SCP_CI_Outage_Attestation::enroll_plan( array(
+    'public_key_base64' => base64_encode(
+        sodium_crypto_sign_publickey( sodium_crypto_sign_keypair() ) ),
+    'reason' => 'Unreviewed different trust root' ) );
+attestor_expect( empty( $second['eligible'] ),
+    'A different public key cannot replace the enrolled trust root' );
+unset( $GLOBALS['attestor_opts'][ MAD4B_SCP_CI_Outage_Attestation::KEY_OPTION ] );
+$retry_plan = MAD4B_SCP_CI_Outage_Attestation::enroll_plan( $enrollment );
+$apply['expected_plan_sha256'] = $retry_plan['plan_sha256'];
+$GLOBALS['attestor_audit_fail'] = true;
+$blocked = MAD4B_SCP_CI_Outage_Attestation::enroll_apply( $apply );
+attestor_expect( is_wp_error( $blocked ) &&
+    $blocked->get_error_code() === 'mad4b_enroll_audit_failed' &&
+    !isset( $GLOBALS['attestor_opts'][ MAD4B_SCP_CI_Outage_Attestation::KEY_OPTION ] ),
+    'Failed audit removes only the newly enrolled exact key by SQL CAS' );
+$GLOBALS['attestor_audit_fail'] = false;
+echo "PASS: Staging attestor atomic enrollment, trust drift refusal and CAS rollback\\n";
 echo "PASS: dynamic offline attestor registration and exact owner authority refusal\n";
