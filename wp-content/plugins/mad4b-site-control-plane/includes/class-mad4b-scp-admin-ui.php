@@ -38,11 +38,15 @@ final class MAD4B_SCP_Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error( 'mad4b_admin_ui_capability_denied', 'Administrator capability is required to inspect control-plane governance.' );
 		}
+        // Goal discovery must remain usable when governance tables are
+        // unavailable; the task map is strictly read-only and static.
+        $section = sanitize_key( (string) $section );
+        if ( 'tasks' === $section ) return array(
+            'section' => 'tasks', 'read_only' => true,
+            'release_certified' => false, 'mutation_performed' => false );
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
 			return new WP_Error( 'mad4b_admin_ui_schema_unavailable', 'Governance schema is unavailable.' );
 		}
-
-		$section = sanitize_key( (string) $section );
 		if ( ! in_array( $section, array( 'overview', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ), true ) ) $section = 'overview';
 		$t = MAD4B_SCP_Schema::tables();
 		$snapshot = array(
