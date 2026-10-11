@@ -41,6 +41,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                     'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+                    'include_provider_scan' => array( 'type' => 'boolean', 'default' => false ),
+                    'include_host_challenge' => array( 'type' => 'boolean', 'default' => false ),
                 ),
                 'required' => array( 'stage_id', 'expected_plan_sha256' ),
             ),
@@ -94,7 +96,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             ),
             'host_identity' => array(
                 'read' => 'hostinger-reach/status',
-                'next' => '', 'readback' => 'mad4b/hostinger-reach/status',
+                'next' => '', 'readback' => 'hostinger-reach/status',
                 'executor' => 'enrolled_signed_host_runner', 'operator_role' => 'host_owner',
                 'approval' => true,
             ),
@@ -239,6 +241,17 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             && ! empty( $brand['coverage']['brand_strategy']['ready'] )
             && ! empty( $brand['coverage']['tone_of_voice']['ready'] )
             && ! empty( $brand['coverage']['editorial_guidelines']['ready'] );
+        $dependencies = array(
+            'source_inventory' => array(),
+            'original_file_identity' => array( 'source_inventory' ),
+            'owner_attestation' => array( 'original_file_identity', 'host_identity',
+                'durable_db_recovery' ),
+            'host_identity' => array( 'source_inventory' ),
+            'durable_db_recovery' => array( 'host_identity' ),
+            'certified_package' => array(),
+            'brand_approval' => array( 'owner_attestation', 'certified_package' ),
+            'draft_acceptance' => array( 'brand_approval', 'certified_package' ),
+        );
         $verified = array(
             'source_inventory' => $has_census,
             'original_file_identity' => $has_proof,
@@ -263,6 +276,11 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             $external = in_array( $id, array( 'host_identity', 'durable_db_recovery' ), true );
             $missing_executor = '' === $next && $external && ! $verified[ $id ];
             $stage_blockers = array();
+            $waiting_on = array();
+            foreach ( $dependencies[ $id ] as $dependency ) {
+                if ( empty( $verified[ $dependency ] ) ) $waiting_on[] = $dependency;
+            }
+            if ( $waiting_on ) $stage_blockers[] = 'upstream_evidence_required';
             if ( ! $site_ready ) $stage_blockers[] = 'exact_staging_required';
             if ( ! $read_registered && '' !== $read ) $stage_blockers[] = 'remote_read_ability_not_mounted';
             if ( ! $next_registered && '' !== $next ) $stage_blockers[] = 'remote_executor_not_mounted';
@@ -279,7 +297,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             $stage_blockers = array_values( array_unique( $stage_blockers ) );
             $state = $verified[ $id ] ? 'EVIDENCE_OBSERVED'
                 : ( $missing_executor ? 'REMOTE_EXECUTOR_INTEGRATION_REQUIRED'
-                    : ( ! $next_registered ? 'REMOTE_ADAPTER_NOT_MOUNTED' : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) );
+                    : ( ! $next_registered ? 'REMOTE_ADAPTER_NOT_MOUNTED'
+                        : ( $waiting_on ? 'UPSTREAM_EVIDENCE_REQUIRED'
+                            : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) );
             $stages[ $id ] = array(
                 'stage_id' => $id, 'state' => $state, 'evidence_observed' => $verified[ $id ],
                 'read_ability' => $read, 'apply_ability' => $next,
@@ -287,6 +307,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'read_registered' => $read_registered, 'apply_registered' => $next_registered,
                 'executor' => $spec['executor'], 'operator_role' => $spec['operator_role'],
                 'separate_approval_required' => $spec['approval'],
+                'upstream_stages' => $dependencies[ $id ],
+                'waiting_on_upstream' => $waiting_on,
                 'remote_interface_declared' => $next_registered,
                 'end_to_end_remote_execution_certified' => false,
                 'automatic_apply_allowed' => false, 'blockers' => $stage_blockers,
@@ -327,8 +349,10 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         $snapshot = self::status( array(
             'source_id' => (string) ( $input['source_id'] ?? '' ),
             'candidate_sha' => (string) ( $input['candidate_sha'] ?? '' ),
-            // A second observation must never silently rescan Drive, nor use
-            // a prior observation's cached success to authorize execution.
+            'include_provider_scan' => ! empty( $input['include_provider_scan'] ),
+            'include_host_challenge' => ! empty( $input['include_host_challenge'] ),
+            // Repeat the independent reads; no caller-supplied PASS,
+            // cached Host nonce or provider inventory is accepted.
         ) );
         if ( is_wp_error( $snapshot ) ) return $snapshot;
         if ( ! hash_equals( $sha, (string) $snapshot['plan_sha256'] ) )
