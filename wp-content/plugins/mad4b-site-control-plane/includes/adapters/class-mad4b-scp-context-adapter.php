@@ -39,6 +39,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/status',
 				'context/assets',
 				'context/review-queue',
+				'context/remote-owner-review-plan',
 				'context/review-audit',
 				'context/brand-core-coverage',
 				'context/brand-core-convergence-plan',
@@ -66,6 +67,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/brand-profile-save',
 				'context/governed-source-upsert',
 				'context/legacy-owner-transfer-apply',
+				'context/remote-owner-review-apply',
 				'context/create-drive-asset',
 				'context/update-drive-asset',
 				'context/recreate-drive-asset',
@@ -109,6 +111,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'context_review_queue',
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/remote-owner-review-plan',
+			'Plan One Exact Remote Owner Context Review',
+			'remote_owner_review_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'asset_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ) ), array( 'asset_id' ) )
 		);
 		$this->add_ability(
 			'context/review-audit',
@@ -361,6 +370,20 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			'write', false, true, false
 		);
 		$this->add_ability(
+			'context/remote-owner-review-apply',
+			'Approve or Reject One Exact Context Asset as Authenticated Remote Owner',
+			'remote_owner_review_apply',
+			$write_permission,
+			$this->schema( array(
+				'asset_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ),
+				'expected_plan_sha256' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ),
+				'decision' => array( 'type'=>'string', 'enum'=>array( 'approve', 'needs_changes', 'reject' ) ),
+				'review_note' => array( 'type'=>'string', 'maxLength'=>1000, 'default'=>'' ),
+				'confirmation' => array( 'type'=>'string', 'enum'=>array('I REVIEWED EXACT BRAND SOURCE') ),
+			), array('asset_id','expected_plan_sha256','decision','confirmation') ),
+			'write', false, true, false
+		);
+		$this->add_ability(
 			'context/legacy-owner-transfer-apply',
 			'Approve Exact Unbound Legacy Brand Context Transfer',
 			'legacy_owner_transfer_apply',
@@ -577,7 +600,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				|| true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) ) )
 			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required',
 				'Host-certified crash-safe rollback acceptance is required before the legacy owner-transfer write can mount.' );
-		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply'), true ) ) {
+		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply','context/remote-owner-review-apply'), true ) ) {
 			$site = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
 			return 'staging' === (string)($site['environment'] ?? '') &&
 				!empty($site['origin_match']) && !empty($site['environment_match']) ? true
@@ -964,6 +987,12 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function context_review_queue() {
 		return MAD4B_SCP_Context_Authority::review_queue();
+	}
+	public function remote_owner_review_plan( $input ) {
+		return MAD4B_SCP_Context_Authority::remote_owner_review_plan( $input );
+	}
+	public function remote_owner_review_apply( $input ) {
+		return MAD4B_SCP_Context_Authority::remote_owner_review_apply( $input );
 	}
 
 	public function context_review_audit( $input ) {
