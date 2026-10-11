@@ -142,6 +142,14 @@ final class MAD4B_SCP_AI_Approval {
 			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) return false;
 		if ( null === $identity ) $identity = class_exists( 'MAD4B_SCP_Identity_Context' )
 			? MAD4B_SCP_Identity_Context::current() : array();
+		// The scope must be issued by this site's own OAuth server. A
+		// different trusted issuer must not mint the same scope name and
+		// inherit this owner's ChatGPT delegation.
+		$local_issuer = MAD4B_SCP_Local_OAuth_Server::issuer();
+		$local_fp = MAD4B_SCP_OAuth_Resource_Bridge::issuer_fingerprint_for_issuer( $local_issuer );
+		if ( ! is_array( $identity ) || empty( $identity['issuer_fingerprint'] )
+			|| ! is_string( $local_fp ) || '' === $local_fp
+			|| ! hash_equals( $local_fp, (string) $identity['issuer_fingerprint'] ) ) return false;
 		if ( is_wp_error( $identity ) || ! is_array( $identity )
 			|| empty( $identity['authenticated'] )
 			|| 'oauth2_bearer' !== ( $identity['auth_method'] ?? '' )
