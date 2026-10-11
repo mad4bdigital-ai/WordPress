@@ -94,6 +94,21 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
             . '</li></ol>';
+        echo '<h2>' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
+        $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false )
+            ? MAD4B_SCP_Deployment_Binding_Setup::status() : new WP_Error( 'binding_setup_not_mounted' );
+        if ( is_wp_error( $binding ) ) {
+            echo '<div class="notice notice-warning inline"><p>'
+                . esc_html__( 'Deployment identity setup is unavailable on this installed release.', 'mad4b-site-control-plane' )
+                . ' <code>' . esc_html( $binding->get_error_code() ) . '</code></p></div>';
+        } else {
+            echo '<p><strong>' . esc_html__( 'Binding state', 'mad4b-site-control-plane' )
+                . ':</strong> <code>' . esc_html( (string) ( $binding['state'] ?? 'UNKNOWN' ) ) . '</code></p>';
+            if ( 'HOST_SECRET_NOT_CONFIGURED' === ( $binding['state'] ?? '' ) )
+                echo '<p>' . esc_html__( 'Action needed on hosting: create a protected secret outside public_html, include it in the existing Staging wp-config.php before wp-settings.php, then retry Setup Status. Never paste the secret into ChatGPT or store it in a WordPress option.', 'mad4b-site-control-plane' ) . '</p>';
+            if ( ! empty( $binding['ready_to_bind'] ) )
+                echo '<p>' . esc_html__( 'Hosting key detected. Use the exact Staging binding plan and separately approved owner apply through MCP, then verify Site Profile again.', 'mad4b-site-control-plane' ) . '</p>';
+        }
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
             ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );
