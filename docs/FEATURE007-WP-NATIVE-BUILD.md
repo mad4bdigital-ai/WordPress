@@ -5,6 +5,49 @@ the existing external `standalone_source_build` runner. It is not enabled as
 the default release channel, does not execute downloaded source and does not
 authorize deployment.
 
+## WordPress-local acceptance simulation (non-authorizing)
+
+On Staging, the read-only `mad4b/wp-native-build-simulate` Ability provides a
+**local self-check** for an immutable `expected_head` after a governed native
+build reaches `BUILT_UNVERIFIED`. It reads the persisted build job and private
+workspace; it never changes WordPress data, installs the ZIP, executes downloaded
+PHP, generates a signer key, or signs a release receipt.
+
+It verifies only local observations:
+
+- Job/source SHA is an exact match to the current Staging Site Profile.
+- ZIP is a real private file within the bounded build size, and its actual
+  SHA-256 and byte length match the persisted job.
+- Private canonical receipt SHA-256 and exact source/package identity agree
+  with the observed ZIP and job.
+- The builder recorded PHP token screening for **every** `.php` source entry
+  (screening is not a PHP CLI runtime test).
+
+Example governed Read input:
+
+```json
+{"ability_name":"mad4b/wp-native-build-simulate","input":{"expected_head":"<40-character-immutable-SHA>"}}
+```
+
+The response is either `LOCAL_SELF_CHECKS_PASSED_UNTRUSTED` or
+`LOCAL_SELF_CHECKS_BLOCKED`. **Neither is a release PASS.** The required
+external G9 test, PHP 7.4 and PHP 8.3 native syntax matrix, isolated ZIP runtime
+integrity, independently verified source and Ed25519 signer all remain separate
+and explicitly `NOT_EXECUTED_BY_SIMULATOR` or
+`NOT_INDEPENDENTLY_VERIFIED`. The output always sets
+`release_certified=false`, `independent_signature_present=false`,
+`mutation_performed=false`, and `production_authorized=false`.
+
+This is useful to diagnose corrupted or stale files **entirely within
+WordPress** before paying for an independent release run. It cannot generate
+trusted evidence required by `control-plane-selected-head-plan`. A site that
+creates and signs its own release certificate cannot be its own independent
+attestor. Do not add `LOCAL_SELF_CHECKS_PASSED_UNTRUSTED` as an accepted
+Staging release evidence mode or weaken any existing publication/approval gate.
+
+Acceptance fixtures include rejected non-SHA inputs, tampered ZIP refusal,
+Production refusal, and a locally intact ZIP which remains untrusted.
+
 ## Adoption decision and release gates
 
 WordPress-native build is the **preferred opt-in source packaging route for eligible
