@@ -139,7 +139,7 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
             && ! $drift;
         $quarantine_clear = $census_ok && 0 === $census['source_quarantine_count']
             && 0 === $census['asset_quarantine_count'];
-        $provider_ok = ! $drift && '' !== $source_id
+        $provider_ok = $census_ok && ! $drift && '' !== $source_id
             && true === ( $facts['provider_scan_requested'] ?? false )
             && true === ( $provider['folder_membership_verified'] ?? false )
             && false === ( $provider['migration_authorized'] ?? null )
@@ -148,7 +148,7 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
             && hash_equals( (string) ( $provider['plan_sha256'] ?? '' ),
                 (string) ( $facts['original_plan_sha256'] ?? '' ) )
             && (int) ( $provider['matched_file_count'] ?? -1 ) > 0;
-        $transfer_ok = ! $drift && '' !== $source_id
+        $transfer_ok = $census_ok && ! $drift && '' !== $source_id
             && true === ( $transfer['ready_for_fresh_source_scan'] ?? false )
             && true === ( $transfer['existing_source_verified'] ?? false )
             && (int) ( $transfer['asset_count'] ?? 0 ) > 0
