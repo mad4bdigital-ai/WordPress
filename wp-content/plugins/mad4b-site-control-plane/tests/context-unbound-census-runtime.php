@@ -102,6 +102,11 @@ $GLOBALS['is_admin'] = false;
 assert_unbound( is_wp_error( MAD4B_SCP_Context_Authority::legacy_reconciliation_census() ),
     'non-admin cannot observe even quarantined counts' );
 $GLOBALS['is_admin'] = true;
+$original_assets = $GLOBALS['legacy_rows'][$asset];
+$GLOBALS['legacy_rows'][$asset] = 'MALFORMED_OPTIONS_MUST_NOT_BE_ZERO';
+assert_unbound( is_wp_error( MAD4B_SCP_Context_Authority::legacy_reconciliation_census() ),
+    'malformed WordPress option must not silently become zero quarantined records' );
+$GLOBALS['legacy_rows'][$asset] = $original_assets;
 for ( $i = 0; $i < 1001; $i++ ) $GLOBALS['legacy_rows'][$asset]['extra-' . $i] = array();
 assert_unbound( is_wp_error( MAD4B_SCP_Context_Authority::legacy_reconciliation_census() ),
     'unbounded source list must remain blocked' );
