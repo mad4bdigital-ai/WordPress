@@ -40,7 +40,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'label' => 'Discover Governed Alternative Recovery Routes',
                 'callback' => 'alternatives',
                 'properties' => array( 'domain' => array( 'type' => 'string',
-                    'enum' => array( 'all', 'host_runner', 'database_recovery', 'candidate_delivery' ) ) ),
+                    'enum' => array( 'all', 'host_runner', 'database_recovery', 'candidate_delivery', 'wordpress_native' ) ) ),
                 'required' => array(),
             ),
             self::PREPARE_ABILITY => array(
