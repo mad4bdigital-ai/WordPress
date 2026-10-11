@@ -105,8 +105,16 @@ final class MAD4B_SCP_Standalone_Build_Control {
         if ( ! is_array( $input ) || $input )
             return new WP_Error( 'mad4b_standalone_build_discovery_invalid',
                 'Standalone build discovery takes no arguments.' );
+        $native = class_exists( 'MAD4B_SCP_WP_Native_Build' ) ?
+            MAD4B_SCP_WP_Native_Build::capabilities() : array();
+        $native_ready = is_array( $native ) && ! empty( $native['eligible'] );
         return array(
             'contract' => self::CONTRACT,
+            'native_build_preferred_when_eligible' => true,
+            'native_build_currently_eligible' => $native_ready,
+            'native_build_blockers' => isset( $native['blockers'] ) ? $native['blockers'] : array(),
+            'source_only_build_route' => $native_ready ? 'wordpress_native_bounded_build_only'
+                : 'external_trusted_runner',
             'build_entrypoint' => self::SCRIPT,
             'native_evidence_entrypoint' => 'tools/mad4b_standalone_evidence.py',
             'supported_profiles' => array( 'build-only', 'local-checks' ),
