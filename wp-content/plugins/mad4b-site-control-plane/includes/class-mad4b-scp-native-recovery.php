@@ -224,24 +224,33 @@ final class MAD4B_SCP_Native_Recovery {
         $separate = ! hash_equals( (string) $scratch['writer_request_marker'], self::request_marker() );
         $fresh = time() <= (int) $scratch['expires_at'];
         $legacy_exact = true;
+        $provider_exact = true;
         if ( 'shadow' === $scratch['mode'] ) {
             $current = MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan(
                 array( 'source_id' => (string) $scratch['source_id'] ) );
             $legacy_exact = is_array( $current ) && hash_equals(
                 (string) $scratch['legacy_plan_sha256'], (string) ( $current['plan_sha256'] ?? '' ) );
+            $proof = $legacy_exact ? MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence(
+                array( 'source_id' => (string) $scratch['source_id'] ) ) : array();
+            $provider_exact = is_array( $proof )
+                && true === ( $proof['folder_membership_verified'] ?? false )
+                && hash_equals( (string) $scratch['provider_proof_sha256'],
+                    (string) ( $proof['provider_proof_sha256'] ?? '' ) );
         }
         $passed = self::cross_request_verified(
             (string) $scratch['writer_request_marker'], self::request_marker(),
-            (int) $scratch['expires_at'], time(), $legacy_exact );
+            (int) $scratch['expires_at'], time(), $legacy_exact && $provider_exact );
         return array( 'contract' => self::CONTRACT . '.readback.v1',
             'job_id' => $scratch['job_id'], 'mode' => $scratch['mode'],
             'state' => $passed ? 'WP_NATIVE_CROSS_REQUEST_VERIFIED' : 'WP_NATIVE_INCOMPLETE',
             'independent_request_observed' => $separate,
             'scratch_hash_verified' => true, 'site_binding_verified' => true,
-            'shadow_plan_still_exact' => $legacy_exact, 'fresh' => $fresh,
+            'shadow_plan_still_exact' => $legacy_exact,
+            'provider_proof_still_exact' => $provider_exact, 'fresh' => $fresh,
             'scratch_functional_rehearsal_verified' => $passed,
             'source_id' => $scratch['source_id'],
             'stored_provider_proof_sha256' => $scratch['provider_proof_sha256'],
+            'legal_rights_verified' => false,
             'ownership_transferred' => false, 'context_registry_modified' => false,
             'mariadb_crash_restart_certified' => false, 'signed_host_receipt' => false,
             'rollback_certification_issued' => false, 'host_required' => false,
