@@ -105,4 +105,14 @@ foreach ( $sites as $file => $tokens ) {
     expect_brand( is_string( $src ), 'Runtime entrypoint must exist: ' . $file );
     foreach ( $tokens as $token ) expect_brand( false !== strpos( $src, $token ), 'Missing mandatory publication guard: ' . $file . ' => ' . $token );
 }
+// Already-public edits are a separate mutation path, not a publish op.
+$experience = file_get_contents( $root . '/includes/class-mad4b-scp-content-experience-runtime.php' );
+expect_brand(
+    is_string( $experience )
+    && false !== strpos( $experience, "'update' === \$operation && in_array( (string) \$post->post_status" )
+    && false !== strpos( $experience, "'publication_brand_core' => \$brand_preflight" )
+    && false !== strpos( $experience, "'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed before live content update.'" )
+    && false !== strpos( $experience, "'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed during live content update.'" ),
+    'Already-live Content Experience edits must recheck reviewed Brand Core before and after mutation'
+);
 echo "PASS: governed publication blocks quarantined/missing/conflicted Brand Core; approval and drift remain fail-closed\n";
