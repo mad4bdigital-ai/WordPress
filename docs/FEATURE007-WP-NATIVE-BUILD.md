@@ -20,7 +20,10 @@ The evidence gates are: exact Staging identity; owner opt-in; PHP/native I/O
 readiness; pinned Git object verification; deterministic source package and
 canonical JSON/ZIP parity; independent native tests; separately signed CI-outage
 attestation; immutable release publication; governed staging install/readback/
-rollback. Each gate must be observed, never inferred from a queued CI job.
+rollback. Each gate must be observed, never inferred from a queued CI job. The WP
+build status exposes the canonical receipt and digest, not approval. A
+separate attestor still validates real package bytes, native tests and
+independent signer key provenance.
 
 ## Abilities
 
@@ -43,8 +46,10 @@ rollback. Each gate must be observed, never inferred from a queued CI job.
 5. Store in a private workspace **outside webroot**. Re-check the Site Profile,
    lease deadline and files during packaging. Parse PHP tokens without running
    fetched code.
-6. Emit a ZIP with stored entries and embedded provenance. Read back the
-   SHA-256 and refuse over-budget archives.
+6. Emit a deterministic ZIP with stored entries and embedded provenance,
+   plus `CANONICAL-PACKAGE-RECEIPT.json` matching the canonical receipt
+   fields and hashes. Check every Git blob again while writing the archive,
+   calculate SHA-256 and refuse over-budget archives.
 7. Mark **BUILT_UNVERIFIED**. Export remains owner-only. No install, GitHub
    publication, signature or release acceptance occurs at this stage.
 
