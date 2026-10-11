@@ -2180,6 +2180,20 @@ final class MAD4B_SCP_Context_Authority {
 			return new WP_Error( 'mad4b_remote_context_review_plan_drift', 'Exact reviewed asset/site/registry plan changed. Refresh approval evidence.' );
 		if ( empty( $identity['approval_ticket_id'] ) )
 			return new WP_Error( 'mad4b_remote_context_review_ticket_required', 'Separate exact one-time governed write approval is required.' );
+		// OAuth subject mapping alone does NOT prove that a person reviewed
+		// this asset. The exact write ticket must already have been approved by
+		// this authenticated WordPress administrator through the independent
+		// human approval channel, not by the AI/autonomous approval lane
+		// (which persists approved_by=0). The dispatcher claims it into
+		// executing before invoking the provider callback.
+		if ( ! class_exists( 'MAD4B_SCP_Approval_Tickets' ) )
+			return new WP_Error( 'mad4b_remote_context_review_human_attestation_unavailable', 'Independent human approval ticket evidence is unavailable.' );
+		$ticket = MAD4B_SCP_Approval_Tickets::get( $identity['approval_ticket_id'] );
+		if ( ! is_array( $ticket ) || 'executing' !== (string) ( $ticket['status'] ?? '' )
+			|| 'context/remote-owner-review-apply' !== (string) ( $ticket['ability_name'] ?? '' )
+			|| (int) ( $ticket['approved_by'] ?? 0 ) !== (int) $user_id )
+			return new WP_Error( 'mad4b_remote_context_review_human_attestation_required',
+				'A separately recorded human approval by the same WordPress owner is required. AI approval or OAuth mapping alone is insufficient.' );
 		$decision = sanitize_key( (string) ( $input['decision'] ?? '' ) );
 		if ( ! in_array( $decision, array( 'approve', 'needs_changes', 'reject' ), true ) )
 			return new WP_Error( 'mad4b_remote_context_review_decision_invalid', 'Review decision must be explicit.' );
