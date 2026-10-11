@@ -361,6 +361,41 @@ ai_gate = (root / "includes/class-mad4b-scp-ai-approval.php").read_text(encoding
 must(ai_gate, "'ai_autonomous' !==", "AI approval must deny other risk lanes")
 must(ai_gate, "ai_approval_exact_nhi_grant_missing",
     "AI decision must keep exact grant requirement")
+router = (root / "includes/class-mad4b-scp-adaptive-operation-router.php").read_text(encoding="utf-8")
+router_fixture = (root / "tests/adaptive-operation-router-runtime.php").read_text(encoding="utf-8")
+for marker in (
+    "const DISCOVER = 'mad4b/operation-route-discover'",
+    "const PLAN = 'mad4b/operation-route-plan'",
+    "MAD4B_SCP_Operation_Registry::discover(",
+    "MAD4B_SCP_Unified_Capability_Gateway::search(",
+    "MAD4B_SCP_Unified_Capability_Gateway::prepare(",
+    "MAD4B_SCP_Servers::chatgpt_base_tools()",
+    "PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK",
+    "ENROLLMENT_OPERATION_ID_AND_DIGESTS_REQUIRED",
+    "ISOLATED_DEVELOPER_STEP_UP_REQUIRED",
+    "UNVERIFIED_UNTIL_HOST_TOOLS_LIST",
+    "'production_auto_write_enabled' => false",
+    "'authority_effect' => 'none'",
+):
+    must(router, marker, "general dynamic route contract absent")
+for forbidden in (
+    "update_option(", "file_put_contents(", "shell_exec(", "proc_open(",
+    "MAD4B_SCP_Approval_Tickets::create_pending(",
+    "MAD4B_SCP_Authorization::claim_mutation(",
+    "wp_insert_post(", "delete_option(",
+):
+    if forbidden in router:
+        raise AssertionError("discovery/routing must never become a write executor: " + forbidden)
+must(router_fixture, "no invented semantic operation aliases",
+    "dynamic routing deny fixture absent")
+must(remediation, "MAD4B_SCP_Adaptive_Operation_Router::boot();",
+    "router must boot from canonical operation remediation plane")
+for marker in ("'mad4b/operation-route-discover'", "'mad4b/operation-route-plan'"):
+    must(servers, marker, "generic router not mounted on MCP read catalog")
+must(workflow, "class-mad4b-scp-adaptive-operation-router.php",
+    "dynamic router PHP lint missing")
+must(workflow, "adaptive-operation-router-runtime.php",
+    "dynamic router native PHP regression missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
