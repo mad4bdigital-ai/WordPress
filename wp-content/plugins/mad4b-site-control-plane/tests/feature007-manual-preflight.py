@@ -38,6 +38,7 @@ LINT = (
     "class-mad4b-scp-browser-acceptance-admin-ui.php",
     "class-mad4b-scp-local-oauth-server.php",
     "class-mad4b-scp-admin-surface-coverage.php",
+    "class-mad4b-scp-servers.php",
     "class-mad4b-scp-admin-ui.php",
     "class-mad4b-scp-ai-approval.php",
     "class-mad4b-scp-staging-write-authority.php",
