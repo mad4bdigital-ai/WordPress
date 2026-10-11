@@ -164,6 +164,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'host_verified' => false, 'host_challenge_attempted' => false,
             'selected_head' => array(),
             'source_id' => $source_id, 'candidate_sha' => $candidate,
+            'evidence_drift' => false,
         );
         if ( class_exists( 'MAD4B_SCP_Self_Update' )
             && method_exists( 'MAD4B_SCP_Self_Update', 'current_identity' ) ) {
@@ -198,6 +199,23 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             ) );
             if ( is_array( $release ) ) $facts['selected_head'] = $release;
         }
+        // Independent second read after provider I/O. No two mixed WordPress
+        // snapshots may produce a usable approval or recovery handoff.
+        if ( class_exists( 'MAD4B_SCP_Context_Authority' ) ) {
+            $census_again = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
+            $coverage_again = MAD4B_SCP_Context_Authority::brand_core_coverage();
+            if ( ! is_array( $census_again ) || ! is_array( $coverage_again )
+                || wp_json_encode( $facts['census'] ) !== wp_json_encode( $census_again )
+                || wp_json_encode( $facts['brand_coverage'] ) !== wp_json_encode( $coverage_again ) )
+                $facts['evidence_drift'] = true;
+        }
+        $site_again = class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::status() : array();
+        foreach ( array( 'site_uuid', 'environment', 'canonical_origin',
+            'profile_digest', 'revision', 'origin_match', 'environment_match' ) as $key ) {
+            if ( ( $site[ $key ] ?? null ) !== ( $site_again[ $key ] ?? null ) )
+                $facts['evidence_drift'] = true;
+        }
         $available = array();
         if ( function_exists( 'wp_has_ability' ) ) {
             foreach ( self::stages() as $stage ) {
@@ -218,20 +236,24 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         $brand = is_array( $facts['brand_coverage'] ?? null ) ? $facts['brand_coverage'] : array();
         $selected = is_array( $facts['selected_head'] ?? null ) ? $facts['selected_head'] : array();
         $site_ready = true === ( $facts['site_ready'] ?? false );
+        $evidence_drift = true === ( $facts['evidence_drift'] ?? false );
         $has_census = isset( $census['source_quarantine_count'], $census['asset_quarantine_count'] )
             && is_int( $census['source_quarantine_count'] )
             && is_int( $census['asset_quarantine_count'] )
             && $census['source_quarantine_count'] >= 0
             && $census['asset_quarantine_count'] >= 0;
-        $has_proof = true === ( $proof['folder_membership_verified'] ?? false )
+        $has_census = $has_census && ! $evidence_drift;
+        $has_proof = ! $evidence_drift
+            && true === ( $proof['folder_membership_verified'] ?? false )
             && false === ( $proof['migration_authorized'] ?? null )
             && 1 === preg_match( '/^[a-f0-9]{64}$/D',
                 (string) ( $proof['provider_proof_sha256'] ?? '' ) )
             && '' !== (string) ( $facts['source_id'] ?? '' )
             && hash_equals( (string) $facts['source_id'], (string) ( $proof['source_id'] ?? '' ) );
-        $host = true === ( $facts['host_verified'] ?? false )
+        $host = ! $evidence_drift
+            && true === ( $facts['host_verified'] ?? false )
             && true === ( $facts['host_challenge_attempted'] ?? false );
-        $release = ! empty( $selected['eligible'] )
+        $release = ! $evidence_drift && ! empty( $selected['eligible'] )
             && empty( $selected['blockers'] )
             && (string) ( $selected['source']['resolved_sha'] ?? '' )
                 === (string) ( $facts['candidate_sha'] ?? '' );
@@ -286,6 +308,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 if ( empty( $verified[ $dependency ] ) ) $waiting_on[] = $dependency;
             }
             if ( $waiting_on ) $stage_blockers[] = 'upstream_evidence_required';
+            if ( $evidence_drift ) $stage_blockers[] = 'cross_read_snapshot_drift';
             if ( ! $site_ready ) $stage_blockers[] = 'exact_staging_required';
             if ( ! $read_registered && '' !== $read ) $stage_blockers[] = 'remote_read_ability_not_mounted';
             if ( ! $next_registered && '' !== $next ) $stage_blockers[] = 'remote_executor_not_mounted';
@@ -300,12 +323,13 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             if ( 'brand_approval' === $id && ! $approved_brand ) $stage_blockers[] = 'exact_three_category_review_required';
             if ( 'draft_acceptance' === $id ) $stage_blockers[] = 'separate_draft_apply_and_cpt_readback_required';
             $stage_blockers = array_values( array_unique( $stage_blockers ) );
-            $state = $verified[ $id ] ? 'EVIDENCE_OBSERVED'
+            $state = $evidence_drift ? 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+                : ( $verified[ $id ] ? 'EVIDENCE_OBSERVED'
                 : ( 'host_identity' === $id ? 'SIGNED_HOST_PROOF_REQUIRED'
                     : ( $missing_executor ? 'REMOTE_EXECUTOR_INTEGRATION_REQUIRED'
                     : ( ! $next_registered ? 'REMOTE_ADAPTER_NOT_MOUNTED'
                         : ( $waiting_on ? 'UPSTREAM_EVIDENCE_REQUIRED'
-                            : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) ) );
+                            : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) ) ) );
             $stages[ $id ] = array(
                 'stage_id' => $id, 'state' => $state, 'evidence_observed' => $verified[ $id ],
                 'read_ability' => $read, 'apply_ability' => $next,
@@ -330,12 +354,14 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'proof_sha256' => $has_proof ? $proof['provider_proof_sha256'] : '',
             'coverage_sha256' => hash( 'sha256', wp_json_encode( $brand ) ),
             'host_nonce_verified' => $host,
+            'cross_read_snapshot_drift' => $evidence_drift,
             'selected_plan_sha256' => (string) ( $selected['plan_sha256'] ?? '' ),
             'stages' => $stages,
         );
         $sha = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         return array(
-            'contract' => self::CONTRACT, 'state' => $blockers ? 'REMOTE_RECOVERY_INCOMPLETE' : 'REMOTE_RECOVERY_READBACK_COMPLETE',
+            'contract' => self::CONTRACT, 'state' => $evidence_drift ? 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+                : ( $blockers ? 'REMOTE_RECOVERY_INCOMPLETE' : 'REMOTE_RECOVERY_READBACK_COMPLETE' ),
             'plan_sha256' => $sha, 'source_commit_sha' => $basis['source_commit_sha'],
             'candidate_sha' => $basis['candidate_sha'],
             'stages' => $stages, 'remaining_stages' => array_keys( $blockers ),
