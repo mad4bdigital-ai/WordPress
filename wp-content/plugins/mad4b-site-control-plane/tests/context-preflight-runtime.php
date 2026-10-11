@@ -502,4 +502,66 @@ mad4b_context_preflight_assert( is_wp_error( $none_guard ) && 'mad4b_content_con
 $not_allowed = MAD4B_SCP_Context_Preflight::preflight_entry( $skill, 'campaign-x', 'seo/update-meta' );
 mad4b_context_preflight_assert( is_wp_error( $not_allowed ) && 'mad4b_skill_context_mutation_ability_not_allowed' === $not_allowed->get_error_code(), 'Skill policy must deny write-bound receipts for undeclared abilities.', $not_allowed );
 
+// A long audit reason in approval-plan must never be mistaken for brand
+// content. Only the exact nested target's provider semantics matter.
+$host_binding_approval = array(
+    'agent_public_id' => '09927f6f-35c4-48d0-b661-949a22af1104',
+    'server_id' => 'mad4b-write',
+    'ability' => 'mad4b/deployment-binding-native-apply',
+    'provider' => 'core',
+    'reason' => str_repeat( 'Owner-authorized Staging host-local identity binding; unchanged OAuth and website origin. ', 3 ),
+    'input' => array(
+        'expected_plan_sha256' => str_repeat( 'a', 64 ),
+        'expected_site_uuid' => '49c562d1-8f2f-456f-b454-26816c6ba4cb',
+        'expected_revision' => 3,
+        'confirmation' => 'CREATE HOST-LOCAL STAGING BINDING',
+    ),
+);
+$host_binding_context = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+    'mad4b/approval-plan', $host_binding_approval
+);
+mad4b_context_preflight_assert( true === $host_binding_context,
+    'Non-content approval envelope must classify nested host binding without false Brand Core review.',
+    $host_binding_context );
+
+$nested_brand_plan = $host_binding_approval;
+$nested_brand_plan['ability'] = 'mad4b/content-update-post';
+$nested_brand_plan['input'] = array( 'post_id' => 12, 'post_title' => 'New Memphis Nile Cruise' );
+$nested_brand_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+    'mad4b/approval-plan', $nested_brand_plan
+);
+mad4b_context_preflight_assert( is_wp_error( $nested_brand_guard )
+    && 'mad4b_content_context_receipt_required' === $nested_brand_guard->get_error_code(),
+    'A nested brand-bearing approval must still require the exact Context Receipt.',
+    $nested_brand_guard );
+
+$nested_unknown = $host_binding_approval;
+$nested_unknown['ability'] = 'partner/future-write';
+$nested_unknown['input'] = array( 'unknown_brand_title' => 'New cruise copy' );
+$nested_unknown_guard = MAD4B_SCP_Context_Preflight::mutation_context_guard(
+    'mad4b/approval-plan', $nested_unknown
+);
+mad4b_context_preflight_assert( is_wp_error( $nested_unknown_guard )
+    && 'mad4b_content_field_classification_required' === $nested_unknown_guard->get_error_code(),
+    'Unknown nested provider brand fields must not bypass semantic classification.',
+    $nested_unknown_guard );
+
+foreach ( array( 'mad4b/approval-plan', 'mad4b/database-raw-query',
+    'mad4b/developer-breakglass-command' ) as $forbidden_target ) {
+    $invalid_nested = $host_binding_approval;
+    $invalid_nested['ability'] = $forbidden_target;
+    mad4b_context_preflight_assert( is_wp_error(
+        MAD4B_SCP_Context_Preflight::mutation_context_guard(
+            'mad4b/approval-plan', $invalid_nested ) ),
+        'Recursive and Breakglass approval envelope targets remain denied.',
+        $forbidden_target );
+}
+$invalid_nested = $host_binding_approval;
+$invalid_nested['input'] = 'not-an-object';
+mad4b_context_preflight_assert( is_wp_error(
+    MAD4B_SCP_Context_Preflight::mutation_context_guard(
+        'mad4b/approval-plan', $invalid_nested ) ),
+    'Approval envelope without object target input must fail closed.',
+    $invalid_nested );
+
 echo "mad4b.site-control-plane.context-preflight.runtime.v4: PASS\n";
