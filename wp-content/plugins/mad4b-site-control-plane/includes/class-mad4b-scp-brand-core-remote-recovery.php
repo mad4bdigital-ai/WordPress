@@ -235,7 +235,10 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             && empty( $selected['blockers'] )
             && (string) ( $selected['source']['resolved_sha'] ?? '' )
                 === (string) ( $facts['candidate_sha'] ?? '' );
-        $approved_brand = true === ( $brand['ready'] ?? false )
+        $approved_brand = $has_census
+            && 0 === $census['source_quarantine_count']
+            && 0 === $census['asset_quarantine_count']
+            && true === ( $brand['ready'] ?? false )
             && empty( $brand['conflicting_required_context_sets'] )
             && isset( $brand['coverage']['brand_strategy']['ready'],
                 $brand['coverage']['tone_of_voice']['ready'],
@@ -298,10 +301,11 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             if ( 'draft_acceptance' === $id ) $stage_blockers[] = 'separate_draft_apply_and_cpt_readback_required';
             $stage_blockers = array_values( array_unique( $stage_blockers ) );
             $state = $verified[ $id ] ? 'EVIDENCE_OBSERVED'
-                : ( $missing_executor ? 'REMOTE_EXECUTOR_INTEGRATION_REQUIRED'
+                : ( 'host_identity' === $id ? 'SIGNED_HOST_PROOF_REQUIRED'
+                    : ( $missing_executor ? 'REMOTE_EXECUTOR_INTEGRATION_REQUIRED'
                     : ( ! $next_registered ? 'REMOTE_ADAPTER_NOT_MOUNTED'
                         : ( $waiting_on ? 'UPSTREAM_EVIDENCE_REQUIRED'
-                            : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) );
+                            : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) ) );
             $stages[ $id ] = array(
                 'stage_id' => $id, 'state' => $state, 'evidence_observed' => $verified[ $id ],
                 'read_ability' => $read, 'apply_ability' => $next,
