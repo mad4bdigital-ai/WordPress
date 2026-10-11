@@ -8,6 +8,22 @@ if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\\-]/', '', strtolower( (string) $value ) ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
 function add_action( $name, $handler, $priority = 10 ) { return true; }
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message = '', $data = null ) {
+        $this->code = (string) $code;
+    }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
+function sanitize_text_field( $value ) { return trim( strip_tags( (string) $value ) ); }
+function absint( $value ) { return abs( (int) $value ); }
+class MAD4B_SCP_Connector_Resilience {}
+class MAD4B_SCP_Live_Acceptance_Observer {
+    public static function build_provenance_identity_status() {
+        throw new RuntimeException( 'private-server-error-do-not-leak' );
+    }
+}
 function wp_register_ability( $name, $definition ) { $GLOBALS['abilities'][ $name ] = $definition; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['abilities'][ $name ] ); }
 class MAD4B_SCP_Policy { public static function can_read() { return true; } }
@@ -58,4 +74,21 @@ $denied = $method->invoke( null, $sections, false,
 require_contract( $denied['state'] === 'BLOCKED' &&
     $denied['signals']['write_authority_ready'] === false,
     'Real stale Write Authority remains blocking despite deferred Skills' );
-echo "PASS: session-safe scoped schema / historical-vs-live Skills / write fail-closed\n";
+// A WordPress-level Throwable in a generation snapshot must never terminate
+// an MCP client with a raw fatal, and cannot be counted as a ready identity.
+$snapshot = new ReflectionMethod( 'MAD4B_SCP_Read_Consistency', 'safe_read_snapshot' );
+$snapshot->setAccessible( true );
+$failed = $snapshot->invoke( null, 'rtx_fixture_12345678', 'preflight' );
+require_contract( is_wp_error( $failed ) &&
+    $failed->get_error_code() === 'mad4b_snapshot_preflight_unavailable',
+    'Preflight identity exceptions become typed, fail-closed WP_Error' );
+$metadata = MAD4B_SCP_Read_Consistency::metadata_envelope( array(
+    'target_type' => 'ability', 'target' => 'mad4b/site-info' ) );
+require_contract( is_wp_error( $metadata ) &&
+    $metadata->get_error_code() === 'mad4b_snapshot_preflight_unavailable',
+    'Metadata reads reuse shared snapshot isolation guard' );
+$bundle = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array( 'bundle' => 'identity' ) );
+require_contract( is_wp_error( $bundle ) &&
+    $bundle->get_error_code() === 'mad4b_snapshot_preflight_unavailable',
+    'Bundle diagnostics isolate failed snapshots instead of PHP fatal' );
+echo "PASS: scoped diagnostics / Skills truth / safe snapshot exceptions / write refusal\n";
