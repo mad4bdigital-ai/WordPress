@@ -56,6 +56,8 @@ final class MAD4B_SCP_Operator_Journeys {
             'discover_and_automate' => array(
                 'label' => 'Find a remote operation and its executor', 'risk' => 'varies',
                 'steps' => array(
+                    array( 'dynamic_discover', 'mad4b/operation-route-discover', 'read' ),
+                    array( 'dynamic_route_plan', 'mad4b/operation-route-plan', 'read' ),
                     array( 'discover', 'mad4b/operation-discover', 'read' ),
                     array( 'requirements', 'mad4b/progressive-requirements-plan', 'read' ),
                     array( 'prepare', 'mad4b/operational-remediation-prepare', 'read' ),
