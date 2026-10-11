@@ -187,11 +187,10 @@ final class MAD4B_SCP_WP_Native_Build {
                 MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ||
             ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_native_step_up_required', 'Owner OAuth Step-up required.' );
-        $decision = MAD4B_SCP_Authorization::authorize_mutation(
-            self::PREFIX . 'start', 'mad4b-admin', 'core', $input );
-        if ( is_wp_error( $decision ) ) return $decision;
-        return is_array( $decision ) && ! empty( $decision['allowed'] ) ? true :
-            new WP_Error( 'mad4b_native_authorization_denied', 'Exact authorization required.' );
+        // The canonical MAD4B execution boundary owns the exact grant, budget,
+        // claim and one-time approval. Permission callbacks are side-effect-free
+        // identity checks; they MUST NOT authorize the same ticket twice.
+        return true;
     }
 
     private static function root_for( $sha ) {
@@ -206,10 +205,15 @@ final class MAD4B_SCP_WP_Native_Build {
             array_diff( array_keys( $input ), array( 'expected_head', 'expected_plan_sha256', 'confirmation' ) ) ||
             ( $input['confirmation'] ?? '' ) !== self::CONFIRM )
             return new WP_Error( 'mad4b_native_start_input', 'Exact opt-in confirmation required.' );
-        // Recheck real owner, OAuth Step-up and exact central write authority in
-        // the execution callback, not only in the Ability permission hook.
+        // Recheck local owner identity after the canonical execution boundary
+        // claims exactly one ticket for this start. Reject direct PHP callers.
         $access = self::can_start( $input );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
+        if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ||
+            ! method_exists( 'MAD4B_SCP_Authorization', 'execution_callback_started' ) ||
+            ! MAD4B_SCP_Authorization::execution_callback_started( self::PREFIX . 'start' ) )
+            return new WP_Error( 'mad4b_native_start_execution_claim_required',
+                'Native build requires its exact governed execution claim.' );
         $plan = self::plan( array( 'expected_head' => $input['expected_head'] ?? '' ) );
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! hash_equals( $plan['plan_sha256'], (string) ( $input['expected_plan_sha256'] ?? '' ) ) ||
