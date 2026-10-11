@@ -845,6 +845,41 @@ final class MAD4B_SCP_WP_Native_Build {
         );
     }
 
+    /**
+     * INTERNAL same-process handoff to governed Staging updater. Not an
+     * exposed Ability, URL, shell path, or plugin download endpoint.
+     * The WordPress owner and Site Profile checks remain mandatory.
+     */
+    public static function local_package_bytes( $sha ) {
+        if ( ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha ) ||
+            ! self::exact_staging() || ! function_exists( 'current_user_can' ) ||
+            ! current_user_can( 'manage_options' ) ||
+            ! current_user_can( 'update_plugins' ) ||
+            ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return new WP_Error( 'mad4b_native_local_package_denied', 'Enrolled Staging owner required.' );
+        $sim = self::simulate( array( 'expected_head' => $sha ) );
+        if ( is_wp_error( $sim ) || ( $sim['state'] ?? '' ) !== 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' )
+            return new WP_Error( 'mad4b_native_local_package_unverified', 'Local ZIP integrity was not confirmed.' );
+        $job = self::locked_job_read();
+        if ( is_wp_error( $job ) || ! is_array( $job ) ||
+            ( $job['head'] ?? '' ) !== $sha ||
+            ( $job['state'] ?? '' ) !== 'BUILT_UNVERIFIED' )
+            return new WP_Error( 'mad4b_native_local_package_state', 'Completed matching build required.' );
+        $dir = self::root_for( $sha );
+        $path = $dir ? $dir . '/candidate.zip' : '';
+        $size = (int) ( $job['archive_bytes'] ?? 0 );
+        $digest = (string) ( $job['archive_sha256'] ?? '' );
+        if ( ! $path || $size < 1 || $size > self::MAX_ZIP_BYTES ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $digest ) ||
+            ! is_file( $path ) || is_link( $path ) || filesize( $path ) !== $size )
+            return new WP_Error( 'mad4b_native_local_package_invalid', 'Private candidate ZIP unavailable.' );
+        $bytes = file_get_contents( $path );
+        if ( ! is_string( $bytes ) || strlen( $bytes ) !== $size ||
+            ! hash_equals( $digest, hash( 'sha256', $bytes ) ) )
+            return new WP_Error( 'mad4b_native_local_package_drift', 'Private package changed during read.' );
+        return $bytes;
+    }
+
     public static function export_chunk( $input = array() ) {
         if ( ! self::exact_staging() || ! function_exists( 'current_user_can' ) ||
             ! current_user_can( 'manage_options' ) ||
