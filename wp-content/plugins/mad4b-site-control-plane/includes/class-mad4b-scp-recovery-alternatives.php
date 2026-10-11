@@ -241,9 +241,14 @@ final class MAD4B_SCP_Recovery_Alternatives {
             if ( count( $found ) >= 48 ) break;
             if ( ! is_string( $id ) || ! preg_match( '/^[a-z0-9._-]{2,96}$/D', $id )
                 || ! is_array( $item ) ) continue;
-            $tags = is_array( $item['capability_tags'] ?? null ) ? $item['capability_tags'] : array();
-            $text = strtolower( implode( ' ', array_slice( array_map( 'strval', $tags ), 0, 20 ) )
-                . ' ' . $id . ' ' . (string) ( $item['provider'] ?? '' ) );
+            $raw_tags = is_array( $item['capability_tags'] ?? null )
+                ? array_slice( $item['capability_tags'], 0, 20 ) : array();
+            $tags = array();
+            foreach ( $raw_tags as $tag ) {
+                if ( is_string( $tag ) && strlen( $tag ) <= 80 ) $tags[] = $tag;
+            }
+            $text = strtolower( implode( ' ', $tags ) . ' ' . $id . ' '
+                . ( is_string( $item['provider'] ?? null ) ? $item['provider'] : '' ) );
             foreach ( $terms as $group => $tokens ) {
                 if ( 'all' !== $domain && $group !== $domain ) continue;
                 $matched = false;
