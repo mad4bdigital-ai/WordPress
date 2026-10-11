@@ -232,7 +232,20 @@ final class MAD4B_SCP_WP_Native_Build {
             'started_at' => time(), 'expires_at' => time() + 7200,
             'build_state' => 'NOT_RUN', 'production_authorized' => false );
         update_option( self::OPTION, $job, false );
-        self::schedule();
+        $persisted = get_option( self::OPTION, array() );
+        if ( ! is_array( $persisted ) ||
+            ( $persisted['head'] ?? '' ) !== $job['head'] ||
+            ( $persisted['plan_sha256'] ?? '' ) !== $job['plan_sha256'] ||
+            ( $persisted['state'] ?? '' ) !== 'DISCOVERING' )
+            return new WP_Error( 'mad4b_native_job_persist_failed',
+                'Exact source build job could not be persisted.' );
+        if ( ! self::schedule() ) {
+            $persisted['state'] = 'BLOCKED';
+            $persisted['blocker'] = 'wp_cron_schedule_failed';
+            update_option( self::OPTION, $persisted, false );
+            return new WP_Error( 'mad4b_native_schedule_failed',
+                'Build schedule could not be confirmed.' );
+        }
         return array( 'contract' => self::CONTRACT . '.start.v1',
             'state' => 'DISCOVERING', 'head' => $job['head'],
             'execution' => 'wp_cron_bounded', 'release_certified' => false,
@@ -240,9 +253,14 @@ final class MAD4B_SCP_WP_Native_Build {
     }
 
     private static function schedule() {
-        if ( function_exists( 'wp_schedule_single_event' ) &&
-            ( ! function_exists( 'wp_next_scheduled' ) || ! wp_next_scheduled( self::HOOK ) ) )
-            wp_schedule_single_event( time() + 3, self::HOOK );
+        if ( ! function_exists( 'wp_schedule_single_event' ) ) return false;
+        // A pending event is already a valid scheduling outcome. Otherwise
+        // return the actual WordPress scheduler result; never silently report
+        // success after a failed or disabled cron dispatch.
+        if ( function_exists( 'wp_next_scheduled' ) && wp_next_scheduled( self::HOOK ) )
+            return true;
+        $result = wp_schedule_single_event( time() + 3, self::HOOK, array(), true );
+        return ! is_wp_error( $result ) && true === $result;
     }
 
     private static function github( $suffix, $limit = 2097152 ) {
@@ -565,39 +583,64 @@ final class MAD4B_SCP_WP_Native_Build {
 
     public static function tick() {
         if ( ! self::exact_staging() ) return;
-        $job = get_option( self::OPTION, array() );
-        if ( ! is_array( $job ) || ! in_array( $job['state'] ?? '',
-            array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
-        $site = self::site();
-        if ( ( $site['site_uuid'] ?? '' ) !== ( $job['site_uuid'] ?? '' ) ||
-            ( $site['profile_digest'] ?? '' ) !== ( $job['profile_digest'] ?? '' ) ||
-            ( $site['canonical_origin'] ?? '' ) !== ( $job['origin'] ?? '' ) ||
-            time() > ( $job['expires_at'] ?? 0 ) ) {
-            $job['state'] = 'BLOCKED';
-            $job['blocker'] = 'site_binding_or_deadline_changed';
-            update_option( self::OPTION, $job, false );
-            return;
-        }
-        $dir = self::root_for( $job['head'] );
+        $observed = get_option( self::OPTION, array() );
+        if ( ! is_array( $observed ) || ! preg_match( '/^[a-f0-9]{40}$/D',
+            (string) ( $observed['head'] ?? '' ) ) ||
+            ! in_array( $observed['state'] ?? '',
+                array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
+        $dir = self::root_for( $observed['head'] );
         if ( ! $dir || ! is_dir( $dir ) || is_link( $dir ) ) return;
         $fp = @fopen( $dir . '/.lock', 'c' );
         if ( ! $fp ) return;
         if ( ! flock( $fp, LOCK_EX | LOCK_NB ) ) { fclose( $fp ); return; }
         try {
-            if ( $job['state'] === 'DISCOVERING' ) $out = self::discover( $job );
-            elseif ( $job['state'] === 'FETCHING' ) $out = self::fetch_batch( $job, $dir );
-            else $out = self::package( $job, $dir );
-            if ( is_wp_error( $out ) ) {
+            // The pre-lock read is ONLY used to locate the workspace. Workers
+            // must reload canonical state AFTER obtaining its per-source lock;
+            // otherwise a delayed worker can roll back another tick's cursor
+            // or execute work belonging to a superseding job.
+            $job = get_option( self::OPTION, array() );
+            if ( ! is_array( $job ) ||
+                ( $job['head'] ?? '' ) !== $observed['head'] ||
+                ! in_array( $job['state'] ?? '',
+                    array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
+            $site = self::site();
+            if ( ! self::exact_staging() ||
+                ( $site['site_uuid'] ?? '' ) !== ( $job['site_uuid'] ?? '' ) ||
+                ( $site['profile_digest'] ?? '' ) !== ( $job['profile_digest'] ?? '' ) ||
+                ( $site['canonical_origin'] ?? '' ) !== ( $job['origin'] ?? '' ) ||
+                time() > ( $job['expires_at'] ?? 0 ) ) {
                 $job['state'] = 'BLOCKED';
-                $job['blocker'] = $out->get_error_code();
+                $job['blocker'] = 'site_binding_or_deadline_changed';
+                update_option( self::OPTION, $job, false );
+                return;
+            }
+            try {
+                if ( $job['state'] === 'DISCOVERING' ) $out = self::discover( $job );
+                elseif ( $job['state'] === 'FETCHING' ) $out = self::fetch_batch( $job, $dir );
+                else $out = self::package( $job, $dir );
+                if ( is_wp_error( $out ) ) {
+                    $job['state'] = 'BLOCKED';
+                    $job['blocker'] = $out->get_error_code();
+                }
+            } catch ( Throwable $error ) {
+                // No raw exception text, potentially secret URL, or source
+                // content is written to the MCP status or WordPress option.
+                $job['state'] = 'BLOCKED';
+                $job['blocker'] = 'native_worker_internal_exception';
+                $job['internal_exception_class'] = get_class( $error );
+            }
+            if ( in_array( $job['state'], array(
+                'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
+                if ( ! self::schedule() ) {
+                    $job['state'] = 'BLOCKED';
+                    $job['blocker'] = 'wp_cron_schedule_failed';
+                }
             }
             update_option( self::OPTION, $job, false );
         } finally {
             flock( $fp, LOCK_UN );
             fclose( $fp );
         }
-        if ( in_array( $job['state'], array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) )
-            self::schedule();
     }
 
     public static function status( $input = array() ) {
