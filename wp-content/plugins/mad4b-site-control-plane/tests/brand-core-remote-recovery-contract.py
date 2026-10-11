@@ -106,6 +106,24 @@ must(remote, "'next' => 'mad4b/host-operation-apply'", "Host executor must be se
 must(remote, "'evidence_drift' => false", "status must begin with empty drift")
 must(remote, "'cross_read_snapshot_drift'", "cross-source readback drift must fail closed")
 
+alternative = (root / "includes/class-mad4b-scp-recovery-alternatives.php").read_text(encoding="utf-8")
+for marker in (
+    "final class MAD4B_SCP_Recovery_Alternatives",
+    "public static function assess(",
+    "public static function discover(",
+    "public static function add_on_suggestions(",
+    "signed_offline_staging",
+    "standalone_remote_builder",
+    "isolated_mariadb_worker",
+    "managed_staging_clone",
+    "'execution_authorized' => false",
+    "'release_or_rollback_certified' => false",
+    "'automatic_fallback_allowed' => false",
+):
+    must(alternative, marker, "alternative route discovery must remain nonauthorizing")
+must(remote, "const ALTERNATIVES_ABILITY = 'mad4b/brand-core-recovery-alternatives'", "alternate read ability missing")
+must(remote, "MAD4B_SCP_Recovery_Alternatives::discover(", "alternative planning not integrated")
+
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
