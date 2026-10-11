@@ -217,12 +217,65 @@ final class MAD4B_SCP_Recovery_Alternatives {
             'read_only' => true, 'mutation_performed' => false );
     }
 
+    /**
+     * Discover future certified add-on operation registrations without
+     * treating their labels or callbacks as trusted equivalents. The owner
+     * must separately review an exact trust/evidence contract before use.
+     */
+    public static function add_on_suggestions( $domain = 'all' ) {
+        $terms = array(
+            'host_runner' => array( 'host', 'runner', 'remote-executor' ),
+            'database_recovery' => array( 'database', 'mariadb', 'rollback', 'crash-recovery' ),
+            'candidate_delivery' => array( 'build', 'package', 'release', 'signed', 'ci' ),
+        );
+        if ( 'all' !== $domain && ! isset( $terms[ $domain ] ) ) return array();
+        if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity', false ) ) return array();
+        $registered = MAD4B_SCP_Remote_Operation_Parity::catalog();
+        if ( ! is_array( $registered ) ) return array();
+        $found = array();
+        foreach ( $registered as $id => $item ) {
+            if ( count( $found ) >= 48 ) break;
+            if ( ! is_string( $id ) || ! preg_match( '/^[a-z0-9._-]{2,96}$/D', $id )
+                || ! is_array( $item ) ) continue;
+            $tags = is_array( $item['capability_tags'] ?? null ) ? $item['capability_tags'] : array();
+            $text = strtolower( implode( ' ', array_slice( array_map( 'strval', $tags ), 0, 20 ) )
+                . ' ' . $id . ' ' . (string) ( $item['provider'] ?? '' ) );
+            foreach ( $terms as $group => $tokens ) {
+                if ( 'all' !== $domain && $group !== $domain ) continue;
+                $matched = false;
+                foreach ( $tokens as $token ) {
+                    if ( false !== strpos( $text, $token ) ) { $matched = true; break; }
+                }
+                if ( ! $matched ) continue;
+                $ability = (string) ( $item['remote_ability'] ?? '' );
+                if ( ! preg_match( '#^[a-z0-9_-]+/[a-z0-9_-]+$#D', $ability ) ) continue;
+                $found[] = array(
+                    'domain' => $group, 'registered_operation_id' => $id,
+                    'provider' => sanitize_key( (string) ( $item['provider'] ?? '' ) ),
+                    'ability' => $ability,
+                    'registration_digest' => (string) ( $item['registration_digest'] ?? '' ),
+                    'currently_discoverable' => ! empty( $item['remote_registered'] ),
+                    'executor_reported_eligible' => ! empty( $item['execution_eligible'] ),
+                    'evidence_equivalence_certified' => false,
+                    'execution_authorized' => false,
+                    'status' => 'UNTRUSTED_EQUIVALENCE_CANDIDATE',
+                    'next_action' => 'review_exact_provider_contract_and_independent_evidence',
+                );
+            }
+        }
+        return $found;
+    }
+
     /** Runtime discovery is limited to WordPress' registered native abilities. */
     public static function discover( $domain = 'all' ) {
         $mounts = array();
         foreach ( self::required_ability_names() as $name )
             $mounts[ $name ] = function_exists( 'wp_has_ability' )
                 && (bool) wp_has_ability( $name );
-        return self::assess( $mounts, $domain );
+        $result = self::assess( $mounts, $domain );
+        if ( is_wp_error( $result ) ) return $result;
+        $result['other_registered_provider_suggestions'] = self::add_on_suggestions( $domain );
+        $result['dynamic_addons_are_not_cleared_as_equivalent'] = true;
+        return $result;
     }
 }
