@@ -801,7 +801,7 @@ jobs:
             php -l "$root/includes/$name"
           done
           php -l "$root/includes/adapters/class-mad4b-scp-context-adapter.php"
-          for name in unified-operational-scope-runtime.php operational-integrity-local-runtime.php trusted-brand-scope-runtime.php brand-core-control-loop-runtime.php progressive-requirements-runtime.php skill-context-preflight-runtime.php content-job-transaction-fault-runtime.php business-activity-sync-runtime.php deployment-mode-resolver-runtime.php; do
+          for name in unified-operational-scope-runtime.php operational-integrity-local-runtime.php trusted-brand-scope-runtime.php brand-core-control-loop-runtime.php context-legacy-owner-provider-proof-runtime.php progressive-requirements-runtime.php skill-context-preflight-runtime.php content-job-transaction-fault-runtime.php business-activity-sync-runtime.php deployment-mode-resolver-runtime.php; do
             php -l "$root/tests/$name"
             php "$root/tests/$name"
           done
