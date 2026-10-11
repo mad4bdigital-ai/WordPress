@@ -450,6 +450,99 @@ final class MAD4B_SCP_Context_Authority {
 	}
 
 	/**
+	 * Read-only independent identity evidence for a quarantined original Drive
+	 * folder. This proves membership, NOT legal ownership or editorial consent.
+	 * A full provider scan is required; truncated or ambiguous results fail closed.
+	 */
+	public static function legacy_owner_transfer_evidence( $input = array() ) {
+		$plan = self::legacy_owner_transfer_plan( $input );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) )
+			return new WP_Error( 'mad4b_legacy_proof_provider_unavailable', 'The original Drive provider is unavailable.' );
+		$source = self::raw_sources()[ $plan['source_id'] ] ?? array();
+		$recursive = ! empty( $source['recursive'] );
+		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $plan['external_root_id'], $recursive );
+		if ( is_wp_error( $scan ) ) return $scan;
+		return self::legacy_owner_provider_proof( $plan, self::raw_assets(), $scan, $recursive );
+	}
+
+	/** Pure exact-set comparison shared by the read-only evidence and locked write preflight. */
+	public static function legacy_owner_provider_proof( $plan, $stored_assets, $scan, $recursive ) {
+		if ( ! is_array( $plan ) || ! is_array( $stored_assets ) || ! is_array( $scan )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $plan['plan_sha256'] ?? '' ) )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $plan['source_id'] ?? '' ) )
+			|| empty( $plan['external_root_id'] ) || ! isset( $plan['asset_count'] )
+			|| ! is_int( $plan['asset_count'] ) || $plan['asset_count'] < 1 )
+			return new WP_Error( 'mad4b_legacy_proof_plan_invalid', 'Exact original source plan is required.' );
+		if ( true !== ( $scan['complete'] ?? null ) || ! empty( $scan['truncated'] )
+			|| ! isset( $scan['folder'], $scan['assets'] ) || ! is_array( $scan['folder'] )
+			|| ! is_array( $scan['assets'] ) || (bool) ( $scan['recursive'] ?? null ) !== (bool) $recursive
+			|| ! hash_equals( (string) $plan['external_root_id'], (string) ( $scan['folder']['id'] ?? '' ) )
+			|| 'application/vnd.google-apps.folder' !== (string) ( $scan['folder']['mimeType'] ?? '' ) )
+			return new WP_Error( 'mad4b_legacy_proof_incomplete_or_wrong_folder',
+				'Complete original-folder metadata and recursive scope must match the approved plan.' );
+		$expected = array();
+		foreach ( $stored_assets as $key => $asset ) {
+			if ( ! is_array( $asset ) || $plan['source_id'] !== (string) ( $asset['source_id'] ?? '' ) ) continue;
+			$file_id = (string) ( $asset['file_id'] ?? '' );
+			$asset_id = hash( 'sha256', (string) $plan['source_id'] . '|' . $file_id );
+			if ( '' === $file_id || isset( $expected[ $file_id ] )
+				|| ! hash_equals( $asset_id, (string) $key )
+				|| ! hash_equals( $asset_id, (string) ( $asset['asset_id'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_legacy_proof_registry_ambiguous', 'Stored asset IDs are duplicated or no longer canonical.' );
+			$expected[ $file_id ] = true;
+		}
+		if ( count( $expected ) !== $plan['asset_count'] )
+			return new WP_Error( 'mad4b_legacy_proof_registry_count_changed', 'The original asset set changed since planning.' );
+		$observed = array();
+		foreach ( $scan['assets'] as $item ) {
+			if ( ! is_array( $item ) || '' === (string) ( $item['file_id'] ?? '' ) )
+				return new WP_Error( 'mad4b_legacy_proof_provider_item_invalid', 'Provider returned an invalid file record.' );
+			$file_id = (string) $item['file_id'];
+			if ( isset( $observed[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_proof_duplicate_provider_identity', 'Provider inventory repeats a file ID.' );
+			$observed[ $file_id ] = $item;
+		}
+		$matched = array();
+		foreach ( $expected as $file_id => $unused ) {
+			if ( ! isset( $observed[ $file_id ] ) )
+				return new WP_Error( 'mad4b_legacy_proof_file_missing', 'An original file is not in the current complete Drive folder inventory.' );
+			$item = $observed[ $file_id ];
+			if ( '' === (string) ( $item['parent_folder_id'] ?? '' )
+				|| 'application/vnd.google-apps.shortcut' === (string) ( $item['mimeType'] ?? '' ) )
+				return new WP_Error( 'mad4b_legacy_proof_file_indirect', 'Shortcuts or unknown file parentage do not establish original folder membership.' );
+			$matched[ $file_id ] = array(
+				'parent' => (string) $item['parent_folder_id'],
+				'mime' => (string) ( $item['mimeType'] ?? '' ),
+				'version' => (string) ( $item['modifiedTime'] ?? '' ),
+				'content_sha256' => (string) ( $item['content_hash'] ?? '' ),
+			);
+		}
+		ksort( $matched, SORT_STRING );
+		$material = array( 'contract' => 'mad4b.context-legacy-provider-proof.v1',
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'source_id' => (string) $plan['source_id'],
+			'external_root_id' => (string) $plan['external_root_id'],
+			'recursive' => (bool) $recursive,
+			'matched_assets' => $matched );
+		$digest = hash( 'sha256', wp_json_encode( $material, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		return array( 'contract' => 'mad4b.context-legacy-provider-proof.v1',
+			'state' => 'PROVIDER_IDENTITY_VERIFIED_OWNER_APPROVAL_PENDING',
+			'source_id' => (string) $plan['source_id'],
+			'plan_sha256' => (string) $plan['plan_sha256'],
+			'provider_proof_sha256' => $digest,
+			'original_folder_id' => (string) $plan['external_root_id'],
+			'matched_file_count' => count( $matched ),
+			'provider_file_count' => count( $observed ),
+			'folder_membership_verified' => true,
+			'legal_owner_or_rights_verified' => false,
+			'independent_owner_approval_required' => true,
+			'rollback_certification_required' => true,
+			'migration_authorized' => false,
+			'read_only' => true, 'mutation_performed' => false );
+	}
+
+	/**
 	 * Exact, one-source, Staging-only owner-attested transition. Invoked
 	 * ONLY as an independently approved governed MCP write; the source/asset
 	 * options and current scope are CAS protected by the Context registry lock.
@@ -476,7 +569,8 @@ final class MAD4B_SCP_Context_Authority {
 		$expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
 		$reviewed_root = trim( (string) ( $input['reviewed_external_root_id'] ?? '' ) );
 		$evidence = trim( (string) ( $input['owner_evidence_reference'] ?? '' ) );
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) || strlen( $evidence ) < 12 ||
+		$expected_provider_proof = strtolower( trim( (string) ( $input['expected_provider_proof_sha256'] ?? '' ) ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_provider_proof ) || strlen( $evidence ) < 12 ||
 			strlen( $evidence ) > 500 || '' === $reviewed_root )
 			return new WP_Error( 'mad4b_legacy_transfer_evidence_invalid', 'An exact source plan and independently reviewed evidence reference are required.' );
 		// Independent real provider read: an operator-supplied folder string is
@@ -520,7 +614,19 @@ final class MAD4B_SCP_Context_Authority {
 		if ( $expected_count < 1 )
 			return new WP_Error( 'mad4b_legacy_transfer_provider_asset_inventory_empty',
 				'No matching existing assets were verified in the original provider folder.' );
-		$provider_inventory_digest = hash( 'sha256', implode( '|', array_keys( $observed_file_ids ) ) );
+		// The independently reviewed provider proof is bound to the SAME
+		// exact plan and observed file/version set. A free-form owner note
+		// is not proof of provider identity or business ownership.
+		$preflight_plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
+		if ( is_wp_error( $preflight_plan ) ) return $preflight_plan;
+		$provider_proof = self::legacy_owner_provider_proof(
+			$preflight_plan, self::raw_assets(), $provider_scan, ! empty( $stored_source['recursive'] ) );
+		if ( is_wp_error( $provider_proof ) ) return $provider_proof;
+		if ( ! hash_equals( (string) $provider_proof['plan_sha256'], $expected )
+			|| ! hash_equals( (string) $provider_proof['provider_proof_sha256'], $expected_provider_proof ) )
+			return new WP_Error( 'mad4b_legacy_transfer_provider_proof_stale',
+				'The operator-reviewed source and external inventory evidence changed. Refresh proof and approval.' );
+		$provider_inventory_digest = $provider_proof['provider_proof_sha256'];
 		return self::with_registry_lock( 'legacy_owner_transfer_apply',
 			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest ) {
 				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
