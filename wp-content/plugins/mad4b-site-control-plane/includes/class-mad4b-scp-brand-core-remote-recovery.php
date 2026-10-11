@@ -260,7 +260,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 (string) ( $census['scope_fingerprint'] ?? '' ) )
             && 'UNVERIFIED_DEPLOYMENT_BINDING' !== ( $census['state'] ?? '' );
         $has_census = $has_census && ! $evidence_drift;
-        $has_proof = ! $evidence_drift
+        $has_proof = $has_census && ! $evidence_drift
             && true === ( $proof['folder_membership_verified'] ?? false )
             && false === ( $proof['migration_authorized'] ?? null )
             && 1 === preg_match( '/^[a-f0-9]{64}$/D',
