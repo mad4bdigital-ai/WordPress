@@ -818,7 +818,7 @@ jobs:
           assert data.count("final class MAD4B_SCP_Context_Adapter") == 1
           assert len(methods) == len(set(methods)), "PHP Context Adapter duplicate method definition"
           for ability in ("context/brand-core-control-loop","context/legacy-owner-transfer-discover",
-              "context/legacy-owner-transfer-plan","context/legacy-owner-transfer-readback",
+              "context/legacy-owner-transfer-plan","context/legacy-owner-transfer-evidence","context/legacy-owner-transfer-readback",
               "context/legacy-owner-transfer-apply"):
               assert ability in data, f"Missing governed Context ability: {ability}"
           print("PASS: one Context Adapter class, unique methods, recovery routes")
