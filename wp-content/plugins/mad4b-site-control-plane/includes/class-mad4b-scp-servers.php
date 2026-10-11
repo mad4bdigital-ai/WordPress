@@ -643,6 +643,48 @@ final class MAD4B_SCP_Servers {
         return $result;
     }
 
+    /**
+     * Only the two original, reviewed Staging approval bootstrap mutations are
+     * intentionally direct on ChatGPT. Their existence in tools/list is NOT a
+     * grant or an approval and never exempts an execution boundary. Any other
+     * direct write schema must remain a certification failure.
+     */
+    public static function verified_direct_approval_bootstrap_tool( $ability_name ) {
+        $ability_name = (string) $ability_name;
+        if ( ! in_array( $ability_name, array(
+            'mad4b/approval-plan', 'mad4b/approval-ai-decide',
+        ), true ) ) return false;
+        if ( ! in_array( $ability_name, self::chatgpt_approval_bootstrap_tools(), true )
+            || ! self::ability_is_mounted( 'mad4b-write', $ability_name )
+            || ! self::ability_is_mounted( 'mad4b-chatgpt', $ability_name )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence' )
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name ) )
+            return false;
+        if ( ! function_exists( 'wp_get_ability' ) ) return false;
+        $ability = wp_get_ability( $ability_name );
+        if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) )
+            return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && isset( $meta['mcp'] )
+            && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && isset( $meta['annotations'] )
+            && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+        return array_key_exists( 'readonly', $annotations )
+            && false === $annotations['readonly']
+            && ! empty( $mcp['mad4b_execution_boundary'] )
+            && class_exists( 'MAD4B_SCP_Authorization' )
+            && hash_equals(
+                MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT,
+                (string) $mcp['mad4b_execution_boundary']
+            )
+            && ! empty( $mcp['mad4b_governed_write_authority'] )
+            && class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            && hash_equals(
+                MAD4B_SCP_Staging_Write_Authority::CONTRACT,
+                (string) $mcp['mad4b_governed_write_authority']
+            );
+    }
+
 	public static function is_chatgpt_direct_step_up_tool( $ability_name ) {
 		return in_array( (string) $ability_name, self::chatgpt_reviewed_direct_step_up_tools(), true );
 	}
