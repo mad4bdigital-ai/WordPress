@@ -112,6 +112,28 @@ final class MAD4B_SCP_Operational_Remediation {
             if ( ! empty( $binding['ready_to_bind'] ) )
                 echo '<p>' . esc_html__( 'Hosting key detected. Use the exact Staging binding plan and separately approved owner apply through MCP, then verify Site Profile again.', 'mad4b-site-control-plane' ) . '</p>';
         }
+        echo '<h3>' . esc_html__( 'Simpler WordPress-native host binding', 'mad4b-site-control-plane' ) . '</h3>';
+        $native_binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false )
+            ? MAD4B_SCP_Deployment_Binding_Native::status() : new WP_Error( 'native_host_binding_unavailable' );
+        if ( is_wp_error( $native_binding ) ) {
+            echo '<p class="description">'
+                . esc_html__( 'WordPress-native provisioning is not installed or accessible. Use the protected host configuration path.', 'mad4b-site-control-plane' )
+                . '</p>';
+        } else {
+            echo '<p><strong>' . esc_html__( 'Native provisioning', 'mad4b-site-control-plane' )
+                . ':</strong> <code>' . esc_html( (string) ( $native_binding['state'] ?? 'UNKNOWN' ) )
+                . '</code></p>';
+            if ( ! empty( $native_binding['eligible'] ) )
+                echo '<p>' . esc_html__( 'You can create and bind the Staging deployment key using one separately owner-approved MCP operation; SSH and editing wp-config.php are not required.', 'mad4b-site-control-plane' )
+                . '</p><p><code>mad4b/deployment-binding-native-plan</code> → <code>mad4b/deployment-binding-native-apply</code></p>';
+            else
+                echo '<p class="description">'
+                    . esc_html__( 'This host cannot safely create a private file outside the webroot, or a binding already exists. Use the external protected-host setting instead; the system will not fall back to uploads or database storage.', 'mad4b-site-control-plane' )
+                    . '</p>';
+            echo '<p class="description">'
+                . esc_html__( 'A host-local key resists database-only cloning, but is not an independently issued Host attestation or crash-recovery certificate.', 'mad4b-site-control-plane' )
+                . '</p>';
+        }
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
             ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );
