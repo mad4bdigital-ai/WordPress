@@ -78,8 +78,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "d3002dfe68f48ae056e6ddd2dd306489a87954e8039f339b368073e7b45ddb6d",
-      "bytes": 52465
+      "sha256": "b8ad54682d0d0c2b0aa56cb020b7656a29d657abc594e7e55f5219eb5dc83765",
+      "bytes": 52554
     },
     {
       "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-adversarial-closure.md",
