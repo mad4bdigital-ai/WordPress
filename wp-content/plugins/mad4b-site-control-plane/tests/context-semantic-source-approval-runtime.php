@@ -51,6 +51,29 @@ foreach ( $examples as $name => $input ) {
     assert_semantic( ! empty( $guard['review_required'] ) && empty( $guard['mutation_classification_ready'] ), $name . ' accepted unclassified page content' );
     assert_semantic( ! empty( $guard['fallback_evidence_fields'] ), $name . ' failed to surface unknown content field' );
 }
+// Content text remains brand-bearing even in draft-only or provider-managed flows.
+$text_ops = array(
+    'context/brand-draft-create' => array( 'category'=>'tone_of_voice', 'content'=>'A reviewed, sourced draft.', 'evidence_digest'=>str_repeat('b',64), 'expected_plan_sha256'=>str_repeat('a',64) ),
+    'context/brand-draft-append' => array( 'category'=>'editorial_guidelines', 'content'=>'A review-only addition.', 'draft_preflight_sha256'=>str_repeat('a',64), 'evidence_digest'=>str_repeat('b',64), 'expected_plan_sha256'=>str_repeat('c',64) ),
+    'context/brand-profile-save' => array( 'brand_name'=>'All Royal Egypt', 'expected_brand_id'=>str_repeat('a',32), 'expected_revision'=>4 ),
+    'context/create-drive-asset' => array( 'source_id'=>str_repeat('b',64), 'name'=>'All Royal Egypt editorial notes', 'content'=>'This file is still subject to exact source review.', 'format'=>'markdown' ),
+    'context/update-drive-asset' => array( 'asset_id'=>str_repeat('b',64), 'content'=>'An updated text requiring provenance.', 'expected_content_hash'=>str_repeat('c',64) ),
+    'context/recreate-drive-asset' => array( 'asset_id'=>str_repeat('b',64), 'content'=>'Recreated material requires original evidence.', 'format'=>'markdown' ),
+);
+foreach ( $text_ops as $name => $input ) {
+    $r = $c::classify( $name, $input );
+    assert_semantic( ! empty( $r['field_contract_known'] ) && ! empty( $r['required'] ) && ! empty( $r['mutation_classification_ready'] ), $name . ' must retain explicit brand text classification' );
+    assert_semantic( empty( $r['review_required'] ) && 'google_drive_context' === $r['provider_id'], $name . ' must use its exact provider contract' );
+    assert_semantic( ! empty( $r['matched_fields'] ) && empty( $r['fallback_evidence_authorizing'] ), $name . ' unexpectedly authorized fallback brand text' );
+}
+foreach ( array( 'context/materialize-brand-draft', 'context/reconcile-brand-materialization' ) as $name ) {
+    $input = array( 'artifact_id'=>str_repeat('b',64), 'source_id'=>str_repeat('c',64), 'format'=>'markdown', 'expected_draft_content_sha256'=>str_repeat('d',64) );
+    $r = $c::classify( $name, $input );
+    assert_semantic( ! empty( $r['field_contract_known'] ) && ! empty( $r['mutation_classification_ready'] ) && empty( $r['required'] ), $name . ' must classify only exact indirect artifact identifiers' );
+    $input['unreviewed_body_content'] = str_repeat( 'Unreviewed content is never accepted. ', 4 );
+    $unsafe = $c::classify( $name, $input );
+    assert_semantic( ! empty( $unsafe['review_required'] ) && empty( $unsafe['mutation_classification_ready'] ), $name . ' must reject injected unreviewed content' );
+}
 $brand = $c::classify( 'mad4b/content-create-post', array( 'post_type'=>'tours-and-activities', 'post_title'=>'Unreviewed Tour Draft' ) );
 assert_semantic( ! empty( $brand['required'] ) && ! empty( $brand['mutation_classification_ready'] ), 'Content create must retain brand-text context requirement' );
 $unknown = $c::classify( 'provider/unregistered-operation', array( 'content'=>'unreviewed' ) );
