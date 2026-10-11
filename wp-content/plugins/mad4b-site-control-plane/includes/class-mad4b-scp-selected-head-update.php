@@ -24,6 +24,9 @@ final class MAD4B_SCP_Selected_Head_Update {
         if ( ! class_exists( 'MAD4B_SCP_CI_Outage_Attestation', false ) )
             require_once __DIR__ . '/class-mad4b-scp-ci-outage-attestation.php';
         MAD4B_SCP_CI_Outage_Attestation::boot();
+        // Optional PHP-native packaging is non-authorizing and Staging-only.
+        require_once __DIR__ . '/class-mad4b-scp-wp-native-build.php';
+        MAD4B_SCP_WP_Native_Build::boot();
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 35 );
     }
 
