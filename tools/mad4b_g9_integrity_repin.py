@@ -83,6 +83,8 @@ def main() -> None:
         if row["sha256"] != observed or row["bytes"] != len(content):
             mismatches.append((row, observed, len(content)))
     if not mismatches:
+        if a.commit_pair:
+            stop("no G9 workflow drift to include in an atomic pair")
         print("G9 SOURCE INTEGRITY: PASS (all %s committed source digests match)" % len(records))
         return
     for row, digest, size in mismatches:
