@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 815,
+  "changed_file_count": 817,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1607,8 +1607,18 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/publication-brand-core-mandatory-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261011-remote-owner-context-review",
+      "semantic_unit": "Authenticated Staging OAuth owner review over governed MCP, exact asset plan/CAS/readback and AI impersonation denial",
+      "revert_boundary": "Revert remote owner plan/decision APIs and runtime fixture; existing AI reviewer, quarantine and human wp-admin review remain unchanged",
+      "certification": "source_only_native_php_and_exact_head_staging_e2e_required",
+      "path_globs": [
+        "docs/runbooks/mcp-remote-brand-context-approval.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-remote-owner-review-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "307f93cb7f9a55039d32700fa7b94bfd1f1e0bb372a2315875f5795f23348ca5",
+  "changed_paths_sha256": "2ec725bace1de72ad75f2eb2d6bc0d1c8a59a7a756b56ef199adcb6013ddd0ee",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
