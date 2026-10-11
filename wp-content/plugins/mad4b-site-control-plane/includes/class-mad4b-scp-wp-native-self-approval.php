@@ -214,7 +214,13 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
         // and rollback as the existing governed Staging candidate upload.
         $result = MAD4B_SCP_Self_Update::upload_apply( $upload );
         $failed = is_wp_error( $result );
-        $outcome = $failed ? 'INSTALL_FAILED_RECONCILIATION_REQUIRED'
+        $error_data = $failed && method_exists( $result, 'get_error_data' )
+            ? $result->get_error_data() : array();
+        $rollback_reported = $failed && is_array( $error_data )
+            && true === ( $error_data['rollback_ok'] ?? null );
+        $outcome = $failed
+            ? ( $rollback_reported ? 'ROLLBACK_REPORTED_REVALIDATION_REQUIRED'
+                : 'INSTALL_FAILED_RECONCILIATION_REQUIRED' )
             : ( is_array( $result ) && ! empty( $result['readback_verified'] )
                 ? 'INSTALLED_VERIFIED' : 'INSTALL_OUTCOME_UNCERTAIN' );
         $terminal = MAD4B_SCP_Audit::record( self::APPLY, array(
@@ -222,8 +228,10 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             'plan_sha256' => $plan['plan_sha256'],
             'archive_sha256' => $plan['identity']['archive_sha256'],
             'failure_code' => $failed ? $result->get_error_code() : '',
+            'rollback_reported' => $rollback_reported,
+            'rollback_independent_readback_verified' => false,
             'blind_retry_allowed' => false, 'production_authorized' => false ),
-            $failed ? 'failed' : 'completed' );
+            'INSTALLED_VERIFIED' === $outcome ? 'completed' : 'reconciliation_required' );
         if ( is_wp_error( $terminal ) )
             return new WP_Error( 'mad4b_self_approval_terminal_audit_uncertain',
                 'Install outcome may have changed but terminal audit failed; reconcile before retry.',
