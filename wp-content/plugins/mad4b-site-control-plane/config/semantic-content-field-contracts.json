@@ -370,6 +370,101 @@
         "review_note"
       ]
     },
+    "context/brand-draft-create": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "category",
+        "evidence_digest",
+        "expected_plan_sha256",
+        "include_rendered_frontend"
+      ]
+    },
+    "context/brand-draft-append": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "category",
+        "draft_preflight_sha256",
+        "evidence_digest",
+        "expected_plan_sha256",
+        "include_rendered_frontend"
+      ]
+    },
+    "context/brand-profile-save": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "brand_name"
+      ],
+      "operational_paths": [
+        "confirm_identity_preserving_rename",
+        "expected_brand_id",
+        "expected_revision"
+      ]
+    },
+    "context/create-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "name",
+        "content"
+      ],
+      "operational_paths": [
+        "source_id",
+        "format"
+      ]
+    },
+    "context/update-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "asset_id",
+        "expected_content_hash"
+      ]
+    },
+    "context/recreate-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "asset_id",
+        "format"
+      ]
+    },
+    "context/materialize-brand-draft": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "artifact_id",
+        "expected_draft_content_sha256",
+        "format",
+        "source_id"
+      ]
+    },
+    "context/reconcile-brand-materialization": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "artifact_id",
+        "expected_draft_content_sha256",
+        "format",
+        "source_id"
+      ]
+    },
     "mad4b/content-experience-profile-apply": {
       "provider": "content_experience",
       "mode": "object_fields",
