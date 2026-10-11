@@ -473,6 +473,17 @@ foreach ( array(
 }
 
 $status = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+if ( ! empty( $status['protocol_profile_inspection_performed'] )
+    || ( $status['protocol_profile']['state'] ?? '' ) !== 'deferred'
+    || ( $status['protocol_profile']['ready'] ?? null ) !== null ) {
+    $fail( 'Default projection status must not synchronously evaluate optional protocol profile.', $status );
+}
+$deep_profile_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
+    'include_protocol_profile' => true,
+) );
+if ( empty( $deep_profile_status['protocol_profile_inspection_performed'] ) ) {
+    $fail( 'Explicit protocol diagnostics opt-in did not execute.' );
+}
 if ( empty( $status['read_only'] ) || ! empty( $status['mutation_performed'] ) || ! empty( $status['projection_changes_authority'] ) ) {
 	$fail( 'Projection status changed its non-authorizing read boundary.', $status );
 }
