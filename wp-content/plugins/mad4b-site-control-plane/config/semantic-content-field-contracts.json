@@ -329,6 +329,47 @@
         "expected_authority_manifest_fingerprint"
       ]
     },
+    "context/governed-source-upsert": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "external_root_id",
+        "label",
+        "recursive",
+        "recursive_scope_confirmed",
+        "write_policy",
+        "write_policy_confirmed",
+        "expected_registry_revision",
+        "expected_authority_manifest_fingerprint"
+      ]
+    },
+    "context/legacy-owner-transfer-apply": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "source_id",
+        "expected_plan_sha256",
+        "expected_brand_id",
+        "reviewed_external_root_id",
+        "owner_evidence_reference",
+        "expected_provider_proof_sha256",
+        "confirmation"
+      ]
+    },
+    "context/remote-owner-review-apply": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "asset_id",
+        "expected_plan_sha256",
+        "decision",
+        "confirmation",
+        "review_note"
+      ]
+    },
     "mad4b/content-experience-profile-apply": {
       "provider": "content_experience",
       "mode": "object_fields",
