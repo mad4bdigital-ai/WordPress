@@ -30,7 +30,12 @@ abstract class MAD4B_SCP_Adapter_Base {
     public function provider_key() { return $this->certified_provider_key(); }
 }
 final class MAD4B_SCP_Adapter_Registry {
+    private static $instance;
     private $adapters = array();
+    public static function instance() {
+        if ( ! self::$instance ) self::$instance = new self();
+        return self::$instance;
+    }
     public function register( $adapter ) {
         if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
         $this->adapters[ $adapter->id() ] = $adapter;
@@ -62,6 +67,9 @@ function assert_native( $condition, $why ) {
 }
 $c = 'MAD4B_SCP_WP_Native_Build';
 $c::boot();
+assert_native( MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' )
+    === array( $c::PREFIX . 'start' ),
+    'Boot automatically self-enrolls the native build adapter in the governed registry' );
 $c::register_abilities();
 $c::register_abilities();
 assert_native( count( $GLOBALS['native_abilities'] ) === 5,
