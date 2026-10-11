@@ -120,6 +120,68 @@ Native refusal tests:
 `tests/brand-core-remote-recovery-runtime.php`, linked to PHP 7.4/8.3
 matrix. This isolated fixture is not a live MariaDB/Host certification.
 
+## Legacy census repair when Staging deployment binding is absent
+
+Incident observed on All Royal Egypt Staging, 11 Oct 2026:
+`mad4b/deployment-mode-status` returned `BLOCKED`,
+`SITE_DEPLOYMENT_BINDING_NOT_ENROLLED`; live
+`mad4b/site-profile-status` returned
+`deployment_binding_configured=false` and
+`deployment_binding_bound=false`. Healthy MCP/Skills/Write Authority
+diagnostics do **not** prove independent deployment-bound Brand scope.
+Both `context/legacy-reconciliation-census` and
+`mad4b/operational-acceptance-evidence` fail at scope capture.
+This is **not** proof that the legacy registry is empty.
+
+### Safe compatibility read introduced in PR #258
+
+When and ONLY when the resolver reports this exact missing-binding
+reason, WordPress is the current enrolled Staging site, an administrator
+is reading, and both legacy options are arrays of at most 1,000 records,
+`legacy_reconciliation_census` returns privacy-preserving aggregate
+counts. Every existing record remains `scope_unverified`. No source ID,
+Drive file or provider credential is exposed; the response has
+`scope_fingerprint=""`, `operational_scope_verified=false`,
+`migration_authorized=false`. A second read detects options/profile
+drift. A malformed option, Production, foreign profile or a different
+resolver failure remains blocked.
+
+Aggregated counts are **NOT** certification. Both Brand Core Recovery
+and Operational Acceptance require a true scope SHA-256 checkpoint
+and refuse `UNVERIFIED_DEPLOYMENT_BINDING` as accepted census evidence.
+Independent owner consent, media rights, real MariaDB restore and signed
+package evidence are not weakened.
+
+### Steps to establish full trusted scope
+
+1. Read `mad4b/site-profile-status` and
+   `mad4b/deployment-mode-status`; inspect configured/bound/match
+   flags, exact environment/origin and enrolled profile revision.
+2. Provision a CSPRNG-generated, independent binding secret outside
+   the WordPress database. Supply `MAD4B_SCP_DEPLOYMENT_BINDING`
+   via protected host configuration or audited
+   `mad4b_scp_deployment_binding` filter. The secret must be
+   32–1024 bytes without whitespace/control bytes. Never store it in
+   chat, the Media Library, GitHub source or a WordPress option.
+3. Under existing **owner-authorized** Site Profile enrollment,
+   re-save the existing canonical origin, site identity, Staging
+   environment, users and feature flags, with revision/CAS and
+   append-only audit so that the enrolled digest binds the root.
+   Do not invent a new Site UUID or change Production.
+4. Confirm bound/configured/match flags are all true and
+   `mad4b/deployment-mode-status.status=RESOLVED_FOR_REVIEW_ONLY`.
+   Then rerun census and the aggregate evidence reader through a
+   separate MCP request.
+5. The installed `mad4b/developer-filesystem` remote ability has
+   a **human-only** approval lane and an exact ticket. Its existence
+   does not authorize arbitrary configuration writes. Do not silently
+   derive a pseudo-root from copied database state, WordPress salts,
+   request labels or the site's visible hostname.
+
+Standalone refusal tests:
+`tests/context-unbound-census-runtime.php` in the Feature 007 PHP
+7.4/8.3 matrix. Source repair does not certify installation.
+
 ## Unified operational acceptance evidence, read-only by design
 
 PR #258 now adds `mad4b/operational-acceptance-evidence` through the same
