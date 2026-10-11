@@ -249,6 +249,19 @@ final class MAD4B_SCP_Site_Profile {
 			$candidate = apply_filters( 'mad4b_scp_deployment_binding', '' );
 			if ( is_string( $candidate ) ) $value = $candidate;
 		}
+        // Optional WordPress-native host-local binding, strictly separate
+        // from the database. Never generates a key during reads. The path
+        // must be outside the server's actual document root; if the host
+        // cannot prove that filesystem boundary, this alternative is off.
+        if ( '' === $value && defined( 'ABSPATH' ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false ) )
+                require_once __DIR__ . '/class-mad4b-scp-deployment-binding-native.php';
+            $record = get_option( self::OPTION, null );
+            if ( is_array( $record ) &&
+                1 === preg_match( '/^[a-f0-9-]{36}$/D', (string) ( $record['site_uuid'] ?? '' ) ) )
+                $value = MAD4B_SCP_Deployment_Binding_Native::read_host_secret(
+                    (string) $record['site_uuid'] );
+        }
 		// "Configured" must always imply a proof-capable key. Never trim away
 		// whitespace/control bytes: silently normalizing host material can bind
 		// multiple distinct deployments to one credential. Length is a minimum
