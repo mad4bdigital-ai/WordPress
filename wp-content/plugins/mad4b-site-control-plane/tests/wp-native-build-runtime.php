@@ -284,6 +284,27 @@ assert_native( $bad_sim['state'] === 'LOCAL_SELF_CHECKS_BLOCKED'
     && $bad_sim['local_checks']['archive_sha256_bytes'] === 'BLOCKED'
     && $bad_sim['local_checks']['canonical_receipt_sha256_binding'] === 'BLOCKED',
     'Tampered local ZIP must fail both checksum and signed-boundary approximation' );
+// Treat a complete ZIP but changed canonical receipt as untrusted.
+file_put_contents( $simulation_dir . '/candidate.zip', $bytes );
+file_put_contents( $simulation_dir . '/CANONICAL-PACKAGE-RECEIPT.json', '{"tampered":true}' );
+$bad_receipt = $c::simulate( array( 'expected_head' => $simulation_sha ) );
+assert_native( $bad_receipt['local_checks']['archive_sha256_bytes'] === 'LOCAL_PASS'
+    && $bad_receipt['local_checks']['canonical_receipt_sha256_binding'] === 'BLOCKED',
+    'Receipt tampering cannot be accepted even when ZIP remains intact' );
+file_put_contents( $simulation_dir . '/CANONICAL-PACKAGE-RECEIPT.json', $receipt_text );
+// Token screening must cover every PHP source file, not just one positive count.
+$simulation_job['entries'][] = array( 'path' => 'second.php' );
+$GLOBALS['native_opts'][ $c::OPTION ] = $simulation_job;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $simulation_job;
+$partial_php = $c::simulate( array( 'expected_head' => $simulation_sha ) );
+assert_native( $partial_php['local_checks']['php_token_screening_recorded'] === 'BLOCKED',
+    'Partial PHP token-screening count must be blocked' );
+// Changes to the enrolled Staging profile invalidate the bound simulator.
+MAD4B_SCP_Site_Profile::$row['profile_digest'] = 'drifted-profile';
+$drifted_sim = $c::simulate( array( 'expected_head' => $simulation_sha ) );
+assert_native( $drifted_sim['local_checks']['exact_job_site_binding'] === 'BLOCKED',
+    'Site identity drift cannot inherit a previous local package check' );
+MAD4B_SCP_Site_Profile::$row['profile_digest'] = 'profile-b';
 $GLOBALS['native_env'] = 'production';
 assert_native( is_wp_error( $c::simulate( array( 'expected_head' => $simulation_sha ) ) ),
     'Simulator is unavailable on Production even for read-only package inspection' );
