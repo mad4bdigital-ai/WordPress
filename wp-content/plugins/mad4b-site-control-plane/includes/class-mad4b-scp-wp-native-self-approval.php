@@ -80,24 +80,21 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
         $site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
         $blockers = array();
         if ( ! self::staging() ) $blockers[] = 'exact_enrolled_staging_self_approval_disabled';
-        $sim = self::staging() ? MAD4B_SCP_WP_Native_Build::simulate(
-            array( 'expected_head' => $sha ) ) : array();
-        if ( is_wp_error( $sim ) ) return $sim;
-        if ( ( $sim['state'] ?? '' ) !== 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' )
-            $blockers[] = 'local_zip_receipt_or_profile_unverified';
-        $status = class_exists( 'MAD4B_SCP_WP_Native_Build' )
-            ? MAD4B_SCP_WP_Native_Build::status() : array();
-        if ( ! is_array( $status ) ||
-            ( $status['head'] ?? '' ) !== $sha ||
-            ( $status['state'] ?? '' ) !== 'BUILT_UNVERIFIED' )
+        $snapshot = self::staging()
+            ? MAD4B_SCP_WP_Native_Build::verified_snapshot( $sha ) : array();
+        if ( is_wp_error( $snapshot ) ) {
+            $blockers[] = $snapshot->get_error_code();
+            $snapshot = array();
+        }
+        if ( ! is_array( $snapshot ) || empty( $snapshot['job_id'] ) )
             $blockers[] = 'exact_completed_native_build_required';
         $identity = array(
-            'version' => (string) ( $status['canonical_receipt']['control_plane_version'] ?? '' ),
+            'version' => (string) ( $snapshot['version'] ?? '' ),
             'source_commit_sha' => $sha,
-            'archive_sha256' => (string) ( $status['archive_sha256'] ?? '' ),
-            'build_fingerprint' => (string) ( $status['build_fingerprint'] ?? '' ),
-            'package_manifest_digest' => (string) ( $status['package_manifest_digest'] ?? '' ),
-            'size_bytes' => (int) ( $status['archive_bytes'] ?? 0 ),
+            'archive_sha256' => (string) ( $snapshot['archive_sha256'] ?? '' ),
+            'build_fingerprint' => (string) ( $snapshot['build_fingerprint'] ?? '' ),
+            'package_manifest_digest' => (string) ( $snapshot['package_manifest_digest'] ?? '' ),
+            'size_bytes' => (int) ( $snapshot['archive_bytes'] ?? 0 ),
         );
         $candidate = array( 'repository' => self::REPO, 'type' => 'commit', 'reference' => $sha );
         $upload = array();
@@ -117,10 +114,11 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
             'profile_digest' => (string) ( $site['profile_digest'] ?? '' ),
             'origin' => (string) ( $site['canonical_origin'] ?? '' ),
+            'job_id' => (string) ( $snapshot['job_id'] ?? '' ),
             'identity' => $identity, 'candidate_source' => $candidate,
             'underlying_upload_plan_sha256' => is_array( $upload ) ? (string) ( $upload['plan_sha256'] ?? '' ) : '',
-            'canonical_receipt_sha256' => (string) ( $status['canonical_receipt_sha256'] ?? '' ),
-            'local_checks' => (array) ( $sim['local_checks'] ?? array() ),
+            'canonical_receipt_sha256' => (string) ( $snapshot['canonical_receipt_sha256'] ?? '' ),
+            'local_checks' => (array) ( $snapshot['local_checks'] ?? array() ),
             'reason' => $reason,
         );
         $blockers = array_values( array_unique( $blockers ) );
@@ -153,12 +151,11 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
         if ( ! class_exists( 'MAD4B_SCP_Self_Update' ) ||
             ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_self_approval_governance_missing', 'Existing updater and authorization required.' );
-        // Retain the ORIGINAL upload grant and one-time approval. Never
-        // treat an authorization decision envelope as boolean permission.
-        $authority_input = is_array( $input ) ? $input : array();
-        $authority_input['channel'] = 'wordpress_native_candidate_upload';
-        $decision = MAD4B_SCP_Self_Update::can_upload_apply( $authority_input );
-        return MAD4B_SCP_Authorization::permission_result_from_authorization( $decision );
+        // This callback checks identity and OAuth only. The canonical MAD4B
+        // execute wrapper claims ONE ticket for this exact Self-Approval Ability.
+        // Never authorize the nested upload Ability: its separate ticket cannot
+        // be reused after the outer claim has transitioned to executing.
+        return true;
     }
 
     public static function apply( $input = array() ) {
@@ -171,6 +168,10 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             return new WP_Error( 'mad4b_self_approval_confirmation', 'Exact confirmed Staging plan required.' );
         $access = self::can_apply( $input );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
+        if ( ! method_exists( 'MAD4B_SCP_Authorization', 'execution_callback_started' )
+            || ! MAD4B_SCP_Authorization::execution_callback_started( self::APPLY ) )
+            return new WP_Error( 'mad4b_self_approval_claim_required',
+                'Governed execution claim must be active; direct internal calls are denied.' );
         $sha = $input['expected_head'];
         $plan_input = array( 'expected_head' => $sha, 'reason' => $input['reason'] );
         $plan = self::plan( $plan_input );
@@ -193,8 +194,10 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             return new WP_Error( 'mad4b_self_approval_audit_missing', 'Governed audit is mandatory.' );
         $audit = MAD4B_SCP_Audit::record( self::APPLY, array(
             'source_commit_sha' => $sha, 'site_uuid' => $plan['site_uuid'],
+            'job_id' => $plan['job_id'],
             'archive_sha256' => $plan['identity']['archive_sha256'],
             'plan_sha256' => $plan['plan_sha256'], 'evidence_mode' => 'site_self_certified_staging',
+            'phase' => 'SELF_APPROVED_INSTALLING',
             'independently_signed' => false, 'native_php_matrix_executed' => false,
             'production_authorized' => false ), 'owner_delegated_self_certification' );
         if ( is_wp_error( $audit ) )
@@ -210,9 +213,31 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
         // Same archive verifier, updater, maintenance lease, backup, readback,
         // and rollback as the existing governed Staging candidate upload.
         $result = MAD4B_SCP_Self_Update::upload_apply( $upload );
-        return is_array( $result ) ? array_merge( $result, array(
+        $failed = is_wp_error( $result );
+        $outcome = $failed ? 'INSTALL_FAILED_RECONCILIATION_REQUIRED'
+            : ( is_array( $result ) && ! empty( $result['readback_verified'] )
+                ? 'INSTALLED_VERIFIED' : 'INSTALL_OUTCOME_UNCERTAIN' );
+        $terminal = MAD4B_SCP_Audit::record( self::APPLY, array(
+            'phase' => $outcome, 'job_id' => $plan['job_id'], 'source_commit_sha' => $sha,
+            'plan_sha256' => $plan['plan_sha256'],
+            'archive_sha256' => $plan['identity']['archive_sha256'],
+            'failure_code' => $failed ? $result->get_error_code() : '',
+            'blind_retry_allowed' => false, 'production_authorized' => false ),
+            $failed ? 'failed' : 'completed' );
+        if ( is_wp_error( $terminal ) )
+            return new WP_Error( 'mad4b_self_approval_terminal_audit_uncertain',
+                'Install outcome may have changed but terminal audit failed; reconcile before retry.',
+                array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+        if ( $failed ) return $result;
+        if ( 'INSTALLED_VERIFIED' !== $outcome )
+            return new WP_Error( 'mad4b_self_approval_outcome_uncertain',
+                'Installer did not return verified final readback; reconcile before retry.',
+                array( 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+        return array_merge( $result, array(
+            'self_approval_outcome' => $outcome,
             'evidence_mode' => 'site_self_certified_staging',
+            'job_id' => $plan['job_id'],
             'independent_attestation_verified' => false,
-            'external_release_certified' => false, 'production_authorized' => false ) ) : $result;
+            'external_release_certified' => false, 'production_authorized' => false ) );
     }
 }
