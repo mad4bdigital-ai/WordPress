@@ -850,6 +850,74 @@ final class MAD4B_SCP_WP_Native_Build {
     }
 
     /**
+     * Read the exact persistent build identity TWICE around local checks. This
+     * is a read-only immutable snapshot, not a certificate or mutation lease.
+     * job_id binds the source, site, archive, receipt and screen result.
+     */
+    public static function verified_snapshot( $sha ) {
+        if ( ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha )
+            || ! self::exact_staging() )
+            return new WP_Error( 'mad4b_native_snapshot_staging', 'Exact Staging source identity required.' );
+        $before = self::locked_job_read();
+        if ( is_wp_error( $before ) ) return $before;
+        if ( ! is_array( $before ) ||
+            ( $before['head'] ?? '' ) !== $sha ||
+            ( $before['state'] ?? '' ) !== 'BUILT_UNVERIFIED' ||
+            ! preg_match( '/^[a-f0-9]{32}$/D', (string) ( $before['job_id'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_native_snapshot_not_ready', 'Exact completed native job required.' );
+        $sim = self::simulate( array( 'expected_head' => $sha ) );
+        if ( is_wp_error( $sim ) ) return $sim;
+        if ( ( $sim['state'] ?? '' ) !== 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' )
+            return new WP_Error( 'mad4b_native_snapshot_checks_failed', 'Local build evidence failed.' );
+        $after = self::locked_job_read();
+        if ( is_wp_error( $after ) ) return $after;
+        $keys = array( 'job_id', 'head', 'state', 'site_uuid', 'profile_digest',
+            'origin', 'archive_sha256', 'archive_bytes', 'build_fingerprint',
+            'package_manifest_digest', 'canonical_receipt_sha256', 'version',
+            'php_files_token_parsed', 'entries' );
+        if ( ! is_array( $after ) )
+            return new WP_Error( 'mad4b_native_snapshot_missing', 'Fresh build record unavailable.' );
+        foreach ( $keys as $key ) {
+            if ( ! array_key_exists( $key, $before ) ||
+                ! array_key_exists( $key, $after ) ||
+                $before[ $key ] !== $after[ $key ] )
+                return new WP_Error( 'mad4b_native_snapshot_changed',
+                    'Build source, receipt, file inventory or job changed during verification.' );
+        }
+        $site = self::site();
+        if ( ( $after['site_uuid'] ?? '' ) !== ( $site['site_uuid'] ?? '' ) ||
+            ( $after['profile_digest'] ?? '' ) !== ( $site['profile_digest'] ?? '' ) ||
+            ( $after['origin'] ?? '' ) !== ( $site['canonical_origin'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_snapshot_site_drift', 'Enrolled Staging Site Profile changed.' );
+        $receipt = $after['canonical_receipt'] ?? null;
+        if ( ! is_array( $receipt ) ||
+            ( $receipt['source_commit_sha'] ?? '' ) !== $sha ||
+            ( $receipt['control_plane_version'] ?? '' ) !== ( $after['version'] ?? '' ) ||
+            ( $receipt['archive_sha256'] ?? '' ) !== ( $after['archive_sha256'] ?? '' ) ||
+            ( $receipt['archive_bytes'] ?? -1 ) !== ( $after['archive_bytes'] ?? -2 ) ||
+            ( $receipt['build_fingerprint'] ?? '' ) !== ( $after['build_fingerprint'] ?? '' ) ||
+            ( $receipt['package_manifest_digest'] ?? '' ) !== ( $after['package_manifest_digest'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_snapshot_receipt_mismatch', 'Canonical receipt and persisted job differ.' );
+        return array(
+            'job_id' => $after['job_id'],
+            'head' => $sha,
+            'state' => $after['state'],
+            'site_uuid' => $after['site_uuid'],
+            'profile_digest' => $after['profile_digest'],
+            'origin' => $after['origin'],
+            'version' => $after['version'],
+            'archive_sha256' => $after['archive_sha256'],
+            'archive_bytes' => (int) $after['archive_bytes'],
+            'build_fingerprint' => $after['build_fingerprint'],
+            'package_manifest_digest' => $after['package_manifest_digest'],
+            'canonical_receipt_sha256' => $after['canonical_receipt_sha256'],
+            'local_checks' => $sim['local_checks'],
+            'state_is_final' => true,
+            'external_release_certified' => false,
+        );
+    }
+
+    /**
      * INTERNAL same-process handoff to governed Staging updater. Not an
      * exposed Ability, URL, shell path, or plugin download endpoint.
      * The WordPress owner and Site Profile checks remain mandatory.
