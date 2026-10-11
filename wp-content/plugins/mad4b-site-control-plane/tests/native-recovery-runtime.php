@@ -165,7 +165,7 @@ native_assert( is_wp_error( $blocked_cleanup )
     'audit intent failure refuses cleanup before deleting the scratch' );
 MAD4B_SCP_Audit::$fail = false;
 $clean = MAD4B_SCP_Native_Recovery::cleanup( array(
-    'job_id' => $start['job_id', 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
+    'job_id' => $start['job_id'], 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
 native_assert( is_array( $clean ) && $clean['scratch_removed']
     && ! isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] )
     && $GLOBALS['options']['legacy_real_option']['protected'] === true,
