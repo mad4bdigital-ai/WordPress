@@ -62,6 +62,12 @@ $invalid = MAD4B_SCP_Operator_Journeys::reduce( $mounted, 'delete_everything' );
 assert_journey( is_wp_error( $invalid ), 'no invented unsupported user task' );
 $empty_missing = MAD4B_SCP_Operator_Journeys::reduce( $mounted, '', true );
 assert_journey( $empty_missing['total'] === 0, 'optional list of only missing integrations' );
+assert_journey( is_wp_error( MAD4B_SCP_Operator_Journeys::discover(
+    array( 'journey' => array( 'malformed' ) ) ) ),
+    'malformed journey identifier rejected before type coercion' );
+assert_journey( is_wp_error( MAD4B_SCP_Operator_Journeys::discover(
+    array( 'only_incomplete' => 'yes' ) ) ),
+    'string boolean cannot silently alter journey filtering' );
 MAD4B_SCP_Operator_Journeys::register_ability();
 assert_journey( isset( $GLOBALS['abilities'][MAD4B_SCP_Operator_Journeys::ABILITY] ),
     'task index mounted in read-only transport' );
