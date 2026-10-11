@@ -91,10 +91,15 @@ foreach ( array( 'mad4b/brand-core-remote-recovery-status',
         'no arbitrary runtime fields' );
 }
 foreach ( $stages as $stage ) {
-    foreach ( array( 'read', 'next', 'readback' ) as $slot ) {
+    foreach ( array( 'read', 'preflight', 'next', 'readback' ) as $slot ) {
         if ( $stage[ $slot ] !== '' ) $GLOBALS['mad4b_abilities'][ $stage[ $slot ] ] = array( 'read_only_stub' => true );
     }
 }
+brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue'
+    && $stages['brand_approval']['preflight'] === 'context/remote-owner-review-plan'
+    && $stages['brand_approval']['next'] === 'context/remote-owner-review-apply'
+    && $stages['brand_approval']['approval'] === true,
+    'Brand approval lifecycle must use exact remote owner plan and separately governed decision' );
 $normal = MAD4B_SCP_Brand_Core_Remote_Recovery::status();
 brand_remote_assert( isset( $normal['alternative_routes']['domains']['host_runner'] )
     && !$normal['alternative_routes']['all_remote_steps_execution_certified'],
