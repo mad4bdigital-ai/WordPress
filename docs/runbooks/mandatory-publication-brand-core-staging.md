@@ -33,3 +33,7 @@ python wp-content/plugins/mad4b-site-control-plane/tests/feature007-manual-prefl
 ```
 
 Native PHP 7.4/8.3 acceptance plus exact-head Staging installed-sha readback remain required; a source-only commit or successful test fixture is not a release certificate. On Staging, test blocked public Core create (no post created), blocked Content Experience publication (no status change), blocked Core update and published-post edit (no mutation record), successful authorized draft-only paths, positive three-category approval, race/content-hash drift, independent remediated-source readback, and rejection of unlicensed competitor images/prices. Additional independent acceptance is required for other plugin/native/manual publication surfaces not covered by this slice.
+
+## Live-content update lifecycle regression (2026-10-11)
+
+`MAD4B_SCP_Content_Experience_Runtime::operation_plan('update')` now enforces Brand Core preflight for posts already in `publish`, `private` or `future`. Previously only explicit `publish` and live-create paths enforced it. Plan identity includes the context fingerprint, review asset fingerprint, authority manifest and registry revision; `operation_apply` independently checks before editing the published post and after the media/helper mutation set, compensating if evidence drifts. This controls MAD4B-managed content-experience updates, not unrestricted native WordPress editor actions. Same-source structural checks are not native transactional acceptance.
