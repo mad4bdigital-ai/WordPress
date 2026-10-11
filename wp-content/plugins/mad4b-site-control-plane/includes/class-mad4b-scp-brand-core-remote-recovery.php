@@ -288,6 +288,13 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             && ! empty( $brand['coverage']['brand_strategy']['ready'] )
             && ! empty( $brand['coverage']['tone_of_voice']['ready'] )
             && ! empty( $brand['coverage']['editorial_guidelines']['ready'] );
+        // Transfer of unbound legacy ownership is required only when
+        // original quarantined records still exist (or census is not
+        // independently trustworthy). An already clean first-party Context
+        // source must not deadlock forever on a nonexistent transfer.
+        $legacy_transfer_required = ! $has_census
+            || (int) ( $census['source_quarantine_count'] ?? 0 ) > 0
+            || (int) ( $census['asset_quarantine_count'] ?? 0 ) > 0;
         $dependencies = array(
             'source_inventory' => array(),
             'original_file_identity' => array( 'source_inventory' ),
@@ -296,7 +303,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'host_identity' => array( 'source_inventory' ),
             'durable_db_recovery' => array( 'host_identity' ),
             'certified_package' => array(),
-            'brand_approval' => array( 'owner_attestation', 'certified_package' ),
+            'brand_approval' => $legacy_transfer_required
+                ? array( 'source_inventory', 'owner_attestation', 'certified_package' )
+                : array( 'source_inventory', 'certified_package' ),
             'draft_acceptance' => array( 'brand_approval', 'certified_package' ),
         );
         $verified = array(
