@@ -244,6 +244,13 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			return new WP_Error( 'mad4b_content_experience_operation_invalid', 'Unsupported experience operation.' );
 		}
 
+		$brand_preflight = null;
+		if ( 'publish' === $operation || ( 'create' === $operation && in_array( (string) $profile['creation_status'], array( 'publish', 'private', 'future' ), true ) ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core recovery guard is unavailable.' );
+			$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => $operation, 'post_type' => (string) $profile['post_type'] ) );
+			if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+		}
+
 		$post = null;
 		$current_state_sha256 = '';
 		if ( 'create' !== $operation ) {
@@ -358,6 +365,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'helper_catalog_sha256' => MAD4B_SCP_Content_Experience_Profiles::helper_catalog_sha256(),
 			'operation' => $operation,
 			'post_type' => (string) $profile['post_type'],
+			'publication_brand_core' => $brand_preflight,
 			'current_state_sha256' => $current_state_sha256,
 			'effective_media_state_sha256' => $effective_media_state_sha256,
 			'media_publish_rights' => $media_publish_rights,
@@ -598,8 +606,20 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			$recovery_binding = MAD4B_SCP_Content_Experience_Media_Manifest::bind_post( $apply_manifest_guard, $post_id );
 			if ( is_wp_error( $recovery_binding ) ) return self::compensated_error( $recovery_binding, $before );
 
-			// Publish is the final externally visible state transition.
+			// Recheck original Brand authority at the last possible point before
+			// making the post externally visible, after helper/media effects.
 			if ( 'publish' === $operation ) {
+				$brand_now = class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' )
+					? MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'publish', 'post_type' => (string) $profile['post_type'] ) )
+					: new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core guard unavailable.' );
+				if ( is_wp_error( $brand_now ) ) return self::compensated_error( $brand_now, $before );
+				if ( ! isset( $plan['publication_brand_core'] ) || ! is_array( $plan['publication_brand_core'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) $brand_now['reviewed_asset_fingerprint'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) $brand_now['authority_manifest_fingerprint'] )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) $brand_now['registry_revision'] ) {
+					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed after the exact publication plan.' ), $before );
+				}
+
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
 				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
