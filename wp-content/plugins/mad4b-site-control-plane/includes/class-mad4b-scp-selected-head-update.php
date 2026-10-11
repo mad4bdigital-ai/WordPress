@@ -213,7 +213,7 @@ final class MAD4B_SCP_Selected_Head_Update {
                 // An unavailable/queued Actions runner is not a mandatory gate.
                 // A Staging-only independently signed native test report is an
                 // alternative, never a declaration that GitHub CI passed.
-                'surface' => 'independent_native_five_gate_tests_and_signed_receipt_or_trusted_ci_verdict',
+                'surface' => 'independent_native_six_gate_tests_and_signed_receipt_or_trusted_ci_verdict',
                 'tool' => 'tools/mad4b_standalone_evidence.py + tools/mad4b_publish_offline_staging_candidate.py',
                 'accepted_evidence_modes' => array( 'owner_signed_ci_outage', 'github_ci_verdict' ),
                 'github_actions_queue_clearance_required' => false,
@@ -322,7 +322,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             'github_actions_stalled_awaiting_queue_clearance' => false,
             'accepted_staging_evidence_modes' => array( 'github_ci_verdict', 'owner_signed_ci_outage' ),
             'independent_evidence_required_if_ci_unavailable' => true,
-            'native_five_gate_failures_may_be_ignored' => false,
+            'native_six_gate_failures_may_be_ignored' => false,
             'offline_signer_and_certified_exact_head_manifest_required' => true,
             'ci_queue_state_used_as_authority' => false,
             'reason' => $reason, 'mutation_performed' => false, 'authorizing' => false,
