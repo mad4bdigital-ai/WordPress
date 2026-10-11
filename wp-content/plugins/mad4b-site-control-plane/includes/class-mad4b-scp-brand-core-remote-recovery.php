@@ -377,6 +377,12 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
 
     public static function prepare( $input = array() ) {
         if ( ! self::can_read() || ! is_array( $input ) ) return self::denial( 'permission_required' );
+        foreach ( array_keys( $input ) as $key ) {
+            if ( ! in_array( $key, array( 'stage_id', 'expected_plan_sha256',
+                'source_id', 'candidate_sha', 'include_provider_scan',
+                'include_host_challenge' ), true ) )
+                return self::denial( 'unexpected_parameter' );
+        }
         $stage_id = (string) ( $input['stage_id'] ?? '' );
         $sha = (string) ( $input['expected_plan_sha256'] ?? '' );
         if ( ! isset( self::stages()[ $stage_id ] ) ||
