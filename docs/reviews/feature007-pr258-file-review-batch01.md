@@ -36,3 +36,23 @@ The batch has **not** completed 803 manual reviews or executed the PR-wide nativ
 5. Compare Staging installed SHA with audited source and check web/MCP/admin/cron/third-party acceptance after authorized deployment.
 
 No Production mutations; no G9 bypass, branch-protection bypass, or claim of complete human certification.
+
+## Follow-up hardening — 2026-10-11
+
+**GitHub integration checkpoint immediately before this note:** `f3b3e6cd7e92af0a7aa4da5b0c4bd806b7054d25`; PR changed paths: **808** (the original 803-file ledger remains an explicitly historical immutable source snapshot, **not** a certified 808-file review). All 61 workflow runs on the preceding checked revision remained queued; these edits are **not** a CI PASS or a native runtime certificate.
+
+### Verified source-level corrections (not deployed)
+
+- **P0 native package admission:** `WP_Native_Build::start()` now reserves a site-global SQL `INSERT IGNORE` mutex using the existing exact-owner `Batch_Atomic_Mutex`. It revalidates governed owner authorization and source plan while holding that mutex, reads persistent job state independently of the Options cache, binds new jobs to a random 128-bit `job_id`, checks DB readback and only then schedules Cron. The admission receipt is released with exact owner-token comparison. The previous per-SHA `flock` remains for the worker, not for cross-SHA admission.
+- **P0 attestor trust enrollment:** `CI_Outage_Attestation::enroll_apply()` now holds a separate site-global SQL owner reservation, performs fresh source/trust authorization, confirms exact key identity through SQL and uses value-constrained DELETE for rollback of a newly inserted key after audit failure. Unknown outcomes require explicit readback; the private signing key remains outside WordPress.
+- **P1 signed offline evidence:** Six required PASS claims, including `php74_tree_syntax` and `php83_tree_syntax`, must match the same package/source/site in the existing independent Ed25519 signer. The publisher, selected-head runtime fixture, compatibility metadata and Staging runbook are aligned; old five-gate signatures intentionally fail closed.
+- **Independent local preflight:** PHP 7.4 and 8.3 now scan **every** plugin PHP file (including new modules and fixtures) from an immutable clean checkout, not only the historical named lint sample. Symlink/path drift is rejected; missing interpreter remains BLOCKED, not PASS. New focused runtime fixtures are included, but have **not been executed** in this review session.
+- **Original nine P1 patchless PHP modules:** direct source blobs were obtained using the GitHub content API, including Context Authority, CSO secrets/storage, media storage and recovery modules. This resolves their source retrieval gap but does **not** close behavioral review or native test status.
+
+### Still open and required for final certification
+
+1. Independently run newly authored PHP runtime fixtures and all exact-head PHP 7.4/8.3 syntax/runtime, G9, ZIP integrity, fail-closed/restore and MySQL/MariaDB two-process admission tests. No executable PHP runtime was available through the connected GitHub API or the offline Desktop Commander device in this session.
+2. Rebuild the full per-file ledger for the latest integration HEAD, including all currently changed paths, every missing-patch source blob and binary archive content identities. Keep `manual_behavior_review=not_completed` unless actual complete review evidence exists.
+3. Prove long-running/stale SQL admission reservation recovery is safe and owner-governed; the current reserve is deliberately fail-closed rather than automatically stealing an old lock.
+4. Independently certify package digest/signature and site-readback after separately approved Staging installation; benchmark gateway transport, WP bootstrap/query costs, Cron, frontend/admin/REST and third-party parity.
+5. Do not treat `mergeable=true`, 61 queued Actions or an earlier installed Staging SHA as acceptance. No Production deployment/permission expansion, owner attestation, merge or CI bypass was executed by this batch.
