@@ -15,6 +15,7 @@ final class MAD4B_SCP_CI_Outage_Attestation {
     const MAX_LIFETIME = 86400;
     const REQUIRED_GATES = array(
         'g9_delivery_contract',
+        'php74_tree_syntax',
         'php83_tree_syntax',
         'canonical_package_receipt',
         'isolated_zip_runtime_integrity',
@@ -148,6 +149,64 @@ final class MAD4B_SCP_CI_Outage_Attestation {
             return self::failure( 'enroll_confirmation_invalid', 'Exact plan SHA and confirmation required.' );
         $access = self::can_enroll( $input );
         if ( is_wp_error( $access ) || true !== $access ) return $access;
+        // Trust enrollment has one site/Profile writer at a time. The
+        // canonical SQL mutex is never created through add_option() UPSERT.
+        if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'offline-attestor', 'approve' );
+        if ( is_wp_error( $lease ) )
+            return self::failure( 'enroll_admission_locked',
+                'Independent trust enrollment lock unavailable; reconcile the existing owner.' );
+        try {
+            $result = self::enroll_apply_under_lock( $input );
+        } catch ( Throwable $error ) {
+            $result = self::failure( 'enroll_unknown_result',
+                'Trust enrollment result uncertain; perform an independent readback.' );
+        } finally {
+            $unlocked = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        }
+        if ( is_wp_error( $unlocked ) )
+            return self::failure( 'enroll_unlock_uncertain',
+                'Independent trust owner release failed; reconcile before retry.' );
+        return $result;
+    }
+
+    private static function enrollment_fresh_key() {
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! is_string( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', $wpdb->options ) ||
+            ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) )
+            return self::failure( 'enroll_db_unavailable', 'Independent enrolled key readback unavailable.' );
+        $raw = $wpdb->get_var( $wpdb->prepare(
+            "SELECT option_value FROM `{$wpdb->options}` WHERE option_name = %s LIMIT 1", self::KEY_OPTION ) );
+        return null === $raw ? '' : ( is_string( $raw ) ? $raw :
+            self::failure( 'enroll_db_invalid', 'Stored enrollment key is not valid.' ) );
+    }
+
+    private static function enrollment_rollback_exact( $key ) {
+        global $wpdb;
+        if ( ! isset( $wpdb->options ) || ! is_string( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', $wpdb->options ) ||
+            ! method_exists( $wpdb, 'query' ) || ! method_exists( $wpdb, 'prepare' ) )
+            return false;
+        $removed = $wpdb->query( $wpdb->prepare(
+            "DELETE FROM `{$wpdb->options}` WHERE option_name = %s AND BINARY option_value = BINARY %s LIMIT 1",
+            self::KEY_OPTION, $key ) );
+        if ( function_exists( 'wp_cache_delete' ) ) {
+            wp_cache_delete( self::KEY_OPTION, 'options' );
+            wp_cache_delete( 'notoptions', 'options' );
+        }
+        return 1 === $removed && '' === self::enrollment_fresh_key();
+    }
+
+    private static function enroll_apply_under_lock( array $input ) {
+        if ( function_exists( 'wp_cache_delete' ) ) {
+            wp_cache_delete( self::KEY_OPTION, 'options' );
+            wp_cache_delete( 'notoptions', 'options' );
+        }
+        $permission = self::can_enroll( $input );
+        if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
         $plan = self::enroll_plan( array(
             'public_key_base64' => (string) ( $input['public_key_base64'] ?? '' ),
             'reason' => (string) ( $input['reason'] ?? '' ),
@@ -156,13 +215,16 @@ final class MAD4B_SCP_CI_Outage_Attestation {
         if ( ! hash_equals( $plan['plan_sha256'], (string) $input['expected_plan_sha256'] ) ||
             empty( $plan['eligible'] ) ) return self::failure( 'enroll_plan_changed', 'Site or trust changed; review a new enrollment plan.' );
         $key = (string) $input['public_key_base64'];
-        $before = get_option( self::KEY_OPTION, '' );
+        $before = self::enrollment_fresh_key();
+        if ( is_wp_error( $before ) ) return $before;
         if ( '' !== $before && ! hash_equals( (string) $before, $key ) )
             return self::failure( 'enroll_rotation_denied', 'Replacing an attestor requires separate reviewed rotation.' );
         if ( '' === $before ) update_option( self::KEY_OPTION, $key, false );
-        if ( ! hash_equals( $key, (string) get_option( self::KEY_OPTION, '' ) ) ) {
-            update_option( self::KEY_OPTION, $before, false );
-            return self::failure( 'enroll_readback_failed', 'Public key readback mismatch; restored prior state.' );
+        $observed = self::enrollment_fresh_key();
+        if ( is_wp_error( $observed ) || ! hash_equals( $key, $observed ) ) {
+            // Never overwrite a different concurrent trust value on failure.
+            if ( '' === $before ) self::enrollment_rollback_exact( $key );
+            return self::failure( 'enroll_readback_failed', 'Key was not confirmed in the independent Options store.' );
         }
         $audit = class_exists( 'MAD4B_SCP_Audit' )
             ? MAD4B_SCP_Audit::record( 'mad4b/staging-offline-attestor-enroll',
@@ -171,8 +233,10 @@ final class MAD4B_SCP_CI_Outage_Attestation {
                     'production_authorized' => false ), 'success' )
             : self::failure( 'audit_missing', 'Audit unavailable.' );
         if ( is_wp_error( $audit ) ) {
-            update_option( self::KEY_OPTION, $before, false );
-            return self::failure( 'enroll_audit_failed', 'Audit rejected attestor key; original state restored.' );
+            $rolled_back = '' !== $before || self::enrollment_rollback_exact( $key );
+            return self::failure( $rolled_back ? 'enroll_audit_failed' : 'enroll_audit_rollback_uncertain',
+                $rolled_back ? 'Audit rejected enrollment; original trust state preserved.'
+                    : 'Audit failed and trust rollback could not be proven; independent reconciliation required.' );
         }
         return array( 'state' => 'verified', 'public_key_sha256' => $plan['public_key_sha256'],
             'site_uuid' => $plan['site_uuid'], 'readback_verified' => true,
