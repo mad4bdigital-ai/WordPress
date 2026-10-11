@@ -132,6 +132,9 @@ brand_remote_assert( $normal['stages']['source_inventory']['evidence_observed'] 
     'fresh admin census observed' );
 brand_remote_assert( $normal['stages']['owner_attestation']['evidence_observed'] === false,
     'census cannot attest ownership' );
+brand_remote_assert( in_array( 'owner_attestation',
+    $normal['stages']['brand_approval']['waiting_on_upstream'], true ),
+    'Quarantined sources must still require independent original owner proof' );
 brand_remote_assert( $normal['stages']['durable_db_recovery']['state'] === 'REMOTE_EXECUTOR_INTEGRATION_REQUIRED',
     'no implied database certification' );
 brand_remote_assert( $normal['stages']['owner_attestation']['waiting_on_upstream'] ===
@@ -226,6 +229,9 @@ MAD4B_SCP_Context_Authority::$ready = true;
 MAD4B_SCP_Selected_Head_Update::$eligible = true;
 $possible = MAD4B_SCP_Brand_Core_Remote_Recovery::status( array(
     'candidate_sha' => str_repeat( 'c', 40 ) ) );
+brand_remote_assert( ! in_array( 'owner_attestation',
+    $possible['stages']['brand_approval']['upstream_stages'], true ),
+    'A clean first-party registry must not wait forever for a nonexistent legacy transfer' );
 brand_remote_assert( $possible['stages']['brand_approval']['evidence_observed'] === true
     && $possible['stages']['certified_package']['evidence_observed'] === false
     && $possible['stages']['draft_acceptance']['evidence_observed'] === false
