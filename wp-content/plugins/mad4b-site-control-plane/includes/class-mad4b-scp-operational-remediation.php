@@ -42,6 +42,11 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Operational_Acceptance_Evidence', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operational-acceptance-evidence.php';
         MAD4B_SCP_Operational_Acceptance_Evidence::boot();
+        // Host secret itself is provisioned outside WP; only the existing
+        // Site Profile identity digest is enrolled via exact governed CAS.
+        if ( ! class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-deployment-binding-setup.php';
+        MAD4B_SCP_Deployment_Binding_Setup::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
 			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
