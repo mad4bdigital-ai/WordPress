@@ -63,9 +63,10 @@ final class MAD4B_SCP_WP_Native_Build {
                 'meta' => array( 'public' => false, 'show_in_rest' => false,
                     'mcp' => array( 'public' => false, 'type' => 'tool',
                         'surface' => $def[3] ? 'read' : 'admin',
+                        'non_authorizing' => $def[3],
                         'production_mutation_allowed' => false ),
                     'annotations' => array( 'readonly' => $def[3],
-                        'destructive' => ! $def[3], 'idempotent' => $def[3] ) ),
+                        'destructive' => false, 'idempotent' => true ) ),
             ) );
         }
     }
