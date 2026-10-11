@@ -186,6 +186,25 @@ for marker in (
 ):
     must(operator, marker, "missing operator journey or false completion state")
 must(operator_test, "nine distinct task journeys", "standalone whole-plugin UX fixture missing")
+main_admin = (root / "includes/class-mad4b-scp-admin-ui.php").read_text(encoding="utf-8")
+for marker in (
+    "'tasks' => __( 'Tasks & Workflows'",
+    "if ( 'tasks' === $section ) return array(",
+    "if ( 'tasks' === $tab ) self::render_tasks();",
+    "private static function render_tasks()",
+    "Unable to inspect task routes",
+    "Tools listed",
+):
+    must(main_admin, marker, "main admin journey navigation or outage safety missing")
+for marker in (
+    "const STATUS = 'mad4b/native-recovery-status'",
+    "'SCRATCH_EXPIRED_CLEANUP_AVAILABLE'",
+    "'SCRATCH_REQUIRES_INDEPENDENT_READBACK'",
+    "'cleanup_intent'",
+    "'CLEANED_AUDIT_REPAIR_REQUIRED'",
+    "'mad4b_native_scratch_occupied'",
+):
+    must(native, marker, "resume or truthful cleanup handling missing")
 must(admin_ux, "Choose your goal", "goal-first admin navigation not available")
 must(admin_ux, "Resume job ID", "interrupted native task cannot be resumed from UI")
 must(admin_ux, "is_wp_error( $view )", "diagnostic failure must render usable admin message")
