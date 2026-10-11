@@ -58,6 +58,12 @@ expect(is_wp_error($c::verify($a,$manifest,$site,$now+4000)),'expired evidence d
 $badclaims=$claims;$badclaims['expires_at']=$now+90000;
 expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now)),
  'overlong evidence lifetime denied');
+$badclaims=$claims;$badclaims['test_gates']['php74_tree_syntax']='FAIL';
+expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now)),
+ 'failed PHP 7.4 compatibility gate denied');
+$badclaims=$claims;unset($badclaims['test_gates']['php74_tree_syntax']);
+expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now)),
+ 'missing PHP 7.4 compatibility gate denied');
 $badclaims=$claims;$badclaims['test_gates']['php83_tree_syntax']='FAIL';
 expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now)),
  'failed native PHP test denied');
@@ -70,4 +76,4 @@ expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now
 $badclaims=$claims;$badclaims['environment']='production';
 expect(is_wp_error($c::verify(sign_claim($c,$badclaims,$sk),$manifest,$site,$now)),
  'Production receipt denied');
-echo "PASS: 13 Ed25519 CI-outage source/site/test/time/trust refusal checks\n";
+echo "PASS: 15 Ed25519 CI-outage source/site/test/time/trust refusal checks\n";
