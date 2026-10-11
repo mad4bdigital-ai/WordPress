@@ -76,6 +76,14 @@ final class MAD4B_SCP_Servers {
 				'mad4b/runtime-gates-handshake',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
+                // Approval bootstrap cannot depend solely on the nested write
+                // dispatcher: some MCP hosts expose its fixed typed tools but
+                // do not admit the nested approval-plan result. Expose ONLY
+                // the two already-governed approval abilities directly.
+                // Transport_Context still forces them to mad4b-write; all
+                // exact NHI grants, OAuth scopes, budgets, candidate-bound
+                // ticket proof, AI delegation and execution claims still run.
+                'mad4b/approval-plan', 'mad4b/approval-ai-decide',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
 				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
