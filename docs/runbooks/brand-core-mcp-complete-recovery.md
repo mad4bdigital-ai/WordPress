@@ -57,7 +57,8 @@ ability markers, and blockers:
    `context/legacy-owner-transfer-apply` then independent
    `context/legacy-owner-transfer-readback`; no inherited reviews
 4. `host_identity` — enrolled signed Host Runner challenge plus
-   `mad4b/host-doctor`, `mad4b/host-operation-plan` and native Host receipt
+   `mad4b/host-doctor`, `mad4b/host-operation-plan`, separately approved
+   `mad4b/host-operation-apply` and independent Host receipt
 5. `durable_db_recovery` — **separate signed, isolated MariaDB
    crash/restart/race/rollback certification executor still required**.
    No WordPress option, simulated PHP test or generic host command may
@@ -71,6 +72,13 @@ ability markers, and blockers:
 8. `draft_acceptance` — independently authorized native Content
    Orchestration create-draft, then CPT/taxonomy independent readback; not
    publication or competitor-rights evidence
+
+The Host write Ability is discoverable in the governed `mad4b-write`
+catalog only through the existing Host Bridge and remains subject to
+`MAD4B_SCP_Authorization::claim_mutation`, the exact Runner profile,
+semantically allowlisted Host job, one-time ticket, source binding and
+independent signed execution/readback. Merely mounting the tool is **not**
+Host enrollment and does not grant write authority.
 
 A stage handoff requires `stage_id` and
 `expected_plan_sha256`, and must re-evaluate the same exact live evidence.
