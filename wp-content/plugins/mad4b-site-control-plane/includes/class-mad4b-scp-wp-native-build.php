@@ -300,13 +300,22 @@ final class MAD4B_SCP_WP_Native_Build {
         $n = count( $job['entries'] );
         for ( $i = 0; $i < self::BATCH && $job['cursor'] < $n; $i++ ) {
             $entry = $job['entries'][ $job['cursor'] ];
-            $blob = self::github( 'git/blobs/' . $entry['sha'], 1700000 );
-            if ( is_wp_error( $blob ) ) return $blob;
-            if ( ( $blob['encoding'] ?? '' ) !== 'base64' ||
-                ( $blob['sha'] ?? '' ) !== $entry['sha'] ||
-                ! is_string( $blob['content'] ?? null ) )
-                return new WP_Error( 'mad4b_native_blob_untrusted', 'Blob encoding or identity changed.' );
-            $raw = base64_decode( preg_replace( '/\s+/', '', $blob['content'] ), true );
+            // Fetch pinned raw bytes, avoiding the low unauthenticated REST blob quota.
+            // The Git tree's object SHA is still independently verified below.
+            $segments = array_map( 'rawurlencode',
+                explode( '/', self::PLUGIN . '/' . $entry['path'] ) );
+            $url = 'https://raw.githubusercontent.com/' . self::REPO .
+                '/' . $job['head'] . '/' . implode( '/', $segments );
+            $response = wp_safe_remote_get( $url, array(
+                'timeout' => 12, 'redirection' => 0, 'sslverify' => true,
+                'limit_response_size' => self::MAX_BLOB_BYTES + 1,
+                'headers' => array( 'User-Agent' => 'MAD4B-WP-Native-Source-Builder' ),
+            ) );
+            if ( is_wp_error( $response ) ||
+                (int) wp_remote_retrieve_response_code( $response ) !== 200 )
+                return new WP_Error( 'mad4b_native_raw_unavailable',
+                    'Pinned raw source unavailable.' );
+            $raw = wp_remote_retrieve_body( $response );
             if ( ! is_string( $raw ) || strlen( $raw ) !== $entry['bytes'] ||
                 ! hash_equals( $entry['sha'],
                     sha1( 'blob ' . strlen( $raw ) . "\0" . $raw ) ) )
