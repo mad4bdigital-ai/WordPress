@@ -247,7 +247,8 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$before = self::safe_read_snapshot( $transaction_id, 'preflight' );
+		if ( is_wp_error( $before ) ) return $before;
 		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $before['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $expected_generation, $before, 'metadata_preflight_generation_mismatch' );
 		}
@@ -332,7 +333,8 @@ final class MAD4B_SCP_Read_Consistency {
 			$payload['surface'] = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$after = self::safe_read_snapshot( $transaction_id, 'postflight' );
+		if ( is_wp_error( $after ) ) return $after;
 		if ( ! self::generation_matches( $before['runtime_generation'], $after['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $before['runtime_generation'], $after, 'runtime_changed_during_metadata_read' );
 		}
@@ -377,20 +379,35 @@ final class MAD4B_SCP_Read_Consistency {
 			? max( 1000, min( self::MAX_BUNDLE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_BUNDLE_BUDGET_MS;
 
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$before = self::safe_read_snapshot( $transaction_id, 'preflight' );
+		if ( is_wp_error( $before ) ) return $before;
 		if ( ! self::generation_matches( $expected_generation, $before['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, $before, 'preflight_generation_mismatch' );
 		}
 
-		$result = MAD4B_SCP_Connector_Resilience::run_checks(
-			self::bundle_checks( $bundle ),
-			array(
-				'budget_ms' => $budget_ms,
-				'retry_transient' => $retry,
-			)
-		);
+		try {
+			$result = MAD4B_SCP_Connector_Resilience::run_checks(
+				self::bundle_checks( $bundle ),
+				array(
+					'budget_ms' => $budget_ms,
+					'retry_transient' => $retry,
+				)
+			);
+			if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'bundle_check_result_invalid' );
+		} catch ( Throwable $error ) {
+			$result = array(
+				'state' => 'partial', 'partial' => true,
+				'checks' => array(), 'failed_checks' => array_keys( self::bundle_checks( $bundle ) ),
+				'retryable_checks' => array(), 'elapsed_ms' => 0,
+				'error_code' => 'mad4b_read_bundle_internal_exception',
+				'error_class' => get_class( $error ),
+				'raw_exception_exposed' => false,
+				'read_only' => true, 'mutation_performed' => false,
+			);
+		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$after = self::safe_read_snapshot( $transaction_id, 'postflight' );
+		if ( is_wp_error( $after ) ) return $after;
 		if ( ! self::generation_matches( $before['runtime_generation'], $after['runtime_generation'] ) ) {
 			$changed = self::generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, $after, 'runtime_changed_during_bundle' );
 			$changed['discarded_check_count'] = isset( $result['checks'] ) && is_array( $result['checks'] ) ? count( $result['checks'] ) : 0;
@@ -1789,6 +1806,32 @@ final class MAD4B_SCP_Read_Consistency {
 		$result = array();
 		foreach ( $keys as $key ) if ( array_key_exists( $key, $status ) ) $result[ $key ] = $status[ $key ];
 		return $result;
+	}
+
+	/**
+	 * Shared fail-closed read snapshot guard. A failed WordPress read must be
+	 * represented as a typed retryable error, never bubble up to a generic MCP
+	 * transport failure or be treated as a current source identity.
+	 */
+	private static function safe_read_snapshot( $transaction_id, $phase ) {
+		$phase = 'postflight' === $phase ? 'postflight' : 'preflight';
+		try {
+			$snapshot = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_snapshot_' . $phase . '_unavailable',
+				'Runtime read snapshot was unavailable; restart this read-only transaction.',
+				array( 'status' => 503, 'retryable' => true,
+					'raw_exception_exposed' => false, 'mutation_performed' => false ) );
+		}
+		if ( is_wp_error( $snapshot ) || ! is_array( $snapshot ) ||
+			! self::is_sha( (string) ( $snapshot['runtime_generation'] ?? '' ), 64 ) ||
+			! self::is_sha( (string) ( $snapshot['snapshot_id'] ?? '' ), 64 ) ) {
+			return new WP_Error( 'mad4b_snapshot_' . $phase . '_invalid',
+				'Runtime read snapshot identity cannot be verified.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false ) );
+		}
+		return $snapshot;
 	}
 
 	private static function generation_matches( $expected, $current ) {
