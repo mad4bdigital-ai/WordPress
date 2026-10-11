@@ -166,6 +166,7 @@ final class MAD4B_SCP_Mutation_Manager {
 			$brand_drift = is_wp_error( $brand_now ) || ! is_array( $brand_now )
 				|| ! hash_equals( (string) $brand_preflight['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
 				|| ! hash_equals( (string) $brand_preflight['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+				|| ! hash_equals( (string) $brand_preflight['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
 				|| (int) $brand_preflight['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 );
 			if ( $brand_drift ) {
 				$error = is_wp_error( $brand_now ) ? $brand_now : new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed before post mutation.' );
