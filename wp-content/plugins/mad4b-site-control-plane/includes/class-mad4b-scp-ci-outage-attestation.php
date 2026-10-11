@@ -26,7 +26,22 @@ final class MAD4B_SCP_CI_Outage_Attestation {
     const ENROLL_CONFIRM = 'ENROLL STAGING OFFLINE ATTESTOR';
 
     public static function boot() {
+        // Dynamic first-party provider enrollment on the existing adapter
+        // lifecycle, including the late module boot order.
+        add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 10, 1 );
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false ) &&
+            method_exists( 'MAD4B_SCP_Adapter_Registry', 'instance' ) ) {
+            self::register_adapter( MAD4B_SCP_Adapter_Registry::instance() );
+        }
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 40 );
+    }
+
+    public static function register_adapter( $registry ) {
+        if ( ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ||
+            ! class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ||
+            ! $registry instanceof MAD4B_SCP_Adapter_Registry ) return;
+        require_once __DIR__ . '/adapters/class-mad4b-scp-ci-outage-attestor-adapter.php';
+        $registry->register( new MAD4B_SCP_CI_Outage_Attestor_Adapter() );
     }
 
     public static function register_abilities() {
@@ -118,9 +133,12 @@ final class MAD4B_SCP_CI_Outage_Attestation {
             return self::failure( 'enroll_owner_stepup_required', 'Exact ChatGPT owner authority step-up required.' );
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return self::failure( 'enroll_grant_unavailable', 'Dedicated Staging write authorization unavailable.' );
-        return MAD4B_SCP_Authorization::authorize_mutation(
+        $decision = MAD4B_SCP_Authorization::authorize_mutation(
             self::ENROLL_APPLY, 'mad4b-admin', 'core', is_array( $input ) ? $input : array()
         );
+        if ( is_wp_error( $decision ) ) return $decision;
+        return is_array( $decision ) && ! empty( $decision['allowed'] )
+            ? true : self::failure( 'enroll_grant_denied', 'Exact owner authorization required.' );
     }
 
     public static function enroll_apply( $input = array() ) {
