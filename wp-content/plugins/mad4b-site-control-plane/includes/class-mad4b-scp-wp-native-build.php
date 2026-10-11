@@ -23,8 +23,20 @@ final class MAD4B_SCP_WP_Native_Build {
     const BATCH = 4;
 
     public static function boot() {
+        // Enroll in the existing adapter registry before the canonical Abilities
+        // lifecycle; the Servers class dynamically discovers the declared
+        // Admin mutation and its original governed Write execution lane.
+        add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 10, 1 );
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
         add_action( self::HOOK, array( __CLASS__, 'tick' ) );
+    }
+
+    public static function register_adapter( $registry ) {
+        if ( ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ||
+            ! class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ||
+            ! $registry instanceof MAD4B_SCP_Adapter_Registry ) return;
+        require_once __DIR__ . '/adapters/class-mad4b-scp-wp-native-build-adapter.php';
+        $registry->register( new MAD4B_SCP_WP_Native_Build_Adapter() );
     }
 
     private static function schema( $properties = array(), $required = array() ) {
