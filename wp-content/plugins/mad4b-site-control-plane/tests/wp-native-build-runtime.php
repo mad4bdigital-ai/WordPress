@@ -22,25 +22,41 @@ function get_option( $name, $default = false ) {
 function maybe_unserialize( $value ) { return unserialize( $value ); }
 class MAD4B_Native_Test_DB {
     public $options = 'wp_options';
-    public function prepare( $sql, $key ) { return array( $sql, $key ); }
+    public function prepare( $sql, ...$args ) { return array_merge( array( $sql ), $args ); }
+    public function query( $q ) {
+        $sql = $q[0]; $key = $q[1];
+        if ( strpos( $sql, 'INSERT IGNORE INTO' ) !== false ) {
+            if ( isset( $GLOBALS['native_db_opts'][ $key ] ) ) return 0;
+            $GLOBALS['native_db_opts'][ $key ] = $q[2]; return 1;
+        }
+        if ( strpos( $sql, 'DELETE FROM' ) !== false ) {
+            if ( ! isset( $GLOBALS['native_db_opts'][ $key ] ) ||
+                $GLOBALS['native_db_opts'][ $key ] !== $q[2] ) return 0;
+            unset( $GLOBALS['native_db_opts'][ $key ] ); return 1;
+        }
+        return false;
+    }
     public function get_var( $query ) {
         $GLOBALS['native_uncached_reads'] = (int) ( $GLOBALS['native_uncached_reads'] ?? 0 ) + 1;
         $name = $query[1];
         $record = $GLOBALS['native_db_opts'][ $name ] ?? null;
-        if ( ! empty( $GLOBALS['native_switch_job_after_lock'] ) ) {
+        if ( ! empty( $GLOBALS['native_switch_job_after_lock'] ) &&
+            $name === MAD4B_SCP_WP_Native_Build::OPTION ) {
             $record['state'] = 'BUILT_UNVERIFIED';
             $GLOBALS['native_db_opts'][ $name ] = $record;
             // Simulate the in-process get_option cache staying stale.
         }
-        return is_array( $record ) ? serialize( $record ) : null;
+        return is_array( $record ) ? serialize( $record ) : ( is_string( $record ) ? $record : null );
     }
 }
 $GLOBALS['wpdb'] = new MAD4B_Native_Test_DB();
 function update_option( $name, $value, $autoload = null ) {
-    $GLOBALS['native_opts'][$name] = $value; return true;
+    $GLOBALS['native_opts'][$name] = $value;
+    $GLOBALS['native_db_opts'][$name] = $value;
+    return true;
 }
-function current_user_can( $cap ) { return false; }
-function get_current_user_id() { return 0; }
+function current_user_can( $cap ) { return ! empty( $GLOBALS['native_owner_enrolled'] ); }
+function get_current_user_id() { return ! empty( $GLOBALS['native_owner_enrolled'] ) ? 123 : 0; }
 function wp_safe_remote_get( $url, $args = array() ) {
     throw new RuntimeException( 'Offline test must not use network' );
 }
@@ -78,7 +94,8 @@ class MAD4B_SCP_Site_Profile {
         'configured_environment' => 'staging', 'authority_ready' => true,
         'origin_match' => true, 'canonical_origin' => 'https://staging.example.test' );
     public static function status() { return self::$row; }
-    public static function user_is_enrolled( $id ) { return false; }
+    public static function user_is_enrolled( $id ) { return ! empty( $GLOBALS['native_owner_enrolled'] ) && $id === 123; }
+    public static function site_uuid() { return 'test-site'; }
 }
 class MAD4B_SCP_WordPress_Native_Opt_In {
     public static function enabled() { return true; }
@@ -272,4 +289,56 @@ assert_native( $blocked['state'] === 'BLOCKED' &&
 unset( $GLOBALS['native_opts'][ $c::OPTION ],
     $GLOBALS['native_db_opts'][ $c::OPTION ] );
 @unlink( $workspace . '/.lock' ); @rmdir( $workspace );
+// A held site-global SQL mutex prevents admission before the old job row
+// can be replaced, independently of the selected Git source SHA.
+class MAD4B_SCP_Policy {
+    public static function can_mutate() { return true; }
+}
+class MAD4B_SCP_OAuth_Resource_Bridge {
+    const AUTHORITY_STEP_UP_SCOPE = 'owner-step-up';
+    public static function verified_bearer_active() { return true; }
+    public static function verified_bearer_has_scope( $scope ) { return true; }
+    public static function verified_bearer_client_is( $client ) { return true; }
+}
+class MAD4B_SCP_Local_OAuth_Server {
+    const CHATGPT_CIMD_CLIENT_ID = 'fixture-chatgpt';
+}
+class MAD4B_SCP_Authorization {
+    public static function authorize_mutation( $name, $category, $provider, $input ) {
+        return array( 'allowed' => true );
+    }
+}
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-batch-atomic-mutex.php';
+$GLOBALS['native_owner_enrolled'] = true;
+$GLOBALS['native_schedule_ok'] = true;
+$build_input = array( 'expected_head' => $sha,
+    'expected_plan_sha256' => $c::plan( array( 'expected_head' => $sha ) )['plan_sha256'],
+    'confirmation' => $c::CONFIRM );
+$site_lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'wp-native-build', 'begin' );
+assert_native( !is_wp_error( $site_lease ), 'First site-global build mutex claim' );
+$held_start = $c::start( $build_input );
+assert_native( is_wp_error( $held_start ) &&
+    $held_start->get_error_code() === 'mad4b_native_admission_locked',
+    'An active build reservation blocks another admitted start' );
+assert_native( true === MAD4B_SCP_Batch_Atomic_Mutex::release( $site_lease ),
+    'Exact owner releases site-global admission' );
+$started = $c::start( $build_input );
+assert_native( !is_wp_error( $started ) && $started['state'] === 'DISCOVERING',
+    'Owner-authenticated Staging build admitted under the site-global mutex' );
+$persisted = $GLOBALS['native_db_opts'][ $c::OPTION ];
+assert_native( isset( $persisted['job_id'] ) && strlen( $persisted['job_id'] ) === 32,
+    'Build has a durable per-operation identifier' );
+$mutex_key = MAD4B_SCP_Batch_Atomic_Mutex::key( 'wp-native-build' );
+assert_native( !isset( $GLOBALS['native_db_opts'][ $mutex_key ] ),
+    'Admission lease released after verified scheduling' );
+$blocked_second = $c::start( $build_input );
+assert_native( is_wp_error( $blocked_second ) &&
+    $blocked_second->get_error_code() === 'mad4b_native_build_busy' &&
+    $GLOBALS['native_db_opts'][ $c::OPTION ] === $persisted,
+    'A second serial contender may not replace a live package build' );
+@unlink( sys_get_temp_dir() . '/mad4b-native-' .
+    substr( hash( 'sha256', 'test-site:' . $sha ), 0, 28 ) . '/.lock' );
+@rmdir( sys_get_temp_dir() . '/mad4b-native-' .
+    substr( hash( 'sha256', 'test-site:' . $sha ), 0, 28 ) );
+echo "PASS: Staging build site-global atomic admission, owner token and busy refusal\\n";
 echo "PASS: WordPress-native source worker locked state, cron and fail-closed contracts\n";
