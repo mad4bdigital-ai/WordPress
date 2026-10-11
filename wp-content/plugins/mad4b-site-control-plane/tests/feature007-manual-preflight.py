@@ -69,6 +69,9 @@ LINT = (
     "class-mad4b-scp-activity-import-xlsx.php",
     "class-mad4b-scp-activity-import-batches.php",
     "class-mad4b-scp-batch-atomic-mutex.php",
+    "class-mad4b-scp-wp-native-build.php",
+    "class-mad4b-scp-ci-outage-attestation.php",
+    "class-mad4b-scp-adaptive-operation-router.php",
     "class-mad4b-scp-import-acceptance-gates.php",
     "class-mad4b-scp-import-mapping-evolution.php",
     "class-mad4b-scp-import-wpml-readback.php",
@@ -113,6 +116,10 @@ FIXTURES = (
     "imp12-schema-onboarding-runtime.php",
     "imp13-commercial-source-safety-runtime.php",
     "imp14-single-snapshot-atomic-runtime.php",
+    "wp-native-build-runtime.php",
+    "ci-outage-attestation-runtime.php",
+    "ci-outage-dynamic-enrollment-runtime.php",
+    "adaptive-operation-router-runtime.php",
     "projection-registration-lifecycle.php",
     "host-bridge-contract.php",
     "browser-acceptance-admin-setup-contract.php",
@@ -370,6 +377,28 @@ def main():
                     result = run(root, [binary, "-l", str(PLUGIN / "includes" / filename)], env)
                     result["case"] = version + ":lint:" + filename
                     receipt["results"].append(result)
+                # Syntax coverage is the ENTIRE exact Git source plugin PHP tree,
+                # including test fixtures and newly added modules. Named LINT
+                # cases above remain for legacy source-contract compatibility.
+                plugin_root = (root / PLUGIN).resolve()
+                all_php = sorted((root / PLUGIN).rglob("*.php"))
+                if not all_php or len(all_php) > 10000:
+                    receipt["results"].append({"case": version + ":php-tree-inventory",
+                        "result": "BLOCKED", "reason": "UNBOUNDED_OR_EMPTY_PHP_SOURCE"})
+                else:
+                    for php_path in all_php:
+                        if (php_path.is_symlink() or
+                                not php_path.resolve().is_relative_to(plugin_root)):
+                            receipt["results"].append({
+                                "case": version + ":php-tree:path-rejected",
+                                "result": "FAIL", "reason": "UNTRUSTED_PHP_SOURCE_PATH"})
+                            continue
+                        relative = php_path.relative_to(root / PLUGIN).as_posix()
+                        # No file is silently skipped because it lacks a
+                        # GitHub patch body or is absent from an older list.
+                        result = run(root, [binary, "-l", str(php_path)], env)
+                        result["case"] = version + ":php-tree:" + relative
+                        receipt["results"].append(result)
                 for filename in FIXTURES:
                     result = run(root, [binary, str(PLUGIN / "tests" / filename)], env)
                     result["case"] = version + ":fixture:" + filename
