@@ -11,7 +11,7 @@ $stop_http = static function () use ( &$requests ) { ++$requests; return new WP_
 add_filter( 'pre_http_request', $stop_http, PHP_INT_MAX );
 set_error_handler( static function ( $severity, $message, $file, $line ) { if ( ( error_reporting() & $severity ) && false !== strpos( $file, 'mad4b-site-control-plane/' ) ) throw new ErrorException( $message, 0, $severity, $file, $line ); } );
 $pages = array(
-	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'agents', 'approvals', 'mutations', 'audit' ) ),
+	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'tasks', 'controls', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ) ),
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
