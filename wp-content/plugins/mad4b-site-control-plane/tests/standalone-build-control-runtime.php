@@ -68,6 +68,26 @@ MAD4B_SCP_Site_Profile::$identity['profile_digest'] = 'digest-b';
 $changed = $class::plan(array('expected_head' => $sha, 'profile' => 'build-only'));
 expect_build($changed['plan_sha256'] !== $plan['plan_sha256'], 'Site profile drift invalidates plan');
 
+/* Preference is dynamic: opt-in eligible native handles build-only, not local-checks. */
+class MAD4B_Native_Build_Test_Double {
+    public static function capabilities() {
+        return array( 'eligible' => true, 'blockers' => array() );
+    }
+    public static function status() { return array( 'state' => 'BUILT_UNVERIFIED',
+        'head' => str_repeat( 'a', 40 ) ); }
+}
+class_alias( 'MAD4B_Native_Build_Test_Double', 'MAD4B_SCP_WP_Native_Build' );
+$preferred = $class::plan( array( 'expected_head' => $sha, 'profile' => 'build-only' ) );
+expect_build( $preferred['build_route_preferred'] === 'wordpress_native_bounded_build_only' &&
+    $preferred['mcp_execution_available'] === true &&
+    $preferred['builder_status'] === 'BUILT_UNVERIFIED' &&
+    $preferred['release_certified'] === false,
+    'Native only becomes preferred when capability is actually eligible' );
+$full = $class::plan( array( 'expected_head' => $sha, 'profile' => 'local-checks' ) );
+expect_build( $full['build_route_preferred'] === 'external_trusted_runner' &&
+    $full['mcp_execution_available'] === false,
+    'Independent native test execution still requires external runner' );
+
 /* Real Ed25519 verification: synthetic Staging lease, no WordPress mutation. */
 if (!function_exists('sodium_crypto_sign_keypair')) {
     fwrite(STDERR, "BLOCKED: sodium extension required for signed build receipt tests\n");
