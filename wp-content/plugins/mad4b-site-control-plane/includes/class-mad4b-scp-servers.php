@@ -599,6 +599,39 @@ final class MAD4B_SCP_Servers {
 		return $tools;
 	}
 
+    /**
+     * Expose only the original protected approval bootstrap operations on
+     * enrolled, current-authority Staging. An MCP tool is never an approval.
+     */
+    private static function chatgpt_approval_bootstrap_tools() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            || ! MAD4B_SCP_Staging_Write_Authority::effective() )
+            return array();
+        $names = array( 'mad4b/approval-plan' );
+        if ( class_exists( 'MAD4B_SCP_AI_Approval' )
+            && MAD4B_SCP_AI_Approval::catalog_eligible() )
+            $names[] = 'mad4b/approval-ai-decide';
+        $result = array();
+        foreach ( $names as $ability_name ) {
+            if ( ! function_exists( 'wp_has_ability' )
+                || ! function_exists( 'wp_get_ability' )
+                || ! wp_has_ability( $ability_name )
+                || ! self::ability_is_mounted( 'mad4b-write', $ability_name ) )
+                continue;
+            $ability = wp_get_ability( $ability_name );
+            $meta = is_object( $ability ) && method_exists( $ability, 'get_meta' )
+                ? $ability->get_meta() : array();
+            $annotations = is_array( $meta ) && isset( $meta['annotations'] )
+                && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+            if ( array_key_exists( 'readonly', $annotations )
+                && false === $annotations['readonly'] )
+                $result[] = $ability_name;
+        }
+        return $result;
+    }
+
 	public static function is_chatgpt_direct_step_up_tool( $ability_name ) {
 		return in_array( (string) $ability_name, self::chatgpt_reviewed_direct_step_up_tools(), true );
 	}
@@ -613,13 +646,14 @@ final class MAD4B_SCP_Servers {
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
+		$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();
 
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
 			$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
 				: array();
-			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up );
-			$fallback_candidates = array_merge( $core, $runtime_gate_step_up );
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap );
+			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap );
 			$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) );
 			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
@@ -652,7 +686,7 @@ final class MAD4B_SCP_Servers {
 			$step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
+		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
 		$tools = array();
