@@ -3,8 +3,13 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error {
     private $code;
-    public function __construct( $code, $message = '' ) { $this->code = $code; }
+    private $data;
+    public function __construct( $code, $message = '', $data = array() ) {
+        $this->code = $code;
+        $this->data = $data;
+    }
     public function get_error_code() { return $this->code; }
+    public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
 function assert_self_approval( $yes, $reason ) {
@@ -95,6 +100,8 @@ class MAD4B_SCP_Self_Update {
             'Existing package updater required and retains exact plan' );
         if ( ( $GLOBALS['updater_mode'] ?? '' ) === 'error' )
             return new WP_Error( 'simulated_update_rollback' );
+        if ( ( $GLOBALS['updater_mode'] ?? '' ) === 'rollback_reported' )
+            return new WP_Error( 'simulated_rollback_complete', '', array( 'rollback_ok' => true ) );
         if ( ( $GLOBALS['updater_mode'] ?? '' ) === 'uncertain' )
             return array( 'installed' => true, 'readback_verified' => false );
         return array( 'installed' => true, 'readback_verified' => true,
@@ -194,6 +201,11 @@ $rolled_back = $c::apply( $apply );
 assert_self_approval( is_wp_error( $rolled_back )
     && in_array( 'INSTALL_FAILED_RECONCILIATION_REQUIRED', $GLOBALS['audit_phases'], true ),
     'Installer failure is returned and a reconciliation-required state recorded' );
+$GLOBALS['updater_mode'] = 'rollback_reported';
+$rollback_reported = $c::apply( $apply );
+assert_self_approval( is_wp_error( $rollback_reported )
+    && in_array( 'ROLLBACK_REPORTED_REVALIDATION_REQUIRED', $GLOBALS['audit_phases'], true ),
+    'Reported rollback still requires independent installed identity readback' );
 $GLOBALS['updater_mode'] = 'uncertain';
 $uncertain = $c::apply( $apply );
 assert_self_approval( is_wp_error( $uncertain )
