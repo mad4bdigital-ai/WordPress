@@ -144,6 +144,32 @@ $GLOBALS['mad4b_admin'] = false;
 brand_remote_assert( is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::status() ),
     'nonadministrator denied' );
 $GLOBALS['mad4b_admin'] = true;
+// Deliberately mixed snapshots must block all observed ready states even
+// when a provider proof and Host signature are individually true.
+$drift = MAD4B_SCP_Brand_Core_Remote_Recovery::reduce(
+    array( 'site_ready' => true, 'evidence_drift' => true,
+        'source_id' => $source, 'host_verified' => true,
+        'host_challenge_attempted' => true,
+        'census' => array( 'source_quarantine_count' => 0,
+            'asset_quarantine_count' => 0 ),
+        'proof' => array( 'folder_membership_verified' => true,
+            'migration_authorized' => false, 'source_id' => $source,
+            'provider_proof_sha256' => str_repeat( 'a', 64 ) ),
+        'brand_coverage' => array( 'ready' => true,
+            'coverage' => array(
+                'brand_strategy' => array( 'ready' => true ),
+                'tone_of_voice' => array( 'ready' => true ),
+                'editorial_guidelines' => array( 'ready' => true ),
+            ) ),
+    ), array() );
+brand_remote_assert( $drift['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED',
+    'mixed registry/provider generations cannot be accepted' );
+foreach ( $drift['stages'] as $row ) {
+    brand_remote_assert( $row['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+        && ! $row['evidence_observed']
+        && in_array( 'cross_read_snapshot_drift', $row['blockers'], true ),
+        'snapshot drift denies all cross-source evidence and writable handoffs' );
+}
 MAD4B_SCP_Context_Authority::$source_count = 0;
 MAD4B_SCP_Context_Authority::$asset_count = 0;
 MAD4B_SCP_Context_Authority::$ready = true;
