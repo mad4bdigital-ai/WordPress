@@ -428,8 +428,9 @@ class MAD4B_SCP_Local_OAuth_Server {
     const CHATGPT_CIMD_CLIENT_ID = 'fixture-chatgpt';
 }
 class MAD4B_SCP_Authorization {
-    public static function authorize_mutation( $name, $category, $provider, $input ) {
-        return array( 'allowed' => true );
+    public static function execution_callback_started( $name ) {
+        return $name === MAD4B_SCP_WP_Native_Build::PREFIX . 'start'
+            && ! empty( $GLOBALS['native_execution_claim'] );
     }
 }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-batch-atomic-mutex.php';
@@ -438,6 +439,12 @@ $GLOBALS['native_schedule_ok'] = true;
 $build_input = array( 'expected_head' => $sha,
     'expected_plan_sha256' => $c::plan( array( 'expected_head' => $sha ) )['plan_sha256'],
     'confirmation' => $c::CONFIRM );
+$GLOBALS['native_execution_claim'] = false;
+$not_claimed = $c::start( $build_input );
+assert_native( is_wp_error( $not_claimed )
+    && $not_claimed->get_error_code() === 'mad4b_native_start_execution_claim_required',
+    'Direct PHP start without a governed claim cannot create a build' );
+$GLOBALS['native_execution_claim'] = true;
 $site_lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'wp-native-build', 'begin' );
 assert_native( !is_wp_error( $site_lease ), 'First site-global build mutex claim' );
 $held_start = $c::start( $build_input );
