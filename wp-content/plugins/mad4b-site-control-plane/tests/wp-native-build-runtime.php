@@ -21,6 +21,28 @@ function update_option( $name, $value, $autoload = null ) {
 }
 function current_user_can( $cap ) { return false; }
 function get_current_user_id() { return 0; }
+function wp_safe_remote_get( $url, $args = array() ) {
+    throw new RuntimeException( 'Offline test must not use network' );
+}
+function wp_schedule_single_event( $when, $hook ) { return true; }
+// Minimal trusted adapter registry facade: no Server core-list edits.
+abstract class MAD4B_SCP_Adapter_Base {}
+final class MAD4B_SCP_Adapter_Registry {
+    private $adapters = array();
+    public function register( $adapter ) {
+        if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
+        $this->adapters[ $adapter->id() ] = $adapter;
+        return true;
+    }
+    public function ability_names( $surface ) {
+        $names = array();
+        foreach ( $this->adapters as $adapter ) {
+            $map = $adapter->ability_names();
+            foreach ( $map[ $surface ] ?? array() as $ability ) $names[] = $ability;
+        }
+        return $names;
+    }
+}
 class MAD4B_SCP_Site_Profile {
     public static $row = array( 'site_uuid' => 'test-site',
         'profile_digest' => 'profile-a', 'environment' => 'staging',
@@ -85,7 +107,31 @@ assert_native( is_wp_error( $c::export_chunk( array(
 $c::tick();
 assert_native( $c::status()['state'] === 'NOT_RUN',
     'Cron never invents a job or starts itself' );
+// Real dynamic registration contract: no central Server ability allowlist.
+$registry = new MAD4B_SCP_Adapter_Registry();
+$c::register_adapter( $registry );
+$c::register_adapter( $registry );
+$ability = $c::PREFIX . 'start';
+assert_native( $registry->ability_names( 'admin' ) === array( $ability ) &&
+    $registry->ability_names( 'write' ) === array() &&
+    $registry->ability_names( 'content' ) === array(),
+    'Source Worker enrolls one Admin Ability without duplicate/manual core entries' );
+$adapter = new MAD4B_SCP_WP_Native_Build_Adapter();
+assert_native( $adapter->provider_key() === 'core' &&
+    $adapter->mutation_ability_runtime_eligibility( 'mad4b/unknown' ) instanceof WP_Error,
+    'Only native builder supports its typed governed ability' );
+assert_native( $c::capabilities()['eligible'] &&
+    true === $adapter->mutation_ability_runtime_eligibility( $ability ),
+    'Native build dynamic mount is eligible only on enrolled Staging with host support' );
+$server_source = file_get_contents(
+    dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+assert_native( is_string( $server_source ) &&
+    strpos( $server_source, "'mad4b/wp-native-build-start'" ) === false &&
+    strpos( $server_source, 'registered_adapter_write_candidates' ) !== false,
+    'Do not add fixed build ability to central Servers catalog' );
 $GLOBALS['native_env'] = 'production';
+assert_native( $adapter->mutation_ability_runtime_eligibility( $ability ) instanceof WP_Error,
+    'Dynamic adapter cannot mount native build on Production' );
 assert_native( ! $c::capabilities()['eligible'],
     'Actual WordPress Production environment denied' );
 // Byte-for-byte parity with the canonical Python builder's ZipInfo format.
