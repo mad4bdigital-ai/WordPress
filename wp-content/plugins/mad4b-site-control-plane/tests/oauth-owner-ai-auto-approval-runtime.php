@@ -81,8 +81,8 @@ oauth_ai_assert( false !== strpos( $approval, "'authorization_mode' => \$oauth_a
     && false !== strpos( $approval, "'context/remote-owner-review-apply'" )
     && false !== strpos( $approval, "'breakglass' ===" ),
     'Scope may delegate ticket decisions but not fake original human ownership or raw SQL Breakglass' );
-oauth_ai_assert( false !== strpos( $audit, "'authorization_mode' => isset( \\$guard['authorization_mode'] )" )
-    && false !== strpos( $audit, "'owner_oauth_delegation_verified' => ! empty( \\$guard['owner_oauth_delegation_verified'] )" )
+oauth_ai_assert( false !== strpos( $audit, "'authorization_mode' => isset( \$guard['authorization_mode'] )" )
+    && false !== strpos( $audit, "'owner_oauth_delegation_verified' => ! empty( \$guard['owner_oauth_delegation_verified'] )" )
     && false !== strpos( $audit, "'approver_type' => 'ai_agent'" ),
     'All AI decisions must have a distinct delegated-identity audit record, never a human approval' );
 echo "PASS: new owner OAuth scope delegates Staging AI approvals; old tokens and forged identities are denied\\n";
