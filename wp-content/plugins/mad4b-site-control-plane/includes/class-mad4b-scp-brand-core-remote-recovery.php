@@ -96,7 +96,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             ),
             'host_identity' => array(
                 'read' => 'mad4b/host-doctor',
-                'next' => 'mad4b/host-operation-plan',
+                'preflight' => 'mad4b/host-operation-plan',
+                'next' => 'mad4b/host-operation-apply',
                 'readback' => 'mad4b/host-operation-receipt',
                 'executor' => 'enrolled_signed_host_runner', 'operator_role' => 'host_owner',
                 'approval' => true,
@@ -219,8 +220,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         $available = array();
         if ( function_exists( 'wp_has_ability' ) ) {
             foreach ( self::stages() as $stage ) {
-                foreach ( array( 'read', 'next', 'readback' ) as $slot ) {
-                    $name = (string) $stage[ $slot ];
+                foreach ( array( 'read', 'preflight', 'next', 'readback' ) as $slot ) {
+                    $name = (string) ( $stage[ $slot ] ?? '' );
                     if ( '' !== $name && ! array_key_exists( $name, $available ) )
                         $available[ $name ] = (bool) wp_has_ability( $name );
                 }
@@ -297,6 +298,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         $blockers = array();
         foreach ( self::stages() as $id => $spec ) {
             $read = $spec['read'];
+            $preflight = (string) ( $spec['preflight'] ?? $read );
             $next = $spec['next'];
             $read_registered = '' !== $read && ! empty( $abilities[ $read ] );
             $next_registered = '' !== $next && ! empty( $abilities[ $next ] );
@@ -332,7 +334,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                             : 'GOVERNED_REMOTE_STEP_AVAILABLE' ) ) ) ) );
             $stages[ $id ] = array(
                 'stage_id' => $id, 'state' => $state, 'evidence_observed' => $verified[ $id ],
-                'read_ability' => $read, 'apply_ability' => $next,
+                'read_ability' => $read, 'preflight_ability' => $preflight,
+                'apply_ability' => $next,
                 'readback_ability' => $spec['readback'],
                 'read_registered' => $read_registered, 'apply_registered' => $next_registered,
                 'executor' => $spec['executor'], 'operator_role' => $spec['operator_role'],
@@ -397,7 +400,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'plan_sha256' => $sha,
             'separate_exact_approval_required' => $stage['separate_approval_required'],
             'next_action' => $stage['read_ability'] && ! $stage['evidence_observed']
-                ? $stage['read_ability'] : $stage['apply_ability'],
+                ? $stage['read_ability'] : $stage['preflight_ability'],
+            'effectful_ability_requires_separate_governance' => $stage['apply_ability'],
             'ready_for_dispatch' => false, 'approval_issued' => false,
             'mutation_performed' => false, 'read_only' => true,
         );
