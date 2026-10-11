@@ -30,7 +30,7 @@ final class MAD4B_SCP_WP_Native_Build_Adapter extends MAD4B_SCP_Adapter_Base {
         return array(
             'read' => array(),
             'content' => array(),
-            'admin' => array( $name, MAD4B_SCP_WP_Native_Build::PREFIX . 'self-approve-install' ),
+            'admin' => array( $name, MAD4B_SCP_WP_Native_Self_Approval::APPLY ),
             'write' => array(),
         );
     }
@@ -43,7 +43,7 @@ final class MAD4B_SCP_WP_Native_Build_Adapter extends MAD4B_SCP_Adapter_Base {
         if ( ! $this->is_available() ||
             ! in_array( (string) $ability_name, array(
                 MAD4B_SCP_WP_Native_Build::PREFIX . 'start',
-                MAD4B_SCP_WP_Native_Build::PREFIX . 'self-approve-install',
+                MAD4B_SCP_WP_Native_Self_Approval::APPLY,
             ), true ) ) {
             return new WP_Error( 'mad4b_native_adapter_ability_not_supported',
                 'Unrecognized dynamic native-build mutation.' );
