@@ -562,6 +562,19 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( is_wp_error( $before ) ) return $before;
 			$mutated = false;
 
+			// Creation profiles may themselves permit a live initial state.
+			// Recheck immediately before insertion; snapshot drift invalidates
+			// the earlier reviewed Content Experience plan.
+			if ( 'create' === $operation && in_array( (string) $normalized['post_status'], array( 'publish', 'private', 'future' ), true ) ) {
+				$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'create', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_now ) ) return $brand_now;
+				if ( ! is_array( $brand_now ) || empty( $plan['publication_brand_core'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+					return new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core evidence changed before live post creation.' );
+			}
+
 			if ( 'create' === $operation ) {
 				$postarr = array(
 					'post_type' => $profile['post_type'], 'post_title' => (string) $normalized['post_title'],
@@ -616,6 +629,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				if ( ! isset( $plan['publication_brand_core'] ) || ! is_array( $plan['publication_brand_core'] )
 					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) $brand_now['reviewed_asset_fingerprint'] )
 					|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) $brand_now['authority_manifest_fingerprint'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) $brand_now['context_fingerprint'] )
 					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) $brand_now['registry_revision'] ) {
 					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed after the exact publication plan.' ), $before );
 				}
