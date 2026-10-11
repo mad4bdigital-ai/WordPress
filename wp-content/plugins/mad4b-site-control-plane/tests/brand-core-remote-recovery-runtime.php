@@ -239,4 +239,19 @@ brand_remote_assert( ! MAD4B_SCP_Native_Recovery::cross_request_verified(
 brand_remote_assert( ! MAD4B_SCP_Native_Recovery::cross_request_verified(
     str_repeat( 'a', 32 ), str_repeat( 'b', 32 ), 100, 99, false ),
     'source drift invalidates native shadow' );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operator-journeys.php';
+$journeys = MAD4B_SCP_Operator_Journeys::reduce( array() );
+brand_remote_assert( isset( $journeys['journeys']['setup_and_permissions'],
+    $journeys['journeys']['forms_and_integration'],
+    $journeys['journeys']['plugin_upgrades'],
+    $journeys['journeys']['wordpress_native_recovery'] )
+    && !$journeys['execution_authorized'] && !$journeys['workflow_completed'],
+    'whole-plugin task-first UX never self-certifies or executes' );
+$all_available = array();
+foreach ( MAD4B_SCP_Operator_Journeys::recipes() as $recipe )
+    foreach ( $recipe['steps'] as $step ) $all_available[$step[1]] = true;
+$resolved = MAD4B_SCP_Operator_Journeys::reduce( $all_available );
+brand_remote_assert( $resolved['journeys']['plugin_upgrades']['all_steps_mounted']
+    && !$resolved['journeys']['plugin_upgrades']['live_acceptance_verified'],
+    'all registered buttons are still not release acceptance' );
 echo "mad4b.site-control-plane.brand-core-remote-recovery.runtime.v1: PASS\n";
