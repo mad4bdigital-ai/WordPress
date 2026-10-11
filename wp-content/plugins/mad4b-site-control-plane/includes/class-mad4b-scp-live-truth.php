@@ -408,7 +408,7 @@ final class MAD4B_SCP_Live_Truth {
 		foreach ( $tools as $ability_name ) {
 			if ( 'mad4b/database-raw-query' === $ability_name ) $breakglass[] = $ability_name;
 			if ( ! class_exists( 'MAD4B_SCP_Servers' ) || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $ability_name ) ) $missing_write_mounts[] = $ability_name;
-			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) && ! in_array( $ability_name, $governed_write_projections, true ) ) $direct_write_schema_leaks[] = $ability_name;
+			if ( class_exists( 'MAD4B_SCP_Servers' ) && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $ability_name ) && ! in_array( $ability_name, $governed_write_projections, true ) && ! MAD4B_SCP_Servers::verified_direct_approval_bootstrap_tool( $ability_name ) ) $direct_write_schema_leaks[] = $ability_name;
 			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) { $metadata_mismatch[] = $ability_name; continue; }
 			$ability = wp_get_ability( $ability_name );
 			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) { $metadata_mismatch[] = $ability_name; continue; }
