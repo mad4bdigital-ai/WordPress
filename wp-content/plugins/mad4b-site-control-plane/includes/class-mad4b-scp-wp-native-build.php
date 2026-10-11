@@ -807,7 +807,16 @@ final class MAD4B_SCP_WP_Native_Build {
                         $checks['canonical_receipt_sha256_binding'] = 'LOCAL_PASS';
                 }
             }
-            if ( (int) ( $job['php_files_token_parsed'] ?? 0 ) > 0 )
+            // A count alone cannot prove all fetched PHP files were screened.
+            $php_expected = 0;
+            foreach ( (array) ( $job['entries'] ?? array() ) as $entry ) {
+                if ( is_array( $entry ) && isset( $entry['path'] )
+                    && is_string( $entry['path'] )
+                    && substr( $entry['path'], -4 ) === '.php' )
+                    $php_expected++;
+            }
+            if ( $php_expected > 0
+                && (int) ( $job['php_files_token_parsed'] ?? 0 ) === $php_expected )
                 $checks['php_token_screening_recorded'] = 'LOCAL_PASS';
         }
         $all_local = ! in_array( 'BLOCKED', $checks, true );
