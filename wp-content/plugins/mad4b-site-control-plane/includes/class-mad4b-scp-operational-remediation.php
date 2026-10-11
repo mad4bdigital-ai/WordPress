@@ -26,6 +26,11 @@ final class MAD4B_SCP_Operational_Remediation {
 		if ( ! class_exists( 'MAD4B_SCP_Progressive_Requirements', false ) )
 			require_once __DIR__ . '/class-mad4b-scp-progressive-requirements.php';
 		MAD4B_SCP_Progressive_Requirements::boot();
+		// Extend the existing read-only remediation plane. Individual writes
+		// remain with their enrolled, separately approved native executors.
+		if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-brand-core-remote-recovery.php';
+		MAD4B_SCP_Brand_Core_Remote_Recovery::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
 		if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
 			MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 39 );
