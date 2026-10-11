@@ -168,6 +168,10 @@ final class MAD4B_SCP_Operator_Journeys {
         if ( ! is_array( $input ) ||
             array_diff( array_keys( $input ), array( 'journey', 'only_incomplete' ) ) )
             return new WP_Error( 'mad4b_operator_journey_input_invalid', 'Only exact journey filters are accepted.' );
+        if ( isset( $input['journey'] ) && ! is_string( $input['journey'] ) )
+            return new WP_Error( 'mad4b_operator_journey_input_invalid', 'Journey must be one known text identifier.' );
+        if ( isset( $input['only_incomplete'] ) && ! is_bool( $input['only_incomplete'] ) )
+            return new WP_Error( 'mad4b_operator_journey_input_invalid', 'Incomplete filter must be boolean.' );
         $id = (string) ( $input['journey'] ?? '' );
         if ( ! preg_match( '/^[a-z_]{0,64}$/D', $id ) )
             return new WP_Error( 'mad4b_operator_journey_input_invalid', 'Journey selection is not valid.' );
