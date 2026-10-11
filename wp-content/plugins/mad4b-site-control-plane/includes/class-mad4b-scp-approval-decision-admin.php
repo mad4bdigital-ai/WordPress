@@ -193,7 +193,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		if ( ! $is_approver ) wp_die( esc_html__( 'Approval capability is required to decide MAD4B approval tickets.', 'mad4b-site-control-plane' ) );
 		$candidate = self::current_candidate();
 		echo '<div class="wrap"><h1>' . esc_html__( 'MAD4B Approval Decisions', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p>' . esc_html__( 'Human-only decision inbox. GET is read-only; every POST revalidates the exact Site Profile, deployed build, provider and one-time ticket before changing state.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'This is the HUMAN decision inbox. Separately, an explicitly delegated AI Agent can approve or reject eligible exact tickets over MCP; those decisions appear in history and are never attributed as human review. GET is read-only; each POST revalidates exact site/build and ticket.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p class="description">' . esc_html__( 'Before approving: identify the operation, affected provider and target, review the precise mutation plan and its rollback evidence. Unknown impact is never assumed safe.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( isset( $_GET['mad4b_decision_result'] ) ) {
 			$code = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_decision_result' ) );
@@ -221,7 +221,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 		} else {
 			$rows = MAD4B_SCP_Approval_Repository::actionable( $candidate );
 			if ( is_wp_error( $rows ) ) { self::render_read_error( $rows ); echo '</div>'; return; }
-			if ( empty( $rows ) ) echo '<p>' . esc_html__( 'No fresh exact-profile/build approval ticket currently needs a human decision.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( empty( $rows ) ) echo '<p>' . esc_html__( 'No current human-actionable tickets. This does not prove that AI approval is enabled, that no AI-eligible tickets exist, or that a remote OAuth token carries the optional auto:all scope.', 'mad4b-site-control-plane' ) . '</p>';
 			else self::render_table( $rows, $candidate, true );
 		}
 		echo '</div>';
