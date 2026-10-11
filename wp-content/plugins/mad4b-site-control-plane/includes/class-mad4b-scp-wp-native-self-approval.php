@@ -54,12 +54,13 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
     }
 
     private static function staging() {
-        return class_exists( 'MAD4B_SCP_WP_Native_Build' )
-            && class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' )
-            && MAD4B_SCP_WordPress_Native_Opt_In::enabled()
-            && function_exists( 'wp_get_environment_type' )
-            && 'staging' === wp_get_environment_type()
-            && ! empty( MAD4B_SCP_WP_Native_Build::capabilities()['eligible'] );
+        if ( ! class_exists( 'MAD4B_SCP_WP_Native_Build' ) ||
+            ! class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' ) ||
+            ! MAD4B_SCP_WordPress_Native_Opt_In::enabled() ||
+            ! function_exists( 'wp_get_environment_type' ) ||
+            'staging' !== wp_get_environment_type() ) return false;
+        $cap = MAD4B_SCP_WP_Native_Build::capabilities();
+        return is_array( $cap ) && ! empty( $cap['eligible'] );
     }
 
     private static function input( $input ) {
