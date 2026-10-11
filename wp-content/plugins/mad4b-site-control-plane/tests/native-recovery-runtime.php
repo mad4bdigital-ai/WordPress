@@ -55,6 +55,14 @@ class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatg
 class MAD4B_SCP_Authorization {
     public static function authorize_mutation( $name, $surface, $provider, $input ) { return true; }
 }
+class MAD4B_SCP_Audit {
+    public static $fail = false;
+    public static $calls = array();
+    public static function record( $ability, $payload, $outcome ) {
+        self::$calls[] = $ability;
+        return self::$fail ? new WP_Error( 'audit_failed' ) : array( 'recorded' => true );
+    }
+}
 class MAD4B_SCP_Context_Authority {
     public static $revision = '1';
     public static $mutations = 0;
@@ -151,4 +159,6 @@ native_assert( is_wp_error( MAD4B_SCP_Native_Recovery::plan( array(
     'mode' => 'probe', 'reason' => 'deny production' ) ) ), 'never touch Production' );
 native_assert( MAD4B_SCP_Context_Authority::$mutations === 0,
     'original ownership registry never called for mutation' );
+native_assert( count( MAD4B_SCP_Audit::$calls ) >= 4,
+    'native start and cleanup must use append-only MAD4B audit' );
 echo "mad4b.site-control-plane.native-recovery.runtime.v1: PASS\n";
