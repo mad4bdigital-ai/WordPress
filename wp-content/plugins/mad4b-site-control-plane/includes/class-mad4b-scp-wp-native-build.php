@@ -23,6 +23,10 @@ final class MAD4B_SCP_WP_Native_Build {
     const BATCH = 4;
 
     public static function boot() {
+        // Load self-approval before the adapter enumerates its capabilities.
+        if ( ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-wp-native-self-approval.php';
+        MAD4B_SCP_WP_Native_Self_Approval::boot();
         // Enroll in the existing adapter registry before the canonical Abilities
         // lifecycle; the Servers class dynamically discovers the declared
         // Admin mutation and its original governed Write execution lane.
