@@ -5,7 +5,7 @@ require_once ABSPATH . 'wp-admin/includes/admin.php';
 set_current_screen( 'dashboard' );
 $GLOBALS['menu'] = array(); $GLOBALS['submenu'] = array(); $GLOBALS['admin_page_hooks'] = array(); $GLOBALS['_registered_pages'] = array();
 do_action( 'admin_menu' );
-$assertions = 0; $renders = 0; $requests = 0; $render_failures = array();
+$assertions = 0; $renders = 0; $requests = 0; $render_failures = array(); $rendered_control_counts = array();
 $check = static function ( $ok, $message ) use ( &$assertions ) { ++$assertions; if ( ! $ok ) throw new RuntimeException( $message ); };
 $stop_http = static function () use ( &$requests ) { ++$requests; return new WP_Error( 'admin_smoke_outbound_denied', 'Ordinary page rendering must use local or cached evidence.' ); };
 add_filter( 'pre_http_request', $stop_http, PHP_INT_MAX );
@@ -46,7 +46,7 @@ $before_profile = get_option( MAD4B_SCP_Site_Profile::OPTION );
 $before_pipeline = get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION );
 $malformed = array();
 foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'saved', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
-$render = static function ( $slug, array $page, array $query ) use ( &$renders, $check ) {
+$render = static function ( $slug, array $page, array $query ) use ( &$renders, &$rendered_control_counts, $check ) {
 	$_GET = array_merge( array( 'page' => $slug ), $query ); $_POST = array(); $_REQUEST = $_GET;
 	set_current_screen( 'mad4b-control-plane_page_' . $slug );
 	ob_start();
@@ -55,6 +55,17 @@ $render = static function ( $slug, array $page, array $query ) use ( &$renders, 
 	++$renders; $check( false !== strpos( $html, '<h1>' ), $slug . ': page renders a title' );
 	$check( ! preg_match( '#/wp-admin/mad4b-[a-z-]+["?]#', $html ), $slug . ': canonical admin URLs' );
 	$doc = new DOMDocument(); @$doc->loadHTML( '<!doctype html><html><body>' . $html . '</body></html>' ); $xpath = new DOMXPath( $doc );
+	// Discover real rendered controls rather than equating a route with its
+	// form fields/buttons. This is a census, never a JS click or effect pass.
+	$key = $slug . ':' . (string) ( $query['tab'] ?? $query['section'] ?? $query['view'] ?? 'default' );
+	$rendered_control_counts[ $key ] = array(
+		'forms' => $xpath->query( '//form' )->length,
+		'buttons' => $xpath->query( '//button | //input[@type="submit"] | //input[@type="button"]' )->length,
+		'fields' => $xpath->query( '//input[not(@type="hidden") and not(@type="submit") and not(@type="button")] | //select | //textarea' )->length,
+		'links' => $xpath->query( '//a[@href]' )->length,
+		'js_events_tested' => false,
+		'field_write_execution_tested' => false,
+	);
 	foreach ( $xpath->query( '//form[translate(@method,"POST","post")="post"]' ) as $form ) {
 		$check( $xpath->query( './/input[contains(@name,"nonce")]', $form )->length > 0, $slug . ': every write form has a nonce' );
 		if ( false !== strpos( $form->getAttribute( 'action' ), 'admin-post.php' ) ) foreach ( $xpath->query( './/input[@name="action"]', $form ) as $action ) $check( false !== has_action( 'admin_post_' . $action->getAttribute( 'value' ) ), $slug . ': submitted admin action is registered: ' . $action->getAttribute( 'value' ) );
@@ -108,6 +119,10 @@ $html = $render( 'mad4b-search-intelligence', $pages['mad4b-search-intelligence'
 $check( false === strpos( $html, 'Provider settings saved and verified.' ), 'A provider GET flag cannot fabricate save success.' );
 $check( false !== strpos( $html, 'Add or manage search API credentials' ) && false !== strpos( $html, 'search-providers' ), 'Provider setup remains prominent after a profile is created.' );
 $check( 0 === $requests, 'All ordinary GET views make zero outbound requests.' );
+$check( count( $rendered_control_counts ) >= count( $pages ), 'Every registered admin page records a rendered Control DOM census' );
+$check( array_sum( array_map( static function ( $row ) {
+    return $row['buttons'] + $row['fields'] + $row['forms'] + $row['links'];
+}, $rendered_control_counts ) ) > 0, 'Admin Control coverage needs actual rendered interactive elements, not route-only discovery' );
 $admin_id = get_current_user_id();
 $deny_die = static function () { return static function () { throw new RuntimeException( 'expected_permission_denial' ); }; };
 add_filter( 'wp_die_handler', $deny_die, PHP_INT_MAX );
@@ -126,4 +141,7 @@ update_option( 'home', $old_home ); update_option( 'siteurl', $old_siteurl );
 if ( false === $before_profile ) delete_option( MAD4B_SCP_Site_Profile::OPTION ); else update_option( MAD4B_SCP_Site_Profile::OPTION, $before_profile );
 $check( ! $render_failures, 'All views must pass: ' . implode( ' | ', array_unique( $render_failures ) ) );
 remove_filter( 'pre_http_request', $stop_http, PHP_INT_MAX ); restore_error_handler();
-echo wp_json_encode( array( 'contract' => 'mad4b.admin-pages-disposable-evidence.v1', 'status' => 'PASS', 'page_count' => count( $pages ), 'renders' => $renders, 'assertions' => $assertions, 'outbound_requests' => $requests, 'evidence_class' => 'disposable_wordpress', 'live_browser_acceptance' => false, 'authorizing' => false ), JSON_UNESCAPED_SLASHES ) . "\n";
+echo wp_json_encode( array( 'contract' => 'mad4b.admin-pages-disposable-evidence.v1', 'status' => 'PASS', 'page_count' => count( $pages ), 'renders' => $renders, 'assertions' => $assertions, 'outbound_requests' => $requests, 'evidence_class' => 'disposable_wordpress', 'live_browser_acceptance' => false,
+'control_census' => $rendered_control_counts,
+'control_census_coverage' => 'rendered_disposable_html_only',
+'per_control_js_interaction_verified' => false, 'authorizing' => false ), JSON_UNESCAPED_SLASHES ) . "\n";
