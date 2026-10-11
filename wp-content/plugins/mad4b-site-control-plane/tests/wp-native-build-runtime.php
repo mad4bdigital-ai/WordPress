@@ -126,5 +126,16 @@ if ( class_exists( 'ZipArchive' ) ) {
         'Native ZIP remains readable by ZipArchive' );
     $reader->close();
 }
+// Regression: the ZIP writer rejects content whose Git blob ID is not bound
+// to the byte stream (in particular, sha1("blob <size>\\0<bytes>")).
+file_put_contents( $dir . '/test.php', '<?php echo 2;' );
+$altered = $archive->invoke( null, $dir . '/',
+    array( array( 'path' => 'test.php', 'bytes' => 13,
+        'sha' => '74e80946d0da8372c10f17874a564f2ece67fa67' ) ), '',
+    $dir . '/tampered.zip' );
+assert_native( is_wp_error( $altered ) &&
+    $altered->get_error_code() === 'mad4b_native_zip_failed' &&
+    ! is_file( $dir . '/tampered.zip' ),
+    'Tampered pinned Git blob never yields an exportable archive' );
 @unlink( $zip ); @unlink( $dir . '/test.php' ); @rmdir( $dir );
 echo "PASS: WordPress-native source worker registration and fail-closed contracts\n";
