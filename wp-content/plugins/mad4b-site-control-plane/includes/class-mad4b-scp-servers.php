@@ -595,9 +595,15 @@ final class MAD4B_SCP_Servers {
 		// Preserve candidate priority: narrow governed Write, Full Staging,
 		// bootstrap self-update and governed runtime gates are retained before optional semantic projections
 		// if the bounded MCP catalog budget requires degradation.
-		$tools = array_values( array_unique( $tools ) );
-		return $tools;
-	}
+        // The two approval bootstrap mutations are reviewed OPTIONAL direct
+        // step-ups, not unguarded required tools. Catalog serialization now
+        // requires the same exact ChatGPT authority-step-up bearer used for
+        // all other privileged direct operations, and preflight can drop them
+        // without blocking the base connector if their DTO is unavailable.
+        $tools = array_values( array_unique( array_merge(
+            $tools, self::chatgpt_approval_bootstrap_tools() ) ) );
+        return $tools;
+    }
 
     /**
      * Expose only the original protected approval bootstrap operations on
