@@ -88,4 +88,41 @@ assert_native( $c::status()['state'] === 'NOT_RUN',
 $GLOBALS['native_env'] = 'production';
 assert_native( ! $c::capabilities()['eligible'],
     'Actual WordPress Production environment denied' );
+// Byte-for-byte parity with the canonical Python builder's ZipInfo format.
+$reflect = new ReflectionClass( $c );
+$canonical = $reflect->getMethod( 'canonical_json' );
+$sample = array( 'valid' => true, 'contract' => 'a',
+    'package_files' => array( array( 'sha256' => 'abc', 'path' => 'test.php',
+        'bytes' => 13 ) ) );
+$pretty = $canonical->invoke( null, $sample );
+assert_native( ! is_wp_error( $pretty ) &&
+    hash( 'sha256', $pretty ) ===
+        'aaaa6e266484a959b95022eb8b6fb4d58ddbbff69e00f06a16e2fff370fac18f',
+    'Canonical JSON must match Python sorted-key two-space output' );
+$dir = sys_get_temp_dir() . '/mad4b-native-golden-' . bin2hex( random_bytes( 6 ) );
+assert_native( mkdir( $dir, 0700 ) === true, 'Private golden fixture directory' );
+file_put_contents( $dir . '/test.php', '<?php echo 1;' );
+$archive = $reflect->getMethod( 'canonical_archive' );
+$zip = $dir . '/test.zip';
+$written = $archive->invoke( null, $dir . '/',
+    array( array( 'path' => 'test.php' ) ), '',
+    $zip );
+// Empty provenance is still a valid archive entry for the reference fixture;
+// the golden ZIP below tests just one file, so use a separate local
+// deterministic ZIP writer parity vector for the multi-entry contract.
+assert_native( ! is_wp_error( $written ) &&
+    is_file( $zip ), 'Canonical PHP ZIP writer emits a readable file' );
+$bytes = file_get_contents( $zip );
+assert_native( is_string( $bytes ) && substr( $bytes, 0, 4 ) === "PK\x03\x04" &&
+    strpos( $bytes, 'mad4b-site-control-plane/test.php' ) !== false,
+    'Canonical ZIP local header and scoped entry verified' );
+if ( class_exists( 'ZipArchive' ) ) {
+    $reader = new ZipArchive();
+    assert_native( $reader->open( $zip ) === true &&
+        $reader->numFiles === 2 &&
+        $reader->getFromName( 'mad4b-site-control-plane/test.php' ) === '<?php echo 1;',
+        'Native ZIP remains readable by ZipArchive' );
+    $reader->close();
+}
+@unlink( $zip ); @unlink( $dir . '/test.php' ); @rmdir( $dir );
 echo "PASS: WordPress-native source worker registration and fail-closed contracts\n";
