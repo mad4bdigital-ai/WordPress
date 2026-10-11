@@ -91,4 +91,23 @@ $bundle = MAD4B_SCP_Read_Consistency::diagnostic_bundle( array( 'bundle' => 'ide
 require_contract( is_wp_error( $bundle ) &&
     $bundle->get_error_code() === 'mad4b_snapshot_preflight_unavailable',
     'Bundle diagnostics isolate failed snapshots instead of PHP fatal' );
-echo "PASS: scoped diagnostics / Skills truth / safe snapshot exceptions / write refusal\n";
+// Bounded O(1) module/bootstrap measurement must be exposed without database
+// writes or declaring the transport proxy latency to be PHP execution time.
+if ( ! defined( 'MAD4B_SCP_BOOT_START_AT' ) ) define( 'MAD4B_SCP_BOOT_START_AT', microtime( true ) - 0.250 );
+if ( ! defined( 'MAD4B_SCP_BOOT_MODULES_READY_AT' ) ) define( 'MAD4B_SCP_BOOT_MODULES_READY_AT', MAD4B_SCP_BOOT_START_AT + 0.100 );
+if ( ! defined( 'MAD4B_SCP_BOOT_HOOKS_READY_AT' ) ) define( 'MAD4B_SCP_BOOT_HOOKS_READY_AT', MAD4B_SCP_BOOT_START_AT + 0.220 );
+$metric_reader = new ReflectionMethod( 'MAD4B_SCP_Read_Consistency', 'request_metrics' );
+$metric_reader->setAccessible( true );
+$metric_sample = $metric_reader->invoke( null );
+$boot = $metric_sample['plugin_bootstrap_phases'] ?? array();
+require_contract( ! empty( $boot['valid'] ) &&
+    $boot['plugin_module_load_phase_ms'] >= 99 &&
+    $boot['plugin_module_load_phase_ms'] <= 101 &&
+    $boot['plugin_hook_registration_phase_ms'] >= 119 &&
+    $boot['plugin_hook_registration_phase_ms'] <= 121 &&
+    $boot['plugin_bootstrap_total_ms'] >= 219 &&
+    $boot['plugin_bootstrap_total_ms'] <= 221 &&
+    $boot['other_plugins_and_gateway_latency_included'] === false &&
+    $boot['mutation_performed'] === false,
+    'Plugin bootstrap metrics isolate source module loading and hooks, not external gateway time' );
+echo "PASS: scoped diagnostics / Skills truth / snapshot isolation / bootstrap timing\n";
