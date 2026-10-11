@@ -38,7 +38,8 @@ class MAD4B_SCP_WP_Native_Build {
             'local_checks' => array( 'archive_sha256_bytes' => $GLOBALS['verified'] ? 'LOCAL_PASS' : 'BLOCKED' ) );
     }
     public static function status() {
-        return array( 'canonical_receipt' => array( 'control_plane_version' => '0.4.0-rc.97' ),
+        return array( 'head' => str_repeat( 'a', 40 ), 'state' => 'BUILT_UNVERIFIED',
+            'canonical_receipt' => array( 'control_plane_version' => '0.4.0-rc.97' ),
             'archive_sha256' => hash( 'sha256', 'ZIP' ), 'archive_bytes' => 3,
             'build_fingerprint' => str_repeat( 'b', 64 ),
             'package_manifest_digest' => str_repeat( 'c', 64 ),
