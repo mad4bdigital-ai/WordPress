@@ -455,8 +455,22 @@ final class MAD4B_SCP_Read_Consistency {
 			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
 		$started = microtime( true );
 
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
-		$runtime_generation = isset( $before['runtime_generation'] ) ? (string) $before['runtime_generation'] : '';
+		try {
+			$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_session_snapshot_preflight_unavailable',
+				'Runtime identity preflight failed; reconnect and retry a read-only probe.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false, 'raw_exception_exposed' => false ) );
+		}
+		if ( is_wp_error( $before ) || ! is_array( $before ) ||
+			empty( $before['runtime_generation'] ) ) {
+			return new WP_Error( 'mad4b_session_snapshot_preflight_invalid',
+				'Runtime identity cannot be proven before diagnostics.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false ) );
+		}
+		$runtime_generation = (string) $before['runtime_generation'];
 		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $runtime_generation ) ) {
 			return self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $expected_generation, $before, 'session_safe_preflight_generation_mismatch' );
 		}
@@ -497,13 +511,28 @@ final class MAD4B_SCP_Read_Consistency {
 				continue;
 			}
 
-			$result = MAD4B_SCP_Connector_Resilience::run_checks(
-				self::session_safe_bundle_checks( $bundle ),
-				array(
-					'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
-					'retry_transient' => $retry,
-				)
-			);
+			try {
+				$result = MAD4B_SCP_Connector_Resilience::run_checks(
+					self::session_safe_bundle_checks( $bundle ),
+					array(
+						'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
+						'retry_transient' => $retry,
+					)
+				);
+				if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'session_bundle_not_array' );
+			} catch ( Throwable $error ) {
+				// Preserve bounded partial evidence rather than terminating the
+				// entire read-only MCP session. Never expose raw exception text.
+				$result = array(
+					'state' => 'partial', 'partial' => true, 'checks' => array(),
+					'failed_checks' => array_keys( self::session_safe_bundle_checks( $bundle ) ),
+					'retryable_checks' => array(), 'skipped_budget_checks' => array(),
+					'elapsed_ms' => 0, 'session_termination_count' => 0,
+					'error_code' => 'session_bundle_internal_exception',
+					'error_class' => get_class( $error ),
+					'read_only' => true, 'mutation_performed' => false,
+				);
+			}
 			$sections[ $bundle ] = self::compact_bundle_result( $bundle, $result );
 			$session_termination_count += isset( $result['session_termination_count'] ) ? max( 0, (int) $result['session_termination_count'] ) : 0;
 			if ( ! empty( $result['partial'] ) ) $partial = true;
@@ -527,8 +556,20 @@ final class MAD4B_SCP_Read_Consistency {
 			}
 		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
-		if ( ! self::generation_matches( $runtime_generation, isset( $after['runtime_generation'] ) ? $after['runtime_generation'] : '' ) ) {
+		try {
+			$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_session_snapshot_postflight_unavailable',
+				'Runtime identity postflight failed; discard partial evidence.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false, 'raw_exception_exposed' => false ) );
+		}
+		if ( is_wp_error( $after ) || ! is_array( $after ) ||
+			empty( $after['runtime_generation'] ) )
+			return new WP_Error( 'mad4b_session_snapshot_postflight_invalid',
+				'Cannot confirm unchanged runtime identity; discard partial evidence.',
+				array( 'status' => 503, 'retryable' => true, 'mutation_performed' => false ) );
+		if ( ! self::generation_matches( $runtime_generation, $after['runtime_generation'] ) ) {
 			$changed = self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $runtime_generation, $after, 'runtime_changed_during_session_safe_report' );
 			$changed['discarded_section_count'] = count( $sections );
 			$changed['report_payload_discarded'] = true;
