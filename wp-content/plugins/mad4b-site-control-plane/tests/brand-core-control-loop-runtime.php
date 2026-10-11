@@ -10,10 +10,12 @@ $missing = array( 'ready' => false, 'conflict' => false );
 $cover = array(
 	'ready' => false, 'registry_revision' => 6,
 	'authority_manifest_fingerprint' => str_repeat( 'a', 64 ),
+	'context_fingerprint' => str_repeat( 'c', 64 ),
 	'coverage' => array( 'brand_strategy' => $missing, 'tone_of_voice' => $missing, 'editorial_guidelines' => $missing ),
 );
 $context = array( 'brand_id' => str_repeat( 'a', 32 ), 'profile_revision' => 4,
 	'registry_revision' => 6, 'authority_manifest_fingerprint' => str_repeat( 'a', 64 ),
+	'context_fingerprint' => str_repeat( 'c', 64 ),
 	'review_policy' => array( 'ready' => true ),
 	'quarantined_source_record_count' => 1, 'quarantined_asset_record_count' => 12 );
 $convergence = array( 'registry_revision' => 6, 'authority_manifest_fingerprint' => str_repeat( 'a', 64 ),
@@ -49,6 +51,11 @@ $context['authority_manifest_fingerprint'] = str_repeat( 'b', 64 );
 $r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, $census, $provider );
 check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'], 'Context status authority digest drift ignored' );
 $context['authority_manifest_fingerprint'] = str_repeat( 'a', 64 );
+$context['context_fingerprint'] = str_repeat( 'd', 64 );
+$r = MAD4B_SCP_Brand_Core_Control_Loop::decide( $cover, $context, $convergence, $census, $provider );
+check_loop( 'BLOCKED_SNAPSHOT_DRIFT' === $r['state'],
+	'Context record fingerprint drift at the same revision was ignored' );
+$context['context_fingerprint'] = str_repeat( 'c', 64 );
 $census = array( 'source_quarantine_count' => 0, 'asset_quarantine_count' => 0 );
 $context['quarantined_source_record_count'] = 0;
 $context['quarantined_asset_record_count'] = 0;
