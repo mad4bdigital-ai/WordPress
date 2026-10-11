@@ -27,8 +27,13 @@ class MAD4B_SCP_Context_Authority {
     public static $asset_count = 12;
     public static $ready = false;
     public static $proof_version = '1';
+    public static $drift_second_census = false;
+    public static $census_reads = 0;
     public static function legacy_reconciliation_census() {
-        return array( 'source_quarantine_count' => self::$source_count,
+        ++self::$census_reads;
+        $sources = self::$source_count;
+        if ( self::$drift_second_census && 0 === self::$census_reads % 2 ) ++$sources;
+        return array( 'source_quarantine_count' => $sources,
             'asset_quarantine_count' => self::$asset_count );
     }
     public static function brand_core_coverage() {
@@ -170,6 +175,17 @@ foreach ( $drift['stages'] as $row ) {
         && in_array( 'cross_read_snapshot_drift', $row['blockers'], true ),
         'snapshot drift denies all cross-source evidence and writable handoffs' );
 }
+// A provider scan may race a Context registry change on the second
+// independent WordPress observation. It must not generate a green plan.
+MAD4B_SCP_Context_Authority::$census_reads = 0;
+MAD4B_SCP_Context_Authority::$drift_second_census = true;
+$raced = MAD4B_SCP_Brand_Core_Remote_Recovery::status();
+brand_remote_assert( ! is_wp_error( $raced )
+    && $raced['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+    && in_array( 'cross_read_snapshot_drift',
+        $raced['stages']['source_inventory']['blockers'], true ),
+    'actual second read racing the Context census must stop recovery' );
+MAD4B_SCP_Context_Authority::$drift_second_census = false;
 MAD4B_SCP_Context_Authority::$source_count = 0;
 MAD4B_SCP_Context_Authority::$asset_count = 0;
 MAD4B_SCP_Context_Authority::$ready = true;
