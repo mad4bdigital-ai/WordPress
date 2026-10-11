@@ -144,6 +144,7 @@ FIXTURES = (
     "publication-brand-core-mandatory-runtime.php",
     "context-remote-owner-review-runtime.php",
     "context-semantic-source-approval-runtime.php",
+    "native-plugin-management-zero-touch-runtime.php",
     "oauth-owner-ai-auto-approval-runtime.php",
     "admin-ai-approval-dashboard-runtime.php",
     "admin-control-census-runtime.php",
