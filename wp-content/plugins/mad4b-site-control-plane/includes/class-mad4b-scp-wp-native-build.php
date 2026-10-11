@@ -208,7 +208,40 @@ final class MAD4B_SCP_WP_Native_Build {
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! hash_equals( $plan['plan_sha256'], (string) ( $input['expected_plan_sha256'] ?? '' ) ) ||
             ! $plan['eligible'] ) return new WP_Error( 'mad4b_native_plan_stale', 'Plan changed or environment ineligible.' );
-        $current = get_option( self::OPTION, array() );
+        // Serialize admission across ALL source heads on this WordPress site.
+        // The existing SQL INSERT IGNORE mutex is fail-closed and releases by
+        // its exact owner token; a worker's per-source flock is insufficient.
+        if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'wp-native-build', 'begin' );
+        if ( is_wp_error( $lease ) )
+            return new WP_Error( 'mad4b_native_admission_locked',
+                'Atomic Staging build admission unavailable or held; reconcile the current reservation.' );
+        try {
+            $outcome = self::start_under_admission( $plan, $input );
+        } catch ( Throwable $error ) {
+            // A partial start must be reconciled before any write retry.
+            $outcome = new WP_Error( 'mad4b_native_admission_uncertain',
+                'Start encountered an internal error; inspect durable job state before retry.' );
+        } finally {
+            $unlocked = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        }
+        if ( is_wp_error( $unlocked ) )
+            return new WP_Error( 'mad4b_native_admission_release_uncertain',
+                'Build admission owner release was not confirmed; independently reconcile before retry.' );
+        return $outcome;
+    }
+
+    private static function start_under_admission( array $plan, array $input ) {
+        $fresh_plan = self::plan( array( 'expected_head' => $plan['source_commit_sha'] ) );
+        $permission = self::can_start( $input );
+        if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
+        if ( is_wp_error( $fresh_plan ) || ! $fresh_plan['eligible'] ||
+            ! hash_equals( $plan['plan_sha256'], $fresh_plan['plan_sha256'] ) )
+            return new WP_Error( 'mad4b_native_plan_changed_during_admission',
+                'Staging source plan changed before atomic admission.' );
+        $current = self::locked_job_read( true );
+        if ( is_wp_error( $current ) ) return $current;
         if ( is_array( $current ) && ( $current['expires_at'] ?? 0 ) < time() &&
             in_array( $current['state'] ?? '', array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
             $current['state'] = 'BLOCKED';
@@ -230,10 +263,15 @@ final class MAD4B_SCP_WP_Native_Build {
             'profile_digest' => $s['profile_digest'], 'origin' => $s['canonical_origin'],
             'cursor' => 0, 'entries' => array(), 'total_bytes' => 0,
             'started_at' => time(), 'expires_at' => time() + 7200,
-            'build_state' => 'NOT_RUN', 'production_authorized' => false );
+            'build_state' => 'NOT_RUN', 'production_authorized' => false,
+            'job_id' => bin2hex( random_bytes( 16 ) ) );
+        // A request-local Options cache must not override the fresh SQL
+        // observation made under the site-global admission lease.
+        if ( function_exists( 'wp_cache_delete' ) ) wp_cache_delete( self::OPTION, 'options' );
         update_option( self::OPTION, $job, false );
-        $persisted = get_option( self::OPTION, array() );
-        if ( ! is_array( $persisted ) ||
+        $persisted = self::locked_job_read();
+        if ( is_wp_error( $persisted ) || ! is_array( $persisted ) ||
+            ( $persisted['job_id'] ?? '' ) !== $job['job_id'] ||
             ( $persisted['head'] ?? '' ) !== $job['head'] ||
             ( $persisted['plan_sha256'] ?? '' ) !== $job['plan_sha256'] ||
             ( $persisted['state'] ?? '' ) !== 'DISCOVERING' )
@@ -586,9 +624,11 @@ final class MAD4B_SCP_WP_Native_Build {
      * request-local WordPress option cache. A second get_option() alone is not
      * a cross-process fresh read when a worker already cached old state.
      */
-    private static function locked_job_read() {
+    private static function locked_job_read( $allow_missing = false ) {
         global $wpdb;
         if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! is_string( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', $wpdb->options ) ||
             ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) ||
             ! function_exists( 'maybe_unserialize' ) )
             return new WP_Error( 'mad4b_native_job_db_unavailable',
@@ -602,6 +642,7 @@ final class MAD4B_SCP_WP_Native_Build {
             return new WP_Error( 'mad4b_native_job_db_read_failed',
                 'Current worker state unavailable; no mutation attempted.' );
         }
+        if ( null === $raw && $allow_missing ) return array();
         if ( ! is_string( $raw ) )
             return new WP_Error( 'mad4b_native_job_db_missing',
                 'Current worker state is missing from persistent storage.' );
@@ -632,6 +673,7 @@ final class MAD4B_SCP_WP_Native_Build {
             if ( is_wp_error( $job ) ) return;
             if ( ! is_array( $job ) ||
                 ( $job['head'] ?? '' ) !== $observed['head'] ||
+                ( isset( $observed['job_id'] ) && ( $job['job_id'] ?? '' ) !== $observed['job_id'] ) ||
                 ! in_array( $job['state'] ?? '',
                     array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
             $site = self::site();
