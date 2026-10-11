@@ -853,11 +853,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$step_up_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $validated['scopes'], true );
 		$raw_breakglass_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $validated['scopes'], true );
 		$ai_auto_all_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE, $validated['scopes'], true );
-		$request_description = $raw_breakglass_requested
-			? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
-			: ( $step_up_requested
-				? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
-				: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) );
+		$request_description = $ai_auto_all_requested
+			? __( 'is requesting read access and advance authority for its bound AI Agent to automatically decide governed Staging operation approval tickets. This delegation is broad and lasts while the approved OAuth connection is valid.', 'mad4b-site-control-plane' )
+			: ( $raw_breakglass_requested
+				? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+				: ( $step_up_requested
+					? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+					: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) ) );
 		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $request_description ) . '</p>';
 		$user_identity = self::consent_user_identity( $user_id );
 		echo '<p>' . esc_html__( 'Signed in as:', 'mad4b-site-control-plane' ) . ' <strong id="mad4b-oauth-user-label">' . esc_html( (string) $user_identity['display_label'] ) . '</strong></p>';
