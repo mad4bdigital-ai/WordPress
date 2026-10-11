@@ -43,6 +43,7 @@ final class MAD4B_SCP_Brand_Core_Control_Loop {
 			if ( ! empty( $row['conflict'] ) ) $conflicting[] = $category;
 			foreach ( $assets as $asset ) {
 				if ( ! is_array( $asset ) || empty( $asset['review_binding_exact'] )
+					|| empty( $asset['asset_id'] ) || ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) !== 'approved'
 					|| ! isset( $asset['content_hash'] ) || 1 !== preg_match( '/^[a-f0-9]{64}$/', (string) $asset['content_hash'] ) ) {
 					$missing[] = $category;
 					continue;
