@@ -118,6 +118,12 @@ control_check( is_string( $bootstrap )
     && false !== strpos( $bootstrap, 'MAD4B_SCP_Admin_Surface_Coverage::boot()' ),
     'Real main-plugin bootstrap must load the Control census Ability/registry before rendering the UI' );
 $ui = file_get_contents( $plugin . '/includes/class-mad4b-scp-admin-ui.php' );
+$servers = file_get_contents( $plugin . '/includes/class-mad4b-scp-servers.php' );
+control_check( is_string( $servers )
+    && false !== strpos( $servers, "'mad4b/admin-control-census'" )
+    && false !== strpos( $servers, "'mad4b/admin-surface-coverage'" )
+    && false !== strpos( $servers, "'mad4b/admin-adapter-blueprint'" ),
+    'Read-only UI census and reviewed blueprints must be reachable through the governed MCP read universe' );
 control_check( is_string( $ui ) && false !== strpos( $ui, "'controls' => __( 'Controls Coverage'" )
     && false !== strpos( $ui, 'MAD4B_SCP_Admin_Surface_Coverage::control_census(' ),
     'Real WordPress admin must expose the paginated registered-Control directory' );
