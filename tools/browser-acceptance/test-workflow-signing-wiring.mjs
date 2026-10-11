@@ -10,6 +10,15 @@ const liveStart = workflow.indexOf("\n  live:\n");
 assert.ok(liveStart >= 0, "live job must exist");
 const live = workflow.slice(liveStart);
 const jobEnvironment = live.slice(0, live.indexOf("\n    steps:\n"));
+const independentPreflight = workflow.slice(workflow.indexOf("\n  readiness:\n"), liveStart);
+assert.ok(independentPreflight.startsWith("\n  readiness:\n"), "readiness job must exist");
+assert.match(independentPreflight, /node tools\/browser-acceptance\/provider-preflight\.mjs > managed-browser-readiness\.json/,
+  "zero-session provider preflight must produce a bounded report");
+assert.doesNotMatch(independentPreflight, /MAD4B_MCP_ACCESS_TOKEN|MAD4B_BROWSER_EVIDENCE_SIGNING_KEY_PEM_BASE64/,
+  "readiness must not access MCP bearer or attestation signing key");
+assert.ok(!independentPreflight.includes("\n    env:\n"), "readiness provider secrets must not be job-wide");
+assert.match(independentPreflight, /      - name: Contract-only provider preflight[\s\S]*?        env:/,
+  "provider credentials must be scoped to the preflight step");
 const readinessName = "      - name: Require just-in-time MCP bearer and at least one browser provider";
 const runName = "      - name: Generate fresh plan, execute browser, and reduce evidence through MAD4B MCP";
 assert.ok(live.includes(readinessName) && live.includes(runName), "live steps must exist");
