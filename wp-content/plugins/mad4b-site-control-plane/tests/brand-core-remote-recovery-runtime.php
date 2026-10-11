@@ -70,6 +70,7 @@ class MAD4B_SCP_Selected_Head_Update {
             'source' => array( 'resolved_sha' => $sha ), 'plan_sha256' => hash( 'sha256', $sha ) );
     }
 }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-recovery-alternatives.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-brand-core-remote-recovery.php';
 function brand_remote_assert( $ok, $why ) {
     if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $why . PHP_EOL ); exit( 1 ); }
@@ -78,7 +79,8 @@ $stages = MAD4B_SCP_Brand_Core_Remote_Recovery::stages();
 brand_remote_assert( 8 === count( $stages ), 'eight original recovery stages' );
 MAD4B_SCP_Brand_Core_Remote_Recovery::register_abilities();
 foreach ( array( 'mad4b/brand-core-remote-recovery-status',
-    'mad4b/brand-core-remote-recovery-prepare' ) as $name ) {
+    'mad4b/brand-core-remote-recovery-prepare',
+    'mad4b/brand-core-recovery-alternatives' ) as $name ) {
     $ability = $GLOBALS['mad4b_abilities'][ $name ];
     brand_remote_assert( $ability['category'] === 'mad4b-read' &&
         $ability['meta']['annotations']['readonly'] === true &&
@@ -92,6 +94,15 @@ foreach ( $stages as $stage ) {
     }
 }
 $normal = MAD4B_SCP_Brand_Core_Remote_Recovery::status();
+brand_remote_assert( isset( $normal['alternative_routes']['domains']['host_runner'] )
+    && !$normal['alternative_routes']['all_remote_steps_execution_certified'],
+    'main status integrates safe alternative route search without claiming acceptance' );
+$known_routes = MAD4B_SCP_Brand_Core_Remote_Recovery::alternatives(
+    array( 'domain' => 'candidate_delivery' ) );
+brand_remote_assert( ! is_wp_error( $known_routes )
+    && isset( $known_routes['domains']['candidate_delivery'] )
+    && !isset( $known_routes['domains']['host_runner'] ),
+    'MCP alternate route selector returns only requested domain' );
 brand_remote_assert( ! is_wp_error( $normal ) && $normal['state'] === 'REMOTE_RECOVERY_INCOMPLETE',
     'normal plan must be incomplete' );
 brand_remote_assert( $normal['stages']['source_inventory']['evidence_observed'] === true,
