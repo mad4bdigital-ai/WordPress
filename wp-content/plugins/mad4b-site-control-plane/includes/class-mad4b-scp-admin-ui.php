@@ -41,7 +41,7 @@ final class MAD4B_SCP_Admin_UI {
         // Goal discovery must remain usable when governance tables are
         // unavailable; the task map is strictly read-only and static.
         $section = sanitize_key( (string) $section );
-        if ( 'tasks' === $section ) return array(
+        if ( in_array( $section, array( 'tasks', 'controls' ), true ) ) return array(
             'section' => 'tasks', 'read_only' => true,
             'release_certified' => false, 'mutation_performed' => false );
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
@@ -139,6 +139,7 @@ final class MAD4B_SCP_Admin_UI {
 
 		$tabs = array(
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
+			'controls' => __( 'Controls Coverage', 'mad4b-site-control-plane' ),
             'tasks' => __( 'Tasks & Workflows', 'mad4b-site-control-plane' ),
 			'agents' => __( 'Agents & Access', 'mad4b-site-control-plane' ),
 			'approvals' => __( 'Approvals', 'mad4b-site-control-plane' ),
@@ -170,6 +171,7 @@ final class MAD4B_SCP_Admin_UI {
 
 		if ( 'overview' === $tab ) self::render_overview( $snapshot );
         if ( 'tasks' === $tab ) self::render_tasks();
+		if ( 'controls' === $tab ) self::render_controls();
 		if ( 'agents' === $tab ) self::render_agents( $snapshot, $agent_public_id );
 		if ( 'approvals' === $tab ) self::render_approvals( $snapshot['approvals'] );
 		if ( 'mutations' === $tab ) { self::render_mutations( $snapshot['mutations'] ); self::render_recovery_preview( $snapshot['recovery_preview'] ); }
@@ -218,6 +220,62 @@ final class MAD4B_SCP_Admin_UI {
             . esc_html__( 'For unresolved Staging gates, open the Operational Remediation submenu. For actual writes, use the separately governed MCP ability.', 'mad4b-site-control-plane' )
             . '</p>';
     }
+
+	/**
+	 * Universal control directory of registration metadata, not an
+	 * arbitrary admin callback runner or proof of per-widget parity.
+	 */
+	private static function render_controls() {
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Surface_Coverage' ) ) {
+			echo '<p>' . esc_html__( 'Control census adapter is not installed.', 'mad4b-site-control-plane' ) . '</p>';
+			return;
+		}
+		$kind = isset( $_GET['control_kind'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'control_kind' ) ) : 'abilities';
+		$allowed = array( 'abilities', 'pages', 'admin_post', 'ajax', 'settings' );
+		if ( ! in_array( $kind, $allowed, true ) ) $kind = 'abilities';
+		$offset = isset( $_GET['control_offset'] ) ? absint( MAD4B_SCP_Admin_Experience::query_string( 'control_offset', '0', 7 ) ) : 0;
+		$offset = min( 100000, $offset );
+		$limit = 50;
+		$state = MAD4B_SCP_Admin_Surface_Coverage::control_census( array(
+			'kind' => $kind, 'offset' => $offset, 'limit' => $limit ) );
+		echo '<h2>' . esc_html__( 'Registered Controls Directory', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Read-only registration inventory. A listed Ability or hook does not prove that a matching WordPress form/button exists, that MCP access is enabled, or that a write was tested. Independently certify UI control bindings and browser interactions.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-controls-kinds" role="navigation" aria-label="' . esc_attr__( 'Control registry kinds', 'mad4b-site-control-plane' ) . '">';
+		foreach ( $allowed as $type ) {
+			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'controls',
+				'control_kind' => $type, 'control_offset' => 0 ), admin_url( 'admin.php' ) );
+			echo '<a class="button ' . ( $kind === $type ? 'button-primary' : '' ) . '" href="' . esc_url( $url ) . '" style="margin:0 6px 6px 0">' . esc_html( ucwords( str_replace( '_', ' ', $type ) ) ) . '</a>';
+		}
+		echo '</div>';
+		if ( is_wp_error( $state ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html( $state->get_error_message() ) . '</p></div>';
+			return;
+		}
+		if ( empty( $state['registry_ready'] ) ) {
+			echo '<div class="notice notice-warning"><p>' . esc_html__( 'Control registry not loaded in this request. Do not treat missing observations as zero controls.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
+		echo '<p><strong>' . esc_html__( 'Registered in this category:', 'mad4b-site-control-plane' ) . '</strong> ' .
+			esc_html( (string) $state['total_count'] ) . ' · ' .
+			esc_html__( 'Rows in this page:', 'mad4b-site-control-plane' ) . ' ' .
+			esc_html( (string) $state['returned_count'] ) . '</p>';
+		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Registered Control', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'WordPress UI coverage', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'Evidence', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
+		foreach ( $state['items'] as $item ) {
+			$entry = '<code>' . esc_html( $item['name'] ) . '</code>';
+			if ( 'pages' === $kind && ! empty( $item['admin_url'] ) ) $entry = '<a href="' . esc_url( $item['admin_url'] ) . '">' . $entry . '</a>';
+			echo '<tr><td>' . $entry . '</td><td>' . esc_html( $item['registered_kind'] ) . '</td><td>' .
+				esc_html( $item['wp_admin_ui_binding'] ) . '</td><td>' .
+				esc_html__( 'Registered only; per-control interaction unverified', 'mad4b-site-control-plane' ) . '</td></tr>';
+		}
+		if ( ! $state['items'] ) echo '<tr><td colspan="4">' . esc_html__( 'No controls visible in this request.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		echo '</tbody></table>';
+		$base = array( 'page' => self::PAGE_SLUG, 'tab' => 'controls', 'control_kind' => $kind );
+		if ( $offset ) echo '<a class="button" href="' . esc_url( add_query_arg( array_merge( $base, array( 'control_offset' => max( 0, $offset - $limit ) ) ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Previous controls', 'mad4b-site-control-plane' ) . '</a> ';
+		if ( null !== $state['next_offset'] ) echo '<a class="button" href="' . esc_url( add_query_arg( array_merge( $base, array( 'control_offset' => $state['next_offset'] ) ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Next controls', 'mad4b-site-control-plane' ) . '</a>';
+		echo '<p class="description">' . esc_html__( 'This directory is intentionally not a claim of 100% UI parity. JS-injected controls, control handlers, front-end builders, provider dependencies and effect readback require disposable WordPress and real browser acceptance.', 'mad4b-site-control-plane' ) . '</p>';
+	}
 
 	private static function render_overview( array $snapshot ) {
 		$authority = $snapshot['authority'];
