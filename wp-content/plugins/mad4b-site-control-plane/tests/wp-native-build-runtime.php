@@ -15,7 +15,16 @@ function wp_register_ability( $name, $def ) { $GLOBALS['native_abilities'][$name
 function wp_has_ability( $name ) { return isset( $GLOBALS['native_abilities'][$name] ); }
 function wp_json_encode( $v, $options = 0 ) { return json_encode( $v, $options ); }
 function wp_get_environment_type() { return $GLOBALS['native_env'] ?? 'staging'; }
-function get_option( $name, $default = false ) { return $GLOBALS['native_opts'][$name] ?? $default; }
+function get_option( $name, $default = false ) {
+    if ( $name === 'mad4b_wp_native_source_build_v1' ) {
+        $GLOBALS['native_option_reads'] = (int) ( $GLOBALS['native_option_reads'] ?? 0 ) + 1;
+        if ( ! empty( $GLOBALS['native_switch_job_after_lock'] ) &&
+            $GLOBALS['native_option_reads'] === 2 ) {
+            $GLOBALS['native_opts'][$name]['state'] = 'BUILT_UNVERIFIED';
+        }
+    }
+    return $GLOBALS['native_opts'][$name] ?? $default;
+}
 function update_option( $name, $value, $autoload = null ) {
     $GLOBALS['native_opts'][$name] = $value; return true;
 }
@@ -24,7 +33,9 @@ function get_current_user_id() { return 0; }
 function wp_safe_remote_get( $url, $args = array() ) {
     throw new RuntimeException( 'Offline test must not use network' );
 }
-function wp_schedule_single_event( $when, $hook ) { return true; }
+function wp_schedule_single_event( $when, $hook, $args = array(), $wp_error = false ) {
+    return $GLOBALS['native_schedule_ok'] ?? true;
+}
 // Minimal trusted adapter registry facade: no Server core-list edits.
 abstract class MAD4B_SCP_Adapter_Base {
     public function provider_key() { return $this->certified_provider_key(); }
@@ -205,4 +216,44 @@ assert_native( is_wp_error( $altered ) &&
     ! is_file( $dir . '/tampered.zip' ),
     'Tampered pinned Git blob never yields an exportable archive' );
 @unlink( $zip ); @unlink( $dir . '/test.php' ); @rmdir( $dir );
-echo "PASS: WordPress-native source worker registration and fail-closed contracts\n";
+// Regression: a failed WordPress scheduler is never treated as accepted work.
+$schedule = $reflect->getMethod( 'schedule' );
+$schedule->setAccessible( true );
+$GLOBALS['native_schedule_ok'] = false;
+assert_native( $schedule->invoke( null ) === false,
+    'Cron schedule failure must be a hard false result' );
+$GLOBALS['native_schedule_ok'] = true;
+assert_native( $schedule->invoke( null ) === true,
+    'Cron scheduling success remains supported' );
+
+// Simulate an active job with changed state between the initial cheap read
+// and the locked read. It must never fetch or regress a completed cursor.
+$GLOBALS['native_env'] = 'staging';
+MAD4B_SCP_Site_Profile::$row['profile_digest'] = 'profile-b';
+$src = str_repeat( 'a', 40 );
+$workspace = sys_get_temp_dir() . '/mad4b-native-' .
+    substr( hash( 'sha256', 'test-site:' . $src ), 0, 28 );
+if ( ! is_dir( $workspace ) ) mkdir( $workspace, 0700 );
+$job = array( 'state' => 'DISCOVERING', 'head' => $src,
+    'site_uuid' => 'test-site', 'profile_digest' => 'profile-b',
+    'origin' => 'https://staging.example.test',
+    'expires_at' => time() + 600, 'cursor' => 0, 'entries' => array() );
+$GLOBALS['native_opts'][ $c::OPTION ] = $job;
+$GLOBALS['native_option_reads'] = 0;
+$GLOBALS['native_switch_job_after_lock'] = true;
+$c::tick();
+assert_native( $c::status()['state'] === 'BUILT_UNVERIFIED',
+    'After-lock fresh read must not overwrite superseding job state' );
+$GLOBALS['native_switch_job_after_lock'] = false;
+// A thrown network transport exception cannot terminate the cron callback
+// or leak exception text. It produces a blocked typed recovery condition.
+$GLOBALS['native_opts'][ $c::OPTION ] = $job;
+$GLOBALS['native_option_reads'] = 0;
+$c::tick();
+$blocked = $c::status();
+assert_native( $blocked['state'] === 'BLOCKED' &&
+    $blocked['blocker'] === 'native_worker_internal_exception',
+    'Worker internal exception is caught, bounded and fail closed' );
+unset( $GLOBALS['native_opts'][ $c::OPTION ] );
+@unlink( $workspace . '/.lock' ); @rmdir( $workspace );
+echo "PASS: WordPress-native source worker locked state, cron and fail-closed contracts\n";
