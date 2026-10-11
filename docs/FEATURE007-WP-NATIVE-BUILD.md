@@ -126,3 +126,39 @@ git commit -m "fix(feature007): repin reviewed G9 workflow evidence"
 That recovery is intentionally two commits and only for existing drift.
 **New workflow updates must use the paired path.** No build kit should
 silently modify pinned source or claim to certify a dirty checkout.
+
+
+## Dynamic governed Ability mount — no central name hardcoding
+
+The native build start operation is enrolled through the *existing*
+`MAD4B_SCP_Adapter_Registry` extension hook:
+
+1. An approved module's `boot()` subscribes to
+   `mad4b_scp_register_adapters` before `wp_abilities_api_init`.
+2. Its trusted `MAD4B_SCP_Adapter_Base` subclass declares an
+   `ability_names()` map of read/content/admin/write and a provider identity.
+3. `MAD4B_SCP_Servers` already discovers adapter-declared Admin names for the
+   Admin server, adapter-declared mutations for the governed Write server, and
+   the descriptor's provider for ChatGPT capability inspection.
+4. A runtime eligibility method rechecks Staging opt-in and resource
+   prerequisites before the mutation is mounted; actual execution still
+   requires site-bound write authority, enrolled owner OAuth Step-Up, exact
+   one-time approval, the original permission callback, and a runtime
+   source-bound plan. The adapter **never replaces** the original callback.
+5. A missing/uncertified provider is not auto-elevated. Production is excluded
+   by the native builder. Untrusted arbitrary WordPress Ability metadata is
+   insufficient to gain a mounted mutation.
+
+There is **no native-build ability name in the fixed `Servers` allowlists**.
+Adding another first-party operation requires implementing an adapter and its
+governance tests, but no central allowlist modification. General discovery is
+not permission delegation or an authorization bypass.
+
+The regression fixture `tests/wp-native-build-runtime.php` asserts
+idempotent adapter enrollment, Admin-only declaration, Staging admission,
+Production rejection, and absence of a static build name in Servers. The
+package workflow also PHP-lints the new adapter.
+
+Operational deployment remains separately gated: this source change does
+not update the installed Staging package until a certified exact-HEAD release
+is installed, read back, and independently accepted.
