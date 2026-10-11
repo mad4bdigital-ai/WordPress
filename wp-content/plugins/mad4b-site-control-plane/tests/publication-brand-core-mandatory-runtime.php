@@ -75,6 +75,7 @@ foreach ( $categories as $i => $name ) {
             'asset_id' => 'asset-' . $i,
             'content_hash' => str_repeat( (string) ( $i + 1 ), 64 ),
             'review_binding_exact' => true,
+            'review_status' => 'approved',
         ) ),
     );
 }
