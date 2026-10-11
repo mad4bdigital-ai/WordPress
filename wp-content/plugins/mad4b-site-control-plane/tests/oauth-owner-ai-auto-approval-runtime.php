@@ -16,12 +16,14 @@ class MAD4B_SCP_Site_Profile {
 }
 class MAD4B_SCP_Local_OAuth_Server {
     const CHATGPT_CIMD_CLIENT_ID = 'https://chatgpt.com/oauth/client.json';
+    public static function issuer() { return 'https://example.test/oauth/mcp'; }
 }
 class MAD4B_SCP_OAuth_Resource_Bridge {
     const AI_AUTO_ALL_SCOPE = 'mad4b:approval:auto:all';
     public static $bearer = true;
     public static $client = true;
     public static $scopes = array( 'mad4b:read', self::AI_AUTO_ALL_SCOPE );
+    public static function issuer_fingerprint_for_issuer( $issuer ) { return hash( 'sha256', 'oauth-issuer' . "\\0" . rtrim( $issuer, '/' ) ); }
     public static function verified_bearer_active() { return self::$bearer; }
     public static function verified_bearer_has_scope( $v ) { return in_array( $v, self::$scopes, true ); }
     public static function verified_bearer_client_is( $v ) {
@@ -33,6 +35,7 @@ function oauth_ai_assert( $ok, $reason ) {
     if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $reason . PHP_EOL ); exit( 1 ); }
 }
 $identity = array( 'authenticated' => true, 'auth_method' => 'oauth2_bearer', 'wp_user_id' => 44,
+    'issuer_fingerprint' => MAD4B_SCP_OAuth_Resource_Bridge::issuer_fingerprint_for_issuer( MAD4B_SCP_Local_OAuth_Server::issuer() ),
     'token_scopes' => array( 'mad4b:read', 'mad4b:approval:auto:all' ) );
 $test = static function( $value ) {
     return MAD4B_SCP_AI_Approval::oauth_auto_all_delegation_active( $value );
@@ -59,6 +62,8 @@ $GLOBALS['ai_scope_admin'] = true;
 $GLOBALS['ai_scope_current_user'] = 45;
 oauth_ai_assert( ! $test( $identity ), 'OAuth user must match mapped WordPress user' );
 $GLOBALS['ai_scope_current_user'] = 44;
+$foreign = $identity; $foreign['issuer_fingerprint'] = str_repeat( 'f', 64 );
+oauth_ai_assert( ! $test( $foreign ), 'Other trusted OAuth issuer cannot mint the same delegated approval scope' );
 $unscoped = $identity; $unscoped['token_scopes'] = array( 'mad4b:read' );
 oauth_ai_assert( ! $test( $unscoped ), 'Verified bridge and identity must both contain explicit scope' );
 
@@ -71,7 +76,7 @@ oauth_ai_assert( false !== strpos( $issuer, "mad4b:approval:auto:all" )
     && false !== strpos( $issuer, 'CHATGPT_CIMD_CLIENT_ID' )
     && false !== strpos( $bridge, "const AI_AUTO_ALL_SCOPE = 'mad4b:approval:auto:all';" ),
     'Server metadata and human consent must advertise the same exact AI scope' );
-oauth_ai_assert( false !== strpos( $approval, "'authorization_mode' => \\$oauth_auto_all ? 'owner_oauth_scope_auto_all'" )
+oauth_ai_assert( false !== strpos( $approval, "'authorization_mode' => \$oauth_auto_all ? 'owner_oauth_scope_auto_all'" )
     && false !== strpos( $approval, "'context/remote-owner-review-apply'" )
     && false !== strpos( $approval, "'breakglass' ===" ),
     'Scope may delegate ticket decisions but not fake original human ownership or raw SQL Breakglass' );
