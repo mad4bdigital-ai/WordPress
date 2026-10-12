@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 883,
+  "changed_file_count": 884,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1998,6 +1998,15 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-build-owner-consent.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/native-build-owner-consent-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-governed-native-write-dispatch-admission-20261012",
+      "semantic_unit": "Pre-execution side-effect-free owner, OAuth Step-Up and exact Staging admission diagnosis for native build write dispatcher; tests and docs keep permissions and one-time approval unchanged.",
+      "revert_boundary": "Remove first-party native build dispatcher preflight and distinct error codes; preserve existing approvals, owner form, Staging authority, native Cron and Production isolation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-dispatch-admission-runtime.php"
       ]
     }
   ],
