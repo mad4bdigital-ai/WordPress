@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 855,
+  "changed_file_count": 859,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1875,8 +1875,28 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-plan-read-lane-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-provider-circuit-breaker-v5-site-identity",
+      "semantic_unit": "Provider circuit breaker with explicit Staging site identity boundary and native regression",
+      "revert_boundary": "Review provider circuit breaker implementation and exact site identity regression together",
+      "certification": "ownership_routing_only_source_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-v5-site-identity-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-wordpress-native-remote-opt-in",
+      "semantic_unit": "WordPress-native remote operation opt-in isolation and runtime fixture",
+      "revert_boundary": "Review WordPress native remote opt-in class and regression as one rollback unit",
+      "certification": "ownership_routing_only_source_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-native-remote-opt-in.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-native-remote-opt-in-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "257c42f65d8f572ef6666adc0e9b6566c7e532e458bffc7e6d6320a82babab5a",
+  "changed_paths_sha256": "a4e397b908c3c76c4b8e65b1b8dd0079aa35d53de47601f37a738dbfa93ccce0",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
