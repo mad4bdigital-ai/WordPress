@@ -72,3 +72,28 @@ Do not demote or silently remove core dispatcher tools to free optional slots.
 9. Source ownership, G9 manifests, signed candidate build and **actual** Staging E2E acceptance are updated for the exact new HEAD.
 
 Current code covers only Phase 1 WordPress Ability search and MCP/client forwarding. Other source catalogs and ephemeral projection isolation remain backlog; this document does not certify them.
+
+## Implemented integrated extension (source-only, October 12, 2026)
+
+- `class-mad4b-scp-capability-search-index.php` materializes a short-lived (60s) **authority-scope-bound** WordPress Ability metadata index keyed by the sorted registration-name fingerprint. Query result sets containing more than 25 matches can reuse a cached ranking across Cursor pages. The cache is size-bounded (1 MiB/record). A missing persistent cache degrades performance, not permissions. New registration names immediately invalidate the name-set key; changing metadata without changing names may remain visible for **up to the 60-second index lease**. Actual execution still revalidates live schema/authority.
+- Search cursor identity uses the same `MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope()` as the canonical catalog, including OAuth issuer/client/token scopes and current WordPress caps. The cursor remains non-authorizing and HMAC-bound.
+- The existing `Unified_Capability_Gateway` now offers `action=dependencies` for exact operations from `Operation_Registry`, using the canonical `pipeline_profile` and `stage_binding` definitions. It **does not** generate new operations, infer approvals, execute a plan or evaluate conditional stages; unknown/plan-bound stages are explicitly unresolved. The existing `Adaptive_Operation_Router` includes that graph in explicit operation planning, not in implicit natural-language execution.
+- `action=sources` returns a conservative coverage census for WordPress Abilities, canonical operations, managed skills and remote-operation parity, plus a deliberately unavailable external-federation source. Rejected/truncated/unavailable providers are marked incomplete and do not become eligible executors. **This is source discovery, not finished cross-source federated search.**
+- MCP forwards both read-only actions through the existing discovery tool. The JS client exposes `sources()`, `dependencies()` and existing `searchPages()/searchItems()`.
+- No DB schema migration, new write authority, client-specific mutable `tools/list` set, Production exposure or automatic publishing.
+
+### Current performance and safety limits
+
+This phase improves repeated pagination for the currently modest WordPress Ability universe, but its one-time metadata build still scans all WordPress Abilities and checks the sorted-name fingerprint at each request. **Do not advertise true unbounded server streaming**. For very large registries, a durable, source-generation-aware inverted index with incremental deltas and provider-specific cursors is still required. Query caching for large result sets may create transients under high query cardinality; add telemetry, rate limits and bounded eviction before broad public use.
+
+`Skill_Registry::MAX_SCAN_SKILLS`, `Progressive_Operation_Discovery::MAX_OPERATIONS`, and the 500-entry remote catalog filter are **not removed** by these changes. External federation requires independently authenticated connector access and catalog completeness attestations.
+
+### Native test enrollment (not a PASS claim)
+
+`feature007-manual-preflight.py` now includes:
+- `unified-capability-pagination-runtime.php` (indexed paging, canonical OAuth scope, cache reuse and rejection paths)
+- `unified-capability-dependency-runtime.php` (canonical graph/missing abilities/approvals)
+- `unified-capability-sources-runtime.php` (partial/truncated/external unknown coverage)
+- `unified-capability-gateway-contract.py` (cross-file static binding invariants)
+
+Do not call the implementation accepted until exact-head native PHP/Node tests, CI/independent signed release evidence and **real** Staging MCP/REST acceptance succeed. A GitHub commit or static fixture presence is not an acceptance receipt.
