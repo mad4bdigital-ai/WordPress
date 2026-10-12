@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
-          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php; do
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php recovery-route-resolver-runtime.php; do
             php "$root/tests/$fixture"
           done
           php -l "$root/includes/class-mad4b-scp-frontend-origin-diagnostic.php"
