@@ -364,6 +364,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       cursor = next;
     }
   }
+  async function sources({signal} = {}) { return gateway('sources', {}, {signal}); }
   async function dependencies(operation, {signal, target_kind} = {}) {
     if (typeof operation !== 'string' || !/^[a-z][a-z0-9._-]{1,119}$/.test(operation)) throw new CatalogError('Exact registered operation is required');
     return gateway('dependencies', {operation, ...(target_kind ? {target_kind} : {})}, {signal});
@@ -430,5 +431,5 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }
-  return {negotiate, search, searchPages, searchItems, dependencies, prepare, manifest, sync, readSchema, execute, transport};
+  return {negotiate, sources, search, searchPages, searchItems, dependencies, prepare, manifest, sync, readSchema, execute, transport};
 }
