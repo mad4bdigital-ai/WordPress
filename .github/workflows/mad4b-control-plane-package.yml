@@ -147,6 +147,10 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -l "$root/includes/class-mad4b-scp-staging-autopilot.php"
           php -l "$root/includes/class-mad4b-scp-site-profile-admin.php"
+          php -l "$root/includes/class-mad4b-scp-site-profile.php"
+          php -l "$root/includes/class-mad4b-scp-site-profile-enrollment.php"
+          php -l "$root/tests/site-profile-feature-reenrollment-runtime.php"
+          php "$root/tests/site-profile-feature-reenrollment-runtime.php"
           php -l "$root/includes/class-mad4b-scp-wp-config-environment-sync.php"
           php -l "$root/tests/staging-autopilot-runtime.php"
           php "$root/tests/staging-autopilot-runtime.php"
