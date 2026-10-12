@@ -554,4 +554,36 @@ for marker in [
     if marker not in contract:
         raise SystemExit(f'remote parity contract missing policy section: {marker}')
 
+# The full onboarding chain must be discoverable with exact pre-registered
+# Abilities. Registration is metadata only and MUST NOT confer write grants.
+for operation_id, ability in {
+    'google_grant_health': 'context/google-drive-status',
+    'google_pending_revocation_recovery': 'mad4b/google-revocation-retry',
+    'brand_context_governed_source_registration': 'context/governed-source-upsert',
+    'brand_context_source_scan': 'context/source-scan-apply',
+    'brand_context_owner_review': 'context/remote-owner-review-apply',
+    'brand_core_publication_readiness': 'context/brand-core-coverage',
+    'content_post_intake_plan': 'mad4b/aci01-intake-preview',
+    'content_post_job_begin': 'mad4b/content-job-create',
+    'content_post_draft_creation': 'mad4b/content-create-post',
+    'content_post_publication_transition': 'mad4b/content-update-post',
+    'content_post_publication_verification': 'mad4b/content-get-post',
+}.items():
+    if f"'{operation_id}' => array(" not in parity:
+        raise SystemExit(f'governed lifecycle operation missing from dynamic discovery: {operation_id}')
+    if f"'remote_ability' => '{ability}'" not in parity:
+        raise SystemExit(f'governed lifecycle remote Ability not registered: {ability}')
+
+if "'site_administrator' === $role && $admin_read_only" not in parity:
+    raise SystemExit('staging admin read discovery exception not source-owned or explicit')
+for needle in [
+    "'mad4b-read' === (string) $row['authority_surface']",
+    "'deny' === (string) $row['production_policy']",
+    "'core' === (string) $row['trust_class']",
+    "'mad4b-core' === (string) $row['registrar_id']",
+    "external_registration_core_impersonation_denied",
+]:
+    if needle not in parity:
+        raise SystemExit(f'remote discovery safety guard regressed: {needle}')
+
 print('mad4b.remote-operation-parity.v1: PASS')
