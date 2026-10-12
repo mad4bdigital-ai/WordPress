@@ -34,16 +34,17 @@ $assert( ! is_wp_error( $x ) && 'summary' === $x['mode'] && 5 === $x['source_cou
 $assert( 0 === $GLOBALS['operation_scans'] && 0 === $GLOBALS['skill_scans'] && 0 === $GLOBALS['remote_scans'], 'Summary triggered costly provider census' );
 $assert( $x['sources'][0]['coverage_state'] === 'NOT_INSPECTED', 'Summary claimed unverified coverage' );
 $rows = array();
-foreach ( array( 'operation_registry', 'managed_skills', 'remote_operation_parity', 'host_authorized_external_federation' ) as $name ) {
+foreach ( array( 'wordpress_abilities', 'operation_registry', 'managed_skills', 'remote_operation_parity', 'host_authorized_external_federation' ) as $name ) {
     $detail = MAD4B_SCP_Capability_Source_Inventory::inspect( array( 'source_id' => $name ) );
     $assert( ! is_wp_error( $detail ) && 1 === $detail['source_count'], 'Detail must inspect exactly one source' );
     $rows[] = $detail['sources'][0];
 }
 $assert( 1 === $GLOBALS['operation_scans'] && 1 === $GLOBALS['skill_scans'] && 1 === $GLOBALS['remote_scans'], 'Selected providers scanned more than once' );
 $x['sources'] = $rows;
-$assert( ! is_wp_error( $x ) && $x['source_count'] === 5, 'Missing a registered source family' );
+$assert( ! is_wp_error( $x ) && $x['source_count'] === 5 && count( $x['sources'] ) === 5, 'Missing a registered source family' );
 $lookup = array();
 foreach ( $x['sources'] as $row ) $lookup[$row['source_id']] = $row;
+$assert( $lookup['wordpress_abilities']['observed_count'] === 2, 'WordPress source count was omitted' );
 $assert( $lookup['operation_registry']['coverage_state'] === 'PARTIAL_OR_UNAVAILABLE', 'Operation registry gaps were hidden' );
 $assert( $lookup['managed_skills']['coverage_state'] === 'TRUNCATED_OR_UNKNOWN', 'Skill scan ceiling was hidden' );
 $assert( $lookup['remote_operation_parity']['coverage_state'] === 'PARTIAL_OR_REJECTED', 'Rejected operation registration was hidden' );
