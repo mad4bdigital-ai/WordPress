@@ -135,6 +135,11 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             'client_observed' => $ready,
             'binding_source' => $ready ? 'verified_chatgpt_oauth_client' : '',
             'identity_scope' => 'oauth_client_site_and_enrolled_user',
+            // Stable non-authorizing identifier, not a guessed asdk_app_* ID.
+            'connection_fingerprint' => $ready ? hash( 'sha256',
+                self::CONTRACT . "\0" . (string) $record['site_uuid'] . "\0" .
+                (string) $record['client_fingerprint'] . "\0" .
+                (string) $record['wp_user_id'] ) : '',
             'chatgpt_app_id_disclosed_by_oauth' => false,
             'app_id_invented_or_stored' => false,
             'site_profile_mutated' => false,
