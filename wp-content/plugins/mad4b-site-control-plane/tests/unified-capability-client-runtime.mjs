@@ -41,6 +41,17 @@ assert.equal(new Set(seen).size, 73);
 assert.equal(requests.filter(x => x.gateway_action === 'search').length, 3);
 assert.equal(requests.filter(x => x.gateway_action === 'search')[1].cursor, 'p-25');
 assert.equal(requests.filter(x => x.gateway_action === 'search')[1].category, 'read');
+// Several independent search consumers can traverse their own cursors
+// concurrently without sharing offsets or performing any governed mutation.
+const parallelCounts = await Promise.all(Array.from({length: 4}, async () => {
+  let total = 0;
+  for await (const item of client.searchItems('task', {limit: 25})) {
+    assert.ok(item.ability_name.startsWith('fixture/task-'));
+    total++;
+  }
+  return total;
+}));
+assert.deepEqual(parallelCounts, [73, 73, 73, 73]);
 const source = await client.sources({source_id: 'managed_skills'});
 assert.equal(source.sources[0].source_id, 'managed_skills');
 const dependency = await client.dependencies('fixture-operation');
@@ -64,4 +75,4 @@ const bad = createAbilityCatalogClient({callDiscover: async input => {
 await assert.rejects(async () => {
   for await (const page of bad.searchPages('task')) void page;
 }, /snapshot changed/);
-console.log('PASS unified capability client: 73 descriptors, 3 pages, facets, source/dependency routing, cancellation, drift; no writes');
+console.log('PASS unified capability client: 73 descriptors, 3 pages, 4 concurrent consumers, facets, source/dependency routing, cancellation, drift; no writes');
