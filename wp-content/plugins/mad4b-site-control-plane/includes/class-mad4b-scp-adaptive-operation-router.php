@@ -360,6 +360,15 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         if ( empty( $sources['names'] ) ) return array(
             'contract' => self::CONTRACT, 'state' => 'NO_REGISTERED_MATCH',
             'selected' => null, 'candidate_count' => 0,
+            // A zero-result capability lookup is not proof every alternative
+            // workflow is absent. This is an independent, non-authorizing
+            // diagnostic resolver; NEVER trigger an unknown mutation.
+            'alternate_recovery_routes' => (
+                ! empty( $request['failure_code'] ) &&
+                class_exists( 'MAD4B_SCP_Recovery_Route_Resolver' ) )
+                ? MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+                    'goal' => 'general', 'blockers' => array( $request['failure_code'] ),
+                ) ) : null,
             'read_only' => true, 'mutation_performed' => false,
             'automatic_authority_created' => false );
         $prepared = MAD4B_SCP_Unified_Capability_Gateway::prepare(
@@ -399,6 +408,11 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         if ( $write_in_doubt ) $ready = false;
         $best_row = $ready ? $best['prepared'] : array();
         $failure = self::failure_advice( $request );
+        $recovery = ( ! empty( $request['failure_code'] ) &&
+            class_exists( 'MAD4B_SCP_Recovery_Route_Resolver' ) )
+            ? MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+                'goal' => 'general', 'blockers' => array( $request['failure_code'] ),
+            ) ) : null;
         // Never treat a host-provided failure label as proof that a
         // mutation was not delivered. Alternatives are diagnostic only.
         $transport_options = array();
@@ -470,6 +484,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                     'planner' => $sources['operation']['planner'] ?? '',
                     'executor' => $sources['operation']['executor'] ?? '' ) : null,
             'failure_resolution' => $failure,
+            'alternate_recovery_routes' => $recovery,
             'transport_options' => $transport_options,
             'selection_strategy' => 'live_registered_ability_metadata_schema_pinned_canonical_lane',
             'fallback_policy' => array(
