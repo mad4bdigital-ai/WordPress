@@ -260,6 +260,9 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-google-grant-prerequisite-chain-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
 
       - name: Provider-neutral resource constraint compiler
         shell: bash
