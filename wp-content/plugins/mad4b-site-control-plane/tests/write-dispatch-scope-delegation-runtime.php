@@ -33,6 +33,15 @@ $GLOBALS['mad4b_test_abilities'] = array();
 function wp_has_ability( $name ) { return isset( $GLOBALS['mad4b_test_abilities'][ (string) $name ] ); }
 function wp_get_ability( $name ) { return $GLOBALS['mad4b_test_abilities'][ (string) $name ] ?? null; }
 
+final class MAD4B_SCP_WP_Native_Build {
+    public static $calls = 0;
+    public static $allow = false;
+    public static function can_start( $input = array() ) {
+        ++self::$calls;
+        return self::$allow ? true : new WP_Error( 'mad4b_native_step_up_required' );
+    }
+}
+
 final class MAD4B_SCP_Identity_Context {
     public static $ticket_id = '';
     public static function bind_approval_ticket_for_request( $ticket_id ) {
@@ -170,6 +179,30 @@ $capture = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'capture_write_dispatch_
 $capture->setAccessible( true );
 $forward = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'forward_write_dispatch_governance_envelope' );
 $forward->setAccessible( true );
+
+// A known first-party Admin-category source builder exposes a trusted,
+// read-only admission predicate. Missing OAuth is diagnosed *before* a
+// nested write execution; it never creates a ticket, grants scope or retries.
+$permission_probe = new ReflectionMethod( 'MAD4B_SCP_Abilities', 'trusted_write_target_admission' );
+$permission_probe->setAccessible( true );
+$native = $permission_probe->invoke( $dispatcher, 'mad4b/wp-native-build-start',
+    array( 'expected_head' => str_repeat( 'a', 40 ) ) );
+mad4b_assert( is_wp_error( $native ) &&
+    'mad4b_write_dispatch_target_admission_denied' === $native->get_error_code(),
+    'Native Step-Up deficiency was not diagnosed before governed dispatch.' );
+mad4b_assert( MAD4B_SCP_WP_Native_Build::$calls === 1,
+    'Native admission predicate must be consulted exactly once.' );
+MAD4B_SCP_WP_Native_Build::$allow = true;
+mad4b_assert( true === $permission_probe->invoke( $dispatcher,
+    'mad4b/wp-native-build-start', array() ),
+    'Verified native admission failed before canonical ticket consumption.' );
+mad4b_assert( MAD4B_SCP_WP_Native_Build::$calls === 2,
+    'Native admission must be fresh and uncached after OAuth status changes.' );
+mad4b_assert( true === $permission_probe->invoke( $dispatcher,
+    'mad4b/some-other-governed-provider', array() ),
+    'Unreviewed provider was forced through native-only authority semantics.' );
+mad4b_assert( MAD4B_SCP_WP_Native_Build::$calls === 2,
+    'Unrelated providers must not run native builder's owner checks.' );
 
 $ticket = '11111111-1111-4111-8111-111111111111';
 $receipt = array( 'contract' => 'mad4b.context-receipt.v1', 'sha256' => str_repeat( 'e', 64 ) );
