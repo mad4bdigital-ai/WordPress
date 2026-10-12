@@ -311,3 +311,46 @@ package workflow also PHP-lints the new adapter.
 Operational deployment remains separately gated: this source change does
 not update the installed Staging package until a certified exact-HEAD release
 is installed, read back, and independently accepted.
+
+## Exact owner confirmation evidence (Staging only)
+
+WordPress-native Cron source building remains a governed **Admin mutation**.
+It is **not** reclassified as a normal write or Developer operation to work
+around unsupported remote approval transports.
+
+There are two distinct forms of confirmation:
+
+1. **Documented owner intent**: `mad4b/wp-native-owner-confirmation-plan`
+   accepts the immutable `expected_head` and produces an exact review digest
+   for the current enrolled Staging Site Profile and `wp-native-build-plan`.
+   The exact owner review string is:
+   `BUILD UNVERIFIED STAGING SOURCE | <40-byte-hex-head> | <plan_sha256> | <site_uuid> | <review_sha256>`.
+   Only the currently logged-in and enrolled WordPress Staging owner can record
+   this string under **Tools → MAD4B Build Consent**. The form uses a WordPress
+   CSRF nonce, exact review comparison, a 10-minute expiry, persistence readback,
+   and a structured MAD4B audit event. A verified consent is exposed read-only
+   by `mad4b/wp-native-owner-confirmation-status` with `expected_head`.
+   It is invalidated by Site Profile revision/digest drift.
+2. **Actual execution authority**: OAuth identity, owner `manage_options`,
+   the dedicated `mad4b:authority:step-up` scope, an **exact one-time
+   Admin execution approval ticket**, and the canonical authorization and
+   execution claim are *still required*. A consent digest is never an OAuth
+   token, NHI grant, approval ticket, or permission to start WP-Cron. Only a
+   fully authorized `mad4b/wp-native-build-start` is allowed to schedule it.
+
+A ChatGPT message, even if it matches the exact phrase, is **not proof of
+the current WordPress owner's authenticated identity**. It can be used to
+populate the review intent, not to bypass the step-up, ticket or execution claim.
+The owner-consent route provides a genuine auditable local confirmation option
+when remote `mad4b-admin` approval planning is not mounted. Clients must
+return a precise `ADMIN_APPROVAL_TRANSPORT_UNAVAILABLE` status if that
+separate ticket-generation channel is absent, not silently retry a normal
+`mad4b-write` ticket or claim the job started.
+
+Native regressions: `tests/native-build-owner-consent-runtime.php` plus
+`tests/recovery-route-resolver-runtime.php`, both enrolled in source preflight,
+pre-Staging hybrid CI, and the package gate.
+
+**Deployment admission:** Do not infer local consent alone admits a package.
+A completed WP-Cron ZIP is `BUILT_UNVERIFIED`; the Staging self-approval
+install lane is separately reviewed, and Production remains forbidden.
