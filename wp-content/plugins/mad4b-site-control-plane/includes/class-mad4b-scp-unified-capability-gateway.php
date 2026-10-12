@@ -69,7 +69,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'fixed_dispatch_preparation' => self::fixed_dispatch_preparation_contract(),
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
-			'actions' => array( 'negotiate', 'search', 'prepare', 'schema', 'chunk' ),
+			'actions' => array( 'negotiate', 'search', 'dependencies', 'prepare', 'schema', 'chunk' ),
 			'search_pagination' => array( 'mode' => 'opaque_signed_cursor', 'max_page_size' => 25, 'total_result_ceiling' => null, 'snapshot_drift' => 'reject_and_restart', 'authority_effect' => 'none' ),
 			'search_filters' => array( 'category', 'surface', 'ability_prefix', 'declared_readonly_only', 'declared_writeonly_only', 'match_mode', 'sort', 'min_score', 'browse' ),
 			'source_of_truth' => 'wordpress_abilities_api',
@@ -143,6 +143,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'search' ) )
 				: $call();
 		}
+		elseif ( 'dependencies' === $action ) {
+			$result = MAD4B_SCP_Capability_Dependency_Planner::inspect( $input );
+		}
 		elseif ( 'prepare' === $action ) {
 			$call = static function() use ( $input, $transport ) { return self::prepare( $input, $transport ); };
 			$result = class_exists( 'MAD4B_SCP_Observability' )
@@ -167,7 +170,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	private static function validate_input( array $input ) {
-		foreach ( array( 'action', 'task', 'query', 'ability_name', 'snapshot', 'schema_sha256', 'schema_format', 'cursor', 'category', 'surface', 'ability_prefix', 'match_mode', 'sort' ) as $key ) {
+		foreach ( array( 'action', 'task', 'query', 'ability_name', 'snapshot', 'schema_sha256', 'schema_format', 'cursor', 'category', 'surface', 'ability_prefix', 'match_mode', 'sort', 'operation', 'target_kind' ) as $key ) {
 			if ( isset( $input[$key] ) && ( ! is_string( $input[$key] ) || strlen( $input[$key] ) > 4096 ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway text fields must be bounded strings.', array( 'status' => 400 ) );
 		}
 		foreach ( array( 'ability_names' => self::MAX_PREPARE, 'keywords' => self::MAX_KEYWORDS, 'known_schemas' => self::MAX_PREPARE ) as $key => $max ) {
