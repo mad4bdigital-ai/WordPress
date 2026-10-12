@@ -49,7 +49,33 @@
       try { payload = JSON.parse(content); } catch (_) { throw failure('invalid_response', response.status); }
       if (!response.ok || !payload || payload.success !== true) {
         const code = payload && payload.data && typeof payload.data.code === 'string' ? payload.data.code.slice(0, 160) : 'request_failed';
-        throw failure(code, response.status);
+        const error = failure(code, response.status);
+        // The server already returns bounded, sanitized diagnostic evidence.
+        // Preserve only the non-secret state/blocker fields; never echo paths,
+        // tokens, bootstrap proofs or arbitrary provider exception strings.
+        if (payload && payload.data && typeof payload.data === 'object') {
+          const bootstrap = payload.data.runtime_bootstrap;
+          const recovery = payload.data.runtime_recovery;
+          if (bootstrap && typeof bootstrap === 'object' && !Array.isArray(bootstrap)) {
+            error.bootstrap = {};
+            for (const key of ['state', 'executed', 'eligible', 'request_requires_mcp_runtime',
+              'diagnostic_mu_proof_valid', 'canonical_symbols_pinned', 'critical_class_set_pinned',
+              'runtime_from_official_plugin', 'transaction_pending', 'runtime_preclaimed']) {
+              if (typeof bootstrap[key] === 'boolean') error.bootstrap[key] = bootstrap[key];
+              else if (key === 'state' && typeof bootstrap[key] === 'string') error.bootstrap.state = bootstrap[key].slice(0, 100);
+            }
+          }
+          if (recovery && typeof recovery === 'object' && !Array.isArray(recovery)) {
+            error.recovery = {};
+            for (const key of ['state', 'blocker', 'ownership_receipt_present',
+              'ownership_receipt_valid', 'manual_conflict_recovery_available',
+              'automatic_conflict_recovery_available', 'background_recovery_scheduled']) {
+              if (typeof recovery[key] === 'boolean') error.recovery[key] = recovery[key];
+              else if ((key === 'state' || key === 'blocker') && typeof recovery[key] === 'string') error.recovery[key] = recovery[key].slice(0, 100);
+            }
+          }
+        }
+        throw error;
       }
       const data = payload.data;
       if (!data || data.contract !== CONTRACT || data.build !== config.build || !data.server || data.server.server_id !== serverId || data.certification_performed !== false || data.connection_certified !== false || data.tool_execution_performed !== false || data.outbound_discovery_performed !== false) throw failure('result_identity_invalid');
@@ -141,6 +167,20 @@
         // another attempt; never automatically retry or start sibling jobs.
         stopped = true;
         progress.textContent = label.stopped + ' — ' + current + ': ' + (error.code === 'diagnostic_timeout' ? label.timeout : (error.code || 'request_failed') + (error.status ? ' (HTTP ' + error.status + ')' : '') + '. Reload this page before starting a new diagnostic.');
+        if (error.bootstrap || error.recovery) {
+          const details = document.createElement('details');
+          details.open = true;
+          const title = document.createElement('summary');
+          title.textContent = 'MU runtime diagnosis — no repair or retry performed';
+          const evidence = document.createElement('pre');
+          evidence.style.whiteSpace = 'pre-wrap';
+          evidence.style.overflowWrap = 'anywhere';
+          evidence.textContent = JSON.stringify({runtime_bootstrap: error.bootstrap || null,
+            runtime_recovery: error.recovery || null}, null, 2);
+          details.appendChild(title);
+          details.appendChild(evidence);
+          results.appendChild(details);
+        }
       } finally {
         busy = false;
         button.disabled = stopped;
