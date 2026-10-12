@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 832,
+  "changed_file_count": 833,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1669,8 +1669,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/context-semantic-source-approval-runtime.php",
         "docs/runbooks/feature007-governed-drive-context-to-tour-publication-20261012.md"
       ]
+    },
+    {
+      "id": "feature007-20261012-native-plugin-install-zero-touch",
+      "semantic_unit": "Skip unrelated WP core plugin-management read-only requests before loading expensive MAD4B modules; preserve mutating plugin actions, activation callback and G9 exact bootstrap hash",
+      "revert_boundary": "Revert root bootstrap early GET/HEAD management guard plus native PHP smoke and G9 fingerprint repin; do not touch database schema or plugin write authorities",
+      "certification": "source_only_php74_php83_native_plugin_install_and_staging_504_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-zero-touch-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "148dbd60881dd7c23f7d70c6b21f168f9316025be0a1d8206318006707e655b7",
+  "changed_paths_sha256": "917acfc9111f867096914bc34f39da3aa63f59b4b7a63a06c93cda90448bed97",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
