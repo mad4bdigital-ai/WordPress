@@ -108,7 +108,7 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                 self::registered( $consent_ability )
                     ? 'OWNER_LOCAL_AUTHENTICATION_AND_EXACT_REVIEW_REQUIRED'
                     : 'NOT_REGISTERED_OR_UNAVAILABLE',
-                array(), 'Record auditable exact Staging owner intent locally before separately obtaining OAuth Step-Up and an Admin mutation ticket', 5 );
+                array(), 'Record auditable exact Staging owner intent locally before separately obtaining OAuth Step-Up and an Admin mutation ticket', 12 );
             $native_ability = 'mad4b/wp-native-build-plan';
             $native = self::data( 'MAD4B_SCP_WP_Native_Build', 'capabilities' );
             $available = self::registered( $native_ability ) && is_array( $native );
