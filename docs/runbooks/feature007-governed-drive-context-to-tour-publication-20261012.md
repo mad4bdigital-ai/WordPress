@@ -50,3 +50,81 @@ Regression fixture `tests/context-semantic-source-approval-runtime.php` checks a
 - Brand Core 3/3 or explicit blocker, actual tour-only rights/content validation, draft and public URL plus rollback readback if eligible
 
 Always label **not executed** stages honestly. No source edit by itself is a publication receipt.
+
+## 2026-10-12 lifecycle hardening — Google Full Grant is not provider write authority
+
+Observed on **All Royal Egypt Staging** after user-initiated OAuth reconnection:
+Google dedicated OAuth became `connected=true`, `credential_fresh=true`,
+`refresh_required=false`, with Drive Read + Write granted. This fixes the
+**OAuth** gate only. `context/status` still showed **0 governed sources and
+0 governed assets** and 1 source / 12 assets in legacy quarantine.
+`context/update-drive-asset` was still `DISCOVERED` and in `shadow` due
+to missing first-party artifact evidence and selected source. No Drive write
+was made in this investigation.
+
+The revised lifecycle maintains **independent, ordered gates**:
+
+1. **OAuth grant:** available scope and valid refresh capability. An expired
+   access token is refreshed only on a provider request, never on passive
+   WordPress admin rendering; no reconnect unless refresh actually fails.
+2. **In-tree provider identity:** first-party `google_drive_context` can
+   demonstrate exact current build fingerprint plus the six fixed, readable
+   Context implementation file SHA-256 values and current rollback contracts.
+   This is *runtime identity consistency*, NOT independent signed-package
+   attestation and NOT behavioral or rollback certification. Unknown, stale,
+   untrusted, partially matched or non-in-tree providers fail closed.
+3. **Context source boundary:** choose a specific Drive folder; verify current
+   Site Profile, original folder/file ownership, host identity and selected
+   read-only policy. Never adopt legacy quarantine automatically.
+4. **Behavioral and rollback evidence:** certify bounded update/recreate
+   readback and exact compensation under a governed owner-approved canary.
+   Source policy and OAuth alone never make a write eligible.
+5. **Create prohibition:** `context/create-drive-asset` remains blocked with
+   `mad4b_google_drive_create_rollback_not_certified`. The scoped Brand
+   materialization and rollback mechanism is **not** interchangeable with an
+   arbitrary unmarked generic Create. Only an exact independently validated
+   creation identity, registry compensation and deletion/restore receipt could
+   support a future separate certified create capability.
+6. **Approval and execution:** after the previous gates, revalidate current
+   NHI grant, exact input, one-time approval ticket, revision/CAS, Context
+   Receipt for brand-bearing text, write postconditions and rollback evidence.
+
+The read-only `grant_operational_lifecycle` field under
+`context/google-drive-status.write_capability` now exposes OAuth, source
+selection, policy eligibility, independent certification and generic Create
+denial. `mad4b/provider-closure-matrix` exposes a `prerequisite_chain` on
+each blocked write row, **without** ever setting `auto_activation_allowed`.
+The first-party artifact path is implemented in
+`class-mad4b-scp-provider-compatibility-certification.php`; bounded
+write capabilities remain `shadow` until the required trusted behavioral
+and rollback evidence arrives.
+
+**Host-local Binding approval deadlock:** the binding Apply input schema
+formerly required `_mad4b_approval_ticket_id` before
+`mad4b/approval-plan` could create one. The schema now permits planning
+without the pre-existing ticket, but Apply still validates and claims the
+real one-time ticket before filesystem work. A Host-local binding alone does
+not replace independently signed host proof, durable crash recovery,
+source ownership review or Staging deployment acceptance.
+
+**Source-only regression coverage:** run the native PHP fixtures
+`provider-first-party-context-artifact-runtime.php`,
+`provider-google-grant-prerequisite-chain-runtime.php`,
+`google-grant-operational-lifecycle-runtime.php` and
+`deployment-binding-native-runtime.php`. The first three are wired into
+`.github/workflows/feature-007-pre-staging-hybrid-audit.yml` on PHP 7.4;
+additional PHP 8.3 package verification and a fresh All Royal Staging
+readback are still required. A queued CI run or uploaded source commit
+does not imply certification.
+
+**Operational next steps:** package the exact PR head; verify package
+fingerprints and dependency/rollback preflight; install **Staging only**;
+reconcile exact candidate Write binding; use newly functioning
+`mad4b/deployment-binding-native-plan` → one-time
+`mad4b/approval-plan` → permitted decision → `...-apply` → new-request
+readback; then run independent host proof, folder inventory and owner
+attestation. Register a new strictly bounded read-only Context source where
+eligible, scan every page and classify/approve the three Brand Core categories
+separately. After Context Receipt, test one *nonpublic draft* and verify it;
+publish only via a separate approved transition. Never widen Google OAuth,
+auto-migrate quarantine, or enable arbitrary Create to make a report green.
