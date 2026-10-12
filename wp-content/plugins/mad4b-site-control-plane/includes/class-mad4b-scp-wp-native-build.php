@@ -27,6 +27,11 @@ final class MAD4B_SCP_WP_Native_Build {
         if ( ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval', false ) )
             require_once __DIR__ . '/class-mad4b-scp-wp-native-self-approval.php';
         MAD4B_SCP_WP_Native_Self_Approval::boot();
+        // Human intent is recorded independently of OAuth grants and the
+        // existing one-time Admin approval ticket execution boundary.
+        if ( ! class_exists( 'MAD4B_SCP_Native_Build_Owner_Consent', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-native-build-owner-consent.php';
+        MAD4B_SCP_Native_Build_Owner_Consent::boot();
         // Enroll in the existing adapter registry before the canonical Abilities
         // lifecycle; the Servers class dynamically discovers the declared
         // Admin mutation and its original governed Write execution lane.
