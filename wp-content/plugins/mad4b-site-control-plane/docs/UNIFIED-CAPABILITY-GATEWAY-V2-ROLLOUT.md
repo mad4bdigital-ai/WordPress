@@ -139,3 +139,56 @@ Native tests: `frontend-origin-diagnostic-runtime.php` and
 `projection-registration-lifecycle.php`, enrolled in package and pre-Staging CI.
 No claim that either fixture has executed successfully until a native PHP runner
 returns a verifiable result for the **exact new HEAD**.
+
+## Cross-workflow recovery route resolution (source-only, 2026-10-12)
+
+The existing `MAD4B_SCP_WP_Native_Build` and `standalone-build`
+providers already support two legitimate source-build paths. Previously, a
+missing signed release artifact from `selected-head-plan` reported only
+`mad4b_selected_head_certified_artifact_unavailable`, which looked to
+callers like no viable build mechanism existed.
+
+The read-only `MAD4B_SCP_Recovery_Route_Resolver` is now consumed by:
+- `mad4b/control-plane-selected-head-plan` as `alternate_recovery_routes`
+  when a selected source fails release/candidate preflight.
+- The stable MCP `chatgpt-tool-projection-discover` tool using
+  `gateway_action=recovery`, with `goal`, optional exact `expected_head`
+  and up to 16 bounded observed `blockers`. This adds **no direct tool slot**.
+- `mad4b/operation-route-discover|plan`, returning non-authorizing
+  alternatives when tools are undiscoverable or a transport has failed.
+- The JS Ability Catalog Client through `recovery(goal, options)`.
+
+### Safe automatic classification, never implicit execution
+
+Generic observed blocker IDs are classified into source/install, capability
+discovery and frontend-diagnostics categories. An unknown blocker yields no
+unrelated route. The original blocker is always retained.
+
+For missing release packages, the resolver checks *live* registered
+`wp-native-build-plan` and `WP_Native_Build::capabilities()`:
+- An eligible Staging worker is the preferred **governed source build plan**.
+- A current matching Cron job is monitored instead of restarted; a matching
+  `BUILT_UNVERIFIED` job directs to `wp-native-build-simulate` before any
+  install review. A failed job is reported rather than silently retried.
+- If native build is unavailable, `standalone-build-plan` remains an
+  independently authorized external build alternative.
+- A local self-approved Staging installation remains a *distinct* opt-in
+  owner/step-up/one-time-ticket workflow; it is not a signed release verdict.
+
+When an authorization/approval/scope/grant/production/uncertain-write blocker
+is observed, **no alternate mutation route is automatically recommended**.
+A reported transport failure cannot prove a write was rolled back; independent
+readback is required before any retry.
+
+### Complete acceptance required
+
+- `tests/recovery-route-resolver-runtime.php`: exact immutable source,
+  provider eligibility, partial/complete Cron jobs, authority denial,
+  unregistered ability, generic unknown blocker and zero mutations.
+- `tests/unified-capability-client-runtime.mjs`: specialized contract
+  acceptance for `sources`, `dependencies` and `recovery`.
+- Existing Feature 007 native preflight, PHP 7.4/8.3/8.5 compatibility jobs
+  and plugin-package gate must all execute successfully at the **exact HEAD**.
+- Independently signed artifact (or explicit, narrower Staging-local
+  self-approval), installation readback, Browser Acceptance and Production
+  certification remain separate. No advisory route can satisfy these gates.
