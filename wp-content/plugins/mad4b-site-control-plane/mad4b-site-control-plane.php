@@ -55,6 +55,10 @@ if ( function_exists( 'is_admin' ) && is_admin()
     if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ) {
         define( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON', 'wordpress_plugin_management_read' );
     }
+    // Keep navigation visible without loading the expensive Control Plane
+    // runtime on native plugin-management GET/HEAD requests.
+    require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-plugin-admin-menu.php';
+    MAD4B_SCP_Native_Plugin_Admin_Menu::boot();
     return;
 }
 unset( $mad4b_native_plugin_page, $mad4b_native_plugin_method, $mad4b_native_plugin_has_action );
