@@ -178,6 +178,7 @@ STAGING_INTEGRATION_NOT_AUTORUN = (
 NODE_FIXTURES = (
     "tools/solution-discovery/test-federation.mjs",
     "tools/solution-discovery/test-source-evidence.mjs",
+    "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-client-runtime.mjs",
 )
 PY_CHECKS = (
     "oauth-consent-script-syntax.py",
