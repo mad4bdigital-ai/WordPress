@@ -38,7 +38,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 				'mcp' => array(
 					'public' => false,
 					'type' => 'tool',
-					'surface' => 'enrollment',
+					// This operation only computes evidence. Keep the matching
+					// original READ lane: enrollment is reserved for applying
+					// governed mutations with their own exact approval.
+					'surface' => 'read',
 					'readonly_authority_plan' => true,
 					'authorizes_mutation' => false,
 				),
