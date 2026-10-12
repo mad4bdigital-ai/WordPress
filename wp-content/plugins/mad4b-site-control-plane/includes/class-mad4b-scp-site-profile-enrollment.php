@@ -152,7 +152,14 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		if ( ! hash_equals( $expected_sha, $current_sha ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_candidate_mismatch', 'Source commit does not match the exact requested candidate.' );
 		if ( ! hash_equals( $expected_fingerprint, $current_fingerprint ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_fingerprint_mismatch', 'Build fingerprint does not match the exact requested candidate.' );
 
-		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_app_mapping_missing', 'A valid stored ChatGPT App ID is required before Skills can be enabled.' );
+		// ChatGPT never provides its per-installation asdk_app_* App ID in OAuth.
+		// A verified current bearer AND site-bound observed CIMD client replace
+		// the manual App ID mapping precondition, NOT the separate Phase A
+		// governance approval, environment or exact package checks.
+		$auto_bound = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' )
+			&& MAD4B_SCP_ChatGPT_Auto_Binding::current_bearer_binding_ready();
+		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() && ! $auto_bound )
+			return new WP_Error( 'mad4b_site_profile_feature_reenroll_app_mapping_missing', 'Verified ChatGPT OAuth client observation or explicitly stored App ID required.' );
 		if ( MAD4B_SCP_Site_Profile::acceptance_enabled() || MAD4B_SCP_Site_Profile::skills_enabled() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_unexpected_feature_state', 'Phase A requires Acceptance and Skills to be disabled before the exact transition.' );
 		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_write_must_remain_disabled', 'Governed write must remain disabled during Phase A.' );
 
