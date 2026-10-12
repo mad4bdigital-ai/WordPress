@@ -12,6 +12,11 @@ const discover = async (input) => {
       mode: input.source_id ? 'detail' : 'summary', source_id: input.source_id ?? null,
       sources: input.source_id ? [{source_id: input.source_id, coverage_state: 'NOT_INSPECTED'}] : []};
   }
+  if (input.gateway_action === 'recovery') {
+    return {contract: 'mad4b.unified-capability-gateway.v1', goal: input.goal,
+      original_blockers: input.blockers, automatic_mutation_allowed: false,
+      recommended_route_id: 'wordpress_native_cron_build'};
+  }
   if (input.gateway_action === 'dependencies') {
     return {contract: 'mad4b.unified-capability-gateway.v1', operation_id: input.operation,
       execution_ready: false, authority_effect: 'none'};
@@ -54,6 +59,11 @@ const parallelCounts = await Promise.all(Array.from({length: 4}, async () => {
 assert.deepEqual(parallelCounts, [73, 73, 73, 73]);
 const source = await client.sources({source_id: 'managed_skills'});
 assert.equal(source.sources[0].source_id, 'managed_skills');
+const fallback = await client.recovery('staging_install', {expected_head: 'a'.repeat(40),
+  blockers: ['mad4b_selected_head_certified_artifact_unavailable']});
+assert.equal(fallback.recommended_route_id, 'wordpress_native_cron_build');
+assert.equal(fallback.automatic_mutation_allowed, false);
+assert.deepEqual(fallback.original_blockers, ['mad4b_selected_head_certified_artifact_unavailable']);
 const dependency = await client.dependencies('fixture-operation');
 assert.equal(dependency.execution_ready, false);
 await assert.rejects(() => client.dependencies('bad/operation'), CatalogError);
