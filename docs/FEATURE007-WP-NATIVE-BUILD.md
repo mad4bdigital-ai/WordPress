@@ -333,7 +333,9 @@ There are two distinct forms of confirmation:
    It is invalidated by Site Profile revision/digest drift.
 2. **Actual execution authority**: OAuth identity, owner `manage_options`,
    the dedicated `mad4b:authority:step-up` scope, an **exact one-time
-   Admin execution approval ticket**, and the canonical authorization and
+   governed mutation approval ticket** on the verified `mad4b-write` remote
+   server for target `mad4b/wp-native-build-start` (whose *semantic category*
+   remains `mad4b-admin`), and the canonical authorization and
    execution claim are *still required*. A consent digest is never an OAuth
    token, NHI grant, approval ticket, or permission to start WP-Cron. Only a
    fully authorized `mad4b/wp-native-build-start` is allowed to schedule it.
@@ -350,6 +352,31 @@ separate ticket-generation channel is absent, not silently retry a normal
 Native regressions: `tests/native-build-owner-consent-runtime.php` plus
 `tests/recovery-route-resolver-runtime.php`, both enrolled in source preflight,
 pre-Staging hybrid CI, and the package gate.
+
+### Remote one-time confirmation and delegated AI review
+
+The remote `mad4b/approval-plan` tool can create an exact pending ticket when
+`mad4b/write-info` confirms runtime eligibility. Set **server_id =
+mad4b-write**, not `mad4b-admin`; the latter is a semantic category and
+not the current ChatGPT write transport. Bind the ticket to:
+`ability=mad4b/wp-native-build-start`, `provider=core`, exact Staging
+agent, `expected_head`, `expected_plan_sha256`, and confirmation literal
+`BUILD UNVERIFIED STAGING SOURCE`. The ticket must be short-lived,
+single-use, scope-checked and Site Profile/build-bound.
+
+When the returned current policy says `approval_lane=ai_autonomous` and
+`ai_approval_eligible=true`, the optional `mad4b/approval-ai-decide`
+may review the exact payload digest and classification digest. It must refuse
+authorization if identity, exact policy, ticket state, provider, or scope
+fails; an owner-authenticated message itself never becomes an OAuth grant.
+`review_note` is operational approval metadata, not post content.
+The exact semantic field contract classifies only native-build proof fields
+while continuing to flag unknown nested `post_content` or other brand text.
+
+If remote ticket creation/AI review is unavailable, use the separate local
+owner-intent form and report `OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED`
+until the original admin mutation execution boundary is satisfied. Do not
+create an admin ticket using an unsupported server or pretend consent ran Cron.
 
 **Deployment admission:** Do not infer local consent alone admits a package.
 A completed WP-Cron ZIP is `BUILT_UNVERIFIED`; the Staging self-approval
