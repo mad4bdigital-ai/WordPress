@@ -8,17 +8,17 @@ let executionCalls = 0;
 const discover = async (input) => {
   requests.push(input);
   if (input.gateway_action === 'sources') {
-    return {contract: 'mad4b.unified-capability-gateway.v1',
+    return {contract: 'mad4b.capability-source-inventory.v1',
       mode: input.source_id ? 'detail' : 'summary', source_id: input.source_id ?? null,
       sources: input.source_id ? [{source_id: input.source_id, coverage_state: 'NOT_INSPECTED'}] : []};
   }
   if (input.gateway_action === 'recovery') {
-    return {contract: 'mad4b.unified-capability-gateway.v1', goal: input.goal,
+    return {contract: 'mad4b.recovery-route-resolution.v1', goal: input.goal,
       original_blockers: input.blockers, automatic_mutation_allowed: false,
       recommended_route_id: 'wordpress_native_cron_build'};
   }
   if (input.gateway_action === 'dependencies') {
-    return {contract: 'mad4b.unified-capability-gateway.v1', operation_id: input.operation,
+    return {contract: 'mad4b.capability-dependency-plan.v1', operation_id: input.operation,
       execution_ready: false, authority_effect: 'none'};
   }
   assert.equal(input.gateway_action, 'search');
