@@ -275,6 +275,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<tr><th>OAuth resource bridge effective</th><td><?php echo ! empty( $status['bridge_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>CIMD advertised</th><td><?php echo ! empty( $status['cimd_supported'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>ChatGPT CIMD policy ready</th><td><?php echo ! empty( $status['chatgpt_cimd_policy_ready'] ) ? 'yes' : 'no'; ?></td></tr>
+					<tr><th>Automatic OAuth client binding</th><td><?php echo esc_html( ! empty( $status['dynamic_chatgpt_oauth_client_bound'] ) ? 'bound to current enrolled site · not an App ID' : 'awaiting verified OAuth request · ' . $status['dynamic_client_binding_blocker'] ); ?></td></tr>
+					<tr><th>Manual App ID for OAuth</th><td>not required; App ID is not supplied by OAuth</td></tr>
 					<tr><th>External ChatGPT connection</th><td><?php echo esc_html( ! empty( $status['external_connection_evidence_present'] ) ? 'persisted external evidence · deep revalidation deferred' : 'not yet externally verified' ); ?></td></tr>
 				</tbody>
 			</table>
