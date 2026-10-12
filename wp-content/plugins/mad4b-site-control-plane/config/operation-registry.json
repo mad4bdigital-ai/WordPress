@@ -99,8 +99,8 @@
       "id": "wordpress.candidate-channel.consent",
       "target_kind": "control_plane",
       "risk": "high",
-      "planner": "mad4b/manual-workflow-plan",
-      "executor": "mad4b/manual-workflow-apply",
+      "planner": "mad4b/wordpress-native-candidate-opt-in-plan",
+      "executor": "mad4b/wordpress-native-candidate-opt-in-apply",
       "supports": [
         "enable-native-candidates",
         "disable-native-candidates"
