@@ -48,6 +48,18 @@ jobs:
           test "$count" -gt 0
           echo "Full plugin PHP syntax preflight PASS: $count files"
 
+      - name: Gate plugin package on native Unified Capability regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php; do
+            php "$root/tests/$fixture"
+          done
+          python3 "$root/tests/unified-capability-gateway-contract.py"
+          node --check "$root/client/ability-catalog-client.mjs"
+          node "$root/tests/unified-capability-client-runtime.mjs"
+
       - name: Verify certified MCP dependency disk integrity contract
         shell: bash
         run: |
