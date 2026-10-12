@@ -13,6 +13,8 @@ $GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
+$GLOBALS['mad4b_context_revoke_queue'] = array();
+$GLOBALS['mad4b_context_revocation_attempts'] = array();
 $GLOBALS['mad4b_context_last_token_request'] = array();
 $GLOBALS['mad4b_managed_requests'] = array();
 $GLOBALS['mad4b_managed_redeem_responses'] = array();
@@ -156,7 +158,9 @@ function wp_remote_post( $url, $args = array() ) {
 		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
 	}
 	if ( false !== strpos( $url, 'oauth2.googleapis.com/revoke' ) ) {
-		return array( 'response' => array( 'code' => (int) $GLOBALS['mad4b_context_revoke_status'] ), 'body' => '' );
+		$GLOBALS['mad4b_context_revocation_attempts'][] = isset( $args['body']['token'] ) ? (string) $args['body']['token'] : '';
+		$code = ! empty( $GLOBALS['mad4b_context_revoke_queue'] ) ? array_shift( $GLOBALS['mad4b_context_revoke_queue'] ) : $GLOBALS['mad4b_context_revoke_status'];
+		return array( 'response' => array( 'code' => (int) $code ), 'body' => '' );
 	}
 	return new WP_Error( 'unexpected_post', 'Unexpected HTTP POST target.' );
 }
@@ -292,8 +296,29 @@ mad4b_oauth_assert( 'mad4b_google_drive_readonly_downgrade_requires_revoke' === 
 $still_write = MAD4B_SCP_Google_Drive_Context::connection_status();
 mad4b_oauth_assert( ! empty( $still_write['write_available'] ) && 'read_write' === $still_write['access_mode'], 'Failed downgrade must leave the prior governed connection unchanged until revoke.', $still_write );
 
+// A 400 is not proof of remote revocation. Both token paths must fail closed
+// without returning any bearer token or exposing usable provider authority.
+$GLOBALS['mad4b_context_revoke_queue'] = array( 400, 400 );
+$initial_revoke = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( is_wp_error( $initial_revoke )
+    && 'mad4b_google_drive_remote_revocation_unconfirmed' === $initial_revoke->get_error_code(),
+    'Two Google 400 responses must preserve remote revocation uncertainty.', $initial_revoke );
+$pending = MAD4B_SCP_Google_Drive_Context::connection_status();
+mad4b_oauth_assert( ! empty( $pending['revocation_pending'] )
+    && empty( $pending['read_available'] ) && empty( $pending['write_available'] )
+    && empty( $pending['refresh_required'] ),
+    'Unconfirmed remote revoke remains locally disabled without prompting an OAuth refresh.', $pending );
+$pending_public = json_encode( MAD4B_SCP_Google_Drive_Context::public_connection_status() );
+mad4b_oauth_assert( false === strpos( $pending_public, 'refresh-write-fixture' )
+    && false === strpos( $pending_public, 'access-write-fixture' ),
+    'Pending revoke public status must never expose bearer credentials.' );
+// A later approved retry can recover when the refresh token returns 400
+// but its distinct access token returns an explicit Google HTTP 200.
+$GLOBALS['mad4b_context_revoke_queue'] = array( 400, 200 );
 $disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
-mad4b_oauth_assert( ! is_wp_error( $disconnected ), 'Confirmed Google revoke must disconnect cleanly.', $disconnected );
+mad4b_oauth_assert( ! is_wp_error( $disconnected ), 'Revoke retry through access-token fallback must disconnect cleanly.', $disconnected );
+mad4b_oauth_assert( array_slice( $GLOBALS['mad4b_context_revocation_attempts'], -2 ) === array( 'refresh-write-fixture', 'access-write-fixture' ),
+    'Revoke retry must attempt only the exact prior refresh and distinct access token, in order.' );
 mad4b_oauth_assert( empty( $disconnected['connected'] ), 'Confirmed revoke must remove the local encrypted token.', $disconnected );
 mad4b_oauth_assert( ! empty( $disconnected['remote_revocation_attempted'] ) && ! empty( $disconnected['remote_revocation_confirmed'] ), 'Disconnect must expose confirmed remote revocation evidence.', $disconnected );
 mad4b_oauth_assert( false === get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, false ), 'Confirmed revoke must leave no local token option.' );
