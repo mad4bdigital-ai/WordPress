@@ -40,8 +40,8 @@ final class MAD4B_SCP_Capability_Source_Inventory {
             $uncertain = array_map( static function ( $item ) { return $item['source_id']; }, $sources );
             return array(
                 'contract' => self::CONTRACT, 'source_count' => count( $sources ),
-            'registered_source_count' => count( $known ), 'mode' => 'detail',
-                'registered_source_count' => count( $known ), 'mode' => '' === $selected ? 'summary' : 'detail',
+                'registered_source_count' => count( $known ),
+                'mode' => '' === $selected ? 'summary' : 'detail',
                 'sources' => $sources, 'uncertain_sources' => $uncertain,
                 'complete_federation_proven' => false,
                 'current_runtime_execution_authority_evaluated' => false,
@@ -111,6 +111,7 @@ final class MAD4B_SCP_Capability_Source_Inventory {
 
         return array(
             'contract' => self::CONTRACT, 'source_count' => count( $sources ),
+            'registered_source_count' => count( $known ), 'mode' => 'detail',
             'sources' => $sources, 'uncertain_sources' => $uncertain,
             'complete_federation_proven' => false, 'current_runtime_execution_authority_evaluated' => false,
             'no_implicit_external_connector_access' => true, 'read_only' => true,
