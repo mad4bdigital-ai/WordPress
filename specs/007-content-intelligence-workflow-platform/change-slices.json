@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 875,
+  "changed_file_count": 876,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1958,6 +1958,15 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-source-inventory.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-dependency-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-sources-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-unified-capability-native-client-acceptance-20261012",
+      "semantic_unit": "Native Node fixture for bounded capability gateway pagination, cursor drift, source/dependency routing and cancellation; execution authority unchanged.",
+      "revert_boundary": "Remove only the additive Node regression fixture; preserve existing ability catalog client and other native suites.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-client-runtime.mjs"
       ]
     }
   ],
