@@ -77,6 +77,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 						'gateway_action' => array( 'type' => 'string', 'enum' => array( 'negotiate', 'sources', 'search', 'dependencies', 'prepare', 'schema', 'chunk' ) ),
 						'operation' => array( 'type' => 'string', 'maxLength' => 120 ),
 						'target_kind' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
 						'task' => array( 'type' => 'string', 'maxLength' => 512 ),
                         'declared_readonly_only' => array( 'type' => 'boolean' ),
                         'declared_writeonly_only' => array( 'type' => 'boolean' ),
