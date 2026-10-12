@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 835,
+  "changed_file_count": 837,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1680,8 +1680,145 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
         "docs/runbooks/feature007-staging-plugin-installer-504-20261012.md"
       ]
+    },
+    {
+      "id": "feature007-20261012-review-evidence-audit",
+      "semantic_unit": "Source review metadata and non-certifying risk backlog",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "docs/reviews/feature007-all-sides-mcp-audit-20261011.md",
+        "docs/reviews/feature007-pr258-file-ledger-20261011.json",
+        "docs/reviews/feature007-pr258-file-review-batch01.md"
+      ]
+    },
+    {
+      "id": "feature007-20261012-operator-runbooks",
+      "semantic_unit": "MCP reliability and operator experience recovery guides",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "docs/runbooks/mad4b-entire-plugin-operator-experience-review-20261011.md",
+        "docs/runbooks/mcp-transport-reliability.md"
+      ]
+    },
+    {
+      "id": "feature007-20261012-source-diagnostic-tools",
+      "semantic_unit": "G9, bottleneck and deployment identity diagnostic helpers",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "tools/mad4b_g9_integrity_repin.py",
+        "tools/mad4b_mcp_bottleneck_inventory.py",
+        "tools/mad4b_provision_deployment_binding.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-native-build-and-approval",
+      "semantic_unit": "Native governed Staging build, self-approval and CI outage attestation boundaries",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "docs/FEATURE007-WP-NATIVE-BUILD.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-ci-outage-attestor-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-wp-native-build-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-build.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-self-approval.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ci-outage-dynamic-enrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-adaptive-operation-routing",
+      "semantic_unit": "Dynamic operation routing, operator journey code and fixtures",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "docs/runbooks/mad4b-adaptive-operation-routing-handoff-20261011.md",
+        "docs/runbooks/mad4b-adaptive-operation-routing.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-capability-filter-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-operation-router-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-journeys-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-mcp-oauth-connection",
+      "semantic_unit": "MCP read consistency, OAuth first paint and catalog transport resilience",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-ability.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-connection-failsoft-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-fast-first-paint-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-transport-resilience-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-context-preflight",
+      "semantic_unit": "Context evidence and legacy owner/provider proofs",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-legacy-owner-provider-proof-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-unbound-census-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-deployment-binding",
+      "semantic_unit": "Exact host and environment deployment bindings",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-setup.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-setup-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-native-recovery",
+      "semantic_unit": "Safe recovery alternatives and fail-closed denial fixtures",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-alternatives.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-alternatives-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-site-profile-enrollment",
+      "semantic_unit": "Exact Site Profile enrollment boundaries and fixtures",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-operational-acceptance",
+      "semantic_unit": "Independent runtime acceptance receipts and fixture",
+      "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-acceptance-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "1819bdcaf00fc39fbbf2619a76d05574ea83274c4b3c01d9b33a8e3ecf6b798a",
+  "changed_paths_sha256": "b9502e7ca079428381909f23be3677b72b9d00dddde01b31c8b9071e0325aeb3",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
