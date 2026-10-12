@@ -21,6 +21,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 	const TRANSACTION_CONTRACT = 'mad4b.mcp-mu-filesystem-transaction.v1';
 	const OWNERSHIP_OPTION = 'mad4b_scp_mcp_mu_ownership_v1';
 	const OWNERSHIP_CONTRACT = 'mad4b.mcp-mu-ownership.v1';
+	const HISTORY_OPTION = 'mad4b_scp_mcp_mu_trusted_lineage_v1';
+	const HISTORY_CONTRACT = 'mad4b.mcp-mu-trusted-lineage.v1';
+	const HISTORY_LIMIT = 32;
 	// Never reclaim a journal generation before the shared maintenance hard fence can expire.
 	const TRANSACTION_STALE_AFTER = 1200;
 
@@ -97,6 +100,74 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		);
 	}
 
+
+	/**
+	 * A local, site-bound provenance ledger for arbitrary past and future
+	 * versions. Only a recovery lifecycle that verified exact filesystem bytes,
+	 * ownership, rollback and audit may register new generations. This ledger
+	 * cannot bootstrap trust in an unknown legacy file by itself.
+	 */
+	private static function read_trusted_lineage() {
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( self::HISTORY_OPTION, 'options' );
+			wp_cache_delete( 'notoptions', 'options' );
+		}
+		return get_option( self::HISTORY_OPTION, null );
+	}
+
+	private static function verified_lineage_hashes() {
+		$record = self::read_trusted_lineage();
+		if ( null === $record ) return array();
+		$identity = self::site_binding_identity();
+		if ( ! is_array( $record )
+			|| self::HISTORY_CONTRACT !== ( $record['contract'] ?? '' )
+			|| ! isset( $record['site_uuid'], $record['environment'], $record['origin_sha256'], $record['hashes'] )
+			|| ! is_array( $record['hashes'] )
+			|| count( $record['hashes'] ) > self::HISTORY_LIMIT
+			|| '' === $identity['site_uuid'] || '' === $identity['environment'] || '' === $identity['origin_sha256']
+			|| ! hash_equals( $identity['site_uuid'], (string) $record['site_uuid'] )
+			|| ! hash_equals( $identity['environment'], (string) $record['environment'] )
+			|| ! hash_equals( $identity['origin_sha256'], (string) $record['origin_sha256'] ) ) return false;
+		foreach ( $record['hashes'] as $hash ) {
+			if ( ! is_string( $hash ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $hash ) ) return false;
+		}
+		return array_values( array_unique( $record['hashes'] ) );
+	}
+
+	public static function historical_site_owned_sha256( $hash ) {
+		$hash = strtolower( trim( (string) $hash ) );
+		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $hash ) ) return false;
+		$trusted = self::verified_lineage_hashes();
+		return is_array( $trusted ) && in_array( $hash, $trusted, true );
+	}
+
+	/** A post-commit, non-authorizing receipt; failure cannot claim SUCCESS. */
+	public static function record_verified_lineage( array $hashes ) {
+		if ( ! self::repair_lifecycle_allowed() ) return new WP_Error( 'mu_lineage_lifecycle_required', 'A governed recovery lifecycle is required.' );
+		$identity = self::site_binding_identity();
+		if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $identity['site_uuid'] )
+			|| '' === $identity['environment']
+			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $identity['origin_sha256'] ) ) return new WP_Error( 'mu_lineage_site_binding_invalid', 'Exact Site Profile identity is required.' );
+		$trusted = self::verified_lineage_hashes();
+		if ( ! is_array( $trusted ) ) return new WP_Error( 'mu_lineage_state_invalid', 'Untrusted or foreign lineage cannot be overwritten.' );
+		foreach ( $hashes as $hash ) {
+			if ( ! is_string( $hash ) || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $hash ) )
+				return new WP_Error( 'mu_lineage_hash_invalid', 'Invalid generation fingerprint.' );
+			if ( ! in_array( $hash, $trusted, true ) ) $trusted[] = $hash;
+		}
+		$trusted = array_slice( $trusted, -self::HISTORY_LIMIT );
+		$record = array(
+			'contract' => self::HISTORY_CONTRACT,
+			'site_uuid' => $identity['site_uuid'],
+			'environment' => $identity['environment'],
+			'origin_sha256' => $identity['origin_sha256'],
+			'hashes' => $trusted,
+		);
+		update_option( self::HISTORY_OPTION, $record, false );
+		return serialize( self::read_trusted_lineage() ) === serialize( $record )
+			? $record : new WP_Error( 'mu_lineage_persist_failed', 'Trusted lineage readback did not match.' );
+	}
+
 	public static function persist_ownership_receipt( $hash, $source ) {
 		if ( ! self::repair_lifecycle_allowed() ) return new WP_Error( 'mu_bootstrap_ownership_lifecycle_required', 'MU ownership changes require the governed recovery lifecycle.' );
 		$hash = strtolower( trim( (string) $hash ) );
@@ -160,15 +231,17 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$status['ownership_receipt_present'] = ! empty( $receipt['present'] );
 		$status['ownership_receipt_valid'] = ! empty( $receipt['ready'] );
 		$historical = self::historical_managed_sha256( $status['destination_sha256_before'] );
-		$status['managed'] = $historical || ! empty( $receipt['ready'] );
-		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : '' );
+		$lineage = self::historical_site_owned_sha256( $status['destination_sha256_before'] );
+		$status['owned_history_valid'] = $lineage;
+		$status['managed'] = $historical || $lineage || ! empty( $receipt['ready'] );
+		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : ( $lineage ? 'site_bound_lineage' : '' ) );
 		if ( $status['managed'] ) { $status['state'] = 'managed_mu_stale'; return $status; }
 		$status['state'] = 'unmanaged_path_conflict';
 		$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 		$status['manual_conflict_recovery_available'] = true;
-		$status['automatic_conflict_recovery_available'] = class_exists( 'MAD4B_SCP_Site_Profile', false )
-			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
+		// A Staging profile alone is not an ownership proof. Unknown files must
+		// use the exact administrator-confirmed replacement flow.
+		$status['automatic_conflict_recovery_available'] = false;
 		return $status;
 	}
 
@@ -493,6 +566,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			if ( is_wp_error( $receipt ) ) { $status['blocker'] = $receipt->get_error_code(); self::$status = $status; return $status; }
 			$status['ownership_receipt_present'] = true;
 			$status['ownership_receipt_valid'] = true;
+			$lineage_record = self::record_verified_lineage( array( $status['source_sha256'] ) );
+			$status['lineage_recorded'] = ! is_wp_error( $lineage_record );
+			if ( is_wp_error( $lineage_record ) ) $status['lineage_blocker'] = $lineage_record->get_error_code();
 			$status['state'] = 'managed_mu_current';
 			self::$status = $status;
 			return $status;
@@ -508,8 +584,10 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$status['ownership_receipt_present'] = ! empty( $receipt['present'] );
 		$status['ownership_receipt_valid'] = ! empty( $receipt['ready'] );
 		$historical = self::historical_managed_sha256( $status['destination_sha256_before'] );
-		$status['managed'] = $historical || ! empty( $receipt['ready'] );
-		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : '' );
+		$lineage = self::historical_site_owned_sha256( $status['destination_sha256_before'] );
+		$status['owned_history_valid'] = $lineage;
+		$status['managed'] = $historical || $lineage || ! empty( $receipt['ready'] );
+		$status['ownership_source'] = $historical ? 'historical_hash' : ( ! empty( $receipt['ready'] ) ? 'site_ownership_receipt' : ( $lineage ? 'site_bound_lineage' : '' ) );
 		$explicit_conflict = false;
 		if ( ! $status['managed'] && '' !== $expected_unmanaged_sha256 ) {
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected_unmanaged_sha256 ) || ! hash_equals( $status['destination_sha256_before'], $expected_unmanaged_sha256 ) ) {
@@ -688,6 +766,18 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			self::$status = $status;
 			return $status;
 		}
+		// Register only generations whose bytes were already proven owned and
+		// whose replacement, audit and transaction finalization succeeded.
+		$lineage_record = self::record_verified_lineage( array(
+			$status['destination_sha256_before'],
+			$status['source_sha256'],
+		) );
+		$status['lineage_recorded'] = ! is_wp_error( $lineage_record );
+		if ( is_wp_error( $lineage_record ) ) {
+			// The successful replacement stands; surface the optional lineage
+			// checkpoint failure for follow-up. Never claim lineage was saved.
+			$status['lineage_blocker'] = $lineage_record->get_error_code();
+		}
 		$status['refresh_applied'] = true;
 		$status['next_request_required'] = true;
 		$status['state'] = 'managed_mu_refreshed_for_next_request';
@@ -796,6 +886,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			'destination_bytes' => 0,
 			'ownership_receipt_present' => false,
 			'ownership_receipt_valid' => false,
+			'owned_history_valid' => false,
+			'lineage_recorded' => false,
+			'lineage_blocker' => '',
 			'ownership_source' => '',
 			'explicit_conflict_recovery' => false,
 			'automatic_conflict_recovery' => false,

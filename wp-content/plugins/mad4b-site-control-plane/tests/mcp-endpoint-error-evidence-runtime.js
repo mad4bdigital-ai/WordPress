@@ -30,6 +30,7 @@ const env = {
             state: 'managed_mu_stale',
             blocker: 'audit_unavailable_for_mu_refresh',
             ownership_receipt_valid: false,
+            owned_history_valid: true,
             background_recovery_scheduled: true,
             unexpected_secret: 'never-show',
           },
@@ -57,6 +58,7 @@ const env = {
   assert.equal(error.bootstrap.canonical_symbols_pinned, false);
   assert.equal(error.recovery.blocker, 'audit_unavailable_for_mu_refresh');
   assert.equal(error.recovery.background_recovery_scheduled, true);
+  assert.equal(error.recovery.owned_history_valid, true);
   assert.equal(error.bootstrap.secret_path, undefined, 'Do not leak paths');
   assert.equal(error.recovery.unexpected_secret, undefined, 'Do not leak arbitrary payload fields');
   assert.equal(requested.length, 1, 'Uncertain diagnostic writes must not be retried');

@@ -68,7 +68,7 @@
           if (recovery && typeof recovery === 'object' && !Array.isArray(recovery)) {
             error.recovery = {};
             for (const key of ['state', 'blocker', 'ownership_receipt_present',
-              'ownership_receipt_valid', 'manual_conflict_recovery_available',
+              'ownership_receipt_valid', 'owned_history_valid', 'manual_conflict_recovery_available',
               'automatic_conflict_recovery_available', 'background_recovery_scheduled']) {
               if (typeof recovery[key] === 'boolean') error.recovery[key] = recovery[key];
               else if ((key === 'state' || key === 'blocker') && typeof recovery[key] === 'string') error.recovery[key] = recovery[key].slice(0, 100);
