@@ -97,6 +97,59 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 			'context/source-scan-apply' => 'google_drive_context',
 		);
 
+		// Feature 007 Staging reconciliation review (38 exact ability/provider
+		// pairs).  These were already in the runtime-eligible governed Write
+		// inventory, but omitted from this grant-reconciliation source policy.
+		// This is NOT wildcard authority or a grant: the separate reconciliation
+		// execution still demands exact Site Profile, immutable provenance,
+		// explicit 95-ability plan, one-time approval, audit and rollback.
+		// Never include these wider administrative operations on Production.
+		if ( 'staging' === self::current_environment() ) {
+			$staging_reviewed = array(
+				'context/brand-profile-save' => 'google_drive_context',
+				'context/governed-source-upsert' => 'google_drive_context',
+				'context/remote-owner-review-apply' => 'google_drive_context',
+				'mad4b/acceptance-target-provision' => 'core',
+				'mad4b/business-activity-import-approve' => 'core',
+				'mad4b/business-activity-import-batch-append' => 'core',
+				'mad4b/business-activity-import-batch-approve' => 'core',
+				'mad4b/business-activity-import-batch-archive' => 'core',
+				'mad4b/business-activity-import-batch-begin' => 'core',
+				'mad4b/business-activity-link-apply' => 'core',
+				'mad4b/business-activity-sync-advance' => 'core',
+				'mad4b/business-activity-sync-archive' => 'core',
+				'mad4b/business-activity-sync-begin' => 'core',
+				'mad4b/business-activity-sync-cancel' => 'core',
+				'mad4b/business-activity-sync-finalize-reconciled' => 'core',
+				'mad4b/business-activity-sync-recover' => 'core',
+				'mad4b/business-activity-wpai-observation-arm' => 'core',
+				'mad4b/content-delete-meta' => 'core',
+				'mad4b/content-experience-profile-apply' => 'core',
+				'mad4b/content-experience-profile-clone-apply' => 'core',
+				'mad4b/content-experience-profile-delete-apply' => 'core',
+				'mad4b/content-import-bundle' => 'core',
+				'mad4b/content-set-meta' => 'core',
+				'mad4b/content-trash-post' => 'core',
+				'mad4b/control-plane-selected-head-apply' => 'core',
+				'mad4b/deployment-binding-native-apply' => 'core',
+				'mad4b/deployment-binding-setup-apply' => 'core',
+				'mad4b/host-operation-apply' => 'core',
+				'mad4b/market-growth-policy-update' => 'core',
+				'mad4b/native-recovery-cleanup' => 'core',
+				'mad4b/native-recovery-start' => 'core',
+				'mad4b/runtime-release-set-apply' => 'core',
+				'mad4b/staging-offline-attestor-enroll-apply' => 'core',
+				'mad4b/taxonomy-update-term' => 'core',
+				'mad4b/translation-link-posts' => 'core',
+				'mad4b/translation-set-post-language' => 'core',
+				'media/import-external' => 'media',
+				'media/remote-import-apply' => 'media',
+			);
+			foreach ( $staging_reviewed as $ability => $provider ) {
+				$allowed[ $ability ] = $provider;
+			}
+		}
+
 		// Generic content authority remains exact and code-reviewed. Site runtime
 		// models (CPTs/taxonomies/terms/meta) are dynamic, but the abilities that
 		// may receive current-environment grants are restricted to the bundled core adapters
