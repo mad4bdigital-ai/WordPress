@@ -617,11 +617,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
 				continue;
 			}
-			if ( ! in_array( (string) $row['remote_caller_role'], array( 'operator', 'external_executor', 'owner', 'system' ), true ) ) {
-				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => (string) $row['remote_caller_role'] );
+			$is_builtin = isset( $builtin_operation_ids[ $key ] );
+			// Site-administrator is a discoverable caller category only for
+			// first-party, Staging-only READ operations. This does not provide
+			// the caller admin credentials or bypass Ability permission checks.
+			$admin_read_only = $is_builtin
+				&& 'core' === (string) $row['trust_class']
+				&& 'mad4b-core' === (string) $row['registrar_id']
+				&& 'mad4b-site-control-plane' === (string) $row['source_plugin']
+				&& 'mad4b-read' === (string) $row['authority_surface']
+				&& 'deny' === (string) $row['production_policy'];
+			$role = (string) $row['remote_caller_role'];
+			if ( ! in_array( $role, array( 'operator', 'external_executor', 'owner', 'system' ), true )
+				&& ! ( 'site_administrator' === $role && $admin_read_only ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => $role );
 				continue;
 			}
-			$is_builtin = isset( $builtin_operation_ids[ $key ] );
 			if ( ! $is_builtin && ! empty( $row['chatgpt_direct_step_up'] ) ) {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'external_registration_direct_chatgpt_step_up_denied' );
 				continue;
