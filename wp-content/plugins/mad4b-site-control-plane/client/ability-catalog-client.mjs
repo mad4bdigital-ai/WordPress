@@ -336,7 +336,9 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     let cursor = null, snapshot = null, expectedOffset = null;
     while (true) {
       if (signal?.aborted) throw signal.reason ?? new CatalogError('Capability search cancelled');
-      const page = await search(task, {...options, ...(cursor ? {cursor} : {}), signal});
+      const pageOptions = {...options};
+      if (cursor) { delete pageOptions.offset; pageOptions.cursor = cursor; }
+      const page = await search(task, {...pageOptions, signal});
       if (!Array.isArray(page.items) || !Number.isInteger(page.count) ||
           !Number.isInteger(page.total_match_count) || !Number.isInteger(page.page_offset) ||
           page.count !== page.items.length || page.total_match_count < 0 ||
