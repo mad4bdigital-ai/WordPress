@@ -147,6 +147,7 @@ FIXTURES = (
     "projection-registration-lifecycle.php",
     "frontend-origin-diagnostic-runtime.php",
     "native-build-owner-consent-runtime.php",
+    "wp-native-build-dispatch-admission-runtime.php",
     "host-bridge-contract.php",
     "browser-acceptance-admin-setup-contract.php",
     "staging-browser-site-selection-contract.php",
