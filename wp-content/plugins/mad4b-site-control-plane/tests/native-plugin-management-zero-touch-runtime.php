@@ -35,4 +35,12 @@ native_hotpath_expect( is_string( $source )
     && false !== strpos( $source, "array( 'plugin-install.php', 'plugins.php', 'update-core.php' )" )
     && false !== strpos( $source, "register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );" ),
     'Mutation request and native activation declarations must remain in full bootstrap' );
-echo "PASS: plugin-install.php GET bypasses heavy boot; mutation routes and activation hooks remain preserved\n";
+// Schema lifecycle: ordinary GET/HEAD must return before admin capability,
+// database table scans, dbDelta, maintenance locks or provider repair.
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema-lifecycle.php';
+MAD4B_SCP_Schema_Lifecycle::maybe_reconcile_admin_lifecycle();
+$_SERVER['REQUEST_METHOD'] = 'HEAD';
+MAD4B_SCP_Schema_Lifecycle::maybe_reconcile_admin_lifecycle();
+native_hotpath_expect( ! defined( 'MAD4B_SCP_SCHEMA_REPAIR_EXECUTED' ),
+    'Native admin read must not initiate schema lifecycle repair' );
+echo "PASS: WP plugin-management GET skips heavy boot; native admin GET/HEAD never reconcile schema\n";
