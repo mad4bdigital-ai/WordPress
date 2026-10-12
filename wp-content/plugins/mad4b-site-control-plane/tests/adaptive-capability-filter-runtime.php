@@ -53,6 +53,32 @@ $GLOBALS['abilities']['example/approval-untrusted-annotation'] =
     new FakeAbility( 'example/approval-untrusted-annotation', 'false' );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-unified-capability-gateway.php';
 $gateway = 'MAD4B_SCP_Unified_Capability_Gateway';
+// Default concurrency must be safe on slow/unmeasured WordPress hosts.
+$unmeasured = $gateway::negotiate( array(), 'mcp' );
+check_route( $unmeasured['transfer_policy']['recommended_parallel_schema_fetches'] === 1
+    && $unmeasured['client_capabilities']['max_parallel_schema_fetches'] === 1,
+    'Unmeasured WordPress requests recommend serial transport to avoid worker saturation' );
+$slow = $gateway::negotiate( array( 'client_capabilities' => array(
+    'observed_rtt_ms' => 6400,
+    'recent_error_rate' => 0.2,
+    'max_parallel_schema_fetches' => 8,
+) ), 'mcp' );
+check_route( $slow['transfer_policy']['recommended_parallel_schema_fetches'] === 1,
+    'Slow or unreliable links remain serial despite client parallel capability' );
+$fast = $gateway::negotiate( array( 'client_capabilities' => array(
+    'observed_rtt_ms' => 80,
+    'recent_error_rate' => 0,
+    'max_parallel_schema_fetches' => 5,
+) ), 'mcp' );
+check_route( $fast['transfer_policy']['recommended_parallel_schema_fetches'] === 4,
+    'Measured fast transport may opt into bounded concurrency' );
+$bounded = $gateway::negotiate( array( 'client_capabilities' => array(
+    'observed_rtt_ms' => 80,
+    'recent_error_rate' => 0,
+    'max_parallel_schema_fetches' => 1,
+) ), 'mcp' );
+check_route( $bounded['transfer_policy']['recommended_parallel_schema_fetches'] === 1,
+    'Explicit client serial preference is respected' );
 $only_mutating = $gateway::search( array(
     'task' => 'approval', 'limit' => 5, 'declared_writeonly_only' => true ) );
 check_route( $only_mutating['count'] === 1
