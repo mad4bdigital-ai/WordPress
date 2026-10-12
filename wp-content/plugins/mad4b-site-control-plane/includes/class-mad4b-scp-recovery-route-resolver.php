@@ -109,6 +109,28 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                     ? 'OWNER_LOCAL_AUTHENTICATION_AND_EXACT_REVIEW_REQUIRED'
                     : 'NOT_REGISTERED_OR_UNAVAILABLE',
                 array(), 'Record auditable exact Staging owner intent locally before separately obtaining OAuth Step-Up and an Admin mutation ticket', 12 );
+            // An Ability may be semantically "admin" while its *remote*
+            // governed transport is mad4b-write. Never use category as
+            // approval server_id; verify exact canonical mount and grant.
+            $start = 'mad4b/wp-native-build-start';
+            $mounted_for_approval = self::registered( $start ) &&
+                class_exists( 'MAD4B_SCP_Servers' ) &&
+                MAD4B_SCP_Servers::is_external_write_candidate( $start ) &&
+                MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $start );
+            $approval_route = self::row( 'native_build_exact_write_ticket',
+                'mad4b/write-info',
+                $mounted_for_approval ? 'EXACT_WRITE_APPROVAL_PLAN_AVAILABLE'
+                    : 'APPROVAL_TRANSPORT_NOT_MOUNTED',
+                array(), 'Create a one-time exact governed ticket for the Admin-category native builder using the mad4b-write approval server', 16 );
+            $approval_route['target_ability_name'] = $start;
+            $approval_route['approval_server_id'] = 'mad4b-write';
+            $approval_route['next_approval_ability'] = 'mad4b/approval-plan';
+            $approval_route['owner_confirmation'] = 'BUILD UNVERIFIED STAGING SOURCE';
+            $approval_route['approval_must_bind_exact_head_and_plan'] = true;
+            $approval_route['approval_is_separate_from_build_start'] = true;
+            $approval_route['ai_decision_permitted_only_by_live_policy'] = true;
+            $approval_route['semantic_ability_category'] = 'mad4b-admin';
+            $routes[] = $approval_route;
             $native_ability = 'mad4b/wp-native-build-plan';
             $native = self::data( 'MAD4B_SCP_WP_Native_Build', 'capabilities' );
             $available = self::registered( $native_ability ) && is_array( $native );
