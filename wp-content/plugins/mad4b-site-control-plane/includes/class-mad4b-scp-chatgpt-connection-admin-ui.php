@@ -66,6 +66,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
 		$external_evidence_present = ! empty( $external_handshake['evidence_present'] );
+		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' )
+			? MAD4B_SCP_ChatGPT_Auto_Binding::status() : array();
 		$external_previous_session = ! empty( $external_handshake['previously_verified_external_session'] );
 		$external_certification_state = $external_previous_session
 			? ( isset( $external_handshake['certification_projection_state'] ) ? sanitize_key( (string) $external_handshake['certification_projection_state'] ) : 'previously_verified_revalidation_deferred' )
