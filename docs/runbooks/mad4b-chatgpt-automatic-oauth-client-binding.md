@@ -19,9 +19,12 @@ The plugin NEVER guesses a private app ID or fills Site Profile with one.
 2. **Existing connection:** the next protected MCP request with a correctly
    verified Bearer token calls `observe_verified_mcp_request`. This
    auto-reconciles existing accounts without reconnecting or editing settings.
-3. **Exact identity checks:** only the canonical ChatGPT CIMD client, the
-   enrolled current-origin Site Profile, matching HTTPS MCP resource, valid
-   `mad4b:read` scope and an enrolled administrator are accepted.
+3. **Exact identity checks:** only the canonical ChatGPT CIMD client,
+   matching MCP resource, valid `mad4b:read` scope and the authorized
+   WordPress administrator are accepted. Exact enrolled Site Profile is used
+   when available; otherwise the existing portable read-only identity may
+   bind a provisional OAuth client. Portable identity NEVER grants governed
+   writes or unlocks Site Profile Phase A.
 4. **Storage:** separate non-authorizing WordPress option
    `mad4b_scp_chatgpt_auto_binding_v1`; never edit Site Profile UUID,
    revision, grant matrix, package binding, client credentials or scopes.
@@ -40,7 +43,8 @@ The plugin NEVER guesses a private app ID or fills Site Profile with one.
 
 ## Explicit boundaries
 - OAuth does **not** create Site Profile for an unknown or cloned origin.
-  Existing portable read-only fallback remains distinct.
+  Existing portable read-only fallback can be observed automatically, but
+  remains *read-only* and cannot authorize Site Profile Phase A.
 - App ID is not exposed by OAuth; never manufacture `asdk_app_...`.
 - No Write/Developer/Breakglass grants, Production opt-in, governance gates,
   deployment binding or host execution are created.
