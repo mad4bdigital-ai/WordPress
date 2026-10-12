@@ -412,10 +412,13 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$offset = isset( $input['offset'] ) ? max( 0, absint( $input['offset'] ) ) : 0;
 		$projected = array_fill_keys( self::projected_ability_names(), true );
+		// One request-local registry inventory for matching AND count. WordPress
+		// abilities may be expensive to enumerate on plugin-heavy MCP hosts.
+		$all_site_names = self::all_site_ability_names();
 		$items = array();
 		$matched = 0;
 		$has_more = false;
-		foreach ( self::all_site_ability_names() as $ability_name ) {
+		foreach ( $all_site_names as $ability_name ) {
 			// Match and paginate metadata before inspecting schemas/classification.
 			try {
 				$ability = wp_get_ability( $ability_name );
@@ -451,7 +454,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'count' => count( $items ),
 			'has_more' => $has_more,
 			'next_offset' => $has_more ? $offset + count( $items ) : null,
-			'universe_count' => count( self::all_site_ability_names() ),
+			'universe_count' => count( $all_site_names ),
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
