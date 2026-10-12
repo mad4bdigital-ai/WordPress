@@ -144,7 +144,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				: $call();
 		}
 		elseif ( 'sources' === $action ) {
-			$result = MAD4B_SCP_Capability_Source_Inventory::inspect();
+			$result = MAD4B_SCP_Capability_Source_Inventory::inspect( $input );
 		}
 		elseif ( 'dependencies' === $action ) {
 			$result = MAD4B_SCP_Capability_Dependency_Planner::inspect( $input );
@@ -173,7 +173,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 	private static function validate_input( array $input ) {
-		foreach ( array( 'action', 'task', 'query', 'ability_name', 'snapshot', 'schema_sha256', 'schema_format', 'cursor', 'category', 'surface', 'ability_prefix', 'match_mode', 'sort', 'operation', 'target_kind' ) as $key ) {
+		foreach ( array( 'action', 'task', 'query', 'ability_name', 'snapshot', 'schema_sha256', 'schema_format', 'cursor', 'category', 'surface', 'ability_prefix', 'match_mode', 'sort', 'operation', 'target_kind', 'source_id' ) as $key ) {
 			if ( isset( $input[$key] ) && ( ! is_string( $input[$key] ) || strlen( $input[$key] ) > 4096 ) ) return new WP_Error( 'mad4b_capability_gateway_input_invalid', 'Gateway text fields must be bounded strings.', array( 'status' => 400 ) );
 		}
 		foreach ( array( 'ability_names' => self::MAX_PREPARE, 'keywords' => self::MAX_KEYWORDS, 'known_schemas' => self::MAX_PREPARE ) as $key => $max ) {
