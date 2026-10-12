@@ -79,7 +79,22 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
         $clean = array_values( array_unique( $clean ) );
         sort( $clean, SORT_STRING );
         $authority_blockers = array_values( array_filter( $clean, array( __CLASS__, 'is_authority_blocker' ) ) );
-        $source_goal = in_array( $goal, array( 'general', 'source_build', 'staging_install' ), true );
+        // General callers need not know the recovery provider name. Infer
+        // ONLY the read-only diagnostics category from observed blocker IDs.
+        // Unknown incidents never default to a source-build operation.
+        $inferred = '';
+        if ( 'general' === $goal && $clean ) {
+            foreach ( $clean as $code ) {
+                if ( preg_match( '/(artifact|package|candidate|release|source_build|zip|ci_queue|build_worker)/', $code ) )
+                    { $inferred = 'staging_install'; break; }
+                if ( preg_match( '/(ability|tool_not_found|method_not_found|discovery|registry|projection|mcp_tools)/', $code ) )
+                    $inferred = 'capability_discovery';
+                elseif ( preg_match( '/(frontend|http|dns|browser|network|performance)/', $code ) && '' === $inferred )
+                    $inferred = 'frontend_diagnostics';
+            }
+        }
+        $resolved_goal = '' !== $inferred ? $inferred : $goal;
+        $source_goal = in_array( $resolved_goal, array( 'source_build', 'staging_install' ), true );
         $routes = array();
 
         // The plugin's already-installed native build provider remains the
@@ -110,7 +125,7 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                     ? 'AVAILABLE_FOR_SEPARATE_PLANNING' : 'NOT_REGISTERED_OR_UNAVAILABLE',
                 array(), 'External trusted builder and independent release evidence route', 30 );
         }
-        if ( in_array( $goal, array( 'general', 'staging_install' ), true ) ) {
+        if ( 'staging_install' === $resolved_goal ) {
             $routes[] = self::row( 'site_self_certified_staging_install', 'mad4b/wp-native-self-approve-plan',
                 self::registered( 'mad4b/wp-native-self-approve-plan' )
                     ? 'REQUIRES_COMPLETED_LOCAL_BUILD_AND_OWNER_APPROVAL'
@@ -122,7 +137,7 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                     : 'NOT_REGISTERED_OR_UNAVAILABLE',
                 array(), 'Signed release candidate with existing governed WordPress updater', 40 );
         }
-        if ( in_array( $goal, array( 'general', 'capability_discovery' ), true ) ) {
+        if ( 'capability_discovery' === $resolved_goal ) {
             $routes[] = self::row( 'indexed_gateway_discovery', 'mad4b/chatgpt-tool-projection-discover',
                 self::registered( 'mad4b/chatgpt-tool-projection-discover' )
                     ? 'AVAILABLE_FOR_READ_PREPARATION' : 'NOT_REGISTERED_OR_UNAVAILABLE',
@@ -132,7 +147,7 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                     ? 'AVAILABLE_FOR_READ_PREPARATION' : 'NOT_REGISTERED_OR_UNAVAILABLE',
                 array(), 'Find a canonical Operation Registry planner before choosing execution lane', 25 );
         }
-        if ( in_array( $goal, array( 'general', 'frontend_diagnostics' ), true ) )
+        if ( 'frontend_diagnostics' === $resolved_goal )
             $routes[] = self::row( 'staging_origin_diagnostic', 'mad4b/frontend-origin-diagnostic',
                 self::registered( 'mad4b/frontend-origin-diagnostic' )
                     ? 'AVAILABLE_FOR_GOVERNED_READ_PLAN' : 'NOT_REGISTERED_OR_UNAVAILABLE',
@@ -161,6 +176,8 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
         return array(
             'contract' => self::CONTRACT,
             'goal' => $goal,
+            'resolved_goal' => $resolved_goal,
+            'category_inferred_from_blockers' => '' !== $inferred,
             'expected_head' => $head,
             'original_blockers' => $clean,
             'authority_blockers' => $authority_blockers,
