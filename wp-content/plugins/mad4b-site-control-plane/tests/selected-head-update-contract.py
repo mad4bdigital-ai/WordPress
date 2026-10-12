@@ -11,6 +11,9 @@ workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audi
 assert "class-mad4b-scp-selected-head-update.php" in bootstrap
 assert "MAD4B_SCP_Selected_Head_Update::boot();" in bootstrap
 assert "public static function plan(" in selected
+assert "'alternate_recovery_routes' =>" in selected
+assert "'goal' => 'staging_install'" in selected
+assert "MAD4B_SCP_Recovery_Route_Resolver::inspect" in selected
 assert "public static function apply(" in selected
 assert "MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED" in selected
 assert "MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED" in selected
