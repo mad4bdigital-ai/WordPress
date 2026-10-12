@@ -325,7 +325,17 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       const {bytes} = await http(endpoint, async requestSignal => ({method: 'POST', headers: {...await headers({signal: requestSignal}), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}), maxResponseBytes, signal);
       value = decode(bytes);
     }
-    if (value?.contract !== 'mad4b.unified-capability-gateway.v1') throw new CatalogError('Unsupported gateway contract');
+    // The stable dispatcher transports both its own envelope and exact,
+    // action-specific native contracts. Never accept an arbitrary provider
+    // contract for a different action.
+    const specialized = {
+      sources: 'mad4b.capability-source-inventory.v1',
+      dependencies: 'mad4b.capability-dependency-plan.v1',
+      recovery: 'mad4b.recovery-route-resolution.v1',
+    };
+    const allowed = ['mad4b.unified-capability-gateway.v1'];
+    if (Object.prototype.hasOwnProperty.call(specialized, action)) allowed.push(specialized[action]);
+    if (!allowed.includes(value?.contract)) throw new CatalogError('Unsupported gateway contract');
     return value;
   }
   async function search(task, {signal, ...options} = {}) { return gateway('search', {task, ...options}, {signal}); }
