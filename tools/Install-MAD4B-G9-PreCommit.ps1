@@ -21,6 +21,10 @@ $guard = Join-Path $root 'tools\mad4b_g9_precommit.py'
 if (-not (Test-Path -LiteralPath $guard -PathType Leaf)) {
     throw "Repository guard missing: $guard (fetch current PR #258 source first)"
 }
+$effectiveHooksPath = (& $git.Source -C $root config --get core.hooksPath 2>$null)
+if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace([string]$effectiveHooksPath)) {
+    throw "Custom core.hooksPath already configured: $effectiveHooksPath. Refusing to install an inactive or conflicting standard hook."
+}
 $hookLocation = (& $git.Source -C $root rev-parse --git-path hooks/pre-commit 2>&1)
 if ($LASTEXITCODE -ne 0 -or -not $hookLocation) {
     throw 'Cannot resolve local Git pre-commit hook path'
