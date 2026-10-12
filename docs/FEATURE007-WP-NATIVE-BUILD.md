@@ -378,6 +378,43 @@ owner-intent form and report `OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED`
 until the original admin mutation execution boundary is satisfied. Do not
 create an admin ticket using an unsupported server or pretend consent ran Cron.
 
+### Safe native-build dispatcher admission and actionable repair
+
+The existing compact `mad4b/write-execute` transport now calls the
+first-party, **side-effect-free** native-build owner predicate before entering
+Replay Policy or nested target execution. This preflight is registered only
+for `mad4b/wp-native-build-start`; arbitrary third-party Ability permission
+callbacks must never be invoked speculatively. A denied preflight returns
+`mad4b_write_dispatch_target_admission_denied`, with a bounded
+`original_error_code` and `client_action`, while preserving
+`mutation_state=not_started`, `approval_ticket_consumed=false`, and
+`blind_retry_allowed=false`.
+
+Distinct live blockers now identify whether exact enrolled Staging, WordPress
+administrator, Site Profile enrollment, mutation policy, verified current
+OAuth bearer, required `mad4b:authority:step-up`, correct ChatGPT OAuth
+client, or canonical Authorization service is missing. **Nothing** here
+grants a new OAuth scope, issues a ticket, rewrites the user's role, uses a
+Development/Breakglass exception, or converts a remote Admin mutation into
+an ordinary WordPress write. A failed bearer/scope/client check requires a
+fresh user-controlled OAuth authorization, followed by a **new** exact
+Staging build plan and one-time ticket. An old approved ticket does not
+become reusable after expiration.
+
+The dispatcher cannot assert that a general target was not entered merely
+because a transport failed. Unknown results still require readback. The
+special preflight only proves this first-party target was blocked before
+worker scheduling when it returns its own denial.
+
+PHP fixtures:
+- `tests/wp-native-build-dispatch-admission-runtime.php` validates every
+  distinct owner/OAuth/Step-Up/Staging condition.
+- `tests/write-dispatch-scope-delegation-runtime.php` now validates
+  read-only native preflight and that unrelated providers are not sent
+  through the native owner predicate.
+- Existing exact-head build, owner-consent, and semantic approval
+  regressions remain mandatory.
+
 **Deployment admission:** Do not infer local consent alone admits a package.
 A completed WP-Cron ZIP is `BUILT_UNVERIFIED`; the Staging self-approval
 install lane is separately reviewed, and Production remains forbidden.
