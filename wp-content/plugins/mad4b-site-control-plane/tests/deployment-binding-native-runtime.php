@@ -93,6 +93,13 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
 bn_assert( count( $GLOBALS['abilities'] ) === 3, 'exactly status plan apply' );
+// The one-time approval ticket is minted AFTER approval-plan validates the
+// target schema. Requiring the ticket inside that schema is a cycle; runtime
+// apply still denies requests lacking the real ticket.
+$apply_schema = $GLOBALS['abilities'][ MAD4B_SCP_Deployment_Binding_Native::APPLY ]['input_schema'];
+bn_assert( isset( $apply_schema['properties']['_mad4b_approval_ticket_id'] )
+    && ! in_array( '_mad4b_approval_ticket_id', $apply_schema['required'], true ),
+    'approval planner accepts plan fields before one-time ticket exists' );
 foreach ($GLOBALS['abilities'] as $name => $spec) {
     bn_assert( !$spec['meta']['mcp']['public']
         && !$spec['input_schema']['additionalProperties']
@@ -115,6 +122,10 @@ $payload = array(
     'confirmation' => MAD4B_SCP_Deployment_Binding_Native::CONFIRM,
     '_mad4b_approval_ticket_id' => 'd4bb34e4-8a10-4abd-8c21-a4592a4a7a33',
 );
+$unticketed = $payload; unset( $unticketed['_mad4b_approval_ticket_id'] );
+bn_assert( is_wp_error( MAD4B_SCP_Deployment_Binding_Native::apply( $unticketed ) )
+    && MAD4B_SCP_Authorization::$claimed === 0,
+    'live apply refuses missing one-time approval ticket before claim' );
 $wrong = $payload; $wrong['confirmation'] = 'YES';
 bn_assert( is_wp_error(MAD4B_SCP_Deployment_Binding_Native::apply($wrong))
     && MAD4B_SCP_Authorization::$claimed === 0, 'wrong confirmation denied before claim' );
