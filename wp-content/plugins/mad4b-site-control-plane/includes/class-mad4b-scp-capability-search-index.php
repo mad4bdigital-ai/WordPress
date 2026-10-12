@@ -65,6 +65,7 @@ final class MAD4B_SCP_Capability_Search_Index {
         if ( null !== $cached && isset( $cached['rows'], $cached['snapshot_sha256'] )
             && is_array( $cached['rows'] ) && count( $cached['rows'] ) + (int) ( $cached['skipped_count'] ?? -1 ) === count( $names ) ) {
             $cached['cache_hit'] = true;
+            $cached['cache_persisted'] = true;
             return $cached;
         }
         $rows = array(); $skipped = 0;
@@ -112,6 +113,7 @@ final class MAD4B_SCP_Capability_Search_Index {
         $cached = self::get( $key, $scope, $identity );
         if ( null !== $cached && isset( $cached['matches'], $cached['digest'] ) && is_array( $cached['matches'] ) ) {
             $cached['cache_hit'] = true;
+            $cached['cache_persisted'] = true;
             return $cached;
         }
         $matches = call_user_func( $producer, $catalog['rows'] );
@@ -119,7 +121,10 @@ final class MAD4B_SCP_Capability_Search_Index {
         $payload = array( 'matches' => $matches,
             'digest' => hash( 'sha256', wp_json_encode( $matches ) ),
             'cache_hit' => false, 'cache_persisted' => false );
-        $payload['cache_persisted'] = self::put( $key, $scope, $identity, $payload );
+        // Only cache wide result sets. Narrow, one-page searches must not
+        // create a new transient for each arbitrary query string.
+        if ( count( $matches ) > 25 )
+            $payload['cache_persisted'] = self::put( $key, $scope, $identity, $payload );
         return $payload;
     }
 }
