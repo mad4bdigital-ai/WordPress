@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 870,
+  "changed_file_count": 875,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1945,6 +1945,19 @@
         "wp-content/plugins/mad4b-site-control-plane/docs/UNIFIED-CAPABILITY-GATEWAY-V2-ROLLOUT.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-gateway-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-pagination-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-adaptive-capability-index-graph-coverage-20261012",
+      "semantic_unit": "Canonical authority-scoped read-only capability metadata search index, registered-operation dependency graph, conservative multi-registry source coverage census and native fixtures.",
+      "revert_boundary": "Revert only additive read-only capability source/index/dependency classes and tests. Do not change the existing write permissions, operation authority, bootstrap, OAuth or dispatch boundaries.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-dependency-planner.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-search-index.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-source-inventory.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-dependency-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-sources-runtime.php"
       ]
     }
   ],
