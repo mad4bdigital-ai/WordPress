@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 859,
+  "changed_file_count": 864,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1895,8 +1895,37 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-native-remote-opt-in.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-native-remote-opt-in-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-google-firstparty-artifact-identity",
+      "semantic_unit": "Build-bound six-file first-party Google Context identity proof; never convert package self-consistency into behavioral mutation certification",
+      "revert_boundary": "Revert provider compatibility evidence and first-party fail-closed regression together",
+      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-google-grant-provider-prerequisite-chain",
+      "semantic_unit": "Expose distinct artifact, source, behavioral and create compensation prerequisites without granting operational writes",
+      "revert_boundary": "Revert provider closure matrix prerequisite reporting and native chain regression together",
+      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-google-grant-prerequisite-chain-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-google-oauth-source-policy-lifecycle",
+      "semantic_unit": "Regression coverage for pure Google grant and source policy readiness split; Google provider implementation is owned in preexisting slice",
+      "revert_boundary": "Revert new grant readiness regression together with Google status implementation",
+      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "a4e397b908c3c76c4b8e65b1b8dd0079aa35d53de47601f37a738dbfa93ccce0",
+  "changed_paths_sha256": "cf68811b6f05ef863c267e06a1e72c1a3b1601546848d4e3c3373856a98b3514",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
