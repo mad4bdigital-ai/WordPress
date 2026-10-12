@@ -33,8 +33,11 @@ final class MAD4B_SCP_Deployment_Binding_Native {
                 '_mad4b_approval_ticket_id' => array( 'type' => 'string',
                     'pattern' => '^[a-fA-F0-9-]{36}$' ),
             ), 'required' => array( 'expected_plan_sha256', 'expected_profile_digest',
-                'expected_site_uuid', 'expected_revision', 'confirmation',
-                '_mad4b_approval_ticket_id' ) );
+                'expected_site_uuid', 'expected_revision', 'confirmation' ) );
+        // Approval planning validates the exact target schema before a ticket
+        // exists. Keep the ticket property optional in the declared schema,
+        // while apply() still REQUIRES a valid ticket before authorization.
+        // Requiring it here deadlocks ticket creation for this ability.
         foreach ( array(
             array( self::STATUS, 'status', $read_schema, true ),
             array( self::PLAN, 'plan', $read_schema, true ),
