@@ -27,21 +27,13 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 	public static function conflict_expected_sha256() { return self::$active ? self::$conflict_expected_sha256 : ''; }
 	public static function conflict_recovery_source() { return self::$active ? self::$conflict_recovery_source : ''; }
 
+	/**
+	 * An unknown MU file is never made trusted merely because this is Staging.
+	 * Historical digest and site-bound lineage matches are handled by the
+	 * managed_mu_stale lane. Unknown files require exact owner review.
+	 */
 	private static function automatic_staging_conflict_sha256() {
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile', false )
-			|| ! method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
-			|| 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			|| ! MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )
-			|| ! class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false )
-			|| ! method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'conflict_status' ) ) return '';
-		$conflict = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status();
-		if ( 'unmanaged_mu_bootstrap_path_conflict' !== ( $conflict['blocker'] ?? '' ) ) return '';
-		$observed = strtolower( trim( (string) ( $conflict['destination_sha256_before'] ?? '' ) ) );
-		$source = strtolower( trim( (string) ( $conflict['source_sha256'] ?? '' ) ) );
-		if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $observed )
-			|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $source )
-			|| hash_equals( $observed, $source ) ) return '';
-		return $observed;
+		return '';
 	}
 
 	private static function configured_topology_id( $constant_name ) {
@@ -130,7 +122,8 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return;
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
 			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return;
-		$unmanaged_conflict = '' !== self::automatic_staging_conflict_sha256();
+		// Automatic scheduling is limited to already-proven owned MU generations.
+		$unmanaged_conflict = false;
 		$managed_stale = false;
 		if ( ! $unmanaged_conflict
 			&& class_exists( 'MAD4B_SCP_Site_Profile', false )
