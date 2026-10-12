@@ -75,7 +75,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-						'chatgpt_app_id' => array( 'type' => 'string', 'minLength' => 17, 'maxLength' => 191, 'pattern' => '^plugin_asdk_app_[A-Za-z0-9]+$' ),
+						'chatgpt_app_id' => array( 'type' => 'string', 'minLength' => 17, 'maxLength' => 191, 'pattern' => '^(?:plugin_)?asdk_app_[A-Za-z0-9]+$' ),
 						'acceptance_enabled' => array( 'type' => 'boolean' ),
 						'skills_enabled' => array( 'type' => 'boolean' ),
 					),
@@ -216,7 +216,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 	private static function bind_app_mapping( $input ) {
 		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'], $input['chatgpt_app_id'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_binding_required', 'Exact revision, profile digest, build binding and ChatGPT App ID are required.' );
 		$app_id = trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) );
-		if ( ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_invalid', 'ChatGPT App ID is invalid.' );
+		if ( ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_invalid', 'ChatGPT App ID is invalid.' );
 		if ( MAD4B_SCP_Site_Profile::acceptance_enabled() || MAD4B_SCP_Site_Profile::skills_enabled() || MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_app_mapping_feature_state_invalid', 'App mapping bootstrap requires Acceptance, Skills and Write to remain disabled.' );
 		if ( '' !== MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_app_mapping_already_configured', 'ChatGPT App mapping is already configured; this bootstrap surface does not replace an existing mapping.' );
 
