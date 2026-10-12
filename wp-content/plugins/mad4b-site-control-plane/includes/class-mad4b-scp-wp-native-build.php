@@ -179,6 +179,16 @@ final class MAD4B_SCP_WP_Native_Build {
                 ? MAD4B_SCP_Native_Build_Owner_Consent::PLAN_ABILITY : '',
             'owner_consent_is_not_oauth_or_execution_grant' => true,
             'governed_admin_ticket_required_for_start' => true,
+            'remote_approval_target_ability' => self::PREFIX . 'start',
+            'semantic_ability_category' => 'mad4b-admin',
+            'remote_approval_server_id' => (
+                class_exists( 'MAD4B_SCP_Servers' ) &&
+                MAD4B_SCP_Servers::is_external_write_candidate( self::PREFIX . 'start' ) &&
+                MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', self::PREFIX . 'start' )
+            ) ? 'mad4b-write' : '',
+            'remote_approval_plan_ability' => 'mad4b/approval-plan',
+            'remote_approval_decision_ability' => 'mad4b/approval-ai-decide',
+            'remote_approval_does_not_bypass_owner_step_up' => true,
             'owner_step_up_required_for_start' => true );
     }
 
