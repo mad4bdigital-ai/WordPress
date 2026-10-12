@@ -12,6 +12,10 @@ final class MAD4B_SCP_WordPress_Native_Opt_In {
     public static function boot() {
         add_action( 'admin_post_' . self::ADMIN_ACTION, array( __CLASS__, 'handle_admin' ) );
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 35 );
+        // Remote parity for this one explicitly owned wp-admin action. The
+        // canonical mutation executor (not tool discovery) owns owner consent.
+        require_once __DIR__ . '/class-mad4b-scp-wordpress-native-remote-opt-in.php';
+        MAD4B_SCP_WordPress_Native_Remote_Opt_In::boot();
     }
     public static function register_ability() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
