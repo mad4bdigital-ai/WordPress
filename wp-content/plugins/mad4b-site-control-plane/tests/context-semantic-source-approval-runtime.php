@@ -11,6 +11,30 @@ function assert_semantic( $condition, $message ) {
     if ( ! $condition ) { fwrite( STDERR, 'FAIL: ' . $message . PHP_EOL ); exit( 1 ); }
 }
 $c = 'MAD4B_SCP_Semantic_Content_Field_Contracts';
+// Native Staging build AI decisions carry operational confirmation and a
+// human review note; those audit fields must not masquerade as brand copy.
+// Unknown nested post content must STILL fail closed for manual classification.
+$approval_input = array(
+    'ticket_id' => '30f924f8-dcdd-4420-8cfa-d7407c1136aa',
+    'decision' => 'approve',
+    'expected_payload_sha256' => str_repeat( 'a', 64 ),
+    'expected_classification_sha256' => str_repeat( 'b', 64 ),
+    'operation_input' => array(
+        'expected_head' => str_repeat( 'c', 40 ),
+        'expected_plan_sha256' => str_repeat( 'd', 64 ),
+        'confirmation' => 'BUILD UNVERIFIED STAGING SOURCE',
+    ),
+    'review_note' => 'Reviewed exact-source Staging-only Cron build; one-time approval ticket required.',
+);
+$approval = $c::classify( 'mad4b/approval-ai-decide', $approval_input );
+if ( empty( $approval['field_contract_known'] ) || ! empty( $approval['review_required'] )
+    || ! empty( $approval['required'] ) )
+    throw new RuntimeException( 'Native-build approval metadata was misclassified as brand-bearing content' );
+$approval_input['operation_input']['post_content'] = 'Unreviewed brand text.';
+$unsafe_approval = $c::classify( 'mad4b/approval-ai-decide', $approval_input );
+if ( empty( $unsafe_approval['review_required'] ) || ! empty( $unsafe_approval['mutation_classification_ready'] ) )
+    throw new RuntimeException( 'Nested unreviewed brand content bypassed semantic field protection' );
+
 $abilities = $c::declared_abilities();
 $examples = array(
     'context/governed-source-upsert' => array(
