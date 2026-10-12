@@ -130,7 +130,26 @@ final class MAD4B_SCP_MCP_Runtime_Recovery {
 		if ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) return;
 		if ( MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath()
 			|| MAD4B_SCP_MCP_Request_Scope::current_request_is_endpoint_diagnostic_job() ) return;
-		if ( '' === self::automatic_staging_conflict_sha256() ) return;
+		$unmanaged_conflict = '' !== self::automatic_staging_conflict_sha256();
+		$managed_stale = false;
+		if ( ! $unmanaged_conflict
+			&& class_exists( 'MAD4B_SCP_Site_Profile', false )
+			&& 'staging' === MAD4B_SCP_Site_Profile::current_environment()
+			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' )
+			&& class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false ) ) {
+			$observed = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status();
+			$managed_stale = is_array( $observed )
+				&& 'managed_mu_stale' === ( $observed['state'] ?? '' )
+				&& ! empty( $observed['managed'] )
+				&& empty( $observed['blocker'] )
+				&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $observed['source_sha256'] ?? '' ) )
+				&& 1 === preg_match( '/^[a-f0-9]{64}$/D', (string) ( $observed['destination_sha256_before'] ?? '' ) );
+		}
+		if ( ! $unmanaged_conflict && ! $managed_stale ) return;
+		// A manual ZIP/FTP update can bypass upgrader_process_complete. Only a
+		// previously recognized MAD4B-owned stale MU loader is auto-refreshed.
+		// The existing cron recovery retains its lease, audit, CAS and rollback.
+		// Never repair an absent or unknown file from an ordinary GET request.
 		self::schedule();
 	}
 
