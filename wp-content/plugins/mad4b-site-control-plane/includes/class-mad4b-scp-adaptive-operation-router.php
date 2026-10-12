@@ -341,6 +341,22 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             return self::blocked( 'explicit_write_intent_required' );
         $sources = self::sources( $request );
         if ( is_wp_error( $sources ) ) return $sources;
+        // Build an evidence-only dependency graph from the SAME canonical
+        // registered operation. Never substitute model-inferred prerequisites.
+        $dependency_plan = null;
+        $dependency_blocker = '';
+        if ( $with_plan && '' !== $request['operation'] ) {
+            if ( ! class_exists( 'MAD4B_SCP_Capability_Dependency_Planner' ) )
+                $dependency_blocker = 'dependency_planner_unavailable';
+            else {
+                $dependency_plan = MAD4B_SCP_Capability_Dependency_Planner::inspect( array(
+                    'operation' => $request['operation'], 'target_kind' => $request['target_kind'] ) );
+                if ( is_wp_error( $dependency_plan ) ) {
+                    $dependency_blocker = $dependency_plan->get_error_code();
+                    $dependency_plan = null;
+                }
+            }
+        }
         if ( empty( $sources['names'] ) ) return array(
             'contract' => self::CONTRACT, 'state' => 'NO_REGISTERED_MATCH',
             'selected' => null, 'candidate_count' => 0,
@@ -370,6 +386,8 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         }
         $best = $selected[0] ?? null;
         $ready = is_array( $best ) && ! empty( $best['eligible'] );
+        if ( '' !== $dependency_blocker || ( is_array( $dependency_plan )
+            && ! empty( $dependency_plan['missing_registered_abilities'] ) ) ) $ready = false;
         $write_in_doubt = in_array( $request['failed_transport'],
             array( 'write-execute', 'enrollment-execute', 'developer-execute' ), true )
             || ( '' !== $request['failed_transport'] &&
@@ -415,10 +433,13 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         return array(
             'contract' => self::CONTRACT,
             'state' => $write_in_doubt ? 'PREVIOUS_WRITE_REQUIRES_INDEPENDENT_READBACK'
+                : ( '' !== $dependency_blocker ? 'DEPENDENCY_GRAPH_UNAVAILABLE'
+                : ( is_array( $dependency_plan ) && ! empty( $dependency_plan['missing_registered_abilities'] )
+                    ? 'REGISTERED_DEPENDENCIES_MISSING'
                 : ( $developer_isolation_required ? 'ISOLATED_DEVELOPER_STEP_UP_REQUIRED'
                 : ( $resolution_required ? 'ENROLLMENT_OPERATION_ID_AND_DIGESTS_REQUIRED'
                 : ( $ready ? 'ROUTE_SELECTED_REQUIRES_EXECUTION_REVALIDATION'
-                : 'NO_VERIFIED_ROUTE_AVAILABLE' ) ) ),
+                : 'NO_VERIFIED_ROUTE_AVAILABLE' ) ) ) ) ),
             'mode' => $with_plan ? 'schema_pinned_route_plan' : 'bounded_route_discovery',
             'selected' => $ready ? array(
                 'ability_name' => $best['ability_name'],
@@ -441,6 +462,9 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             ) : null,
             'candidates' => $rows,
             'candidate_count' => count( $rows ),
+            'dependency_graph' => $dependency_plan,
+            'dependency_graph_blocker' => $dependency_blocker,
+            'dependency_graph_never_authorizes_execution' => true,
             'registered_operation' => '' !== $request['operation']
                 ? array( 'id' => $request['operation'],
                     'planner' => $sources['operation']['planner'] ?? '',
