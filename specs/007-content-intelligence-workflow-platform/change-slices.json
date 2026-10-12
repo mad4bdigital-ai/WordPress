@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 876,
+  "changed_file_count": 879,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1967,6 +1967,17 @@
       "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-client-runtime.mjs"
+      ]
+    },
+    {
+      "id": "feature007-staging-origin-and-projection-remote-recovery-20261012",
+      "semantic_unit": "Read-only Staging same-origin HTTP diagnostic, signed synthetic request identity, stale site-global projection recovery plan, and native regression fixtures, preserving Browser Acceptance and execution boundaries.",
+      "revert_boundary": "Revert only source-only frontend origin probe and stale projection recovery helper; preserve existing fixed MCP dispatch, execution grants, browser attestations, and saved projection state.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-diagnostic-runtime.php"
       ]
     }
   ],
