@@ -7,6 +7,7 @@ $GLOBALS['bind_profile'] = true;
 $GLOBALS['bind_oauth_feature'] = true;
 $GLOBALS['bind_admin'] = true;
 $GLOBALS['bind_user'] = 7;
+$GLOBALS['bind_current_user'] = 7;
 $GLOBALS['bind_bearer'] = false;
 $GLOBALS['bind_client'] = false;
 $GLOBALS['bind_scope'] = false;
@@ -25,6 +26,7 @@ function update_option( $name, $value, $autoload = null ) {
     $GLOBALS['bind_opt'][ $name ] = $value;
     return true;
 }
+function get_current_user_id() { return (int) $GLOBALS['bind_current_user']; }
 function get_userdata( $user_id ) { return $user_id === 7 ? (object) array( 'ID' => 7 ) : false; }
 function user_can( $user, $capability ) {
     return $user && $capability === 'manage_options' && ! empty( $GLOBALS['bind_admin'] );
@@ -80,6 +82,9 @@ $GLOBALS['bind_bearer'] = true;
 $GLOBALS['bind_client'] = true;
 $GLOBALS['bind_scope'] = true;
 assert_bind( $c::current_bearer_binding_ready(), 'Current exact OAuth client can be dynamically identified.' );
+$GLOBALS['bind_current_user'] = 8;
+assert_bind( !$c::current_bearer_binding_ready(), 'Another logged-in account cannot borrow a stored OAuth connection binding.' );
+$GLOBALS['bind_current_user'] = 7;
 $GLOBALS['bind_client'] = false;
 assert_bind( !$c::current_bearer_binding_ready(), 'Same site bearer from another OAuth client is not authorized.' );
 $GLOBALS['bind_client'] = true;
