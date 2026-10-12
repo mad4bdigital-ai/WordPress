@@ -88,8 +88,10 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
 
     private static function matches( array $record, array $expected ) {
         foreach ( $expected as $field => $value ) {
-            if ( ! isset( $record[ $field ] ) || ! is_string( $record[ $field ] ) &&
-                'wp_user_id' !== $field || ! hash_equals( (string) $value, (string) $record[ $field ] ) )
+            if ( ! isset( $record[ $field ] ) ||
+                ( ! is_string( $record[ $field ] ) &&
+                    !( 'wp_user_id' === $field && is_int( $record[ $field ] ) ) ) ||
+                ! hash_equals( (string) $value, (string) $record[ $field ] ) )
                 return false;
         }
         return true;
@@ -148,7 +150,11 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
     /** Eligibility for feature setup requires the same *live* authorized OAuth bearer. */
     public static function current_bearer_binding_ready() {
         $status = self::status();
+        $record = get_option( self::OPTION, array() );
         return ! empty( $status['client_observed'] )
+            && is_array( $record )
+            && function_exists( 'get_current_user_id' )
+            && (int) ( $record['wp_user_id'] ?? 0 ) === (int) get_current_user_id()
             && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
             && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID )
             && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' );
