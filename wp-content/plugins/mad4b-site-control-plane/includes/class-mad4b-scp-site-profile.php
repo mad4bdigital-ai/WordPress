@@ -503,7 +503,7 @@ final class MAD4B_SCP_Site_Profile {
 	public static function chatgpt_app_id() {
 		$profile = self::profile();
 		$value = isset( $profile['chatgpt_app_id'] ) ? trim( (string) $profile['chatgpt_app_id'] ) : '';
-		return preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $value ) ? $value : '';
+		return preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $value ) ? $value : '';
 	}
 
 	public static function oauth_user_ids() {
@@ -883,7 +883,7 @@ final class MAD4B_SCP_Site_Profile {
 			: wp_generate_uuid4();
 		$revision = $existing_identity_matches ? $current_revision + 1 : 1;
 		$app_id = isset( $input['chatgpt_app_id'] ) ? trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) ) : '';
-		if ( '' !== $app_id && ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );
+		if ( '' !== $app_id && ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_id_invalid', 'ChatGPT App ID is invalid.' );
 
 		$user_ids = isset( $input['oauth_user_ids'] ) ? self::normalize_user_ids( $input['oauth_user_ids'] ) : array();
 		if ( empty( $user_ids ) ) $user_ids = array( get_current_user_id() );
@@ -1630,7 +1630,7 @@ final class MAD4B_SCP_Site_Profile {
 		foreach ( array( 'display_name', 'chatgpt_app_id', 'legacy_agent_slug', 'created_at', 'updated_at' ) as $field ) {
 			if ( isset( $record[ $field ] ) && ! is_string( $record[ $field ] ) ) return false;
 		}
-		if ( isset( $record['chatgpt_app_id'] ) && '' !== trim( $record['chatgpt_app_id'] ) && 1 !== preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/D', trim( $record['chatgpt_app_id'] ) ) ) return false;
+		if ( isset( $record['chatgpt_app_id'] ) && '' !== trim( $record['chatgpt_app_id'] ) && 1 !== preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', trim( $record['chatgpt_app_id'] ) ) ) return false;
 		return true;
 	}
 
