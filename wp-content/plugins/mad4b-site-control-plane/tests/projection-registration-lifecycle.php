@@ -38,6 +38,7 @@ class MAD4B_SCP_Site_Profile {
  static function site_uuid() { return 'fixture'; } static function current_origin() { return 'https://ci.test'; } static function revision() { return 1; }
 }
 class MAD4B_SCP_Policy {
+ static function can_read() { return true; }
  static function can_breakglass() { $GLOBALS['identity_checks']++; return false; }
 }
 class MAD4B_SCP_Authorization { static function execution_boundary_verified( $ability ) { return false; } }
@@ -73,6 +74,14 @@ $GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]['abilities'][$nam
 $snapshot = MAD4B_SCP_ChatGPT_Tool_Projection::registration_diagnostic_snapshot();
 if ( 0 !== $snapshot['effective_count'] || ! $snapshot['abilities'][0]['stale'] ) throw new RuntimeException( 'Registration bookkeeping missed classification drift' );
 $GLOBALS['options'][MAD4B_SCP_ChatGPT_Tool_Projection::OPTION]['abilities'][$name] = $row;
+$recovery = MAD4B_SCP_ChatGPT_Tool_Projection::recovery_plan();
+if ( is_wp_error( $recovery ) || ! empty( $recovery['mutation_performed'] )
+    || ! empty( $recovery['retained_ability_names'] )
+    || 'BLOCKED_NO_MUTATION' !== ( $recovery['state'] ?? '' )
+    || ! isset( $recovery['excluded_abilities'][$name] ) ) {
+    throw new RuntimeException( 'Stale projection recovery planner retained Breakglass or mutated live selection' );
+}
+echo "PASS read-only projection recovery: sensitive saved tool excluded without scanning or changing site-global settings\n";
 echo "PASS registration bookkeeping: no DTO build, universe scan or permission callback\n";
 $tool = new class { function get_adapter_meta() { return array( 'ability' => 'fixture/breakglass' ); } };
 $server = new class { function get_server_id() { return 'mad4b-chatgpt'; } };
