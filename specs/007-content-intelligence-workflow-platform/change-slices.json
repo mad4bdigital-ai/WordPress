@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 833,
+  "changed_file_count": 835,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1676,10 +1676,12 @@
       "revert_boundary": "Revert root bootstrap early GET/HEAD management guard plus native PHP smoke and G9 fingerprint repin; do not touch database schema or plugin write authorities",
       "certification": "source_only_php74_php83_native_plugin_install_and_staging_504_acceptance_pending",
       "path_globs": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-zero-touch-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-zero-touch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
+        "docs/runbooks/feature007-staging-plugin-installer-504-20261012.md"
       ]
     }
   ],
-  "changed_paths_sha256": "917acfc9111f867096914bc34f39da3aa63f59b4b7a63a06c93cda90448bed97",
+  "changed_paths_sha256": "1819bdcaf00fc39fbbf2619a76d05574ea83274c4b3c01d9b33a8e3ecf6b798a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
