@@ -657,7 +657,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$managed_access_mode = 'full' === $drive_grant ? 'read_write' : 'read_only';
 
 		echo '<div class="mad4b-scp-panel mad4b-google-primary-signin" id="mad4b-google-primary-signin"><h2>' . esc_html__( 'Connect Google', 'mad4b-site-control-plane' ) . '</h2>';
-		if ( ! empty( $connection['connected'] ) ) {
+		// Revocation-pending retains encrypted credentials for retry ONLY.
+		// It must never render as an active connected session needing refresh.
+		if ( ! empty( $connection['connected'] ) && empty( $connection['revocation_pending'] ) ) {
 			$refresh_required = ! empty( $connection['refresh_required'] );
 			$token_healthy = ! empty( $connection['token_healthy'] );
 			$connection_notice_class = $refresh_required || ! $token_healthy ? 'notice-warning' : 'notice-success';
