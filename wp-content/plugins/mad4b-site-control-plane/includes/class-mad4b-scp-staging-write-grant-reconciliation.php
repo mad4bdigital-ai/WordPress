@@ -106,6 +106,9 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// Never include these wider administrative operations on Production.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
+				// WordPress-native candidate opt-in is an exact owner-approved
+				// administrative toggle, never a blanket wp_options update.
+				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
 				'context/brand-profile-save' => 'google_drive_context',
 				'context/governed-source-upsert' => 'google_drive_context',
 				'context/remote-owner-review-apply' => 'google_drive_context',
