@@ -16,6 +16,31 @@ function app_input_now($app='plugin_asdk_app_bound123'){return array('expected_r
 
 $before=seed_profile('staging','https://staging.client.test','');$in=app_input_now();$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);ok(!is_wp_error($r),'App mapping bootstrap succeeds');$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());ok(3===(int)$after['revision'],'App mapping increments revision once');ok('plugin_asdk_app_bound123'===$after['chatgpt_app_id'],'App mapping persists exact App ID');ok(empty($after['features']['acceptance'])&&empty($after['features']['skills'])&&empty($after['features']['write']),'App mapping keeps Acceptance Skills and Write disabled');$expected=$before;$expected['revision']=3;$expected['chatgpt_app_id']='plugin_asdk_app_bound123';unset($expected['updated_at'],$after['updated_at']);ok($expected===$after,'App mapping preserves all non-target profile fields exactly');ok(1===count($GLOBALS['events'])&&'mad4b/site-profile-app-mapping-bound'===$GLOBALS['events'][0][0],'App mapping audit event recorded');$s=MAD4B_SCP_Site_Profile_Enrollment::status_readonly();ok(!empty($s['exact_profile_bound'])&&!empty($s['chatgpt_app_id_configured'])&&empty($s['acceptance_enabled'])&&empty($s['skills_enabled'])&&empty($s['write_enabled']),'App mapping status is bounded and non-secret');$phase=input_now();$phase_result=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($phase);ok(!is_wp_error($phase_result),'Phase A succeeds after separate App mapping bootstrap');$phase_after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());ok(4===(int)$phase_after['revision']&&!empty($phase_after['features']['acceptance'])&&!empty($phase_after['features']['skills'])&&empty($phase_after['features']['write']),'separate App mapping then Phase A sequencing is preserved');
 
+// The current ChatGPT UI exposes asdk_app_* while older installs used plugin_asdk_app_*.
+// Both represent exact stored opaque IDs. OAuth client_id never silently maps either.
+$before=seed_profile('staging','https://staging.client.test','');
+$current_app='asdk_app_currentformat123';
+$in=app_input_now($current_app);
+$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);
+ok(!is_wp_error($r),'Current ChatGPT asdk_app ID format may be explicitly mapped');
+$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok($after['chatgpt_app_id']===$current_app && MAD4B_SCP_Site_Profile::chatgpt_app_id()===$current_app,
+    'Current App ID persists and reads back exactly without plugin_ alias conversion');
+ok((int)$after['revision']===(int)$before['revision']+1 && empty($after['features']['write']) &&
+    empty($after['features']['acceptance']) && empty($after['features']['skills']),
+    'Current App ID mapping only changes App ID, revision and time without granting features');
+seed_profile('staging','https://staging.client.test',$current_app);
+ok(MAD4B_SCP_Site_Profile::configured() && MAD4B_SCP_Site_Profile::chatgpt_app_id()===$current_app,
+    'Site Profile record accepts current App ID format without downgrading old records');
+seed_profile('staging','https://staging.client.test','');
+$in=app_input_now('asdk_app_invalid-suffix!');
+err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
+    'Invalid current App ID is rejected, not normalized or silently mapped');
+seed_profile('staging','https://staging.client.test','');
+$in=app_input_now('asdk_app_valid123' . "\n");
+err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
+    'Input App ID with embedded newline must be rejected');
+
 seed_profile('staging','https://staging.client.test','');$in=app_input_now();$in['acceptance_enabled']=true;err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_mixed_mode_denied','mixed App mapping and Phase A denied');
 seed_profile('staging','https://staging.client.test','');$in=app_input_now('not-an-app-id');err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid','invalid App ID denied');
 seed_profile();$in=app_input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_already_configured','existing App mapping cannot be replaced by bootstrap surface');
