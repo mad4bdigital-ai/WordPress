@@ -206,7 +206,7 @@ final class MAD4B_SCP_WP_Native_Self_Approval {
             'plan_sha256' => $plan['plan_sha256'], 'evidence_mode' => 'site_self_certified_staging',
             'phase' => 'SELF_APPROVED_INSTALLING',
             'independently_signed' => false, 'native_php_matrix_executed' => false,
-            'production_authorized' => false ), 'owner_delegated_self_certification' );
+            'production_authorized' => false ), 'ok' );
         if ( is_wp_error( $audit ) )
             return new WP_Error( 'mad4b_self_approval_audit_failed', 'Self-approval audit was rejected.' );
         $upload = array_merge( $plan['identity'], array(
