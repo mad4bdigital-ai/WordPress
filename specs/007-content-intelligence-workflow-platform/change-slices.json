@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 884,
+  "changed_file_count": 886,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2008,8 +2008,18 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-dispatch-admission-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-g9-local-source-integrity-precommit-20261012",
+      "semantic_unit": "Local-only G9 pre-commit hook installer and fail-closed source-integrity guard; permits narrowly scoped bootstrap fingerprint refresh without bypassing reviewed G9 evidence or CI.",
+      "revert_boundary": "Revert only the two local developer Git-hook helpers; retain independent G9 CI/runtime source fingerprint validation, governed release authority and Staging/Production isolation.",
+      "certification": "exact_head",
+      "path_globs": [
+        "tools/Install-MAD4B-G9-PreCommit.ps1",
+        "tools/mad4b_g9_precommit.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "0380e0f2e41c8d8f1557d179fff610fdce6473dbdbc86cf3462cfd7db51dbab8",
+  "changed_paths_sha256": "db166bae25908ae1dee4f25b101ae590123b942f2e1681816dcb8f1e2689ac7d",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
