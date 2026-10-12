@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           ROOT=wp-content/plugins/mad4b-site-control-plane
-          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php projection-registration-lifecycle.php frontend-origin-diagnostic-runtime.php; do
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php recovery-route-resolver-runtime.php projection-registration-lifecycle.php frontend-origin-diagnostic-runtime.php; do
             php "$ROOT/tests/$fixture"
           done
           python3 "$ROOT/tests/unified-capability-gateway-contract.py"
@@ -847,6 +847,7 @@ jobs:
           ROOT=wp-content/plugins/mad4b-site-control-plane
           for file in \
             includes/class-mad4b-scp-capability-search-index.php \
+            includes/class-mad4b-scp-recovery-route-resolver.php \
             includes/class-mad4b-scp-capability-dependency-planner.php \
             includes/class-mad4b-scp-capability-source-inventory.php \
             includes/class-mad4b-scp-unified-capability-gateway.php \
@@ -858,7 +859,7 @@ jobs:
             tests/unified-capability-sources-runtime.php; do
             php -l "$ROOT/$file"
           done
-          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php projection-registration-lifecycle.php frontend-origin-diagnostic-runtime.php; do
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php recovery-route-resolver-runtime.php projection-registration-lifecycle.php frontend-origin-diagnostic-runtime.php; do
             php "$ROOT/tests/$fixture"
           done
           python3 "$ROOT/tests/unified-capability-gateway-contract.py"
