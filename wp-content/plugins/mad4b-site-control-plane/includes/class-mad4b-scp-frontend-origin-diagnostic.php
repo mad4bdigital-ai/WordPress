@@ -22,13 +22,16 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ABILITY ) ) ) return;
         wp_register_ability( self::ABILITY, array(
             'label' => 'Diagnose Staging Frontend Origin HTTP Reachability',
-            'description' => 'Plan or run one bounded HTTPS GET to the exact enrolled site homepage from its WordPress host; this is not browser acceptance.',
+            'description' => 'Plan or run one bounded HTTPS GET to the enrolled Staging homepage or WordPress REST root; reports HTTP reachability, not browser acceptance.',
             'category' => 'mad4b-read',
             'execute_callback' => array( __CLASS__, 'inspect' ),
             'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
             'input_schema' => array(
                 'type' => 'object',
-                'properties' => array( 'mode' => array( 'type' => 'string', 'enum' => array( 'plan', 'probe' ), 'default' => 'plan' ) ),
+                'properties' => array(
+                    'mode' => array( 'type' => 'string', 'enum' => array( 'plan', 'probe' ), 'default' => 'plan' ),
+                    'target' => array( 'type' => 'string', 'enum' => array( 'homepage', 'rest_root' ), 'default' => 'homepage' ),
+                ),
                 'additionalProperties' => false,
             ),
             'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -45,11 +48,18 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
     }
 
     public static function is_signed_synthetic_request() {
+        // Proxies may strip custom HTTP headers, so also accept the signed,
+        // expiring diagnostic query marker. Neither value is an auth grant.
         $header = isset( $_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] ) && is_string( $_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] )
             ? (string) $_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] : '';
-        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $header ) ) return false;
+        $query = isset( $_GET['mad4b_synthetic_probe'] ) && is_string( $_GET['mad4b_synthetic_probe'] )
+            ? (string) $_GET['mad4b_synthetic_probe'] : '';
         $period = (int) floor( time() / 120 );
-        return hash_equals( self::marker( $period ), $header ) || hash_equals( self::marker( $period - 1 ), $header );
+        foreach ( array( $header, $query ) as $value ) {
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $value ) ) continue;
+            if ( hash_equals( self::marker( $period ), $value ) || hash_equals( self::marker( $period - 1 ), $value ) ) return true;
+        }
+        return false;
     }
 
     private static function transport_error_class( $error ) {
@@ -72,6 +82,9 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
     public static function inspect( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         $mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'plan';
+        $target = isset( $input['target'] ) ? (string) $input['target'] : 'homepage';
+        if ( ! in_array( $target, array( 'homepage', 'rest_root' ), true ) )
+            return new WP_Error( 'mad4b_frontend_probe_target_invalid', 'Only the enrolled homepage and public REST root may be checked.' );
         if ( ! in_array( $mode, array( 'plan', 'probe' ), true ) )
             return new WP_Error( 'mad4b_frontend_probe_mode_invalid', 'Only plan and probe modes are allowed.' );
         if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
@@ -99,7 +112,8 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         $base = array(
             'contract' => self::CONTRACT, 'mode' => $mode,
             'origin_identity_sha256' => hash( 'sha256', strtolower( $a['host'] ) . ':' . (int) ( $a['port'] ?? 443 ) ),
-            'target' => 'exact_enrolled_homepage_only', 'max_requests' => 1,
+            'target' => $target, 'target_classification' => 'same_origin_bounded_public_read',
+            'max_requests' => 1,
             'request_timeout_seconds' => self::TIMEOUT_SECONDS,
             'redirects_allowed' => false, 'cookies_sent' => false,
             'javascript_executed' => false, 'external_browser_attestation' => false,
@@ -110,13 +124,17 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         if ( 'plan' === $mode ) return $base + array( 'state' => 'READY_FOR_EXPLICIT_PROBE', 'network_request_performed' => false );
         if ( ! function_exists( 'wp_safe_remote_get' ) )
             return $base + array( 'state' => 'WP_HTTP_CLIENT_UNAVAILABLE', 'network_request_performed' => false );
+        // One fixed path and a signed marker; no user-provided URL, arbitrary
+        // path, OAuth bearer, cookies, redirects, or unsafe TLS fallback.
+        if ( 'rest_root' === $target ) $url = rtrim( $url, '/' ) . '/wp-json/';
+        $url .= '?mad4b_synthetic_probe=' . self::marker( floor( time() / 120 ) );
         $start = microtime( true );
         $response = wp_safe_remote_get( $url, array(
             'method' => 'GET', 'timeout' => self::TIMEOUT_SECONDS,
             'redirection' => 0, 'sslverify' => true, 'reject_unsafe_urls' => true,
             'blocking' => true, 'limit_response_size' => 4096, 'cookies' => array(),
             'headers' => array(
-                'Accept' => 'text/html',
+                'Accept' => 'rest_root' === $target ? 'application/json' : 'text/html',
                 'X-MAD4B-Synthetic-Probe' => self::marker( floor( time() / 120 ) ),
             ),
         ) );
