@@ -97,3 +97,45 @@ This phase improves repeated pagination for the currently modest WordPress Abili
 - `unified-capability-gateway-contract.py` (cross-file static binding invariants)
 
 Do not call the implementation accepted until exact-head native PHP/Node tests, CI/independent signed release evidence and **real** Staging MCP/REST acceptance succeed. A GitHub commit or static fixture presence is not an acceptance receipt.
+
+## Remote operational recovery support (source-only, October 12)
+
+Two bounded registered WordPress Abilities improve root-cause diagnosis without
+introducing a privileged host shell, a duplicate authorization engine, or new
+mandatory MCP direct tools.
+
+### Stale dynamic projection: `mad4b/chatgpt-tool-projection-recovery-plan`
+
+- **Read-only**. Inspects the site's saved optional tool selection and compares
+  current Staging binding/classification identities.
+- Uses only up to 64 saved selected names. Excludes Breakglass and structurally
+  unavailable execution lanes; does not re-enable a stale privileged tool.
+- Returns an exact refreshed **review proposal** (if eligible), including the
+  standard existing `plan_sha256`. Actual application requires the existing
+  `mad4b/chatgpt-tool-projection-apply` step-up, CAS fencing and review.
+- Site-global tool lists cannot be rewritten based on an ephemeral user prompt.
+  MCP client tools/list must refresh before any changed direct-tool visibility is
+  claimed. Fixed read/write dispatch stays the correctness path.
+
+### Frontend network diagnosis: `mad4b/frontend-origin-diagnostic`
+
+- Default `mode=plan` makes **no network request**. Explicit `mode=probe`
+  permits **one** WordPress-HTTP safe GET to `home_url('/')` after exact Site
+  Profile Staging and canonical HTTPS origin checks. No user URL input, redirects,
+  cookies or Authorization headers; TLS verification stays enabled, with a 6s
+  timeout and bounded body reception.
+- Provides HTTP status/latency or a bounded error code from the **WordPress
+  host's network perspective**, not from a public browser or ChatGPT client.
+- The request carries an HMAC-signed synthetic marker classified separately from
+  genuine frontend requests. It does **not** grant an extra frontend acceptance
+  sample, pass a browser rendering check, or create signed Browser Attestation.
+  Any telemetry provider not consuming this synthetic classification must
+  exclude these requests from acceptance before granting release readiness.
+- Public-network reachability, JS, Elementor, WPML and user navigation still
+  require independent external managed-browser test evidence. No bypass exists
+  for absent DNS, server-restricted networking or absent attestation runner.
+
+Native tests: `frontend-origin-diagnostic-runtime.php` and
+`projection-registration-lifecycle.php`, enrolled in package and pre-Staging CI.
+No claim that either fixture has executed successfully until a native PHP runner
+returns a verifiable result for the **exact new HEAD**.
