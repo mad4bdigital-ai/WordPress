@@ -454,60 +454,52 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'declared_writeonly_only' => $writeonly_only, 'match_mode' => $mode,
 			'sort' => $sort, 'min_score' => $min_score, 'browse' => $browse );
 		$query_digest = hash( 'sha256', wp_json_encode( array( $task, $terms, $facets ) ) );
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Search_Index' ) )
+			return new WP_Error( 'mad4b_capability_index_unavailable', 'Capability index must be loaded by the plugin bootstrap.' );
+		$scope = self::search_cursor_scope();
 		$ability_names = MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names();
-		$matches = array();
-		foreach ( $ability_names as $ability_name ) {
-			if ( ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			try {
-				$ability = wp_get_ability( $ability_name );
-				if ( ! is_object( $ability ) ) continue;
-				$meta = method_exists( $ability, 'get_meta' ) ? $ability->get_meta() : array();
-				$meta = is_array( $meta ) ? $meta : array();
-				$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
-				$aliases = isset( $mcp['search_aliases'] ) && is_array( $mcp['search_aliases'] ) ? array_slice( $mcp['search_aliases'], 0, self::MAX_KEYWORDS ) : array();
-				$aliases = array_values( array_map( static function ( $value ) { return self::bounded_text( $value, 80, true ); }, array_filter( $aliases, 'is_string' ) ) );
-				$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-				$row = array(
-					'ability_name' => $ability_name,
-					'search_aliases' => $aliases,
-					'label' => method_exists( $ability, 'get_label' ) ? self::bounded_text( $ability->get_label(), 160 ) : '',
-					'description' => method_exists( $ability, 'get_description' ) ? self::bounded_text( $ability->get_description(), 320, true ) : '',
-					'category' => method_exists( $ability, 'get_category' ) ? self::bounded_text( $ability->get_category(), 160 ) : '',
-					'declared_surface' => isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '',
-					'declared_readonly' => array_key_exists( 'readonly', $annotations ) && is_bool( $annotations['readonly'] ) ? $annotations['readonly'] : null,
-				);
-			} catch ( Throwable $error ) { continue; }
-			if ( $readonly_only && true !== $row['declared_readonly'] ) continue;
-			if ( $writeonly_only && false !== $row['declared_readonly'] ) continue;
-			if ( '' !== $category && $category !== sanitize_key( $row['category'] ) ) continue;
-			if ( '' !== $surface && $surface !== $row['declared_surface'] ) continue;
-			if ( '' !== $prefix && 0 !== strpos( $ability_name, $prefix ) ) continue;
-			$score = self::relevance_score( $row, $task, $terms );
-			if ( 'all' === $mode && $terms ) {
-				$every_term_found = true;
-				foreach ( $terms as $term ) {
-					if ( self::relevance_score( $row, '', array( $term ) ) > 0 ) continue;
-					$every_term_found = false;
-					break;
+		$catalog = MAD4B_SCP_Capability_Search_Index::catalog( $ability_names, $scope );
+		if ( is_wp_error( $catalog ) ) return $catalog;
+		$ranked = MAD4B_SCP_Capability_Search_Index::results(
+			$catalog, $scope, $query_digest,
+			static function ( array $rows ) use ( $readonly_only, $writeonly_only, $category,
+				$surface, $prefix, $task, $terms, $mode, $browse, $min_score, $sort ) {
+				$matches = array();
+				foreach ( $rows as $row ) {
+					if ( $readonly_only && true !== $row['declared_readonly'] ) continue;
+					if ( $writeonly_only && false !== $row['declared_readonly'] ) continue;
+					if ( '' !== $category && $category !== sanitize_key( $row['category'] ) ) continue;
+					if ( '' !== $surface && $surface !== $row['declared_surface'] ) continue;
+					if ( '' !== $prefix && 0 !== strpos( $row['ability_name'], $prefix ) ) continue;
+					$score = self::relevance_score( $row, $task, $terms );
+					if ( 'all' === $mode && $terms ) {
+						$all_found = true;
+						foreach ( $terms as $term ) {
+							if ( self::relevance_score( $row, '', array( $term ) ) > 0 ) continue;
+							$all_found = false; break;
+						}
+						if ( ! $all_found ) continue;
+					}
+					if ( $score <= 0 && ! ( $browse && '' === $task && ! $terms ) ) continue;
+					if ( $score < $min_score ) continue;
+					$row['preparation_required'] = true;
+					$row['schema_loaded'] = false;
+					$row['authority_decision_deferred'] = true;
+					$row['relevance_score'] = $score;
+					$matches[] = $row;
 				}
-				if ( ! $every_term_found ) continue;
+				usort( $matches, static function ( $a, $b ) use ( $sort ) {
+					if ( 'name' === $sort ) return strcmp( $a['ability_name'], $b['ability_name'] );
+					if ( $a['relevance_score'] === $b['relevance_score'] ) return strcmp( $a['ability_name'], $b['ability_name'] );
+					return $a['relevance_score'] > $b['relevance_score'] ? -1 : 1;
+				} );
+				return $matches;
 			}
-			if ( $score <= 0 && ! ( $browse && '' === $task && !$terms ) ) continue;
-			if ( $score < $min_score ) continue;
-			$row['preparation_required'] = true;
-			$row['schema_loaded'] = false;
-			$row['authority_decision_deferred'] = true;
-			$row['relevance_score'] = $score;
-			$matches[] = $row;
-		}
-		usort( $matches, static function ( $a, $b ) use ( $sort ) {
-			if ( 'name' === $sort ) return strcmp( $a['ability_name'], $b['ability_name'] );
-			if ( $a['relevance_score'] === $b['relevance_score'] ) return strcmp( $a['ability_name'], $b['ability_name'] );
-			return $a['relevance_score'] > $b['relevance_score'] ? -1 : 1;
-		} );
-		// A per-page bound is mandatory; there is no total-result ceiling.
+		);
+		if ( is_wp_error( $ranked ) ) return $ranked;
+		$matches = $ranked['matches'];
 		$total = count( $matches );
-		$result_digest = hash( 'sha256', wp_json_encode( $matches ) );
+		$result_digest = $ranked['digest'];
 		$offset = isset( $input['offset'] ) ? (int) $input['offset'] : 0;
 		if ( ! empty( $input['cursor'] ) ) {
 			$decoded = self::decode_search_cursor( $input['cursor'], $query_digest, $result_digest );
@@ -531,6 +523,15 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'total_match_count' => $total, 'page_offset' => $offset, 'page_limit' => $limit,
 			'next_cursor' => $next_cursor, 'has_more' => null !== $next_cursor,
 			'search_snapshot_sha256' => $result_digest,
+			'metadata_snapshot_sha256' => $catalog['snapshot_sha256'],
+			'index_contract' => MAD4B_SCP_Capability_Search_Index::CONTRACT,
+			'coverage_state' => $catalog['coverage_state'],
+			'scanned_count' => $catalog['scanned_count'],
+			'skipped_count' => $catalog['skipped_count'],
+			'catalog_cache_hit' => ! empty( $catalog['cache_hit'] ),
+			'results_cache_hit' => ! empty( $ranked['cache_hit'] ),
+			'catalog_cache_persisted' => ! empty( $catalog['cache_persisted'] ),
+			'results_cache_persisted' => ! empty( $ranked['cache_persisted'] ),
 			'universe_count' => count( $ability_names ),
 			'preparation_required_for_authority_and_schema' => true,
 			'transport_strategy' => $negotiation['transport'],
