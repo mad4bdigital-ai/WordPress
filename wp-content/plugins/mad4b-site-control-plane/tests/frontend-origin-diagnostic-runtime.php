@@ -2,9 +2,10 @@
 /** Native fixture for the real staging-only, bounded canonical origin diagnostic. */
 define( 'ABSPATH', __DIR__ );
 class WP_Error {
-    private $code;
-    public function __construct( $code, $message = '' ) { $this->code = $code; }
+    private $code; private $message;
+    public function __construct( $code, $message = '' ) { $this->code = $code; $this->message = $message; }
     public function get_error_code() { return $this->code; }
+    public function get_error_message() { return $this->message; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function wp_salt( $context = 'auth' ) { return 'fixture-trusted-server-secret'; }
@@ -25,7 +26,7 @@ function wp_safe_remote_get( $url, $args ) {
         throw new RuntimeException( 'Origin probe allowed an unsafe target or HTTP request' );
     if ( ! is_string( $args['headers']['X-MAD4B-Synthetic-Probe'] ) )
         throw new RuntimeException( 'Synthetic marker missing' );
-    return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed' )
+    return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host' )
         : array( 'response' => array( 'code' => $GLOBALS['http_code'] ) );
 }
 class MAD4B_SCP_Policy {
@@ -69,7 +70,8 @@ $assert( 'HTTP_RESPONSE_NOT_ACCEPTED' === $redirect['state'] &&
     !$redirect['http_success'], 'HTTP redirect was treated as a completed probe' );
 $GLOBALS['http_error'] = true;
 $failure = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'mode' => 'probe' ) );
-$assert( 'HTTP_PROBE_FAILED' === $failure['state'] && 'http_request_failed' === $failure['error_code'],
+$assert( 'HTTP_PROBE_FAILED' === $failure['state'] && 'http_request_failed' === $failure['error_code'] &&
+    'dns_resolution_failure' === $failure['transport_error_class'],
     'Network failure was silently converted into success' );
 $GLOBALS['environment'] = 'production';
 $blocked = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'mode' => 'probe' ) );
