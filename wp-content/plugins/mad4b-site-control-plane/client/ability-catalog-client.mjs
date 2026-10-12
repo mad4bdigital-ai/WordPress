@@ -329,6 +329,43 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     return value;
   }
   async function search(task, {signal, ...options} = {}) { return gateway('search', {task, ...options}, {signal}); }
+  // Stream arbitrarily many ranked metadata results without accumulating every page
+  // or materializing all Ability schemas. Server cursors bind query, snapshot and identity.
+  async function* searchPages(task, {signal, ...options} = {}) {
+    const seen = new Set();
+    let cursor = null, snapshot = null, expectedOffset = null;
+    while (true) {
+      if (signal?.aborted) throw signal.reason ?? new CatalogError('Capability search cancelled');
+      const page = await search(task, {...options, ...(cursor ? {cursor} : {}), signal});
+      if (!Array.isArray(page.items) || !Number.isInteger(page.count) ||
+          !Number.isInteger(page.total_match_count) || !Number.isInteger(page.page_offset) ||
+          page.count !== page.items.length || page.total_match_count < 0 ||
+          typeof page.search_snapshot_sha256 !== 'string' || !DIGEST.test(page.search_snapshot_sha256))
+        throw new CatalogError('Invalid paginated capability search response');
+      if (snapshot && snapshot !== page.search_snapshot_sha256)
+        throw new CatalogError('Capability search snapshot changed; restart search');
+      if (expectedOffset !== null && expectedOffset !== page.page_offset)
+        throw new CatalogError('Capability search skipped or repeated a page');
+      snapshot = page.search_snapshot_sha256;
+      expectedOffset = page.page_offset + page.count;
+      yield page;
+      const next = page.next_cursor;
+      if (next === null || next === undefined) {
+        if (expectedOffset !== page.total_match_count)
+          throw new CatalogError('Capability search ended before all results were returned');
+        return;
+      }
+      if (typeof next !== 'string' || !next || next.length > 2048 ||
+          seen.has(next) || expectedOffset >= page.total_match_count)
+        throw new CatalogError('Invalid or repeating capability search cursor');
+      seen.add(next);
+      cursor = next;
+    }
+  }
+  async function* searchItems(task, options = {}) {
+    for await (const page of searchPages(task, options))
+      for (const item of page.items) yield item;
+  }
   async function prepare(abilityNames, options = {}) {
     const {client_capabilities: suppliedCapabilities = {}, signal, ...gatewayOptions} = options;
     const requestedParallel = Number.isInteger(suppliedCapabilities.max_parallel_schema_fetches)
@@ -387,5 +424,5 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }
-  return {negotiate, search, prepare, manifest, sync, readSchema, execute, transport};
+  return {negotiate, search, searchPages, searchItems, prepare, manifest, sync, readSchema, execute, transport};
 }
