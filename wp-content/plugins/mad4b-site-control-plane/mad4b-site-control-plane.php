@@ -339,6 +339,8 @@ MAD4B_SCP_Deployment_Mode_Resolver::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php';
+// Staging-only governed pending Google OAuth revocation retry via discoverable Abilities.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
