@@ -199,7 +199,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		$rtt = max( 0, min( 60000, $rtt ) );
 		$error_rate = isset( $raw['recent_error_rate'] ) && is_numeric( $raw['recent_error_rate'] ) ? (float) $raw['recent_error_rate'] : 0.0;
 		$error_rate = max( 0.0, min( 1.0, $error_rate ) );
-		$parallel = isset( $raw['max_parallel_schema_fetches'] ) ? (int) $raw['max_parallel_schema_fetches'] : 4;
+		// Conservative when the host has not advertised a safe parallel budget.
+		$parallel = isset( $raw['max_parallel_schema_fetches'] ) ? (int) $raw['max_parallel_schema_fetches'] : 1;
 		$parallel = max( 1, min( 8, $parallel ) );
 		return array(
 			'dynamic_tool_refresh' => self::as_bool( isset( $raw['dynamic_tool_refresh'] ) ? $raw['dynamic_tool_refresh'] : false ),
@@ -219,7 +220,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		elseif ( $caps['observed_rtt_ms'] > 0 && $caps['observed_rtt_ms'] <= 250 && $caps['recent_error_rate'] < 0.01 ) $chunk = 131072;
 		$chunk = min( $chunk, max( 1024, (int) ( ( $caps['max_response_bytes'] - 2048 ) * 3 / 4 ) ) );
 		$chunk = max( 1024, min( 1048576, $chunk ) );
-		$parallel = 2;
+		// Unknown latency/error data must not invite concurrent full WordPress
+		// boots. Clients may opt into higher parallelism after observing fast RTT.
+		$parallel = 1;
 		if ( $caps['recent_error_rate'] >= 0.05 || $caps['observed_rtt_ms'] >= 1200 ) $parallel = 1;
 		elseif ( $caps['observed_rtt_ms'] > 0 && $caps['observed_rtt_ms'] <= 250 && $caps['recent_error_rate'] < 0.01 ) $parallel = 4;
 		$parallel = min( $parallel, $caps['max_parallel_schema_fetches'] );
