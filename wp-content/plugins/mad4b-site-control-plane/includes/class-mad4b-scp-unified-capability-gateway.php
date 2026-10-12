@@ -143,11 +143,18 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'search' ) )
 				: $call();
 		}
-		elseif ( 'sources' === $action ) {
-			$result = MAD4B_SCP_Capability_Source_Inventory::inspect( $input );
-		}
-		elseif ( 'dependencies' === $action ) {
-			$result = MAD4B_SCP_Capability_Dependency_Planner::inspect( $input );
+		elseif ( 'sources' === $action || 'dependencies' === $action ) {
+			// Keep one telemetry path for discovery, without adding background
+			// work or scanning unrelated providers in the ordinary summary.
+			$call = static function() use ( $action, $input ) {
+				return 'sources' === $action
+					? MAD4B_SCP_Capability_Source_Inventory::inspect( $input )
+					: MAD4B_SCP_Capability_Dependency_Planner::inspect( $input );
+			};
+			$result = class_exists( 'MAD4B_SCP_Observability' )
+				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '',
+					array( 'transport' => $transport, 'gateway_action' => $action ) )
+				: $call();
 		}
 		elseif ( 'prepare' === $action ) {
 			$call = static function() use ( $input, $transport ) { return self::prepare( $input, $transport ); };
