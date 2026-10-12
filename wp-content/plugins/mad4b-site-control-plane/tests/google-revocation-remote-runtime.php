@@ -31,6 +31,7 @@ class MAD4B_SCP_Google_Drive_Context {
     public static $pending = true;
     public static $calls = 0;
     public static $fail = false;
+    public static $partial_cleanup = false;
     public static function connection_status() {
         return array( 'revocation_pending' => self::$pending, 'connected' => self::$pending,
             'read_available' => false, 'write_available' => false,
@@ -46,6 +47,7 @@ class MAD4B_SCP_Google_Drive_Context {
             return new WP_Error( 'mad4b_google_drive_remote_revocation_unconfirmed' );
         }
         self::$pending = false;
+        if ( self::$partial_cleanup ) return array( 'connected' => false, 'remote_revocation_confirmed' => true );
         unset( $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ] );
         return array( 'connected' => false, 'remote_revocation_confirmed' => true );
     }
@@ -120,6 +122,15 @@ $check( ! is_wp_error( $next ) && $next['plan_sha256'] !== $planned['plan_sha256
     'A retry after uncertain provider response requires a fresh plan and one-time approval' );
 $input['expected_plan_sha256'] = $next['plan_sha256'];
 $input['_mad4b_approval_ticket_id'] = '87654321-dcba-dcba-dcba-abcdef123456';
+MAD4B_SCP_Google_Drive_Context::$partial_cleanup = true;
+$unverified = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$check( is_wp_error( $unverified )
+    && 'mad4b_google_revoke_readback_unconfirmed' === $unverified->get_error_code()
+    && isset( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] ),
+    'Provider success without independent local deletion is not certified' );
+MAD4B_SCP_Google_Drive_Context::$partial_cleanup = false;
+MAD4B_SCP_Google_Drive_Context::$pending = true;
+$input['_mad4b_approval_ticket_id'] = '13572468-abcd-abcd-abcd-abcdef654321';
 $result = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
 $check( ! is_wp_error( $result ) && $result['remote_revocation_confirmed']
     && empty( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] )
