@@ -12,8 +12,15 @@ class WP_Error {
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v ) { return json_encode( $v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); }
-function get_transient( $key ) { return $GLOBALS['test_transients'][$key] ?? false; }
-function set_transient( $key, $value, $ttl ) { $GLOBALS['test_transients'][$key] = $value; return true; }
+function get_transient( $key ) {
+    $entry = $GLOBALS['test_transients'][$key] ?? null;
+    if ( ! is_array( $entry ) || $entry['expires_at'] <= $GLOBALS['test_clock'] ) return false;
+    return $entry['value'];
+}
+function set_transient( $key, $value, $ttl ) {
+    $GLOBALS['test_transients'][$key] = array( 'value' => $value, 'expires_at' => $GLOBALS['test_clock'] + $ttl );
+    return true;
+}
 function wp_strip_all_tags( $s ) { return strip_tags( (string) $s ); }
 class MAD4B_SCP_Ability_Catalog_Transport {
     public static function current_authority_scope() {
@@ -62,6 +69,7 @@ $GLOBALS['test_label_suffix'] = '';
 $GLOBALS['test_oauth'] = 'fixture-oauth-scope';
 $GLOBALS['test_label_reads'] = 0;
 $GLOBALS['test_transients'] = array();
+$GLOBALS['test_clock'] = 1000000;
 $GLOBALS['abilities'] = array();
 for ( $i = 0; $i < 73; $i++ ) {
     $name = sprintf( 'fixture/capability-%03d', $i );
@@ -94,6 +102,9 @@ $changed = $options; $changed['task'] = 'managed';
 $assert( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::search( $changed + array( 'cursor' => $cursor ) ) ), 'Query-drifted cursor was accepted' );
 $GLOBALS['test_user'] = 18;
 $assert( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::search( $options + array( 'cursor' => $cursor ) ) ), 'Cross-user cursor was accepted' );
+$other_user = MAD4B_SCP_Unified_Capability_Gateway::search( $options );
+$assert( ! is_wp_error( $other_user ) && ! $other_user['catalog_cache_hit'],
+    'Different user inherited another authority scope metadata cache' );
 $GLOBALS['test_user'] = 17;
 $GLOBALS['test_oauth'] = 'changed-bearer-scope';
 $assert( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::search( $options + array( 'cursor' => $cursor ) ) ), 'Cross-OAuth-scope cursor was accepted' );
@@ -101,8 +112,9 @@ $GLOBALS['test_oauth'] = 'fixture-oauth-scope';
 $GLOBALS['test_profile'] = str_repeat( 'b', 64 );
 $assert( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::search( $options + array( 'cursor' => $cursor ) ) ), 'Cross-profile cursor was accepted' );
 $GLOBALS['test_profile'] = str_repeat( 'a', 64 );
-// Metadata changes can be deferred until the bounded lease expires; emulate that expiry.
-$GLOBALS['test_transients'] = array();
+// Simulate the WordPress transient clock advancing past the real 60s TTL,
+ // without sleeping or bypassing get_transient/set_transient.
+$GLOBALS['test_clock'] += MAD4B_SCP_Capability_Search_Index::TTL + 1;
 MAD4B_SCP_Capability_Search_Index::reset_request_cache();
 $GLOBALS['test_label_suffix'] = ' drift';
 $assert( is_wp_error( MAD4B_SCP_Unified_Capability_Gateway::search( $options + array( 'cursor' => $cursor ) ) ), 'Changed search snapshot was accepted' );
@@ -115,4 +127,4 @@ $write = MAD4B_SCP_Unified_Capability_Gateway::search( array( 'browse' => true, 
 $assert( ! is_wp_error( $write ) && $write['total_match_count'] === 37, 'Unknown annotations were promoted to write' );
 $all = MAD4B_SCP_Unified_Capability_Gateway::search( array( 'task' => 'Capability', 'keywords' => array( 'fixture', 'missing' ), 'match_mode' => 'all' ) );
 $assert( ! is_wp_error( $all ) && 0 === $all['total_match_count'], 'All-term matching failed' );
-echo "PASS unified capability indexed cursor: 73 results, 10 pages, cache reuse, OAuth/site/snapshot/HMAC rejection, filters\\n";
+echo "PASS unified capability indexed cursor: 73 results, 10 pages, TTL expiry, isolated user/OAuth/site caches, HMAC, filters\\n";
