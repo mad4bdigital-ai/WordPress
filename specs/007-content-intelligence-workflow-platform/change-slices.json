@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 879,
+  "changed_file_count": 881,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1978,6 +1978,16 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-acceptance-observer.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-diagnostic-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-governed-multiroute-recovery-20261012",
+      "semantic_unit": "Read-only provider-aware general recovery path resolution, WP-Cron build fallback on missing signed Staging candidates, bounded gateway action and PHP/JS regression tests.",
+      "revert_boundary": "Remove the additive governed recovery resolver and input/output bindings only; preserve existing independent release gates, WordPress Cron builder, owner approvals, and fallback execution lanes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-route-resolver-runtime.php"
       ]
     }
   ],
