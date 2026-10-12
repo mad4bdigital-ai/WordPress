@@ -315,6 +315,17 @@ final class MAD4B_SCP_Selected_Head_Update {
             'wordpress_native' => 'wordpress_native_candidate_upload' === self::candidate_channel(),
             'eligible' => empty( $blockers ), 'blockers' => $blockers,
             'assistant_recovery' => self::blocker_recovery( $blockers ),
+            // A blocked signed release is NOT equivalent to there being no
+            // source-build path. Re-evaluate registered provider preflights on
+            // each exact-head plan, keeping build and install grants separate.
+            'alternate_recovery_routes' => ( ! empty( $blockers ) &&
+                class_exists( 'MAD4B_SCP_Recovery_Route_Resolver' ) )
+                ? MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+                    'goal' => 'staging_install',
+                    'expected_head' => (string) $resolved['resolved_sha'],
+                    'blockers' => $blockers,
+                ) )
+                : null,
             'unattended_host_bootstrap' => false,
             'candidate_release_manifest_required' => true,
             'queued_ci_is_blocker_when_signed_offline_receipt_exists' => false,
