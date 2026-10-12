@@ -202,7 +202,7 @@ mad4b_assert( true === $permission_probe->invoke( $dispatcher,
     'mad4b/some-other-governed-provider', array() ),
     'Unreviewed provider was forced through native-only authority semantics.' );
 mad4b_assert( MAD4B_SCP_WP_Native_Build::$calls === 2,
-    'Unrelated providers must not run native builder's owner checks.' );
+    'Unrelated providers must not run native builder owner checks.' );
 
 $ticket = '11111111-1111-4111-8111-111111111111';
 $receipt = array( 'contract' => 'mad4b.context-receipt.v1', 'sha256' => str_repeat( 'e', 64 ) );
