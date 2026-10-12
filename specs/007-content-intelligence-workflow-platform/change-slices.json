@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 881,
+  "changed_file_count": 883,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1988,6 +1988,16 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-resolver.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-route-resolver-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-staging-native-owner-consent-exact-approval-20261012",
+      "semantic_unit": "Authenticated Staging WordPress owner intent/confirmation, exact native-build governed write ticket discovery, AI approval semantic metadata contract and PHP regression tests; no permission or install bypass.",
+      "revert_boundary": "Remove only owner-intent evidence UI/abilities and narrow approval field classifications and tests, retaining mandatory OAuth, exact one-time tickets, production separation and Cron worker.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-build-owner-consent.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-build-owner-consent-runtime.php"
       ]
     }
   ],
