@@ -288,6 +288,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-init-lock.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-loopback-guard.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-local-oauth-browser-canary.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-resource-bridge.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
