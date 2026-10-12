@@ -87,7 +87,7 @@ final class MAD4B_SCP_Servers {
                 'mad4b/approval-plan', 'mad4b/approval-ai-decide',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
-				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
+				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-recovery-plan', 'mad4b/chatgpt-tool-projection-apply',
 				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
 				'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status, $cso_read ),
