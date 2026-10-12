@@ -379,18 +379,28 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 	}
 
 
-	/** Cursor continuity is scoped to the currently authenticated WordPress user and Staging Site Profile. */
+	/**
+	 * Share the canonical catalog's authority identity (OAuth issuer/client/scopes,
+	 * current caps, site, user) rather than inventing a weaker cursor scope.
+	 * A cursor is a continuity token, never an authorization grant.
+	 */
 	private static function search_cursor_scope() {
+		if ( ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! method_exists( 'MAD4B_SCP_Ability_Catalog_Transport', 'current_authority_scope' ) )
+			return '';
+		$authority = MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope();
+		if ( ! is_string( $authority ) || ! preg_match( '/^[a-f0-9]{64}$/D', $authority ) )
+			return '';
 		$profile = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		return hash( 'sha256', wp_json_encode( array(
-			'blog_id' => function_exists( 'get_current_blog_id' ) ? get_current_blog_id() : 1,
-			'user_id' => function_exists( 'get_current_user_id' ) ? get_current_user_id() : 0,
+			'authority_scope_sha256' => $authority,
 			'profile_digest' => is_array( $profile ) ? (string) ( $profile['profile_digest'] ?? '' ) : '',
 			'build' => defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) ? constant( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' ) : '',
 		) ) );
 	}
 
 	private static function encode_search_cursor( $offset, $query_digest, $result_digest ) {
+		if ( '' === self::search_cursor_scope() ) return '';
 		$payload = array(
 			'contract' => self::SEARCH_CURSOR_CONTRACT, 'scope' => self::search_cursor_scope(),
 			'query_sha256' => $query_digest, 'results_sha256' => $result_digest,
@@ -409,6 +419,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			return new WP_Error( 'mad4b_capability_search_cursor_invalid', 'Search cursor integrity failed.' );
 		$raw = base64_decode( strtr( $parts[0], '-_', '+/' ), true );
 		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( '' === self::search_cursor_scope() ) return new WP_Error( 'mad4b_capability_search_scope_unavailable', 'Canonical catalog authority scope is unavailable.' );
 		if ( ! is_array( $data ) || self::SEARCH_CURSOR_CONTRACT !== ( $data['contract'] ?? '' ) ||
 			! hash_equals( self::search_cursor_scope(), (string) ( $data['scope'] ?? '' ) ) ||
 			! hash_equals( $query_digest, (string) ( $data['query_sha256'] ?? '' ) ) ||
@@ -423,6 +434,8 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		// Internal callers bypass dispatch(), so validate every cursor and structural facet here too.
 		$valid = self::validate_input( $input );
 		if ( is_wp_error( $valid ) ) return $valid;
+		if ( '' === self::search_cursor_scope() )
+			return new WP_Error( 'mad4b_capability_search_scope_unavailable', 'Canonical catalog authority scope is unavailable.' );
 		list( $task, $terms ) = self::task_terms( $input );
 		$browse = true === ( $input['browse'] ?? false );
 		if ( '' === $task && empty( $terms ) && ! $browse )
