@@ -174,7 +174,12 @@ final class MAD4B_SCP_WP_Native_Build {
             'eligible' => $cap['eligible'], 'blockers' => $cap['blockers'],
             'execution' => 'wp_cron_bounded', 'source_executable_code_loaded' => false,
             'build_only' => true, 'release_certified' => false,
-            'production_authorized' => false, 'authorizing' => false );
+            'production_authorized' => false, 'authorizing' => false,
+            'owner_intent_ability' => class_exists( 'MAD4B_SCP_Native_Build_Owner_Consent' )
+                ? MAD4B_SCP_Native_Build_Owner_Consent::PLAN_ABILITY : '',
+            'owner_consent_is_not_oauth_or_execution_grant' => true,
+            'governed_admin_ticket_required_for_start' => true,
+            'owner_step_up_required_for_start' => true );
     }
 
     public static function can_start( $input = array() ) {
@@ -191,7 +196,13 @@ final class MAD4B_SCP_WP_Native_Build {
             ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
                 MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ||
             ! class_exists( 'MAD4B_SCP_Authorization' ) )
-            return new WP_Error( 'mad4b_native_step_up_required', 'Owner OAuth Step-up required.' );
+            return new WP_Error( 'mad4b_native_step_up_required', 'Owner OAuth Step-up required.', array(
+                'next_read_ability' => 'mad4b/wp-native-owner-confirmation-plan',
+                'local_owner_confirmation_is_execution_authority' => false,
+                'required_evidence' => array( 'enrolled_owner_identity', 'chatgpt_oauth_step_up',
+                    'exact_admin_execution_ticket', 'immutable_build_plan' ),
+                'blind_retry_allowed' => false,
+            ) );
         // The canonical MAD4B execution boundary owns the exact grant, budget,
         // claim and one-time approval. Permission callbacks are side-effect-free
         // identity checks; they MUST NOT authorize the same ticket twice.
