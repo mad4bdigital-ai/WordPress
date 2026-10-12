@@ -264,6 +264,19 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
 
+      - name: Google OAuth revocation recovery and remote content lifecycle discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+
       - name: Provider-neutral resource constraint compiler
         shell: bash
         run: |
