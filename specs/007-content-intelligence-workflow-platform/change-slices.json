@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 866,
+  "changed_file_count": 870,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1933,6 +1933,18 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-unified-capability-cursor-streaming-20261012",
+      "semantic_unit": "Bounded cursor-based WordPress Ability discovery client, native/static tests and explicit unified federation rollout/limits; source-only and no authority expansion.",
+      "revert_boundary": "Revert only incremental unified capability pagination client/tests/documentation as a slice; original gateway/projection classes retain their historical ownership, and governed dispatch remains unchanged.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/client/ability-catalog-client.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/docs/UNIFIED-CAPABILITY-GATEWAY-V2-ROLLOUT.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-gateway-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/unified-capability-pagination-runtime.php"
       ]
     }
   ],
