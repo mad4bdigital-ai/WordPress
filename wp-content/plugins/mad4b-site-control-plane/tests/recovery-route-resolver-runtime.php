@@ -43,7 +43,7 @@ $assert( 'wordpress_native_cron_build' === $result['recommended_route_id'],
 $assert( 'ALTERNATIVE_READ_PLAN_AVAILABLE' === $result['state'] &&
     $result['original_blockers'][0] === 'mad4b_selected_head_certified_artifact_unavailable',
     'Original blocker was incorrectly erased.' );
-$assert( count( $result['routes'] ) === 4 &&
+$assert( count( $result['routes'] ) === 5 &&
     'AVAILABLE_FOR_GOVERNED_BUILD_PLAN' === $result['routes'][0]['state'],
     'Native and external/lower-trust alternatives were not enumerated.' );
 $assert( $result['routes'][0]['observed_job_state'] === 'NOT_RUN' &&
