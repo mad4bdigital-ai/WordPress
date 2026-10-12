@@ -296,6 +296,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-chatgpt-auto-binding.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-frontend-origin-diagnostic.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preview-matrix.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-record.php';
