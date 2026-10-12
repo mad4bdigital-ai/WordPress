@@ -3322,22 +3322,67 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return false;
 	}
 
+	/**
+	 * Separate Google OAuth permissions from the independent Source, rollback,
+	 * certification and MAD4B approval authorities. A grant may be healthy
+	 * while zero provider writes are eligible. This method is pure/read-only
+	 * and does not perform or persist OAuth refresh.
+	 */
+	public static function grant_operational_lifecycle( array $connection, array $counts ) {
+		$granted = ! empty( $connection['connected'] ) && ! empty( $connection['write_available'] );
+		$source_selected = (int) ( $counts['selected'] ?? 0 ) > 0;
+		$update_source = (int) ( $counts['update'] ?? 0 ) > 0;
+		$recreate_source = (int) ( $counts['recreate'] ?? 0 ) > 0;
+		return array(
+			'contract' => 'mad4b.google-grant-operational-lifecycle.v1',
+			'oauth' => array(
+				'state' => ! $granted ? 'grant_unavailable'
+					: ( ! empty( $connection['refresh_required'] ) ? 'refresh_on_next_provider_request' : 'healthy' ),
+				'write_grant_present' => $granted,
+				'reconnect_required' => ! empty( $connection['reconnect_required'] ),
+				'refresh_failed' => ! empty( $connection['refresh_failed'] ),
+			),
+			'context_source' => array(
+				'state' => ! $source_selected ? 'source_not_selected' : 'selected_policy_evaluation_required',
+				'selected_count' => (int) ( $counts['selected'] ?? 0 ),
+			),
+			'operations' => array(
+				'update' => array( 'source_policy_eligible' => $granted && $update_source,
+					'provider_certification_still_required' => true, 'one_time_approval_still_required' => true ),
+				'recreate' => array( 'source_policy_eligible' => $granted && $recreate_source,
+					'provider_certification_still_required' => true, 'rollback_receipt_still_required' => true ),
+				'create' => array( 'source_policy_eligible' => false,
+					'blocked_code' => 'mad4b_google_drive_create_rollback_not_certified',
+					'rollback_contract_certification_required' => true ),
+			),
+			'execution_authorized' => false,
+			'authority_widening' => false,
+		);
+	}
+
 	public static function write_capability_status() {
 		$status = self::connection_status();
+		$counts = class_exists( 'MAD4B_SCP_Context_Authority' ) ? array(
+			'selected' => count( MAD4B_SCP_Context_Authority::sources() ),
+			'create' => MAD4B_SCP_Context_Authority::writable_source_count( 'create' ),
+			'update' => MAD4B_SCP_Context_Authority::writable_source_count( 'update' ),
+			'recreate' => MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ),
+		) : array( 'selected' => 0, 'create' => 0, 'update' => 0, 'recreate' => 0 );
 		return array(
 			'contract' => 'mad4b.google-drive-write-capability.v1',
 			'connected' => ! empty( $status['connected'] ),
 			'read_available' => ! empty( $status['read_available'] ),
 			'write_available' => ! empty( $status['write_available'] ),
 			'access_mode' => isset( $status['access_mode'] ) ? (string) $status['access_mode'] : 'read_only',
-			'selected_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? count( MAD4B_SCP_Context_Authority::sources() ) : 0,
-			'create_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'create' ) : 0,
-			'update_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'update' ) : 0,
-			'recreate_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ) : 0,
+			'selected_source_count' => $counts['selected'],
+			'create_source_count' => $counts['create'],
+			'update_source_count' => $counts['update'],
+			'recreate_source_count' => $counts['recreate'],
 			'allowed_operations' => array( 'update', 'recreate' ),
 			'blocked_operations' => array( 'create' => 'mad4b_google_drive_create_rollback_not_certified' ),
 			'delete_supported' => false,
 			'trash_supported' => false,
+			'grant_operational_lifecycle' => self::grant_operational_lifecycle( $status, $counts ),
 			'blockers' => ! empty( $status['write_available'] ) ? array() : array( 'google_drive_write_scope_not_granted' ),
 		);
 	}
