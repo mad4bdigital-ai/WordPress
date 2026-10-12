@@ -109,6 +109,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				// WordPress-native candidate opt-in is an exact owner-approved
 				// administrative toggle, never a blanket wp_options update.
 				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
+				// Build-only scheduling and self-certified install are distinct, exact
+				// Staging abilities. Grant eligibility never starts a build or install:
+				// each requires its own owner OAuth step-up, one-time approval,
+				// exact plan, execution claim and audited postconditions.
+				'mad4b/wp-native-build-start' => 'core',
+				'mad4b/wp-native-self-approve-install' => 'core',
 				'context/brand-profile-save' => 'google_drive_context',
 				'context/governed-source-upsert' => 'google_drive_context',
 				'context/remote-owner-review-apply' => 'google_drive_context',
