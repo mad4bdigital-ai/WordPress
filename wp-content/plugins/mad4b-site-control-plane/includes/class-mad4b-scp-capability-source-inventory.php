@@ -64,7 +64,7 @@ final class MAD4B_SCP_Capability_Source_Inventory {
         $rejected = is_array( $remote ) ? (int) ( $remote['rejected_registration_count'] ?? 0 ) : 0;
         $sources[] = self::source( 'remote_operation_parity',
             ! is_array( $remote ) ? 'UNAVAILABLE' :
-                ( $rejected || empty( $remote['ready'] ) ? 'PARTIAL_OR_REJECTED' : 'REGISTERED_NOT_AUTHORIZED' ),
+                ( $rejected || empty( $remote['ready'] ) ? 'PARTIAL_OR_REJECTED' : 'BOUNDED_CATALOG_COMPLETENESS_UNVERIFIED' ),
             is_array( $remote ) && isset( $remote['operation_count'] ) ? (int) $remote['operation_count'] : null,
             is_array( $remote ) ? 'Rejected registrations: ' . $rejected . '; hard catalog ceilings require separate completeness proof.' : 'unavailable' );
 
