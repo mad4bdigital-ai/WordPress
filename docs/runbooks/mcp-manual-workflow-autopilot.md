@@ -32,6 +32,17 @@ registrations and the reviewed `config/operation-registry.json` expand, the
 assistant's supported discovery surface expands **without hardcoded
 conversation prompts or hostname-specific logic**.
 
+## Governed dynamic reads: no manual preparation hashes
+
+On the ChatGPT MCP surface, the stable, schema-pinned read path is:
+
+1. `mad4b/tool-discover` with a capability-oriented query; inspect real Ability names rather than hardcoding plugins or site routes.
+2. `mad4b/tool-info` with the selected `ability_name` and `prepare_execution=true`. Without the opt-in flag, it returns metadata only, preserving existing lightweight clients.
+3. Validate the returned target schema and read-only classification. Forward the exact server-issued `prepared_dispatch` fields unchanged to `mad4b/read-execute` with the chosen `ability_name` and schema-valid `input`.
+4. When a receipt expires, the schema changes, or classification/authority scope drifts, repeat step 2. Never manufacture hashes, cache a receipt as an authority grant, or bypass the target's own permissions.
+
+`prepared_dispatch` is a short-lived, signed, non-authorizing preparation identity. It is only issued for an eligible governed **read** Ability. Write, admin, developer and breakglass operations retain their separate approved lanes; none are prepared by `tool-info`. The runtime revalidates exact schema, classification, site/subject authority scope and the original Ability permission before executing. The change is **source-only** until a package from the current PR head is independently certified and installed on the target Staging site.
+
 ## Independent authorization and action lifecycle
 
 `mad4b/manual-workflow-plan` resolves a semantic operation and reason to an
