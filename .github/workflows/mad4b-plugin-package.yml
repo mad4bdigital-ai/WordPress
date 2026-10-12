@@ -61,6 +61,7 @@ jobs:
           php "$root/tests/frontend-origin-diagnostic-runtime.php"
           php -l "$root/includes/class-mad4b-scp-native-build-owner-consent.php"
           php "$root/tests/native-build-owner-consent-runtime.php"
+          php "$root/tests/context-semantic-source-approval-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
           python3 "$root/tests/unified-capability-gateway-contract.py"
           node --check "$root/client/ability-catalog-client.mjs"
