@@ -486,6 +486,21 @@
         "expected_revision",
         "plan_sha256"
       ]
+    },
+    "mad4b/approval-ai-decide": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "ticket_id",
+        "decision",
+        "expected_payload_sha256",
+        "expected_classification_sha256",
+        "review_note",
+        "operation_input.expected_head",
+        "operation_input.expected_plan_sha256",
+        "operation_input.confirmation"
+      ]
     }
   }
 }
