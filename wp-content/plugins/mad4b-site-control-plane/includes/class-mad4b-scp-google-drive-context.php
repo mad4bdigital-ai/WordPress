@@ -951,6 +951,34 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 
+	/**
+	 * Bounded Google revoke attempt. Only explicit Google HTTP 200 confirms
+	 * remote revocation. HTTP 400, network errors and timeouts are NOT proof
+	 * of termination, so callers preserve disabled/pending retry state.
+	 * Never return or log bearer tokens or provider response bodies.
+	 */
+	private static function revoke_google_token_attempt( $token ) {
+		if ( '' === (string) $token ) return array( 'confirmed' => false, 'error' => 'google_revocation_token_missing' );
+		try {
+			$response = wp_remote_post( self::REVOKE_ENDPOINT, array(
+				'timeout' => 20,
+				'redirection' => 0,
+				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
+				'body' => array( 'token' => (string) $token ),
+			) );
+		} catch ( Throwable $error ) {
+			return array( 'confirmed' => false, 'error' => 'google_revocation_transport_exception' );
+		}
+		if ( is_wp_error( $response ) ) {
+			return array( 'confirmed' => false, 'error' => 'google_revocation_transport_' . sanitize_key( $response->get_error_code() ) );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		return array(
+			'confirmed' => 200 === $code,
+			'error' => 200 === $code ? '' : 'google_revocation_http_' . $code,
+		);
+	}
+
 	public static function disconnect() {
 		$stored = get_option( self::TOKEN_OPTION, array() );
 		$stored_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
@@ -972,22 +1000,21 @@ final class MAD4B_SCP_Google_Drive_Context {
 			return $status;
 		}
 
-		$response = wp_remote_post(
-			self::REVOKE_ENDPOINT,
-			array(
-				'timeout' => 20,
-				'redirection' => 0,
-				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
-				'body' => array( 'token' => $token ),
-			)
-		);
-		$revocation_error = '';
-		$confirmed = false;
-		if ( is_wp_error( $response ) ) $revocation_error = sanitize_key( $response->get_error_code() );
-		else {
-			$status_code = (int) wp_remote_retrieve_response_code( $response );
-			$confirmed = 200 === $status_code;
-			if ( ! $confirmed ) $revocation_error = 'google_revocation_http_' . $status_code;
+		$attempt = self::revoke_google_token_attempt( $token );
+		$confirmed = ! empty( $attempt['confirmed'] );
+		$revocation_error = (string) $attempt['error'];
+		$used_access_fallback = false;
+		// Google may reject a previously rotated or revoked REFRESH token
+		// with HTTP 400 while the separately issued access token can still
+		// revoke the same grant. Make one bounded second attempt only when
+		// its credential differs. Never interpret HTTP 400 as success.
+		$access_token = is_array( $record ) ? (string) ( $record['access_token'] ?? '' ) : '';
+		if ( ! $confirmed && '' !== $access_token && ! hash_equals( $token, $access_token ) ) {
+			$used_access_fallback = true;
+			$fallback = self::revoke_google_token_attempt( $access_token );
+			$confirmed = ! empty( $fallback['confirmed'] );
+			if ( $confirmed ) $revocation_error = '';
+			else $revocation_error = (string) $fallback['error'];
 		}
 
 		if ( $confirmed ) {
