@@ -13,6 +13,7 @@ function wp_register_ability($name,$args){ $GLOBALS['abilities'][$name]=$args; r
 function current_user_can($cap){ return 'manage_options'===$cap && $GLOBALS['admin']; }
 function get_current_user_id(){ return $GLOBALS['user']; }
 function get_option($key,$default=null){ return $GLOBALS['options'][$key]??$default; }
+function admin_url($path=''){ return 'https://staging.example.test/wp-admin/'.$path; }
 function update_option($key,$value,$autoload=false){ $GLOBALS['options'][$key]=$value; return true; }
 class MAD4B_SCP_Policy { public static function can_read(){ return $GLOBALS['read']; } }
 class MAD4B_SCP_Site_Profile {
@@ -49,6 +50,7 @@ $head=str_repeat('a',40);
 $plan=MAD4B_SCP_Native_Build_Owner_Consent::plan(array('expected_head'=>$head));
 $assert(!is_wp_error($plan) && $plan['state']==='OWNER_REVIEW_AVAILABLE','Owner source plan was not formed');
 $assert($plan['review_payload']['site_profile_revision']===3 && $plan['review_payload']['environment']==='staging','Wrong binding');
+$assert(strpos($plan['owner_consent_entrypoint'],'expected_head='.$head)!==false,'Owner review URL missing pinned SHA');
 $assert($plan['owner_approval_ticket_issued']===false && $plan['can_auto_approve_from_chat_text']===false,'Read plan claimed OAuth authority');
 $assert(isset($GLOBALS['abilities'][MAD4B_SCP_Native_Build_Owner_Consent::PLAN_ABILITY]),'Plan ability missing');
 $assert($GLOBALS['abilities'][MAD4B_SCP_Native_Build_Owner_Consent::PLAN_ABILITY]['meta']['annotations']['readonly'],'Plan wrongly classified as mutation');
