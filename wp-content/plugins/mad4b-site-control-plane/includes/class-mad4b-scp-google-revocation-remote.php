@@ -185,10 +185,19 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             return new WP_Error( 'mad4b_google_revoke_recheck_failed', 'Pending grant changed before retry.' );
         $result = MAD4B_SCP_Google_Drive_Context::disconnect();
         if ( is_wp_error( $result ) ) return $result;
+        // Never trust the provider callback's success bit alone: local
+        // encrypted token deletion and disabled transport must be observed
+        // independently BEFORE claiming final completion.
+        $token_after = get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, false );
+        $status_after = MAD4B_SCP_Google_Drive_Context::connection_status();
         if ( ! is_array( $result ) || empty( $result['remote_revocation_confirmed'] )
-            || ! empty( $result['connected'] ) )
+            || ! empty( $result['connected'] )
+            || false !== $token_after
+            || ! is_array( $status_after ) || ! empty( $status_after['connected'] )
+            || ! empty( $status_after['read_available'] )
+            || ! empty( $status_after['write_available'] ) )
             return new WP_Error( 'mad4b_google_revoke_readback_unconfirmed',
-                'Remote grant revocation must be confirmed with no local OAuth credentials.' );
+                'Google confirmed revocation, but independent local token removal and disabled transport were not both verified.' );
         return array(
             'contract' => self::CONTRACT . '.retry.v1',
             'state' => 'REVOCATION_CONFIRMED',
