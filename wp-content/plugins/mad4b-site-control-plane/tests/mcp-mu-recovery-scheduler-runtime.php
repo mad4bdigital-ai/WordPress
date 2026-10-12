@@ -83,9 +83,13 @@ $GLOBALS['mu_sched_governed'] = true;
 $GLOBALS['mu_sched_state'] = 'unmanaged_path_conflict';
 $GLOBALS['mu_sched_blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 $c::maybe_schedule_conflict_recovery();
-check_mu_schedule( count( $GLOBALS['mu_sched_events'] ) === 1,
-    'Existing governed Staging conflict workflow remains available' );
+check_mu_schedule( !$GLOBALS['mu_sched_events'],
+    'Unknown MU conflict cannot be scheduled solely from the Staging profile' );
+$GLOBALS['mu_sched_state'] = 'managed_mu_stale';
+$GLOBALS['mu_sched_blocker'] = '';
+$GLOBALS['mu_sched_owned'] = true;
+$c::maybe_schedule_conflict_recovery();
 $c::maybe_schedule_conflict_recovery();
 check_mu_schedule( count( $GLOBALS['mu_sched_events'] ) === 1,
-    'Cron scheduling idempotent while a task is already scheduled' );
-echo "PASS: staging owned MU stale recovery scheduling, fail-closed unknown/absent/production and no hotpath mutation\n";
+    'Trusted historical or site-bound owned MU recovery schedules once' );
+echo "PASS: site-bound owned MU scheduling and fail-closed unknown/absent/production/hotpath\n";
