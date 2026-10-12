@@ -31,7 +31,8 @@ native_hotpath_expect( $GLOBALS['mad4b_deactivation_hook_registered'],
 $source = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 native_hotpath_expect( is_string( $source )
     && false !== strpos( $source, "in_array( \$mad4b_native_plugin_method, array( 'GET', 'HEAD' ), true )" )
-    && false !== strpos( $source, "'' === \$mad4b_native_plugin_action" )
+    && false !== strpos( $source, "! \$mad4b_native_plugin_has_action" )
+    && false !== strpos( $source, "array_key_exists( 'action', \$_REQUEST )" )
     && false !== strpos( $source, "array( 'plugin-install.php', 'plugins.php', 'update-core.php' )" )
     && false !== strpos( $source, "register_activation_hook( __FILE__, array( 'MAD4B_SCP_Plugin', 'activate' ) );" ),
     'Mutation request and native activation declarations must remain in full bootstrap' );
