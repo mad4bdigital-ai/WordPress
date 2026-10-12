@@ -51,6 +51,9 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$status['provider_isolation_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::provider_isolation_enabled();
 		$status['managed_runtime_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 		$status['chatgpt_app_id_configured'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && '' !== MAD4B_SCP_Site_Profile::chatgpt_app_id();
+		$auto = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ? MAD4B_SCP_ChatGPT_Auto_Binding::status() : array();
+		$status['chatgpt_oauth_client_auto_bound'] = ! empty( $auto['client_observed'] );
+		$status['chatgpt_app_id_not_exposed_by_oauth'] = true;
 		$status['oauth_user_count'] = class_exists( 'MAD4B_SCP_Site_Profile' ) ? count( MAD4B_SCP_Site_Profile::oauth_user_ids() ) : 0;
 		return $status;
 	}
