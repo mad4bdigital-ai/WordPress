@@ -55,12 +55,14 @@ for marker in [
     "'results_cache_hit' =>",
     'MAD4B_SCP_Capability_Dependency_Planner::inspect',
     'MAD4B_SCP_Capability_Source_Inventory::inspect',
+    'MAD4B_SCP_Recovery_Route_Resolver::inspect',
 ]:
     assert marker in gateway, f'unified integration invariant missing: {marker}'
 for marker in [
     'class-mad4b-scp-capability-search-index.php',
     'class-mad4b-scp-capability-dependency-planner.php',
     'class-mad4b-scp-capability-source-inventory.php',
+    'class-mad4b-scp-recovery-route-resolver.php',
 ]:
     assert marker in main, f'bootstrap dependency missing: {marker}'
 for marker in ['sources, search', 'async function dependencies', 'async function* searchPages']:
