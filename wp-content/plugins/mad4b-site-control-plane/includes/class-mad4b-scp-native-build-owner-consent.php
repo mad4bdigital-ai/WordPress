@@ -104,7 +104,7 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
             'confirmation_format' => MAD4B_SCP_WP_Native_Build::CONFIRM . ' | ' .
                 (string) $plan['source_commit_sha'] . ' | ' . (string) $plan['plan_sha256'] .
                 ' | ' . (string) $payload['site_uuid'] . ' | ' . $digest,
-            'owner_consent_entrypoint' => 'wp-admin/tools.php?page=mad4b-native-build-owner-consent',
+            'owner_consent_entrypoint' => admin_url( 'tools.php?page=mad4b-native-build-owner-consent&expected_head=' . $head ),
             'owner_authenticated_in_current_mcp_read' => false,
             'owner_approval_ticket_issued' => false,
             'oauth_step_up_replaced' => false, 'execution_claim_replaced' => false,
@@ -210,6 +210,11 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
             return;
         }
         echo '<p>This records owner intent only. It does not approve a mutation ticket or run WP-Cron.</p>';
+        $status = self::status( array( 'expected_head' => $head ) );
+        if ( ! is_wp_error( $status ) && ! empty( $status['owner_intent_valid'] ) )
+            echo '<p><strong>Owner intent recorded:</strong> <code>' .
+                esc_html( $status['consent_sha256'] ) . '</code> (expires ' .
+                esc_html( gmdate( 'c', (int) $status['expires_at'] ) ) . '). Execution still requires OAuth and an exact Admin ticket.</p>';
         echo '<pre>' . esc_html( $review['confirmation_format'] ) . '</pre>';
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         wp_nonce_field( self::FORM_ACTION . ':' . $review['review_sha256'] );
