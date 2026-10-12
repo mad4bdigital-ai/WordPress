@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 850,
+  "changed_file_count": 855,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1854,8 +1854,29 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-plugin-admin-menu.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-dynamic-skills-context-catalog-limit",
+      "semantic_unit": "Preserve bounded custom Skill mutation policies while admitting only exact trusted dynamic semantic catalog for managed Skill seeds",
+      "revert_boundary": "Revert Context Preflight catalog admission and its native regression test together; never relax unregistered ability or production guards",
+      "certification": "ownership_only_native_regression_and_live_staging_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-context-catalog-bound-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-staging-write-grant-review-parity",
+      "semantic_unit": "Concurrent Staging write grant convergence plan and inventory review",
+      "revert_boundary": "Review source and related fixtures together under exact build and Site Profile; no default authority promotion",
+      "certification": "ownership_routing_only_individual_review_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-plan-read-lane-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "d03e8cde6eeec9683b7519b410f826393a3b4922a7210da879ee77c14a58899f",
+  "changed_paths_sha256": "257c42f65d8f572ef6666adc0e9b6566c7e532e458bffc7e6d6320a82babab5a",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
