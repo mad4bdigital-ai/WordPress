@@ -100,6 +100,15 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
         // The plugin's already-installed native build provider remains the
         // source of truth. An offline/queued CI is not proof it is unavailable.
         if ( $source_goal ) {
+            // Owner intent is distinct from the executor's one-time mutation
+            // ticket. It is an authenticated local review bridge, not an
+            // alternate remote-admin execution lane.
+            $consent_ability = 'mad4b/wp-native-owner-confirmation-plan';
+            $routes[] = self::row( 'authenticated_owner_intent', $consent_ability,
+                self::registered( $consent_ability )
+                    ? 'OWNER_LOCAL_AUTHENTICATION_AND_EXACT_REVIEW_REQUIRED'
+                    : 'NOT_REGISTERED_OR_UNAVAILABLE',
+                array(), 'Record auditable exact Staging owner intent locally before separately obtaining OAuth Step-Up and an Admin mutation ticket', 5 );
             $native_ability = 'mad4b/wp-native-build-plan';
             $native = self::data( 'MAD4B_SCP_WP_Native_Build', 'capabilities' );
             $available = self::registered( $native_ability ) && is_array( $native );
