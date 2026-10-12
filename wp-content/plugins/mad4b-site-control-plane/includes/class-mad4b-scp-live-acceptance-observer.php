@@ -928,6 +928,10 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 
 	public static function staging_capture_allowed() {
+		// Do not persist synthetic self-loopback visits into frontend performance
+		// or surface-coverage baselines, even when the proxy drops their header.
+		if ( class_exists( 'MAD4B_SCP_Frontend_Origin_Diagnostic', false )
+			&& MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request() ) return false;
 		if ( ! self::staging_passive_receipt_allowed() ) return false;
 		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
 			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;
