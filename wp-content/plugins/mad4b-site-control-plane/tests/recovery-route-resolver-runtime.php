@@ -59,7 +59,19 @@ $completed = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'blockers' => array( 'mad4b_selected_head_certified_artifact_unavailable' ),
 ) );
 $assert( ! empty( $completed['routes'][0]['completed_exact_head_local_package'] ) &&
-    !$completed['routes'][0]['observed_job_is_release_certified'], 'A local ZIP was marked independently certified.' );
+    !$completed['routes'][0]['observed_job_is_release_certified'] &&
+    'LOCAL_BUILD_READY_FOR_SELF_CHECK' === $completed['routes'][0]['state'] &&
+    'mad4b/wp-native-build-simulate' === $completed['routes'][0]['next_read_ability'],
+    'A completed Cron ZIP failed to advance into local verification without claiming release certification.' );
+$GLOBALS['job_state'] = 'FETCHING';
+$running = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+    'goal' => 'staging_install', 'expected_head' => $head,
+    'blockers' => array( 'mad4b_selected_head_certified_artifact_unavailable' ),
+) );
+$assert( 'BUILD_IN_PROGRESS_MONITOR' === $running['routes'][0]['state'] &&
+    'mad4b/wp-native-build-status' === $running['routes'][0]['next_read_ability'],
+    'An in-progress Cron worker was silently restarted rather than monitored.' );
+$GLOBALS['job_state'] = 'NOT_RUN';
 $authority = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'goal' => 'staging_install', 'expected_head' => $head,
     'blockers' => array( 'oauth_step_up_denied' ),
