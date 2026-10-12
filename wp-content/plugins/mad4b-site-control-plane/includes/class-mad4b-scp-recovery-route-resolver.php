@@ -119,6 +119,23 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                 $routes[count($routes)-1]['completed_exact_head_local_package'] =
                     '' !== $head && $head === (string) ( $status['head'] ?? '' )
                     && 'BUILT_UNVERIFIED' === (string) $status['state'];
+                // Resume observed work rather than repeating an existing
+                // build. Source status is evidence, not a mutation ticket.
+                if ( $routes[count($routes)-1]['observed_job_head_match'] ) {
+                    $phase = (string) $status['state'];
+                    if ( in_array( $phase, array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
+                        $routes[count($routes)-1]['state'] = 'BUILD_IN_PROGRESS_MONITOR';
+                        $routes[count($routes)-1]['next_read_ability'] = 'mad4b/wp-native-build-status';
+                    } elseif ( 'BUILT_UNVERIFIED' === $phase ) {
+                        $routes[count($routes)-1]['state'] = 'LOCAL_BUILD_READY_FOR_SELF_CHECK';
+                        $routes[count($routes)-1]['next_read_ability'] = 'mad4b/wp-native-build-simulate';
+                    } elseif ( 'BLOCKED' === $phase ) {
+                        $routes[count($routes)-1]['state'] = 'EXACT_BUILD_FAILED_INSPECT_BLOCKER';
+                        $routes[count($routes)-1]['next_read_ability'] = 'mad4b/wp-native-build-status';
+                        $routes[count($routes)-1]['observed_build_blocker'] =
+                            substr( (string) ( $status['blocker'] ?? '' ), 0, 128 );
+                    }
+                }
             }
             $routes[] = self::row( 'trusted_external_source_builder', 'mad4b/standalone-build-plan',
                 self::registered( 'mad4b/standalone-build-plan' )
@@ -168,7 +185,9 @@ final class MAD4B_SCP_Recovery_Route_Resolver {
                     'AVAILABLE_FOR_GOVERNED_BUILD_PLAN',
                     'AVAILABLE_FOR_SEPARATE_PLANNING',
                     'AVAILABLE_FOR_READ_PREPARATION',
-                    'AVAILABLE_FOR_GOVERNED_READ_PLAN' ), true ) ) {
+                    'AVAILABLE_FOR_GOVERNED_READ_PLAN',
+                    'BUILD_IN_PROGRESS_MONITOR',
+                    'LOCAL_BUILD_READY_FOR_SELF_CHECK' ), true ) ) {
                     $recommended = $row['route_id']; break;
                 }
             }
