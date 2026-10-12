@@ -100,6 +100,50 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             'max_candidates' => (int) ( $input['max_candidates'] ?? 5 ),
         );
     }
+    /**
+     * Bounded intent-aware relevance overlay for read-only route discovery.
+     *
+     * Lexical-only search often ranks an "*-update-status" reader above an
+     * exact "*-head-plan" for a user's UPDATE objective. Never change
+     * execution classification or promote an unchecked mutation: these
+     * hints affect candidate order only, and work for any registered
+     * ability following descriptive capability naming conventions.
+     */
+    public static function task_goal_alignment_bonus( array $request, $ability_name ) {
+        $task = trim( (string) ( $request['task'] ?? '' ) );
+        $name = strtolower( (string) $ability_name );
+        if ( '' === $task || '' === $name || strlen( $task ) > self::MAX_QUERY_BYTES ) return 0;
+        $lower = function_exists( 'mb_strtolower' ) ? mb_strtolower( $task, 'UTF-8' ) : strtolower( $task );
+        $wants_action = (bool) preg_match(
+            '/\\b(?:update|upgrade|install|deploy|publish|build|replace)\\b|تحديث|ترقية|تثبيت|نشر|بناء|تكوين/u',
+            $lower
+        );
+        if ( ! $wants_action ) return 0;
+        $status_question = (bool) preg_match(
+            '/\\b(?:status|state|check|inspect|diagnos(?:e|tic))\\b|تحقق|افحص|فحص|حالة/u',
+            $lower
+        );
+        // A request to inspect status should never be promoted to an
+        // effectful workflow purely because the word "update" appears.
+        if ( $status_question ) return 0;
+        $plan = (bool) preg_match( '~(?:^|[-_/])plan$~', $name );
+        $status = (bool) preg_match( '~(?:^|[-_/])status$~', $name );
+        $bonus = $plan ? 120 : ( $status ? -120 : 0 );
+        $exact_source = (bool) preg_match(
+            '/\\b(?:exact|head|commit|pull[ -]?request|pr|sha)\\b|رأس|طلب دمج/u',
+            $lower
+        );
+        if ( $exact_source && (bool) preg_match(
+            '~(?:^|[-_/])(?:head|commit|candidate|release)(?:[-_/]|$)~', $name
+        ) ) $bonus += 100;
+        // Respect a specifically requested BUILD stage rather than
+        // treating it as an implicit request to install a candidate.
+        $build_request = (bool) preg_match( '/\\b(?:build|package)\\b|بناء|تكوين|حزمة/u', $lower );
+        if ( $build_request && (bool) preg_match( '~(?:^|[-_/])build(?:[-_/]|$)~', $name ) )
+            $bonus += 110;
+        return $bonus;
+    }
+
     private static function sources( array $request ) {
         if ( ! class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) )
             return self::blocked( 'gateway_unavailable' );
@@ -154,7 +198,9 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
                 $ability = (string) ( $row['ability_name'] ?? '' );
                 if ( '' === $ability || isset( $ranking[ $ability ] ) ) continue;
                 $names[] = $ability;
-                $ranking[ $ability ] = (int) ( $row['relevance_score'] ?? 0 );
+                $ranking[ $ability ] = max( 0,
+                    (int) ( $row['relevance_score'] ?? 0 )
+                    + self::task_goal_alignment_bonus( $request, $ability ) );
                 if ( count( $names ) >= self::MAX_CANDIDATES ) break;
             }
         }
