@@ -38,7 +38,13 @@ class MAD4B_SCP_Google_Drive_Context {
     }
     public static function disconnect() {
         ++self::$calls;
-        if ( self::$fail ) return new WP_Error( 'mad4b_google_drive_remote_revocation_unconfirmed' );
+        if ( self::$fail ) {
+            // Real provider persists the encrypted pending record after 400,
+            // changing the plan's grant CAS; retry requires a fresh approval.
+            $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ]['revocation_error'] = 'google_revocation_http_400';
+            $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ]['revocation_generation'] = self::$calls;
+            return new WP_Error( 'mad4b_google_drive_remote_revocation_unconfirmed' );
+        }
         self::$pending = false;
         unset( $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ] );
         return array( 'connected' => false, 'remote_revocation_confirmed' => true );
@@ -106,6 +112,14 @@ $check( is_wp_error( $blocked ) && MAD4B_SCP_Google_Drive_Context::$pending
     && isset( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] ),
     'Remote HTTP 400 uncertainty cannot clear pending token or grant' );
 MAD4B_SCP_Google_Drive_Context::$fail = false;
+$stale = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$check( is_wp_error( $stale ) && MAD4B_SCP_Google_Drive_Context::$calls === 1,
+    'Second retry MUST refuse prior plan and approval after HTTP 400 persisted new pending evidence' );
+$next = MAD4B_SCP_Google_Revocation_Remote::plan();
+$check( ! is_wp_error( $next ) && $next['plan_sha256'] !== $planned['plan_sha256'],
+    'A retry after uncertain provider response requires a fresh plan and one-time approval' );
+$input['expected_plan_sha256'] = $next['plan_sha256'];
+$input['_mad4b_approval_ticket_id'] = '87654321-dcba-dcba-dcba-abcdef123456';
 $result = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
 $check( ! is_wp_error( $result ) && $result['remote_revocation_confirmed']
     && empty( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] )
