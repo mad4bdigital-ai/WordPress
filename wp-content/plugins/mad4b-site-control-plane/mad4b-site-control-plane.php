@@ -42,21 +42,22 @@ $mad4b_native_plugin_page = isset( $GLOBALS['pagenow'] ) && is_string( $GLOBALS[
     ? $GLOBALS['pagenow'] : '';
 $mad4b_native_plugin_method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] )
     ? strtoupper( trim( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
-$mad4b_native_plugin_action = isset( $_REQUEST['action'] ) && is_scalar( $_REQUEST['action'] )
-    ? trim( (string) $_REQUEST['action'] ) : '';
+// Presence alone excludes the read fastpath, including malformed array-valued
+// actions. WordPress core owns dispatch; this gate must never reinterpret it.
+$mad4b_native_plugin_has_action = array_key_exists( 'action', $_REQUEST );
 if ( function_exists( 'is_admin' ) && is_admin()
     && ( ! defined( 'WP_CLI' ) || ! WP_CLI )
     && ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX )
     && in_array( $mad4b_native_plugin_page, array( 'plugin-install.php', 'plugins.php', 'update-core.php' ), true )
     && in_array( $mad4b_native_plugin_method, array( 'GET', 'HEAD' ), true )
-    && '' === $mad4b_native_plugin_action
+    && ! $mad4b_native_plugin_has_action
 ) {
     if ( ! defined( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON' ) ) {
         define( 'MAD4B_SCP_EARLY_ZERO_TOUCH_REASON', 'wordpress_plugin_management_read' );
     }
     return;
 }
-unset( $mad4b_native_plugin_page, $mad4b_native_plugin_method, $mad4b_native_plugin_action );
+unset( $mad4b_native_plugin_page, $mad4b_native_plugin_method, $mad4b_native_plugin_has_action );
 
 /*
  * Early zero-touch kernel for unrelated REST/admin-AJAX requests.
