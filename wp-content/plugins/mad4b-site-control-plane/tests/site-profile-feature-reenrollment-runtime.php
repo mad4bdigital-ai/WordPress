@@ -37,9 +37,9 @@ $in=app_input_now('asdk_app_invalid-suffix!');
 err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
     'Invalid current App ID is rejected, not normalized or silently mapped');
 seed_profile('staging','https://staging.client.test','');
-$in=app_input_now('asdk_app_valid123' . "\n");
+$in=app_input_now('asdk_app_valid123' . "\n" . 'another');
 err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
-    'Input App ID with embedded newline must be rejected');
+    'Current App ID with an embedded newline must be rejected');
 
 seed_profile('staging','https://staging.client.test','');$in=app_input_now();$in['acceptance_enabled']=true;err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_mixed_mode_denied','mixed App mapping and Phase A denied');
 seed_profile('staging','https://staging.client.test','');$in=app_input_now('not-an-app-id');err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid','invalid App ID denied');
