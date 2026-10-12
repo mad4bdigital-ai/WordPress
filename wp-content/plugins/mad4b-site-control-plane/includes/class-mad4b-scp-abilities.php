@@ -933,6 +933,47 @@ final class MAD4B_SCP_Abilities {
 		return $target_input;
 	}
 
+	/**
+	 * First-party-only, side-effect-free permission preflight for a registered
+	 * governed target which explicitly exposes an immutable admission predicate.
+	 * Never execute arbitrary provider permission callbacks. A denied predicate
+	 * proves only that the target was NOT entered: no ticket is consumed and no
+	 * worker or downstream mutation has been invoked.
+	 */
+	private function trusted_write_target_admission( $ability_name, $params ) {
+		if ( 'mad4b/wp-native-build-start' !== (string) $ability_name ) return true;
+		if ( ! class_exists( 'MAD4B_SCP_WP_Native_Build' ) ||
+			! method_exists( 'MAD4B_SCP_WP_Native_Build', 'can_start' ) )
+			return new WP_Error( 'mad4b_native_dispatch_preflight_unavailable',
+				'Native build owner admission is unavailable; no source worker was started.',
+				array( 'mutation_state' => 'not_started', 'blind_retry_allowed' => false ) );
+		$checked = MAD4B_SCP_WP_Native_Build::can_start( $params );
+		if ( true === $checked ) return true;
+		$code = is_wp_error( $checked ) ? sanitize_key( (string) $checked->get_error_code() )
+			: 'mad4b_native_permission_denied';
+		$action = 'repair_exact_owner_or_policy_then_replan';
+		if ( in_array( $code, array(
+			'mad4b_native_owner_oauth_required', 'mad4b_native_step_up_required',
+			'mad4b_native_oauth_client_mismatch' ), true ) )
+			$action = 'reauthorize_enrolled_owner_with_dedicated_oauth_step_up';
+		return new WP_Error( 'mad4b_write_dispatch_target_admission_denied',
+			'Governed native Staging build was not started. Exact permission blocker: ' .
+			$code . '. Required action: ' . $action . '.',
+			array(
+				'ability_name' => (string) $ability_name,
+				'original_error_code' => $code,
+				'client_action' => $action,
+				'mutation_state' => 'not_started',
+				'target_execution_entered' => false,
+				'approval_ticket_consumed' => false,
+				'oauth_scope_granted' => false,
+				'no_reclassification_to_write' => true,
+				'blind_retry_allowed' => false,
+				'fresh_plan_required' => true,
+				'raw_error_message_exposed' => false,
+			) );
+	}
+
 	private function approval_plan_dispatch_preflight_failure( $error ) {
 		$code = is_wp_error( $error ) ? sanitize_key( (string) $error->get_error_code() ) : 'unknown';
 		$data = is_wp_error( $error ) ? $error->get_error_data() : array();
@@ -971,6 +1012,11 @@ final class MAD4B_SCP_Abilities {
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 		$params = $this->forward_write_dispatch_governance_envelope( $input, $params );
 		if ( is_wp_error( $params ) ) return $params;
+		// Do not open replay admission or nested execution for a target whose
+		// own enrolled-owner/OAuth predicate has already denied this request.
+		// Keep the original one-time ticket for a *fresh* plan, never auto-retry.
+		$target_admission = $this->trusted_write_target_admission( $ability_name, $params );
+		if ( is_wp_error( $target_admission ) ) return $target_admission;
 		$approval_ticket_id = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
 			? MAD4B_SCP_Staging_Write_Authority::approval_ticket_from_input( $params )
 			: ( is_array( $params ) && isset( $params['_mad4b_approval_ticket_id'] ) ? strtolower( trim( (string) $params['_mad4b_approval_ticket_id'] ) ) : '' );
