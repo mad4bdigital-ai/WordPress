@@ -48,7 +48,10 @@ final class MAD4B_SCP_Abilities {
 			), array()
 		), false, true, false, true );
 		$this->add( 'mad4b/tool-info', 'Get Governed Read Ability Info', 'mad4b-read', 'tool_info', 'read', $this->schema(
-			array( 'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ) ), array( 'ability_name' )
+			array(
+				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
+				'prepare_execution' => array( 'type' => 'boolean', 'default' => false ),
+			), array( 'ability_name' )
 		), false, true, false, true );
 		$this->add( 'mad4b/read-execute', 'Execute Governed Read Ability', 'mad4b-read', 'read_execute', 'read', $this->schema(
 			array(
@@ -402,21 +405,56 @@ final class MAD4B_SCP_Abilities {
 	}
 
 	public function tool_info( $input ) {
-		$ability = $this->governed_read_target( $input['ability_name'] );
+		$ability_name = (string) $input['ability_name'];
+		$ability = $this->governed_read_target( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
-		return array(
+		$schema_sha256 = $this->ability_input_schema_sha256( $ability );
+		$result = array(
 			'contract' => 'mad4b.chatgpt-read-ability-info.v1',
-			'ability_name' => (string) $input['ability_name'],
+			'ability_name' => $ability_name,
 			'label' => method_exists( $ability, 'get_label' ) ? (string) $ability->get_label() : '',
 			'description' => method_exists( $ability, 'get_description' ) ? (string) $ability->get_description() : '',
 			'category' => method_exists( $ability, 'get_category' ) ? (string) $ability->get_category() : '',
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
-			'input_schema_sha256' => $this->ability_input_schema_sha256( $ability ),
+			'input_schema_sha256' => $schema_sha256,
 			'output_schema' => method_exists( $ability, 'get_output_schema' ) ? $ability->get_output_schema() : null,
 			'annotations' => ( $meta = $ability->get_meta() ) && isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array(),
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+		// Preparation is explicit, bounded and non-authorizing. Keep metadata-only
+		// callers cheap; reuse the exact canonical descriptor and receipt required
+		// by read_execute instead of allowing clients to invent missing hashes.
+		if ( empty( $input['prepare_execution'] ) ) return $result;
+		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
+			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
+			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {
+			return new WP_Error( 'mad4b_read_preparation_runtime_unavailable', 'Governed read preparation is unavailable; execution remains denied.' );
+		}
+		$row = MAD4B_SCP_Capability_Descriptor_Registry::describe( $ability_name );
+		if ( is_wp_error( $row ) ) return $row;
+		if ( empty( $row['execution_eligible'] ) || 'read' !== ( $row['execution_lane'] ?? '' ) ) {
+			return new WP_Error( 'mad4b_read_preparation_target_denied', 'Target is not eligible for governed read execution.' );
+		}
+		if ( ! isset( $row['input_schema_sha256'], $row['classification_sha256'] )
+			|| ! hash_equals( (string) $row['input_schema_sha256'], $schema_sha256 ) ) {
+			return new WP_Error( 'mad4b_read_preparation_schema_drift', 'Target schema changed during read preparation.' );
+		}
+		$receipt = MAD4B_SCP_Preparation_Receipt::issue( $row );
+		if ( is_wp_error( $receipt ) ) return $receipt;
+		if ( ! is_string( $receipt ) || '' === $receipt ) {
+			return new WP_Error( 'mad4b_read_preparation_receipt_unavailable', 'Signed preparation evidence is unavailable; execution remains denied.' );
+		}
+		$result['prepared_dispatch'] = array(
+			'expected_input_schema_sha256' => $schema_sha256,
+			'expected_execution_lane' => 'read',
+			'expected_classification_sha256' => (string) $row['classification_sha256'],
+			'expected_authority_scope_sha256' => MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope(),
+			'preparation_receipt' => $receipt,
+		);
+		$result['dispatch_tool'] = 'mad4b/read-execute';
+		$result['preparation_contract'] = MAD4B_SCP_Preparation_Receipt::CONTRACT;
+		return $result;
 	}
 
 	public function read_execute( $input ) {
