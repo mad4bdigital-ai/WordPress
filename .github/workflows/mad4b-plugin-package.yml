@@ -56,6 +56,10 @@ jobs:
           for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php; do
             php "$root/tests/$fixture"
           done
+          php -l "$root/includes/class-mad4b-scp-frontend-origin-diagnostic.php"
+          php -l "$root/includes/class-mad4b-scp-chatgpt-tool-projection.php"
+          php "$root/tests/frontend-origin-diagnostic-runtime.php"
+          php "$root/tests/projection-registration-lifecycle.php"
           python3 "$root/tests/unified-capability-gateway-contract.py"
           node --check "$root/client/ability-catalog-client.mjs"
           node "$root/tests/unified-capability-client-runtime.mjs"
