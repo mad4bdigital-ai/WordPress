@@ -76,6 +76,18 @@ jobs:
             php wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php "$scenario"
           done
 
+      - name: Unified capability gateway native acceptance / PHP 7.4 + Node
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php; do
+            php "$ROOT/tests/$fixture"
+          done
+          python3 "$ROOT/tests/unified-capability-gateway-contract.py"
+          node --check "$ROOT/client/ability-catalog-client.mjs"
+          node "$ROOT/tests/unified-capability-client-runtime.mjs"
+
       - name: Architecture maintainability and change-slice gate
         shell: bash
         run: |
@@ -810,3 +822,43 @@ jobs:
           set -e
           test "$refusal_status" -eq 2
           php wp-content/plugins/mad4b-site-control-plane/tests/g8-mysql-cas-integration.php
+
+  capability-gateway-compatibility:
+    name: Unified capability PHP ${{ matrix.php }} native regression
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint and execute exact-head capability safety regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT=wp-content/plugins/mad4b-site-control-plane
+          for file in \
+            includes/class-mad4b-scp-capability-search-index.php \
+            includes/class-mad4b-scp-capability-dependency-planner.php \
+            includes/class-mad4b-scp-capability-source-inventory.php \
+            includes/class-mad4b-scp-unified-capability-gateway.php \
+            includes/class-mad4b-scp-adaptive-operation-router.php \
+            tests/unified-capability-pagination-runtime.php \
+            tests/unified-capability-dependency-runtime.php \
+            tests/unified-capability-sources-runtime.php; do
+            php -l "$ROOT/$file"
+          done
+          for fixture in unified-capability-pagination-runtime.php unified-capability-dependency-runtime.php unified-capability-sources-runtime.php; do
+            php "$ROOT/tests/$fixture"
+          done
+          python3 "$ROOT/tests/unified-capability-gateway-contract.py"
+          node --check "$ROOT/client/ability-catalog-client.mjs"
+          node "$ROOT/tests/unified-capability-client-runtime.mjs"
