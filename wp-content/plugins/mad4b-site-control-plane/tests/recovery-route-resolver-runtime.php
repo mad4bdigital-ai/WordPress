@@ -11,6 +11,14 @@ function wp_has_ability( $name ) { return in_array( $name, $GLOBALS['registered_
 class MAD4B_SCP_Policy {
     public static function can_read() { return ! empty( $GLOBALS['can_read'] ); }
 }
+class MAD4B_SCP_Servers {
+    public static function is_external_write_candidate( $ability ) {
+        return $ability === 'mad4b/wp-native-build-start';
+    }
+    public static function ability_is_mounted( $server, $ability ) {
+        return $server === 'mad4b-write' && $ability === 'mad4b/wp-native-build-start';
+    }
+}
 class MAD4B_SCP_WP_Native_Build {
     public static function capabilities() {
         ++$GLOBALS['native_preflight_calls'];
@@ -22,7 +30,7 @@ class MAD4B_SCP_WP_Native_Build {
     }
 }
 $GLOBALS['registered_abilities'] = array(
-    'mad4b/wp-native-build-plan', 'mad4b/standalone-build-plan',
+    'mad4b/wp-native-build-plan', 'mad4b/wp-native-build-start', 'mad4b/standalone-build-plan',
     'mad4b/wp-native-self-approve-plan', 'mad4b/control-plane-selected-head-plan',
     'mad4b/chatgpt-tool-projection-discover', 'mad4b/operation-route-discover',
     'mad4b/frontend-origin-diagnostic',
@@ -43,9 +51,18 @@ $assert( 'wordpress_native_cron_build' === $result['recommended_route_id'],
 $assert( 'ALTERNATIVE_READ_PLAN_AVAILABLE' === $result['state'] &&
     $result['original_blockers'][0] === 'mad4b_selected_head_certified_artifact_unavailable',
     'Original blocker was incorrectly erased.' );
-$assert( count( $result['routes'] ) === 5 &&
+$assert( count( $result['routes'] ) === 6 &&
     'AVAILABLE_FOR_GOVERNED_BUILD_PLAN' === $result['routes'][0]['state'],
     'Native and external/lower-trust alternatives were not enumerated.' );
+$ticket_routes = array_values( array_filter( $result['routes'],
+    static function( $route ) { return 'native_build_exact_write_ticket' === $route['route_id']; } ) );
+$assert( count( $ticket_routes ) === 1 &&
+    'EXACT_WRITE_APPROVAL_PLAN_AVAILABLE' === $ticket_routes[0]['state'] &&
+    'mad4b-write' === $ticket_routes[0]['approval_server_id'] &&
+    'mad4b-admin' === $ticket_routes[0]['semantic_ability_category'] &&
+    'mad4b/approval-plan' === $ticket_routes[0]['next_approval_ability'] &&
+    ! empty( $ticket_routes[0]['approval_is_separate_from_build_start'] ),
+    'Category was incorrectly substituted for governed remote approval transport.' );
 $assert( $result['routes'][0]['observed_job_state'] === 'NOT_RUN' &&
     !$result['routes'][0]['observed_job_head_match'], 'No job was incorrectly treated as built.' );
 $assert( !$result['automatic_mutation_allowed'] &&
