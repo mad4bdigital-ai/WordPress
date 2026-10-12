@@ -98,6 +98,8 @@ foreach ( array(
 }
 // Generic recovery dispatch must select the correct stage from the blocker,
 // not assume that every infrastructure incident needs a plugin ZIP.
+$GLOBALS['registered_abilities'] = array( 'mad4b/wp-native-build-plan',
+    'mad4b/standalone-build-plan', 'mad4b/chatgpt-tool-projection-discover' );
 $generic_build = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'blockers' => array( 'mad4b_selected_head_certified_artifact_unavailable' ),
     'expected_head' => $head,
