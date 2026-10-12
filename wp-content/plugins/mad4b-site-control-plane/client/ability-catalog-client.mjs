@@ -364,7 +364,7 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       cursor = next;
     }
   }
-  async function sources({signal} = {}) { return gateway('sources', {}, {signal}); }
+  async function sources({signal, source_id} = {}) { return gateway('sources', source_id ? {source_id} : {}, {signal}); }
   async function dependencies(operation, {signal, target_kind} = {}) {
     if (typeof operation !== 'string' || !/^[a-z][a-z0-9._-]{1,119}$/.test(operation)) throw new CatalogError('Exact registered operation is required');
     return gateway('dependencies', {operation, ...(target_kind ? {target_kind} : {})}, {signal});
