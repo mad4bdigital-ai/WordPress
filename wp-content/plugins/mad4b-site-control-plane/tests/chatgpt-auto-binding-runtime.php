@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 $GLOBALS['bind_opt'] = array();
 $GLOBALS['bind_writes'] = 0;
 $GLOBALS['bind_profile'] = true;
+$GLOBALS['bind_portable'] = false;
 $GLOBALS['bind_oauth_feature'] = true;
 $GLOBALS['bind_admin'] = true;
 $GLOBALS['bind_user'] = 7;
@@ -40,6 +41,14 @@ class MAD4B_SCP_Site_Profile {
     public static function site_uuid() { return $GLOBALS['bind_uuid']; }
     public static function profile_digest() { return $GLOBALS['bind_digest']; }
     public static function site_origin() { return 'https://staging.example.test'; }
+}
+class MAD4B_SCP_Portable_Readonly_Connection {
+    public static function effective() { return !empty( $GLOBALS['bind_portable'] ); }
+    public static function status() { return array(
+        'environment' => 'staging', 'origin' => 'https://staging.example.test' ); }
+    public static function user_is_enrolled( $id ) { return $id === 7; }
+    public static function connection_uuid() { return '123e4567-e89b-52d3-a456-426614174000'; }
+    public static function connection_digest() { return str_repeat( 'c', 64 ); }
 }
 class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function resource_identifier() { return 'https://staging.example.test/wp-json/mcp/mad4b-chatgpt'; }
@@ -103,4 +112,18 @@ assert_bind( !$c::status()['client_observed'], 'Expired evidence cannot imperson
 $GLOBALS['bind_admin'] = false;
 assert_bind( !$c::observe_verified_mcp_request( $resource, 7 ), 'Revoked administrator cannot update connection identity.' );
 assert_bind( !$c::current_bearer_binding_ready(), 'Revoked administrator cannot claim auto-binding.' );
-echo "PASS: ChatGPT OAuth automatic site-bound identity, stale/foreign rejection, no manual App ID or grants\n";
+$GLOBALS['bind_admin'] = true;
+$GLOBALS['bind_profile'] = false;
+$GLOBALS['bind_portable'] = true;
+assert_bind( $c::observe_local_token_issued( $client, 7, $resource, array( 'mad4b:read' ) ),
+    'Portable read-only sites auto-observe verified ChatGPT OAuth client without manual Site Profile.' );
+$portable_status = $c::status();
+assert_bind( $portable_status['client_observed'] &&
+    $portable_status['site_identity_source'] === 'portable_readonly' &&
+    $portable_status['provisional_readonly_binding'] &&
+    !$c::current_bearer_binding_ready() && !$portable_status['write_grants_created'],
+    'Portable connection is non-authorizing and cannot satisfy Site Profile Phase A.' );
+$GLOBALS['bind_portable'] = false;
+assert_bind( !$c::status()['client_observed'],
+    'Disabling portable readiness invalidates its transient binding.' );
+echo "PASS: ChatGPT OAuth automatic site-bound identity, portable read-only, stale/foreign rejection, no manual App ID or grants\n";
