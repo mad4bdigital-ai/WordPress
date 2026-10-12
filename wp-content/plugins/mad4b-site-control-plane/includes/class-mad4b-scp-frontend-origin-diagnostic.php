@@ -52,6 +52,23 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         return hash_equals( self::marker( $period ), $header ) || hash_equals( self::marker( $period - 1 ), $header );
     }
 
+    private static function transport_error_class( $error ) {
+        if ( ! is_wp_error( $error ) || ! method_exists( $error, 'get_error_message' ) )
+            return 'unknown_transport_failure';
+        $message = strtolower( (string) $error->get_error_message() );
+        if ( preg_match( '/curl error 6|could not resolve|name or service not known|dns lookup/i', $message ) )
+            return 'dns_resolution_failure';
+        if ( preg_match( '/curl error 60|ssl certificate|tls certificate|certificate verify/i', $message ) )
+            return 'tls_verification_failure';
+        if ( preg_match( '/curl error 28|timed out|timeout/i', $message ) )
+            return 'network_timeout';
+        if ( preg_match( '/curl error 7|connection refused|could not connect/i', $message ) )
+            return 'tcp_connection_failure';
+        if ( preg_match( '/not a valid url|blocked external|blocked request|disallowed/i', $message ) )
+            return 'local_http_policy_block';
+        return 'unknown_transport_failure';
+    }
+
     public static function inspect( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         $mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'plan';
@@ -108,6 +125,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             'state' => 'HTTP_PROBE_FAILED', 'network_request_performed' => true,
             'elapsed_ms' => $elapsed_ms,
             'error_code' => (string) $response->get_error_code(),
+            'transport_error_class' => self::transport_error_class( $response ),
             'next_action' => 'Inspect host DNS, TLS, firewall and WordPress loopback connectivity without weakening TLS validation.',
         );
         $code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
