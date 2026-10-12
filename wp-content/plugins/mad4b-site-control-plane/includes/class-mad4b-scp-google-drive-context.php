@@ -536,10 +536,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$blockers = self::connection_blockers( $credentials, $token );
 		$write_blockers = array();
 		if ( ! $write_available ) {
-			if ( $refresh_failed ) $write_blockers[] = 'google_drive_token_refresh_failed';
-			elseif ( ! self::scope_allows_write( $scope ) ) $write_blockers[] = 'google_drive_write_scope_not_granted';
-			elseif ( $revocation_pending ) $write_blockers[] = 'google_drive_revocation_pending';
+			// A locally disabled, pending revocation takes precedence over
+			// missing-scope/expired-token advice. Never ask the operator to
+			// widen grants or refresh while remote revocation is uncertain.
+			if ( $revocation_pending ) $write_blockers[] = 'google_drive_revocation_pending';
+			elseif ( $refresh_failed ) $write_blockers[] = 'google_drive_token_refresh_failed';
 			elseif ( ! $connected ) $write_blockers[] = 'google_drive_not_connected';
+			elseif ( ! self::scope_allows_write( $scope ) ) $write_blockers[] = 'google_drive_write_scope_not_granted';
 		}
 		return array(
 			'contract' => self::CONTRACT,
@@ -3412,7 +3415,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'delete_supported' => false,
 			'trash_supported' => false,
 			'grant_operational_lifecycle' => self::grant_operational_lifecycle( $status, $counts ),
-			'blockers' => ! empty( $status['write_available'] ) ? array() : array( 'google_drive_write_scope_not_granted' ),
+			'blockers' => ! empty( $status['write_available'] ) ? array()
+				: ( isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] )
+					? array_values( $status['write_blockers'] ) : array( 'google_drive_write_unavailable' ) ),
 		);
 	}
 
