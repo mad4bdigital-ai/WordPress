@@ -120,7 +120,7 @@ mandatory MCP direct tools.
 ### Frontend network diagnosis: `mad4b/frontend-origin-diagnostic`
 
 - Default `mode=plan` makes **no network request**. Explicit `mode=probe`
-  permits **one** WordPress-HTTP safe GET to `home_url('/')` after exact Site
+  permits **one** WordPress-HTTP safe GET to the allowlisted enrolled homepage (`target=homepage`) or public REST root (`target=rest_root`) after exact Site
   Profile Staging and canonical HTTPS origin checks. No user URL input, redirects,
   cookies or Authorization headers; TLS verification stays enabled, with a 6s
   timeout and bounded body reception.
@@ -128,7 +128,7 @@ mandatory MCP direct tools.
   host's network perspective**, not from a public browser or ChatGPT client.
 - The request carries an HMAC-signed synthetic marker classified separately from
   genuine frontend requests. It does **not** grant an extra frontend acceptance
-  sample, pass a browser rendering check, or create signed Browser Attestation.
+  sample, pass a browser rendering check, or create signed Browser Attestation. Both an HTTP header and an expiring signed query marker identify synthetic requests when a reverse proxy strips custom headers. The Live Acceptance Observer excludes verified synthetic probes from persisted frontend evidence.
   Any telemetry provider not consuming this synthetic classification must
   exclude these requests from acceptance before granting release readiness.
 - Public-network reachability, JS, Elementor, WPML and user navigation still
