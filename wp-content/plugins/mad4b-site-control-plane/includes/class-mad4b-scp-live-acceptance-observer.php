@@ -261,6 +261,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true );
 	}
 	private static function request_class() {
+		// Signed diagnostic traffic is a distinct request class, not a real user visit.
+		if ( class_exists( 'MAD4B_SCP_Frontend_Origin_Diagnostic', false ) && MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request() ) return 'synthetic_frontend_probe';
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
 		if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp';
 		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'cron';
