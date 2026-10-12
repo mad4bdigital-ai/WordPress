@@ -1062,6 +1062,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			if ( is_wp_error( $refresh ) ) self::send_oauth_error( 'server_error', 'Unable to create refresh token.', 500 );
 			$response['refresh_token'] = $refresh;
 		}
+		// The verified authorization-code or refresh exchange supplies the
+		// actual OAuth client, enrolled WordPress subject and exact resource.
+		// This observes identity ONLY; it does not create an App ID or any grant.
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ) {
+			MAD4B_SCP_ChatGPT_Auto_Binding::observe_local_token_issued( $client_id, $wp_user_id, $resource, $scopes );
+		}
 		self::send_json( $response, 200 );
 	}
 
