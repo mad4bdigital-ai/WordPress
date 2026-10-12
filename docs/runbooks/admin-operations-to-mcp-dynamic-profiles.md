@@ -112,3 +112,58 @@ plugin-specific operation end-to-end.
 present on installed All Royal Egypt until a compatible tested package is
 installed, and a real third-party adapter is certified. Production updates
 remain unauthorized.
+
+## Exact Staging native-candidate toggle — remote parity example (PR #258)
+
+The former wp-admin-only `mad4b_wp_native_candidate_opt_in` action now has
+a source-owned pair of registered WordPress Abilities:
+
+- `mad4b/wordpress-native-candidate-opt-in-plan` (read lane): input
+  `{"mode":"enable"}` or `{"mode":"disable"}`; outputs exact Site UUID,
+  environment, origin, Site Profile digest, current option digest, plan SHA-256
+  and the separate confirmation phrase. It cannot update an option.
+- `mad4b/wordpress-native-candidate-opt-in-apply` (admin lane): input
+  `mode`, `expected_plan_sha256`, `confirmation`. Governed executor must
+  claim a distinct one-time ticket after owner OAuth step-up. The callback
+  independently checks Staging, user enrollment, WordPress plugin capabilities,
+  plan/site/option CAS, confirmation, audit and effective readback.
+- `mad4b/wordpress-native-update-status` remains the stable independent
+  readback; unlike the plan it does not assume a consent decision.
+- The Operation Registry operation
+  `wordpress.candidate-channel.consent` and existing
+  `native-candidate-mode` alias now resolve to this pair instead of a
+  generic manual-workflow adapter.
+- Exact Staging-only provider allowlisting is required for the admin Ability;
+  the update grants no privileges on Production and cannot execute package
+  building or installation automatically.
+
+### Client workflow
+
+1. Discover by goal, operation alias or registered Ability; resolve original
+   lane, required step-up and typed variables. Never guess PHP class names.
+2. Prepare and read the exact plan through the canonical schema-pinned
+   `mad4b/read-execute` dispatcher.
+3. If `eligible=false`, report blockers. If `already_current=true`,
+   stop and verify status; do not spend an approval ticket.
+4. For an eligible state change, obtain exact owner OAuth step-up and the
+   existing NHI one-time approval for the **admin apply** Ability; do not
+   convert it to a read lane or reuse a ticket from an unrelated operation.
+5. Apply through the canonical governed write path; after a timeout,
+   read `wordpress-native-update-status` and the audit trail before ever
+   considering a fresh plan. Never blindly retry the mutation.
+6. Enabling merely permits a *separate* WP-Cron build plan/start. Building
+   produces `BUILT_UNVERIFIED`. A later explicit Staging self-approval
+   installation has its own ticket, receipt, backup and rollback.
+
+### Bootstrap boundary
+
+Until a plugin package containing these registrations is deployed, the
+remote opt-in Ability cannot be called on an older runtime; a catalog entry
+alone does not create an executor. A one-time trusted deployment or already
+authorized admin action may be required to establish the route. Never spoof
+a browser admin nonce, write `wp_options` through arbitrary SQL, or reinterpret
+a read grant as consent. After installation, refresh MCP tools and exact
+Staging write grants for this newly registered Ability.
+
+This pattern is reusable for **reviewed registered administration operations**,
+not automatic execution of unrecognized WordPress UI controls.
