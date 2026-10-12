@@ -35,6 +35,24 @@ class MAD4B_SCP_Operation_Registry {
 class MAD4B_SCP_Unified_Capability_Gateway {
     public static function search( $input ) {
         if ( 'nonexistent' === $input['task'] ) return array( 'items' => array() );
+        if ( false !== strpos( (string) $input['task'], 'update plugin' ) ) return array(
+            'items' => array(
+                array( 'ability_name' => 'example/control-plane-update-status',
+                    'relevance_score' => 78, 'declared_readonly' => true ),
+                array( 'ability_name' => 'example/control-plane-selected-head-plan',
+                    'relevance_score' => 74, 'declared_readonly' => true ),
+                array( 'ability_name' => 'example/wp-native-build-plan',
+                    'relevance_score' => 66, 'declared_readonly' => true ),
+            ) );
+        if ( false !== strpos( (string) $input['task'], 'build package' ) ) return array(
+            'items' => array(
+                array( 'ability_name' => 'example/control-plane-update-status',
+                    'relevance_score' => 78, 'declared_readonly' => true ),
+                array( 'ability_name' => 'example/control-plane-selected-head-plan',
+                    'relevance_score' => 74, 'declared_readonly' => true ),
+                array( 'ability_name' => 'example/wp-native-build-plan',
+                    'relevance_score' => 66, 'declared_readonly' => true ),
+            ) );
         return array( 'items' => array(
             array( 'ability_name' => 'example/trip-apply',
                 'relevance_score' => 20 ),
@@ -45,7 +63,7 @@ class MAD4B_SCP_Unified_Capability_Gateway {
     public static function prepare( $input, $transport = 'internal' ) {
         $items = array();
         foreach ( $input['ability_names'] as $name ) {
-            $read = substr( $name, -5 ) === '-plan';
+            $read = substr( $name, -5 ) === '-plan' || substr( $name, -7 ) === '-status';
             $enrollment = strpos( $name, 'example/enroll-' ) === 0;
             $developer = strpos( $name, 'example/developer-' ) === 0;
             $lane = $enrollment ? 'enrollment' :
@@ -99,6 +117,26 @@ require_route( $write['state'] === 'ROUTE_SELECTED_REQUIRES_EXECUTION_REVALIDATI
 $auto = $router::plan( array( 'task' => 'create trip', 'intent' => 'auto' ) );
 require_route( $auto['selected']['ability_name'] === 'example/trip-plan',
     'automatic semantic selection prefers safe read planning when available' );
+// A broad update task is an objective, not a request for status alone.
+$exact_update = $router::plan( array(
+    'task' => 'update plugin to exact PR HEAD', 'intent' => 'read' ) );
+require_route( $exact_update['selected']['ability_name'] === 'example/control-plane-selected-head-plan'
+    && $exact_update['selected']['execution_lane'] === 'read'
+    && !$exact_update['mutation_performed'],
+    'exact PR HEAD update selects certified candidate preflight before generic status' );
+$status_request = $router::plan( array(
+    'task' => 'check status of update plugin', 'intent' => 'read' ) );
+require_route( $status_request['selected']['ability_name'] === 'example/control-plane-update-status',
+    'explicit status question still ranks status reader first' );
+$build_request = $router::plan( array(
+    'task' => 'build package for exact PR HEAD', 'intent' => 'read' ) );
+require_route( $build_request['selected']['ability_name'] === 'example/wp-native-build-plan',
+    'specific WP-Cron BUILD goal selects native build planning, not installation' );
+require_route( $router::task_goal_alignment_bonus( array(
+    'task' => 'update plugin to exact PR HEAD' ), 'example/wp-native-build-start' ) === 0
+    && $router::task_goal_alignment_bonus( array(
+    'task' => 'check update plugin status' ), 'example/control-plane-selected-head-plan' ) === 0,
+    'goal hints never upgrade an execute endpoint or override explicit status intent' );
 $semantic = $router::plan( array( 'operation' => 'create_trip', 'intent' => 'read' ) );
 require_route( $semantic['selected']['ability_name'] === 'example/trip-plan',
     'exact operation resolver uses registered planner rather than guessing names' );
