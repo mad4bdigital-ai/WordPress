@@ -69,7 +69,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'fixed_dispatch_preparation' => self::fixed_dispatch_preparation_contract(),
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
-			'actions' => array( 'negotiate', 'search', 'dependencies', 'prepare', 'schema', 'chunk' ),
+			'actions' => array( 'negotiate', 'sources', 'search', 'dependencies', 'prepare', 'schema', 'chunk' ),
 			'search_pagination' => array( 'mode' => 'opaque_signed_cursor', 'max_page_size' => 25, 'total_result_ceiling' => null, 'snapshot_drift' => 'reject_and_restart', 'authority_effect' => 'none' ),
 			'search_filters' => array( 'category', 'surface', 'ability_prefix', 'declared_readonly_only', 'declared_writeonly_only', 'match_mode', 'sort', 'min_score', 'browse' ),
 			'source_of_truth' => 'wordpress_abilities_api',
@@ -142,6 +142,9 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			$result = class_exists( 'MAD4B_SCP_Observability' )
 				? MAD4B_SCP_Observability::run_stage( 'discovery', $call, '', array( 'transport'=>$transport, 'gateway_action'=>'search' ) )
 				: $call();
+		}
+		elseif ( 'sources' === $action ) {
+			$result = MAD4B_SCP_Capability_Source_Inventory::inspect();
 		}
 		elseif ( 'dependencies' === $action ) {
 			$result = MAD4B_SCP_Capability_Dependency_Planner::inspect( $input );
