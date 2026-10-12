@@ -244,6 +244,23 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php
 
+      - name: Governed Google Grant, first-party artifact, and rollback prerequisite regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php \
+            wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/provider-google-grant-prerequisite-chain-runtime.php \
+            wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php; do
+            php -l "$file"
+          done
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-google-grant-prerequisite-chain-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php
+
       - name: Provider-neutral resource constraint compiler
         shell: bash
         run: |
