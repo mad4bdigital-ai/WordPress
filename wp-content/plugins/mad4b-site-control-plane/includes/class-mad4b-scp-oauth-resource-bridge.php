@@ -647,6 +647,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'wp_user_id' => $user_id,
 			'origin' => $developer_resource ? 'mcp_developer' : 'mcp',
 		);
+		// Backfill an ALREADY linked account on its first verified MCP call;
+		// no reconnect, manually copied App ID or Site Profile write needed.
+		if ( ! $developer_resource && class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ) {
+			MAD4B_SCP_ChatGPT_Auto_Binding::observe_verified_mcp_request( $resource, $user_id );
+		}
 		return $result;
 	}
 
