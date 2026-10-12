@@ -18,7 +18,16 @@ function wp_remote_retrieve_response_code( $response ) { return $response['respo
 function wp_safe_remote_get( $url, $args ) {
     ++$GLOBALS['outbound_requests'];
     $GLOBALS['outbound_arguments'] = $args;
-    if ( $url !== 'https://staging.example.test/' || $args['redirection'] !== 0 ||
+    $parts = parse_url( $url );
+    $query = array();
+    parse_str( (string) ( $parts['query'] ?? '' ), $query );
+    $allowed_path = in_array( (string) ( $parts['path'] ?? '' ), array( '/', '/wp-json/' ), true );
+    $signature = (string) ( $query['mad4b_synthetic_probe'] ?? '' );
+    $expected = hash_hmac( 'sha256', MAD4B_SCP_Frontend_Origin_Diagnostic::MARKER . '|' . (int) floor( time() / 120 ), wp_salt( 'auth' ) );
+    $GLOBALS['last_probe_path'] = (string) ( $parts['path'] ?? '' );
+    if ( 'https' !== ( $parts['scheme'] ?? '' ) || 'staging.example.test' !== ( $parts['host'] ?? '' )
+        || ! $allowed_path || count( $query ) !== 1 || ! hash_equals( $expected, $signature )
+        || $args['redirection'] !== 0 ||
         $args['timeout'] > 6 || $args['sslverify'] !== true ||
         $args['reject_unsafe_urls'] !== true ||
         ! empty( $args['cookies'] ) ||
@@ -86,6 +95,16 @@ $GLOBALS['permitted'] = false;
 $assert( is_wp_error( MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'mode' => 'probe' ) ) ) &&
     $GLOBALS['outbound_requests'] === 3, 'Permission failure permitted network probe' );
 $GLOBALS['permitted'] = true;
+// Fixed REST root distinguishes homepage pipeline failures from public REST
+// routing without granting arbitrary URL probing.
+$GLOBALS['http_error'] = false;
+$GLOBALS['http_code'] = 200;
+$rest = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'mode' => 'probe', 'target' => 'rest_root' ) );
+$assert( ! is_wp_error( $rest ) && 'HTTP_REACHABLE_NOT_BROWSER_VERIFIED' === $rest['state']
+    && '/wp-json/' === $GLOBALS['last_probe_path'] && 4 === $GLOBALS['outbound_requests'],
+    'REST root was not confined to one safe same-origin signed GET' );
+$invalid = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'mode' => 'probe', 'target' => 'https://example.com/' ) );
+$assert( is_wp_error( $invalid ) && 4 === $GLOBALS['outbound_requests'], 'Arbitrary probe target allowed' );
 $_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] = '0';
 $assert( ! MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
     'Untrusted diagnostic marker was accepted' );
@@ -93,4 +112,12 @@ $_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] = hash_hmac( 'sha256',
     MAD4B_SCP_Frontend_Origin_Diagnostic::MARKER . '|' . (int) floor( time() / 120 ), wp_salt( 'auth' ) );
 $assert( MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
     'Genuine synthetic origin marker was rejected' );
-echo "PASS staging origin probe: default zero-network, bounded GET, HTTPS-only, no redirects, no credentials, non-browser, denied production and spoofed markers\n";
+$_SERVER['HTTP_X_MAD4B_SYNTHETIC_PROBE'] = '0';
+$_GET['mad4b_synthetic_probe'] = hash_hmac( 'sha256',
+    MAD4B_SCP_Frontend_Origin_Diagnostic::MARKER . '|' . (int) floor( time() / 120 ), wp_salt( 'auth' ) );
+$assert( MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
+    'Signed query marker lost after a reverse proxy strips the header' );
+$_GET['mad4b_synthetic_probe'] = 'invalid';
+$assert( ! MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
+    'Unsigned query parameter contaminated frontend sample classification' );
+echo "PASS staging origin probe: default zero-network, bounded GET, HTTPS-only, no redirects, no credentials, non-browser, denied production, signed proxy-safe marker and REST root isolation\n";
