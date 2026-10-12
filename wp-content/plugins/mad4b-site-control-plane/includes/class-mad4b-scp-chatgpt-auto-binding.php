@@ -31,39 +31,78 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             array( 'mad4b:read' ) );
     }
 
+    /**
+     * Exact enrolled identity wins. For unknown sites the existing portable
+     * *read-only* resolver may supply a provisional identity; never treat it
+     * as Site Profile enrollment or permission to mutate.
+     */
+    private static function site_binding() {
+        if ( class_exists( 'MAD4B_SCP_Site_Profile' ) &&
+            MAD4B_SCP_Site_Profile::origin_enrolled() &&
+            MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
+            MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+            return array(
+                'identity_source' => 'exact_site_profile',
+                'site_uuid' => (string) MAD4B_SCP_Site_Profile::site_uuid(),
+                'profile_digest' => (string) MAD4B_SCP_Site_Profile::profile_digest(),
+                'origin' => (string) MAD4B_SCP_Site_Profile::site_origin(),
+                'environment' => (string) MAD4B_SCP_Site_Profile::current_environment(),
+            );
+        }
+        if ( class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) &&
+            MAD4B_SCP_Portable_Readonly_Connection::effective() ) {
+            $status = MAD4B_SCP_Portable_Readonly_Connection::status();
+            return array(
+                'identity_source' => 'portable_readonly',
+                'site_uuid' => (string) MAD4B_SCP_Portable_Readonly_Connection::connection_uuid(),
+                'profile_digest' => (string) MAD4B_SCP_Portable_Readonly_Connection::connection_digest(),
+                'origin' => (string) ( $status['origin'] ?? '' ),
+                'environment' => (string) ( $status['environment'] ?? '' ),
+            );
+        }
+        return array();
+    }
+
+    private static function subject_is_enrolled( $source, $id ) {
+        if ( 'exact_site_profile' === $source )
+            return class_exists( 'MAD4B_SCP_Site_Profile' ) &&
+                MAD4B_SCP_Site_Profile::user_is_enrolled( $id );
+        return 'portable_readonly' === $source &&
+            class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) &&
+            MAD4B_SCP_Portable_Readonly_Connection::user_is_enrolled( $id );
+    }
+
     private static function observe_exact( $client_id, $wp_user_id, $resource, $scopes ) {
         if ( ! is_string( $client_id ) || ! hash_equals( self::CHATGPT_CLIENT_ID, $client_id ) ||
-            ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
             ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
-            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
-            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
-            ! MAD4B_SCP_Site_Profile::oauth_enabled() ||
             ! is_array( $scopes ) || ! in_array( 'mad4b:read', $scopes, true ) )
             return false;
-
-        $environment = (string) MAD4B_SCP_Site_Profile::current_environment();
+        $site = self::site_binding();
+        if ( empty( $site['identity_source'] ) ) return false;
+        $environment = $site['environment'];
         if ( ! in_array( $environment, array( 'staging', 'development', 'local', 'production' ), true ) )
             return false;
         $wp_user_id = absint( $wp_user_id );
         $user = $wp_user_id > 0 && function_exists( 'get_userdata' )
             ? get_userdata( $wp_user_id ) : false;
         if ( ! $user || ! user_can( $user, 'manage_options' ) ||
-            ! MAD4B_SCP_Site_Profile::user_is_enrolled( $wp_user_id ) )
+            ! self::subject_is_enrolled( $site['identity_source'], $wp_user_id ) )
             return false;
 
         $resource = untrailingslashit( trim( (string) $resource ) );
         if ( ! hash_equals( MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(), $resource ) )
             return false;
-        $site_uuid = strtolower( trim( (string) MAD4B_SCP_Site_Profile::site_uuid() ) );
-        $profile_digest = strtolower( trim( (string) MAD4B_SCP_Site_Profile::profile_digest() ) );
+        $site_uuid = strtolower( trim( (string) $site['site_uuid'] ) );
+        $profile_digest = strtolower( trim( (string) $site['profile_digest'] ) );
         if ( 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $site_uuid ) ||
             1 !== preg_match( '/^[a-f0-9]{64}$/D', $profile_digest ) )
             return false;
-        $origin = untrailingslashit( (string) MAD4B_SCP_Site_Profile::site_origin() );
+        $origin = untrailingslashit( (string) $site['origin'] );
         $current = get_option( self::OPTION, array() );
         $fingerprint = hash( 'sha256', $client_id );
         $identity = array(
             'contract' => self::CONTRACT,
+            'identity_source' => $site['identity_source'],
             'site_uuid' => $site_uuid,
             'profile_digest' => $profile_digest,
             'origin' => $origin,
@@ -103,25 +142,25 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
         $reason = 'not_observed';
         if ( is_array( $record ) && ! empty( $record ) ) {
             $reason = 'stale_or_site_profile_changed';
-            if ( class_exists( 'MAD4B_SCP_Site_Profile' ) &&
-                MAD4B_SCP_Site_Profile::origin_enrolled() &&
-                MAD4B_SCP_Site_Profile::site_urls_match_enrollment() &&
-                MAD4B_SCP_Site_Profile::oauth_enabled() ) {
+            $site = self::site_binding();
+            if ( ! empty( $site['identity_source'] ) &&
+                class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ) {
                 $expected = array(
                     'contract' => self::CONTRACT,
-                    'site_uuid' => strtolower( (string) MAD4B_SCP_Site_Profile::site_uuid() ),
-                    'profile_digest' => strtolower( (string) MAD4B_SCP_Site_Profile::profile_digest() ),
-                    'origin' => untrailingslashit( (string) MAD4B_SCP_Site_Profile::site_origin() ),
+                    'identity_source' => $site['identity_source'],
+                    'site_uuid' => strtolower( (string) $site['site_uuid'] ),
+                    'profile_digest' => strtolower( (string) $site['profile_digest'] ),
+                    'origin' => untrailingslashit( (string) $site['origin'] ),
                     'resource' => MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier(),
                     'client_fingerprint' => hash( 'sha256', self::CHATGPT_CLIENT_ID ),
                     'wp_user_id' => (int) ( $record['wp_user_id'] ?? 0 ),
-                    'environment' => (string) MAD4B_SCP_Site_Profile::current_environment(),
+                    'environment' => (string) $site['environment'],
                 );
                 $user_id = (int) $expected['wp_user_id'];
                 $now = time();
                 $observed = (int) ( $record['observed_at_unix'] ?? 0 );
                 $ready = $user_id > 0 &&
-                    MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) &&
+                    self::subject_is_enrolled( $site['identity_source'], $user_id ) &&
                     ( $user = get_userdata( $user_id ) ) && user_can( $user, 'manage_options' ) &&
                     $observed > 0 && $observed <= $now &&
                     $now - $observed <= self::MAX_AGE &&
@@ -135,6 +174,8 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
             'client_observed' => $ready,
             'binding_source' => $ready ? 'verified_chatgpt_oauth_client' : '',
             'identity_scope' => 'oauth_client_site_and_enrolled_user',
+            'site_identity_source' => $ready ? (string) $record['identity_source'] : '',
+            'provisional_readonly_binding' => $ready && 'portable_readonly' === (string) $record['identity_source'],
             // Stable non-authorizing identifier, not a guessed asdk_app_* ID.
             'connection_fingerprint' => $ready ? hash( 'sha256',
                 self::CONTRACT . "\0" . (string) $record['site_uuid'] . "\0" .
@@ -158,6 +199,7 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
         $record = get_option( self::OPTION, array() );
         return ! empty( $status['client_observed'] )
             && is_array( $record )
+            && ( $record['identity_source'] ?? '' ) === 'exact_site_profile'
             && function_exists( 'get_current_user_id' )
             && (int) ( $record['wp_user_id'] ?? 0 ) === (int) get_current_user_id()
             && class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
