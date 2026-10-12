@@ -511,7 +511,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$expires_at = $connected && isset( $token['expires_at'] ) ? (int) $token['expires_at'] : 0;
 		$access_token_present = $connected && ! empty( $token['access_token'] );
 		$access_token_valid = $access_token_present && $expires_at > time() + 90;
-		$refresh_required = $connected && ! $access_token_valid;
+		// A pending revoke is explicitly transport-disabled: never suggest
+		// refreshing a credential retained solely for safe remote revocation retry.
+		$refresh_required = $connected && ! $revocation_pending && ! $access_token_valid;
 		$refresh_failure_code = $connected && isset( $token['refresh_failure_code'] ) ? sanitize_key( (string) $token['refresh_failure_code'] ) : '';
 		$refresh_failure_provider_code = $connected && isset( $token['refresh_failure_provider_code'] ) ? sanitize_key( (string) $token['refresh_failure_provider_code'] ) : '';
 		$refresh_failure_http_status = $connected && isset( $token['refresh_failure_http_status'] ) ? absint( $token['refresh_failure_http_status'] ) : 0;
