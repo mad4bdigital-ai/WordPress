@@ -52,6 +52,19 @@ $expected = array(
     'media/remote-import-apply' => 'media',
 );
 $allowed = $c::allowed_ability_providers();
+// Native build admission and optional self-certified installation must each
+// have an exact, Staging-only reviewed provider pair. This allowlist test
+// does not approve either operation or create any grant.
+$native_reviewed = array(
+    'mad4b/wp-native-build-start' => 'core',
+    'mad4b/wp-native-self-approve-install' => 'core',
+);
+verify_grants( count( $native_reviewed ) === 2, 'Exactly two native Staging candidate abilities reviewed.' );
+foreach ( $native_reviewed as $ability => $provider ) {
+    verify_grants( isset( $allowed[ $ability ] ) && $allowed[ $ability ] === $provider,
+        'Native Staging ability requires exact core provider: ' . $ability );
+}
+
 verify_grants( count( $expected ) === 38, 'Exactly 38 source-reviewed missing Staging Ability/provider pairs.' );
 foreach ( $expected as $ability => $provider ) {
     verify_grants( isset( $allowed[ $ability ] ) && $allowed[ $ability ] === $provider,
@@ -70,10 +83,14 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( !isset( $production[ $ability ] ),
         'New Staging-reviewed mutation cannot be included in Production: ' . $ability );
 }
+foreach ( $native_reviewed as $ability => $provider ) {
+    verify_grants( ! isset( $production[ $ability ] ),
+        'Native candidate grant review must never expand Production: ' . $ability );
+}
 $GLOBALS['test_env'] = 'staging';
 $retire = $c::retirable_stale_ability_providers();
 foreach ( $expected as $ability => $provider ) {
     verify_grants( ( $retire[ $ability ] ?? '' ) === $provider,
         'Current Staging review can retire exactly its stale version: ' . $ability );
 }
-echo "PASS: 38 exact reviewed Staging write abilities only; no automatic grant or Production expansion\n";
+echo "PASS: 38 Feature 007 plus 2 native exact reviewed Staging pairs; no automatic grant or Production expansion\n";
