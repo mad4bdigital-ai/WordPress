@@ -239,9 +239,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 		$status['state'] = 'unmanaged_path_conflict';
 		$status['blocker'] = 'unmanaged_mu_bootstrap_path_conflict';
 		$status['manual_conflict_recovery_available'] = true;
-		$status['automatic_conflict_recovery_available'] = class_exists( 'MAD4B_SCP_Site_Profile', false )
-			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-			&& MAD4B_SCP_Site_Profile::nonproduction_governed( 'managed_runtime' );
+		// A Staging profile alone is not an ownership proof. Unknown files must
+		// use the exact administrator-confirmed replacement flow.
+		$status['automatic_conflict_recovery_available'] = false;
 		return $status;
 	}
 
