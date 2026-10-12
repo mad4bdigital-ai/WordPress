@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 864,
+  "changed_file_count": 866,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1924,8 +1924,18 @@
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-google-remote-revocation-governed-staging",
+      "semantic_unit": "Staging-only remote Google OAuth pending revoke status plan one-time approval CAS retry and independent readback",
+      "revert_boundary": "Treat governed Google remote revoke implementation and runtime regression as one rollback unit",
+      "certification": "ownership_only_offline_php_and_live_staging_acceptance_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "cf68811b6f05ef863c267e06a1e72c1a3b1601546848d4e3c3373856a98b3514",
+  "changed_paths_sha256": "0380e0f2e41c8d8f1557d179fff610fdce6473dbdbc86cf3462cfd7db51dbab8",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
