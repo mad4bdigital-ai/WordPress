@@ -566,6 +566,9 @@ final class MAD4B_SCP_MCP_MU_Bootstrap_Refresh {
 			if ( is_wp_error( $receipt ) ) { $status['blocker'] = $receipt->get_error_code(); self::$status = $status; return $status; }
 			$status['ownership_receipt_present'] = true;
 			$status['ownership_receipt_valid'] = true;
+			$lineage_record = self::record_verified_lineage( array( $status['source_sha256'] ) );
+			$status['lineage_recorded'] = ! is_wp_error( $lineage_record );
+			if ( is_wp_error( $lineage_record ) ) $status['lineage_blocker'] = $lineage_record->get_error_code();
 			$status['state'] = 'managed_mu_current';
 			self::$status = $status;
 			return $status;
