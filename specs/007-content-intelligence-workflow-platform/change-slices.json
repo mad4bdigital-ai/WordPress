@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 837,
+  "changed_file_count": 848,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1817,8 +1817,35 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-acceptance-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
       ]
+    },
+    {
+      "id": "feature007-20261012-mcp-runtime-lineage",
+      "semantic_unit": "Dynamic MU legacy lineage and MCP connection diagnostics",
+      "revert_boundary": "Revert only the listed source and native fixtures; no Production or authority change is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "docs/runbooks/mad4b-chatgpt-automatic-oauth-client-binding.md",
+        "wp-content/plugins/mad4b-site-control-plane/assets/connection-endpoint-diagnostics.js",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-auto-binding.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-endpoint-diagnostic.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-runtime-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-auto-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-endpoint-error-evidence-runtime.js",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-recovery-scheduler-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-site-lineage-runtime.php"
+      ]
+    },
+    {
+      "id": "feature007-20261012-staging-activation-seed-continuation",
+      "semantic_unit": "Bounded Staging activation seed deferral with conservative fallback",
+      "revert_boundary": "Revert only the listed source and native fixtures; no Production or authority change is implied.",
+      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "b9502e7ca079428381909f23be3677b72b9d00dddde01b31c8b9071e0325aeb3",
+  "changed_paths_sha256": "f26af77335568c88a9ea7552ac8a3479b6e6577c0946843b10d32e2e30340c78",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
