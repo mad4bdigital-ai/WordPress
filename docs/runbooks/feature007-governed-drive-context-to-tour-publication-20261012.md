@@ -128,3 +128,71 @@ eligible, scan every page and classify/approve the three Brand Core categories
 separately. After Context Receipt, test one *nonpublic draft* and verify it;
 publish only via a separate approved transition. Never widen Google OAuth,
 auto-migrate quarantine, or enable arbitrary Create to make a report green.
+
+## ETG pending revoke and remote-first Google-to-post lifecycle — 2026-10-12
+
+This runbook records behavior added to PR #258, **not** a deployed/live
+certification. Observed on Egypt Tour Gates Staging before deployment:
+`google_revocation_http_400`, `revocation_pending=true`, local Drive reads
+and writes disabled, Site Profile Staging ready, missing required Brand Core
+categories, and deployment binding awaiting governed owner approval.
+
+### Remote OAuth state machine
+
+| State | Safe next step | Denied |
+| --- | --- | --- |
+| `connected`, fresh | Read-only `context/google-drive-status`; provider access remains independent of Context write | Unapproved mutations |
+| `connected`, `refresh_required` | Refresh only during permitted provider request, with existing refresh grant | Passive wp-admin refresh, automatic grant widening |
+| `revocation_pending` | `mad4b/google-revocation-status` -> `mad4b/google-revocation-plan` -> owner one-time `mad4b/approval-plan` -> `mad4b/google-revocation-retry` -> new-request status/readback | Google Drive reads/writes, OAuth refresh, reconnect, grant expansion |
+| Google HTTP 400 on refresh revoke | One bounded retry using distinct access token. Only an explicit HTTP 200 response confirms remote revoke | Treating HTTP 400/timeout as confirmed |
+| Both attempts unconfirmed | Preserve sealed disabled pending grant and exact error; require fresh plan/ticket after any changed persisted evidence | Silent local disconnect or using prior stale approval |
+| Provider reports success but token remains | `mad4b_google_revoke_readback_unconfirmed` | Final success receipt |
+| Locally disconnected with confirmation and independent readback | User can explicitly reconnect at Google with suitable least-privilege grants | Unconsented automatic reauthorization |
+| Token unreadable / cannot prove revoke | External Google account manual revocation and then governed reconnect | Bypassing custody or inventing provider proof |
+
+The dedicated site-domain Google OAuth connection is **not** an arbitrary
+full Workspace control. Google consent, revocation outside the local provider
+or deleting external Google grants remain owner/provider actions as needed.
+
+### Remote operation chain
+
+`mad4b/operation-discover` (with bounded pagination and capability hints)
+exposes first-party Staging operations in this dependency order:
+
+1. Google status and if pending, approved remote revoke; reconnect/consent
+   is user-mediated.
+2. `context/governed-source-upsert` with exact owner/site source evidence,
+   then `context/source-scan-plan` and approved
+   `context/source-scan-apply`.
+3. `context/remote-owner-review-plan` and approved review apply, then
+   `context/brand-core-coverage` for the required Brand Strategy, Tone of
+   Voice and Editorial Guidelines. Quarantine is never auto-adopted.
+4. `mad4b/aci01-intake-preview`, governed `mad4b/content-job-create`,
+   separate `mad4b/content-create-post` for a **nonpublic draft**.
+5. Independent Brand Core, factual/editorial/SEO and media checks; separate
+   governed `mad4b/content-update-post` publication transition and
+   `mad4b/content-get-post` readback.
+
+Registered metadata does **not** assert execution eligibility. Each remote
+write requires the current verified client, NHI grant, exact input-schema
+projection, appropriate one-time approval ticket, site policy, Context
+Receipt where brand-bearing text is involved, and independent postcondition
+evidence. All remote operation catalog entries here deny Production mutations.
+
+### Regression and acceptance evidence
+
+`.github/workflows/feature-007-pre-staging-hybrid-audit.yml` checks
+`context-oauth-lifecycle-runtime.php`,
+`google-revocation-remote-runtime.php`,
+`remote-operation-parity-contract.py`, the first-party provider and
+Google grant independent-gate tests. The tests include two HTTP 400
+responses, explicit 400-to-200 fallback, CAS-stale denial, missing approval,
+partial postcondition cleanup, and Production denial.
+
+Before Staging acceptance: require exact HEAD package verification, a
+successful PHP 8.3 verification run, enrolled Staging Write candidate
+binding, fresh MCP discovery and schema readback, a single controlled
+revocation test *only with owner-approved real grant*, and independent
+readback. Next, verify Source Folder ownership, 3-category Brand Core,
+and create/verify one nonpublic draft without automatic public publishing.
+CI being queued or a schema test passing is not a live release certificate.
