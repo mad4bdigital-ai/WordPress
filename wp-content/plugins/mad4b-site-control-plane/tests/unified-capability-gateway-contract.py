@@ -43,6 +43,29 @@ for marker in ["bounded_metadata_only_relevance", "preparation_required", "schem
     assert marker in search_section, f'metadata-only search invariant missing: {marker}'
 
 
+# Read-only integration reuses the canonical scope, never grants a new dispatch
+# authority, and reports incomplete sources explicitly.
+for marker in [
+    'MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope()',
+    'MAD4B_SCP_Capability_Search_Index::catalog',
+    'MAD4B_SCP_Capability_Search_Index::results',
+    "'coverage_state' =>",
+    "'skipped_count' =>",
+    "'catalog_cache_hit' =>",
+    "'results_cache_hit' =>",
+    'MAD4B_SCP_Capability_Dependency_Planner::inspect',
+    'MAD4B_SCP_Capability_Source_Inventory::inspect',
+]:
+    assert marker in gateway, f'unified integration invariant missing: {marker}'
+for marker in [
+    'class-mad4b-scp-capability-search-index.php',
+    'class-mad4b-scp-capability-dependency-planner.php',
+    'class-mad4b-scp-capability-source-inventory.php',
+]:
+    assert marker in main, f'bootstrap dependency missing: {marker}'
+for marker in ['sources, search', 'async function dependencies', 'async function* searchPages']:
+    assert marker in client, f'unified client integration missing: {marker}'
+
 # Dynamic discovery is logically unbounded across pages, while each response
 # remains budgeted and only server-authorized metadata can be searched.
 for marker in [
