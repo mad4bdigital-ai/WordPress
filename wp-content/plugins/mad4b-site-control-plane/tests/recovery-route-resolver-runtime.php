@@ -96,6 +96,31 @@ foreach ( array(
     $assert( is_wp_error( MAD4B_SCP_Recovery_Route_Resolver::inspect( $input ) ),
         'Malformed or untrusted recovery input was silently accepted.' );
 }
+// Generic recovery dispatch must select the correct stage from the blocker,
+// not assume that every infrastructure incident needs a plugin ZIP.
+$generic_build = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+    'blockers' => array( 'mad4b_selected_head_certified_artifact_unavailable' ),
+    'expected_head' => $head,
+) );
+$assert( 'staging_install' === $generic_build['resolved_goal'] &&
+    'wordpress_native_cron_build' === $generic_build['recommended_route_id'],
+    'General artifact blocker failed to discover existing Cron route' );
+$GLOBALS['registered_abilities'][] = 'mad4b/chatgpt-tool-projection-discover';
+$generic_tools = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+    'blockers' => array( 'tool_not_found' ) ) );
+$assert( 'capability_discovery' === $generic_tools['resolved_goal'] &&
+    'indexed_gateway_discovery' === $generic_tools['recommended_route_id'],
+    'Tool-not-found was mislabeled as a build or hard permission failure' );
+$generic_unknown = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+    'blockers' => array( 'unrecognized_generic_incident' ) ) );
+$assert( 'general' === $generic_unknown['resolved_goal'] &&
+    null === $generic_unknown['recommended_route_id'],
+    'Unknown incident triggered an unrelated fallback' );
+$generic_frontend = MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
+    'blockers' => array( 'frontend_http_500' ) ) );
+$assert( 'frontend_diagnostics' === $generic_frontend['resolved_goal'] &&
+    null === $generic_frontend['recommended_route_id'],
+    'Unregistered frontend diagnostic was marked available' );
 $GLOBALS['can_read'] = false;
 $assert( is_wp_error( MAD4B_SCP_Recovery_Route_Resolver::inspect( array(
     'goal' => 'source_build', 'expected_head' => $head ) ) ), 'Unauthorized recovery was allowed.' );
