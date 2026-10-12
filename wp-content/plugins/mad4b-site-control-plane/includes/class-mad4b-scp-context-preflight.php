@@ -402,8 +402,16 @@ final class MAD4B_SCP_Context_Preflight {
 
 	private static function normalize_mutation_abilities( $abilities ) {
 		if ( ! is_array( $abilities ) ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_invalid', 'Allowed mutation abilities must be an array.' );
-		if ( count( $abilities ) > self::MAX_ALLOWED_MUTATION_ABILITIES ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Allowed mutation ability count exceeds the bounded limit.' );
 		$supported = self::brand_bearing_mutation_abilities();
+		$count = count( $abilities );
+		// Canonical managed Skills may protect the entire registered semantic
+		// catalog, which grows as governed Content Experience Profiles expand.
+		// Do not weaken the 20-entry cap for partial or custom over-limit lists:
+		// only the EXACT full live catalog can use this compatibility path.
+		$catalog_wide = $count > self::MAX_ALLOWED_MUTATION_ABILITIES;
+		if ( $catalog_wide && ( $count !== count( $supported ) || ! $supported ) ) {
+			return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Over-limit mutation abilities require the exact trusted semantic catalog.' );
+		}
 		$out = array();
 		foreach ( $abilities as $ability ) {
 			$ability = trim( (string) $ability );
@@ -412,6 +420,9 @@ final class MAD4B_SCP_Context_Preflight {
 		}
 		$out = array_values( array_unique( $out ) );
 		sort( $out, SORT_STRING );
+		if ( $catalog_wide && ( count( $out ) !== count( $supported ) || $out !== $supported ) ) {
+			return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Over-limit mutation abilities must match the full current catalog without duplicates.' );
+		}
 		return $out;
 	}
 
