@@ -22,23 +22,32 @@ final class MAD4B_SCP_Capability_Source_Inventory {
         if ( is_wp_error( $permission ) || true !== $permission )
             return new WP_Error( 'mad4b_capability_inventory_read_denied', 'Governed read authority is required.' );
         $sources = array();
-        $ability_names = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
-            ? MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names() : null;
+        $ability_names = null;
+        try {
+            if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) )
+                $ability_names = MAD4B_SCP_ChatGPT_Tool_Projection::all_site_ability_names();
+        } catch ( Throwable $error ) { $ability_names = null; }
         $sources[] = self::source( 'wordpress_abilities',
             is_array( $ability_names ) ? 'REGISTERED_NOT_AUTHORIZED' : 'UNAVAILABLE',
             is_array( $ability_names ) ? count( $ability_names ) : null,
             'Use indexed search to obtain verified metadata coverage; registration alone is not execution permission.' );
 
-        $operations = class_exists( 'MAD4B_SCP_Operation_Registry' )
-            ? MAD4B_SCP_Operation_Registry::status() : null;
+        $operations = null;
+        try {
+            if ( class_exists( 'MAD4B_SCP_Operation_Registry' ) )
+                $operations = MAD4B_SCP_Operation_Registry::status();
+        } catch ( Throwable $error ) { $operations = null; }
         $operations_ready = is_array( $operations ) && ! empty( $operations['ready'] );
         $sources[] = self::source( 'operation_registry',
             $operations_ready ? 'REGISTERED_NOT_AUTHORIZED' : 'PARTIAL_OR_UNAVAILABLE',
             is_array( $operations ) && isset( $operations['count'] ) ? (int) $operations['count'] : null,
             is_array( $operations ) ? (string) ( $operations['state'] ?? 'unknown' ) : 'unavailable' );
 
-        $skills = class_exists( 'MAD4B_SCP_Skill_Registry' )
-            ? MAD4B_SCP_Skill_Registry::status() : null;
+        $skills = null;
+        try {
+            if ( class_exists( 'MAD4B_SCP_Skill_Registry' ) )
+                $skills = MAD4B_SCP_Skill_Registry::status();
+        } catch ( Throwable $error ) { $skills = null; }
         $skills_count = is_array( $skills ) && isset( $skills['skill_count'] ) ? (int) $skills['skill_count'] : null;
         $skill_scan_max = class_exists( 'MAD4B_SCP_Skill_Registry' )
             ? MAD4B_SCP_Skill_Registry::MAX_SCAN_SKILLS : 0;
@@ -47,8 +56,11 @@ final class MAD4B_SCP_Capability_Source_Inventory {
                 : ( $skills_count >= $skill_scan_max ? 'TRUNCATED_OR_UNKNOWN' : 'INVENTORIED_NOT_CERTIFIED' ),
             $skills_count, 'Enabled state and lifecycle certification must be verified separately.' );
 
-        $remote = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )
-            ? MAD4B_SCP_Remote_Operation_Parity::status() : null;
+        $remote = null;
+        try {
+            if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) )
+                $remote = MAD4B_SCP_Remote_Operation_Parity::status();
+        } catch ( Throwable $error ) { $remote = null; }
         $rejected = is_array( $remote ) ? (int) ( $remote['rejected_registration_count'] ?? 0 ) : 0;
         $sources[] = self::source( 'remote_operation_parity',
             ! is_array( $remote ) ? 'UNAVAILABLE' :
