@@ -110,7 +110,11 @@ class MAD4B_SCP_Self_Update {
 }
 class MAD4B_SCP_Audit {
     public static function record( $ability, $summary, $result ) {
+        // Matches audit_events.status varchar(32) in production schema.
+        if ( ! is_string( $result ) || strlen( $result ) > 32 )
+            return new WP_Error( 'audit_status_column_overflow' );
         $GLOBALS['audit']++;
+        $GLOBALS['audit_statuses'][] = $result;
         $GLOBALS['audit_phases'][] = $summary['phase'] ?? '';
         if ( ! empty( $GLOBALS['fail_terminal_audit'] )
             && ( $summary['phase'] ?? '' ) !== 'SELF_APPROVED_INSTALLING' )
@@ -194,8 +198,10 @@ assert_self_approval( is_array( $accepted ) && !empty( $accepted['installed'] )
     && $GLOBALS['installs'] === 1 && $GLOBALS['audit'] >= 2,
     'Exact owner-delegated Staging self-approval uses protected installer' );
 assert_self_approval( in_array( 'SELF_APPROVED_INSTALLING', $GLOBALS['audit_phases'], true )
-    && in_array( 'INSTALLED_VERIFIED', $GLOBALS['audit_phases'], true ),
-    'Both acceptance and terminal verified result are durably audited' );
+    && in_array( 'INSTALLED_VERIFIED', $GLOBALS['audit_phases'], true )
+    && in_array( 'ok', $GLOBALS['audit_statuses'], true )
+    && !in_array( 'owner_delegated_self_certification', $GLOBALS['audit_statuses'], true ),
+    'Acceptance and terminal audit statuses must fit database schema varchar(32)' );
 $GLOBALS['updater_mode'] = 'error';
 $rolled_back = $c::apply( $apply );
 assert_self_approval( is_wp_error( $rolled_back )
