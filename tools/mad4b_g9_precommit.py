@@ -64,6 +64,23 @@ def main() -> None:
         fail("stage or revert all G9 fingerprinted source/manifest changes first: "
              + ", ".join(unstaged.stdout.splitlines()[:8]))
 
+    # Only the frequently edited plugin bootstrap may be repinned without
+    # additional owner review. In particular, workflow SHA-256 must NEVER be
+    # silently changed: it has its own explicit reviewed-workflow protocol.
+    from hashlib import sha256
+    mismatched = []
+    for row in rows:
+        filename = ROOT / row["path"]
+        if not filename.is_file() or filename.is_symlink():
+            fail("source unavailable or symlinked: " + row["path"])
+        data = filename.read_bytes()
+        if row["sha256"] != sha256(data).hexdigest() or row["bytes"] != len(data):
+            mismatched.append(row["path"])
+    if mismatched and mismatched != [
+            "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"]:
+        fail("only bootstrap digest drift may be auto-repinned; review independently: "
+             + ", ".join(mismatched[:8]))
+
     checked = run_python(REFRESH)
     if checked not in (0, 1):
         fail("G9 check script failed; review source manually")
