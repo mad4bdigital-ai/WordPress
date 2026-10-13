@@ -10,6 +10,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_SAVE_GOOGLE_AUTH_MODE = 'mad4b_context_google_auth_mode_save';
 	const ACTION_SAVE_GOOGLE_GRANTS = 'mad4b_context_google_grants_save';
 	const ACTION_CONNECT_GOOGLE = 'mad4b_context_google_connect';
+	const ACTION_REFRESH_GOOGLE = 'mad4b_context_google_refresh';
 	const ACTION_GOOGLE_CALLBACK = 'mad4b_context_google_callback';
 	const ACTION_GOOGLE_DEDICATED_CALLBACK = 'mad4b_context_google_dedicated_callback';
 	const ACTION_GOOGLE_MANAGED_CALLBACK = 'mad4b_context_google_managed_callback';
@@ -35,6 +36,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_SAVE_GOOGLE_AUTH_MODE => 'handle_save_google_auth_mode',
 			self::ACTION_SAVE_GOOGLE_GRANTS => 'handle_save_google_grants',
 			self::ACTION_CONNECT_GOOGLE => 'handle_connect_google',
+			self::ACTION_REFRESH_GOOGLE => 'handle_refresh_google',
 			self::ACTION_GOOGLE_CALLBACK => 'handle_google_callback',
 			self::ACTION_GOOGLE_DEDICATED_CALLBACK => 'handle_google_dedicated_callback',
 			self::ACTION_GOOGLE_MANAGED_CALLBACK => 'handle_google_managed_callback',
@@ -124,6 +126,20 @@ final class MAD4B_SCP_Context_Admin_UI {
 			isset( $_POST['client_secret'] ) ? wp_unslash( $_POST['client_secret'] ) : ''
 		);
 		self::finish_result( $result, 'google-drive', 'google_dedicated_credentials_saved', __( 'Dedicated Google OAuth configuration saved.', 'mad4b-site-control-plane' ) );
+	}
+
+	/** Owner-triggered refresh of the existing grant, not OAuth reconnect. */
+	public static function handle_refresh_google() {
+		self::require_admin( self::ACTION_REFRESH_GOOGLE );
+		if ( 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) )
+			self::redirect_result( new WP_Error( 'mad4b_google_refresh_post_required', 'Refresh requires POST.' ), 'google-drive', '' );
+		$expected = isset( $_POST['expected_google_grant_sha256'] ) && is_string( $_POST['expected_google_grant_sha256'] )
+			? sanitize_text_field( wp_unslash( $_POST['expected_google_grant_sha256'] ) ) : '';
+		if ( ! isset( $_POST['confirm_google_refresh'] ) || ! is_string( $_POST['confirm_google_refresh'] )
+			|| '1' !== wp_unslash( $_POST['confirm_google_refresh'] ) )
+			self::redirect_result( new WP_Error( 'mad4b_google_refresh_confirmation_required', 'Confirm use of the existing saved Google grant.' ), 'google-drive', '' );
+		$result = MAD4B_SCP_Google_Drive_Context::refresh_existing_connection( $expected );
+		self::redirect_result( $result, 'google-drive', 'google_refresh_verified' );
 	}
 
 	public static function handle_connect_google() {
@@ -756,6 +772,19 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( ! empty( $connection['account_email'] ) ) echo ' · ' . esc_html( $connection['account_email'] );
 			echo '</p>';
 			if ( $refresh_required ) echo '<p class="description">' . esc_html__( 'The stored connection remains valid and does not require reconnect. The next provider request may refresh the access token using the saved grant.', 'mad4b-site-control-plane' ) . '</p>';
+			if ( $refresh_required && empty( $connection['reconnect_required'] ) && empty( $connection['refresh_failed'] ) ) {
+				$grant_sha = MAD4B_SCP_Google_Drive_Context::encrypted_grant_identity_sha256();
+				if ( ! is_wp_error( $grant_sha ) ) {
+					echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-refresh-form">';
+					wp_nonce_field( self::ACTION_REFRESH_GOOGLE );
+					echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REFRESH_GOOGLE ) . '">';
+					echo '<input type="hidden" name="expected_google_grant_sha256" value="' . esc_attr( $grant_sha ) . '">';
+					echo '<label><input type="checkbox" name="confirm_google_refresh" value="1" required> ' . esc_html__( 'Use the existing Google grant to refresh the access token; do not change permissions.', 'mad4b-site-control-plane' ) . '</label> ';
+					submit_button( __( 'Refresh Connection', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+					echo '</form>';
+				}
+			}
+
 			echo '</div>';
 
 			if ( ! empty( $grants['incremental_consent_required'] ) ) {
@@ -952,6 +981,19 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
 		echo ' · ' . esc_html( $access_label ) . '</p>';
 		if ( $refresh_required ) echo '<p class="description"><code>refresh_required</code> · ' . esc_html__( 'Reconnect is not required unless token refresh fails or the provider revokes the grant.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( $refresh_required && empty( $connection['reconnect_required'] ) && empty( $connection['refresh_failed'] ) ) {
+			$grant_sha = MAD4B_SCP_Google_Drive_Context::encrypted_grant_identity_sha256();
+			if ( ! is_wp_error( $grant_sha ) ) {
+				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-refresh-form">';
+				wp_nonce_field( self::ACTION_REFRESH_GOOGLE );
+				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REFRESH_GOOGLE ) . '">';
+				echo '<input type="hidden" name="expected_google_grant_sha256" value="' . esc_attr( $grant_sha ) . '">';
+				echo '<label><input type="checkbox" name="confirm_google_refresh" value="1" required> ' . esc_html__( 'Refresh the Google access token using the existing grant only.', 'mad4b-site-control-plane' ) . '</label> ';
+				submit_button( __( 'Refresh Connection', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+				echo '</form>';
+			}
+		}
+
 		echo '</div>';
 		if ( empty( $connection['write_available'] ) ) {
 			echo '<div class="mad4b-scp-next-step is-attention"><p><strong>' . esc_html__( 'Need to repair or recreate Drive assets?', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Upgrade OAuth to read + write. This grants provider capability only; mutations still require governed approval.', 'mad4b-site-control-plane' ) . '</p>';
