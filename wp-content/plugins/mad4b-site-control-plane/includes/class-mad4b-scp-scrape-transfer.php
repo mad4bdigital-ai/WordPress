@@ -285,6 +285,7 @@ final class MAD4B_SCP_Scrape_Transfer {
                     'source_page_url' => $source,
                     'source_page_sha256' => hash( 'sha256', $parsed['html'] ),
                     'rights_basis' => 'unknown', // No rights decision in scraper.
+                    'capture_only' => true,
                     'duplicate_policy' => 'reuse',
                     'filename' => $item['filename'],
                     'title' => $item['title'], 'caption' => $item['caption'],

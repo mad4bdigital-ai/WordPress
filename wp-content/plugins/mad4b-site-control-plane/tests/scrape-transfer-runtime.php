@@ -164,6 +164,7 @@ check( ! is_wp_error( $pending ) && $pending['image_import_remaining'] === 1 &&
     $pending['image_import_tasks'][0]['import_apply_ability'] === 'media/remote-import-apply' &&
     $pending['remote_media_manifest_items'][0]['binding_role'] === 'gallery' &&
     $pending['remote_media_manifest_items'][0]['import']['rights_basis'] === 'unknown' &&
+    $pending['remote_media_manifest_items'][0]['import']['capture_only'] === true &&
     $pending['remote_media_manifest_items'][0]['import']['duplicate_policy'] === 'reuse' &&
     $pending['remote_media_manifest_items'][0]['import']['alt'] === 'Deck' &&
     strpos( $pending['remote_media_manifest_items'][0]['import']['description'], 'Original image source:' ) === 0,

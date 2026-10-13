@@ -91,6 +91,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_page_url' => array( 'type' => 'string', 'maxLength' => 8192, 'default' => '' ),
 			'source_page_sha256' => array( 'type' => 'string', 'maxLength' => 64, 'pattern' => '^(?:|[a-fA-F0-9]{64})$' ),
 			'rights_basis' => array( 'type' => 'string', 'enum' => array( 'unknown', 'owned', 'licensed', 'permission', 'public_domain', 'creative_commons' ), 'default' => 'unknown' ),
+			'capture_only' => array( 'type' => 'boolean', 'default' => false ),
 			'rights_note' => array( 'type' => 'string', 'maxLength' => 2000, 'default' => '' ),
 			'rights_reference' => array( 'type' => 'string', 'maxLength' => 8192, 'default' => '' ),
 			'license_expires_on' => array( 'type' => 'string', 'maxLength' => 10, 'default' => '' ),
@@ -205,6 +206,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 				'source_page_url' => $page_url,
 				'source_page_sha256' => $source_page_sha256,
 				'rights_basis' => 'unknown',
+				'capture_only' => true,
 				'alt' => isset( $candidate['alt'] ) ? (string) $candidate['alt'] : '',
 				'title' => isset( $candidate['title'] ) ? (string) $candidate['title'] : '',
 			);
@@ -257,8 +259,13 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( is_wp_error( $content_state ) ) return $content_state;
 
 		$blockers = array();
-		if ( 'unknown' === $normalized['rights_basis'] ) $blockers[] = 'rights_confirmation_required';
-		elseif ( 'owned' !== $normalized['rights_basis'] && '' === $normalized['rights_note'] && '' === $normalized['rights_reference'] ) $blockers[] = 'rights_evidence_required';
+		// Capture-only is data acquisition into *unattached* WordPress Media,
+		// not a publication or a rights assertion. Normal publication lanes
+		// retain their current policy and exact independent approval gates.
+		if ( empty( $normalized['capture_only'] ) ) {
+			if ( 'unknown' === $normalized['rights_basis'] ) $blockers[] = 'rights_confirmation_required';
+			elseif ( 'owned' !== $normalized['rights_basis'] && '' === $normalized['rights_note'] && '' === $normalized['rights_reference'] ) $blockers[] = 'rights_evidence_required';
+		}
 		$reuse_available = ! empty( $source_state['exists'] ) || ! empty( $content_state['exists'] );
 		if ( ! $reuse_available && '' === $normalized['expected_content_sha256'] ) $blockers[] = 'content_inspection_required';
 		if ( $reuse_available && 'fail' === $normalized['duplicate_policy'] ) $blockers[] = ! empty( $source_state['exists'] ) ? 'source_already_imported' : 'content_already_imported';
@@ -272,6 +279,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'ready' => empty( $blockers ),
 			'blockers' => array_values( array_unique( $blockers ) ),
 			'normalized_input' => $normalized,
+			'capture_only' => ! empty( $normalized['capture_only'] ),
 			'existing_source_state' => $source_state,
 			'existing_content_state' => $content_state,
 			'exact_content_locked' => '' !== $normalized['expected_content_sha256'] || ! empty( $source_state['exists'] ),
@@ -517,6 +525,7 @@ final class MAD4B_SCP_Remote_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			'source_page_url' => $source_page_url,
 			'source_page_sha256' => $source_page_sha256,
 			'rights_basis' => $rights_basis,
+			'capture_only' => ! empty( $input['capture_only'] ),
 			'rights_note' => sanitize_textarea_field( isset( $input['rights_note'] ) ? (string) $input['rights_note'] : '' ),
 			'rights_reference' => $rights_reference,
 			'license_expires_on' => $license_expires_on,
