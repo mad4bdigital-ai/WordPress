@@ -20,7 +20,13 @@ final class MAD4B_SCP_WP_Native_Build {
     const MAX_SOURCE_BYTES = 14680064;
     const MAX_BLOB_BYTES = 1048576;
     const MAX_ZIP_BYTES = 16777216;
-    const BATCH = 4;
+    // Upper bound, not a requirement: wall-clock and PHP limits can stop early.
+    const BATCH = 64;
+    const FETCH_WALL_SECONDS = 24;
+    const FETCH_CHECKPOINT_INTERVAL = 8;
+    // Six hours allows throttled Staging Cron to finish without treating a
+    // low-traffic site as a failed build. This is not an approval-ticket TTL.
+    const JOB_DEADLINE_SECONDS = 21600;
 
     public static function boot() {
         // Load self-approval before the adapter enumerates its capabilities.
@@ -281,6 +287,122 @@ final class MAD4B_SCP_WP_Native_Build {
         return $outcome;
     }
 
+    /**
+     * Resume a strictly identical, deadline-expired partial build only after a
+     * fresh governed start ticket and current owner OAuth Step-Up. Nothing is
+     * resumed automatically or after a Site Profile / source-plan drift.
+     *
+     * A BLOCKED job's previous failure code is ambiguous; re-check the site
+     * identity, exact source, deadline and every verified file from disk.
+     */
+    private static function try_resume_deadline_job( array $job, array $plan, $dir ) {
+        $blocked = in_array( (string) ( $job['blocker'] ?? '' ),
+            array( 'job_deadline_expired', 'site_binding_or_deadline_changed' ), true );
+        if ( ( $job['state'] ?? '' ) !== 'BLOCKED' || ! $blocked ||
+            (int) ( $job['expires_at'] ?? 0 ) >= time() ) return null;
+        $site = self::site();
+        if ( ( $job['head'] ?? '' ) !== $plan['source_commit_sha'] ||
+            ( $job['plan_sha256'] ?? '' ) !== $plan['plan_sha256'] ||
+            ( $job['site_uuid'] ?? '' ) !== ( $site['site_uuid'] ?? '' ) ||
+            ( $job['profile_digest'] ?? '' ) !== ( $site['profile_digest'] ?? '' ) ||
+            ( $job['origin'] ?? '' ) !== ( $site['canonical_origin'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_resume_binding_drift',
+                'Expired build belongs to another source, plan or Site Profile.' );
+        $entries = $job['entries'] ?? array();
+        $cursor = $job['cursor'] ?? -1;
+        if ( ! is_array( $entries ) || count( $entries ) < 1 ||
+            count( $entries ) > self::MAX_FILES || ! is_int( $cursor ) ||
+            $cursor < 1 || $cursor > count( $entries ) )
+            return new WP_Error( 'mad4b_native_resume_record_invalid',
+                'Expired build progress record cannot be safely resumed.' );
+        if ( ! is_string( $dir ) || ! is_dir( $dir ) || is_link( $dir ) )
+            return new WP_Error( 'mad4b_native_resume_workspace_invalid',
+                'Private partial build directory unavailable.' );
+        $fp = @fopen( $dir . '/.lock', 'c' );
+        if ( ! $fp ) return new WP_Error( 'mad4b_native_resume_lock_unavailable',
+            'Existing native worker workspace cannot be locked.' );
+        if ( ! flock( $fp, LOCK_EX | LOCK_NB ) ) {
+            fclose( $fp );
+            return new WP_Error( 'mad4b_native_resume_worker_busy',
+                'Original Cron worker is still processing the build.' );
+        }
+        try {
+            $current = self::locked_job_read();
+            if ( is_wp_error( $current ) ) return $current;
+            if ( ! is_array( $current ) ||
+                ( $current['job_id'] ?? '' ) !== ( $job['job_id'] ?? '' ) ||
+                ( $current['state'] ?? '' ) !== 'BLOCKED' ||
+                ( $current['cursor'] ?? null ) !== $cursor ||
+                ( $current['expires_at'] ?? 0 ) >= time() )
+                return new WP_Error( 'mad4b_native_resume_state_changed',
+                    'Build state changed while acquiring the workspace lock.' );
+            for ( $i = 0; $i < $cursor; $i++ ) {
+                $item = $entries[ $i ];
+                if ( ! is_array( $item ) ) return new WP_Error(
+                    'mad4b_native_resume_integrity_failed', 'Malformed saved Git tree entry.' );
+                $name = $item['path'] ?? '';
+                $bytes = $item['bytes'] ?? -1;
+                $sha = $item['sha'] ?? '';
+                if ( ! is_string( $name ) || ! preg_match( '~^[A-Za-z0-9._+/-]+$~D', $name ) ||
+                    false !== strpos( '/' . $name . '/', '/../' ) ||
+                    false !== strpos( '/' . $name . '/', '/./' ) ||
+                    ! is_int( $bytes ) || $bytes < 0 || $bytes > self::MAX_BLOB_BYTES ||
+                    ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha ) )
+                    return new WP_Error( 'mad4b_native_resume_integrity_failed',
+                        'Pinned source entry identity invalid.' );
+                $file = $dir . '/source/' . $name;
+                $source_root = realpath( $dir . '/source' );
+                $resolved_file = realpath( $file );
+                if ( ! is_string( $source_root ) || ! is_string( $resolved_file ) ||
+                    is_link( $dir . '/source' ) || is_link( $file ) ||
+                    ! hash_equals( $source_root . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $name ), $resolved_file ) ||
+                    ! is_file( $file ) || filesize( $file ) !== $bytes )
+                    return new WP_Error( 'mad4b_native_resume_integrity_failed',
+                        'Cached source file is missing, unsafe or modified.' );
+                $raw = @file_get_contents( $file );
+                if ( ! is_string( $raw ) || strlen( $raw ) !== $bytes ||
+                    ! hash_equals( $sha, sha1( 'blob ' . $bytes . "\0" . $raw ) ) )
+                    return new WP_Error( 'mad4b_native_resume_integrity_failed',
+                        'Cached Git blob digest does not match the pinned tree.' );
+            }
+            $job['state'] = $cursor === count( $entries ) ? 'PACKAGING' : 'FETCHING';
+            $job['expires_at'] = time() + self::JOB_DEADLINE_SECONDS;
+            $job['blocker'] = '';
+            $job['resume_count'] = (int) ( $job['resume_count'] ?? 0 ) + 1;
+            // New operation identity fences a still-pending stale Cron callback.
+            $job['job_id'] = bin2hex( random_bytes( 16 ) );
+            if ( function_exists( 'wp_cache_delete' ) )
+                wp_cache_delete( self::OPTION, 'options' );
+            update_option( self::OPTION, $job, false );
+            $stored = self::locked_job_read();
+            if ( is_wp_error( $stored ) || ! is_array( $stored ) ||
+                ( $stored['job_id'] ?? '' ) !== $job['job_id'] ||
+                ( $stored['cursor'] ?? -1 ) !== $cursor ||
+                ( $stored['state'] ?? '' ) !== $job['state'] )
+                return new WP_Error( 'mad4b_native_resume_persist_failed',
+                    'Exact resumed job state could not be read back.' );
+            if ( ! self::schedule() ) {
+                $stored['state'] = 'BLOCKED';
+                $stored['blocker'] = 'wp_cron_schedule_failed';
+                update_option( self::OPTION, $stored, false );
+                return new WP_Error( 'mad4b_native_resume_schedule_failed',
+                    'Resumed job could not be scheduled; verified bytes preserved.' );
+            }
+            return array(
+                'contract' => self::CONTRACT . '.resume.v1',
+                'state' => $job['state'], 'resumed' => true,
+                'head' => $job['head'], 'files_fetched' => $cursor,
+                'files_total' => count( $entries ),
+                'verified_cached_files' => $cursor,
+                'execution' => 'wp_cron_bounded',
+                'release_certified' => false, 'production_authorized' => false,
+            );
+        } finally {
+            flock( $fp, LOCK_UN );
+            fclose( $fp );
+        }
+    }
+
     private static function start_under_admission( array $plan, array $input ) {
         $fresh_plan = self::plan( array( 'expected_head' => $plan['source_commit_sha'] ) );
         $permission = self::can_start( $input );
@@ -301,6 +423,12 @@ final class MAD4B_SCP_WP_Native_Build {
             'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) )
             return new WP_Error( 'mad4b_native_build_busy', 'Existing build must finish or expire.' );
         $dir = self::root_for( $plan['source_commit_sha'] );
+        if ( is_array( $current ) && ( $current['state'] ?? '' ) === 'BLOCKED' &&
+            in_array( (string) ( $current['blocker'] ?? '' ),
+                array( 'job_deadline_expired', 'site_binding_or_deadline_changed' ), true ) ) {
+            $resumed = self::try_resume_deadline_job( $current, $plan, $dir );
+            if ( null !== $resumed ) return $resumed;
+        }
         if ( ! $dir || ( file_exists( $dir ) && is_link( $dir ) ) )
             return new WP_Error( 'mad4b_native_storage_unsafe', 'Safe private storage unavailable.' );
         if ( ! is_dir( $dir ) && ! @mkdir( $dir, 0700, true ) )
@@ -311,7 +439,7 @@ final class MAD4B_SCP_WP_Native_Build {
             'plan_sha256' => $plan['plan_sha256'], 'site_uuid' => $s['site_uuid'],
             'profile_digest' => $s['profile_digest'], 'origin' => $s['canonical_origin'],
             'cursor' => 0, 'entries' => array(), 'total_bytes' => 0,
-            'started_at' => time(), 'expires_at' => time() + 7200,
+            'started_at' => time(), 'expires_at' => time() + self::JOB_DEADLINE_SECONDS,
             'build_state' => 'NOT_RUN', 'production_authorized' => false,
             'job_id' => bin2hex( random_bytes( 16 ) ) );
         // A request-local Options cache must not override the fresh SQL
@@ -428,18 +556,38 @@ final class MAD4B_SCP_WP_Native_Build {
         return true;
     }
 
+    /**
+     * Reduce WordPress Cron wake-ups without raising the file/network trust
+     * boundary. Every Git blob is still fetched from the immutable SHA,
+     * checked against its tree identity, and written to the private workspace.
+     * Up to 64 blobs may be fetched per tick, but an explicit time budget
+     * bounds each invocation; progress is durably checkpointed every 8 files.
+     */
+    private static function fetch_time_budget() {
+        $php_seconds = (int) ini_get( 'max_execution_time' );
+        if ( $php_seconds > 0 )
+            return max( 2, min( self::FETCH_WALL_SECONDS, $php_seconds - 8 ) );
+        return self::FETCH_WALL_SECONDS;
+    }
+
     private static function fetch_batch( &$job, $dir ) {
         $n = count( $job['entries'] );
+        $started = microtime( true );
+        $deadline = $started + self::fetch_time_budget();
+        $completed = 0;
         for ( $i = 0; $i < self::BATCH && $job['cursor'] < $n; $i++ ) {
+            $remaining = $deadline - microtime( true );
+            // Leave time for persisting state and scheduling the next Cron
+            // event. Never truncate a request already fetching a Git blob.
+            if ( $completed > 0 && $remaining < 4 ) break;
             $entry = $job['entries'][ $job['cursor'] ];
-            // Fetch pinned raw bytes, avoiding the low unauthenticated REST blob quota.
-            // The Git tree's object SHA is still independently verified below.
             $segments = array_map( 'rawurlencode',
                 explode( '/', self::PLUGIN . '/' . $entry['path'] ) );
             $url = 'https://raw.githubusercontent.com/' . self::REPO .
                 '/' . $job['head'] . '/' . implode( '/', $segments );
+            $timeout = max( 2, min( 12, (int) floor( $remaining - 2 ) ) );
             $response = wp_safe_remote_get( $url, array(
-                'timeout' => 12, 'redirection' => 0, 'sslverify' => true,
+                'timeout' => $timeout, 'redirection' => 0, 'sslverify' => true,
                 'limit_response_size' => self::MAX_BLOB_BYTES + 1,
                 'headers' => array( 'User-Agent' => 'MAD4B-WP-Native-Source-Builder' ),
             ) );
@@ -461,7 +609,18 @@ final class MAD4B_SCP_WP_Native_Build {
                 return new WP_Error( 'mad4b_native_write_failed', 'Failed to stage exact Git blob.' );
             @chmod( $dest, 0600 );
             $job['cursor']++;
+            $completed++;
+            if ( 0 === $completed % self::FETCH_CHECKPOINT_INTERVAL ) {
+                // This runs inside the existing exclusive per-source lock.
+                // Commit actual progress before starting another slow request.
+                if ( ! update_option( self::OPTION, $job, false ) )
+                    return new WP_Error( 'mad4b_native_checkpoint_failed',
+                        'Worker cannot persist verified fetch progress.' );
+            }
         }
+        $job['last_fetch_count'] = $completed;
+        $job['last_fetch_elapsed_ms'] = (int) round( ( microtime( true ) - $started ) * 1000 );
+        $job['fetch_tick_count'] = (int) ( $job['fetch_tick_count'] ?? 0 ) + 1;
         if ( $job['cursor'] === $n ) $job['state'] = 'PACKAGING';
         return true;
     }
@@ -774,6 +933,15 @@ final class MAD4B_SCP_WP_Native_Build {
             'state' => $job['state'], 'head' => $job['head'],
             'files_total' => count( $job['entries'] ?? array() ),
             'files_fetched' => $job['cursor'] ?? 0,
+            'deadline_expired' => isset( $job['expires_at'] ) && time() > (int) $job['expires_at'],
+            'resume_count' => $job['resume_count'] ?? 0,
+            'site_identity_matches_job' => ( $job['site_uuid'] ?? '' ) === ( self::site()['site_uuid'] ?? '' )
+                && ( $job['profile_digest'] ?? '' ) === ( self::site()['profile_digest'] ?? '' )
+                && ( $job['origin'] ?? '' ) === ( self::site()['canonical_origin'] ?? '' ),
+            'max_files_per_tick' => self::BATCH,
+            'last_fetch_count' => $job['last_fetch_count'] ?? 0,
+            'last_fetch_elapsed_ms' => $job['last_fetch_elapsed_ms'] ?? 0,
+            'fetch_tick_count' => $job['fetch_tick_count'] ?? 0,
             'archive_sha256' => $job['archive_sha256'] ?? '',
             'archive_bytes' => $job['archive_bytes'] ?? 0,
             'build_fingerprint' => $job['build_fingerprint'] ?? '',

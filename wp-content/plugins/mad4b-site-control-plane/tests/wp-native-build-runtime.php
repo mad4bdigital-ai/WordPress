@@ -467,6 +467,61 @@ assert_native( is_wp_error( $blocked_second ) &&
     $blocked_second->get_error_code() === 'mad4b_native_build_busy' &&
     $GLOBALS['native_db_opts'][ $c::OPTION ] === $persisted,
     'A second serial contender may not replace a live package build' );
+
+// Fresh governed Start must reuse verified immutable Git source after a
+// deadline, never resume a changed Site Profile or tampered cached byte.
+$source_dir = $workspace . '/source';
+if ( ! is_dir( $source_dir ) ) mkdir( $source_dir, 0700, true );
+$payload = "<?php echo 1;\n";
+file_put_contents( $source_dir . '/a.php', $payload );
+$expiry = $persisted;
+$expiry['state'] = 'BLOCKED';
+$expiry['blocker'] = 'site_binding_or_deadline_changed';
+$expiry['expires_at'] = time() - 4;
+$expiry['cursor'] = 1;
+$expiry['entries'] = array(
+    array( 'path' => 'a.php', 'bytes' => strlen( $payload ),
+        'sha' => sha1( 'blob ' . strlen( $payload ) . "\0" . $payload ) ),
+    array( 'path' => 'b.php', 'bytes' => 5,
+        'sha' => sha1( 'blob ' . 5 . "\0" . '12345' ) ),
+);
+$GLOBALS['native_opts'][ $c::OPTION ] = $expiry;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $expiry;
+$resumed = $c::start( $build_input );
+assert_native( ! is_wp_error( $resumed ) && $resumed['resumed'] === true &&
+    $resumed['files_fetched'] === 1 && $resumed['verified_cached_files'] === 1,
+    'Fresh governed start should resume one verified Git blob without refetch' );
+$resumed_status = $c::status();
+assert_native( $resumed_status['state'] === 'FETCHING' &&
+    $resumed_status['files_fetched'] === 1 &&
+    $resumed_status['resume_count'] === 1 &&
+    $resumed_status['deadline_expired'] === false,
+    'Resumed build deadline and durable progress must be observable' );
+$bad_job = $GLOBALS['native_db_opts'][ $c::OPTION ];
+$bad_job['state'] = 'BLOCKED';
+$bad_job['blocker'] = 'job_deadline_expired';
+$bad_job['expires_at'] = time() - 3;
+$GLOBALS['native_opts'][ $c::OPTION ] = $bad_job;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $bad_job;
+file_put_contents( $source_dir . '/a.php', '<?php echo 2;' );
+$denied = $c::start( $build_input );
+assert_native( is_wp_error( $denied ) &&
+    $denied->get_error_code() === 'mad4b_native_resume_integrity_failed' &&
+    $GLOBALS['native_db_opts'][ $c::OPTION ] === $bad_job,
+    'Tampered partial source must be rejected before state mutation' );
+file_put_contents( $source_dir . '/a.php', $payload );
+$drifted_job = $bad_job;
+$drifted_job['profile_digest'] = 'wrong-profile';
+$GLOBALS['native_opts'][ $c::OPTION ] = $drifted_job;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $drifted_job;
+$drifted_resume = $c::start( $build_input );
+assert_native( is_wp_error( $drifted_resume ) &&
+    $drifted_resume->get_error_code() === 'mad4b_native_resume_binding_drift',
+    'A stale Site Profile may never resume an old source build' );
+$GLOBALS['native_opts'][ $c::OPTION ] = $bad_job;
+$GLOBALS['native_db_opts'][ $c::OPTION ] = $bad_job;
+@unlink( $source_dir . '/a.php' ); @rmdir( $source_dir );
+echo "PASS: native expired build resume verifies cached source, preserves cursor, and refuses drift/tampering\\n";
 @unlink( sys_get_temp_dir() . '/mad4b-native-' .
     substr( hash( 'sha256', 'test-site:' . $sha ), 0, 28 ) . '/.lock' );
 @rmdir( sys_get_temp_dir() . '/mad4b-native-' .
