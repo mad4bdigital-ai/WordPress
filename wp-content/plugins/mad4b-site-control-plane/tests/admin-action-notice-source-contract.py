@@ -64,4 +64,29 @@ verify(
     "version_compare( $target_version, $current_version, '<' )",
     "Update channel points to an older Control Plane release.",
 )
-print("ADMIN_ACTION_NOTICE_SOURCE_CONTRACT: PASS (7 source files; browser/runtime not implied)")
+verify(
+    "class-mad4b-scp-runtime-components-admin-ui.php",
+    "expected_release_set_sha256",
+    "expected_current_source_commit_sha",
+    "missing_release_target",
+)
+verify(
+    "class-mad4b-scp-runtime-release-set.php",
+    "admin_form_preflight(",
+    "mad4b_runtime_admin_stale_form",
+    "mad4b_runtime_admin_downgrade_blocked",
+    "mad4b_runtime_admin_transition_in_progress",
+)
+verify(
+    "class-mad4b-scp-browser-acceptance-admin-ui.php",
+    "Browser acceptance route declaration is always discoverable",
+    "MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Browser_Acceptance_Admin_UI::PAGE_SLUG",
+)
+verify(
+    "class-mad4b-scp-admin-workspace.php",
+    "'mad4b-ai-knowledge-workspace' =>",
+    "'mad4b-assistant-workspace' =>",
+    "'mad4b-growth-providers' =>",
+    "'mad4b-operational-remediation' =>",
+)
+print("ADMIN_ACTION_NOTICE_SOURCE_CONTRACT: PASS (10 unique source files; browser/runtime not implied)")
