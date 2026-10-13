@@ -927,7 +927,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				. esc_html__( 'I confirm this will retry revoking the existing Google OAuth grant, not reconnect it.', 'mad4b-site-control-plane' ) . '</label></p>';
 			if ( $retry_wait > 0 ) echo '<p class="description">' . esc_html( sprintf( __( 'Retry paused for %d more second(s) after the last attempt. Refresh to try again.', 'mad4b-site-control-plane' ), $retry_wait ) ) . '</p>';
 			echo '<p class="description">' . esc_html__( 'If Google continues returning HTTP 400, review access in your Google Account. Do not delete the local pending token or reconnect without confirming provider revocation.', 'mad4b-site-control-plane' ) . '</p>';
-			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false, array( 'disabled' => $retry_wait > 0 ? 'disabled' : false ) );
+			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false, $retry_wait > 0 ? array( 'disabled' => 'disabled' ) : array() );
 			echo '</form></div>';
 			self::render_write_governance_readiness();
 			return;
