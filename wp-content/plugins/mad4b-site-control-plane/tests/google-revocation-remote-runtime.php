@@ -29,13 +29,15 @@ class MAD4B_SCP_Site_Profile {
 class MAD4B_SCP_Google_Drive_Context {
     const TOKEN_OPTION = 'fixture_google_option';
     public static $pending = true;
+    public static $last_attempt_at = '';
     public static $calls = 0;
     public static $fail = false;
     public static $partial_cleanup = false;
     public static function connection_status() {
         return array( 'revocation_pending' => self::$pending, 'connected' => self::$pending,
             'read_available' => false, 'write_available' => false,
-            'revocation_error' => 'google_revocation_http_400' );
+            'revocation_error' => 'google_revocation_http_400',
+            'revocation_attempted_at' => self::$last_attempt_at );
     }
     public static function disconnect() {
         ++self::$calls;
@@ -43,6 +45,7 @@ class MAD4B_SCP_Google_Drive_Context {
             // Real provider persists the encrypted pending record after 400,
             // changing the plan's grant CAS; retry requires a fresh approval.
             $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ]['revocation_error'] = 'google_revocation_http_400';
+            self::$last_attempt_at = gmdate( 'c', time() );
             $GLOBALS['mad4b_test_options'][ self::TOKEN_OPTION ]['revocation_generation'] = self::$calls;
             return new WP_Error( 'mad4b_google_drive_remote_revocation_unconfirmed' );
         }
@@ -79,6 +82,18 @@ $check = static function ( $truth, $description ) {
     if ( ! $truth ) { fwrite( STDERR, "FAIL: $description\n" ); exit( 1 ); }
 };
 MAD4B_SCP_Google_Revocation_Remote::register_abilities();
+MAD4B_SCP_Google_Drive_Context::$last_attempt_at = gmdate( 'c', time() - 180 );
+$recent = MAD4B_SCP_Google_Revocation_Remote::retry_admission(
+    array( 'connected' => true, 'revocation_pending' => true, 'read_available' => false,
+        'write_available' => false, 'revocation_attempted_at' => gmdate( 'c', time() - 12 ) ), time() );
+$check( ! $recent['eligible'] && $recent['retry_after_seconds'] > 0
+    && 'google_revocation_retry_cooldown' === $recent['blocker'], 'Recent revoke retry is throttled' );
+$invalid = MAD4B_SCP_Google_Revocation_Remote::retry_admission(
+    array( 'connected' => true, 'revocation_pending' => true,
+        'revocation_attempted_at' => 'invalid-timestamp' ), time() );
+$check( ! $invalid['eligible'] && 'google_revocation_attempt_timestamp_invalid' === $invalid['blocker'],
+    'Malformed persisted revocation timestamp fails closed' );
+
 $schema = $GLOBALS['mad4b_revoke_abilities'][ MAD4B_SCP_Google_Revocation_Remote::RETRY ]['input_schema'];
 $check( ! in_array( '_mad4b_approval_ticket_id', $schema['required'], true )
     && isset( $schema['properties']['_mad4b_approval_ticket_id'] ),
@@ -117,6 +132,11 @@ MAD4B_SCP_Google_Drive_Context::$fail = false;
 $stale = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
 $check( is_wp_error( $stale ) && MAD4B_SCP_Google_Drive_Context::$calls === 1,
     'Second retry MUST refuse prior plan and approval after HTTP 400 persisted new pending evidence' );
+$cooldown = MAD4B_SCP_Google_Revocation_Remote::plan();
+$check( is_wp_error( $cooldown ) && 'mad4b_google_revoke_retry_cooldown' === $cooldown->get_error_code()
+    && MAD4B_SCP_Google_Drive_Context::$calls === 1,
+    'Remote cannot bypass native Google revoke backoff immediately after HTTP 400' );
+MAD4B_SCP_Google_Drive_Context::$last_attempt_at = gmdate( 'c', time() - 120 );
 $next = MAD4B_SCP_Google_Revocation_Remote::plan();
 $check( ! is_wp_error( $next ) && $next['plan_sha256'] !== $planned['plan_sha256'],
     'A retry after uncertain provider response requires a fresh plan and one-time approval' );
