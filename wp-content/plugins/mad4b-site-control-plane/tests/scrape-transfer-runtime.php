@@ -161,6 +161,9 @@ $none = $input;
 unset( $none['media_bindings'] );
 $pending = MAD4B_SCP_Scrape_Transfer::plan( $none );
 check( ! is_wp_error( $pending ) && $pending['image_import_remaining'] === 1 &&
+    $pending['image_import_tasks'][0]['inspect_ability'] === 'media/remote-image-inspect' &&
+    $pending['image_import_tasks'][0]['inspect_input']['source_url'] === $img &&
+    $pending['image_import_tasks'][0]['content_inspection_required'] === true &&
     $pending['image_import_tasks'][0]['import_apply_ability'] === 'media/remote-import-apply' &&
     $pending['remote_media_manifest_items'][0]['binding_role'] === 'gallery' &&
     $pending['remote_media_manifest_items'][0]['import']['rights_basis'] === 'unknown' &&

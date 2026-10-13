@@ -257,6 +257,9 @@ final class MAD4B_SCP_Scrape_Transfer {
                     'description' => self::safe_text_cap( 'Original image source: ' . $url .
                         ' | Collected from: ' . $source, 1000 ),
                     'filename' => self::safe_text_cap( $filename, 150 ),
+                    'inspect_ability' => 'media/remote-image-inspect',
+                    'inspect_input' => array( 'source_url' => $url ),
+                    'content_inspection_required' => true,
                     'import_plan_ability' => 'media/remote-import-plan',
                     'import_apply_ability' => 'media/remote-import-apply',
                 );
@@ -349,8 +352,9 @@ final class MAD4B_SCP_Scrape_Transfer {
             'image_import_remaining' => count( array_filter( $media,
                 static function ( $item ) { return $item['import_required']; } ) ),
             'media_receipt_required_before_local_rewrite' => true,
-            'next_media_abilities' => array( 'media/remote-import-manifest-plan',
-                'media/remote-import-apply', 'media/get', 'media/update-metadata' ),
+            'next_media_abilities' => array( 'media/remote-image-inspect',
+                'media/remote-import-manifest-plan', 'media/remote-import-apply',
+                'media/get', 'media/update-metadata' ),
             'source_links_are_remapped_only_to_existing_local_posts' => true,
             'publication_authorized' => false, 'scraping_performed' => false,
             'read_only' => true, 'mutation_performed' => false );
