@@ -92,7 +92,7 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 );
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
-bn_assert( count( $GLOBALS['abilities'] ) === 3, 'exactly status plan apply' );
+bn_assert( count( $GLOBALS['abilities'] ) === 4, 'status, plan, apply and exact post-apply readback' );
 // The one-time approval ticket is minted AFTER approval-plan validates the
 // target schema. Requiring the ticket inside that schema is a cycle; runtime
 // apply still denies requests lacking the real ticket.
@@ -168,6 +168,29 @@ bn_assert( preg_match('/^[a-f0-9]{96}$/D',$key)
 bn_assert( MAD4B_SCP_Deployment_Binding_Native::status()['state'] === 'ALREADY_HAS_PROFILE_BINDING'
     && is_wp_error(MAD4B_SCP_Deployment_Binding_Native::apply($payload)),
     'no replay or rotation' );
+$verified = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+    'expected_site_uuid' => $original['site_uuid'],
+    'minimum_profile_revision' => $updated['revision'],
+) );
+bn_assert( is_array( $verified )
+    && 'WORDPRESS_BINDING_READBACK_PASS' === $verified['state']
+    && $verified['next_ability'] === 'context/legacy-reconciliation-census'
+    && !$verified['independent_host_attestation_certified']
+    && !$verified['mariadb_crash_certified']
+    && $out['next_readback'] === MAD4B_SCP_Deployment_Binding_Native::READBACK,
+    'cross-request readback is bound to original site and revision; no disaster certificate' );
+$foreign = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+    'expected_site_uuid' => 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+    'minimum_profile_revision' => $updated['revision'],
+) );
+bn_assert( $foreign['state'] === 'BINDING_READBACK_INCOMPLETE',
+    'a second site cannot replay this binding receipt' );
+$old_revision = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+    'expected_site_uuid' => $original['site_uuid'],
+    'minimum_profile_revision' => $updated['revision'] + 1,
+) );
+bn_assert( $old_revision['state'] === 'BINDING_READBACK_INCOMPLETE',
+    'uncommitted future revision cannot pass independent acceptance' );
 $_SERVER['DOCUMENT_ROOT'] = $base; // parent is now the public web root
 bn_assert( MAD4B_SCP_Deployment_Binding_Native::private_location($original['site_uuid']) === array(),
     'reject private folder under an expanded document root' );
