@@ -16,6 +16,24 @@ final class MAD4B_SCP_Authorization {
 	private static $booted = false;
 	private static $execution_callback_started = array();
 	private static $trusted_execution_boundaries = array();
+    /** Ephemeral proof minted ONLY inside the existing governed callback. */
+    private static $native_binding_claim_in_callback = array();
+
+    public static function native_binding_callback_is_claimed( $input ) {
+        if ( ! is_array( $input )
+            || ! is_array( self::$native_binding_claim_in_callback )
+            || empty( self::$native_binding_claim_in_callback['claim_sha256'] )
+            || empty( self::$native_binding_claim_in_callback['approval_ticket_id'] ) )
+            return false;
+        $ticket_id = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
+        if ( ! hash_equals( (string) self::$native_binding_claim_in_callback['approval_ticket_id'], $ticket_id ) )
+            return false;
+        $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        return is_string( $encoded ) && hash_equals(
+            (string) self::$native_binding_claim_in_callback['claim_sha256'],
+            hash( 'sha256', $encoded ) );
+    }
+
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
@@ -59,6 +77,7 @@ final class MAD4B_SCP_Authorization {
 			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
 		}
 		self::$execution_callback_started = array();
+        self::$native_binding_claim_in_callback = array();
 		return true;
 	}
 
@@ -509,6 +528,21 @@ final class MAD4B_SCP_Authorization {
 				return $provider_entry;
 			}
 			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
+            if ( 'mad4b/deployment-binding-native-apply' === $name
+                && ! empty( $claim['allowed'] )
+                && 'execution_claimed' === (string) ( $claim['reason_code'] ?? '' )
+                && ! empty( $claim['approval_required'] )
+                && ! empty( $claim['approval_claimed'] )
+                && ! empty( $claim['approval_ticket_id'] )
+                && is_array( $input )
+                && hash_equals( (string) $claim['approval_ticket_id'],
+                    (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) ) {
+                $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+                if ( is_string( $encoded ) )
+                    self::$native_binding_claim_in_callback = array(
+                        'approval_ticket_id' => (string) $claim['approval_ticket_id'],
+                        'claim_sha256' => hash( 'sha256', $encoded ) );
+            }
 			try {
 				$result = call_user_func( $original, $input );
 			} catch ( \Throwable $throwable ) {
@@ -526,9 +560,13 @@ final class MAD4B_SCP_Authorization {
 						)
 					)
 					: new WP_Error( 'mad4b_execution_exception_reconciliation_required', 'Governed provider threw after execution entry.', array( 'reconciliation_required'=>true, 'blind_retry_allowed'=>false ) );
+                if ( 'mad4b/deployment-binding-native-apply' === $name )
+                    self::$native_binding_claim_in_callback = array();
 				MAD4B_SCP_Authorization::finalize_execution_claim( $claim, $exception_error );
 				return $exception_error;
 			}
+            if ( 'mad4b/deployment-binding-native-apply' === $name )
+                self::$native_binding_claim_in_callback = array();
 			$provider_returned = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned' );
 			if ( is_wp_error( $provider_returned ) ) {
 				$fault = class_exists( 'MAD4B_SCP_Execution_Evidence_Policy' )
