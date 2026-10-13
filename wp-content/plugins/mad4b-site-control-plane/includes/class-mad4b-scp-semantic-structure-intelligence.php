@@ -36,6 +36,7 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
                 'type' => 'object', 'additionalProperties' => false,
                 'properties' => array(
                     'post_type' => array( 'type' => 'string', 'pattern' => '^[a-z0-9_-]{1,64}$' ),
+                    'post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
                     'goal' => array( 'type' => 'string',
                         'enum' => array( 'understand_structure', 'compose_content', 'analyze_reuse' ) ),
                 ), 'required' => array( 'post_type' ),
@@ -57,13 +58,23 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
     public static function inspect( $input = array() ) {
         if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_read() )
             return new WP_Error( 'mad4b_semantic_structure_read_denied', 'Governed read permission required.' );
-        if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'post_type', 'goal' ) ) )
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'post_type', 'goal', 'post_id' ) ) )
             return new WP_Error( 'mad4b_semantic_structure_input_invalid', 'Unexpected inspection input.' );
         $type = $input['post_type'] ?? null;
         $goal = $input['goal'] ?? 'understand_structure';
         if ( ! is_string( $type ) || ! preg_match( '/^[a-z0-9_-]{1,64}$/D', $type ) ||
             ! in_array( $goal, array( 'understand_structure', 'compose_content', 'analyze_reuse' ), true ) )
             return new WP_Error( 'mad4b_semantic_structure_target_invalid', 'Exact registered post type and known read goal required.' );
+        $post_id = $input['post_id'] ?? 0;
+        if ( $post_id && ( ! is_int( $post_id ) || $post_id < 1 ||
+            ! function_exists( 'get_post' ) || ! function_exists( 'wp_get_object_terms' ) ) )
+            return new WP_Error( 'mad4b_semantic_structure_post_invalid', 'Exact supported post ID required.' );
+        if ( $post_id ) {
+            $post = get_post( $post_id );
+            if ( ! is_object( $post ) || (string) ( $post->post_type ?? '' ) !== $type ||
+                ! function_exists( 'current_user_can' ) || ! current_user_can( 'read_post', $post_id ) )
+                return new WP_Error( 'mad4b_semantic_structure_post_read_denied', 'Post identity or read capability invalid.' );
+        }
         if ( ! function_exists( 'get_post_type_object' ) ||
             ! function_exists( 'get_object_taxonomies' ) )
             return new WP_Error( 'mad4b_semantic_structure_wp_schema_unavailable', 'WordPress schema APIs unavailable.' );
@@ -90,6 +101,24 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
             $nodes[] = array( 'id' => $node_id, 'kind' => 'taxonomy_term_set',
                 'name' => $tax->name, 'hierarchical' => ! empty( $tax->hierarchical ),
                 'evidence' => 'wp_registered_taxonomy' );
+            $assigned = array(); $assigned_complete = true;
+            if ( $post_id ) {
+                $terms = wp_get_object_terms( $post_id, $tax->name, array( 'fields' => 'all' ) );
+                if ( is_wp_error( $terms ) || ! is_array( $terms ) )
+                    return new WP_Error( 'mad4b_semantic_structure_term_read_failed',
+                        'Cannot independently read assigned taxonomy terms.' );
+                $assigned_complete = count( $terms ) <= 40;
+                foreach ( array_slice( $terms, 0, 40 ) as $term ) {
+                    if ( ! is_object( $term ) || ! isset( $term->term_id, $term->taxonomy ) ||
+                        (string) $term->taxonomy !== (string) $tax->name )
+                        return new WP_Error( 'mad4b_semantic_structure_term_invalid', 'Term identity inconsistent.' );
+                    $assigned[] = array( 'term_id' => (int) $term->term_id,
+                        'taxonomy' => (string) $term->taxonomy,
+                        'name' => (string) ( $term->name ?? '' ),
+                        'slug' => (string) ( $term->slug ?? '' ),
+                        'observed_post_count' => isset( $term->count ) ? (int) $term->count : null );
+                }
+            }
             $edges[] = array(
                 'from' => $subject, 'to' => $node_id,
                 'relation' => 'taxonomy_assignment',
@@ -98,7 +127,9 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
                 // is assigned to an existing post or approved for publication.
                 'from_to' => 'many', 'to_from' => 'many',
                 'evidence' => 'wp_registered_taxonomy_association',
-                'verified_schema' => true, 'verified_record_links' => false,
+                'verified_schema' => true, 'verified_record_links' => $post_id && $assigned_complete,
+                'observed_post_id' => $post_id ? $post_id : null,
+                'assigned_terms' => $assigned, 'assignment_complete' => $post_id ? $assigned_complete : false,
             );
         }
         $fields = array();
@@ -122,6 +153,7 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
         if ( is_wp_error( $model ) ) return $model;
         $model['site_uuid'] = (string) $site['site_uuid'];
         $model['post_type'] = $type;
+        $model['observed_post_id'] = $post_id ? $post_id : null;
         $model['schema_snapshot_sha256'] = hash( 'sha256', wp_json_encode( array(
             'site_uuid' => (string) $site['site_uuid'], 'graph' => $graph ),
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
