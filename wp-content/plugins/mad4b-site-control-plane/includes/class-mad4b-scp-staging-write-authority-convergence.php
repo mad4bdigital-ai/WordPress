@@ -308,7 +308,23 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 		$write = self::write_plan();
 		if ( is_wp_error( $write ) ) return $write;
 
+		// The broad Write inventory may report a missing exact grant as
+		// reconcilable even when the narrower source-reviewed grant
+		// allowlist explicitly rejects it. Never advertise READY in that case.
+		$exact_grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
+			? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()
+			: new WP_Error( 'mad4b_exact_grant_plan_unavailable', 'Exact reviewed grant plan is unavailable.' );
+		$grant_plan_eligible = is_array( $exact_grant_plan ) && ! empty( $exact_grant_plan['eligible'] );
+		$grant_plan_blockers = is_array( $exact_grant_plan ) && isset( $exact_grant_plan['blockers'] ) && is_array( $exact_grant_plan['blockers'] )
+			? array_values( array_filter( array_map( 'sanitize_text_field', $exact_grant_plan['blockers'] ) ) )
+			: array();
+
 		$hard_blockers = array();
+		if ( ! $grant_plan_eligible ) {
+			$hard_blockers[] = 'exact_grant_reconciliation_not_eligible';
+			if ( empty( $grant_plan_blockers ) ) $grant_plan_blockers[] = is_wp_error( $exact_grant_plan )
+				? sanitize_key( $exact_grant_plan->get_error_code() ) : 'exact_grant_plan_unavailable';
+		}
 		if ( isset( $write['global_registry_wildcard_grants'] ) && (int) $write['global_registry_wildcard_grants'] > 0 ) $hard_blockers[] = 'global_registry_wildcard_grants';
 		if ( isset( $write['current_agent_wildcard_grants'] ) && (int) $write['current_agent_wildcard_grants'] > 0 ) $hard_blockers[] = 'current_agent_wildcard_grants';
 		if ( isset( $write['unreviewed_stale_allow_grants_count'] ) && (int) $write['unreviewed_stale_allow_grants_count'] > 0 ) $hard_blockers[] = 'unreviewed_stale_write_authority';
@@ -353,6 +369,9 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			'write_enabled' => (bool) MAD4B_SCP_Site_Profile::write_enabled(),
 			'write_feature_enable_required' => ! MAD4B_SCP_Site_Profile::write_enabled(),
 			'write_reconciliation' => $write,
+			'exact_grant_plan_eligible' => $grant_plan_eligible,
+			'exact_grant_plan_blockers' => $grant_plan_blockers,
+			'exact_grant_plan_sha256' => $grant_plan_eligible && isset( $exact_grant_plan['plan_sha256'] ) ? (string) $exact_grant_plan['plan_sha256'] : '',
 			'write_subject_preflight_blockers' => $subject_blockers,
 			'nonreconcilable_write_drift' => $nonreconcilable_write_drift,
 			'hard_blockers' => array_values( array_unique( $hard_blockers ) ),
