@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-admin-navigation-manifest.php';
 
 /**
  * Admin-menu shell for WordPress native plugin-management GET/HEAD only.
@@ -27,21 +28,12 @@ final class MAD4B_SCP_Native_Plugin_Admin_Menu {
         );
         // These entries only restore navigation: full page loading happens
         // in a separate, normally bootstrapped admin.php request.
-        $pages = array(
-            'mad4b-control-plane-connection' => 'Connection',
-            'mad4b-control-plane-chatgpt' => 'Connect to ChatGPT',
-            'mad4b-adapter-coverage' => 'Adapter Coverage',
-            'mad4b-control-plane-skills' => 'Skills',
-            'mad4b-runtime-components' => 'Runtime Components',
-            'mad4b-control-plane-oauth-canary' => 'OAuth Canary',
-            'mad4b-control-plane-context' => 'Context Authority',
-        );
-        foreach ( $pages as $slug => $label ) {
+        foreach ( MAD4B_SCP_Admin_Navigation_Manifest::menu_rows() as $slug => $row ) {
             add_submenu_page(
                 self::PARENT,
-                __( $label, 'mad4b-site-control-plane' ),
-                __( $label, 'mad4b-site-control-plane' ),
-                'manage_options',
+                $row['label'],
+                $row['label'],
+                $row['capability'],
                 $slug,
                 array( __CLASS__, 'render_only_after_normal_boot' )
             );

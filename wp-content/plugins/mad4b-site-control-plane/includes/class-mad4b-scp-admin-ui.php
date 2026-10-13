@@ -62,11 +62,19 @@ final class MAD4B_SCP_Admin_UI {
 			'consent_profile' => array(),
 			'change_history' => array(),
 			'runtime_self_test' => array( 'status' => 'deferred' ),
-			'mcp_peer_governance' => array( 'inventory_ready' => false, 'blockers' => array( 'deferred_to_connection_or_diagnostics_workspace' ) ),
+			'mcp_peer_governance' => array( 'inventory_ready' => false, 'state' => 'deferred', 'blockers' => array() ),
+			'staging_candidate_binding' => array(),
 		);
 
 		if ( 'overview' === $section ) {
 			$snapshot['authority'] = MAD4B_SCP_Authorization::authority_status();
+			// Avoid a second divergent peer scan; reuse the current-request result.
+			$snapshot['mcp_peer_governance'] = isset( $snapshot['authority']['mcp_peer_governance'] )
+				? $snapshot['authority']['mcp_peer_governance'] : $snapshot['mcp_peer_governance'];
+			// Read only, exact package identity, never grant reconciliation.
+			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) )
+				$snapshot['staging_candidate_binding'] = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 			$snapshot['audit_storage'] = MAD4B_SCP_Audit::storage_status();
 			// Deep adapter/provider self-tests and peer scans are intentionally not
 			// executed during ordinary dashboard render. Their dedicated workspaces
@@ -279,6 +287,7 @@ final class MAD4B_SCP_Admin_UI {
 
 	private static function render_overview( array $snapshot ) {
 		$authority = $snapshot['authority'];
+		$binding = isset( $snapshot['staging_candidate_binding'] ) ? $snapshot['staging_candidate_binding'] : array();
 		$self_test = $snapshot['runtime_self_test'];
 		$audit = $snapshot['audit_storage'];
 		echo '<h2>' . esc_html__( 'Runtime authority', 'mad4b-site-control-plane' ) . '</h2>';
@@ -288,7 +297,10 @@ final class MAD4B_SCP_Admin_UI {
 				'Schema version' => isset( $authority['schema_version'] ) ? $authority['schema_version'] : '',
 				'Mutation globally enabled' => ! empty( $authority['mutation_global_enabled'] ),
 				'Global mutation gate (not execution authorization)' => ! empty( $authority['mutation_effective_for_request'] ),
-				'Exact Staging Write checkpoint ready' => ! empty( $authority['staging_write_authority']['ready'] ),
+				'Stored Staging Write checkpoint (historical)' => ! empty( $authority['staging_write_authority']['ready'] ),
+				'Current candidate binding verified' => isset( $binding['match'] ) ? (bool) $binding['match'] : 'not_evaluated',
+				'Current build source' => isset( $binding['current_source_commit_sha'] ) ? $binding['current_source_commit_sha'] : '',
+				'Bound write source' => isset( $binding['stored_source_commit_sha'] ) ? $binding['stored_source_commit_sha'] : '',
 				'Per-ability authorization' => 'Not evaluated here; requires exact transport grant, plan and approval',
 				'Enabled agents' => isset( $authority['enabled_agents'] ) ? $authority['enabled_agents'] : 0,
 				'Exact grants' => isset( $authority['exact_grants'] ) ? $authority['exact_grants'] : 0,
@@ -298,18 +310,33 @@ final class MAD4B_SCP_Admin_UI {
 			)
 		);
 		self::render_blockers( isset( $authority['blockers'] ) ? $authority['blockers'] : array() );
+		if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Stored Write grants are not certified for the currently installed package. Use a fresh, separately approved Staging Write Authority Convergence plan. This page never changes permissions.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 
 		echo '<h2>' . esc_html__( 'MCP peer governance', 'mad4b-site-control-plane' ) . '</h2>';
 		$peer = $snapshot['mcp_peer_governance'];
 		self::key_value_table(
 			array(
+								'Inventory state' => ! empty( $peer['inventory_ready'] ) ? 'verified_current_request' : 'not_evaluated',
 				'Inventory ready' => ! empty( $peer['inventory_ready'] ),
 				'Inventory reason' => isset( $peer['reason'] ) ? $peer['reason'] : '',
 				'Write side-channel detected' => ! empty( $peer['write_side_channel_detected'] ),
-				'Peer count' => isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? count( $peer['peers'] ) : 0,
+								'Peer count' => ! empty( $peer['inventory_ready'] ) && isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? count( $peer['peers'] ) : 'not_evaluated',
+				'Foreign MCP routes' => ! empty( $peer['inventory_ready'] ) ? (int) ( $peer['foreign_route_count'] ?? 0 ) : 'not_evaluated',
+				'Foreign MCP plugins' => ! empty( $peer['inventory_ready'] ) ? (int) ( $peer['foreign_plugin_count'] ?? 0 ) : 'not_evaluated',
 			)
 		);
-		self::render_blockers( isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
+		if ( ! empty( $peer['inventory_ready'] ) || ! empty( $peer['write_side_channel_detected'] ) || ! empty( $peer['foreign_transport_unreviewed'] ) ) {
+			self::render_blockers( isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
+			if ( ! empty( $peer['foreign_transport_unreviewed'] ) ) {
+				$foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
+				$details = array_merge( isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array(), isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? $foreign['foreign_plugins'] : array() );
+				if ( $details ) echo '<p class="description">' . esc_html__( 'Foreign transport evidence:', 'mad4b-site-control-plane' ) . ' ' . esc_html( implode( ', ', array_slice( $details, 0, 20 ) ) ) . '</p>';
+			}
+		} else {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'MCP peer inventory was not evaluated on this request. Use Connection diagnostics for a fresh deep check; a deferred check is not a foreign-transport finding.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 	}
 
 	private static function render_agents( array $snapshot, $selected ) {
