@@ -118,8 +118,18 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		$target_version = (string) ( $runtime['target']['control_plane']['version'] ?? '' );
 		$stale_release_pointer = '' !== $current_version && '' !== $target_version
 			&& version_compare( $target_version, $current_version, '<' );
+		$target_commit = (string) ( $runtime['target']['control_plane']['source_commit_sha'] ?? '' );
+		$missing_release_target = '' === $target_version || ! preg_match( '/^[a-f0-9]{40}$/D', $target_commit )
+			|| empty( $runtime['release_set_sha256'] );
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( $missing_release_target ) {
+			echo '<div class="notice notice-warning inline"><p><strong>'
+				. esc_html__( 'Certified runtime update target is missing or incomplete.', 'mad4b-site-control-plane' )
+				. '</strong> ' . esc_html__( 'The release channel does not identify an exact Control Plane source and compatible release set. Refresh and verify the update channel; no generic update is offered.', 'mad4b-site-control-plane' )
+				. '</p></div></div>';
+			return;
+		}
 		if ( $stale_release_pointer ) {
 			echo '<div class="notice notice-warning inline"><p><strong>'
 				. esc_html__( 'Update channel points to an older Control Plane release.', 'mad4b-site-control-plane' )
