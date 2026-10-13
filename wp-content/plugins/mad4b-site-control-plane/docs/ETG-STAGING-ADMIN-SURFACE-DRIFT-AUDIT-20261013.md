@@ -117,3 +117,132 @@ Do not declare all 18 pages operationally tested or clear Google pending
 revoke / Brand Context ownership quarantines automatically. Production
 mutations, Developer, Breakglass and unreviewed provider actions are
 outside scope.
+
+## Deep verification addendum — 2026-10-13, read-only live + exact PR source
+
+### Evidence and scope limits
+
+The live `mad4b/session-safe-diagnostics` response returned
+`state=subject_not_ready`, `operator_summary.state=BLOCKED` and
+`write_authority_not_effective`. Adapter basic lifecycle is ready and
+Site Profile is Staging, correctly enrolled with `revision=6`; **this
+is not an effective Write approval**. Source installed at the live site:
+`0.4.0-rc.96` / `b27c316967270ee980e774a081e1beef084f07e3`,
+Adapter `0.7.0`.
+
+`mad4b/staging-write-authority-convergence-status` isolated the precise
+effective-Write blockers: 95 mounted exact abilities, 0 missing currently
+mounted grants, **2 stale grants** for `mad4b/wp-native-build-start` and
+`mad4b/wp-native-self-approve-install` not in installed runtime inventory,
+and **unbound candidate identity**. The exact reconciliation *plan* is
+read-eligible; executing it requires independent owner authority. Do not
+silently restore stale write authority on plugin update.
+
+`mad4b/runtime-release-set-status` returns target `control_plane=[]`,
+`release_set_sha256=""`, `control_plane_current=false`,
+`runtime_readback.state=target_profile_mismatch`. The actual control
+plane `rc.96` and adapter `0.7.0` exist, but the stable update channel
+does **not** prove an exact compatible control-plane target. The UI guard
+now hides the one-click update CTA if target version/SHA/release digest is
+missing or older. Do not interpret `update_or_refresh_required` as an
+authorization to downgrade or install an undefined target.
+
+`mad4b/google-revocation-status`: `PENDING_SAFE_RETRY`,
+`google_revocation_http_400`, `remote_revocation_confirmed=false`.
+`mad4b/context-authority-status`: `ready=false`,
+`governed_context_source_missing`, `governed_context_assets_missing`,
+1 quarantined source and 4 quarantined assets. Those remain genuine
+provider/human review blockers irrespective of UI notice cleanup.
+
+`mad4b/skills-runtime-certification` returned `ready=true` and no
+blockers. However the **Operational Remediation** live page advertised
+a stale `mad4b/skill-runtime-certification` readback (singular), the
+sole unregistered readback in 17 action paths over 13 blocking gates.
+Canonical code itself already uses the registered plural form elsewhere.
+Corrected its mismatched remediation action on the PR source.
+
+`mad4b/browser-acceptance-capabilities` is **read-only discovery**:
+external browser agent required; it does not issue certification or execute
+the Chrome/WordPress admin session. Remote Desktop Commander was offline
+at the time of this audit. WordPress **registered page census** returned
+18, excluding the Browser Acceptance Setup page, although its plugin boot
+and menu class are present. Cause in source: its route was registered only
+inside `admin_menu`, which MCP/read-only requests need not execute.
+Declaring the exact `manage_options` route outside `admin_menu` fixes
+remote inventory discoverability without adding an admin execution path.
+After a certified Staging update, fresh census should return **19 pages**
+if there are no unrelated changes.
+
+The **Governance & History** overview labeled the *global mutation gate*
+as `Mutation effective for request`, even though live exact Staging Write
+is blocked. It now distinguishes global mutation configuration from
+`Exact Staging Write checkpoint ready` and clearly marks per-ability
+authorization as **not evaluated**.
+
+### Source changes made during this deep review
+
+- Declare Browser Acceptance Setup exact authorized route in the static
+  registry outside wp-admin menu callbacks.
+- Register specialized Admin Workspace navigation descriptions for AI
+  Knowledge, Assistant Review, Growth Providers and Operational Remediation;
+  this is presentation only and does not certify those pages.
+- Runtime Components: deny the update CTA for a missing Control Plane SHA,
+  version or release-set digest as well as a clear downgrade.
+- Source-owner Site Profile `handle_disable` and legacy migration now
+  require HTTP POST. Disable-authority form must supply the exact decimal
+  expected revision, instead of dropping a missing value to `null` and
+  bypassing the domain's optional revision comparison.
+- Context administrative forms and AJAX settings now require HTTP POST.
+  OAuth provider redirect callbacks remain independent GET callbacks with
+  their dedicated state checks.
+- Browser Acceptance save, Content Pipeline save, Search profile save and
+  Search control mutation now each require explicit POST in addition to
+  pre-existing owner/nonce/typed-state checks.
+- Operational Remediation references the exact registered plural Skills
+  certification ability.
+- `tests/admin-post-and-route-boundary-source-contract.py` records
+  permanent source-level guards for **eight** POST handlers and page
+  declaration/revision/update conditions.
+
+### Performance evidence, not benchmark certification
+
+A live `session-safe-diagnostics` observation reported 6,631 ms total
+request elapsed, 468 DB queries, 6,659 included PHP files, ~58 MiB peak
+memory and 10 ms plugin bootstrap. This is **one request**, not an
+attributed MAD4B slowdown and not a valid broad performance PASS/FAIL
+without a previous exact-release baseline and repeated samples.
+
+### Critical release blockers / closure evidence
+
+**P0**: exact source/manifest integrity — the G9 bootstrap evidence row
+continues to say **49,114 bytes**, while a fresh head showed **49,362
+UTF-8 bytes**. A moving PR branch is causing integrity drift; the v9
+builder must **remain fail-closed**. Freeze/finalize the source first,
+run the existing exact-inventory fingerprint repin explicitly as an
+authoring step, review diff, independently run G9 verifier, then build an
+immutable HEAD with PHP lint and full test suite. Do not auto-repin during
+verification, do not install partial ZIP.
+
+**P0**: exact candidate/95-grant reconciliation and retirement of 2 stale
+grants under reviewed owner approval; no write, developer or breakglass
+expansion.
+
+**P0**: runtime release-set target digest/version/commit missing; **no
+generic update CTA** or implied certification.
+
+**P1**: Browser Acceptance real authenticated browser execution and
+independent evidence receipt; 18→19 registration check is necessary but
+insufficient. Test page display, submenu access and URL navigation using
+an authorized WordPress administrator.
+
+**P1**: Code-source checks are not PHP parsing/runtime or browser
+acceptance. Run lint, source-contract, dynamic fixture tests, exact-head
+Staging build, and actual button POST/GET/replay tests for each owned
+action with controlled test data and independent DB state readback.
+
+**P2**: performance repeated exact baseline sampling; third-party WPML
+taxonomy synchronization and Rank Math account status use their own
+provider controls and cannot be marked resolved by MAD4B upgrading.
+
+**No real WP mutation, OAuth revoke, Production mutation, Developer or
+Breakglass grant was performed during this audit.**
