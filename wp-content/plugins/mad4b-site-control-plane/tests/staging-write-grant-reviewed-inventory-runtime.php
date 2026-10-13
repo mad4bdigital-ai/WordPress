@@ -60,6 +60,9 @@ $native_reviewed = array(
     'mad4b/wp-native-self-approve-install' => 'core',
 );
 verify_grants( count( $native_reviewed ) === 2, 'Exactly two native Staging candidate abilities reviewed.' );
+verify_grants( isset( $allowed['mad4b/provider-connection-refresh'] )
+    && 'core' === $allowed['mad4b/provider-connection-refresh'],
+    'Provider OAuth refresh is exactly reviewed core-only on Staging.' );
 foreach ( $native_reviewed as $ability => $provider ) {
     verify_grants( isset( $allowed[ $ability ] ) && $allowed[ $ability ] === $provider,
         'Native Staging ability requires exact core provider: ' . $ability );
@@ -83,6 +86,8 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( !isset( $production[ $ability ] ),
         'New Staging-reviewed mutation cannot be included in Production: ' . $ability );
 }
+verify_grants( ! isset( $production['mad4b/provider-connection-refresh'] ),
+    'Provider token refresh must not be automatically granted on Production.' );
 foreach ( $native_reviewed as $ability => $provider ) {
     verify_grants( ! isset( $production[ $ability ] ),
         'Native candidate grant review must never expand Production: ' . $ability );
