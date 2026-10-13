@@ -217,9 +217,15 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $digest = (string) ( $stored['deployment_binding_digest'] ?? '' );
         $observed = (string) MAD4B_SCP_Site_Profile::deployment_binding_digest();
         $writer_fingerprint = (string) ( $stored['native_binding_writer_request_marker_sha256'] ?? '' );
-        $independent_request = 1 === preg_match( '/^[a-f0-9]{64}$/D', $writer_fingerprint )
+        $has_writer_marker = 1 === preg_match( '/^[a-f0-9]{64}$/D', $writer_fingerprint );
+        $independent_request = $has_writer_marker
             && ! hash_equals( $writer_fingerprint, hash( 'sha256', self::request_marker() ) );
-        $verified = $independent_request
+        // A pre-upgrade WordPress-native binding was created by this plugin
+        // BEFORE request markers existed. The original private-key and
+        // Site Profile digests may still be verified; do not demand key
+        // rotation or mislabel it as independently observed new-request proof.
+        $legacy_binding = ! $has_writer_marker && '' === $writer_fingerprint;
+        $verified = ( $independent_request || $legacy_binding )
             && 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' )
             && hash_equals( (string) $input['expected_site_uuid'],
                 (string) ( $site['site_uuid'] ?? '' ) )
@@ -229,12 +235,17 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             && preg_match( '/^[a-f0-9]{64}$/D', $digest )
             && hash_equals( $digest, $observed );
         return array( 'contract' => self::CONTRACT . '.readback.v1',
-            'state' => $verified ? 'WORDPRESS_BINDING_READBACK_PASS'
+            'state' => $verified
+                ? ( $independent_request ? 'WORDPRESS_BINDING_READBACK_PASS'
+                    : 'LEGACY_BINDING_SCOPE_VERIFIED_NO_REQUEST_PROOF' )
                 : 'BINDING_READBACK_INCOMPLETE',
             'site_uuid' => (string) $site['site_uuid'],
             'profile_revision' => (int) $site['revision'],
             'site_identity_preserved' => $verified,
             'independent_request_observed' => $independent_request,
+            'original_binding_without_writer_marker' => $verified && $legacy_binding,
+            'functional_scope_ready_for_census' => $verified,
+            'requires_reprovisioning' => false,
             'next_ability' => $verified ? 'context/legacy-reconciliation-census'
                 : self::STATUS,
             'separate_http_request_required' => true,
