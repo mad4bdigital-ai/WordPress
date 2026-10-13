@@ -1832,6 +1832,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$notice = isset( $_GET['mad4b_notice'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_notice' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
 		$error = isset( $_GET['mad4b_error'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_error' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- post-action status only.
 		if ( $error ) {
+			// A failed action is a signed, short-lived result, not persistent
+			// provider state. Old query-string errors must not survive upgrades.
+			if ( ! class_exists( 'MAD4B_SCP_Admin_Experience' ) || ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'error:' . $error, self::notice_binding() ) ) return;
 			echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Action stopped safely:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $error ) . '</code></p></div>';
 			$actions = array(
 				'mad4b_google_workspace_scope_not_allowed' => __( 'EXTERNAL_ACTION_REQUIRED: Review this app in your Google Account connections, remove obsolete access if needed, then reconnect using the saved Google Workspace grants. The rejected tokens were not stored.', 'mad4b-site-control-plane' ),
@@ -1913,7 +1916,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	private static function redirect_result( $result, $tab, $notice ) {
 		$args = array( 'page' => self::PAGE_SLUG, 'tab' => sanitize_key( $tab ) );
-		if ( is_wp_error( $result ) ) $args['mad4b_error'] = sanitize_key( $result->get_error_code() );
+		if ( is_wp_error( $result ) ) {
+			$args['mad4b_error'] = sanitize_key( $result->get_error_code() );
+			$args['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, 'error:' . $args['mad4b_error'], self::notice_binding() );
+		}
 		elseif ( '' !== $notice ) {
 			$args['mad4b_notice'] = sanitize_key( $notice );
 			$args['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, $args['mad4b_notice'], self::notice_binding() );
@@ -1947,7 +1953,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 				try{
 					var url=new URL(window.location.href);
 					var changed=false;
-					["mad4b_error","mad4b_notice"].forEach(function(key){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}});
+					["mad4b_error","mad4b_notice","mad4b_notice_receipt"].forEach(function(key){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}});
 					if(changed&&window.history&&window.history.replaceState)window.history.replaceState({},document.title,url.toString());
 				}catch(error){}
 			}
