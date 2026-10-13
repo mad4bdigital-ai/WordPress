@@ -67,6 +67,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 				'page' => self::PAGE_SLUG,
 				'mad4b_skill_notice' => 'export_error',
 				'mad4b_skill_error' => sanitize_key( (string) $code ),
+				'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt(
+					self::PAGE_SLUG, 'skill.export_error.' . sanitize_key( (string) $code )
+				),
 			),
 			admin_url( 'admin.php' )
 		);
@@ -126,6 +129,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		$notice = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_notice' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'export_error' !== $notice ) return;
 		$code = isset( $_GET['mad4b_skill_error'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_error' ) ) : 'unknown'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'skill.export_error.' . $code ) ) return;
 		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( sprintf( __( 'Portable Plugin export failed. Error: %s', 'mad4b-site-control-plane' ), $code ) ) . '</p></div>';
 	}
 
