@@ -12,6 +12,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const CONTRACT = 'mad4b.native-deployment-binding.v1';
     const STATUS = 'mad4b/deployment-binding-native-status';
     const PLAN = 'mad4b/deployment-binding-native-plan';
+    const READBACK = 'mad4b/deployment-binding-native-readback';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
     const FILENAME = 'binding.key';
@@ -23,6 +24,12 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
         $read_schema = array( 'type' => 'object', 'properties' => array(),
             'additionalProperties' => false );
+        $verify_schema = array( 'type' => 'object', 'additionalProperties' => false,
+            'properties' => array(
+                'expected_site_uuid' => array( 'type' => 'string',
+                    'pattern' => '^[a-f0-9-]{36}$' ),
+                'minimum_profile_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
+            ), 'required' => array( 'expected_site_uuid', 'minimum_profile_revision' ) );
         $write_schema = array( 'type' => 'object', 'additionalProperties' => false,
             'properties' => array(
                 'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
@@ -41,6 +48,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         foreach ( array(
             array( self::STATUS, 'status', $read_schema, true ),
             array( self::PLAN, 'plan', $read_schema, true ),
+            array( self::READBACK, 'readback', $verify_schema, true ),
             array( self::APPLY, 'apply', $write_schema, false ),
         ) as $ability ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability[0] ) ) continue;
@@ -180,6 +188,50 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'no_secret_exposed' => true, 'read_only' => true,
             'production_authorized' => false );
     }
+    /**
+     * Explicit second-request acceptance. A successful apply is never itself
+     * a deployment-binding certificate. Read original profile + host-secret
+     * digest again, without disclosing either the secret or host path.
+     */
+    public static function readback( $input = array() ) {
+        if ( ! self::can_read() || ! is_array( $input )
+            || array_diff( array_keys( $input ),
+                array( 'expected_site_uuid', 'minimum_profile_revision' ) )
+            || 1 !== preg_match( '/^[a-f0-9-]{36}$/D',
+                (string) ( $input['expected_site_uuid'] ?? '' ) )
+            || ! is_int( $input['minimum_profile_revision'] ?? null )
+            || $input['minimum_profile_revision'] < 1 )
+            return self::error( 'readback_input_invalid' );
+        $state = self::status();
+        if ( is_wp_error( $state ) ) return $state;
+        $snap = self::profile_snapshot();
+        if ( is_wp_error( $snap ) ) return $snap;
+        $site = $snap['site'];
+        $stored = $snap['stored'];
+        $digest = (string) ( $stored['deployment_binding_digest'] ?? '' );
+        $observed = (string) MAD4B_SCP_Site_Profile::deployment_binding_digest();
+        $verified = 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' )
+            && hash_equals( (string) $input['expected_site_uuid'],
+                (string) ( $site['site_uuid'] ?? '' ) )
+            && (int) $site['revision'] >= (int) $input['minimum_profile_revision']
+            && ! empty( $site['deployment_binding_bound'] )
+            && ! empty( $site['deployment_binding_match'] )
+            && preg_match( '/^[a-f0-9]{64}$/D', $digest )
+            && hash_equals( $digest, $observed );
+        return array( 'contract' => self::CONTRACT . '.readback.v1',
+            'state' => $verified ? 'WORDPRESS_BINDING_READBACK_PASS'
+                : 'BINDING_READBACK_INCOMPLETE',
+            'site_uuid' => (string) $site['site_uuid'],
+            'profile_revision' => (int) $site['revision'],
+            'site_identity_preserved' => $verified,
+            'next_ability' => $verified ? 'context/legacy-reconciliation-census'
+                : self::STATUS,
+            'separate_http_request_required' => true,
+            'independent_host_attestation_certified' => false,
+            'mariadb_crash_certified' => false, 'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+
     public static function plan( $input = array() ) {
         if ( ! self::can_read() || ! is_array( $input ) || $input ) return self::error( 'plan_denied' );
         $snap = self::profile_snapshot();
@@ -335,7 +387,10 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'plaintext_secret_returned' => false,
             'secret_written_to_wordpress_database' => false,
             'production_mutation' => false,
-            'next_readback' => self::STATUS,
+            'next_readback' => self::READBACK,
+            'new_request_readback_input' => array(
+                'expected_site_uuid' => (string) $before['site_uuid'],
+                'minimum_profile_revision' => (int) $after['revision'] ),
             'next_scope_diagnostic' => 'mad4b/deployment-mode-status',
         );
     }
