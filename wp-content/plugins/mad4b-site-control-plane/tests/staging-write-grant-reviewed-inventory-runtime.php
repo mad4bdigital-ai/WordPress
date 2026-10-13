@@ -56,10 +56,12 @@ $allowed = $c::allowed_ability_providers();
 // have an exact, Staging-only reviewed provider pair. This allowlist test
 // does not approve either operation or create any grant.
 $native_reviewed = array(
+    'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',
     'mad4b/wp-native-build-start' => 'core',
     'mad4b/wp-native-self-approve-install' => 'core',
 );
-verify_grants( count( $native_reviewed ) === 2, 'Exactly two native Staging candidate abilities reviewed.' );
+verify_grants( count( $native_reviewed ) === 3,
+    'Exactly three discrete native Staging operations reviewed; none is a wildcard grant.' );
 verify_grants( isset( $allowed['mad4b/provider-connection-refresh'] )
     && 'core' === $allowed['mad4b/provider-connection-refresh'],
     'Provider OAuth refresh is exactly reviewed core-only on Staging.' );
@@ -98,4 +100,4 @@ foreach ( $expected as $ability => $provider ) {
     verify_grants( ( $retire[ $ability ] ?? '' ) === $provider,
         'Current Staging review can retire exactly its stale version: ' . $ability );
 }
-echo "PASS: 38 Feature 007 plus 2 native exact reviewed Staging pairs; no automatic grant or Production expansion\n";
+echo "PASS: 38 Feature 007 plus 3 native Staging pairs, exact core grants only; no Production expansion\n";
