@@ -30,14 +30,16 @@ class MAD4B_SCP_Context_Authority {
     public static $proof_version = '1';
     public static $drift_second_census = false;
     public static $census_reads = 0;
+    public static $scope_verified = true;
     public static function legacy_reconciliation_census() {
         ++self::$census_reads;
         $sources = self::$source_count;
         if ( self::$drift_second_census && 0 === self::$census_reads % 2 ) ++$sources;
         return array( 'source_quarantine_count' => $sources,
             'asset_quarantine_count' => self::$asset_count,
-            'scope_fingerprint' => str_repeat( 'b', 64 ),
-            'operational_scope_verified' => true );
+            'scope_fingerprint' => self::$scope_verified ? str_repeat( 'b', 64 ) : '',
+            'state' => self::$scope_verified ? 'READY' : 'UNVERIFIED_DEPLOYMENT_BINDING',
+            'operational_scope_verified' => self::$scope_verified );
     }
     public static function brand_core_coverage() {
         $e = array( 'ready' => self::$ready );
@@ -47,9 +49,10 @@ class MAD4B_SCP_Context_Authority {
                 'editorial_guidelines' => $e ) );
     }
     public static function legacy_owner_transfer_discover( $input = array() ) {
-        return array( 'eligible_unbound_candidates' => self::$source_count ? array(
+        return array( 'eligible_unbound_candidates' => self::$source_count && self::$scope_verified ? array(
             array( 'source_id' => str_repeat( 'b', 64 ), 'asset_count' => self::$asset_count )
-        ) : array() );
+        ) : array(), 'foreign_or_conflicted_records' =>
+            self::$source_count && ! self::$scope_verified ? self::$source_count : 0 );
     }
     public static function review_queue() {
         return array( 'items' => empty( $GLOBALS['review_item'] ) ? array() :
@@ -129,6 +132,16 @@ brand_remote_assert( ! is_wp_error( $native_view )
     && !$native_view['native_crash_recovery_certified']
     && !$native_view['release_or_publication_authorized']
     && !$native_view['mutation_performed'], 'Host-free native recovery is a safe read-only workflow' );
+MAD4B_SCP_Context_Authority::$scope_verified = false;
+$binding_missing = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
+brand_remote_assert( ! is_wp_error( $binding_missing )
+    && 'WORDPRESS_NATIVE_DEPLOYMENT_BINDING_REQUIRED' === $binding_missing['state']
+    && 'mad4b/deployment-binding-native-plan' === $binding_missing['source']['next_ability']
+    && $binding_missing['source']['unclassified_quarantined_sources'] === 1
+    && !$binding_missing['source']['scope_verified']
+    && !$binding_missing['native_crash_recovery_certified'],
+    'Unverified deployment identity needs WordPress-native binding before any file review' );
+MAD4B_SCP_Context_Authority::$scope_verified = true;
 $foreign = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode(
     array( 'source_id' => str_repeat( 'c', 64 ) ) );
 brand_remote_assert( is_wp_error( $foreign ), 'Cannot choose foreign source' );
