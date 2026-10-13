@@ -71,4 +71,15 @@ for slug in ("mad4b-ai-knowledge-workspace", "mad4b-assistant-workspace",
     if f"'{slug}' => array(" not in workspace:
         raise AssertionError("ADMIN_BOUNDARY_WORKSPACE_PAGE_METADATA_MISSING:" + slug)
 
-print("ADMIN_POST_AND_ROUTE_BOUNDARY_SOURCE_CONTRACT: PASS (8 POST handlers, 5 page declarations, independent live acceptance required)")
+certification = source("class-mad4b-scp-staging-certification.php")
+if "'readback_ability' => 'mad4b/skills-runtime-certification'" not in certification:
+    raise AssertionError("ADMIN_BOUNDARY_MANAGED_SKILLS_READBACK_DRIFT")
+if "'readback_ability' => 'mad4b/skill-runtime-certification'" in certification:
+    raise AssertionError("ADMIN_BOUNDARY_NONREGISTERED_SKILLS_READBACK")
+
+governance = source("class-mad4b-scp-admin-ui.php")
+if ("Exact Staging Write checkpoint ready" not in governance
+        or "Per-ability authorization" not in governance):
+    raise AssertionError("ADMIN_BOUNDARY_GLOBAL_GATE_FALSE_GREEN")
+
+print("ADMIN_POST_AND_ROUTE_BOUNDARY_SOURCE_CONTRACT: PASS (8 POST handlers, 5 pages, remediation and governance readback; live acceptance separate)")
