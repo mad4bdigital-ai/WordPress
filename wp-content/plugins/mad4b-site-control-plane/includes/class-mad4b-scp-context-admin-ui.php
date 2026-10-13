@@ -187,12 +187,23 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	public static function handle_disconnect_google() {
 		self::require_admin( self::ACTION_DISCONNECT_GOOGLE );
+		if ( 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_google_revoke_post_required', 'Google revocation requires an authenticated POST request.' ), 'google-drive', '' );
+			return;
+		}
 		// Native WP-admin action is not the remote OAuth Step-Up / single-use
 		// ticket path. For an already pending revocation, require an exact
 		// state-bound user confirmation before making another Google request.
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		if ( ! is_array( $connection ) ) {
 			self::redirect_result( new WP_Error( 'mad4b_google_revoke_state_unavailable', 'Current Google connection state is unavailable.' ), 'google-drive', '' );
+			return;
+		}
+		$action_kind = isset( $_POST['google_revocation_action'] ) && is_string( $_POST['google_revocation_action'] )
+			? sanitize_key( wp_unslash( $_POST['google_revocation_action'] ) ) : '';
+		if ( ! in_array( $action_kind, array( '', 'retry_pending' ), true ) ||
+			( 'retry_pending' === $action_kind ) !== ! empty( $connection['revocation_pending'] ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_google_revoke_action_state_mismatch', 'Google grant state changed. Refresh before submitting this revocation action.' ), 'google-drive', '' );
 			return;
 		}
 		if ( ! empty( $connection['revocation_pending'] ) ) {
@@ -922,6 +933,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
+			echo '<input type="hidden" name="google_revocation_action" value="retry_pending">';
 			echo '<input type="hidden" name="expected_revocation_attempted_at" value="' . esc_attr( $attempted_at ) . '">';
 			echo '<p><label><input type="checkbox" name="confirm_pending_google_revoke" value="1" required> '
 				. esc_html__( 'I confirm this will retry revoking the existing Google OAuth grant, not reconnect it.', 'mad4b-site-control-plane' ) . '</label></p>';
