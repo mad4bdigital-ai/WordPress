@@ -50,6 +50,26 @@ if ( 'structural_classification_only' !== (string) ( $raw_row['execution_eligibi
 
 
 
+// Feature007 WordPress-native circular-dependency recovery. Each exact
+// Staging operation is mounted on both its declared original Admin surface
+// and dedicated governed Write authority; discovery cannot itself grant
+// permission, owner OAuth, one-time approval, install, or Production access.
+$native_bootstrap_write = array(
+    'mad4b/wordpress-native-candidate-opt-in-apply',
+    'mad4b/wp-native-build-start',
+    'mad4b/wp-native-self-approve-install',
+);
+foreach ( $native_bootstrap_write as $bounded_name ) {
+    if ( ! wp_has_ability( $bounded_name ) ) {
+        $fail( 'Native bootstrap ability must be registered before runtime projection.', $bounded_name );
+    }
+    if ( ! in_array( $bounded_name, MAD4B_SCP_Servers::core_tools( 'mad4b-admin' ), true )
+        || ! MAD4B_SCP_Servers::is_external_write_candidate( $bounded_name )
+        || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name )
+        || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', $bounded_name ) ) {
+        $fail( 'Bootstrap mutation not mounted on original Admin plus governed Write; cannot request exact ticket.', $bounded_name );
+    }
+}
 $base = MAD4B_SCP_Servers::chatgpt_base_tools();
 if ( in_array( 'mad4b/diagnostics-health', $base, true ) ) $fail( 'Fixture Ability unexpectedly belongs to the stable base tools/list.' );
 
