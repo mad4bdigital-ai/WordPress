@@ -12,6 +12,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
     const STATUS_ABILITY = 'mad4b/brand-core-remote-recovery-status';
     const PREPARE_ABILITY = 'mad4b/brand-core-remote-recovery-prepare';
     const ALTERNATIVES_ABILITY = 'mad4b/brand-core-recovery-alternatives';
+    const WORDPRESS_MODE_ABILITY = 'mad4b/brand-core-wordpress-mode';
     private static $booted = false;
 
     public static function boot() {
@@ -25,6 +26,16 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
     public static function register_abilities() {
         if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) ) return;
         $definitions = array(
+            self::WORDPRESS_MODE_ABILITY => array(
+                'label' => 'WordPress-only Brand Core Recovery and File Review',
+                'callback' => 'wordpress_mode',
+                'properties' => array(
+                    'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+                    'include_provider_scan' => array( 'type' => 'boolean', 'default' => false ),
+                    'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 30 ),
+                ),
+                'required' => array(),
+            ),
             self::STATUS_ABILITY => array(
                 'label' => 'Diagnose Full Brand Core Remote Recovery',
                 'callback' => 'status',
@@ -76,6 +87,137 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 ),
             ) );
         }
+    }
+
+    /**
+     * Host-free functional workflow, NOT a Host identity, DB crash or release
+     * certificate. Existing Context and governed owner approvals are reused.
+     */
+    public static function wordpress_mode( $input = array() ) {
+        if ( ! self::can_read() ) return self::denial( 'permission_required' );
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+            array( 'source_id', 'limit', 'include_provider_scan' ) ) )
+            return self::denial( 'unexpected_parameter' );
+        $limit = $input['limit'] ?? 15;
+        if ( ! is_int( $limit ) || $limit < 1 || $limit > 30 )
+            return self::denial( 'invalid_limit' );
+        $site = class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::status() : array();
+        if ( ! is_array( $site ) || 'staging' !== ( $site['environment'] ?? '' )
+            || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
+            || empty( $site['site_uuid'] ) || empty( $site['profile_digest'] ) )
+            return self::denial( 'not_exact_staging' );
+        if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) )
+            return self::denial( 'context_unavailable' );
+        $census = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
+        $coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+        $discovery = MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover( array() );
+        if ( is_wp_error( $census ) ) return $census;
+        if ( is_wp_error( $discovery ) ) return $discovery;
+        if ( ! is_array( $census ) || ! is_array( $coverage ) || ! is_array( $discovery ) )
+            return self::denial( 'context_snapshot_unavailable' );
+        $candidates = is_array( $discovery['eligible_unbound_candidates'] ?? null )
+            ? $discovery['eligible_unbound_candidates'] : array();
+        $ids = array();
+        foreach ( $candidates as $item )
+            if ( is_array( $item ) && preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $item['source_id'] ?? '' ) ) )
+                $ids[] = (string) $item['source_id'];
+        $selected = (string) ( $input['source_id'] ?? '' );
+        if ( '' === $selected && 1 === count( $ids ) ) $selected = $ids[0];
+        if ( '' !== $selected && ! in_array( $selected, $ids, true ) )
+            return self::denial( 'selected_source_not_eligible' );
+        $scope = array( 'selected_source_id' => $selected,
+            'candidate_count' => count( $ids ), 'scope_verified' => false,
+            'owner_approval_required' => true, 'file_ids_supplied_by_user' => false,
+            'next_ability' => 'mad4b/selected-folder-scope-proof' );
+        if ( '' !== $selected && ! empty( $input['include_provider_scan'] ) ) {
+            if ( ! class_exists( 'MAD4B_SCP_Runtime_Obstacle_Resolution' ) )
+                return self::denial( 'folder_proof_unavailable' );
+            $proof = MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof(
+                array( 'source_id' => $selected ) );
+            if ( is_wp_error( $proof ) )
+                $scope['provider_error_code'] = $proof->get_error_code();
+            else {
+                $scope['scope_verified'] = true === ( $proof['scope_verified'] ?? false );
+                $scope['proof_sha256'] = (string) ( $proof['scope_proof_sha256'] ?? '' );
+                $scope['matched_file_count'] = (int) ( $proof['matched_file_count'] ?? 0 );
+            }
+        }
+        // The queue excludes quarantined/foreign records by design.
+        $queue = MAD4B_SCP_Context_Authority::review_queue();
+        if ( ! is_array( $queue ) || ! is_array( $queue['items'] ?? null ) )
+            return self::denial( 'review_queue_unavailable' );
+        $files = array(); $total = count( $queue['items'] );
+        foreach ( array_slice( $queue['items'], 0, $limit ) as $item ) {
+            if ( ! is_array( $item ) ) continue;
+            $id = (string) ( $item['asset_id'] ?? '' );
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $id ) ) continue;
+            $plan = MAD4B_SCP_Context_Authority::remote_owner_review_plan(
+                array( 'asset_id' => $id ) );
+            $ok = is_array( $plan );
+            $files[] = array( 'asset_id' => $id,
+                'source_id' => (string) ( $item['source_id'] ?? '' ),
+                'title' => (string) ( $item['title'] ?? '' ),
+                'category' => (string) ( $item['category'] ?? '' ),
+                'required' => ! empty( $item['required'] ),
+                'content_hash' => (string) ( $item['content_hash'] ?? '' ),
+                'review_status' => (string) ( $item['review_status'] ?? '' ),
+                'plan_ready' => $ok,
+                'exact_plan_sha256' => $ok ? (string) $plan['plan_sha256'] : '',
+                'blocker' => is_wp_error( $plan ) ? $plan->get_error_code() : '',
+                'next_read' => 'context/remote-owner-review-plan',
+                'next_governed_write' => $ok ? 'context/remote-owner-review-apply' : '',
+                'separate_human_approved_ticket_required' => true );
+        }
+        // A second observation prevents a mixed provider/registry snapshot.
+        $after = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
+        $after_coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
+        $after_site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $after ) || ! is_array( $after_coverage )
+            || wp_json_encode( $census ) !== wp_json_encode( $after )
+            || wp_json_encode( $coverage ) !== wp_json_encode( $after_coverage )
+            || ( $after_site['profile_digest'] ?? '' ) !== $site['profile_digest'] )
+            return self::denial( 'snapshot_drift_replan' );
+        $quarantine = (int) ( $census['source_quarantine_count'] ?? 0 )
+            + (int) ( $census['asset_quarantine_count'] ?? 0 );
+        $native = class_exists( 'MAD4B_SCP_Native_Recovery' )
+            ? MAD4B_SCP_Native_Recovery::status() : array();
+        return array(
+            'contract' => 'mad4b.wordpress-only-brand-core.v1',
+            'state' => $quarantine > 0 ? 'OWNER_TRANSFER_BLOCKED'
+                : ( ! empty( $coverage['ready'] )
+                    ? 'BRAND_CORE_READY' : 'FILE_APPROVAL_OR_SCAN_REQUIRED' ),
+            'site_uuid' => (string) $site['site_uuid'],
+            'profile_digest' => (string) $site['profile_digest'],
+            'source' => $scope,
+            'quarantine_count' => $quarantine,
+            'native_scratch_state' => is_array( $native )
+                ? (string) ( $native['state'] ?? 'UNKNOWN' ) : 'UNAVAILABLE',
+            'workflow' => array(
+                'folder' => 'mad4b/selected-folder-scope-proof',
+                'native_shadow_plan' => 'mad4b/native-recovery-plan',
+                'native_shadow_start' => 'mad4b/native-recovery-start',
+                'native_shadow_readback' => 'mad4b/native-recovery-readback',
+                'owner_transfer_plan' => 'context/legacy-owner-transfer-plan',
+                'owner_transfer_write' => 'context/legacy-owner-transfer-apply',
+                'owner_transfer_readback' => 'context/legacy-owner-transfer-readback',
+                'content_scan' => 'context/source-scan-plan',
+                'content_scan_write' => 'context/source-scan-apply',
+                'file_review_plan' => 'context/remote-owner-review-plan',
+                'file_review_write' => 'context/remote-owner-review-apply',
+                'coverage' => 'context/brand-core-coverage' ),
+            'files' => $files, 'file_count' => $total,
+            'page_size' => count( $files ), 'paging_required' => $total > count( $files ),
+            'missing_categories' => (array) ( $coverage['missing_required_context_sets'] ?? array() ),
+            'functional_wordpress_only_mode' => true,
+            'separate_host_runner_for_native_scratch' => false,
+            'legacy_ownership_transfer_requires_existing_host_and_rollback_gate' => $quarantine > 0,
+            'automatic_owner_transfer' => false, 'automatic_file_approval' => false,
+            'native_crash_recovery_certified' => false,
+            'release_or_publication_authorized' => false,
+            'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
     }
 
     public static function can_read() {
