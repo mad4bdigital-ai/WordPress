@@ -346,6 +346,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-ai-approval.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-drive-context.php';
 // Staging-only governed pending Google OAuth revocation retry via discoverable Abilities.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-google-revocation-remote.php';
+// Provider-neutral health, human OAuth handoff and approved refresh lifecycle.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-connection-center.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-preflight.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-intelligence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-context-provider-gateway.php';
