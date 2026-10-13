@@ -351,12 +351,15 @@ final class MAD4B_SCP_WP_Native_Build {
                     return new WP_Error( 'mad4b_native_resume_integrity_failed',
                         'Pinned source entry identity invalid.' );
                 $file = $dir . '/source/' . $name;
-                $parent = dirname( $file );
-                if ( ! is_file( $file ) || is_link( $file ) || is_link( $parent ) ||
-                    filesize( $file ) !== $bytes )
+                $source_root = realpath( $dir . '/source' );
+                $resolved_file = realpath( $file );
+                if ( ! is_string( $source_root ) || ! is_string( $resolved_file ) ||
+                    is_link( $dir . '/source' ) || is_link( $file ) ||
+                    ! hash_equals( $source_root . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $name ), $resolved_file ) ||
+                    ! is_file( $file ) || filesize( $file ) !== $bytes )
                     return new WP_Error( 'mad4b_native_resume_integrity_failed',
                         'Cached source file is missing, unsafe or modified.' );
-                $raw = file_get_contents( $file );
+                $raw = @file_get_contents( $file );
                 if ( ! is_string( $raw ) || strlen( $raw ) !== $bytes ||
                     ! hash_equals( $sha, sha1( 'blob ' . $bytes . "\0" . $raw ) ) )
                     return new WP_Error( 'mad4b_native_resume_integrity_failed',
