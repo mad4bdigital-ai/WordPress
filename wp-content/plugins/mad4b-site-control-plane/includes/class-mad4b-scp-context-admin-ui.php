@@ -187,6 +187,38 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	public static function handle_disconnect_google() {
 		self::require_admin( self::ACTION_DISCONNECT_GOOGLE );
+		// Native WP-admin action is not the remote OAuth Step-Up / single-use
+		// ticket path. For an already pending revocation, require an exact
+		// state-bound user confirmation before making another Google request.
+		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
+		if ( ! is_array( $connection ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_google_revoke_state_unavailable', 'Current Google connection state is unavailable.' ), 'google-drive', '' );
+			return;
+		}
+		if ( ! empty( $connection['revocation_pending'] ) ) {
+			$expected = isset( $_POST['expected_revocation_attempted_at'] ) && is_string( $_POST['expected_revocation_attempted_at'] )
+				? sanitize_text_field( wp_unslash( $_POST['expected_revocation_attempted_at'] ) ) : '';
+			$observed = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
+			if ( '' === $observed || '' === $expected || ! hash_equals( $observed, $expected ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_google_revoke_snapshot_changed', 'Google pending revoke evidence changed. Refresh this page before retrying.' ), 'google-drive', '' );
+				return;
+			}
+			if ( ! isset( $_POST['confirm_pending_google_revoke'] ) || '1' !== (string) wp_unslash( $_POST['confirm_pending_google_revoke'] ) ) {
+				self::redirect_result( new WP_Error( 'mad4b_google_revoke_explicit_confirmation_required', 'Confirm that this action retries Google OAuth revocation before continuing.' ), 'google-drive', '' );
+				return;
+			}
+			$attempted_at = strtotime( $observed );
+			if ( false === $attempted_at ) {
+				self::redirect_result( new WP_Error( 'mad4b_google_revoke_retry_timestamp_invalid', 'Pending revoke timestamp is invalid. Operator review required.' ), 'google-drive', '' );
+				return;
+			}
+			// A recent unsuccessful attempt is not a new authorization.
+			// Bounded cool-down avoids repeated 400s / provider hammering.
+			if ( time() - $attempted_at < 60 ) {
+				self::redirect_result( new WP_Error( 'mad4b_google_revoke_retry_cooldown', 'Wait 60 seconds after the previous Google revoke attempt, then refresh the page.' ), 'google-drive', '' );
+				return;
+			}
+		}
 		$result = MAD4B_SCP_Google_Drive_Context::disconnect();
 		self::redirect_result( $result, 'google-drive', 'google_disconnected' );
 	}
@@ -881,13 +913,21 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 		if ( ! empty( $connection['revocation_pending'] ) ) {
-			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google revocation is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'All Drive reads and writes are disabled locally. Retry revoke to finish disconnecting before reconnecting.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google revocation is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'All Drive reads and writes are disabled locally. Retry may contact Google and invalidate the outstanding grant; HTTP 400 does not confirm revocation.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( ! empty( $connection['revocation_error'] ) ) echo '<p><code>' . esc_html( $connection['revocation_error'] ) . '</code></p>';
 			echo '</div>';
+			$attempted_at = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
+			$attempt_time = '' !== $attempted_at ? strtotime( $attempted_at ) : false;
+			$retry_wait = false !== $attempt_time ? max( 0, 60 - ( time() - $attempt_time ) ) : 60;
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_DISCONNECT_GOOGLE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_DISCONNECT_GOOGLE ) . '">';
-			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false );
+			echo '<input type="hidden" name="expected_revocation_attempted_at" value="' . esc_attr( $attempted_at ) . '">';
+			echo '<p><label><input type="checkbox" name="confirm_pending_google_revoke" value="1" required> '
+				. esc_html__( 'I confirm this will retry revoking the existing Google OAuth grant, not reconnect it.', 'mad4b-site-control-plane' ) . '</label></p>';
+			if ( $retry_wait > 0 ) echo '<p class="description">' . esc_html( sprintf( __( 'Retry paused for %d more second(s) after the last attempt. Refresh to try again.', 'mad4b-site-control-plane' ), $retry_wait ) ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'If Google continues returning HTTP 400, review access in your Google Account. Do not delete the local pending token or reconnect without confirming provider revocation.', 'mad4b-site-control-plane' ) . '</p>';
+			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false, array( 'disabled' => $retry_wait > 0 ? 'disabled' : false ) );
 			echo '</form></div>';
 			self::render_write_governance_readiness();
 			return;
