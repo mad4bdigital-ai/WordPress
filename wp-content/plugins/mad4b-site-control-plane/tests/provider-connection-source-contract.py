@@ -70,4 +70,10 @@ check(
     "class-mad4b-scp-provider-connection-center.php",
     "class-mad4b-scp-provider-connections-admin-ui.php",
 )
-print("PASS: provider connection authorization, staged grant and UI source invariants")
+ui = (INC / "class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
+if ui.count("submit_button( __( 'Refresh Connection'") != 1:
+    raise AssertionError("GOOGLE_REFRESH_CTA_MUST_NOT_BE_DUPLICATED")
+if ui.count("google_reauthorization_action") < 2:
+    raise AssertionError("GOOGLE_OWNER_RECONSENT_STATE_BINDING_MISSING")
+
+print("PASS: provider connection authorization, single refresh CTA, owner handoff and Staging grant invariants")
