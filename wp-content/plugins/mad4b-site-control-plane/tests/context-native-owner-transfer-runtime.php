@@ -28,6 +28,7 @@ class MAD4B_SCP_Site_Profile {
             'environment' => self::$env,
             'origin_match' => true, 'environment_match' => true );
     }
+    public static function user_is_enrolled( $user ) { return 13 === (int) $user; }
 }
 class MAD4B_SCP_Operational_Scope_Guard {
     public static function require_current() { return $GLOBALS['scope']; }
@@ -69,7 +70,9 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
     public static $active = true;
     public static function verified_bearer_active() { return self::$active; }
     public static function verified_bearer_has_scope( $scope ) { return self::$active; }
+    public static function verified_bearer_client_is( $client ) { return $client === 'mad4b-chatgpt'; }
 }
+class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt'; }
 class MAD4B_SCP_Identity_Context {
     public static $valid = true;
     public static function current() {
@@ -92,7 +95,7 @@ $GLOBALS['site_uuid'] = '11111111-2222-3333-4444-555555555555';
 $GLOBALS['brand_id'] = str_repeat( 'a', 32 );
 $GLOBALS['scope'] = array( 'site_uuid' => $GLOBALS['site_uuid'], 'brand_ref' => $GLOBALS['brand_id'],
     'tenant_ref' => 'tenant-1', 'blog_id' => '1', 'network_id' => '1',
-    'environment' => 'staging', 'deployment_mode' => 'staging' );
+    'environment' => 'staging', 'deployment_mode' => 'wordpress_dedicated' );
 $root = 'original-brand-folder';
 $GLOBALS['source_id'] = hash( 'sha256', $GLOBALS['site_uuid'] . '|google_drive|governed|' . $root . '|' );
 $asset_id = hash( 'sha256', $GLOBALS['source_id'] . '|existing-file-A' );
@@ -152,6 +155,12 @@ $transfer = $input + array(
     'reviewed_external_root_id' => $root, 'owner_evidence_reference' => 'reviewer-ticket-exact',
     'confirmation' => 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY',
 );
+MAD4B_SCP_OAuth_Resource_Bridge::$active = false;
+$unstepped = MAD4B_SCP_Context_Authority::native_owner_transfer_apply( $transfer );
+check( is_wp_error( $unstepped )
+    && $unstepped->get_error_code() === 'mad4b_native_transfer_stepup_required',
+    'No owner bearer step-up means no mutation.' );
+MAD4B_SCP_OAuth_Resource_Bridge::$active = true;
 $missing_human = MAD4B_SCP_Context_Authority::native_owner_transfer_apply( $transfer );
 check( is_wp_error( $missing_human ) && $missing_human->get_error_code()
     === 'mad4b_native_transfer_human_ticket_required',
