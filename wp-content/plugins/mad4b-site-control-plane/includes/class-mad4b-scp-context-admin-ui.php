@@ -214,13 +214,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! in_array( $action_kind, array( '', 'retry_pending' ), true ) ||
 			( 'retry_pending' === $action_kind ) !== $pending )
 			return new WP_Error( 'mad4b_google_revoke_action_state_mismatch', 'Google grant state changed. Refresh before submitting this revocation action.' );
-		if ( ! $pending ) return true; // Original non-pending disconnect form.
+		if ( ! $pending ) {
+			if ( empty( $connection['connected'] ) && empty( $connection['token_unreadable'] ) )
+				return new WP_Error( 'mad4b_google_revoke_already_disconnected', 'Google is already disconnected. Refresh this page.' );
+			return true; // Original non-pending disconnect or unreadable-token cleanup.
+		}
 		$expected = isset( $input['expected_revocation_attempted_at'] ) && is_string( $input['expected_revocation_attempted_at'] )
 			? sanitize_text_field( wp_unslash( $input['expected_revocation_attempted_at'] ) ) : '';
 		$observed = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
 		if ( '' === $observed || '' === $expected || ! hash_equals( $observed, $expected ) )
 			return new WP_Error( 'mad4b_google_revoke_snapshot_changed', 'Google pending revoke evidence changed. Refresh this page before retrying.' );
-		if ( ! isset( $input['confirm_pending_google_revoke'] ) || '1' !== (string) wp_unslash( $input['confirm_pending_google_revoke'] ) )
+		if ( ! isset( $input['confirm_pending_google_revoke'] ) || ! is_string( $input['confirm_pending_google_revoke'] ) || '1' !== wp_unslash( $input['confirm_pending_google_revoke'] ) )
 			return new WP_Error( 'mad4b_google_revoke_explicit_confirmation_required', 'Confirm that this action retries Google OAuth revocation before continuing.' );
 		$attempted_at = strtotime( $observed );
 		if ( false === $attempted_at )
