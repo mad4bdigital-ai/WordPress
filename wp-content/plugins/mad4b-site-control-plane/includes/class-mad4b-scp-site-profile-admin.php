@@ -299,8 +299,25 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		check_admin_referer( self::ACTION_SAVE );
 	}
 
+	private static function site_profile_notice_binding() {
+		$status = MAD4B_SCP_Site_Profile::status();
+		return hash( 'sha256', wp_json_encode( array(
+			(string) ( $status['site_uuid'] ?? '' ),
+			(int) ( $status['revision'] ?? 0 ),
+			(string) ( $status['profile_digest'] ?? '' ),
+			(string) ( $status['configured_environment'] ?? '' ),
+			! empty( $status['authority_ready'] ),
+		) ) );
+	}
+
 	private static function redirect( $state ) {
-		$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'mad4b_site_profile' => sanitize_key( (string) $state ) ), admin_url( 'admin.php' ) );
+		$state = sanitize_key( (string) $state );
+		$url = add_query_arg( array(
+			'page' => self::PAGE_SLUG, 'mad4b_site_profile' => $state,
+			'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt(
+				self::PAGE_SLUG, 'site_profile.' . $state, self::site_profile_notice_binding()
+			),
+		), admin_url( 'admin.php' ) );
 		wp_safe_redirect( $url );
 		exit;
 	}
@@ -339,6 +356,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			$autopilot['local_config_preflight'] = MAD4B_SCP_WP_Config_Environment_Sync::preflight_readonly( $status );
 		}
 		$state = isset( $_GET['mad4b_site_profile'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_site_profile' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( '' !== $state && ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'site_profile.' . $state, self::site_profile_notice_binding() ) ) $state = '';
 		?>
 		<div class="wrap" id="mad4b-site-profile-workspace">
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
