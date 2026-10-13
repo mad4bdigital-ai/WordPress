@@ -246,3 +246,49 @@ provider controls and cannot be marked resolved by MAD4B upgrading.
 
 **No real WP mutation, OAuth revoke, Production mutation, Developer or
 Breakglass grant was performed during this audit.**
+
+## High-impact action method audit addendum — 2026-10-13
+
+Further deep source review of owner, update, approval, index and Search forms
+found that some native wp-admin controls accepted a valid nonce but did not
+check HTTP method. Importantly, the MAD4B plugin row had two **real GET
+links** (not just latent handler omissions):
+- `Check for updates` GET triggered manifest-cache invalidation and outbound
+  release manifest fetch.
+- `Update now` GET could enter an effectful governed plugin update.
+A WordPress nonce does **not** convert a GET link into a state-changing POST.
+
+**PR remediation**: both links use small exact action POST forms with ordinary
+WordPress nonce hidden fields, and both handlers reject non-POST. Additional
+POST-only guards now protect Site Profile disable/migration; Context admin
+and AJAX settings; Content Pipeline; Browser Acceptance operator preference;
+Search Profile and Search controls; Native Build owner consent; compatible
+runtime release-set apply; approval-ticket decision; performance index
+scheduling. The WordPress OAuth callback GET routes were deliberately
+preserved as distinct state/PKCE handlers, not mutation forms.
+
+The new source-only regression script
+`tests/admin-post-and-route-boundary-source-contract.py` asserts **14**
+POST admission points, absence of old GET update links, exact Browser
+Acceptance registry declaration, per-page navigation metadata, exact
+revision for Site Profile authority disable, and remediation/governance
+status-label correctness. This is a deliberately conservative subset of the
+45 MAD4B-prefixed admin-post hooks and 12 MAD4B-prefixed AJAX hooks.
+Those full inventories are **not** automatically certified by this subset.
+A source-marker readback confirms that the patched high-impact handlers
+exist on a subsequent moving PR HEAD. It does **not** prove PHP lint or
+browser DOM/form validity.
+
+**Follow-up:** freeze an immutable PR candidate; run PHP syntax check on
+each modified file, both source contracts, bounded local WordPress runtime
+tests and actual authenticated browser acceptance. For plugin action-row
+POST forms verify valid DOM, checkbox/Nonce serialization, and all returned
+HTTP statuses. Repeat real site-readback and rollback preflight.
+
+The GitHub PR receives simultaneous commits and remains open. A late GitHub
+Actions readback had 47 `queued` and one `pending` workflow runs on
+its first returned page. This is not successful CI evidence.
+
+**Security boundary:** no GET shortcut, no bypass of owner approval,
+grant reconciliation, provider OAuth state, immutable package identity,
+or Production protections.
