@@ -38,6 +38,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-plugin-admin-menu.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-parity-diagnostics-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
       - name: Adaptive runtime and admin recovery regressions
@@ -50,6 +55,7 @@ jobs:
           fi
           for regression in \
             admin-route-registry-runtime \
+            admin-parity-diagnostics-runtime \
             enrollment-passive-catalog-runtime \
             adaptive-runtime-convergence-runtime \
             post-update-continuation-guards-runtime \
