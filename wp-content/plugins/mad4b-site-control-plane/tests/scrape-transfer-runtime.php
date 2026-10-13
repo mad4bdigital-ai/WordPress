@@ -194,6 +194,14 @@ check( ! is_wp_error( $picture_rewrite ) &&
     !$picture_rewrite['ready_for_draft_review'] &&
     $picture_rewrite['pending_media'] > 0,
     'Missing native imported picture image must keep draft review blocked' );
+$utf8 = $input;
+$utf8['media_bindings'] = array();
+$utf8['html'] = '<img src="' . $img . '" alt="' . str_repeat( 'جمال النيل', 40 ) . '">';
+$utf8_plan = MAD4B_SCP_Scrape_Transfer::plan( $utf8 );
+check( ! is_wp_error( $utf8_plan ) &&
+    preg_match( '//u', $utf8_plan['remote_media_manifest_items'][0]['import']['alt'] ) === 1 &&
+    strlen( $utf8_plan['remote_media_manifest_items'][0]['import']['alt'] ) > 240,
+    'UTF-8 metadata truncation must preserve whole Arabic characters, not bytes' );
 $bad = $input;
 $bad['media_bindings'][0]['attachment_id'] = 7;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad ) ),
