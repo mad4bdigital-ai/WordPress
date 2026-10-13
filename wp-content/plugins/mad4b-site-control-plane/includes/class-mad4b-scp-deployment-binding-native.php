@@ -16,6 +16,12 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
     const FILENAME = 'binding.key';
+    private static $request_marker = '';
+
+    private static function request_marker() {
+        if ( '' === self::$request_marker ) self::$request_marker = bin2hex( random_bytes( 16 ) );
+        return self::$request_marker;
+    }
 
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
@@ -210,7 +216,11 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $stored = $snap['stored'];
         $digest = (string) ( $stored['deployment_binding_digest'] ?? '' );
         $observed = (string) MAD4B_SCP_Site_Profile::deployment_binding_digest();
-        $verified = 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' )
+        $writer_fingerprint = (string) ( $stored['native_binding_writer_request_marker_sha256'] ?? '' );
+        $independent_request = 1 === preg_match( '/^[a-f0-9]{64}$/D', $writer_fingerprint )
+            && ! hash_equals( $writer_fingerprint, hash( 'sha256', self::request_marker() ) );
+        $verified = $independent_request
+            && 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' )
             && hash_equals( (string) $input['expected_site_uuid'],
                 (string) ( $site['site_uuid'] ?? '' ) )
             && (int) $site['revision'] >= (int) $input['minimum_profile_revision']
@@ -224,6 +234,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'site_uuid' => (string) $site['site_uuid'],
             'profile_revision' => (int) $site['revision'],
             'site_identity_preserved' => $verified,
+            'independent_request_observed' => $independent_request,
             'next_ability' => $verified ? 'context/legacy-reconciliation-census'
                 : self::STATUS,
             'separate_http_request_required' => true,
@@ -350,6 +361,8 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         $after = $before;
         $after['revision'] = (int) $before['revision'] + 1;
         $after['deployment_binding_digest'] = hash( 'sha256', $key );
+        $after['native_binding_writer_request_marker_sha256'] =
+            hash( 'sha256', self::request_marker() );
         $after['updated_at'] = gmdate( 'c' );
         $committed = MAD4B_SCP_Site_Profile::commit_record_with_audit(
             $before, $after, 'mad4b/deployment-binding-native-enrolled',
