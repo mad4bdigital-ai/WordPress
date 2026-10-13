@@ -657,6 +657,9 @@ final class MAD4B_SCP_Context_Authority {
         if ( is_wp_error( $proof ) ) return $proof;
         $shadow = MAD4B_SCP_Native_Recovery::readback( array( 'job_id' => $job_id ) );
         if ( is_wp_error( $shadow ) ) return $shadow;
+        if ( ! is_array( $shadow ) || (int) ( $shadow['remaining_seconds'] ?? 0 ) < 90 )
+            return new WP_Error( 'mad4b_native_transfer_shadow_expiring',
+                'The exact WordPress shadow is expired or will expire within 90 seconds. Replan and request fresh approval.' );
         if ( ! is_array( $shadow ) || 'WP_NATIVE_CROSS_REQUEST_VERIFIED' !== ( $shadow['state'] ?? '' )
             || true !== ( $shadow['independent_request_observed'] ?? false )
             || true !== ( $shadow['scratch_functional_rehearsal_verified'] ?? false )
@@ -683,10 +686,13 @@ final class MAD4B_SCP_Context_Authority {
             'provider_proof_sha256' => (string) $proof['provider_proof_sha256'],
             'asset_count' => (int) $legacy['asset_count'],
             'registry_revision' => (int) $legacy['registry_revision'],
+            'shadow_expires_at' => (int) ( $shadow['expires_at'] ?? 0 ),
         );
         $basis['plan_sha256'] = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
         return $basis + array(
             'eligible' => true, 'next_write_ability' => 'context/native-owner-transfer-apply',
+            'shadow_remaining_seconds' => (int) $shadow['remaining_seconds'],
+            'replan_if_expired' => 'mad4b/native-recovery-status',
             'one_time_human_approved_ticket_required' => true,
             'confirmation' => 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY',
             'functional_only' => true, 'host_runner_required' => false,
@@ -847,16 +853,33 @@ final class MAD4B_SCP_Context_Authority {
 			|| ! hash_equals( (string) $provider_proof['provider_proof_sha256'], $expected_provider_proof ) )
 			return new WP_Error( 'mad4b_legacy_transfer_provider_proof_stale',
 				'The operator-reviewed source and external inventory evidence changed. Refresh proof and approval.' );
-		$provider_inventory_digest = $provider_proof['provider_proof_sha256'];
-		return self::with_registry_lock( $functional_only ? 'native_owner_transfer_apply' : 'legacy_owner_transfer_apply',
-			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest, $functional_only ) {
-                if ( $functional_only ) {
-                    $fresh = self::native_owner_transfer_plan( array(
-                        'source_id' => $source_id, 'job_id' => (string) $input['job_id'] ) );
-                    if ( is_wp_error( $fresh ) ) return $fresh;
-                    if ( ! hash_equals( (string) $fresh['plan_sha256'], (string) $input['expected_native_plan_sha256'] ) )
-                        return new WP_Error( 'mad4b_native_transfer_locked_drift', 'Native shadow/source identity changed under lock; no ownership may be transferred.' );
-                }
+
+        $provider_inventory_digest = $provider_proof['provider_proof_sha256'];
+        // Network/proxy and full Google Drive scan must finish BEFORE the
+        // short registry lock. The locked phase is only local CAS and audit.
+        $native_prelock = array();
+        $verified_at = time();
+        if ( $functional_only ) {
+            $native_prelock = self::native_owner_transfer_plan( array(
+                'source_id' => $source_id, 'job_id' => (string) $input['job_id'] ) );
+            if ( is_wp_error( $native_prelock ) ) return $native_prelock;
+            if ( ! hash_equals( (string) $native_prelock['plan_sha256'],
+                    (string) $input['expected_native_plan_sha256'] )
+                || ! hash_equals( (string) $native_prelock['provider_proof_sha256'],
+                    (string) $provider_inventory_digest ) )
+                return new WP_Error( 'mad4b_native_transfer_prelock_drift',
+                    'Original Drive inventory, owner plan or functional shadow changed before the registry lock.' );
+            $verified_at = time();
+        }
+        return self::with_registry_lock( $functional_only
+            ? 'native_owner_transfer_apply' : 'legacy_owner_transfer_apply',
+            static function () use ( $input, $source_id, $expected, $reviewed_root,
+                $evidence, $expected_count, $provider_inventory_digest,
+                $functional_only, $native_prelock, $verified_at ) {
+                if ( $functional_only && ( time() - $verified_at > 10
+                    || time() >= (int) ( $native_prelock['shadow_expires_at'] ?? 0 ) ) )
+                    return new WP_Error( 'mad4b_native_transfer_prelock_expired',
+                        'Functional proof expired before the locked Context write. Replan and approve again.' );
 				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
 				if ( is_wp_error( $plan ) ) return $plan;
 				if ( ! hash_equals( (string) $plan['plan_sha256'], $expected )
@@ -879,6 +902,21 @@ final class MAD4B_SCP_Context_Authority {
 				$source['status'] = 'selected';
 				$source['last_scan_complete'] = false;
 				$source['last_complete_scan_at'] = '';
+                if ( $functional_only ) {
+                    $identity = MAD4B_SCP_Identity_Context::current();
+                    $source['functional_transfer_receipt'] = array(
+                        'contract' => 'mad4b.context-native-transfer-receipt.v1',
+                        'native_plan_sha256' => (string) $input['expected_native_plan_sha256'],
+                        'provider_proof_sha256' => $provider_inventory_digest,
+                        'job_id_sha256' => hash( 'sha256', (string) $input['job_id'] ),
+                        'approval_ticket_sha256' => hash( 'sha256',
+                            (string) ( $identity['approval_ticket_id'] ?? '' ) ),
+                        'owner_user_id' => get_current_user_id(),
+                        'functional_only' => true,
+                        'mariadb_crash_certified' => false, 'rollback_certified' => false,
+                        'created_at' => gmdate( 'c' ),
+                    );
+                }
 				$source['updated_at'] = gmdate( 'c' );
 				$sources[ $source_id ] = $source;
 				$count = 0;
@@ -942,6 +980,9 @@ final class MAD4B_SCP_Context_Authority {
 					'brand_id' => (string) $plan['brand_id'],
 					'prior_review_authority_preserved' => false,
 					'new_source_created' => false,
+                    'next_readback_ability' => $functional_only
+                        ? 'context/native-owner-transfer-readback'
+                        : 'context/legacy-owner-transfer-readback',
                     'functional_only' => $functional_only,
                     'mariadb_crash_certified' => false,
                     'independent_backup_certified' => false,
@@ -971,6 +1012,56 @@ final class MAD4B_SCP_Context_Authority {
 			}
 		);
 	}
+
+    /**
+     * Cross-request functional-only readback from the original Context source.
+     * No separate provenance registry and no operator-supplied PASS flags.
+     */
+    public static function native_owner_transfer_readback( $input = array() ) {
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+            array( 'source_id', 'job_id', 'expected_native_plan_sha256' ) ) )
+            return new WP_Error( 'mad4b_native_transfer_readback_invalid', 'Exact fields required.' );
+        $source_id = (string) ( $input['source_id'] ?? '' );
+        $job_id = (string) ( $input['job_id'] ?? '' );
+        $sha = (string) ( $input['expected_native_plan_sha256'] ?? '' );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $source_id )
+            || ! preg_match( '/^[a-f0-9]{32}$/D', $job_id )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) )
+            return new WP_Error( 'mad4b_native_transfer_readback_identity_invalid',
+                'Exact source, original shadow job and native plan required.' );
+        $legacy = self::legacy_owner_transfer_readback( array( 'source_id' => $source_id ) );
+        if ( is_wp_error( $legacy ) ) return $legacy;
+        $record = self::raw_sources()[ $source_id ] ?? array();
+        $receipt = is_array( $record ) ? ( $record['functional_transfer_receipt'] ?? array() ) : array();
+        $ok = is_array( $receipt )
+            && ! empty( $legacy['ready_for_fresh_source_scan'] )
+            && 'mad4b.context-native-transfer-receipt.v1' === ( $receipt['contract'] ?? '' )
+            && true === ( $receipt['functional_only'] ?? false )
+            && false === ( $receipt['mariadb_crash_certified'] ?? null )
+            && false === ( $receipt['rollback_certified'] ?? null )
+            && hash_equals( $sha, (string) ( $receipt['native_plan_sha256'] ?? '' ) )
+            && hash_equals( hash( 'sha256', $job_id ),
+                (string) ( $receipt['job_id_sha256'] ?? '' ) )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $receipt['approval_ticket_sha256'] ?? '' ) )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $receipt['provider_proof_sha256'] ?? '' ) )
+            && (int) ( $receipt['owner_user_id'] ?? 0 ) > 0;
+        return array( 'contract' => 'mad4b.context-native-transfer-readback.v1',
+            'state' => $ok ? 'FUNCTIONAL_TRANSFER_READBACK_PASS'
+                : 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE',
+            'source_id' => $source_id, 'site_bound_source_verified' => $ok,
+            'asset_count' => (int) ( $legacy['asset_count'] ?? 0 ),
+            'old_reviews_invalidated' => $ok, 'new_source_created' => false,
+            'receipt_sha256' => $ok ? hash( 'sha256', wp_json_encode( $receipt ) ) : '',
+            'approval_ticket_sha256' => $ok ? $receipt['approval_ticket_sha256'] : '',
+            'provider_proof_sha256' => $ok ? $receipt['provider_proof_sha256'] : '',
+            'registry_revision' => $legacy['registry_revision'] ?? 0,
+            'next_ability' => $ok ? 'context/source-scan-plan' : 'context/legacy-reconciliation-census',
+            'mariadb_crash_certified' => false, 'rollback_certified' => false,
+            'production_authorized' => false, 'publication_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
 
 	/** Independent postcondition read; never accepts a caller-supplied owner. */
 	public static function legacy_owner_transfer_readback( $input = array() ) {
