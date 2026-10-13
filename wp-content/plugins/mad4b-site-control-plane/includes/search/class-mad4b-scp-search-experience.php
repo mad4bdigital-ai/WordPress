@@ -131,6 +131,7 @@ final class MAD4B_SCP_Search_Experience {
 		return $out ? $out : array( array( 'label' => 'Observation state', 'value' => 'No matching evidence on this bounded page.' ) );
 	}
 	public static function control_post() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		check_admin_referer( 'mad4b_search_control' );
 		$args = array();
 		foreach ( array( 'profile_id', 'control', 'provider_id', 'target_id', 'confirmation', 'expected_revision' ) as $key ) {
