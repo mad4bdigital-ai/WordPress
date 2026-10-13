@@ -127,11 +127,17 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         if ( '' === $selected && 1 === count( $ids ) ) $selected = $ids[0];
         if ( '' !== $selected && ! in_array( $selected, $ids, true ) )
             return self::denial( 'selected_source_not_eligible' );
+        $binding_unverified = 'UNVERIFIED_DEPLOYMENT_BINDING' === (string) ( $census['state'] ?? '' )
+            || true !== ( $census['operational_scope_verified'] ?? false );
         $scope = array( 'selected_source_id' => $selected,
-            'candidate_count' => count( $ids ), 'scope_verified' => false,
+            'candidate_count' => count( $ids ),
+            'unclassified_quarantined_sources' => (int) ( $discovery['foreign_or_conflicted_records'] ?? 0 ),
+            'scope_verified' => false,
             'owner_approval_required' => true, 'file_ids_supplied_by_user' => false,
-            'next_ability' => 'mad4b/selected-folder-scope-proof' );
-        if ( '' !== $selected && ! empty( $input['include_provider_scan'] ) ) {
+            'next_ability' => $binding_unverified
+                ? 'mad4b/deployment-binding-native-plan'
+                : 'mad4b/selected-folder-scope-proof' );
+        if ( ! $binding_unverified && '' !== $selected && ! empty( $input['include_provider_scan'] ) ) {
             if ( ! class_exists( 'MAD4B_SCP_Runtime_Obstacle_Resolution' ) )
                 return self::denial( 'folder_proof_unavailable' );
             $proof = MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof(
@@ -185,9 +191,10 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             ? MAD4B_SCP_Native_Recovery::status() : array();
         return array(
             'contract' => 'mad4b.wordpress-only-brand-core.v1',
-            'state' => $quarantine > 0 ? 'OWNER_TRANSFER_BLOCKED'
+            'state' => $binding_unverified ? 'WORDPRESS_NATIVE_DEPLOYMENT_BINDING_REQUIRED'
+                : ( $quarantine > 0 ? 'OWNER_TRANSFER_BLOCKED'
                 : ( ! empty( $coverage['ready'] )
-                    ? 'BRAND_CORE_READY' : 'FILE_APPROVAL_OR_SCAN_REQUIRED' ),
+                    ? 'BRAND_CORE_READY' : 'FILE_APPROVAL_OR_SCAN_REQUIRED' ) ),
             'site_uuid' => (string) $site['site_uuid'],
             'profile_digest' => (string) $site['profile_digest'],
             'source' => $scope,
@@ -195,6 +202,9 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'native_scratch_state' => is_array( $native )
                 ? (string) ( $native['state'] ?? 'UNKNOWN' ) : 'UNAVAILABLE',
             'workflow' => array(
+                'native_binding_status' => 'mad4b/deployment-binding-native-status',
+                'native_binding_plan' => 'mad4b/deployment-binding-native-plan',
+                'native_binding_apply' => 'mad4b/deployment-binding-native-apply',
                 'folder' => 'mad4b/selected-folder-scope-proof',
                 'native_shadow_plan' => 'mad4b/native-recovery-plan',
                 'native_shadow_start' => 'mad4b/native-recovery-start',
@@ -211,6 +221,8 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'page_size' => count( $files ), 'paging_required' => $total > count( $files ),
             'missing_categories' => (array) ( $coverage['missing_required_context_sets'] ?? array() ),
             'functional_wordpress_only_mode' => true,
+            'native_binding_requires_separate_owner_approval' => $binding_unverified,
+            'native_binding_is_not_host_attestation' => true,
             'separate_host_runner_for_native_scratch' => false,
             'legacy_ownership_transfer_requires_existing_host_and_rollback_gate' => $quarantine > 0,
             'automatic_owner_transfer' => false, 'automatic_file_approval' => false,
