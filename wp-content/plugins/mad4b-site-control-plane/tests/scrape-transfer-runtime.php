@@ -15,6 +15,17 @@ function sanitize_title( $v ) {
     return preg_replace( '/[^a-z0-9-]+/', '-', $v );
 }
 function get_post_types( $args, $output ) { return array( 'posts', 'products' ); }
+function get_taxonomies( $args, $output ) { return array( 'public_taxonomy' ); }
+function get_terms( $args ) {
+    $terms = array();
+    foreach ( $GLOBALS['taxonomy_terms'] as $term ) {
+        if ( $term['slug'] === $args['slug'] ) $terms[] = (object) $term;
+    }
+    return array_slice( $terms, 0, 2 );
+}
+function get_term_link( $term ) {
+    return 'https://staging.our-site.test/collections/' . $term->slug . '/';
+}
 function get_post( $id ) {
     if ( ! isset( $GLOBALS['posts'][$id] ) ) return null;
     return (object) $GLOBALS['posts'][$id];
@@ -96,6 +107,9 @@ function check( $v, $why ) {
     if ( ! $v ) { fwrite( STDERR, "FAIL: $why\n" ); exit( 1 ); }
 }
 $GLOBALS['reader'] = true;
+$GLOBALS['taxonomy_terms'] = array(
+    array( 'term_id' => 31, 'slug' => 'shared-category', 'taxonomy' => 'public_taxonomy' ),
+);
 $GLOBALS['posts'] = array(
     7 => array( 'slug' => 'exact-route', 'post_type' => 'products',
         'post_status' => 'publish', 'permalink' => 'https://staging.our-site.test/products/exact-route/' ),
@@ -128,6 +142,21 @@ check( ! is_wp_error( $rewritten ) && $rewritten['rewritten_internal_links'] ===
     strpos( $rewritten['html'], 'affiliate=1' ) === false &&
     $rewritten['source_prices'][0]['value'] === '1457',
     'Rewrite keeps source facts while mapping exact site links and verified local media' );
+$term_page = $input;
+$term_page['html'] = '<p><a href="/collections/shared-category">Browse category</a></p>';
+$term_plan = MAD4B_SCP_Scrape_Transfer::plan( $term_page );
+check( ! is_wp_error( $term_plan ) &&
+    count( $term_plan['internal_link_map'] ) === 1 &&
+    array_values( $term_plan['internal_link_map'] )[0] ===
+    'https://staging.our-site.test/collections/shared-category/',
+    'Known public taxonomy archive must remap to the local term URL.' );
+$GLOBALS['taxonomy_terms'][] = array( 'term_id' => 32,
+    'slug' => 'exact-route', 'taxonomy' => 'public_taxonomy' );
+$ambiguous_term = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( ! is_wp_error( $ambiguous_term ) &&
+    count( $ambiguous_term['unmatched_competitor_links'] ) === 2,
+    'Post vs public taxonomy slug conflict must require explicit selection.' );
+array_pop( $GLOBALS['taxonomy_terms'] );
 $none = $input;
 unset( $none['media_bindings'] );
 $pending = MAD4B_SCP_Scrape_Transfer::plan( $none );

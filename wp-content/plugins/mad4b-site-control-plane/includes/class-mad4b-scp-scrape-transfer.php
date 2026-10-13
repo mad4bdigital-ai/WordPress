@@ -102,7 +102,7 @@ final class MAD4B_SCP_Scrape_Transfer {
         return $url;
     }
 
-    /** Unique exact slug match across currently public post types. */
+    /** Unique existing public post OR public taxonomy archive, never a guess. */
     private static function auto_target( $source_url ) {
         $p = wp_parse_url( $source_url );
         if ( ! is_array( $p ) ) return '';
@@ -111,16 +111,42 @@ final class MAD4B_SCP_Scrape_Transfer {
         $parts = explode( '/', $path );
         $slug = sanitize_title( rawurldecode( end( $parts ) ) );
         if ( '' === $slug || strlen( $slug ) > 180 ) return '';
+        $candidates = array();
         $types = get_post_types( array( 'public' => true ), 'names' );
-        if ( ! is_array( $types ) || ! $types ) return '';
-        $ids = get_posts( array(
-            'name' => $slug, 'post_type' => array_values( $types ),
-            'post_status' => 'publish', 'posts_per_page' => 2,
-            'fields' => 'ids', 'suppress_filters' => false,
-            'no_found_rows' => true,
-        ) );
-        if ( ! is_array( $ids ) || 1 !== count( $ids ) ) return '';
-        return self::target( (int) $ids[0] );
+        if ( is_array( $types ) && $types ) {
+            $ids = get_posts( array(
+                'name' => $slug, 'post_type' => array_values( $types ),
+                'post_status' => 'publish', 'posts_per_page' => 2,
+                'fields' => 'ids', 'suppress_filters' => false,
+                'no_found_rows' => true,
+            ) );
+            if ( ! is_array( $ids ) || count( $ids ) > 1 ) return '';
+            foreach ( $ids as $id ) {
+                $target = self::target( (int) $id );
+                if ( '' !== $target ) $candidates[] = $target;
+            }
+        }
+        // Public taxonomy archives are also internal pages. A slug that
+        // matches both a post and a term (or multiple taxonomies) is NOT
+        // automatically linked: the ambiguity requires an exact binding.
+        if ( function_exists( 'get_taxonomies' ) && function_exists( 'get_terms' ) &&
+            function_exists( 'get_term_link' ) ) {
+            $taxonomies = get_taxonomies( array( 'public' => true ), 'names' );
+            if ( is_array( $taxonomies ) && $taxonomies ) {
+                $terms = get_terms( array(
+                    'taxonomy' => array_values( $taxonomies ), 'slug' => $slug,
+                    'hide_empty' => false, 'number' => 2,
+                ) );
+                if ( is_wp_error( $terms ) || ! is_array( $terms ) || count( $terms ) > 1 ) return '';
+                foreach ( $terms as $term ) {
+                    if ( ! is_object( $term ) || ! isset( $term->term_id ) ) return '';
+                    $url = get_term_link( $term );
+                    if ( ! is_wp_error( $url ) && is_string( $url ) &&
+                        self::same_origin( $url, home_url( '/' ) ) ) $candidates[] = $url;
+                }
+            }
+        }
+        return 1 === count( $candidates ) ? $candidates[0] : '';
     }
 
     /** A previously imported Media Library item must be bound to this source. */
@@ -334,6 +360,8 @@ final class MAD4B_SCP_Scrape_Transfer {
                 // not leave browser-visible competitor variants in draft HTML.
                 $processor->remove_attribute( 'srcset' );
                 $processor->remove_attribute( 'data-srcset' );
+                $processor->remove_attribute( 'src' );
+                $processor->remove_attribute( 'data-src' );
             } elseif ( 'IMG' === $tag ) {
                 $src = $processor->get_attribute( 'data-src' );
                 if ( ! is_string( $src ) || '' === $src ) $src = $processor->get_attribute( 'src' );
@@ -344,6 +372,8 @@ final class MAD4B_SCP_Scrape_Transfer {
                     $processor->remove_attribute( 'srcset' );
                     $processor->remove_attribute( 'data-src' );
                     $processor->remove_attribute( 'data-srcset' );
+                    $processor->remove_attribute( 'data-original' );
+                    $processor->remove_attribute( 'data-lazy-src' );
                     $rewritten_media++;
                 } else $pending_media++;
             }
