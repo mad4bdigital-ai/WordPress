@@ -1,5 +1,82 @@
 # Feature 007 — Brand Core recovery from A to Z through the existing MAD4B MCP
 
+## WordPress-native functional owner transfer policy (2026-10-13)
+
+This is a **new opt-in governed Staging lane**, deliberately distinct from
+`context/legacy-owner-transfer-apply`. It never claims independent physical
+Host verification, MariaDB crash/restart certification, independently restored
+backup, or disaster-recovery rollback certification. The existing
+Host-certified write lane remains unchanged and fail-closed.
+
+### Exact operator lifecycle (no independent Host Runner for this lane)
+
+1. Establish exact enrolled **Staging** Deployment Binding with
+   `mad4b/deployment-binding-native-status` → `...-plan` →
+   separately owner-approved `...-apply`. The current Context Census
+   `UNVERIFIED_DEPLOYMENT_BINDING` on ETG and ARE blocks reliable legacy
+   owner discovery until this occurs.
+2. Discover original legacy sources by
+   `context/legacy-owner-transfer-discover`. Select an eligible, canonical
+   unbound source; never create a new Source or a duplicate Google Drive file.
+3. Read `context/legacy-owner-transfer-evidence`: its complete
+   original-folder scan must prove *every existing stored file ID*, current
+   original parent and source/brand/site registry identity. Review the legal
+   and business ownership evidence independently; Drive membership alone is
+   **not** permission to adopt someone else's content.
+4. Plan an in-WordPress scratch shadow via
+   `mad4b/native-recovery-plan` (`mode=shadow`), obtain separately governed
+   permission for `mad4b/native-recovery-start`, and read back with
+   `mad4b/native-recovery-readback` in a *different HTTP request*.
+   This does not change original Context registry or claim crash safety.
+5. Call `context/native-owner-transfer-plan` with exact
+   `source_id` and `job_id`; receive `plan_sha256`,
+   `legacy_plan_sha256`, `provider_proof_sha256`, site identity,
+   brand, original folder ID and file count. Fresh shadow + provider + source
+   are reverified, including a post-change read.
+6. Human Staging owner explicitly confirms
+   `APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY`, supplies an auditable
+   `owner_evidence_reference` (12–500 characters), and separately approves
+   a **one-time, exact, claimable write ticket** for
+   `context/native-owner-transfer-apply`. The same mapped WordPress owner
+   must hold OAuth authority-step-up; AI approval or a generic ChatGPT token
+   is not accepted.
+7. Execute `context/native-owner-transfer-apply` with exact
+   `source_id`, `job_id`, `expected_native_plan_sha256`,
+   `expected_plan_sha256`, `expected_brand_id`,
+   `reviewed_external_root_id`, `owner_evidence_reference`,
+   `expected_provider_proof_sha256`, and explicit confirmation.
+   The original Context CAS lock and compensation/audit path are reused.
+   A fresh proof and matching source plan are checked **again inside lock**.
+   Existing source ID/file IDs are preserved, source made read-only, every
+   previous content/AI approval invalidated, transferred files marked stale.
+8. Run `context/legacy-owner-transfer-readback` from a new request;
+   check original source count and that no approved/reviewed legacy asset was
+   inherited. Governed new scan (`context/source-scan-plan` and separately
+   approved apply) is required before file-by-file
+   `context/remote-owner-review-plan` → approved human ticket →
+   `context/remote-owner-review-apply` → readback.
+9. Only the three exact reviewed Brand Core categories may pass
+   `context/brand-core-coverage`. Content drafting/publication still has
+   separate release and user-approval gates.
+
+**Risk and scope:** WordPress native Options/Cron is enough for **functional**
+shadow testing. It does not establish physical durability after a killed
+MariaDB process. A successful native transfer receipt explicitly returns
+`functional_only=true`, `mariadb_crash_certified=false`,
+`independent_backup_certified=false`, `rollback_certified=false`;
+it does **not** make Production ready. Existing independent disaster
+recovery acceptance is still required before risky Production promotion.
+
+**Source checks:** `tests/context-native-owner-transfer-runtime.php`
+is added to `.github/workflows/mad4b-context-authority.yml` on PHP
+7.4/8.3. The fixture checks a positive exact source/shadow plan and
+fail-closed paths for stale Drive version, wrong source, same HTTP request,
+Production environment, AI/nonmatching ticket, stale plan, and the unchanged
+legacy Host gate. Runtime CI success and real Staging acceptance have
+not yet been demonstrated.
+
+---
+
 ## WordPress-only functional recovery and per-file approval mode — 2026-10-13
 
 **Live Staging observation (2026-10-13):** ETG and ARE both returned
