@@ -2083,7 +2083,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 					if(changed&&window.history&&window.history.replaceState)window.history.replaceState({},document.title,url.toString());
 				}catch(error){}
 			}
-			// Keep an action's signed result visible for this response only.
+			// Keep the signed action result visible for this response only.
 			// Repeated navigation/reload must not replay an old query notice.
 			// This changes browser history, not persisted Google/Context state.
 			clearStatusQuery();
