@@ -31,7 +31,10 @@ function get_posts( $args ) {
     return array_slice( $found, 0, 2 );
 }
 function wp_attachment_is_image( $id ) { return 'attachment' === ( $GLOBALS['posts'][$id]['post_type'] ?? '' ); }
-function get_post_meta( $id, $name, $single ) { return $GLOBALS['meta'][$id][$name] ?? ''; }
+function get_post_meta( $id, $name, $single ) {
+    $value = $GLOBALS['meta'][$id][$name] ?? '';
+    return $single ? $value : ( '' === $value ? array() : array( $value ) );
+}
 function wp_get_attachment_url( $id ) { return $GLOBALS['posts'][$id]['permalink']; }
 class MAD4B_SCP_Policy {
     public static function can_read() { return ! empty( $GLOBALS['reader'] ); }
@@ -129,8 +132,20 @@ $none = $input;
 unset( $none['media_bindings'] );
 $pending = MAD4B_SCP_Scrape_Transfer::plan( $none );
 check( ! is_wp_error( $pending ) && $pending['image_import_remaining'] === 1 &&
-    $pending['image_import_tasks'][0]['import_apply_ability'] === 'media/remote-import-apply',
-    'Unimported images must generate native Media Library tasks' );
+    $pending['image_import_tasks'][0]['import_apply_ability'] === 'media/remote-import-apply' &&
+    $pending['remote_media_manifest_items'][0]['binding_role'] === 'gallery' &&
+    $pending['remote_media_manifest_items'][0]['import']['rights_basis'] === 'unknown' &&
+    $pending['remote_media_manifest_items'][0]['import']['duplicate_policy'] === 'reuse' &&
+    $pending['remote_media_manifest_items'][0]['import']['alt'] === 'Deck' &&
+    strpos( $pending['remote_media_manifest_items'][0]['import']['description'], 'Original image source:' ) === 0,
+    'Scraper should prepare full new attachment metadata and exact native importer fields, without rights claims' );
+$lazy = $input;
+$lazy['html'] = '<img src="data:image/gif;base64,R0lG" data-src="' . $img . '" alt="Deck detail">';
+$lazy_plan = MAD4B_SCP_Scrape_Transfer::plan( $lazy );
+check( ! is_wp_error( $lazy_plan ) &&
+    count( $lazy_plan['image_import_tasks'] ) === 1 &&
+    $lazy_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Lazy image data-src should be imported instead of a placeholder' );
 $bad = $input;
 $bad['media_bindings'][0]['attachment_id'] = 7;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad ) ),

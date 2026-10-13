@@ -16,7 +16,7 @@ final class MAD4B_SCP_Scrape_Transfer {
     const REWRITE_ABILITY = 'mad4b/scrape-transfer-rewrite';
     const MAX_HTML_BYTES = 262144;
     const MAX_LINKS = 160;
-    const MAX_IMAGES = 60;
+    const MAX_IMAGES = 50;
 
     public static function boot() {
         if ( function_exists( 'add_action' ) )
@@ -130,9 +130,12 @@ final class MAD4B_SCP_Scrape_Transfer {
             || ! wp_attachment_is_image( (int) $id ) || ! current_user_can( 'read_post', (int) $id ) )
             return '';
         $source_hash = hash( 'sha256', $source_url );
-        $recorded = (string) get_post_meta( (int) $id, '_mad4b_remote_media_source_sha256', true );
+        // The native importer can bind multiple source URLs to one content-
+        // identical attachment; read *all* verified provenance aliases.
+        $recorded = get_post_meta( (int) $id, '_mad4b_remote_media_source_sha256', false );
+        $recorded = is_array( $recorded ) ? array_values( array_map( 'strval', $recorded ) ) : array();
         $simple_source = (string) get_post_meta( (int) $id, '_mad4b_import_source_url', true );
-        if ( ! hash_equals( $source_hash, $recorded ) && ! hash_equals( $source_url, $simple_source ) )
+        if ( ! in_array( $source_hash, $recorded, true ) && ! hash_equals( $source_url, $simple_source ) )
             return '';
         $url = wp_get_attachment_url( (int) $id );
         return is_string( $url ) && self::same_origin( $url, home_url( '/' ) ) ? $url : '';
@@ -170,7 +173,8 @@ final class MAD4B_SCP_Scrape_Transfer {
                     return new WP_Error( 'mad4b_scrape_transfer_link_limit', 'Too many source links.' );
             }
             if ( 'IMG' === $tag || 'SOURCE' === $tag ) {
-                $src = $processor->get_attribute( 'src' );
+                $src = $processor->get_attribute( 'data-src' );
+                if ( ! is_string( $src ) || '' === $src ) $src = $processor->get_attribute( 'src' );
                 if ( 'IMG' !== $tag || ! is_string( $src ) ) continue;
                 $url = self::absolute( $src, $source );
                 if ( '' === $url ) continue;
@@ -244,10 +248,23 @@ final class MAD4B_SCP_Scrape_Transfer {
             if ( '' === $target ) $missing[] = $href;
             else $mapped[$href] = $target;
         }
-        $media = array();
+        $media = array(); $manifest = array();
         foreach ( $parsed['images'] as $item ) {
             $item['local_media_url'] = $attached[$item['source_url']] ?? '';
             $item['import_required'] = '' === $item['local_media_url'];
+            if ( $item['import_required'] ) $manifest[] = array(
+                'binding_role' => 'gallery',
+                'import' => array(
+                    'source_url' => $item['source_url'],
+                    'source_page_url' => $source,
+                    'source_page_sha256' => hash( 'sha256', $parsed['html'] ),
+                    'rights_basis' => 'unknown', // No rights decision in scraper.
+                    'duplicate_policy' => 'reuse',
+                    'filename' => $item['filename'],
+                    'title' => $item['title'], 'caption' => $item['caption'],
+                    'description' => $item['description'], 'alt' => $item['alt'],
+                ),
+            );
             $media[] = $item;
         }
         $identity = array( 'site_uuid' => (string) $site['site_uuid'],
@@ -264,7 +281,9 @@ final class MAD4B_SCP_Scrape_Transfer {
             'locally_hosted_media_required' => true,
             'source_prices' => $parsed['prices'], 'source_prices_unchanged' => true,
             'internal_link_map' => $mapped, 'unmatched_competitor_links' => $missing,
-            'image_import_tasks' => $media, 'image_import_remaining' => count( array_filter( $media,
+            'image_import_tasks' => $media,
+            'remote_media_manifest_items' => $manifest,
+            'image_import_remaining' => count( array_filter( $media,
                 static function ( $item ) { return $item['import_required']; } ) ),
             'media_receipt_required_before_local_rewrite' => true,
             'next_media_abilities' => array( 'media/remote-import-manifest-plan',
@@ -316,7 +335,9 @@ final class MAD4B_SCP_Scrape_Transfer {
                 $processor->remove_attribute( 'srcset' );
                 $processor->remove_attribute( 'data-srcset' );
             } elseif ( 'IMG' === $tag ) {
-                $url = self::absolute( (string) ( $processor->get_attribute( 'src' ) ?: '' ), $source );
+                $src = $processor->get_attribute( 'data-src' );
+                if ( ! is_string( $src ) || '' === $src ) $src = $processor->get_attribute( 'src' );
+                $url = self::absolute( (string) ( $src ?: '' ), $source );
                 if ( '' === $url ) continue;
                 if ( isset( $local[$url] ) ) {
                     $processor->set_attribute( 'src', $local[$url] );
