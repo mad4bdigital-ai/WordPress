@@ -111,8 +111,22 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		foreach ( array( 'Runtime state' => $runtime['state'], 'Transaction state' => isset( $runtime['transaction']['state'] ) ? $runtime['transaction']['state'] : 'Not requested', 'Control Plane version' => isset( $runtime['current']['control_plane']['version'] ) ? $runtime['current']['control_plane']['version'] : 'Not checked', 'MCP Adapter version' => $runtime['current']['mcp_adapter']['version'] ) as $label => $value ) echo '<tr><th>' . esc_html( $label ) . '</th><td>' . esc_html( $value ) . '</td></tr>';
 		echo '</tbody></table>';
 
+		// A cached release pointer can lag behind an installed Staging candidate.
+		// Do not present a generic update action for a visible downgrade.
+		// The mutation handler must still verify an exact independent plan.
+		$current_version = (string) ( $runtime['current']['control_plane']['version'] ?? '' );
+		$target_version = (string) ( $runtime['target']['control_plane']['version'] ?? '' );
+		$stale_release_pointer = '' !== $current_version && '' !== $target_version
+			&& version_compare( $target_version, $current_version, '<' );
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( $stale_release_pointer ) {
+			echo '<div class="notice notice-warning inline"><p><strong>'
+				. esc_html__( 'Update channel points to an older Control Plane release.', 'mad4b-site-control-plane' )
+				. '</strong> ' . esc_html( sprintf( __( 'Installed: %1$s · channel target: %2$s. The generic update action is not offered for a downgrade. Review the exact candidate/update plan instead.', 'mad4b-site-control-plane' ), $current_version, $target_version ) )
+				. '</p></div></div>';
+			return;
+		}
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'mad4b_runtime_release_set_apply' );
 		echo '<input type="hidden" name="action" value="mad4b_runtime_release_set_apply">';
