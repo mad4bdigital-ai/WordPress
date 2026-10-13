@@ -46,6 +46,15 @@ required = [
 for marker in required:
     assert marker in write_only, marker
 
+for marker in [
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
+    "'exact_grant_reconciliation_not_eligible'",
+    "'exact_grant_plan_eligible' => $grant_plan_eligible",
+    "'exact_grant_plan_blockers' => $grant_plan_blockers",
+]:
+    assert marker in write_only, f"broad convergence bypasses reviewed exact grant policy: {marker}"
+
+
 for forbidden in [
     "MAD4B_SCP_Developer_Authority::apply",
     "MAD4B_SCP_Developer_Authority::breakglass_apply",
