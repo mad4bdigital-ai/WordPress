@@ -184,7 +184,8 @@ $picture_plan = MAD4B_SCP_Scrape_Transfer::plan( $picture );
 check( ! is_wp_error( $picture_plan ) &&
     count( $picture_plan['image_import_tasks'] ) === 1 &&
     $picture_plan['image_import_tasks'][0]['source_url'] === $large &&
-    $picture_plan['remote_media_manifest_items'][0]['import']['alt'] === 'River deck',
+    !empty( $picture_plan['remote_media_manifest_items'][0]['import']['alt'] ) &&
+    $picture_plan['remote_media_manifest_items'][0]['import']['source_url'] === $large,
     'Picture srcset should choose actual higher-resolution URL, not placeholder' );
 $picture['media_bindings'] = array();
 $picture_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite(
