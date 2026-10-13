@@ -17,7 +17,7 @@ mkdir( WP_CONTENT_DIR . '/mu-plugins' );
 file_put_contents( ABSPATH . 'index.php', '<?php // trusted fixture' );
 file_put_contents( WP_CONTENT_DIR . '/uploads/suspect.php', '<?php // powershell code reference' );
 file_put_contents( WP_CONTENT_DIR . '/uploads/normal.js', 'console.log("ordinary");' );
-file_put_contents( WP_CONTENT_DIR . '/uploads/remote.js', "const a='browse-veriid.beer'; eth_call; document.createElement('script');" );
+file_put_contents( WP_CONTENT_DIR . '/uploads/remote.js', "const a='example-security.test'; eth_call; document.createElement('script');" );
 
 class WP_Error {
     private $code;
@@ -62,7 +62,7 @@ class FixtureDB {
         $this->sql[] = $sql;
         return array(
             array( 'record_id' => 9, 'record_label' => 'private_widget_config',
-                'value_sample' => '<script>const server="browse-veriid.beer"; var x="secret-token";</script>' ),
+                'value_sample' => '<script>const server="example-security.test"; var x="secret-token";</script>' ),
             array( 'record_id' => 8, 'record_label' => 'ordinary', 'value_sample' => 'harmless' ),
         );
     }
@@ -95,7 +95,7 @@ try {
         && !$posture['core_checksum_verified'] && !$posture['network_requests_performed'],
         'Posture claimed a clean site' );
     $scan = MAD4B_SCP_Security_Diagnostics::file_indicators( array(
-        'scope' => 'uploads', 'indicator_host' => 'browse-veriid.beer' ) );
+        'scope' => 'uploads', 'indicator_host' => 'example-security.test' ) );
     $check( is_array( $scan ) && $scan['files_sampled'] === 3 && !$scan['no_findings_means_clean'],
         'File sample unbounded or claimed safety' );
     $result = json_encode( $scan );
@@ -115,12 +115,12 @@ try {
     $check( is_wp_error( MAD4B_SCP_Security_Diagnostics::file_integrity( array(
         'target' => 'wp-config.php' ) ) ), 'Secret-containing target accessible' );
     $db = MAD4B_SCP_Security_Diagnostics::database_indicators( array(
-        'surface' => 'options', 'indicator_host' => 'browse-veriid.beer' ) );
+        'surface' => 'options', 'indicator_host' => 'example-security.test' ) );
     $encoded = json_encode( $db );
     $check( count( $wpdb->sql ) === 1 && count( $db['findings'] ) === 1
         && strpos( $encoded, 'private_widget_config' ) === false
         && strpos( $encoded, 'secret-token' ) === false
-        && strpos( $encoded, 'browse-veriid.beer' ) === false,
+        && strpos( $encoded, 'example-security.test' ) === false,
         'Database sample leaks raw data' );
     $GLOBALS['connected'] = false;
     $check( is_wp_error( MAD4B_SCP_Security_Diagnostics::database_indicators( array( 'surface' => 'options' ) ) )
