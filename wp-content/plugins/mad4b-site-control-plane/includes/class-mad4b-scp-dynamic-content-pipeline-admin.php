@@ -34,6 +34,7 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 	}
 
 	public static function save(){
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if(!current_user_can('manage_options'))wp_die(esc_html__('Administrator capability is required.','mad4b-site-control-plane'));
 		check_admin_referer(self::ACTION);
 		$decoded=self::settings_input(wp_unslash($_POST));
