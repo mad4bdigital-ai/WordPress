@@ -714,7 +714,12 @@ final class MAD4B_SCP_Context_Authority {
         if ( ! class_exists( 'MAD4B_SCP_Identity_Context' )
             || ! class_exists( 'MAD4B_SCP_Approval_Tickets' )
             || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            || ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
             || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
             || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
                 MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
             return new WP_Error( 'mad4b_native_transfer_stepup_required', 'Fresh mapped OAuth owner step-up and separate human ticket required.' );
