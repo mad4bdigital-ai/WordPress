@@ -358,7 +358,7 @@ final class MAD4B_SCP_WP_Native_Build {
                         'Cached source file is missing, unsafe or modified.' );
                 $raw = file_get_contents( $file );
                 if ( ! is_string( $raw ) || strlen( $raw ) !== $bytes ||
-                    ! hash_equals( $sha, sha1( 'blob ' . $bytes . "\\0" . $raw ) ) )
+                    ! hash_equals( $sha, sha1( 'blob ' . $bytes . "\0" . $raw ) ) )
                     return new WP_Error( 'mad4b_native_resume_integrity_failed',
                         'Cached Git blob digest does not match the pinned tree.' );
             }
