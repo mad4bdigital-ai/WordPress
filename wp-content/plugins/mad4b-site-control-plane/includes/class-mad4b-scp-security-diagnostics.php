@@ -60,7 +60,9 @@ final class MAD4B_SCP_Security_Diagnostics {
                 array( 'type' => 'object', 'properties' => array(
                     'target' => array( 'type' => 'string', 'enum' => array(
                         'index.php', 'wp-settings.php', '.htaccess', '.user.ini' ) ),
-                    'expected_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+                    'expected_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+                ), 'required' => array( 'target' ), 'additionalProperties' => false ) ),
+            'mad4b/security-database-indicators' => array( 'Security Database Indicator Sample (read only)', 'database_indicators',
                 array( 'type' => 'object', 'properties' => array(
                     'surface' => array( 'type' => 'string', 'enum' => array( 'options', 'posts', 'postmeta' ) ),
                     'indicator_host' => $host,
