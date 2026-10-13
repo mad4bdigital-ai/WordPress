@@ -221,6 +221,7 @@ $src['functional_transfer_receipt'] = array(
     'job_id_sha256' => hash( 'sha256', $job ),
     'approval_ticket_sha256' => hash( 'sha256', 'ticket-123' ),
     'owner_user_id' => 13,
+    'writer_request_marker_sha256' => hash( 'sha256', 'prior-request-marker' ),
     'functional_only' => true, 'mariadb_crash_certified' => false,
     'rollback_certified' => false, 'created_at' => '2026-10-13T01:00:00Z',
 );
@@ -237,6 +238,16 @@ check( $readback['state'] === 'FUNCTIONAL_TRANSFER_READBACK_PASS'
     && !$readback['mariadb_crash_certified']
     && !$readback['production_authorized'],
     'Original Context source functional receipt is verified without disaster certification.' );
+$marker = new ReflectionProperty( 'MAD4B_SCP_Context_Authority', 'native_transfer_request_marker' );
+$marker->setAccessible( true );
+$current_request_marker = $marker->getValue();
+$source_receipt =& $src['functional_transfer_receipt'];
+$source_receipt['writer_request_marker_sha256'] = hash( 'sha256', $current_request_marker );
+$same_request = MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $readback_input );
+check( 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE' === $same_request['state']
+    && !$same_request['independent_request_observed'],
+    'The same PHP request cannot certify a transfer it just performed.' );
+$source_receipt['writer_request_marker_sha256'] = hash( 'sha256', 'prior-request-marker' );
 $foreign_job = $readback_input;
 $foreign_job['job_id'] = str_repeat( 'e', 32 );
 check( 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE' ===
