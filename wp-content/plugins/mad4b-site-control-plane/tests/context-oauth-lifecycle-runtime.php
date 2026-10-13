@@ -312,6 +312,20 @@ $pending_public = json_encode( MAD4B_SCP_Google_Drive_Context::public_connection
 mad4b_oauth_assert( false === strpos( $pending_public, 'refresh-write-fixture' )
     && false === strpos( $pending_public, 'access-write-fixture' ),
     'Pending revoke public status must never expose bearer credentials.' );
+// A transient 500 does not prove the refresh-token revoke outcome, so
+// it MUST NOT automatically submit a second independent access token.
+$before_uncertain_attempts = count( $GLOBALS['mad4b_context_revocation_attempts'] );
+$GLOBALS['mad4b_context_revoke_queue'] = array( 500, 200 );
+$uncertain_revoke = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( is_wp_error( $uncertain_revoke )
+    && 'mad4b_google_drive_remote_revocation_unconfirmed' === $uncertain_revoke->get_error_code(),
+    'Google HTTP 500 must remain revocation-unconfirmed.', $uncertain_revoke );
+mad4b_oauth_assert( count( $GLOBALS['mad4b_context_revocation_attempts'] ) === $before_uncertain_attempts + 1,
+    'An ambiguous Google HTTP 500 must not trigger a second revoke attempt using a different token.' );
+$uncertain_status = MAD4B_SCP_Google_Drive_Context::connection_status();
+mad4b_oauth_assert( ! empty( $uncertain_status['revocation_pending'] )
+    && 'google_revocation_http_500' === $uncertain_status['revocation_error'],
+    'An uncertain Google response must preserve disabled pending status and exact diagnostic.', $uncertain_status );
 // A later approved retry can recover when the refresh token returns 400
 // but its distinct access token returns an explicit Google HTTP 200.
 $GLOBALS['mad4b_context_revoke_queue'] = array( 400, 200 );
