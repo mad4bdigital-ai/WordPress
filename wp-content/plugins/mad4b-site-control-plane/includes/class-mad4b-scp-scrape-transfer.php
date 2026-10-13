@@ -168,6 +168,15 @@ final class MAD4B_SCP_Scrape_Transfer {
     }
 
     /** Pick one publicly-addressable candidate from native HTML srcset. */
+    /** Unicode-safe metadata truncation, even when mbstring is unavailable. */
+    private static function safe_text_cap( $text, $limit ) {
+        $text = (string) $text;
+        if ( function_exists( 'mb_substr' ) )
+            return mb_substr( $text, 0, $limit, 'UTF-8' );
+        $chars = preg_split( '//u', $text, -1, PREG_SPLIT_NO_EMPTY );
+        return is_array( $chars ) ? implode( '', array_slice( $chars, 0, $limit ) ) : '';
+    }
+
     private static function srcset_candidate( $srcset, $source ) {
         if ( ! is_string( $srcset ) || '' === trim( $srcset ) ||
             strlen( $srcset ) > 4096 ) return '';
@@ -242,12 +251,12 @@ final class MAD4B_SCP_Scrape_Transfer {
                 $images[$url] = array(
                     'source_url' => $url,
                     'source_page_url' => $source,
-                    'title' => substr( $title, 0, 200 ),
-                    'alt' => substr( $alt, 0, 240 ),
-                    'caption' => substr( $title, 0, 240 ),
-                    'description' => substr( 'Original image source: ' . $url .
-                        ' | Collected from: ' . $source, 0, 1000 ),
-                    'filename' => substr( $filename, 0, 150 ),
+                    'title' => self::safe_text_cap( $title, 200 ),
+                    'alt' => self::safe_text_cap( $alt, 240 ),
+                    'caption' => self::safe_text_cap( $title, 240 ),
+                    'description' => self::safe_text_cap( 'Original image source: ' . $url .
+                        ' | Collected from: ' . $source, 1000 ),
+                    'filename' => self::safe_text_cap( $filename, 150 ),
                     'import_plan_ability' => 'media/remote-import-plan',
                     'import_apply_ability' => 'media/remote-import-apply',
                 );
