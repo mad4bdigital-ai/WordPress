@@ -24,6 +24,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -74,6 +80,12 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -149,6 +161,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
@@ -196,6 +214,14 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
+
+      - name: Execute native binding and functional/disaster lifecycle regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
 
       - name: Execute Google Drive OAuth lifecycle runtime
         shell: bash
