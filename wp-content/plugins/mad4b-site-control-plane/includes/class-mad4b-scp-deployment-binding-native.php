@@ -94,6 +94,13 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             return new WP_Error( 'mad4b_native_binding_client_denied', 'Exact enrolled ChatGPT client required.' );
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_native_binding_governance_missing', 'Current mutation authority required.' );
+        // The immutable governed execution wrapper already owns the
+        // one-time approval claim. Its exact callback proof is valid only
+        // while the claimed ability runs with identical ticket/input.
+        if ( MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input ) )
+            return true;
+        // Outside the execution callback this remains a preflight permission
+        // check and MUST NOT claim, consume or approve a ticket.
         $decision = MAD4B_SCP_Authorization::authorize_mutation(
             self::APPLY, 'mad4b-write', 'core', is_array( $input ) ? $input : array() );
         return MAD4B_SCP_Authorization::permission_result_from_authorization( $decision );
@@ -405,6 +412,14 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             || 1 !== preg_match( '/^[a-f0-9-]{36}$/Di',
                 (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) )
             return self::error( 'plan_ticket_missing' );
+        // Direct static calls are NEVER an execution authority. Only the
+        // already-claimed immutable WordPress Ability callback may enter
+        // the filesystem/profile writer. This prevents both double claims
+        // and accidental bypass through PHP or other MCP surfaces.
+        if ( ! class_exists( 'MAD4B_SCP_Authorization' )
+            || ! MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input ) )
+            return self::error( 'claimed_execution_boundary_required',
+                'An exact approved and claimed governed execution callback is required.' );
         $permission = self::can_apply( $input );
         if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
         $plan = self::plan();
@@ -416,11 +431,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
                 (string) ( $plan['expected_site_uuid'] ?? '' ) )
             || (int) $input['expected_revision'] !== (int) ( $plan['expected_revision'] ?? 0 ) )
             return self::error( 'stale_plan' );
-        $claim = MAD4B_SCP_Authorization::claim_mutation(
-            self::APPLY, 'mad4b-write', 'core', $input );
-        if ( is_wp_error( $claim ) || ! is_array( $claim )
-            || true !== ( $claim['allowed'] ?? false ) )
-            return is_wp_error( $claim ) ? $claim : self::error( 'approval_unavailable' );
+        // No second claim_mutation here. The wrapper has already reserved
+        // budget, claimed the one-time ticket, advanced restore epoch, and
+        // persisted provider-entry evidence before invoking this callback.
         $current_plan = self::plan();
         if ( is_wp_error( $current_plan ) || ! hash_equals( (string) $plan['plan_sha256'],
             (string) ( $current_plan['plan_sha256'] ?? '' ) ) )
