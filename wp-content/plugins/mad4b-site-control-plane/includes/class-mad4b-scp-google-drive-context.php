@@ -3003,6 +3003,54 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::decode_json_response( $response, 'mad4b_google_drive_api_failed' );
 	}
 
+	/**
+	 * Refresh an EXISTING stored Google OAuth access token only. This never
+	 * starts consent, widens scopes, exposes tokens or revokes a grant.
+	 * Admitted solely by an authenticated native POST or the separately
+	 * owner-approved governed provider-connection remote ability.
+	 */
+	public static function refresh_existing_connection( $expected_grant_sha256 ) {
+		if ( ! is_string( $expected_grant_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected_grant_sha256 ) )
+			return new WP_Error( 'mad4b_google_refresh_expected_identity_required', 'Exact encrypted grant identity required.' );
+		$before = self::connection_status();
+		if ( empty( $before['connected'] ) || ! empty( $before['revocation_pending'] ) || ! empty( $before['token_unreadable'] ) )
+			return new WP_Error( 'mad4b_google_refresh_not_allowed', 'No usable existing Google grant may be refreshed.' );
+		if ( ! empty( $before['reconnect_required'] ) )
+			return new WP_Error( 'mad4b_google_refresh_reauthorization_required', 'Google requires a new owner OAuth authorization, not a token refresh.' );
+		$actual = self::encrypted_grant_identity_sha256();
+		if ( is_wp_error( $actual ) || ! hash_equals( $actual, $expected_grant_sha256 ) )
+			return new WP_Error( 'mad4b_google_refresh_grant_changed', 'Google grant changed since the action was planned. Reload.' );
+		if ( empty( $before['refresh_required'] ) ) return array(
+			'contract' => 'mad4b.google-connection-refresh.v1', 'state' => 'already_fresh',
+			'credential_fresh' => ! empty( $before['credential_fresh'] ),
+			'provider_request_performed' => false, 'no_scope_widening' => true,
+		);
+		// Existing retry backoff and invalid_grant detection apply unchanged.
+		$access = self::access_token();
+		if ( is_wp_error( $access ) ) return $access;
+		// Never expose the access token in this return value or in audit records.
+		unset( $access );
+		$after = self::connection_status();
+		if ( empty( $after['credential_fresh'] ) || ! empty( $after['revocation_pending'] )
+			|| empty( $after['connected'] ) )
+			return new WP_Error( 'mad4b_google_refresh_readback_failed', 'Google refresh did not produce a fresh persisted connection.' );
+		return array( 'contract' => 'mad4b.google-connection-refresh.v1',
+			'state' => 'refreshed', 'credential_fresh' => true,
+			'provider_request_performed' => true, 'no_scope_widening' => true,
+			'new_request_readback_required' => true );
+	}
+
+	/** Hash encrypted-at-rest identity without leaking the saved credentials. */
+	public static function encrypted_grant_identity_sha256() {
+		$stored = get_option( self::TOKEN_OPTION, null );
+		if ( ! is_array( $stored ) || ! $stored )
+			return new WP_Error( 'mad4b_google_grant_identity_missing', 'No encrypted Google grant is stored.' );
+		$encoded = wp_json_encode( $stored, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $encoded ) )
+			return new WP_Error( 'mad4b_google_grant_identity_invalid', 'Encrypted Google grant identity cannot be verified.' );
+		return hash( 'sha256', $encoded );
+	}
+
 	private static function access_token() {
 		$record = self::token_record();
 		if ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) return new WP_Error( 'mad4b_google_drive_not_connected', 'Google Drive is not connected.' );
