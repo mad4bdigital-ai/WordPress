@@ -1201,12 +1201,14 @@ final class MAD4B_SCP_Self_Update {
 		// plugins. The action row exposes one explicit check; update availability is
 		// rendered below by the standard plugin-update row only after a verified
 		// governed manifest already exists in cache.
-		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' ),
-			'mad4b_control_plane_refresh_update'
-		);
+		// Cache refresh performs external I/O. Do not use a GET action link,
+		// even when a nonce is present; use explicit authenticated POST.
+		$action = 'mad4b_control_plane_refresh_update';
 		$label = __( 'Check for updates', 'mad4b-site-control-plane' );
-		$links['mad4b_update_check'] = '<a href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
+		$links['mad4b_update_check'] = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="display:inline">'
+			. '<input type="hidden" name="action" value="' . esc_attr( $action ) . '">'
+			. wp_nonce_field( $action, '_wpnonce', false, false )
+			. '<button type="submit" class="button-link">' . esc_html( $label ) . '</button></form>';
 		return $links;
 	}
 
@@ -1378,10 +1380,8 @@ final class MAD4B_SCP_Self_Update {
 		if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;
 		self::$rendered_update_rows[ $row_key ] = true;
 
-		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' ),
-			'mad4b_control_plane_native_update'
-		);
+		// Native plugin update is a filesystem mutation, never an anchor GET.
+		$update_nonce = wp_nonce_field( 'mad4b_control_plane_native_update', '_wpnonce', false, false );
 		$target_display = isset( $manifest['display_version'] ) && '' !== trim( (string) $manifest['display_version'] )
 			? (string) $manifest['display_version']
 			: (string) $manifest['version'];
@@ -1392,8 +1392,11 @@ final class MAD4B_SCP_Self_Update {
 			$target_display
 		);
 		echo '<tr class="plugin-update-tr active"><td colspan="4" class="plugin-update colspanchange"><div class="update-message notice inline notice-warning notice-alt"><p>'
-			. esc_html( $message ) . ' <a href="' . esc_url( $url ) . '">'
-			. esc_html__( 'Update now', 'mad4b-site-control-plane' ) . '</a></p></div></td></tr>';
+			. esc_html( $message ) . '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+			. '<input type="hidden" name="action" value="mad4b_control_plane_native_update">'
+			. $update_nonce
+			. '<button type="submit" class="button-link">' . esc_html__( 'Update now', 'mad4b-site-control-plane' )
+			. '</button></form></div></td></tr>';
 	}
 	public static function render_update_row_fallback( $plugin_file, $plugin_data = array(), $status = '' ) {
 		if ( ! self::is_control_plane_plugin_file( $plugin_file ) ) return;
@@ -1401,6 +1404,7 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	public static function handle_refresh_update() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to check plugin updates.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_control_plane_refresh_update' );
 		self::clear_manifest_cache();
@@ -1414,6 +1418,7 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	public static function handle_native_update() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to update plugins.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_control_plane_native_update' );
 		if ( ! self::environment_allowed( false ) ) wp_die( esc_html__( 'MAD4B self-update is not enabled for this environment.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
