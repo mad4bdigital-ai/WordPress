@@ -78,6 +78,11 @@ final class MAD4B_SCP_Operator_Journeys {
             'brand_core' => array(
                 'label' => 'Recover and approve Brand Core with WordPress-only tooling', 'risk' => 'high',
                 'steps' => array(
+                    array( 'binding_status', 'mad4b/deployment-binding-native-status', 'read' ),
+                    array( 'binding_plan', 'mad4b/deployment-binding-native-plan', 'read' ),
+                    array( 'binding_apply', 'mad4b/deployment-binding-native-apply', 'write' ),
+                    array( 'binding_readback', 'mad4b/deployment-binding-native-readback', 'read' ),
+                    array( 'census', 'context/legacy-reconciliation-census', 'read' ),
                     array( 'native_inventory', 'mad4b/brand-core-wordpress-mode', 'read' ),
                     array( 'folder_proof', 'mad4b/selected-folder-scope-proof', 'read' ),
                     array( 'scratch_plan', 'mad4b/native-recovery-plan', 'read' ),
@@ -86,6 +91,8 @@ final class MAD4B_SCP_Operator_Journeys {
                     array( 'ownership_plan', 'context/legacy-owner-transfer-plan', 'read' ),
                     array( 'functional_owner_plan', 'context/native-owner-transfer-plan', 'read' ),
                     array( 'functional_owner_apply', 'context/native-owner-transfer-apply', 'write' ),
+                    array( 'functional_owner_readback', 'context/native-owner-transfer-readback', 'read' ),
+                    array( 'native_shadow_cleanup', 'mad4b/native-recovery-cleanup', 'write' ),
                     array( 'ownership_apply', 'context/legacy-owner-transfer-apply', 'write' ),
                     array( 'ownership_readback', 'context/legacy-owner-transfer-readback', 'read' ),
                     array( 'scan_plan', 'context/source-scan-plan', 'read' ),
