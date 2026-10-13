@@ -58,4 +58,10 @@ verify(
     "MAD4B_SCP_Admin_Experience::notice_verified(",
     "MAD4B_SCP_Admin_Experience::notice_receipt(",
 )
-print("ADMIN_ACTION_NOTICE_SOURCE_CONTRACT: PASS (6 source files; browser/runtime not implied)")
+verify(
+    "class-mad4b-scp-runtime-components-admin-ui.php",
+    "stale_release_pointer",
+    "version_compare( $target_version, $current_version, '<' )",
+    "Update channel points to an older Control Plane release.",
+)
+print("ADMIN_ACTION_NOTICE_SOURCE_CONTRACT: PASS (7 source files; browser/runtime not implied)")
