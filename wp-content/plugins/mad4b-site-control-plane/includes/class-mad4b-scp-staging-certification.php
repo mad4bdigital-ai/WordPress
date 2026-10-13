@@ -467,7 +467,7 @@ final class MAD4B_SCP_Staging_Certification {
 				'automatic_execution_allowed' => false,
 				'depends_on' => $recovery_dependencies,
 				'plan_ability' => 'mad4b/runtime-convergence-plan',
-				'readback_ability' => 'mad4b/skill-runtime-certification',
+				'readback_ability' => 'mad4b/skills-runtime-certification',
 				'blockers' => array_values( array_unique( array_merge(
 					isset( $skills['blockers'] ) && is_array( $skills['blockers'] ) ? $skills['blockers'] : array(),
 					isset( $skills_record['stale_reasons'] ) && is_array( $skills_record['stale_reasons'] ) ? $skills_record['stale_reasons'] : array()
