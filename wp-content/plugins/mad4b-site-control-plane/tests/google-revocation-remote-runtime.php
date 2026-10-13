@@ -93,6 +93,24 @@ $invalid = MAD4B_SCP_Google_Revocation_Remote::retry_admission(
         'revocation_attempted_at' => 'invalid-timestamp' ), time() );
 $check( ! $invalid['eligible'] && 'google_revocation_attempt_timestamp_invalid' === $invalid['blocker'],
     'Malformed persisted revocation timestamp fails closed' );
+$old_stamp = MAD4B_SCP_Google_Drive_Context::$last_attempt_at;
+MAD4B_SCP_Google_Drive_Context::$last_attempt_at = gmdate( 'c', time() - 10 );
+$waiting = MAD4B_SCP_Google_Revocation_Remote::status();
+$check( 'PENDING_COOLDOWN' === $waiting['state']
+    && ! $waiting['retry_eligible'] && $waiting['retry_after_seconds'] > 0
+    && '' === $waiting['next_ability'], 'Remote status does not advertise Retry during cooldown' );
+$blocked_plan = MAD4B_SCP_Google_Revocation_Remote::plan();
+$check( is_wp_error( $blocked_plan ) &&
+    'mad4b_google_revoke_retry_cooldown' === $blocked_plan->get_error_code(),
+    'Remote plan refuses recent Google revoke attempt' );
+MAD4B_SCP_Google_Drive_Context::$last_attempt_at = 'malformed';
+$manual = MAD4B_SCP_Google_Revocation_Remote::status();
+$check( 'PENDING_OPERATOR_REVIEW' === $manual['state'] && ! $manual['retry_eligible'],
+    'Unparseable revocation timestamp requires operator review' );
+MAD4B_SCP_Google_Drive_Context::$last_attempt_at = $old_stamp;
+$ready = MAD4B_SCP_Google_Revocation_Remote::status();
+$check( 'PENDING_SAFE_RETRY' === $ready['state'] && $ready['retry_eligible'],
+    'Completed cooldown permits a fresh owner approval plan' );
 
 $schema = $GLOBALS['mad4b_revoke_abilities'][ MAD4B_SCP_Google_Revocation_Remote::RETRY ]['input_schema'];
 $check( ! in_array( '_mad4b_approval_ticket_id', $schema['required'], true )
