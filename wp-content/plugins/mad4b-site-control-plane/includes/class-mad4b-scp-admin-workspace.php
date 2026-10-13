@@ -48,6 +48,10 @@ final class MAD4B_SCP_Admin_Workspace {
 	/** Presentation contracts for the existing pages; unknown registered pages remain discoverable. */
 	private static function definitions() {
 		return array(
+			'mad4b-ai-knowledge-workspace' => array( __( 'AI Knowledge Workspace', 'mad4b-site-control-plane' ), __( 'Inspect knowledge sources and context eligibility; governed actions require a separate authorized route.', 'mad4b-site-control-plane' ), 'content', '', array() ),
+			'mad4b-assistant-workspace' => array( __( 'Assistant Review', 'mad4b-site-control-plane' ), __( 'Read assistant bootstrap, blockers and queue without executing actions.', 'mad4b-site-control-plane' ), 'operate', '', array() ),
+			'mad4b-growth-providers' => array( __( 'Growth Providers', 'mad4b-site-control-plane' ), __( 'Review provider, supplier, market and media rights policy before authorizing changes.', 'mad4b-site-control-plane' ), 'content', '', array() ),
+			'mad4b-operational-remediation' => array( __( 'Operational Remediation', 'mad4b-site-control-plane' ), __( 'Review unresolved tasks and separately governed handoffs; this view does not execute remedies.', 'mad4b-site-control-plane' ), 'operate', '', array() ),
 			'mad4b-operator-control-center' => array( __( 'Action Center', 'mad4b-site-control-plane' ), __( 'Review blockers and choose the next safe step.', 'mad4b-site-control-plane' ), 'operate', '', array() ),
 			'mad4b-control-plane-site-profile' => array( __( 'Site Profile', 'mad4b-site-control-plane' ), __( 'Enroll this site and review its environment and access.', 'mad4b-site-control-plane' ), 'connect', '', array( 'Environment', 'Site identity', 'Access settings' ) ),
 			'mad4b-control-plane-connection' => array( __( 'Connection', 'mad4b-site-control-plane' ), __( 'Inspect OAuth, endpoints, isolation and certification.', 'mad4b-site-control-plane' ), 'connect', 'tab', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
@@ -60,7 +64,7 @@ final class MAD4B_SCP_Admin_Workspace {
 			'mad4b-approval-decisions' => array( __( 'Approval Decisions', 'mad4b-site-control-plane' ), __( 'Review exact proposed changes and decision history.', 'mad4b-site-control-plane' ), 'operate', 'view', array( 'actionable', 'history' ) ),
 			'mad4b-adapter-coverage' => array( __( 'Provider Coverage', 'mad4b-site-control-plane' ), __( 'Review installed providers and capability-specific gaps.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
 			'mad4b-runtime-components' => array( __( 'Runtime Components', 'mad4b-site-control-plane' ), __( 'Review component identity, updates and maintenance.', 'mad4b-site-control-plane' ), 'runtime', 'tab', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
-			'mad4b-browser-acceptance' => array( __( 'Review browser acceptance', 'mad4b-site-control-plane' ), __( 'Review provider certification', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
+			'mad4b-browser-acceptance' => array( __( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ), __( 'Configure browser-runner preference; execution and certification require external evidence.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-skills' => array( __( 'Managed Skills', 'mad4b-site-control-plane' ), __( 'Review available skills and their reconciliation status.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-control-plane-performance' => array( __( 'Performance', 'mad4b-site-control-plane' ), __( 'Inspect database performance and maintenance evidence.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 		);
