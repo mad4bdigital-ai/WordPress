@@ -115,6 +115,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				// exact plan, execution claim and audited postconditions.
 				'mad4b/wp-native-build-start' => 'core',
 				'mad4b/wp-native-self-approve-install' => 'core',
+				// One reviewed, ticketed token-refresh operation for the enrolled
+				// Staging grant. Other provider adapters are discovery-only until
+				// separately certified and explicitly allowlisted.
+				'mad4b/provider-connection-refresh' => 'core',
 				'context/brand-profile-save' => 'google_drive_context',
 				'context/governed-source-upsert' => 'google_drive_context',
 				'context/remote-owner-review-apply' => 'google_drive_context',
