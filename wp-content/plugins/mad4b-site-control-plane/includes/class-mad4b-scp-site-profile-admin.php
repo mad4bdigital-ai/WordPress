@@ -34,6 +34,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	}
 
 	public static function handle_legacy_migrate() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator permission required.', '', array( 'response' => 403 ) );
 		check_admin_referer( self::ACTION_LEGACY_MIGRATE );
 		$confirmation = isset( $_POST['legacy_migration_confirmation'] ) ? sanitize_text_field( wp_unslash( $_POST['legacy_migration_confirmation'] ) ) : '';
@@ -272,10 +273,14 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	}
 
 	public static function handle_disable() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( self::ACTION_DISABLE );
-		$expected_revision = isset( $_POST['expected_revision'] ) ? absint( $_POST['expected_revision'] ) : null;
-		$result = MAD4B_SCP_Site_Profile::disable_authority( $expected_revision );
+		$posted_revision = isset( $_POST['expected_revision'] ) && is_string( $_POST['expected_revision'] ) ? wp_unslash( $_POST['expected_revision'] ) : '';
+		if ( ! preg_match( '/^(0|[1-9][0-9]{0,8})$/D', $posted_revision ) ) {
+			self::redirect( 'disable_authority_revision_missing' );
+		}
+		$result = MAD4B_SCP_Site_Profile::disable_authority( (int) $posted_revision );
 		self::redirect( is_wp_error( $result ) ? $result->get_error_code() : 'authority_disabled' );
 	}
 
