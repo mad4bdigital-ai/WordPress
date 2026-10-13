@@ -43,8 +43,9 @@ final class MAD4B_SCP_Scrape_Transfer {
                             'items' => array( 'type' => 'object',
                                 'properties' => array(
                                     'source_url' => array( 'type' => 'string' ),
-                                    'target_post_id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
-                                'required' => array( 'source_url', 'target_post_id' ),
+                                    'target_post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
+                                    'reviewed' => array( 'type' => 'boolean' ) ),
+                                'required' => array( 'source_url', 'target_post_id', 'reviewed' ),
                                 'additionalProperties' => false ) ),
                         'media_bindings' => array( 'type' => 'array', 'maxItems' => self::MAX_IMAGES,
                             'items' => array( 'type' => 'object',
@@ -163,6 +164,8 @@ final class MAD4B_SCP_Scrape_Transfer {
         $simple_source = (string) get_post_meta( (int) $id, '_mad4b_import_source_url', true );
         if ( ! in_array( $source_hash, $recorded, true ) && ! hash_equals( $source_url, $simple_source ) )
             return '';
+        $content_digest = (string) get_post_meta( (int) $id, '_mad4b_remote_media_content_sha256', true );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/', $content_digest ) ) return '';
         $url = wp_get_attachment_url( (int) $id );
         return is_string( $url ) && self::same_origin( $url, home_url( '/' ) ) ? $url : '';
     }
@@ -219,8 +222,15 @@ final class MAD4B_SCP_Scrape_Transfer {
             return new WP_Error( 'mad4b_scrape_transfer_price_invalid', 'Price records must be source data objects.' );
         $links = array(); $images = array();
         $processor = new WP_HTML_Tag_Processor( $html );
+        $allowed_html_tags = array( 'A', 'P', 'DIV', 'SECTION', 'ARTICLE', 'SPAN',
+            'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'STRONG', 'EM', 'B',
+            'I', 'BR', 'IMG', 'SOURCE', 'PICTURE', 'FIGURE', 'FIGCAPTION',
+            'BLOCKQUOTE', 'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TH', 'TD', 'HR' );
         while ( $processor->next_tag() ) {
             $tag = strtoupper( (string) $processor->get_tag() );
+            if ( ! in_array( $tag, $allowed_html_tags, true ) )
+                return new WP_Error( 'mad4b_scrape_transfer_unsafe_html',
+                    'Executable or unapproved source HTML cannot enter the draft handoff.' );
             if ( 'A' === $tag ) {
                 $href = $processor->get_attribute( 'href' );
                 $url = self::absolute( $href, $source );
@@ -283,7 +293,7 @@ final class MAD4B_SCP_Scrape_Transfer {
         $explicit = array();
         foreach ( $parsed['overrides'] as $row ) {
             if ( ! is_array( $row ) || ! is_int( $row['target_post_id'] ?? null ) ||
-                ! is_string( $row['source_url'] ?? null ) )
+                ! is_string( $row['source_url'] ?? null ) || true !== ( $row['reviewed'] ?? false ) )
                 return new WP_Error( 'mad4b_scrape_transfer_link_binding_invalid', 'Exact existing post identity required.' );
             $url = self::absolute( $row['source_url'], $source );
             if ( '' === $url || ! self::same_origin( $url, $source ) || isset( $explicit[$url] ) )
@@ -291,6 +301,9 @@ final class MAD4B_SCP_Scrape_Transfer {
             $target = self::target( $row['target_post_id'] );
             if ( '' === $target ) return new WP_Error( 'mad4b_scrape_transfer_target_missing',
                 'Binding must refer to an existing public readable local post.' );
+            if ( ! in_array( $url, $parsed['links'], true ) )
+                return new WP_Error( 'mad4b_scrape_transfer_link_binding_invalid',
+                    'Mapping must refer to a link present in extracted source HTML.' );
             $explicit[$url] = $target;
         }
         $attached = array();
@@ -307,11 +320,15 @@ final class MAD4B_SCP_Scrape_Transfer {
                     'Attachment lacks source-hash evidence or a local media URL.' );
             $attached[$url] = $target;
         }
-        $mapped = array(); $missing = array();
+        $mapped = array(); $missing = array(); $suggested = array();
         foreach ( $parsed['links'] as $href ) {
-            $target = isset( $explicit[$href] ) ? $explicit[$href] : self::auto_target( $href );
-            if ( '' === $target ) $missing[] = $href;
-            else $mapped[$href] = $target;
+            if ( isset( $explicit[$href] ) ) $mapped[$href] = $explicit[$href];
+            else {
+                $missing[] = $href;
+                // Matching a slug cannot establish product/page equivalence.
+                $candidate = self::auto_target( $href );
+                if ( '' !== $candidate ) $suggested[$href] = $candidate;
+            }
         }
         $media = array(); $manifest = array();
         foreach ( $parsed['images'] as $item ) {
@@ -337,7 +354,8 @@ final class MAD4B_SCP_Scrape_Transfer {
             'site_profile_digest' => (string) ( $site['profile_digest'] ?? '' ),
             'source_url' => $source, 'source_html_sha256' => hash( 'sha256', $parsed['html'] ),
             'source_prices_sha256' => hash( 'sha256', wp_json_encode( $parsed['prices'] ) ),
-            'links' => $mapped, 'missing_links' => $missing, 'images' => $media );
+            'links' => $mapped, 'missing_links' => $missing,
+            'suggested_links' => $suggested, 'images' => $media );
         return array( 'contract' => self::CONTRACT, 'state' => 'SCRAPED_EVIDENCE_CAPTURED',
             'identity' => $identity, 'plan_sha256' => hash( 'sha256', wp_json_encode( $identity ) ),
             'source_page_url' => $source,
@@ -347,6 +365,11 @@ final class MAD4B_SCP_Scrape_Transfer {
             'locally_hosted_media_required' => true,
             'source_prices' => $parsed['prices'], 'source_prices_unchanged' => true,
             'internal_link_map' => $mapped, 'unmatched_competitor_links' => $missing,
+            'suggested_internal_links' => $suggested,
+            'slug_matches_require_review' => true,
+            'scrape_provenance_verified' => false,
+            'scrape_provenance_status' => 'caller_supplied_html_only',
+            'brand_editorial_metadata_required' => ! empty( $media ),
             'image_import_tasks' => $media,
             'remote_media_manifest_items' => $manifest,
             'image_import_remaining' => count( array_filter( $media,
@@ -382,13 +405,20 @@ final class MAD4B_SCP_Scrape_Transfer {
         foreach ( $plan['image_import_tasks'] as $item )
             if ( ! $item['import_required'] ) $local[$item['source_url']] = $item['local_media_url'];
         $processor = new WP_HTML_Tag_Processor( $input['html'] );
-        $rewritten_links = 0; $unlinked = 0; $rewritten_media = 0; $pending_media = 0;
+        $rewritten_links = 0; $unlinked = 0; $rewritten_media = 0;
+        $pending_urls = array();
+        foreach ( $plan['image_import_tasks'] as $media_item )
+            if ( $media_item['import_required'] )
+                $pending_urls[$media_item['source_url']] = true;
         while ( $processor->next_tag() ) {
             $tag = strtoupper( (string) $processor->get_tag() );
             if ( 'A' === $tag ) {
                 $old = (string) ( $processor->get_attribute( 'href' ) ?: '' );
                 $url = self::absolute( $old, $source );
-                if ( '' === $url || ! self::same_origin( $url, $source ) ) continue;
+                if ( '' === $url || ! self::same_origin( $url, $source ) ) {
+                    $processor->remove_attribute( 'href' ); $unlinked++;
+                    continue;
+                }
                 if ( isset( $links[$url] ) ) {
                     $processor->set_attribute( 'href', $links[$url] ); $rewritten_links++;
                 } else {
@@ -402,7 +432,10 @@ final class MAD4B_SCP_Scrape_Transfer {
                 if ( '' !== $source_url && isset( $local[$source_url] ) ) {
                     $processor->set_attribute( 'srcset', $local[$source_url] . ' 1x' );
                     $rewritten_media++;
-                } else $processor->remove_attribute( 'srcset' );
+                } else {
+                    if ( '' !== $source_url ) $pending_urls[$source_url] = true;
+                    $processor->remove_attribute( 'srcset' );
+                }
                 $processor->remove_attribute( 'data-srcset' );
                 $processor->remove_attribute( 'src' );
                 $processor->remove_attribute( 'data-src' );
@@ -426,10 +459,30 @@ final class MAD4B_SCP_Scrape_Transfer {
                     $processor->remove_attribute( 'data-original' );
                     $processor->remove_attribute( 'data-lazy-src' );
                     $rewritten_media++;
-                } else $pending_media++;
+                } else {
+                    $pending_urls[$url] = true;
+                    $processor->remove_attribute( 'src' );
+                    $processor->remove_attribute( 'srcset' );
+                    $processor->remove_attribute( 'data-src' );
+                    $processor->remove_attribute( 'data-srcset' );
+                    $processor->remove_attribute( 'data-original' );
+                    $processor->remove_attribute( 'data-lazy-src' );
+                }
             }
         }
-        $out = $processor->get_updated_html();
+        if ( ! function_exists( 'wp_kses' ) )
+            return new WP_Error( 'mad4b_scrape_transfer_sanitizer_missing',
+                'Native WordPress HTML sanitization required.' );
+        $safe_tags = array_fill_keys( array( 'p','div','section','article','span',
+            'h1','h2','h3','h4','h5','h6','ul','ol','li','strong','em','b','i',
+            'br','picture','figure','figcaption','blockquote','table','thead',
+            'tbody','tfoot','tr','th','td','hr' ), array() );
+        $safe_tags['a'] = array( 'href' => true, 'title' => true );
+        $safe_tags['img'] = array( 'src' => true, 'alt' => true, 'title' => true,
+            'width' => true, 'height' => true, 'loading' => true );
+        $safe_tags['source'] = array( 'srcset' => true, 'type' => true, 'media' => true );
+        $out = wp_kses( $processor->get_updated_html(), $safe_tags, array( 'https' ) );
+        $pending_media = count( $pending_urls );
         return array(
             'contract' => self::CONTRACT . '.rewrite.v1',
             'plan_sha256' => $plan['plan_sha256'], 'source_html_sha256' => $plan['source_html_sha256'],
@@ -441,7 +494,18 @@ final class MAD4B_SCP_Scrape_Transfer {
             'pending_media' => $pending_media,
             'source_internal_links_remaining' => false,
             'media_complete' => 0 === $pending_media,
-            'ready_for_draft_review' => 0 === $pending_media,
+            'media_ready' => 0 === $pending_media,
+            'html_safety_checked' => true,
+            'scrape_provenance_verified' => false,
+            'brand_editorial_metadata_required' => $plan['brand_editorial_metadata_required'],
+            'ready_for_draft_review' => false,
+            'draft_review_blockers' => array_values( array_filter( array(
+                'editorial_semantic_review_required',
+                $pending_media ? 'media_import_pending' : '',
+                ! empty( $plan['unmatched_competitor_links'] ) ? 'link_review_required' : '',
+                'original_brand_metadata_and_media_readback_required',
+                'verified_scrape_receipt_required',
+                'per_site_draft_acceptance_required' ) ) ),
             'publication_authorized' => false, 'mutation_performed' => false, 'read_only' => true,
         );
     }
