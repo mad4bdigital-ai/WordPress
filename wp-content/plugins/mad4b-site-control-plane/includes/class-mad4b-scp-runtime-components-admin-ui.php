@@ -121,9 +121,16 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		$target_commit = (string) ( $runtime['target']['control_plane']['source_commit_sha'] ?? '' );
 		$installed_commit = (string) ( $runtime['current']['control_plane']['source_commit_sha'] ?? '' );
 		$missing_release_target = '' === $target_version || ! preg_match( '/^[a-f0-9]{40}$/D', $target_commit )
-			|| empty( $runtime['release_set_sha256'] );
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $installed_commit )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $runtime['release_set_sha256'] ?? '' ) );
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( ! empty( $runtime['transaction']['state'] ) && ! in_array( $runtime['transaction']['state'], array( 'committed', 'cancelled', 'rolled_back' ), true ) ) {
+			echo '<div class="notice notice-warning inline"><p>'
+				. esc_html__( 'An exact runtime update transaction is in progress. Finish its independent readback or recovery before starting another update.', 'mad4b-site-control-plane' )
+				. '</p></div></div>';
+			return;
+		}
 		if ( $missing_release_target ) {
 			echo '<div class="notice notice-warning inline"><p><strong>'
 				. esc_html__( 'Certified runtime update target is missing or incomplete.', 'mad4b-site-control-plane' )
