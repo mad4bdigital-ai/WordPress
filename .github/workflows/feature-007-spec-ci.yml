@@ -751,6 +751,14 @@ jobs:
           php "$root/tests/cso01-read-foundation-runtime.php"
           php "$root/tests/cso01-read-foundation-collision-runtime.php"
           php "$root/tests/cso01-read-foundation-registration-runtime.php"
+      - name: Native bounded security diagnostics and redaction (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=wp-content/plugins/mad4b-site-control-plane
+          php -l "$root/includes/class-mad4b-scp-security-diagnostics.php"
+          php -l "$root/tests/security-diagnostics-runtime.php"
+          php "$root/tests/security-diagnostics-runtime.php"
       - name: Enforce read-only CSO01 source and Spec Kit contracts
         if: matrix.php == '8.3'
         shell: bash
