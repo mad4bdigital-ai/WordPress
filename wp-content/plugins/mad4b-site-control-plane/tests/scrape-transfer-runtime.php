@@ -176,6 +176,23 @@ check( ! is_wp_error( $lazy_plan ) &&
     count( $lazy_plan['image_import_tasks'] ) === 1 &&
     $lazy_plan['image_import_tasks'][0]['source_url'] === $img,
     'Lazy image data-src should be imported instead of a placeholder' );
+$picture = $input;
+$large = 'https://example-competitor.test/assets/photo-large.jpg';
+$picture['html'] = '<picture><source srcset="' . $img . ' 300w, ' . $large .
+    ' 1200w"><img src="data:image/gif;base64,R0lG" alt="River deck"></picture>';
+$picture_plan = MAD4B_SCP_Scrape_Transfer::plan( $picture );
+check( ! is_wp_error( $picture_plan ) &&
+    count( $picture_plan['image_import_tasks'] ) === 1 &&
+    $picture_plan['image_import_tasks'][0]['source_url'] === $large &&
+    $picture_plan['remote_media_manifest_items'][0]['import']['alt'] === 'River deck',
+    'Picture srcset should choose actual higher-resolution URL, not placeholder' );
+$picture['media_bindings'] = array();
+$picture_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $picture, array( 'expected_plan_sha256' => $picture_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $picture_rewrite ) &&
+    !$picture_rewrite['ready_for_draft_review'] &&
+    $picture_rewrite['pending_media'] > 0,
+    'Missing native imported picture image must keep draft review blocked' );
 $bad = $input;
 $bad['media_bindings'][0]['attachment_id'] = 7;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad ) ),

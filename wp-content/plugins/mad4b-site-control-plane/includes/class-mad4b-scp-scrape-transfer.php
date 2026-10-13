@@ -167,6 +167,27 @@ final class MAD4B_SCP_Scrape_Transfer {
         return is_string( $url ) && self::same_origin( $url, home_url( '/' ) ) ? $url : '';
     }
 
+    /** Pick one publicly-addressable candidate from native HTML srcset. */
+    private static function srcset_candidate( $srcset, $source ) {
+        if ( ! is_string( $srcset ) || '' === trim( $srcset ) ||
+            strlen( $srcset ) > 4096 ) return '';
+        $best = ''; $highest = -1.0;
+        foreach ( array_slice( explode( ',', $srcset ), 0, 20 ) as $part ) {
+            $pair = preg_split( '/\\s+/', trim( $part ), 2 );
+            if ( ! is_array( $pair ) || ! isset( $pair[0] ) ) continue;
+            $url = self::absolute( $pair[0], $source );
+            if ( '' === $url ) continue;
+            $descriptor = isset( $pair[1] ) ? trim( $pair[1] ) : '';
+            $score = 1.0;
+            if ( preg_match( '/^([1-9][0-9]{0,4})w$/', $descriptor, $m ) )
+                $score = (float) $m[1];
+            elseif ( preg_match( '/^([1-9](?:\\.[0-9]+)?)x$/', $descriptor, $m ) )
+                $score = 1000.0 * (float) $m[1];
+            if ( $score > $highest ) { $best = $url; $highest = $score; }
+        }
+        return $best;
+    }
+
     private static function parse( $input ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ), array(
             'source_page_url', 'html', 'prices', 'link_overrides', 'media_bindings', 'expected_plan_sha256' ) ) )
@@ -199,10 +220,16 @@ final class MAD4B_SCP_Scrape_Transfer {
                     return new WP_Error( 'mad4b_scrape_transfer_link_limit', 'Too many source links.' );
             }
             if ( 'IMG' === $tag || 'SOURCE' === $tag ) {
-                $src = $processor->get_attribute( 'data-src' );
-                if ( ! is_string( $src ) || '' === $src ) $src = $processor->get_attribute( 'src' );
-                if ( 'IMG' !== $tag || ! is_string( $src ) ) continue;
-                $url = self::absolute( $src, $source );
+                $candidate = $processor->get_attribute( 'data-srcset' );
+                if ( ! is_string( $candidate ) || '' === trim( $candidate ) )
+                    $candidate = $processor->get_attribute( 'srcset' );
+                $url = self::srcset_candidate( $candidate, $source );
+                if ( '' === $url ) {
+                    $src = $processor->get_attribute( 'data-src' );
+                    if ( ! is_string( $src ) || '' === trim( $src ) )
+                        $src = $processor->get_attribute( 'src' );
+                    $url = self::absolute( $src, $source );
+                }
                 if ( '' === $url ) continue;
                 $original_alt = (string) ( $processor->get_attribute( 'alt' ) ?: '' );
                 $original_title = (string) ( $processor->get_attribute( 'title' ) ?: '' );
@@ -355,18 +382,28 @@ final class MAD4B_SCP_Scrape_Transfer {
                     $processor->remove_attribute( 'href' ); $unlinked++;
                 }
             } elseif ( 'SOURCE' === $tag ) {
-                // A stale picture source srcset can override an IMG whose
-                // source has already been replaced by a local attachment.
-                // Keep the scraped original in the evidence manifest; do
-                // not leave browser-visible competitor variants in draft HTML.
-                $processor->remove_attribute( 'srcset' );
+                $set = $processor->get_attribute( 'data-srcset' );
+                if ( ! is_string( $set ) || '' === trim( $set ) )
+                    $set = $processor->get_attribute( 'srcset' );
+                $source_url = self::srcset_candidate( $set, $source );
+                if ( '' !== $source_url && isset( $local[$source_url] ) ) {
+                    $processor->set_attribute( 'srcset', $local[$source_url] . ' 1x' );
+                    $rewritten_media++;
+                } else $processor->remove_attribute( 'srcset' );
                 $processor->remove_attribute( 'data-srcset' );
                 $processor->remove_attribute( 'src' );
                 $processor->remove_attribute( 'data-src' );
             } elseif ( 'IMG' === $tag ) {
-                $src = $processor->get_attribute( 'data-src' );
-                if ( ! is_string( $src ) || '' === $src ) $src = $processor->get_attribute( 'src' );
-                $url = self::absolute( (string) ( $src ?: '' ), $source );
+                $set = $processor->get_attribute( 'data-srcset' );
+                if ( ! is_string( $set ) || '' === trim( $set ) )
+                    $set = $processor->get_attribute( 'srcset' );
+                $url = self::srcset_candidate( $set, $source );
+                if ( '' === $url ) {
+                    $src = $processor->get_attribute( 'data-src' );
+                    if ( ! is_string( $src ) || '' === trim( $src ) )
+                        $src = $processor->get_attribute( 'src' );
+                    $url = self::absolute( (string) ( $src ?: '' ), $source );
+                }
                 if ( '' === $url ) continue;
                 if ( isset( $local[$url] ) ) {
                     $processor->set_attribute( 'src', $local[$url] );
