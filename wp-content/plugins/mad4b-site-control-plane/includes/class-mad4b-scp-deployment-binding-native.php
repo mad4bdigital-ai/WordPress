@@ -13,6 +13,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const STATUS = 'mad4b/deployment-binding-native-status';
     const PLAN = 'mad4b/deployment-binding-native-plan';
     const READBACK = 'mad4b/deployment-binding-native-readback';
+    const HANDOFF = 'mad4b/deployment-binding-owner-handoff';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
     const FILENAME = 'binding.key';
@@ -55,6 +56,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             array( self::STATUS, 'status', $read_schema, true ),
             array( self::PLAN, 'plan', $read_schema, true ),
             array( self::READBACK, 'readback', $verify_schema, true ),
+            array( self::HANDOFF, 'handoff', $read_schema, true ),
             array( self::APPLY, 'apply', $write_schema, false ),
         ) as $ability ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $ability[0] ) ) continue;
@@ -252,6 +254,65 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'independent_host_attestation_certified' => false,
             'mariadb_crash_certified' => false, 'production_authorized' => false,
             'read_only' => true, 'mutation_performed' => false );
+    }
+
+    /**
+     * Safe remote diagnosis of the real write agent. Structural discovery
+     * alone cannot authorize an approval ticket or mutate the Site Profile.
+     * Never disclose bearer credentials, approval secrets or other agents.
+     */
+    public static function handoff( $input = array() ) {
+        if ( ! self::can_read() || ! is_array( $input ) || $input )
+            return self::error( 'handoff_read_denied' );
+        $binding = self::status();
+        if ( is_wp_error( $binding ) ) return $binding;
+        $profile = class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::status() : array();
+        if ( ! is_array( $profile ) || 'staging' !== ( $profile['environment'] ?? '' )
+            || empty( $profile['origin_match'] ) || empty( $profile['environment_match'] ) )
+            return self::error( 'handoff_site_not_exact_staging' );
+        $authority = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            ? MAD4B_SCP_Staging_Write_Authority::status() : array();
+        if ( is_wp_error( $authority ) ) return $authority;
+        $agent_id = is_array( $authority )
+            ? (string) ( $authority['agent_public_id'] ?? '' ) : '';
+        $blockers = is_array( $authority )
+            ? (array) ( $authority['blockers'] ?? array() ) : array();
+        $write_ready = is_array( $authority )
+            && true === ( $authority['ready'] ?? false )
+            && true === ( $authority['candidate_binding_match'] ?? false )
+            && empty( $blockers );
+        $binding_eligible = 'READY_FOR_OWNER_APPROVAL' === ( $binding['state'] ?? '' );
+        $next = ! $binding_eligible ? 'mad4b/deployment-binding-native-status'
+            : ( $write_ready ? 'mad4b/approval-plan'
+                : 'mad4b/staging-write-grant-reconciliation-plan' );
+        return array(
+            'contract' => self::CONTRACT . '.owner-handoff.v1',
+            'site_uuid' => (string) ( $profile['site_uuid'] ?? '' ),
+            'profile_revision' => (int) ( $profile['revision'] ?? 0 ),
+            'binding_state' => (string) ( $binding['state'] ?? '' ),
+            'binding_eligible' => $binding_eligible,
+            'agent_public_id' => preg_match( '/^[a-f0-9-]{36}$/D', $agent_id )
+                ? $agent_id : '',
+            'write_authority_state' => is_array( $authority )
+                ? (string) ( $authority['state'] ?? 'unavailable' ) : 'unavailable',
+            'write_authority_ready' => $write_ready,
+            'write_authority_blockers' => $blockers,
+            'candidate_binding_match' => is_array( $authority )
+                && true === ( $authority['candidate_binding_match'] ?? false ),
+            'exact_grants_existing' => is_array( $authority )
+                ? (int) ( $authority['exact_grants_existing'] ?? 0 ) : 0,
+            'write_tool_count' => is_array( $authority )
+                ? (int) ( $authority['write_tool_count'] ?? 0 ) : 0,
+            'next_read' => $next,
+            'required_write_agent_server' => 'mad4b-write',
+            'ticket_ability' => self::APPLY,
+            'human_owner_ticket_required' => true,
+            'owner_approval_generated' => false,
+            'cross_site_ticket_reuse_allowed' => false,
+            'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false,
+        );
     }
 
     public static function plan( $input = array() ) {
