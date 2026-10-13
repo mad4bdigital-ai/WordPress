@@ -190,6 +190,21 @@ final class MAD4B_SCP_Selected_Head_Update {
 
     /** Pure assistant handoff; action metadata does not grant any authority. */
     public static function blocker_recovery( $blockers ) {
+        // Native Staging opt-in is a separate owner-approved WordPress lane.
+        // Do not advertise a Host-only bootstrap when that lane can be
+        // enabled on the exact enrolled Site Profile without a Host Runner.
+        $native_site_ready = false;
+        if ( class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' )
+            && class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+            $site = MAD4B_SCP_Site_Profile::status();
+            if ( is_array( $site ) ) {
+                $policy = MAD4B_SCP_WordPress_Native_Opt_In::site_policy( $site );
+                $native_site_ready = is_array( $policy )
+                    && ! empty( $policy['eligible'] )
+                    && function_exists( 'wp_get_environment_type' )
+                    && 'staging' === wp_get_environment_type();
+            }
+        }
         $catalog = array(
             'selected_head_opt_in_disabled' => array(
                 'step_id' => 'enable_selected_head_host_opt_in',
@@ -244,6 +259,25 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'remote_mcp_auto_apply_allowed' => false,
             ),
         );
+        if ( $native_site_ready ) {
+            $native_enable = array(
+                'step_id' => 'owner_approve_wordpress_native_candidate_mode',
+                'actor' => 'enrolled_staging_owner',
+                'surface' => 'wordPress_governed_mcp_exact_owner_oauth',
+                'tool' => 'mad4b/wordpress-native-candidate-opt-in-plan',
+                'apply_ability' => 'mad4b/wordpress-native-candidate-opt-in-apply',
+                'next_after_enable' => 'mad4b/wp-native-build-plan',
+                'requires_separate_approval' => true,
+                'requires_exact_nhi_grant' => true,
+                'host_runner_required' => false,
+                'release_or_install_certified' => false,
+                'production_allowed' => false,
+                'remote_mcp_auto_apply_allowed' => false,
+            );
+            $catalog['selected_head_opt_in_disabled'] = $native_enable;
+            $catalog['exact_staging_binding_required'] = array_merge(
+                $native_enable, array( 'step_id' => 'use_non_binding_wordpress_native_staging_lane' ) );
+        }
         $steps = array();
         foreach ( array_values( array_unique( (array) $blockers ) ) as $blocker ) {
             if ( ! is_string( $blocker ) || '' === $blocker ) continue;
