@@ -80,3 +80,43 @@ not repair SEO integration. Confirm both using native provider controls.
 
 **Status:** source patch and test are in PR #258; runtime acceptance, exact
 artifact certification and deployment are separate. No CI PASS implied.
+
+## Native Retry revoke button audit (2026-10-13)
+
+The Staging screenshot showed `Sign in with Google` at the same time as
+`Google revocation is pending`, with a clickable `Retry revoke`. That is
+a cross-panel state contradiction from the older installed build.
+
+Actual form chain (native WP admin):
+`POST /wp-admin/admin-post.php`, action
+`mad4b_context_google_disconnect`, WordPress admin capability + nonce,
+`MAD4B_SCP_Context_Admin_UI::handle_disconnect_google()`,
+`MAD4B_SCP_Google_Drive_Context::disconnect()`, Google revocation endpoint.
+This is **not** the remote MCP Step-Up approval path.
+
+The native retry form now requires an explicitly checked acknowledgement,
+`google_revocation_action=retry_pending` and the exact observed
+`revocation_attempted_at` snapshot. Admission fails closed if the grant
+has been replaced, completed, has no verifiable prior attempt, the HTTP
+method is not POST, or the most recent attempt is younger than 60 seconds.
+A stale retry can never become a new grant disconnect. Actual Google
+requests are not made during status rendering or pure admission tests.
+
+On Google HTTP 400, the provider code may make one access-token fallback
+only if it differs from the attempted refresh token. A transport exception,
+timeout or HTTP 500 is uncertain and no longer triggers a second token
+revocation within the same action. Both failures remain locally
+`revocation_pending` with read/write disabled.
+
+Regression fixtures:
+`tests/context-google-retry-admission-runtime.php` (pure native button
+admission matrix), `tests/context-oauth-lifecycle-runtime.php`
+(400+200 exact fallback and HTTP 500 no fallback),
+`tests/context-live-post-update-reconciliation-runtime.php`
+(view status); run under PHP 8.3 as well as lint and actual Staging browser
+acceptance. No test pass is claimed merely because code is committed.
+
+Last observed provider state remained `PENDING_SAFE_RETRY` / HTTP 400.
+Remote `mad4b/google-revocation-plan` is read-only and separately
+requires owner one-time approval before any remote revoke. This session
+performed no real Google revocation.
