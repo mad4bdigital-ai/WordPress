@@ -47,6 +47,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/legacy-reconciliation-census',
 				'context/legacy-owner-transfer-discover',
 				'context/legacy-owner-transfer-plan',
+                'context/native-owner-transfer-plan',
 				'context/legacy-owner-transfer-evidence',
 				'context/legacy-owner-transfer-readback',
 				'context/brand-reconstruction-plan',
@@ -67,6 +68,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/brand-profile-save',
 				'context/governed-source-upsert',
 				'context/legacy-owner-transfer-apply',
+                'context/native-owner-transfer-apply',
 				'context/remote-owner-review-apply',
 				'context/create-drive-asset',
 				'context/update-drive-asset',
@@ -182,6 +184,16 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			array( 'MAD4B_SCP_Policy', 'can_read' ),
 			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
 		);
+        $this->add_ability(
+            'context/native-owner-transfer-plan',
+            'Plan Exact WordPress Functional Legacy Owner Transfer',
+            'native_owner_transfer_plan',
+            array( 'MAD4B_SCP_Policy', 'can_read' ),
+            $this->schema( array(
+                'source_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+            ), array('source_id','job_id') )
+        );
 		$this->add_ability(
 			'context/legacy-owner-transfer-evidence',
 			'Verify Original Folder and Every Legacy File Before Owner Approval',
@@ -399,6 +411,26 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			), array('source_id','expected_plan_sha256','expected_brand_id','reviewed_external_root_id','owner_evidence_reference','expected_provider_proof_sha256','confirmation')),
 			'write', false, true, false
 		);
+        $this->add_ability(
+            'context/native-owner-transfer-apply',
+            'Owner-approved WordPress-only Functional Legacy Transfer (No Crash Certification)',
+            'native_owner_transfer_apply',
+            $write_permission,
+            $this->schema( array(
+                'source_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'expected_native_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'expected_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'expected_brand_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'reviewed_external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+                'owner_evidence_reference'=>array('type'=>'string','minLength'=>12,'maxLength'=>500),
+                'expected_provider_proof_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'confirmation'=>array('type'=>'string','enum'=>array('APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY')),
+            ), array('source_id','job_id','expected_native_plan_sha256',
+                'expected_plan_sha256','expected_brand_id','reviewed_external_root_id',
+                'owner_evidence_reference','expected_provider_proof_sha256','confirmation')),
+            'write', false, true, false
+        );
 		$this->add_ability(
 			'context/create-drive-asset',
 			'Create Google Drive Context Asset',
@@ -600,7 +632,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				|| true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) ) )
 			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required',
 				'Host-certified crash-safe rollback acceptance is required before the legacy owner-transfer write can mount.' );
-		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply','context/remote-owner-review-apply'), true ) ) {
+		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply','context/native-owner-transfer-apply','context/remote-owner-review-apply'), true ) ) {
 			$site = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
 			return 'staging' === (string)($site['environment'] ?? '') &&
 				!empty($site['origin_match']) && !empty($site['environment_match']) ? true
@@ -1056,6 +1088,12 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function legacy_owner_transfer_apply( $input ) {
 		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply($input);
 	}
+    public function native_owner_transfer_plan( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_plan( $input );
+    }
+    public function native_owner_transfer_apply( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_apply( $input );
+    }
 	public function brand_profile_save( $input ) {
 		$current = MAD4B_SCP_Context_Authority::profile();
 		if ( (string)($current['brand_id']??'') !== (string)($input['expected_brand_id']??'')
