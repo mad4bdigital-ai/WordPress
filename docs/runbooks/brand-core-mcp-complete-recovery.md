@@ -9,10 +9,17 @@ exact approved** `...-apply` ticket. Reusing a plan, ticket, Site UUID,
 profile digest or secret across sites is forbidden. `apply` returns
 `BOUND_NEW_REQUEST_READBACK_REQUIRED`, not acceptance. In a **new** request
 call `mad4b/deployment-binding-native-readback` with the expected Site UUID
-and the post-commit minimum profile revision. Only
-`WORDPRESS_BINDING_READBACK_PASS` permits a fresh
-`context/legacy-reconciliation-census`. An unsupported filesystem layout
-or lost secret must remain blocked rather than forced.
+and the post-commit minimum profile revision. A binding written by the NEW code must return
+`WORDPRESS_BINDING_READBACK_PASS` in a distinct PHP request before the
+fresh `context/legacy-reconciliation-census`. **Pre-upgrade compatibility:**
+a binding already created under the older Staging plugin lacks the new writer
+request marker; if the site identity, private key and original profile digest
+still match, readback reports `LEGACY_BINDING_SCOPE_VERIFIED_NO_REQUEST_PROOF`,
+with `functional_scope_ready_for_census=true` but
+`independent_request_observed=false`. This allows the census without
+unnecessary secret rotation and NEVER claims fresh-request, physical Host,
+MariaDB or rollback certification. Unsupported filesystem layout, mismatched
+site identity or a lost secret remain blocked.
 
 **Two distinct recovery tiers.** `mad4b/brand-core-remote-recovery-status`
 now exposes `functional_lifecycle` and `disaster_recovery` separately.
