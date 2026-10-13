@@ -73,6 +73,12 @@ class MAD4B_SCP_Context_Authority {
             'matched_file_count' => 12 );
     }
 }
+class MAD4B_SCP_Deployment_Binding_Native {
+    public static function status() {
+        return array( 'state' => 'READY_FOR_OWNER_APPROVAL',
+            'eligible' => true );
+    }
+}
 class MAD4B_SCP_Self_Update {
     public static function current_identity() {
         return array( 'source_commit_sha' => str_repeat( 'a', 40 ) );
@@ -123,6 +129,17 @@ brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue
     'Brand approval lifecycle must use exact remote owner plan and separately governed decision' );
 // WordPress-only mode never treats a saved legacy folder as owned.
 $native_view = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
+brand_remote_assert( ! is_wp_error( $native_view )
+    && $native_view['binding_lifecycle']['eligible']
+    && $native_view['binding_lifecycle']['next_ability'] ===
+        'mad4b/deployment-binding-native-plan'
+    && $native_view['workflow']['native_binding_apply'] ===
+        'mad4b/deployment-binding-native-apply'
+    && $native_view['workflow']['functional_transfer_readback'] ===
+        'context/native-owner-transfer-readback'
+    && $native_view['workflow']['native_shadow_cleanup'] ===
+        'mad4b/native-recovery-cleanup',
+    'WordPress lifecycle links exact site binding, functional transfer and cleanup' );
 brand_remote_assert( ! is_wp_error( $native_view )
     && 'OWNER_TRANSFER_BLOCKED' === $native_view['state']
     && $native_view['source']['selected_source_id'] === str_repeat( 'b', 64 )
@@ -275,6 +292,11 @@ $drift = MAD4B_SCP_Brand_Core_Remote_Recovery::reduce(
     ), array() );
 brand_remote_assert( $drift['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED',
     'mixed registry/provider generations cannot be accepted' );
+brand_remote_assert( $drift['functional_lifecycle']['state'] ===
+    'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+    && $drift['disaster_recovery']['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+    && !$drift['functional_lifecycle']['mariadb_crash_certified'],
+    'Both separated recovery tiers must reject mixed provenance snapshots' );
 foreach ( $drift['stages'] as $row ) {
     brand_remote_assert( $row['state'] === 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
         && ! $row['evidence_observed']
@@ -301,6 +323,11 @@ $possible = MAD4B_SCP_Brand_Core_Remote_Recovery::status( array(
 brand_remote_assert( ! in_array( 'owner_attestation',
     $possible['stages']['brand_approval']['upstream_stages'], true ),
     'A clean first-party registry must not wait forever for a nonexistent legacy transfer' );
+brand_remote_assert( $possible['functional_lifecycle']['state'] ===
+    'BRAND_CORE_COVERAGE_READY'
+    && $possible['disaster_recovery']['state'] === 'REMOTE_RECOVERY_INCOMPLETE'
+    && !$possible['functional_lifecycle']['release_certified'],
+    'Functional Brand Core readiness never equals disaster recovery or release readiness' );
 brand_remote_assert( $possible['stages']['brand_approval']['evidence_observed'] === true
     && $possible['stages']['certified_package']['evidence_observed'] === false
     && $possible['stages']['draft_acceptance']['evidence_observed'] === false
