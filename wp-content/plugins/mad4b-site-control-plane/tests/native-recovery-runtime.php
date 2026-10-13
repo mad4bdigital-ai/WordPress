@@ -138,7 +138,16 @@ $second_start = MAD4B_SCP_Native_Recovery::start( array( 'mode' => 'probe',
 native_assert( is_wp_error( $second_start ), 'concurrent scratch denied' );
 native_assert( $claims_before_occupied === MAD4B_SCP_Authorization::$claims,
     'occupied scratch is detected before consuming a new approval claim' );
+$active_status = MAD4B_SCP_Native_Recovery::status();
+native_assert( $active_status['remaining_seconds'] > 0
+    && $active_status['remaining_seconds'] <= MAD4B_SCP_Native_Recovery::TTL
+    && $active_status['recovery_state'] === 'AWAITING_INDEPENDENT_READBACK',
+    'Native shadow reports bounded usable TTL without claiming approval' );
 $same_request = MAD4B_SCP_Native_Recovery::readback( array( 'job_id' => $start['job_id'] ) );
+native_assert( $same_request['remaining_seconds'] > 0
+    && $same_request['remaining_seconds'] <= MAD4B_SCP_Native_Recovery::TTL
+    && !$same_request['cleanup_required'],
+    'Cross-request proof reports expiry to future approval plan' );
 native_assert( $same_request['state'] === 'WP_NATIVE_INCOMPLETE' &&
     $same_request['independent_request_observed'] === false,
     'same-request readback is not a cross-request pass' );
