@@ -187,51 +187,47 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 	public static function handle_disconnect_google() {
 		self::require_admin( self::ACTION_DISCONNECT_GOOGLE );
-		if ( 'POST' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) ) {
-			self::redirect_result( new WP_Error( 'mad4b_google_revoke_post_required', 'Google revocation requires an authenticated POST request.' ), 'google-drive', '' );
-			return;
-		}
-		// Native WP-admin action is not the remote OAuth Step-Up / single-use
-		// ticket path. For an already pending revocation, require an exact
-		// state-bound user confirmation before making another Google request.
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
-		if ( ! is_array( $connection ) ) {
-			self::redirect_result( new WP_Error( 'mad4b_google_revoke_state_unavailable', 'Current Google connection state is unavailable.' ), 'google-drive', '' );
+		$admission = self::google_revocation_admission( $connection, $_POST, $_SERVER['REQUEST_METHOD'] ?? '', time() );
+		if ( is_wp_error( $admission ) ) {
+			self::redirect_result( $admission, 'google-drive', '' );
 			return;
-		}
-		$action_kind = isset( $_POST['google_revocation_action'] ) && is_string( $_POST['google_revocation_action'] )
-			? sanitize_key( wp_unslash( $_POST['google_revocation_action'] ) ) : '';
-		if ( ! in_array( $action_kind, array( '', 'retry_pending' ), true ) ||
-			( 'retry_pending' === $action_kind ) !== ! empty( $connection['revocation_pending'] ) ) {
-			self::redirect_result( new WP_Error( 'mad4b_google_revoke_action_state_mismatch', 'Google grant state changed. Refresh before submitting this revocation action.' ), 'google-drive', '' );
-			return;
-		}
-		if ( ! empty( $connection['revocation_pending'] ) ) {
-			$expected = isset( $_POST['expected_revocation_attempted_at'] ) && is_string( $_POST['expected_revocation_attempted_at'] )
-				? sanitize_text_field( wp_unslash( $_POST['expected_revocation_attempted_at'] ) ) : '';
-			$observed = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
-			if ( '' === $observed || '' === $expected || ! hash_equals( $observed, $expected ) ) {
-				self::redirect_result( new WP_Error( 'mad4b_google_revoke_snapshot_changed', 'Google pending revoke evidence changed. Refresh this page before retrying.' ), 'google-drive', '' );
-				return;
-			}
-			if ( ! isset( $_POST['confirm_pending_google_revoke'] ) || '1' !== (string) wp_unslash( $_POST['confirm_pending_google_revoke'] ) ) {
-				self::redirect_result( new WP_Error( 'mad4b_google_revoke_explicit_confirmation_required', 'Confirm that this action retries Google OAuth revocation before continuing.' ), 'google-drive', '' );
-				return;
-			}
-			$attempted_at = strtotime( $observed );
-			if ( false === $attempted_at ) {
-				self::redirect_result( new WP_Error( 'mad4b_google_revoke_retry_timestamp_invalid', 'Pending revoke timestamp is invalid. Operator review required.' ), 'google-drive', '' );
-				return;
-			}
-			// A recent unsuccessful attempt is not a new authorization.
-			// Bounded cool-down avoids repeated 400s / provider hammering.
-			if ( time() - $attempted_at < 60 ) {
-				self::redirect_result( new WP_Error( 'mad4b_google_revoke_retry_cooldown', 'Wait 60 seconds after the previous Google revoke attempt, then refresh the page.' ), 'google-drive', '' );
-				return;
-			}
 		}
 		$result = MAD4B_SCP_Google_Drive_Context::disconnect();
 		self::redirect_result( $result, 'google-drive', 'google_disconnected' );
+	}
+
+	/**
+	 * Exact POST-to-grant-state admission for WP-admin OAuth revocation.
+	 * Pure read-only predicate: does NOT consume a ticket, call Google or
+	 * authorize remote OAuth Step-Up. The outer handler still requires
+	 * administrator capability and a WordPress nonce.
+	 */
+	private static function google_revocation_admission( $connection, $input, $method, $now ) {
+		if ( 'POST' !== strtoupper( (string) $method ) )
+			return new WP_Error( 'mad4b_google_revoke_post_required', 'Google revocation requires an authenticated POST request.' );
+		if ( ! is_array( $connection ) || ! is_array( $input ) )
+			return new WP_Error( 'mad4b_google_revoke_state_unavailable', 'Current Google connection state is unavailable.' );
+		$action_kind = isset( $input['google_revocation_action'] ) && is_string( $input['google_revocation_action'] )
+			? sanitize_key( wp_unslash( $input['google_revocation_action'] ) ) : '';
+		$pending = ! empty( $connection['revocation_pending'] );
+		if ( ! in_array( $action_kind, array( '', 'retry_pending' ), true ) ||
+			( 'retry_pending' === $action_kind ) !== $pending )
+			return new WP_Error( 'mad4b_google_revoke_action_state_mismatch', 'Google grant state changed. Refresh before submitting this revocation action.' );
+		if ( ! $pending ) return true; // Original non-pending disconnect form.
+		$expected = isset( $input['expected_revocation_attempted_at'] ) && is_string( $input['expected_revocation_attempted_at'] )
+			? sanitize_text_field( wp_unslash( $input['expected_revocation_attempted_at'] ) ) : '';
+		$observed = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
+		if ( '' === $observed || '' === $expected || ! hash_equals( $observed, $expected ) )
+			return new WP_Error( 'mad4b_google_revoke_snapshot_changed', 'Google pending revoke evidence changed. Refresh this page before retrying.' );
+		if ( ! isset( $input['confirm_pending_google_revoke'] ) || '1' !== (string) wp_unslash( $input['confirm_pending_google_revoke'] ) )
+			return new WP_Error( 'mad4b_google_revoke_explicit_confirmation_required', 'Confirm that this action retries Google OAuth revocation before continuing.' );
+		$attempted_at = strtotime( $observed );
+		if ( false === $attempted_at )
+			return new WP_Error( 'mad4b_google_revoke_retry_timestamp_invalid', 'Pending revoke timestamp is invalid. Operator review required.' );
+		if ( (int) $now - $attempted_at < 60 )
+			return new WP_Error( 'mad4b_google_revoke_retry_cooldown', 'Wait 60 seconds after the previous Google revoke attempt, then refresh the page.' );
+		return true;
 	}
 
 	public static function handle_select_source() {
