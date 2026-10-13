@@ -1014,7 +1014,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		// revoke the same grant. Make one bounded second attempt only when
 		// its credential differs. Never interpret HTTP 400 as success.
 		$access_token = is_array( $record ) ? (string) ( $record['access_token'] ?? '' ) : '';
-		if ( ! $confirmed && '' !== $access_token && ! hash_equals( $token, $access_token ) ) {
+		if ( ! $confirmed && 'google_revocation_http_400' === $revocation_error && '' !== $access_token && ! hash_equals( $token, $access_token ) ) {
 			$used_access_fallback = true;
 			$fallback = self::revoke_google_token_attempt( $access_token );
 			$confirmed = ! empty( $fallback['confirmed'] );
