@@ -80,6 +80,25 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
         return hash( 'sha256', wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
     }
 
+    private static function inspect_intent( $review_sha256 ) {
+        $saved = get_option( self::OPTION, array() );
+        $same_review = is_array( $saved ) && isset( $saved['review_sha256'], $saved['expires_at'] ) &&
+            is_string( $saved['review_sha256'] ) &&
+            hash_equals( (string) $review_sha256, $saved['review_sha256'] ) &&
+            ! empty( $saved['owner_id'] ) && ! empty( $saved['consent_sha256'] );
+        $expires_at = $same_review ? (int) $saved['expires_at'] : null;
+        $seconds_left = $same_review ? max( 0, $expires_at - time() ) : 0;
+        $valid = $same_review && $seconds_left > 0;
+        return array(
+            'owner_intent_valid' => $valid,
+            'owner_intent_state' => $valid ? 'OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED' :
+                ( $same_review ? 'OWNER_INTENT_EXPIRED' : 'OWNER_INTENT_NOT_CURRENT' ),
+            'consent_sha256' => $valid ? (string) $saved['consent_sha256'] : '',
+            'expires_at' => $expires_at,
+            'seconds_remaining' => $seconds_left,
+        );
+    }
+
     public static function plan( $input = array() ) {
         if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
             return new WP_Error( 'mad4b_owner_consent_read_denied', 'Governed read required.' );
@@ -96,11 +115,19 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
         if ( is_wp_error( $plan ) ) return $plan;
         $payload = self::payload( $plan );
         $digest = self::digest( $payload );
+        $intent = self::inspect_intent( $digest );
         return array(
-            'contract' => self::CONTRACT, 'state' => ! empty( $plan['eligible'] ) ? 'OWNER_REVIEW_AVAILABLE' : 'BUILD_PREFLIGHT_BLOCKED',
+            'contract' => self::CONTRACT, 'state' => empty( $plan['eligible'] ) ? 'BUILD_PREFLIGHT_BLOCKED' :
+                ( $intent['owner_intent_valid'] ? 'OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED' : 'OWNER_REVIEW_AVAILABLE' ),
             'build_eligible' => ! empty( $plan['eligible'] ),
             'build_blockers' => $plan['blockers'] ?? array(),
             'review_payload' => $payload, 'review_sha256' => $digest,
+            'owner_intent_state' => $intent['owner_intent_state'],
+            'owner_intent_valid' => $intent['owner_intent_valid'],
+            'owner_intent_expires_at' => $intent['expires_at'],
+            'owner_intent_seconds_remaining' => $intent['seconds_remaining'],
+            'owner_intent_requires_renewal' => 'OWNER_INTENT_EXPIRED' === $intent['owner_intent_state'],
+            'next_required_steps' => array( 'owner_oauth_step_up', 'exact_admin_approval_ticket', 'governed_build_start' ),
             'confirmation_format' => MAD4B_SCP_WP_Native_Build::CONFIRM . ' | ' .
                 (string) $plan['source_commit_sha'] . ' | ' . (string) $plan['plan_sha256'] .
                 ' | ' . (string) $payload['site_uuid'] . ' | ' . $digest,
@@ -118,20 +145,17 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
     public static function status( $input = array() ) {
         $plan = self::plan( $input );
         if ( is_wp_error( $plan ) ) return $plan;
-        $saved = get_option( self::OPTION, array() );
-        $matching = is_array( $saved ) && isset( $saved['review_sha256'], $saved['expires_at'] ) &&
-            is_string( $saved['review_sha256'] ) &&
-            hash_equals( $plan['review_sha256'], $saved['review_sha256'] ) &&
-            time() <= (int) $saved['expires_at'] &&
-            ! empty( $saved['owner_id'] ) && ! empty( $saved['consent_sha256'] );
+        $intent = self::inspect_intent( $plan['review_sha256'] );
         return array(
             'contract' => self::CONTRACT . '.status.v1',
-            'state' => $matching ? 'OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED' : 'OWNER_INTENT_NOT_CURRENT',
+            'state' => $intent['owner_intent_state'],
             'expected_head' => $plan['review_payload']['expected_head'],
             'review_sha256' => $plan['review_sha256'],
-            'owner_intent_valid' => (bool) $matching,
-            'consent_sha256' => $matching ? (string) $saved['consent_sha256'] : '',
-            'expires_at' => $matching ? (int) $saved['expires_at'] : null,
+            'owner_intent_valid' => $intent['owner_intent_valid'],
+            'consent_sha256' => $intent['consent_sha256'],
+            'expires_at' => $intent['expires_at'],
+            'seconds_remaining' => $intent['seconds_remaining'],
+            'requires_renewal' => 'OWNER_INTENT_EXPIRED' === $intent['owner_intent_state'],
             'ticket_issued' => false, 'execution_authorized' => false,
             'installation_authorized' => false, 'read_only' => true,
         );
@@ -209,19 +233,36 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
             echo '<p>Supply the exact immutable development SHA in the expected_head query parameter.</p></div>';
             return;
         }
-        echo '<p>This records owner intent only. It does not approve a mutation ticket or run WP-Cron.</p>';
+        echo '<p>Step 1 records authenticated owner intent for this exact Staging build only. It does not start WP-Cron or approve a mutation ticket.</p>';
         $status = self::status( array( 'expected_head' => $head ) );
-        if ( ! is_wp_error( $status ) && ! empty( $status['owner_intent_valid'] ) )
-            echo '<p><strong>Owner intent recorded:</strong> <code>' .
-                esc_html( $status['consent_sha256'] ) . '</code> (expires ' .
-                esc_html( gmdate( 'c', (int) $status['expires_at'] ) ) . '). Execution still requires OAuth and an exact Admin ticket.</p>';
-        echo '<pre>' . esc_html( $review['confirmation_format'] ) . '</pre>';
+        if ( ! is_wp_error( $status ) ) {
+            if ( ! empty( $status['owner_intent_valid'] ) ) {
+                echo '<div class="notice notice-success inline" role="status"><p><strong>Step 1 completed: Owner intent recorded.</strong> Valid for ' .
+                    esc_html( (string) $status['seconds_remaining'] ) . ' more seconds (expires ' .
+                    esc_html( gmdate( 'Y-m-d H:i:s', (int) $status['expires_at'] ) ) . ' UTC). <strong>Build not started.</strong></p>' .
+                    '<p>Receipt: <code style="overflow-wrap:anywhere">' . esc_html( $status['consent_sha256'] ) . '</code></p></div>';
+            } elseif ( ! empty( $status['requires_renewal'] ) ) {
+                echo '<div class="notice notice-warning inline" role="status"><p><strong>Owner intent expired.</strong> Previous intent cannot authorize a new build. Review and record the exact confirmation again.</p></div>';
+            } else {
+                echo '<div class="notice notice-info inline" role="status"><p><strong>Step 1 pending:</strong> No current owner intent for this source, plan and site profile.</p></div>';
+            }
+        }
+        echo '<h2>Exact confirmation to review and copy</h2>' .
+            '<p>Copy the entire line below into the confirmation field. This explicit manual action does not grant OAuth or a mutation ticket.</p>' .
+            '<textarea rows="4" style="width:100%;max-width:950px;overflow-wrap:anywhere" readonly aria-label="Exact owner confirmation">' .
+            esc_textarea( $review['confirmation_format'] ) . '</textarea>' .
+            '<h2>Remaining governed steps</h2><ol>' .
+            '<li>Record current owner intent here (valid for 10 minutes).</li>' .
+            '<li>Complete owner OAuth Step-Up in the authenticated MCP client.</li>' .
+            '<li>Issue and approve one exact Admin mutation ticket for <code>mad4b/wp-native-build-start</code>.</li>' .
+            '<li>Start the bounded WP-Cron build and inspect <code>mad4b/wp-native-build-status</code>.</li>' .
+            '</ol><p><strong>A completed owner intent is not a release certificate or installation authorization.</strong></p>';
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         wp_nonce_field( self::FORM_ACTION . ':' . $review['review_sha256'] );
         echo '<input type="hidden" name="action" value="' . esc_attr( self::FORM_ACTION ) . '">';
         echo '<input type="hidden" name="expected_head" value="' . esc_attr( $head ) . '">';
         echo '<input type="hidden" name="review_sha256" value="' . esc_attr( $review['review_sha256'] ) . '">';
-        echo '<p>Copy the complete confirmation line:</p><textarea rows="3" cols="105" name="confirmation" required></textarea>';
+        echo '<p>Paste the exact confirmation line to record or renew owner intent:</p><textarea rows="4" style="width:100%;max-width:950px" name="confirmation" required></textarea>';
         submit_button( 'Record exact Staging owner intent' );
         echo '</form></div>';
     }
