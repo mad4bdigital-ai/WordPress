@@ -664,6 +664,7 @@ final class MAD4B_SCP_Context_Authority {
             || true !== ( $shadow['shadow_plan_still_exact'] ?? false )
             || true !== ( $shadow['fresh'] ?? false )
             || 'shadow' !== ( $shadow['mode'] ?? '' )
+            || ! hash_equals( $job_id, (string) ( $shadow['job_id'] ?? '' ) )
             || ! hash_equals( $source_id, (string) ( $shadow['source_id'] ?? '' ) )
             || ! hash_equals( (string) ( $legacy['plan_sha256'] ?? '' ), (string) ( $proof['plan_sha256'] ?? '' ) )
             || ! hash_equals( (string) ( $proof['provider_proof_sha256'] ?? '' ),
