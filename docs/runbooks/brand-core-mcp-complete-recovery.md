@@ -1,5 +1,70 @@
 # Feature 007 — Brand Core recovery from A to Z through the existing MAD4B MCP
 
+## WordPress-only functional recovery and per-file approval mode — 2026-10-13
+
+**Mode:** `mad4b/brand-core-wordpress-mode` (read-only, Staging administrator,
+existing Context Authority registry, no Host Runner/SSH/independent worker).
+This is an **operational mode**, not a replacement for a real MariaDB
+crash/restart and independently restored backup. The legacy ownership mutation
+remains protected by its existing independent Host/rollback gate.
+
+1. Call `mad4b/brand-core-wordpress-mode` with `{}` to discover the *single*
+   eligible original selected folder from the WordPress Context registry.
+   Supply `source_id` only if there are multiple eligible folders. The API
+   never demands an individual Google Drive file ID from the owner.
+2. Set `include_provider_scan=true` after confirming the selected folder.
+   WordPress uses its existing Google Drive provider and
+   `mad4b/selected-folder-scope-proof` to validate the complete original
+   file membership. The result is **folder scope**, not file ownership.
+3. Optional functional test: use the existing `mad4b/native-recovery-plan`
+   with `mode=shadow`, followed by a separately approved
+   `mad4b/native-recovery-start`, fresh **different WordPress HTTP request**
+   to `mad4b/native-recovery-readback`, and governed
+   `mad4b/native-recovery-cleanup`. WordPress Options/CRON are sufficient
+   for *this scratch proof*, no local CLI/Host Runner. The scratch does not
+   mutate Context assets or certify MariaDB recovery.
+4. **Legacy quarantined source transition remains distinct:** the existing
+   `context/legacy-owner-transfer-plan` → owner evidence/one-time exact
+   approved `context/legacy-owner-transfer-apply` →
+   `context/legacy-owner-transfer-readback` does require its original Host
+   identity and rollback proof; this new mode MUST NOT bypass those gates.
+   If this requirement is undesirable, a different operational trust tier
+   needs an explicit governance/security design and independent approval,
+   rather than silently changing the meaning of crash certification.
+5. When source ownership is legitimately established, call
+   `context/source-scan-plan` and a separately governed
+   `context/source-scan-apply`. The fresh scan must normalize complete
+   content and establish category/authority before review.
+6. Call `mad4b/brand-core-wordpress-mode` again. Its `files[]` is a
+   bounded queue populated **only from site-owned governed Context assets**,
+   with `asset_id`, `content_hash`, `exact_plan_sha256`, and review
+   eligibility. No copy of the source registry is created.
+7. Each eligible file can be approved, rejected or sent for changes by the
+   authenticated WordPress owner through the existing
+   `context/remote-owner-review-plan` →
+   one-time human-approved governed mutation ticket →
+   `context/remote-owner-review-apply` →
+   `context/review-queue` readback. Each decision remains separately
+   approved. A WordPress admin can alternatively use the **existing
+   `review_asset` UI path**, which still validates the exact content hash.
+   This orchestration does not auto-approve a folder or a batch.
+8. Finally, require `context/brand-core-coverage` to prove three
+   current, exact, reviewed categories: `brand_strategy`,
+   `tone_of_voice`, `editorial_guidelines`. Only then may a distinct
+   governed draft plan be attempted. Publishing needs separate approval.
+
+**Threat model:** Staging only; origin and profile exact; bounded 30-file
+review page; no caller-provided success flags; repeated read of census,
+coverage and site profile; stale/foreign/uncategorized assets are denied;
+old reviews not inherited on ownership transition; no production promotion,
+self-issued rollback certification, automatic approval or delegated legal
+ownership inference. Requires PHP/WordPress and real-site acceptance before
+shipping. `source_count + quarantined asset_count` is diagnostic, not proof
+that those files are current or authorized.
+
+---
+
+
 Status: **source implemented for detection/routing and narrow Staging-only ownership transition**.
 The WordPress/Google Drive readback, owner-approved legacy transfer, exact
 context materialization, AI review and tour-draft acceptance are **not yet
