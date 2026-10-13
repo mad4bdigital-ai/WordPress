@@ -82,4 +82,23 @@ if ("Exact Staging Write checkpoint ready" not in governance
         or "Per-ability authorization" not in governance):
     raise AssertionError("ADMIN_BOUNDARY_GLOBAL_GATE_FALSE_GREEN")
 
-print("ADMIN_POST_AND_ROUTE_BOUNDARY_SOURCE_CONTRACT: PASS (8 POST handlers, 5 pages, remediation and governance readback; live acceptance separate)")
+# High-impact admin actions must never mutate through GET + nonce.
+handler_boundary("class-mad4b-scp-native-build-owner-consent.php", "public static function handle_form()")
+handler_boundary("class-mad4b-scp-runtime-release-set.php", "public static function handle_admin_apply()")
+handler_boundary("class-mad4b-scp-admin-query-performance.php", "public static function handle_explicit_apply()")
+handler_boundary("class-mad4b-scp-approval-decision-admin.php", "public static function handle_admin_post()")
+handler_boundary("class-mad4b-scp-self-update.php", "public static function handle_refresh_update()")
+handler_boundary("class-mad4b-scp-self-update.php", "public static function handle_native_update()")
+
+updater = source("class-mad4b-scp-self-update.php")
+for forbidden in (
+    "admin_url( 'admin-post.php?action=mad4b_control_plane_native_update' )",
+    "admin_url( 'admin-post.php?action=mad4b_control_plane_refresh_update' )",
+):
+    if forbidden in updater:
+        raise AssertionError("ADMIN_BOUNDARY_SELF_UPDATE_GET_LINK:" + forbidden)
+for action in ("mad4b_control_plane_native_update", "mad4b_control_plane_refresh_update"):
+    if action not in updater or "wp_nonce_field(" not in updater:
+        raise AssertionError("ADMIN_BOUNDARY_UPDATE_POST_FORM_MISSING:" + action)
+
+print("ADMIN_POST_AND_ROUTE_BOUNDARY_SOURCE_CONTRACT: PASS (14 POST handlers, 5 pages, no native GET-update links; live acceptance separate)")
