@@ -84,6 +84,8 @@ final class MAD4B_SCP_Operator_Journeys {
                     array( 'scratch_start', 'mad4b/native-recovery-start', 'write' ),
                     array( 'scratch_readback', 'mad4b/native-recovery-readback', 'read' ),
                     array( 'ownership_plan', 'context/legacy-owner-transfer-plan', 'read' ),
+                    array( 'functional_owner_plan', 'context/native-owner-transfer-plan', 'read' ),
+                    array( 'functional_owner_apply', 'context/native-owner-transfer-apply', 'write' ),
                     array( 'ownership_apply', 'context/legacy-owner-transfer-apply', 'write' ),
                     array( 'ownership_readback', 'context/legacy-owner-transfer-readback', 'read' ),
                     array( 'scan_plan', 'context/source-scan-plan', 'read' ),
@@ -94,7 +96,7 @@ final class MAD4B_SCP_Operator_Journeys {
                     array( 'review_readback', 'context/review-queue', 'read' ),
                     array( 'coverage', 'context/brand-core-coverage', 'read' ),
                 ),
-                'caution' => 'WordPress scratch requires no Host Runner. Quarantined ownership transfer retains independent Host and rollback safeguards; file review needs a separate human-approved ticket per asset. Discovery is never consent or automatic approval.',
+                'caution' => 'Two distinct ownership policies: native functional Staging transfer requires exact original Drive provider proof, independently observed WordPress shadow and its own human-approved ticket; it does not certify Host, crash recovery or backup restore. Host-certified transfer retains original disaster gate. File approval needs another ticket per asset. Discovery never constitutes consent.',
             ),
             'content_and_drafts' => array(
                 'label' => 'Create and verify a governed content draft', 'risk' => 'high',
