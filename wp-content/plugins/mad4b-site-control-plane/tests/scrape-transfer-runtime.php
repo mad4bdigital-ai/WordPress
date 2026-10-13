@@ -268,6 +268,43 @@ check( !$rewritten['ready_for_draft_review'] &&
     $rewritten['brand_editorial_metadata_required'] &&
     $rewritten['html_safety_checked'],
     'Local media URL and caller-supplied HTML cannot certify editorial draft readiness' );
+$editorial_input = $none;
+$editorial_input['editorial_media'] = array( array(
+    'source_url' => $img, 'brand_id' => 'egypt-tour-gates', 'locale' => 'en_US',
+    'title' => 'Nile cruise upper deck', 'alt' => 'Upper deck of a Nile cruise ship in Luxor',
+    'caption' => 'River views from the cruise deck',
+    'description' => 'An original English editorial description for ETG.',
+    'reviewed' => true ) );
+$original_plan = MAD4B_SCP_Scrape_Transfer::plan( $editorial_input );
+check( ! is_wp_error( $original_plan ) &&
+    $original_plan['brand_editorial_metadata_required'] === false &&
+    $original_plan['media_metadata_readback_verified'] === false &&
+    $original_plan['image_import_tasks'][0]['source_metadata']['alt'] === 'Deck' &&
+    $original_plan['remote_media_manifest_items'][0]['import']['alt'] ===
+        'Upper deck of a Nile cruise ship in Luxor' &&
+    $original_plan['image_import_tasks'][0]['brand_id'] === 'egypt-tour-gates',
+    'Original brand metadata is separate from captured competitor metadata and requires readback' );
+$unreviewed_media = $editorial_input;
+$unreviewed_media['editorial_media'][0]['reviewed'] = false;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $unreviewed_media ) ),
+    'Unreviewed SEO metadata cannot override the captured image fields' );
+$good_receipt = $input;
+$good_receipt['scrape_receipt'] = array(
+    'record_id' => 'research-capture-001',
+    'source_page_url' => $input['source_page_url'],
+    'body_sha256' => hash( 'sha256', $input['html'] ),
+    'captured_at' => '2026-10-13T12:00:00Z' );
+$receipt_plan = MAD4B_SCP_Scrape_Transfer::plan( $good_receipt );
+check( ! is_wp_error( $receipt_plan ) &&
+    $receipt_plan['scrape_receipt_id'] === 'research-capture-001' &&
+    $receipt_plan['scrape_provenance_status'] === 'submitted_receipt_not_server_verified' &&
+    !$receipt_plan['scrape_provenance_verified'] &&
+    $receipt_plan['plan_sha256'] !== $plan['plan_sha256'],
+    'Caller receipt matches exact bytes but cannot attest to the server-side scrape' );
+$bad_receipt = $good_receipt;
+$bad_receipt['scrape_receipt']['body_sha256'] = str_repeat( 'f', 64 );
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad_receipt ) ),
+    'Mismatched remote scrape receipt must be rejected' );
 $GLOBALS['reader'] = false;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $input ) ),
     'Unauthorized caller must not inspect site links' );
