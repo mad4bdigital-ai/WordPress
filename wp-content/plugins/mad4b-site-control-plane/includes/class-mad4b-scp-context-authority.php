@@ -33,6 +33,12 @@ final class MAD4B_SCP_Context_Authority {
 	const MAX_ASSETS = 1000;
 
 	private static $booted = false;
+    private static $native_transfer_request_marker = '';
+    private static function native_transfer_request_marker() {
+        if ( '' === self::$native_transfer_request_marker )
+            self::$native_transfer_request_marker = bin2hex( random_bytes( 16 ) );
+        return self::$native_transfer_request_marker;
+    }
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -912,6 +918,8 @@ final class MAD4B_SCP_Context_Authority {
                         'approval_ticket_sha256' => hash( 'sha256',
                             (string) ( $identity['approval_ticket_id'] ?? '' ) ),
                         'owner_user_id' => get_current_user_id(),
+                        'writer_request_marker_sha256' => hash( 'sha256',
+                            self::native_transfer_request_marker() ),
                         'functional_only' => true,
                         'mariadb_crash_certified' => false, 'rollback_certified' => false,
                         'created_at' => gmdate( 'c' ),
@@ -1033,7 +1041,12 @@ final class MAD4B_SCP_Context_Authority {
         if ( is_wp_error( $legacy ) ) return $legacy;
         $record = self::raw_sources()[ $source_id ] ?? array();
         $receipt = is_array( $record ) ? ( $record['functional_transfer_receipt'] ?? array() ) : array();
-        $ok = is_array( $receipt )
+        $different_request = is_array( $receipt )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D',
+                (string) ( $receipt['writer_request_marker_sha256'] ?? '' ) )
+            && ! hash_equals( (string) $receipt['writer_request_marker_sha256'],
+                hash( 'sha256', self::native_transfer_request_marker() ) );
+        $ok = $different_request && is_array( $receipt )
             && ! empty( $legacy['ready_for_fresh_source_scan'] )
             && 'mad4b.context-native-transfer-receipt.v1' === ( $receipt['contract'] ?? '' )
             && true === ( $receipt['functional_only'] ?? false )
@@ -1051,6 +1064,7 @@ final class MAD4B_SCP_Context_Authority {
             'state' => $ok ? 'FUNCTIONAL_TRANSFER_READBACK_PASS'
                 : 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE',
             'source_id' => $source_id, 'site_bound_source_verified' => $ok,
+            'independent_request_observed' => $different_request,
             'asset_count' => (int) ( $legacy['asset_count'] ?? 0 ),
             'old_reviews_invalidated' => $ok, 'new_source_created' => false,
             'receipt_sha256' => $ok ? hash( 'sha256', wp_json_encode( $receipt ) ) : '',
