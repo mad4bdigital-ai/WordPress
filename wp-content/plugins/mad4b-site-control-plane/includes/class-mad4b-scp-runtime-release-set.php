@@ -741,10 +741,46 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		return is_array( $links ) ? $links : array();
 	}
 
+	/**
+	 * The admin form is a snapshot, never consent for whichever release later
+	 * appears in the channel. This is pure and non-authorizing; the original
+	 * admin capability, nonce, exact plan and approval gates still apply.
+	 */
+	public static function admin_form_preflight( $status, $input, $method ) {
+		if ( 'POST' !== strtoupper( (string) $method ) )
+			return new WP_Error( 'mad4b_runtime_admin_post_required', 'Runtime update requires a signed POST request.' );
+		if ( ! is_array( $status ) || ! is_array( $input ) )
+			return new WP_Error( 'mad4b_runtime_admin_snapshot_invalid', 'Current runtime snapshot is unavailable.' );
+		$release_sha = (string) ( $status['release_set_sha256'] ?? '' );
+		$current_sha = (string) ( $status['current']['control_plane']['source_commit_sha'] ?? '' );
+		$target_sha = (string) ( $status['target']['control_plane']['source_commit_sha'] ?? '' );
+		$current_version = (string) ( $status['current']['control_plane']['version'] ?? '' );
+		$target_version = (string) ( $status['target']['control_plane']['version'] ?? '' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $release_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $current_sha )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $target_sha )
+			|| '' === $current_version || '' === $target_version )
+			return new WP_Error( 'mad4b_runtime_admin_target_unavailable', 'Certified runtime pair is missing exact release identity.' );
+		if ( version_compare( $target_version, $current_version, '<' ) )
+			return new WP_Error( 'mad4b_runtime_admin_downgrade_blocked', 'The release channel points to an older version.' );
+		if ( ! empty( $status['transaction']['state'] ) &&
+			! in_array( $status['transaction']['state'], array( 'committed', 'cancelled', 'rolled_back' ), true ) )
+			return new WP_Error( 'mad4b_runtime_admin_transition_in_progress', 'Runtime transition is already in progress.' );
+		$input_release = isset( $input['expected_release_set_sha256'] ) && is_string( $input['expected_release_set_sha256'] )
+			? sanitize_text_field( wp_unslash( $input['expected_release_set_sha256'] ) ) : '';
+		$input_current = isset( $input['expected_current_source_commit_sha'] ) && is_string( $input['expected_current_source_commit_sha'] )
+			? sanitize_text_field( wp_unslash( $input['expected_current_source_commit_sha'] ) ) : '';
+		if ( ! hash_equals( $release_sha, $input_release ) || ! hash_equals( $current_sha, $input_current ) )
+			return new WP_Error( 'mad4b_runtime_admin_stale_form', 'Runtime target or installed source changed since the form was opened. Reload.' );
+		return true;
+	}
+
 	public static function handle_admin_apply() {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to update plugins.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_runtime_release_set_apply' );
+		$preflight = self::admin_form_preflight( self::status(), $_POST, $_SERVER['REQUEST_METHOD'] ?? '' );
+		if ( is_wp_error( $preflight ) ) self::redirect_admin_result( 'blocked', $preflight->get_error_code() );
 		$reason = 'WordPress administrator requested the exact compatible MAD4B runtime release set.';
 		$plan = self::plan( array( 'reason' => $reason ) );
 		if ( is_wp_error( $plan ) ) self::redirect_admin_result( 'plan_error', $plan->get_error_code() );
