@@ -1,5 +1,53 @@
 # Feature 007 — Brand Core recovery from A to Z through the existing MAD4B MCP
 
+## Incident: ETG native binding fails after one-time approval claim (2026-10-14)
+
+**Evidence:** The original ETG native-binding ticket
+`868d97c0-30d5-4258-935a-602cf22317e5` was legitimately
+AI-approved under the live `ai_autonomous` Staging policy, then advanced to
+`failed` when the governed ability entered execution. The append-only audit
+showed `approval-claimed` and execution checkpoints, but the independent
+WordPress Site Profile read stayed on revision `6` with
+`deployment_binding_bound=false` and `mutation_pending_audit=false`.
+The ticket is terminal; never replay it or substitute new unapproved input.
+
+**Root-cause correction:** The existing immutable execution boundary
+already claims `mad4b/deployment-binding-native-apply` once. The old
+`apply()` invoked authorization and `claim_mutation()` a second time on
+the **same one-time ticket**, predictably failing once the first claim
+entered `executing`. Permission preflight remains separate and
+non-consuming. The update removes the nested claim, but does **not** make
+`apply()` a direct public write: it fails closed unless an ephemeral
+callback proof was minted by the trusted authorization wrapper **after**
+its real exact ticket claim and provider-entry checkpoint. The proof
+matches the ticket and complete callback input, exists only in that
+callback's PHP scope, and is cleared with `finally` on both success and
+exception.
+
+**Regression fixtures:** `tests/deployment-binding-native-runtime.php`
+refuses direct calls and checks only one outer approval claim. The
+separate real Authorization class fixture,
+`tests/deployment-binding-claim-context-runtime.php`, checks exact
+ticket/input matching, wrong-ticket denial, preflight-only denial,
+other-ability isolation, and exception-safe proof erasure. Both are
+included in the PHP 7.4/8.3 Context Authority CI workflow.
+
+**Stage rollout boundary:** The GitHub PR is development source, not
+the installed Control Plane. `mad4b/control-plane-selected-head-plan`
+on ETG reports `eligible=false` for the latest PR:
+`exact_staging_binding_required`,
+`mad4b_selected_head_certified_artifact_unavailable`,
+`selected_head_opt_in_disabled`. The native release channel points
+to an older build and is not an upgrade route. Do not force-install an
+uncertified archive, downgrade, or replay the failed ticket. Use a
+separately governed and testable Staging bootstrap/update route with
+fresh exact source artifact provenance, separate owner approval and
+post-update readback; only then create a NEW exact binding ticket and
+run a distinct-request binding readback and Context Census.
+Never infer live PASS from a source commit or an AI-approved ticket.
+
+---
+
 ## Feature 007 — full WordPress-native Lifecycle closure (2026-10-13)
 
 **Deployment binding is per site.** The two exact staging environments
