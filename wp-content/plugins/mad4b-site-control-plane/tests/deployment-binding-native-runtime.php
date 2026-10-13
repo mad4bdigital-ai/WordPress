@@ -168,6 +168,18 @@ bn_assert( preg_match('/^[a-f0-9]{96}$/D',$key)
 bn_assert( MAD4B_SCP_Deployment_Binding_Native::status()['state'] === 'ALREADY_HAS_PROFILE_BINDING'
     && is_wp_error(MAD4B_SCP_Deployment_Binding_Native::apply($payload)),
     'no replay or rotation' );
+$same_request = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+    'expected_site_uuid' => $original['site_uuid'],
+    'minimum_profile_revision' => $updated['revision'],
+) );
+bn_assert( $same_request['state'] === 'BINDING_READBACK_INCOMPLETE'
+    && !$same_request['independent_request_observed'],
+    'same PHP request cannot self-attest a just-written binding' );
+// Pure-process fixture: reset only the local static request marker to emulate
+// an independent new WordPress HTTP request, not a real Host crash test.
+$marker = new ReflectionProperty( 'MAD4B_SCP_Deployment_Binding_Native', 'request_marker' );
+$marker->setAccessible( true );
+$marker->setValue( null, '' );
 $verified = MAD4B_SCP_Deployment_Binding_Native::readback( array(
     'expected_site_uuid' => $original['site_uuid'],
     'minimum_profile_revision' => $updated['revision'],
@@ -175,6 +187,7 @@ $verified = MAD4B_SCP_Deployment_Binding_Native::readback( array(
 bn_assert( is_array( $verified )
     && 'WORDPRESS_BINDING_READBACK_PASS' === $verified['state']
     && $verified['next_ability'] === 'context/legacy-reconciliation-census'
+    && $verified['independent_request_observed']
     && !$verified['independent_host_attestation_certified']
     && !$verified['mariadb_crash_certified']
     && $out['next_readback'] === MAD4B_SCP_Deployment_Binding_Native::READBACK,
