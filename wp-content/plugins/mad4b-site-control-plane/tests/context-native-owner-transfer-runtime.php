@@ -32,6 +32,13 @@ class MAD4B_SCP_Site_Profile {
 }
 class MAD4B_SCP_Operational_Scope_Guard {
     public static function require_current() { return $GLOBALS['scope']; }
+    public static function record_metadata_matches( $record, $scope ) {
+        foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment',
+            'deployment_mode' ) as $name )
+            if ( isset( $record[$name] ) && (string) $record[$name] !== (string) $scope[$name] )
+                return false;
+        return true;
+    }
 }
 class MAD4B_SCP_Google_Drive_Context {
     public static $changed = false;
@@ -194,4 +201,49 @@ check( is_wp_error( $legacy )
 check( !empty($GLOBALS['opts']['mad4b_scp_context_sources_v1'][$GLOBALS['source_id']])
     && '' === $GLOBALS['opts']['mad4b_scp_context_sources_v1'][$GLOBALS['source_id']]['brand_id'],
     'All denial paths preserve original quarantined registry.' );
-echo "PASS: WordPress-native plan source, shadow, version, site and explicit human approval safety\n";
+// Readback remains fail-closed until the original source has an authenticated
+// persisted transfer receipt and all previously approved assets are stale.
+$premature = MAD4B_SCP_Context_Authority::native_owner_transfer_readback( array(
+    'source_id' => $GLOBALS['source_id'], 'job_id' => $job,
+    'expected_native_plan_sha256' => $plan['plan_sha256'] ) );
+check( $premature['state'] === 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE',
+    'Unapproved source cannot provide an invented functional transfer receipt.' );
+$src =& $GLOBALS['opts']['mad4b_scp_context_sources_v1'][$GLOBALS['source_id']];
+$asset =& $GLOBALS['opts']['mad4b_scp_context_assets_v1'][$asset_id];
+$src['brand_id'] = $GLOBALS['brand_id'];
+$src['write_policy'] = 'read_only';
+$src['status'] = 'selected';
+$src['last_scan_complete'] = false;
+$src['functional_transfer_receipt'] = array(
+    'contract' => 'mad4b.context-native-transfer-receipt.v1',
+    'native_plan_sha256' => $plan['plan_sha256'],
+    'provider_proof_sha256' => $plan['provider_proof_sha256'],
+    'job_id_sha256' => hash( 'sha256', $job ),
+    'approval_ticket_sha256' => hash( 'sha256', 'ticket-123' ),
+    'owner_user_id' => 13,
+    'functional_only' => true, 'mariadb_crash_certified' => false,
+    'rollback_certified' => false, 'created_at' => '2026-10-13T01:00:00Z',
+);
+$asset['brand_id'] = $GLOBALS['brand_id'];
+$asset['status'] = 'stale';
+$asset['review_status'] = 'unreviewed';
+$asset['reviewed_content_hash'] = '';
+$readback_input = array( 'source_id' => $GLOBALS['source_id'],
+    'job_id' => $job, 'expected_native_plan_sha256' => $plan['plan_sha256'] );
+$readback = MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $readback_input );
+check( $readback['state'] === 'FUNCTIONAL_TRANSFER_READBACK_PASS'
+    && $readback['old_reviews_invalidated']
+    && $readback['next_ability'] === 'context/source-scan-plan'
+    && !$readback['mariadb_crash_certified']
+    && !$readback['production_authorized'],
+    'Original Context source functional receipt is verified without disaster certification.' );
+$foreign_job = $readback_input;
+$foreign_job['job_id'] = str_repeat( 'e', 32 );
+check( 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE' ===
+    MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $foreign_job )['state'],
+    'Different WordPress shadow job does not inherit receipt.' );
+$asset['review_status'] = 'approved';
+check( 'FUNCTIONAL_TRANSFER_READBACK_INCOMPLETE' ===
+    MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $readback_input )['state'],
+    'Unexpected inherited review invalidates functional readback.' );
+echo "PASS: WordPress-native plan, shadow expiry, exact owner consent and source receipt\n";
