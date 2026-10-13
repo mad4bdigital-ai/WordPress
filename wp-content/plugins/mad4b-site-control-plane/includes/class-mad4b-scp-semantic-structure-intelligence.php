@@ -103,7 +103,7 @@ final class MAD4B_SCP_Semantic_Structure_Intelligence {
                 'evidence' => 'wp_registered_taxonomy' );
             $assigned = array(); $assigned_complete = true;
             if ( $post_id ) {
-                $terms = wp_get_object_terms( $post_id, $tax->name, array( 'fields' => 'all' ) );
+                $terms = wp_get_object_terms( $post_id, $tax->name, array( 'fields' => 'all', 'number' => 41 ) );
                 if ( is_wp_error( $terms ) || ! is_array( $terms ) )
                     return new WP_Error( 'mad4b_semantic_structure_term_read_failed',
                         'Cannot independently read assigned taxonomy terms.' );

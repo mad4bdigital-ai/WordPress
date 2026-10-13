@@ -111,3 +111,59 @@ insist( ! $r['authorization_created'] && $r['graph_is_not_execution_plan'] &&
     $r['layout_not_verified'] && $r['business_intent_not_inferred_as_fact'],
     'Reasoning output cannot replace live template proof, source rights or governance.' );
 echo "PASS: domain-neutral graph reuse, composition, candidate collections, provider uncertainty, drift, input bounds, no authorization\n";
+
+// Simulated LIVE registered WordPress data, no business-specific taxonomy IDs.
+class MAD4B_SCP_Policy {
+    public static function can_read() { return ! empty( $GLOBALS['read_granted'] ); }
+}
+class MAD4B_SCP_Site_Profile {
+    public static function status() {
+        return array( 'site_uuid' => 'fixture-site', 'origin_match' => true,
+            'environment_match' => true );
+    }
+}
+function current_user_can( $cap, $id = 0 ) { return ! empty( $GLOBALS['read_granted'] ); }
+function get_post_type_object( $type ) {
+    return 'product' === $type ? (object) array( 'name' => $type ) : null;
+}
+function get_object_taxonomies( $type, $output ) {
+    return array( 'shared_topics' => (object) array( 'name' => 'shared_topics', 'hierarchical' => true ) );
+}
+function get_registered_meta_keys( $group, $type ) {
+    return array( 'schedule_variants' => array( 'type' => 'array', 'single' => true, 'show_in_rest' => true ) );
+}
+function get_post( $id ) { return (object) array( 'ID' => $id, 'post_type' => 'product' ); }
+function wp_get_object_terms( $post_id, $taxonomy, $args ) {
+    insist( $args['number'] === 41, 'Live term sampling must be bounded at 41 evidence rows.' );
+    return array_slice( $GLOBALS['selected_terms'], 0, $args['number'] );
+}
+$GLOBALS['read_granted'] = true;
+$GLOBALS['selected_terms'] = array(
+    (object) array( 'term_id' => 11, 'taxonomy' => 'shared_topics', 'name' => 'Option A',
+        'slug' => 'option-a', 'count' => 12 ),
+    (object) array( 'term_id' => 23, 'taxonomy' => 'shared_topics', 'name' => 'Option B',
+        'slug' => 'option-b', 'count' => 8 ),
+);
+$live = MAD4B_SCP_Semantic_Structure_Intelligence::inspect(
+    array( 'post_type' => 'product', 'post_id' => 100, 'goal' => 'compose_content' ) );
+insist( ! is_wp_error( $live ) && $live['observed_post_id'] === 100 &&
+    $live['patterns'][0]['record_assignment_verified'] &&
+    $live['graph_is_not_execution_plan'] &&
+    $live['nodes_observed'] === 2 &&
+    $live['edges_observed'] === 1, 'Exact existing post should show multiple reusable term links.' );
+$one = MAD4B_SCP_Semantic_Structure_Intelligence::inspect(
+    array( 'post_type' => 'product' ) );
+insist( ! is_wp_error( $one ) && !$one['patterns'][0]['record_assignment_verified'],
+    'CPT registration without an exact post ID is not proof of actual assignments.' );
+$before = $live['schema_snapshot_sha256'];
+$GLOBALS['selected_terms'][] = (object) array( 'term_id' => 90,
+    'taxonomy' => 'shared_topics', 'name' => 'Option C', 'slug' => 'option-c', 'count' => 2 );
+$after = MAD4B_SCP_Semantic_Structure_Intelligence::inspect(
+    array( 'post_type' => 'product', 'post_id' => 100 ) );
+insist( ! is_wp_error( $after ) && $before !== $after['schema_snapshot_sha256'],
+    'Changed selected terms must invalidate the previous graph identity.' );
+$GLOBALS['read_granted'] = false;
+insist( is_wp_error( MAD4B_SCP_Semantic_Structure_Intelligence::inspect(
+    array( 'post_type' => 'product', 'post_id' => 100 ) ) ),
+    'Unauthorized callers cannot inspect term assignments.' );
+echo "PASS: simulated live CPT/term enumeration, bounded evidence and no unauthorized read\n";
