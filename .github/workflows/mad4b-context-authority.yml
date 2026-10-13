@@ -23,6 +23,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -72,6 +73,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -146,6 +148,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
@@ -187,6 +190,12 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+
+      - name: WordPress-only functional owner transfer — provider, shadow and human approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
 
       - name: Execute Google Drive OAuth lifecycle runtime
         shell: bash
