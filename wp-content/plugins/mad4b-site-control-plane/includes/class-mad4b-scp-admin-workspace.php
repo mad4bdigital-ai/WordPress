@@ -48,6 +48,7 @@ final class MAD4B_SCP_Admin_Workspace {
 	/** Presentation contracts for the existing pages; unknown registered pages remain discoverable. */
 	private static function definitions() {
 		return array(
+			'mad4b-provider-connections' => array( __( 'Provider Connections', 'mad4b-site-control-plane' ), __( 'Inspect provider health, refresh saved grants or hand off owner OAuth consent. Remote mutation remains ticket-governed.', 'mad4b-site-control-plane' ), 'runtime', '', array() ),
 			'mad4b-ai-knowledge-workspace' => array( __( 'AI Knowledge Workspace', 'mad4b-site-control-plane' ), __( 'Inspect knowledge sources and context eligibility; governed actions require a separate authorized route.', 'mad4b-site-control-plane' ), 'content', '', array() ),
 			'mad4b-assistant-workspace' => array( __( 'Assistant Review', 'mad4b-site-control-plane' ), __( 'Read assistant bootstrap, blockers and queue without executing actions.', 'mad4b-site-control-plane' ), 'operate', '', array() ),
 			'mad4b-growth-providers' => array( __( 'Growth Providers', 'mad4b-site-control-plane' ), __( 'Review provider, supplier, market and media rights policy before authorizing changes.', 'mad4b-site-control-plane' ), 'content', '', array() ),
