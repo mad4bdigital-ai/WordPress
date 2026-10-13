@@ -156,6 +156,12 @@ final class MAD4B_SCP_Native_Recovery {
             'active_job' => true, 'job_id' => $job,
             'mode' => (string) $scratch['mode'],
             'expires_at' => (int) $scratch['expires_at'],
+            'remaining_seconds' => max( 0, (int) $scratch['expires_at'] - time() ),
+            'recovery_state' => $expired ? 'EXPIRED_NEEDS_CLEANUP'
+                : ( time() + 90 >= (int) $scratch['expires_at']
+                    ? 'SHADOW_EXPIRING_REPLAN_REQUIRED'
+                    : 'AWAITING_INDEPENDENT_READBACK' ),
+            'replan_after_cleanup' => $expired,
             'step' => $expired ? 4 : 3, 'steps_total' => 4,
             'next_ability' => $expired ? self::CLEAN : self::READBACK,
             'separate_owner_approval_for_cleanup' => true,
@@ -383,6 +389,15 @@ final class MAD4B_SCP_Native_Recovery {
         $scratch = get_option( self::OPTION, null );
         if ( ! is_array( $scratch ) || ! hash_equals( (string) ( $scratch['job_id'] ?? '' ), (string) $job_id )
             || time() < (int) ( $scratch['expires_at'] ?? PHP_INT_MAX ) ) return;
+        // A transient WP-Cron invocation cannot act as an owner. Only the
+        // dedicated scratch record may expire, with an audit intent first.
+        // If audit is missing, retain the record for governed owner cleanup.
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return;
+        $audit = MAD4B_SCP_Audit::record( self::CRON, array(
+            'job_id' => $job_id, 'phase' => 'expiry_cleanup_intent',
+            'context_registry_modified' => false, 'production_authorized' => false
+        ), 'success' );
+        if ( is_wp_error( $audit ) ) return;
         delete_option( self::OPTION );
     }
 }
