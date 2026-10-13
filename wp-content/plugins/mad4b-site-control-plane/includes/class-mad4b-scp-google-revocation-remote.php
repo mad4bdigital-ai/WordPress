@@ -73,6 +73,32 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             return new WP_Error( 'mad4b_google_revoke_staging_scope_denied', 'Exact enrolled Staging Site Profile required.' );
         return $s;
     }
+    /**
+     * Shared non-authorizing time admission for MCP Retry revoke. The native
+     * wp-admin form already enforces a 60-second cooldown; the remote plan
+     * must not offer a shortcut around the same Google provider backoff.
+     * Unknown or malformed timestamps fail closed for operator review.
+     */
+    public static function retry_admission( $connection, $now ) {
+        if ( ! is_array( $connection ) || empty( $connection['revocation_pending'] )
+            || empty( $connection['connected'] )
+            || ! empty( $connection['read_available'] ) || ! empty( $connection['write_available'] ) )
+            return array( 'eligible' => false, 'retry_after_seconds' => 0,
+                'blocker' => 'google_revocation_not_pending' );
+        $stamp = isset( $connection['revocation_attempted_at'] ) && is_string( $connection['revocation_attempted_at'] )
+            ? trim( $connection['revocation_attempted_at'] ) : '';
+        $last = '' !== $stamp ? strtotime( $stamp ) : false;
+        if ( false === $last || $last < 1 )
+            return array( 'eligible' => false, 'retry_after_seconds' => 0,
+                'blocker' => 'google_revocation_attempt_timestamp_invalid' );
+        $wait = max( 0, 60 - ( (int) $now - $last ) );
+        if ( $wait > 0 ) return array(
+            'eligible' => false, 'retry_after_seconds' => min( $wait, 3600 ),
+            'blocker' => 'google_revocation_retry_cooldown',
+        );
+        return array( 'eligible' => true, 'retry_after_seconds' => 0, 'blocker' => '' );
+    }
+
     public static function status( $input = array() ) {
         if ( ! self::can_read() || ! is_array( $input ) || $input )
             return new WP_Error( 'mad4b_google_revoke_status_denied', 'Staging administrator read required.' );
@@ -81,14 +107,17 @@ final class MAD4B_SCP_Google_Revocation_Remote {
         $c = MAD4B_SCP_Google_Drive_Context::connection_status();
         $pending = ! empty( $c['revocation_pending'] ) && ! empty( $c['connected'] )
             && empty( $c['read_available'] ) && empty( $c['write_available'] );
+        $admission = self::retry_admission( $c, time() );
         return array(
             'contract' => self::CONTRACT . '.status.v1',
             'state' => $pending ? 'PENDING_SAFE_RETRY' : 'NOT_PENDING',
-            'retry_eligible' => $pending,
+            'retry_eligible' => ! empty( $admission['eligible'] ),
+            'retry_after_seconds' => (int) $admission['retry_after_seconds'],
+            'retry_blocker' => (string) $admission['blocker'],
             'revocation_error' => isset( $c['revocation_error'] ) ? (string) $c['revocation_error'] : '',
             'site_uuid' => (string) $s['site_uuid'],
             'profile_revision' => (int) $s['revision'],
-            'next_ability' => $pending ? self::PLAN : '',
+            'next_ability' => ! empty( $admission['eligible'] ) ? self::PLAN : '',
             'oauth_read_available' => ! empty( $c['read_available'] ),
             'oauth_write_available' => ! empty( $c['write_available'] ),
             'remote_revocation_confirmed' => false,
@@ -103,8 +132,16 @@ final class MAD4B_SCP_Google_Revocation_Remote {
         $s = self::scope();
         if ( is_wp_error( $s ) ) return $s;
         $status = self::status();
-        if ( is_wp_error( $status ) || empty( $status['retry_eligible'] ) )
-            return new WP_Error( 'mad4b_google_revoke_not_pending', 'No disabled pending Google grant eligible for safe retry.' );
+        if ( is_wp_error( $status ) ) return $status;
+        if ( empty( $status['retry_eligible'] ) ) {
+            $reason = (string) ( $status['retry_blocker'] ?? '' );
+            if ( 'google_revocation_retry_cooldown' === $reason )
+                return new WP_Error( 'mad4b_google_revoke_retry_cooldown',
+                    'Wait until the pending Google revoke cooldown ends before planning another provider call.',
+                    array( 'retry_after_seconds' => (int) ( $status['retry_after_seconds'] ?? 0 ) ) );
+            return new WP_Error( 'mad4b_google_revoke_not_retryable',
+                'Pending Google revocation needs operator review or is not eligible for provider retry.' );
+        }
         $stored = get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, null );
         if ( ! is_array( $stored ) || ! $stored )
             return new WP_Error( 'mad4b_google_revoke_token_identity_missing', 'Encrypted pending grant identity is not available.' );
