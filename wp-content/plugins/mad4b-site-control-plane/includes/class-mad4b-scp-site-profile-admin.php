@@ -311,6 +311,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	}
 
 	private static function redirect( $state ) {
+		// Read the persisted post-action identity, not the request-local cache.
+		// A signed result must remain valid after the next WordPress request.
+		MAD4B_SCP_Site_Profile::reset_cache();
 		$state = sanitize_key( (string) $state );
 		$url = add_query_arg( array(
 			'page' => self::PAGE_SLUG, 'mad4b_site_profile' => $state,
