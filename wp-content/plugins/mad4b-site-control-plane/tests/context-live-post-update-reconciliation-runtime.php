@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 
 function esc_html__( $text, $domain = '' ) { return (string) $text; }
 function __( $text, $domain = '' ) { return (string) $text; }
+function sanitize_key( $text ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $text ) ); }
 function esc_html( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function esc_url( $text ) { return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' ); }
 function admin_url( $path = '' ) { return 'https://staging.example.test/wp-admin/' . $path; }
