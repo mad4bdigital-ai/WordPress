@@ -301,6 +301,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-multi-authority-registry.
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-oauth-subject-user-bridge.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-external-handshake-evidence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-frontend-origin-diagnostic.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-security-diagnostics.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-live-acceptance-observer.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-preview-matrix.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g8-record.php';
@@ -591,6 +592,7 @@ MAD4B_SCP_Production_Readiness_Evaluator::boot();
 MAD4B_SCP_Operator_Control_Center::boot();
 MAD4B_SCP_Automation_SLO::boot();
 MAD4B_SCP_G7_Read_Surfaces::boot();
+MAD4B_SCP_Security_Diagnostics::boot();
 MAD4B_SCP_ACI01_Intake_Preview::boot();
 MAD4B_SCP_ACI01_Evidence_Preview::boot();
 MAD4B_SCP_ACI01_Opportunity_Preview::boot();
