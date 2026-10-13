@@ -785,19 +785,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<div class="notice ' . esc_attr( $connection_notice_class ) . ' inline"><p><strong>' . esc_html( $refresh_required ? __( 'Google is connected — refresh needed.', 'mad4b-site-control-plane' ) : __( 'Google is connected.', 'mad4b-site-control-plane' ) ) . '</strong>';
 			if ( ! empty( $connection['account_email'] ) ) echo ' · ' . esc_html( $connection['account_email'] );
 			echo '</p>';
-			if ( $refresh_required ) echo '<p class="description">' . esc_html__( 'The stored connection remains valid and does not require reconnect. The next provider request may refresh the access token using the saved grant.', 'mad4b-site-control-plane' ) . '</p>';
-			if ( $refresh_required && empty( $connection['reconnect_required'] ) && empty( $connection['refresh_failed'] ) ) {
-				$grant_sha = MAD4B_SCP_Google_Drive_Context::encrypted_grant_identity_sha256();
-				if ( ! is_wp_error( $grant_sha ) ) {
-					echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-refresh-form">';
-					wp_nonce_field( self::ACTION_REFRESH_GOOGLE );
-					echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REFRESH_GOOGLE ) . '">';
-					echo '<input type="hidden" name="expected_google_grant_sha256" value="' . esc_attr( $grant_sha ) . '">';
-					echo '<label><input type="checkbox" name="confirm_google_refresh" value="1" required> ' . esc_html__( 'Use the existing Google grant to refresh the access token; do not change permissions.', 'mad4b-site-control-plane' ) . '</label> ';
-					submit_button( __( 'Refresh Connection', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
-					echo '</form>';
-				}
-			}
+			if ( $refresh_required && empty( $connection['reconnect_required'] ) ) echo '<p class="description">' . esc_html__( 'The saved grant is still available. Use Refresh Connection below; renewed Google consent is not required unless token refresh fails with an invalid grant.', 'mad4b-site-control-plane' ) . '</p>';
 
 			echo '</div>';
 
@@ -1010,8 +998,13 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="notice ' . esc_attr( $connection_notice_class ) . ' inline"><p><strong>' . esc_html( $refresh_required ? __( 'Connected — refresh needed', 'mad4b-site-control-plane' ) : __( 'Connected', 'mad4b-site-control-plane' ) ) . '</strong>';
 		if ( $connection['account_email'] ) echo ' · ' . esc_html( $connection['account_email'] );
 		echo ' · ' . esc_html( $access_label ) . '</p>';
-		if ( $refresh_required ) echo '<p class="description"><code>refresh_required</code> · ' . esc_html__( 'Reconnect is not required unless token refresh fails or the provider revokes the grant.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( $refresh_required && empty( $connection['reconnect_required'] ) && empty( $connection['refresh_failed'] ) ) {
+		if ( $refresh_required && empty( $connection['reconnect_required'] ) ) echo '<p class="description"><code>refresh_required</code> · ' . esc_html__( 'Refresh the existing token without changing Google permissions. Renewed consent is only required when the saved grant is rejected.', 'mad4b-site-control-plane' ) . '</p>';
+		$refresh_wait = 0;
+		if ( ! empty( $connection['refresh_failed'] ) ) {
+			$failed_at = isset( $connection['refresh_failure_at'] ) ? strtotime( (string) $connection['refresh_failure_at'] ) : false;
+			$refresh_wait = false === $failed_at ? 60 : max( 0, 60 - ( time() - $failed_at ) );
+		}
+		if ( $refresh_required && empty( $connection['reconnect_required'] ) ) {
 			$grant_sha = MAD4B_SCP_Google_Drive_Context::encrypted_grant_identity_sha256();
 			if ( ! is_wp_error( $grant_sha ) ) {
 				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" class="mad4b-google-refresh-form">';
@@ -1019,7 +1012,8 @@ final class MAD4B_SCP_Context_Admin_UI {
 				echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REFRESH_GOOGLE ) . '">';
 				echo '<input type="hidden" name="expected_google_grant_sha256" value="' . esc_attr( $grant_sha ) . '">';
 				echo '<label><input type="checkbox" name="confirm_google_refresh" value="1" required> ' . esc_html__( 'Refresh the Google access token using the existing grant only.', 'mad4b-site-control-plane' ) . '</label> ';
-				submit_button( __( 'Refresh Connection', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+				if ( $refresh_wait > 0 ) echo '<p class="description">' . esc_html( sprintf( __( 'Provider refresh retry available after %d second(s). Reload then retry.', 'mad4b-site-control-plane' ), $refresh_wait ) ) . '</p>';
+				submit_button( __( 'Refresh Connection', 'mad4b-site-control-plane' ), 'secondary', 'submit', false, $refresh_wait > 0 ? array( 'disabled' => 'disabled' ) : array() );
 				echo '</form>';
 			}
 		}
