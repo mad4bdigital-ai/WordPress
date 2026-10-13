@@ -19,7 +19,8 @@ class MAD4B_SCP_Site_Profile {
     public static $environment = 'staging';
     public static function status() {
         return array( 'environment' => self::$environment, 'origin_match' => true,
-            'environment_match' => true );
+            'environment_match' => true, 'site_uuid' => 'site-a',
+            'profile_digest' => str_repeat( 'a', 64 ) );
     }
 }
 class MAD4B_SCP_Context_Authority {
@@ -44,6 +45,22 @@ class MAD4B_SCP_Context_Authority {
             'conflicting_required_context_sets' => array(),
             'coverage' => array( 'brand_strategy' => $e, 'tone_of_voice' => $e,
                 'editorial_guidelines' => $e ) );
+    }
+    public static function legacy_owner_transfer_discover( $input = array() ) {
+        return array( 'eligible_unbound_candidates' => self::$source_count ? array(
+            array( 'source_id' => str_repeat( 'b', 64 ), 'asset_count' => self::$asset_count )
+        ) : array() );
+    }
+    public static function review_queue() {
+        return array( 'items' => empty( $GLOBALS['review_item'] ) ? array() :
+            array( $GLOBALS['review_item'] ) );
+    }
+    public static function remote_owner_review_plan( $input ) {
+        if ( empty( $GLOBALS['review_item'] ) ) return new WP_Error( 'no_review_item' );
+        if ( 'ready' !== ( $GLOBALS['review_item']['normalization_status'] ?? '' ) )
+            return new WP_Error( 'content_incomplete' );
+        return array( 'asset_id' => $input['asset_id'],
+            'plan_sha256' => hash( 'sha256', $input['asset_id'] ) );
     }
     public static function legacy_owner_transfer_evidence( $input ) {
         return array( 'folder_membership_verified' => true,
@@ -82,7 +99,8 @@ brand_remote_assert( 8 === count( $stages ), 'eight original recovery stages' );
 MAD4B_SCP_Brand_Core_Remote_Recovery::register_abilities();
 foreach ( array( 'mad4b/brand-core-remote-recovery-status',
     'mad4b/brand-core-remote-recovery-prepare',
-    'mad4b/brand-core-recovery-alternatives' ) as $name ) {
+    'mad4b/brand-core-recovery-alternatives',
+    'mad4b/brand-core-wordpress-mode' ) as $name ) {
     $ability = $GLOBALS['mad4b_abilities'][ $name ];
     brand_remote_assert( $ability['category'] === 'mad4b-read' &&
         $ability['meta']['annotations']['readonly'] === true &&
@@ -100,6 +118,44 @@ brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue
     && $stages['brand_approval']['next'] === 'context/remote-owner-review-apply'
     && $stages['brand_approval']['approval'] === true,
     'Brand approval lifecycle must use exact remote owner plan and separately governed decision' );
+// WordPress-only mode never treats a saved legacy folder as owned.
+$native_view = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
+brand_remote_assert( ! is_wp_error( $native_view )
+    && 'OWNER_TRANSFER_BLOCKED' === $native_view['state']
+    && $native_view['source']['selected_source_id'] === str_repeat( 'b', 64 )
+    && $native_view['quarantine_count'] === 13
+    && !$native_view['automatic_owner_transfer']
+    && !$native_view['automatic_file_approval']
+    && !$native_view['native_crash_recovery_certified']
+    && !$native_view['release_or_publication_authorized']
+    && !$native_view['mutation_performed'], 'Host-free native recovery is a safe read-only workflow' );
+$foreign = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode(
+    array( 'source_id' => str_repeat( 'c', 64 ) ) );
+brand_remote_assert( is_wp_error( $foreign ), 'Cannot choose foreign source' );
+brand_remote_assert( is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode(
+    array( 'permission_override' => true ) ) ), 'Cannot request an undocumented authority flag' );
+brand_remote_assert( is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode(
+    array( 'limit' => 200 ) ) ), 'Review inventory is bounded' );
+$GLOBALS['review_item'] = array( 'asset_id' => str_repeat( 'd', 64 ),
+    'source_id' => str_repeat( 'e', 64 ), 'title' => 'Brand Strategy.md',
+    'category' => 'brand_strategy', 'required' => true,
+    'content_hash' => str_repeat( 'f', 64 ), 'review_status' => 'unreviewed',
+    'normalization_status' => 'ready' );
+$with_file = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
+brand_remote_assert( ! is_wp_error( $with_file )
+    && 1 === $with_file['file_count']
+    && $with_file['files'][0]['plan_ready']
+    && $with_file['files'][0]['next_governed_write'] === 'context/remote-owner-review-apply'
+    && $with_file['files'][0]['separate_human_approved_ticket_required']
+    && !$with_file['automatic_file_approval'],
+    'Native mode discovers exact file review plan, never approves the file itself' );
+$GLOBALS['review_item']['normalization_status'] = 'stale';
+$unready = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
+brand_remote_assert( ! $unready['files'][0]['plan_ready']
+    && '' === $unready['files'][0]['next_governed_write']
+    && 'content_incomplete' === $unready['files'][0]['blocker'],
+    'Incomplete source is ineligible for approval' );
+unset( $GLOBALS['review_item'] );
 $normal = MAD4B_SCP_Brand_Core_Remote_Recovery::status();
 brand_remote_assert( isset( $normal['alternative_routes']['domains']['host_runner'] )
     && !$normal['alternative_routes']['all_remote_steps_execution_certified'],
