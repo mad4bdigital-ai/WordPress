@@ -55,6 +55,7 @@ class MAD4B_SCP_Native_Recovery {
             array( 'source_id' => $GLOBALS['source_id'] ) );
         return array(
             'state' => 'WP_NATIVE_CROSS_REQUEST_VERIFIED',
+            'job_id' => (string) $input['job_id'],
             'mode' => 'shadow', 'source_id' => self::$wrong_source ? str_repeat( 'f', 64 ) : $GLOBALS['source_id'],
             'independent_request_observed' => ! self::$same_request,
             'scratch_functional_rehearsal_verified' => ! self::$same_request,
