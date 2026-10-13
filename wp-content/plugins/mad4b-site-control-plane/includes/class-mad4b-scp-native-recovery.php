@@ -321,7 +321,11 @@ final class MAD4B_SCP_Native_Recovery {
             (int) $scratch['expires_at'], time(), $legacy_exact && $provider_exact );
         return array( 'contract' => self::CONTRACT . '.readback.v1',
             'job_id' => $scratch['job_id'], 'mode' => $scratch['mode'],
-            'state' => $passed ? 'WP_NATIVE_CROSS_REQUEST_VERIFIED' : 'WP_NATIVE_INCOMPLETE',
+            'expires_at' => (int) $scratch['expires_at'],
+            'remaining_seconds' => max( 0, (int) $scratch['expires_at'] - time() ),
+            'cleanup_required' => ! $fresh,
+            'state' => $passed ? 'WP_NATIVE_CROSS_REQUEST_VERIFIED'
+                : ( ! $fresh ? 'EXPIRED_NEEDS_CLEANUP' : 'WP_NATIVE_INCOMPLETE' ),
             'independent_request_observed' => $separate,
             'scratch_hash_verified' => true, 'site_binding_verified' => true,
             'shadow_plan_still_exact' => $legacy_exact,
