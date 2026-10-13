@@ -110,7 +110,10 @@ final class MAD4B_SCP_Google_Revocation_Remote {
         $admission = self::retry_admission( $c, time() );
         return array(
             'contract' => self::CONTRACT . '.status.v1',
-            'state' => $pending ? 'PENDING_SAFE_RETRY' : 'NOT_PENDING',
+            'state' => ! $pending ? 'NOT_PENDING'
+                : ( ! empty( $admission['eligible'] ) ? 'PENDING_SAFE_RETRY'
+                    : ( 'google_revocation_retry_cooldown' === $admission['blocker']
+                        ? 'PENDING_COOLDOWN' : 'PENDING_OPERATOR_REVIEW' ) ),
             'retry_eligible' => ! empty( $admission['eligible'] ),
             'retry_after_seconds' => (int) $admission['retry_after_seconds'],
             'retry_blocker' => (string) $admission['blocker'],
