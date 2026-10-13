@@ -8,6 +8,10 @@ class WP_Error {
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function wp_json_encode( $v ) { return json_encode( $v, JSON_UNESCAPED_SLASHES ); }
+function wp_kses( $html, $allowed, $protocols ) {
+    // Minimal fixture. Real native wp_kses acceptance remains an integration gate.
+    return preg_replace( '/\\s+on[a-z]+\\s*=\\s*(["\\x27]).*?\\1/i', '', $html );
+}
 function wp_parse_url( $v ) { return parse_url( $v ); }
 function home_url( $path = '/' ) { return 'https://staging.our-site.test' . $path; }
 function sanitize_title( $v ) {
@@ -64,7 +68,7 @@ class WP_HTML_Tag_Processor {
     private $mods = array();
     public function __construct( $html ) {
         $this->html = $html;
-        preg_match_all( '/<\s*(a|img|source)\b[^>]*>/i', $html, $matches, PREG_OFFSET_CAPTURE );
+        preg_match_all( '/<\\s*([a-z][a-z0-9]*)\\b[^>]*>/i', $html, $matches, PREG_OFFSET_CAPTURE );
         $this->tags = $matches[0];
     }
     public function next_tag() { return isset( $this->tags[++$this->index] ); }
@@ -119,7 +123,8 @@ $GLOBALS['posts'] = array(
         'permalink' => 'https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg' ),
 );
 $img = 'https://example-competitor.test/assets/photo.jpg';
-$GLOBALS['meta'][19] = array( '_mad4b_remote_media_source_sha256' => hash( 'sha256', $img ) );
+$GLOBALS['meta'][19] = array( '_mad4b_remote_media_source_sha256' => hash( 'sha256', $img ),
+    '_mad4b_remote_media_content_sha256' => str_repeat( 'a', 64 ) );
 $input = array(
     'source_page_url' => 'https://example-competitor.test/deals/special-ship',
     'html' => '<p><a href="/products/exact-route?affiliate=1">Related</a> <a href="/deals/unknown">Unknown</a> <a href="https://independent.test/source">Outside</a></p><img src="' . $img . '" alt="Deck" srcset="' . $img . ' 2x">',
@@ -127,27 +132,42 @@ $input = array(
     'media_bindings' => array( array( 'source_url' => $img, 'attachment_id' => 19 ) ),
 );
 $plan = MAD4B_SCP_Scrape_Transfer::plan( $input );
-check( ! is_wp_error( $plan ) && count( $plan['internal_link_map'] ) === 1 &&
-    count( $plan['unmatched_competitor_links'] ) === 1 &&
+check( ! is_wp_error( $plan ) && count( $plan['internal_link_map'] ) === 0 &&
+    count( $plan['unmatched_competitor_links'] ) === 2 &&
+    count( $plan['suggested_internal_links'] ) === 1 &&
     $plan['image_import_remaining'] === 0 &&
     $plan['source_prices'][0]['raw'] === 'USD 1,457 per person',
     'Exact local link, unresolved competitor link, existing local image and price capture' );
 $rewritten = MAD4B_SCP_Scrape_Transfer::rewrite(
     array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
-check( ! is_wp_error( $rewritten ) && $rewritten['rewritten_internal_links'] === 1 &&
-    $rewritten['competitor_links_unlinked'] === 1 && $rewritten['rewritten_to_local_media'] === 1 &&
-    strpos( $rewritten['html'], 'https://staging.our-site.test/products/exact-route/' ) !== false &&
+check( ! is_wp_error( $rewritten ) && $rewritten['rewritten_internal_links'] === 0 &&
+    $rewritten['competitor_links_unlinked'] === 3 && $rewritten['rewritten_to_local_media'] === 1 &&
+    strpos( $rewritten['html'], 'https://staging.our-site.test/products/exact-route/' ) === false &&
     strpos( $rewritten['html'], 'https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg' ) !== false &&
-    strpos( $rewritten['html'], 'https://independent.test/source' ) !== false &&
+    strpos( $rewritten['html'], 'href="https://independent.test/source"' ) === false &&
     strpos( $rewritten['html'], 'affiliate=1' ) === false &&
     $rewritten['source_prices'][0]['value'] === '1457',
     'Rewrite keeps source facts while mapping exact site links and verified local media' );
+$reviewed = $input;
+$reviewed['link_overrides'] = array( array(
+    'source_url' => '/products/exact-route?affiliate=1',
+    'target_post_id' => 7, 'reviewed' => true ) );
+$review_plan = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+$review_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $reviewed, array( 'expected_plan_sha256' => $review_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $review_rewrite ) &&
+    $review_rewrite['rewritten_internal_links'] === 1 &&
+    strpos( $review_rewrite['html'], 'https://staging.our-site.test/products/exact-route/' ) !== false,
+    'Only reviewed link bindings may map to existing local WordPress permalinks' );
+$rejected = $reviewed; $rejected['link_overrides'][0]['reviewed'] = false;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $rejected ) ),
+    'Manual link missing review must not be accepted' );
 $term_page = $input;
 $term_page['html'] = '<p><a href="/collections/shared-category">Browse category</a></p>';
 $term_plan = MAD4B_SCP_Scrape_Transfer::plan( $term_page );
 check( ! is_wp_error( $term_plan ) &&
-    count( $term_plan['internal_link_map'] ) === 1 &&
-    array_values( $term_plan['internal_link_map'] )[0] ===
+    count( $term_plan['internal_link_map'] ) === 0 &&
+    array_values( $term_plan['suggested_internal_links'] )[0] ===
     'https://staging.our-site.test/collections/shared-category/',
     'Known public taxonomy archive must remap to the local term URL.' );
 $GLOBALS['taxonomy_terms'][] = array( 'term_id' => 32,
@@ -218,6 +238,36 @@ $GLOBALS['posts'][20] = array( 'slug' => 'exact-route', 'post_type' => 'products
 $ambiguous = MAD4B_SCP_Scrape_Transfer::plan( $input );
 check( ! is_wp_error( $ambiguous ) && count( $ambiguous['unmatched_competitor_links'] ) === 2,
     'Ambiguous slug must not link to the wrong product' );
+$mixed = $input;
+$mixed['html'] = '<picture><source srcset="' . $large . ' 1200w"><img src="' . $img . '" alt="Nile"></picture>';
+$mixed_plan = MAD4B_SCP_Scrape_Transfer::plan( $mixed );
+$mixed_result = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $mixed, array( 'expected_plan_sha256' => $mixed_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $mixed_result ) && !$mixed_result['media_ready'] &&
+    !$mixed_result['ready_for_draft_review'] && $mixed_result['pending_media'] === 1,
+    'Unimported picture source must block media completeness even when IMG is imported' );
+foreach ( array( '<script>alert(1)</script>',
+    '<form action="/book"><input name="card"></form>',
+    '<iframe src="/track"></iframe>', '<svg><use href="javascript:alert(1)"></use></svg>' ) as $unsafe ) {
+    $evil = $input; $evil['html'] = '<p>Boat</p>' . $unsafe;
+    check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $evil ) ),
+        'Unapproved executable source HTML should be rejected' );
+}
+$inline = $input; $inline['html'] = '<img src="' . $img . '" alt="Boat" onerror="alert(1)">';
+$inline_plan = MAD4B_SCP_Scrape_Transfer::plan( $inline );
+$inline_out = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $inline, array( 'expected_plan_sha256' => $inline_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $inline_out ) && strpos( $inline_out['html'], 'onerror' ) === false,
+    'Executable event attributes must not survive HTML sanitization' );
+unset( $GLOBALS['meta'][19]['_mad4b_remote_media_content_sha256'] );
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $input ) ),
+    'Source URL provenance alone cannot bind an image lacking native content hash' );
+$GLOBALS['meta'][19]['_mad4b_remote_media_content_sha256'] = str_repeat( 'a', 64 );
+check( !$rewritten['ready_for_draft_review'] &&
+    !$rewritten['scrape_provenance_verified'] &&
+    $rewritten['brand_editorial_metadata_required'] &&
+    $rewritten['html_safety_checked'],
+    'Local media URL and caller-supplied HTML cannot certify editorial draft readiness' );
 $GLOBALS['reader'] = false;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $input ) ),
     'Unauthorized caller must not inspect site links' );
