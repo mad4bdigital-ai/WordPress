@@ -48,6 +48,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/legacy-owner-transfer-discover',
 				'context/legacy-owner-transfer-plan',
                 'context/native-owner-transfer-plan',
+                'context/native-owner-transfer-readback',
 				'context/legacy-owner-transfer-evidence',
 				'context/legacy-owner-transfer-readback',
 				'context/brand-reconstruction-plan',
@@ -193,6 +194,17 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
                 'source_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
                 'job_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
             ), array('source_id','job_id') )
+        );
+        $this->add_ability(
+            'context/native-owner-transfer-readback',
+            'Verify One Exact WordPress Functional Transfer From Original Context Source',
+            'native_owner_transfer_readback',
+            array( 'MAD4B_SCP_Policy', 'can_read' ),
+            $this->schema( array(
+                'source_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'expected_native_plan_sha256' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+            ), array('source_id','job_id','expected_native_plan_sha256') )
         );
 		$this->add_ability(
 			'context/legacy-owner-transfer-evidence',
@@ -1093,6 +1105,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function native_owner_transfer_apply( $input ) {
         return MAD4B_SCP_Context_Authority::native_owner_transfer_apply( $input );
+    }
+    public function native_owner_transfer_readback( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $input );
     }
 	public function brand_profile_save( $input ) {
 		$current = MAD4B_SCP_Context_Authority::profile();
