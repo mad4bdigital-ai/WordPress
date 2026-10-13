@@ -268,6 +268,7 @@ final class MAD4B_SCP_Native_Build_Owner_Consent {
     }
 
     public static function handle_form() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
         if ( ! self::owner_can_attest() ) {
             wp_die( 'Enrolled Staging owner required.', '', array( 'response' => 403 ) );
         }
