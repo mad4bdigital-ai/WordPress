@@ -273,3 +273,9 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Release gate stays BLOCKED until a valid WordPress adapter provides a signed plan, the external runner performs real browser work, and independent evidence is verified. This setup form does not authorize tests or production writes.', 'mad4b-site-control-plane' ) . '</p></div></div>';
 	}
 }
+
+// Browser acceptance route declaration is always discoverable to read-only
+// MCP/admin inventory, even when an MCP request does not fire admin_menu.
+// Actual WordPress menu + authorization still happen independently.
+if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) )
+	MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Browser_Acceptance_Admin_UI::PAGE_SLUG, 'manage_options' );
