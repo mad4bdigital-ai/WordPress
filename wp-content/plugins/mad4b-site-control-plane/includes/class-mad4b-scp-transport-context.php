@@ -222,6 +222,12 @@ final class MAD4B_SCP_Transport_Context {
 			'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution',
 			'chatgpt_write_authority_server' => 'mad4b-write',
 			'write_dispatch_target_bound' => '' !== self::$write_dispatch_target,
+			// Request-local binding is intentionally absent in ordinary diagnostics.
+			// Never use an idle false here as evidence of broken MCP write routing.
+			'write_dispatch_binding_lifetime' => 'request_local',
+			'write_dispatch_idle_unbound_expected' => '' === self::$write_dispatch_target,
+			'write_dispatch_transport_only' => true,
+			'write_dispatch_requires_exact_execution_evidence' => true,
 			'developer_dispatch_target_bound' => '' !== self::$developer_dispatch_target,
 			'chatgpt_developer_dispatch_breakglass_allowed' => false,
 			'credential_material_stored' => false,
