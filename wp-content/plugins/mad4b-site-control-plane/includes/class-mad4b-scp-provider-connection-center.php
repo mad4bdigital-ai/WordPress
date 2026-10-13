@@ -167,9 +167,16 @@ final class MAD4B_SCP_Provider_Connection_Center {
         $row = $catalogue[ $provider ];
         $status = call_user_func( $row['status_callback'] );
         if ( ! is_array( $status ) ) return new WP_Error( 'mad4b_provider_status_unavailable', 'Provider health could not be verified.' );
+        $retry_after = 0;
+        if ( ! empty( $status['refresh_failed'] ) ) {
+            $failure_at = isset( $status['refresh_failure_at'] ) ? strtotime( (string) $status['refresh_failure_at'] ) : false;
+            // Unknown failure timestamps are never a reason to hammer an
+            // external identity provider; require human reconciliation.
+            $retry_after = false === $failure_at ? 60 : max( 0, 60 - ( time() - $failure_at ) );
+        }
         $refresh = ! empty( $status['connected'] ) && ! empty( $status['refresh_required'] )
             && empty( $status['revocation_pending'] ) && empty( $status['reconnect_required'] )
-            && empty( $status['refresh_failed'] ) && ! empty( $row['remote_refresh_reviewed'] );
+            && 0 === $retry_after && ! empty( $row['remote_refresh_reviewed'] );
         $action = ! empty( $status['revocation_pending'] ) ? 'resolve_pending_revocation'
             : ( $refresh ? 'refresh' : ( ! empty( $status['reconnect_required'] ) || empty( $status['connected'] )
                 ? 'oauth_handoff' : 'no_action' ) );
@@ -186,6 +193,7 @@ final class MAD4B_SCP_Provider_Connection_Center {
             'action' => $action );
         return array( 'contract' => self::CONTRACT . '.plan.v1',
             'provider' => $provider, 'action' => $action,
+            'refresh_retry_after_seconds' => $retry_after,
             'eligible_remote_refresh' => $refresh && '' !== $grant_identity
                 && 'staging' === (string) ( $site['configured_environment'] ?? '' ),
             'plan_sha256' => hash( 'sha256', wp_json_encode( $basis,
