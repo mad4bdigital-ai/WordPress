@@ -204,6 +204,21 @@ $old_revision = MAD4B_SCP_Deployment_Binding_Native::readback( array(
 ) );
 bn_assert( $old_revision['state'] === 'BINDING_READBACK_INCOMPLETE',
     'uncommitted future revision cannot pass independent acceptance' );
+// Upgrade compatibility: a binding written by the previous installed
+// WordPress version does not contain a request marker. Preserve its
+// verified private-key + Site Profile scope without inventing request proof.
+unset( $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION]['native_binding_writer_request_marker_sha256'] );
+$legacy_binding = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+    'expected_site_uuid' => $original['site_uuid'],
+    'minimum_profile_revision' => $updated['revision'],
+) );
+bn_assert( $legacy_binding['state'] === 'LEGACY_BINDING_SCOPE_VERIFIED_NO_REQUEST_PROOF'
+    && $legacy_binding['functional_scope_ready_for_census']
+    && $legacy_binding['original_binding_without_writer_marker']
+    && !$legacy_binding['independent_request_observed']
+    && !$legacy_binding['independent_host_attestation_certified'],
+    'Previously approved binding remains usable without falsely claiming new-request proof' );
+$GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = $updated;
 $_SERVER['DOCUMENT_ROOT'] = $base; // parent is now the public web root
 bn_assert( MAD4B_SCP_Deployment_Binding_Native::private_location($original['site_uuid']) === array(),
     'reject private folder under an expanded document root' );
