@@ -2,16 +2,30 @@
 
 ## WordPress-only functional recovery and per-file approval mode — 2026-10-13
 
+**Live Staging observation (2026-10-13):** ETG and ARE both returned
+`UNVERIFIED_DEPLOYMENT_BINDING` from the privileged Context census;
+`legacy-owner-transfer-discover` yielded zero eligible candidates and one
+unclassified/quarantined source per site. Existing native binding preflight
+returned `eligible=true` on both sites but the write requires separate
+owner-governed authorization. No binding was created by this review.
+
 **Mode:** `mad4b/brand-core-wordpress-mode` (read-only, Staging administrator,
 existing Context Authority registry, no Host Runner/SSH/independent worker).
 This is an **operational mode**, not a replacement for a real MariaDB
 crash/restart and independently restored backup. The legacy ownership mutation
 remains protected by its existing independent Host/rollback gate.
 
-1. Call `mad4b/brand-core-wordpress-mode` with `{}` to discover the *single*
-   eligible original selected folder from the WordPress Context registry.
-   Supply `source_id` only if there are multiple eligible folders. The API
-   never demands an individual Google Drive file ID from the owner.
+1. Call `mad4b/brand-core-wordpress-mode` with `{}`. It first
+   inspects the WordPress Site Profile and Context census. If
+   `UNVERIFIED_DEPLOYMENT_BINDING` is observed, **stop file approval** and
+   use existing WordPress-native `mad4b/deployment-binding-native-status`
+   → `mad4b/deployment-binding-native-plan` → separately owner-approved
+   `mad4b/deployment-binding-native-apply` → status/census readback.
+   This creates a host-local staging binding without SSH or editing wp-config;
+   it is **not** independent physical Host or crash attestation.
+   Once scope is verified, the mode auto-discovers the *single* eligible
+   original selected folder. Supply `source_id` only if multiple eligible
+   folders remain. The API never demands individual Google Drive file IDs.
 2. Set `include_provider_scan=true` after confirming the selected folder.
    WordPress uses its existing Google Drive provider and
    `mad4b/selected-folder-scope-proof` to validate the complete original
