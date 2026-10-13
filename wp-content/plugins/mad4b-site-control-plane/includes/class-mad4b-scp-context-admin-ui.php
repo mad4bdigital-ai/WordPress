@@ -1930,6 +1930,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	private static function require_admin_request( $action ) {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			if ( self::is_ajax_request() ) wp_send_json_error( array( 'code' => 'mad4b_context_post_required', 'message' => 'Use the authenticated settings form.' ), 405 );
+			wp_die( 'POST required.', '', array( 'response' => 405 ) );
+		}
 		if ( ! self::is_ajax_request() ) {
 			self::require_admin( $action );
 			return;
@@ -1962,6 +1966,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	}
 
 	private static function require_admin( $action ) {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( $action );
 	}
