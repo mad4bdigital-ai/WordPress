@@ -20,7 +20,10 @@ final class MAD4B_SCP_WP_Native_Build {
     const MAX_SOURCE_BYTES = 14680064;
     const MAX_BLOB_BYTES = 1048576;
     const MAX_ZIP_BYTES = 16777216;
-    const BATCH = 4;
+    // Upper bound, not a requirement: wall-clock and PHP limits can stop early.
+    const BATCH = 64;
+    const FETCH_WALL_SECONDS = 24;
+    const FETCH_CHECKPOINT_INTERVAL = 8;
 
     public static function boot() {
         // Load self-approval before the adapter enumerates its capabilities.
@@ -428,18 +431,38 @@ final class MAD4B_SCP_WP_Native_Build {
         return true;
     }
 
+    /**
+     * Reduce WordPress Cron wake-ups without raising the file/network trust
+     * boundary. Every Git blob is still fetched from the immutable SHA,
+     * checked against its tree identity, and written to the private workspace.
+     * Up to 64 blobs may be fetched per tick, but an explicit time budget
+     * bounds each invocation; progress is durably checkpointed every 8 files.
+     */
+    private static function fetch_time_budget() {
+        $php_seconds = (int) ini_get( 'max_execution_time' );
+        if ( $php_seconds > 0 )
+            return max( 2, min( self::FETCH_WALL_SECONDS, $php_seconds - 8 ) );
+        return self::FETCH_WALL_SECONDS;
+    }
+
     private static function fetch_batch( &$job, $dir ) {
         $n = count( $job['entries'] );
+        $started = microtime( true );
+        $deadline = $started + self::fetch_time_budget();
+        $completed = 0;
         for ( $i = 0; $i < self::BATCH && $job['cursor'] < $n; $i++ ) {
+            $remaining = $deadline - microtime( true );
+            // Leave time for persisting state and scheduling the next Cron
+            // event. Never truncate a request already fetching a Git blob.
+            if ( $completed > 0 && $remaining < 4 ) break;
             $entry = $job['entries'][ $job['cursor'] ];
-            // Fetch pinned raw bytes, avoiding the low unauthenticated REST blob quota.
-            // The Git tree's object SHA is still independently verified below.
             $segments = array_map( 'rawurlencode',
                 explode( '/', self::PLUGIN . '/' . $entry['path'] ) );
             $url = 'https://raw.githubusercontent.com/' . self::REPO .
                 '/' . $job['head'] . '/' . implode( '/', $segments );
+            $timeout = max( 2, min( 12, (int) floor( $remaining - 2 ) ) );
             $response = wp_safe_remote_get( $url, array(
-                'timeout' => 12, 'redirection' => 0, 'sslverify' => true,
+                'timeout' => $timeout, 'redirection' => 0, 'sslverify' => true,
                 'limit_response_size' => self::MAX_BLOB_BYTES + 1,
                 'headers' => array( 'User-Agent' => 'MAD4B-WP-Native-Source-Builder' ),
             ) );
@@ -461,7 +484,18 @@ final class MAD4B_SCP_WP_Native_Build {
                 return new WP_Error( 'mad4b_native_write_failed', 'Failed to stage exact Git blob.' );
             @chmod( $dest, 0600 );
             $job['cursor']++;
+            $completed++;
+            if ( 0 === $completed % self::FETCH_CHECKPOINT_INTERVAL ) {
+                // This runs inside the existing exclusive per-source lock.
+                // Commit actual progress before starting another slow request.
+                if ( ! update_option( self::OPTION, $job, false ) )
+                    return new WP_Error( 'mad4b_native_checkpoint_failed',
+                        'Worker cannot persist verified fetch progress.' );
+            }
         }
+        $job['last_fetch_count'] = $completed;
+        $job['last_fetch_elapsed_ms'] = (int) round( ( microtime( true ) - $started ) * 1000 );
+        $job['fetch_tick_count'] = (int) ( $job['fetch_tick_count'] ?? 0 ) + 1;
         if ( $job['cursor'] === $n ) $job['state'] = 'PACKAGING';
         return true;
     }
@@ -774,6 +808,10 @@ final class MAD4B_SCP_WP_Native_Build {
             'state' => $job['state'], 'head' => $job['head'],
             'files_total' => count( $job['entries'] ?? array() ),
             'files_fetched' => $job['cursor'] ?? 0,
+            'max_files_per_tick' => self::BATCH,
+            'last_fetch_count' => $job['last_fetch_count'] ?? 0,
+            'last_fetch_elapsed_ms' => $job['last_fetch_elapsed_ms'] ?? 0,
+            'fetch_tick_count' => $job['fetch_tick_count'] ?? 0,
             'archive_sha256' => $job['archive_sha256'] ?? '',
             'archive_bytes' => $job['archive_bytes'] ?? 0,
             'build_fingerprint' => $job['build_fingerprint'] ?? '',
