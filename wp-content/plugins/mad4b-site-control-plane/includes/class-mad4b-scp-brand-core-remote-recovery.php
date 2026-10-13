@@ -129,14 +129,21 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             return self::denial( 'selected_source_not_eligible' );
         $binding_unverified = 'UNVERIFIED_DEPLOYMENT_BINDING' === (string) ( $census['state'] ?? '' )
             || true !== ( $census['operational_scope_verified'] ?? false );
+        $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Native' )
+            ? MAD4B_SCP_Deployment_Binding_Native::status() : array();
+        $binding_state = is_array( $binding ) ? (string) ( $binding['state'] ?? '' ) : '';
+        $binding_next = 'READY_FOR_OWNER_APPROVAL' === $binding_state
+            ? 'mad4b/deployment-binding-native-plan'
+            : ( 'ALREADY_HAS_PROFILE_BINDING' === $binding_state
+                ? 'context/legacy-reconciliation-census'
+                : 'mad4b/deployment-binding-native-status' );
         $scope = array( 'selected_source_id' => $selected,
             'candidate_count' => count( $ids ),
             'unclassified_quarantined_sources' => (int) ( $discovery['foreign_or_conflicted_records'] ?? 0 ),
             'scope_verified' => false,
             'owner_approval_required' => true, 'file_ids_supplied_by_user' => false,
             'next_ability' => $binding_unverified
-                ? 'mad4b/deployment-binding-native-plan'
-                : 'mad4b/selected-folder-scope-proof' );
+                ? $binding_next : 'mad4b/selected-folder-scope-proof' );
         if ( ! $binding_unverified && '' !== $selected && ! empty( $input['include_provider_scan'] ) ) {
             if ( ! class_exists( 'MAD4B_SCP_Runtime_Obstacle_Resolution' ) )
                 return self::denial( 'folder_proof_unavailable' );
@@ -201,6 +208,19 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'quarantine_count' => $quarantine,
             'native_scratch_state' => is_array( $native )
                 ? (string) ( $native['state'] ?? 'UNKNOWN' ) : 'UNAVAILABLE',
+            'native_scratch_remaining_seconds' => is_array( $native )
+                ? (int) ( $native['remaining_seconds'] ?? 0 ) : 0,
+            'native_scratch_next_ability' => is_array( $native )
+                ? (string) ( $native['next_ability'] ?? '' ) : '',
+            'binding_lifecycle' => array(
+                'state' => $binding_state,
+                'eligible' => is_array( $binding ) && true === ( $binding['eligible'] ?? false ),
+                'next_ability' => $binding_next,
+                'separate_human_owner_ticket_required' => true,
+                'new_request_readback_required' => true,
+                'site_uuid' => (string) $site['site_uuid'],
+                'cross_site_reuse_allowed' => false,
+                'independent_host_attestation_certified' => false ),
             'workflow' => array(
                 'native_binding_status' => 'mad4b/deployment-binding-native-status',
                 'native_binding_plan' => 'mad4b/deployment-binding-native-plan',
@@ -209,10 +229,12 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'native_shadow_plan' => 'mad4b/native-recovery-plan',
                 'native_shadow_start' => 'mad4b/native-recovery-start',
                 'native_shadow_readback' => 'mad4b/native-recovery-readback',
+                'native_shadow_cleanup' => 'mad4b/native-recovery-cleanup',
                 'owner_transfer_plan' => 'context/legacy-owner-transfer-plan',
                 'owner_transfer_write' => 'context/legacy-owner-transfer-apply',
                 'functional_transfer_plan' => 'context/native-owner-transfer-plan',
                 'functional_transfer_write' => 'context/native-owner-transfer-apply',
+                'functional_transfer_readback' => 'context/native-owner-transfer-readback',
                 'owner_transfer_readback' => 'context/legacy-owner-transfer-readback',
                 'content_scan' => 'context/source-scan-plan',
                 'content_scan_write' => 'context/source-scan-apply',
@@ -552,7 +574,45 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             'stages' => $stages,
         );
         $sha = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        // Functional Brand recovery is distinct from Disaster Recovery. The
+        // original eight-stage Host/crash assessment remains backwards
+        // compatible and MUST NOT mark MariaDB crash recovery as certified.
+        $functional_state = ! $has_census ? 'SITE_BINDING_OR_CENSUS_REQUIRED'
+            : ( $legacy_transfer_required
+                ? ( $has_proof ? 'NATIVE_SHADOW_AND_OWNER_APPROVAL_REQUIRED'
+                    : 'ORIGINAL_FOLDER_PROOF_REQUIRED' )
+                : ( $approved_brand ? 'BRAND_CORE_COVERAGE_READY'
+                    : 'FRESH_SCAN_AND_FILE_APPROVAL_REQUIRED' ) );
+        $functional = array(
+            'contract' => 'mad4b.brand-core-functional-lifecycle.v1',
+            'state' => $evidence_drift ? 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+                : $functional_state,
+            'site_scope_verified' => $has_census,
+            'original_folder_proven' => $has_proof,
+            'legacy_transfer_required' => $legacy_transfer_required,
+            'brand_core_ready' => $approved_brand,
+            'required_owner_ability' => 'context/native-owner-transfer-apply',
+            'functional_readback_ability' => 'context/native-owner-transfer-readback',
+            'next_ability' => ! $has_census
+                ? 'mad4b/deployment-binding-native-status'
+                : ( $legacy_transfer_required
+                    ? ( $has_proof ? 'mad4b/native-recovery-plan'
+                        : 'context/legacy-owner-transfer-evidence' )
+                    : ( $approved_brand ? 'context/brand-core-coverage'
+                        : 'context/source-scan-plan' ) ),
+            'separate_human_approval_required' => true,
+            'ready_for_publication' => false,
+            'mariadb_crash_certified' => false, 'rollback_certified' => false,
+            'release_certified' => false, 'production_authorized' => false );
         return array(
+            'functional_lifecycle' => $functional,
+            'disaster_recovery' => array(
+                'state' => $evidence_drift ? 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
+                    : ( $blockers ? 'REMOTE_RECOVERY_INCOMPLETE'
+                        : 'REMOTE_RECOVERY_READBACK_COMPLETE' ),
+                'mariadb_crash_certified' => false,
+                'independent_host_required' => true,
+                'release_certified' => false ),
             'contract' => self::CONTRACT, 'state' => $evidence_drift ? 'SNAPSHOT_DRIFT_REPLAN_REQUIRED'
                 : ( $blockers ? 'REMOTE_RECOVERY_INCOMPLETE' : 'REMOTE_RECOVERY_READBACK_COMPLETE' ),
             'plan_sha256' => $sha, 'source_commit_sha' => $basis['source_commit_sha'],
