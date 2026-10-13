@@ -46,6 +46,8 @@ verify(
     "MAD4B_SCP_Admin_Experience::notice_receipt(",
     "MAD4B_SCP_Admin_Experience::notice_verified(",
     "render_live_context_reconciliation()",
+    "clearStatusQuery();\
+\\t\\t\\tasync function refreshPanels(){",
 )
 # Control pages with stronger existing state-bound notices must not regress.
 verify(
