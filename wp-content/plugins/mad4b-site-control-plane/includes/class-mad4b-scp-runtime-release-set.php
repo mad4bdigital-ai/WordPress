@@ -742,6 +742,7 @@ final class MAD4B_SCP_Runtime_Release_Set {
 	}
 
 	public static function handle_admin_apply() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) wp_die( esc_html__( 'You are not allowed to update plugins.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_runtime_release_set_apply' );
 		$reason = 'WordPress administrator requested the exact compatible MAD4B runtime release set.';
