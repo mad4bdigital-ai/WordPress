@@ -188,6 +188,7 @@ final class MAD4B_SCP_Search_Profile_Admin {
 	}
 
 	public static function post() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		check_admin_referer( self::ACTION );
 		$input = wp_unslash( $_POST );
 		$result = self::save( $input );
