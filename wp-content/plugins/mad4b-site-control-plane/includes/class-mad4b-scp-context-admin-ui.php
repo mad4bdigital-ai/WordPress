@@ -505,6 +505,9 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<h1>' . esc_html__( 'Context Authority', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p class="description">' . esc_html__( 'Connect brand knowledge to this Site Profile. Google Drive can be read-only or explicitly upgraded to read + write; Context Authority still decides which assets are governed, task-only, required, and eligible for governed mutation.', 'mad4b-site-control-plane' ) . '</p>';
 		self::render_notice();
+		// Re-read the source of truth on every page load. A plugin update must
+		// never make an unresolved provider OAuth revoke look like stale UI cache.
+		self::render_live_context_reconciliation();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 		if ( 'overview' === $tab ) self::render_overview();
 		if ( 'google-drive' === $tab ) self::render_google_drive();
@@ -516,16 +519,59 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '</div>';
 	}
 
+	/**
+	 * Post-update live reconciliation is observational, not a second OAuth
+	 * authority. Never clear pending revoke, quarantined ownership or provider
+	 * certification on upgrade. An update may repair code, not external consent.
+	 */
+	private static function render_live_context_reconciliation() {
+		if ( ! class_exists( 'MAD4B_SCP_Google_Drive_Context' ) || ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return;
+		$google = MAD4B_SCP_Google_Drive_Context::connection_status();
+		$context = MAD4B_SCP_Context_Authority::status();
+		if ( ! is_array( $google ) || ! is_array( $context ) ) return;
+		$pending = ! empty( $google['revocation_pending'] );
+		$unreadable = ! empty( $google['token_unreadable'] );
+		$quarantine_sources = isset( $context['quarantined_source_record_count'] ) ? (int) $context['quarantined_source_record_count'] : 0;
+		$quarantine_assets = isset( $context['quarantined_asset_record_count'] ) ? (int) $context['quarantined_asset_record_count'] : 0;
+		if ( ! $pending && ! $unreadable && 0 === $quarantine_sources && 0 === $quarantine_assets ) return;
+		echo '<div class="notice notice-warning inline mad4b-context-live-reconciliation"><p><strong>'
+			. esc_html__( 'Live post-update reconciliation: action required', 'mad4b-site-control-plane' )
+			. '</strong> ' . esc_html__( 'This panel reads current persisted provider and Context Authority state. Plugin updates never silently reset external OAuth revocation, source ownership, or approvals.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( $pending ) {
+			echo '<p><code>google_revocation_pending</code> · ' . esc_html__( 'Google Drive access is disabled. Complete the provider revocation with Retry revoke; do not reconnect or expand grants while revocation is unconfirmed.', 'mad4b-site-control-plane' );
+			if ( ! empty( $google['revocation_error'] ) ) echo ' <code>' . esc_html( $google['revocation_error'] ) . '</code>';
+			echo ' · <a href="' . esc_url( self::tab_url( 'google-drive' ) ) . '">' . esc_html__( 'Open Google recovery', 'mad4b-site-control-plane' ) . '</a></p>';
+		} elseif ( $unreadable ) {
+			echo '<p><code>google_token_unreadable</code> · ' . esc_html__( 'Google access is disabled. Owner verification and external revocation are required before reconnecting.', 'mad4b-site-control-plane' ) . ' <a href="' . esc_url( self::tab_url( 'google-drive' ) ) . '">' . esc_html__( 'Open Google recovery', 'mad4b-site-control-plane' ) . '</a></p>';
+		}
+		if ( $quarantine_sources > 0 || $quarantine_assets > 0 ) {
+			echo '<p><code>context_ownership_review_required</code> · ' . esc_html( sprintf( __( '%1$d legacy source(s) and %2$d asset(s) remain quarantined until reviewed for this Site Profile.', 'mad4b-site-control-plane' ), $quarantine_sources, $quarantine_assets ) ) . ' <a href="' . esc_url( self::tab_url( 'sources' ) ) . '">' . esc_html__( 'Review source ownership', 'mad4b-site-control-plane' ) . '</a></p>';
+		}
+		echo '</div>';
+	}
+
 	private static function render_overview() {
 		$status = MAD4B_SCP_Context_Authority::status();
 		$google = MAD4B_SCP_Google_Drive_Context::connection_status();
 		$profile = MAD4B_SCP_Context_Authority::profile();
 		$review_queue = MAD4B_SCP_Context_Authority::review_queue();
+		// A retained encrypted Google token is not a usable connection when
+		// remote revocation is pending. Fail closed on BOTH overview and Drive.
+		$google_active = ! empty( $google['connected'] )
+			&& empty( $google['revocation_pending'] ) && empty( $google['token_unreadable'] )
+			&& ( ! empty( $google['read_available'] ) || ! empty( $google['write_available'] ) );
+		$google_detail = ! empty( $google['revocation_pending'] )
+			? 'Revocation pending · Drive read/write disabled'
+			: ( ! empty( $google['token_unreadable'] ) ? 'Unreadable token · manual revoke required'
+				: ( $google_active
+					? ( ( ! empty( $google['account_email'] ) ? $google['account_email'] . ' · ' : '' )
+						. ( ! empty( $google['write_available'] ) ? 'Read + Write' : 'Read-only' ) )
+					: 'Connect or repair Google access' ) );
 		$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
 		$stages = array(
 			array( 'label' => 'Site Profile', 'detail' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'Enrolled to this origin' : 'Enroll this site first', 'state' => ! empty( $site['configured'] ) && ! empty( $site['origin_match'] ) ? 'complete' : 'blocked' ),
 			array( 'label' => 'Brand Profile', 'detail' => ! empty( $profile ) ? (string) $profile['brand_name'] : 'Name the brand context', 'state' => ! empty( $profile ) ? 'complete' : 'pending' ),
-			array( 'label' => 'Google Drive', 'detail' => ! empty( $google['connected'] ) ? ( ( $google['account_email'] ? $google['account_email'] . ' · ' : '' ) . ( ! empty( $google['write_available'] ) ? 'Read + Write' : 'Read-only' ) ) : 'Connect a Google account', 'state' => ! empty( $google['connected'] ) ? 'complete' : 'pending', 'url' => self::tab_url( 'google-drive' ) ),
+			array( 'label' => 'Google Drive', 'detail' => $google_detail, 'state' => $google_active ? 'complete' : 'attention', 'url' => self::tab_url( 'google-drive' ) ),
 			array( 'label' => 'Source Folder', 'detail' => $status['governed_source_count'] ? $status['governed_source_count'] . ' governed source(s)' : 'Choose a governed folder', 'state' => $status['governed_source_count'] ? 'complete' : 'pending', 'url' => self::tab_url( 'sources' ) ),
 			array( 'label' => 'Context Ready', 'detail' => $status['ready'] ? 'Mandatory context is ready' : 'Resolve review and source-scan blockers', 'state' => $status['ready'] ? 'complete' : 'attention', 'url' => self::tab_url( 'review' ) ),
 		);
@@ -684,6 +730,10 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( ! empty( $grants['scope_reduction_requires_revoke'] ) ) {
 				echo '<div class="notice notice-info inline"><p><strong>' . esc_html__( 'A narrower Google scope selection needs revoke first.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Google grants cannot be proven reduced in place. Disconnect & Revoke, then reconnect with the narrower selection.', 'mad4b-site-control-plane' ) . '</p></div>';
 			}
+		} elseif ( ! empty( $connection['revocation_pending'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google access is disabled pending provider revocation.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Sign-in and scope changes stay locked. Review the live status below and use the explicit Retry revoke action; an HTTP 400 response is not proof of revocation.', 'mad4b-site-control-plane' ) . '</p></div>';
+		} elseif ( ! empty( $connection['token_unreadable'] ) ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Google credentials cannot be decrypted. Sign-in is locked until the owner completes the manual provider revocation and local cleanup steps below.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} elseif ( $selected_connection_ready ) {
 			echo '<p>' . esc_html( MAD4B_SCP_Google_Drive_Context::AUTH_MODE_MANAGED === $auth_mode
 				? __( 'Use your Google account. MAD4B handles the OAuth application centrally, so this WordPress site does not need a Google Client ID or Client Secret.', 'mad4b-site-control-plane' )
@@ -730,7 +780,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 
 		echo '<div class="mad4b-scp-panel" id="mad4b-google-grants"><h2>' . esc_html__( '2. Google Workspace grants', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'Choose the OAuth grant level for each Google app. Expanding a connected grant is saved immediately and then completed through incremental Google consent. Reducing an existing provider grant still requires disconnect + revoke so least privilege can be proven.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( ! empty( $connection['connected'] ) ) {
+		if ( ! empty( $connection['connected'] ) && empty( $connection['revocation_pending'] ) && empty( $connection['token_unreadable'] ) ) {
 			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Google is connected. You can expand the governed scope selection without disconnecting; the next authorization requests only the missing consent. Attempts to reduce currently granted authority remain blocked until provider revocation.', 'mad4b-site-control-plane' ) . '</p></div>';
 		} elseif ( ! empty( $connection['revocation_pending'] ) || ! empty( $connection['token_unreadable'] ) ) {
 			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Grant changes are locked while Google revocation is pending or the stored token is unreadable. Resolve the connection state before changing scopes.', 'mad4b-site-control-plane' ) . '</p></div>';
