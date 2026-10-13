@@ -119,6 +119,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		$stale_release_pointer = '' !== $current_version && '' !== $target_version
 			&& version_compare( $target_version, $current_version, '<' );
 		$target_commit = (string) ( $runtime['target']['control_plane']['source_commit_sha'] ?? '' );
+		$installed_commit = (string) ( $runtime['current']['control_plane']['source_commit_sha'] ?? '' );
 		$missing_release_target = '' === $target_version || ! preg_match( '/^[a-f0-9]{40}$/D', $target_commit )
 			|| empty( $runtime['release_set_sha256'] );
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
@@ -140,6 +141,8 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( 'mad4b_runtime_release_set_apply' );
 		echo '<input type="hidden" name="action" value="mad4b_runtime_release_set_apply">';
+		echo '<input type="hidden" name="expected_release_set_sha256" value="' . esc_attr( (string) $runtime['release_set_sha256'] ) . '">';
+		echo '<input type="hidden" name="expected_current_source_commit_sha" value="' . esc_attr( $installed_commit ) . '">';
 		echo '<button class="button button-primary" type="submit">' . esc_html__( 'Update compatible runtime', 'mad4b-site-control-plane' ) . '</button>';
 		echo '</form></div>';
 	}
