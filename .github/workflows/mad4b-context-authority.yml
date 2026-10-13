@@ -28,6 +28,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
@@ -84,6 +86,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
@@ -165,6 +169,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
@@ -220,6 +226,7 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
 
