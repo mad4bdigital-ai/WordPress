@@ -197,6 +197,24 @@ native_assert( $drift['state'] === 'WP_NATIVE_INCOMPLETE' &&
 $clean = MAD4B_SCP_Native_Recovery::cleanup( array(
     'job_id' => $begin['job_id'], 'confirmation' => MAD4B_SCP_Native_Recovery::CLEAN_CONFIRM ) );
 native_assert( is_array( $clean ) && $clean['scratch_removed'], 'stale shadow can be cleaned' );
+// An overdue WP-Cron invocation cannot silently erase its proof if an
+// append-only audit intent is unavailable; the owner retains cleanup control.
+$probe_again = MAD4B_SCP_Native_Recovery::plan( array(
+    'mode' => 'probe', 'reason' => 'cron expiry audit regression' ) );
+$cron_shadow = MAD4B_SCP_Native_Recovery::start( array(
+    'mode' => 'probe', 'reason' => 'cron expiry audit regression',
+    'expected_plan_sha256' => $probe_again['plan_sha256'],
+    'confirmation' => MAD4B_SCP_Native_Recovery::PROBE_CONFIRM ) );
+native_assert( is_array( $cron_shadow ), 'fresh native scratch can be governed' );
+$GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION]['expires_at'] = time() - 1;
+MAD4B_SCP_Audit::$fail = true;
+MAD4B_SCP_Native_Recovery::expire( $cron_shadow['job_id'] );
+native_assert( isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
+    'failed audit intent retains expired scratch for human recovery' );
+MAD4B_SCP_Audit::$fail = false;
+MAD4B_SCP_Native_Recovery::expire( $cron_shadow['job_id'] );
+native_assert( ! isset( $GLOBALS['options'][MAD4B_SCP_Native_Recovery::OPTION] ),
+    'successful intent allows expiration of scratch without altering Context' );
 MAD4B_SCP_Site_Profile::$environment = 'production';
 native_assert( is_wp_error( MAD4B_SCP_Native_Recovery::plan( array(
     'mode' => 'probe', 'reason' => 'deny production' ) ) ), 'never touch Production' );
