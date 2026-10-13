@@ -33,6 +33,14 @@ class MAD4B_SCP_OAuth_Resource_Bridge {
 class MAD4B_SCP_Authorization {
     public static $approved = true;
     public static $claimed = 0;
+    public static $callback_claimed = false;
+    public static $exact_input_hash = '';
+    public static function native_binding_callback_is_claimed( $input ) {
+        return self::$callback_claimed && self::$approved
+            && is_array( $input )
+            && hash_equals( self::$exact_input_hash, hash( 'sha256', wp_json_encode(
+                $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ) );
+    }
     public static function authorize_mutation( $name, $surface, $provider, $input ) {
         return self::$approved ? true : new WP_Error( 'not_approved' );
     }
@@ -91,6 +99,17 @@ class MAD4B_SCP_Site_Profile {
     public static function reset_cache() {}
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-deployment-binding-native.php';
+// Simulated immutable governed callback (outer ticket has already been claimed).
+function bn_run_governed_callback( $input ) {
+    MAD4B_SCP_Authorization::$exact_input_hash = hash( 'sha256',
+        wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+    MAD4B_SCP_Authorization::$callback_claimed = true;
+    try { return MAD4B_SCP_Deployment_Binding_Native::apply( $input ); }
+    finally {
+        MAD4B_SCP_Authorization::$callback_claimed = false;
+        MAD4B_SCP_Authorization::$exact_input_hash = '';
+    }
+}
 function bn_assert( $ok, $label ) {
     if ( ! $ok ) { fwrite( STDERR, "FAIL: $label\n" ); exit( 1 ); }
 }
@@ -159,20 +178,24 @@ MAD4B_SCP_Authorization::$approved = false;
 bn_assert( is_wp_error(MAD4B_SCP_Deployment_Binding_Native::apply($payload))
     && MAD4B_SCP_Site_Profile::$commits === 0, 'explicit owner approval mandatory' );
 MAD4B_SCP_Authorization::$approved = true;
+bn_assert( is_wp_error( MAD4B_SCP_Deployment_Binding_Native::apply( $payload ) )
+    && MAD4B_SCP_Authorization::$claimed === 0,
+    'Direct PHP call with a valid ticket never bypasses claimed callback' );
 $location = MAD4B_SCP_Deployment_Binding_Native::private_location($original['site_uuid']);
 bn_assert( !empty($location) && dirname($location['dir']) === realpath($base),
     'private folder fixed outside site root' );
 MAD4B_SCP_Site_Profile::$fail_commit = true;
-bn_assert( is_wp_error(MAD4B_SCP_Deployment_Binding_Native::apply($payload))
+bn_assert( is_wp_error(bn_run_governed_callback($payload))
     && !file_exists($location['file']) && !file_exists($location['dir'])
     && MAD4B_SCP_Site_Profile::$commits === 0,
     'DB audit CAS failure compensates creation of exact token' );
 MAD4B_SCP_Site_Profile::$fail_commit = false;
-$out = MAD4B_SCP_Deployment_Binding_Native::apply($payload);
+$out = bn_run_governed_callback($payload);
 $updated = get_option(MAD4B_SCP_Site_Profile::OPTION);
 bn_assert( is_array($out) && $out['state'] === 'BOUND_NEW_REQUEST_READBACK_REQUIRED'
-    && MAD4B_SCP_Site_Profile::$commits === 1,
-    'single approved WordPress native transaction creates and binds key' );
+    && MAD4B_SCP_Site_Profile::$commits === 1
+    && MAD4B_SCP_Authorization::$claimed === 0,
+    'Single outer ticket claim only; no duplicate internal claim or budget' );
 bn_assert( $updated['site_uuid'] === $original['site_uuid']
     && $updated['canonical_origin'] === $original['canonical_origin']
     && $updated['features'] === $original['features']
