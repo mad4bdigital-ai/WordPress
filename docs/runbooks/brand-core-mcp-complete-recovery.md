@@ -1,5 +1,69 @@
 # Feature 007 — Brand Core recovery from A to Z through the existing MAD4B MCP
 
+## Feature 007 — full WordPress-native Lifecycle closure (2026-10-13)
+
+**Deployment binding is per site.** The two exact staging environments
+(Egypt Tour Gates and All Royal Egypt) each require their OWN fresh
+`mad4b/deployment-binding-native-status` → `...-plan` → **human-owned,
+exact approved** `...-apply` ticket. Reusing a plan, ticket, Site UUID,
+profile digest or secret across sites is forbidden. `apply` returns
+`BOUND_NEW_REQUEST_READBACK_REQUIRED`, not acceptance. In a **new** request
+call `mad4b/deployment-binding-native-readback` with the expected Site UUID
+and the post-commit minimum profile revision. Only
+`WORDPRESS_BINDING_READBACK_PASS` permits a fresh
+`context/legacy-reconciliation-census`. An unsupported filesystem layout
+or lost secret must remain blocked rather than forced.
+
+**Two distinct recovery tiers.** `mad4b/brand-core-remote-recovery-status`
+now exposes `functional_lifecycle` and `disaster_recovery` separately.
+The existing eight historical stages remain an independent, non-certified
+host/disaster assessment; they no longer need to be treated as the status
+of the WordPress-only workflow. Neither functional readiness nor an owner
+transfer receipt is proof of MariaDB crash/restart or a restored backup.
+Commercial release and Production remain separately gated.
+
+**WordPress scratch expiry and recovery.** The native `shadow` is
+single-active-job and valid for 900 seconds. The readback now exposes
+`expires_at`, `remaining_seconds`, and explicit expired/cleanup states.
+New owner-transfer plans reject a shadow with less than **90 seconds**
+remaining. A failed/expired attempt is restarted only after the separately
+governed `mad4b/native-recovery-cleanup` and a fresh exact shadow plan.
+WP-Cron can clean up expired scratch data but does not approve a write;
+its deletion now needs a successful append-only audit intent. Without that
+audit it retains the scratch for the owner's explicit recovery path.
+
+**Avoid stale proof under lock.** The complete Google Drive folder scan,
+original file matching, native shadow proof and the final prelock proof all
+finish **outside** the 45-second Context Registry lock. The locked phase
+rechecks local source/asset CAS state and requires a prelock result not older
+than 10 seconds, so another invocation cannot keep the lock through
+unbounded network I/O. External file mutations after the last provider
+observation are still possible; the readback does not certify them away.
+Owner approval, exact plan, provider file-version digests, and canonical
+Site/Brand identity are mandatory.
+
+**Transfer post-commit receipt.** `context/native-owner-transfer-apply`
+records functional-only provenance **inside the original Context source
+record** (not a parallel registry): approved native plan hash, provider proof
+hash, hashed WordPress shadow job ID, hashed human approval ticket ID,
+actual WordPress owner ID, and false crash/rollback flags. It also returns
+`next_readback_ability=context/native-owner-transfer-readback`.
+A separate call with original source ID, original job ID and native plan hash
+must return `FUNCTIONAL_TRANSFER_READBACK_PASS`. Until then there is no
+functional transfer acceptance. After a PASS, re-scan source content,
+normalize existing assets, approve each exact file separately, verify
+`brand_strategy`, `tone_of_voice` and `editorial_guidelines` coverage,
+and only then enter independently approved draft/publication gates.
+
+**Tests scheduled for PHP 7.4 + PHP 8.3:** binding plan/apply/readback
+and cross-site denials; native shadow expiry and audit-before-cron-cleanup;
+Context source/proof/job/owner-ticket denials and functional readback; and
+two-tier recovery status. Passing pure fixtures is not equivalent to
+real WordPress Staging verification, backup restoration or an approved
+exact-head plugin package.
+
+---
+
 ## WordPress-native functional owner transfer policy (2026-10-13)
 
 This is a **new opt-in governed Staging lane**, deliberately distinct from
