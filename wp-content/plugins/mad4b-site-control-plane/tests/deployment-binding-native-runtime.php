@@ -42,6 +42,17 @@ class MAD4B_SCP_Authorization {
         return self::$approved ? array( 'allowed' => true ) : new WP_Error( 'not_claimed' );
     }
 }
+class MAD4B_SCP_Staging_Write_Authority {
+    public static $ready = false;
+    public static function status() {
+        return array( 'state' => self::$ready ? 'ready' : 'blocked',
+            'ready' => self::$ready,
+            'agent_public_id' => '0b8f7c20-6f75-4401-b33e-a59a14c48895',
+            'candidate_binding_match' => self::$ready,
+            'exact_grants_existing' => 95, 'write_tool_count' => 96,
+            'blockers' => self::$ready ? array() : array( 'grant_reconciliation_incomplete' ) );
+    }
+}
 class MAD4B_SCP_Site_Profile {
     const OPTION = 'mad4b_staging_profile_fixture';
     public static $env = 'staging';
@@ -92,7 +103,7 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 );
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
-bn_assert( count( $GLOBALS['abilities'] ) === 4, 'status, plan, apply and exact post-apply readback' );
+bn_assert( count( $GLOBALS['abilities'] ) === 5, 'status, plan, apply, handoff and exact post-apply readback' );
 // The one-time approval ticket is minted AFTER approval-plan validates the
 // target schema. Requiring the ticket inside that schema is a cycle; runtime
 // apply still denies requests lacking the real ticket.
@@ -107,6 +118,18 @@ foreach ($GLOBALS['abilities'] as $name => $spec) {
             || !$spec['meta']['annotations']['readonly'] ),
         'no public or arbitrary URL/filesystem inputs' );
 }
+$handoff = MAD4B_SCP_Deployment_Binding_Native::handoff();
+bn_assert( $handoff['agent_public_id'] === '0b8f7c20-6f75-4401-b33e-a59a14c48895'
+    && !$handoff['write_authority_ready']
+    && $handoff['next_read'] === 'mad4b/staging-write-grant-reconciliation-plan'
+    && !$handoff['owner_approval_generated'],
+    'read-only handoff discovers exact scoped agent without ticket creation or bypass' );
+MAD4B_SCP_Staging_Write_Authority::$ready = true;
+$ready_handoff = MAD4B_SCP_Deployment_Binding_Native::handoff();
+bn_assert( $ready_handoff['next_read'] === 'mad4b/approval-plan'
+    && $ready_handoff['human_owner_ticket_required'],
+    'owner approval handoff only becomes eligible after write grant and candidate readiness' );
+MAD4B_SCP_Staging_Write_Authority::$ready = false;
 $s = MAD4B_SCP_Deployment_Binding_Native::status();
 bn_assert( $s['eligible'] && $s['state'] === 'READY_FOR_OWNER_APPROVAL',
     'Staging PHP can provision outside its document root' );
