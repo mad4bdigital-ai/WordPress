@@ -169,6 +169,7 @@ final class MAD4B_SCP_Approval_Decision_Admin {
 	}
 
 	public static function handle_admin_post() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		$is_approver = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'can_approve_mutations' ) ? MAD4B_SCP_Policy::can_approve_mutations() : current_user_can( 'manage_options' );
 		if ( ! $is_approver ) wp_die( esc_html__( 'Approval capability is required to decide MAD4B approval tickets.', 'mad4b-site-control-plane' ), '', array( 'response' => 403 ) );
 		foreach ( array( 'ticket_id', 'decision', 'expected_payload_sha256', 'expected_candidate_sha', 'expected_build_fingerprint' ) as $key ) if ( isset( $_POST[ $key ] ) && ( ! is_string( $_POST[ $key ] ) || strlen( $_POST[ $key ] ) > 128 ) ) wp_die( 'Invalid decision input.', '', array( 'response' => 422 ) );
