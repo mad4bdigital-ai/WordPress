@@ -630,7 +630,128 @@ final class MAD4B_SCP_Context_Authority {
 	 * options and current scope are CAS protected by the Context registry lock.
 	 * All inherited approval statuses are invalidated until new review.
 	 */
+
+    /**
+     * WordPress-native functional migration plan. This is NOT physical Host,
+     * MariaDB crash/restart, backup, rollback or supplier-rights certification.
+     * A separately approved owner ticket still owns the eventual write.
+     */
+    public static function native_owner_transfer_plan( $input = array() ) {
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'source_id', 'job_id' ) ) )
+            return new WP_Error( 'mad4b_native_transfer_plan_input_invalid', 'Exact original source and WordPress shadow job are required.' );
+        $source_id = (string) ( $input['source_id'] ?? '' );
+        $job_id = (string) ( $input['job_id'] ?? '' );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $source_id )
+            || ! preg_match( '/^[a-f0-9]{32}$/D', $job_id ) )
+            return new WP_Error( 'mad4b_native_transfer_identity_invalid', 'Malformed exact source or shadow job identity.' );
+        if ( ! class_exists( 'MAD4B_SCP_Native_Recovery' ) )
+            return new WP_Error( 'mad4b_native_transfer_shadow_missing', 'WordPress native recovery proof is unavailable.' );
+        $site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+        if ( ! is_array( $site ) || 'staging' !== ( $site['environment'] ?? '' )
+            || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
+            || empty( $site['profile_digest'] ) || empty( $site['site_uuid'] ) )
+            return new WP_Error( 'mad4b_native_transfer_site_not_staging', 'Exact enrolled Staging site is required.' );
+        $legacy = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
+        if ( is_wp_error( $legacy ) ) return $legacy;
+        $proof = self::legacy_owner_transfer_evidence( array( 'source_id' => $source_id ) );
+        if ( is_wp_error( $proof ) ) return $proof;
+        $shadow = MAD4B_SCP_Native_Recovery::readback( array( 'job_id' => $job_id ) );
+        if ( is_wp_error( $shadow ) ) return $shadow;
+        if ( ! is_array( $shadow ) || 'WP_NATIVE_CROSS_REQUEST_VERIFIED' !== ( $shadow['state'] ?? '' )
+            || true !== ( $shadow['independent_request_observed'] ?? false )
+            || true !== ( $shadow['scratch_functional_rehearsal_verified'] ?? false )
+            || true !== ( $shadow['provider_proof_still_exact'] ?? false )
+            || true !== ( $shadow['shadow_plan_still_exact'] ?? false )
+            || true !== ( $shadow['fresh'] ?? false )
+            || 'shadow' !== ( $shadow['mode'] ?? '' )
+            || ! hash_equals( $source_id, (string) ( $shadow['source_id'] ?? '' ) )
+            || ! hash_equals( (string) ( $legacy['plan_sha256'] ?? '' ), (string) ( $proof['plan_sha256'] ?? '' ) )
+            || ! hash_equals( (string) ( $proof['provider_proof_sha256'] ?? '' ),
+                (string) ( $shadow['stored_provider_proof_sha256'] ?? '' ) )
+            || true !== ( $proof['folder_membership_verified'] ?? false )
+            || (int) ( $proof['matched_file_count'] ?? -1 ) !== (int) ( $legacy['asset_count'] ?? -2 ) )
+            return new WP_Error( 'mad4b_native_transfer_shadow_not_exact', 'Independent WordPress shadow and original Drive source must match the same exact current plan.' );
+        $basis = array(
+            'contract' => 'mad4b.context-native-functional-transfer-plan.v1',
+            'site_uuid' => (string) $site['site_uuid'],
+            'site_profile_digest' => (string) $site['profile_digest'],
+            'brand_id' => (string) $legacy['brand_id'],
+            'source_id' => $source_id, 'job_id' => $job_id,
+            'original_folder_id' => (string) $legacy['external_root_id'],
+            'legacy_plan_sha256' => (string) $legacy['plan_sha256'],
+            'provider_proof_sha256' => (string) $proof['provider_proof_sha256'],
+            'asset_count' => (int) $legacy['asset_count'],
+            'registry_revision' => (int) $legacy['registry_revision'],
+        );
+        $basis['plan_sha256'] = hash( 'sha256', wp_json_encode( $basis, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        return $basis + array(
+            'eligible' => true, 'next_write_ability' => 'context/native-owner-transfer-apply',
+            'one_time_human_approved_ticket_required' => true,
+            'confirmation' => 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY',
+            'functional_only' => true, 'host_runner_required' => false,
+            'mariadb_crash_certified' => false, 'independent_backup_certified' => false,
+            'rollback_certified' => false, 'prior_asset_approvals_preserved' => false,
+            'new_source_created' => false, 'production_mutation_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false );
+    }
+
+    /**
+     * Distinct governed Staging write. Never use an AI-approved or caller
+     * invented owner ticket; no caller-supplied ready=true / host=true flags.
+     */
+    public static function native_owner_transfer_apply( $input ) {
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ), array(
+            'source_id', 'job_id', 'expected_native_plan_sha256', 'expected_plan_sha256',
+            'expected_brand_id', 'reviewed_external_root_id',
+            'owner_evidence_reference', 'expected_provider_proof_sha256', 'confirmation'
+        ) ) )
+            return new WP_Error( 'mad4b_native_transfer_apply_input_invalid', 'Only exact governed WordPress-native transfer fields are allowed.' );
+        if ( 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY' !== ( $input['confirmation'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_transfer_owner_confirmation_required', 'Explicit functional-only owner confirmation required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate()
+            || ! current_user_can( 'manage_options' ) || ! current_user_can( 'update_plugins' ) )
+            return new WP_Error( 'mad4b_native_transfer_owner_required', 'Governed site owner write authority is required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Identity_Context' )
+            || ! class_exists( 'MAD4B_SCP_Approval_Tickets' )
+            || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+                MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
+            return new WP_Error( 'mad4b_native_transfer_stepup_required', 'Fresh mapped OAuth owner step-up and separate human ticket required.' );
+        $identity = MAD4B_SCP_Identity_Context::current();
+        $user_id = get_current_user_id();
+        if ( is_wp_error( $identity ) || ! is_array( $identity )
+            || empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( $identity['auth_method'] ?? '' )
+            || ! $user_id || (int) ( $identity['wp_user_id'] ?? 0 ) !== (int) $user_id
+            || empty( $identity['subject_fingerprint'] ) || empty( $identity['approval_ticket_id'] ) )
+            return new WP_Error( 'mad4b_native_transfer_oauth_owner_required', 'Only directly mapped authenticated WordPress owner can approve a source transfer.' );
+        $ticket = MAD4B_SCP_Approval_Tickets::get( $identity['approval_ticket_id'] );
+        if ( ! is_array( $ticket ) || 'executing' !== (string) ( $ticket['status'] ?? '' )
+            || 'context/native-owner-transfer-apply' !== (string) ( $ticket['ability_name'] ?? '' )
+            || (int) ( $ticket['approved_by'] ?? 0 ) !== (int) $user_id )
+            return new WP_Error( 'mad4b_native_transfer_human_ticket_required', 'An independently human-approved, claimed exact write ticket is required.' );
+        $plan = self::native_owner_transfer_plan( array(
+            'source_id' => (string) ( $input['source_id'] ?? '' ),
+            'job_id' => (string) ( $input['job_id'] ?? '' ) ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $input['expected_native_plan_sha256'] ?? '' ) )
+            || ! hash_equals( (string) $plan['plan_sha256'], (string) $input['expected_native_plan_sha256'] )
+            || ! hash_equals( (string) $plan['legacy_plan_sha256'], (string) ( $input['expected_plan_sha256'] ?? '' ) )
+            || ! hash_equals( (string) $plan['provider_proof_sha256'], (string) ( $input['expected_provider_proof_sha256'] ?? '' ) )
+            || ! hash_equals( (string) $plan['brand_id'], (string) ( $input['expected_brand_id'] ?? '' ) )
+            || ! hash_equals( (string) $plan['original_folder_id'], (string) ( $input['reviewed_external_root_id'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_native_transfer_stale_plan', 'Site, source, provider proof, brand, or shadow changed. Re-plan and reapprove.' );
+        // Enforce the same exact original source plan/Drive verification and
+        // Context lock as the Host-certified legacy route, but not its crash gate.
+        return self::perform_legacy_owner_transfer( $input, true );
+    }
+
 	public static function legacy_owner_transfer_apply( $input ) {
+        return self::perform_legacy_owner_transfer( $input, false );
+    }
+
+    private static function perform_legacy_owner_transfer( $input, $functional_only ) {
+        if ( ! $functional_only ) {
 		if ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) || true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required', 'Legacy ownership writes remain disabled until independent rollback and Host acceptance are certified.' );
 		// An operator-set flag is not proof of the current physical Host.
@@ -644,8 +765,20 @@ final class MAD4B_SCP_Context_Authority {
 		if ( ! is_array( $host_identity ) || empty( $host_identity['verified'] ) )
 			return new WP_Error( 'mad4b_legacy_transfer_host_proof_required',
 				'A fresh independently verified enrolled Host Runner proof is required, in addition to rollback certification.' );
+        } else {
+            if ( 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY' !== ( $input['confirmation'] ?? '' )
+                || ! isset( $input['job_id'], $input['expected_native_plan_sha256'] ) )
+                return new WP_Error( 'mad4b_native_transfer_unverified_mode', 'Exact WordPress shadow and owner-approved functional mode required.' );
+            $native = self::native_owner_transfer_plan( array(
+                'source_id' => (string) ( $input['source_id'] ?? '' ),
+                'job_id' => (string) $input['job_id'] ) );
+            if ( is_wp_error( $native ) ) return $native;
+            if ( ! hash_equals( (string) $native['plan_sha256'], (string) $input['expected_native_plan_sha256'] ) )
+                return new WP_Error( 'mad4b_native_transfer_snapshot_changed', 'Functional transfer proof changed before entering the Context lock.' );
+        }
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_legacy_transfer_input_invalid', 'Exact transfer input required.' );
-		if ( 'APPROVE EXACT UNBOUND BRAND TRANSFER' !== (string) ( $input['confirmation'] ?? '' ) )
+		if ( ( $functional_only ? 'APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY'
+            : 'APPROVE EXACT UNBOUND BRAND TRANSFER' ) !== (string) ( $input['confirmation'] ?? '' ) )
 			return new WP_Error( 'mad4b_legacy_transfer_owner_confirmation_required', 'The exact owner transfer confirmation was not given.' );
 		$source_id = strtolower( trim( (string) ( $input['source_id'] ?? '' ) ) );
 		$expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
@@ -709,8 +842,15 @@ final class MAD4B_SCP_Context_Authority {
 			return new WP_Error( 'mad4b_legacy_transfer_provider_proof_stale',
 				'The operator-reviewed source and external inventory evidence changed. Refresh proof and approval.' );
 		$provider_inventory_digest = $provider_proof['provider_proof_sha256'];
-		return self::with_registry_lock( 'legacy_owner_transfer_apply',
-			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest ) {
+		return self::with_registry_lock( $functional_only ? 'native_owner_transfer_apply' : 'legacy_owner_transfer_apply',
+			static function () use ( $input, $source_id, $expected, $reviewed_root, $evidence, $expected_count, $provider_inventory_digest, $functional_only ) {
+                if ( $functional_only ) {
+                    $fresh = self::native_owner_transfer_plan( array(
+                        'source_id' => $source_id, 'job_id' => (string) $input['job_id'] ) );
+                    if ( is_wp_error( $fresh ) ) return $fresh;
+                    if ( ! hash_equals( (string) $fresh['plan_sha256'], (string) $input['expected_native_plan_sha256'] ) )
+                        return new WP_Error( 'mad4b_native_transfer_locked_drift', 'Native shadow/source identity changed under lock; no ownership may be transferred.' );
+                }
 				$plan = self::legacy_owner_transfer_plan( array( 'source_id' => $source_id ) );
 				if ( is_wp_error( $plan ) ) return $plan;
 				if ( ! hash_equals( (string) $plan['plan_sha256'], $expected )
@@ -796,8 +936,13 @@ final class MAD4B_SCP_Context_Authority {
 					'brand_id' => (string) $plan['brand_id'],
 					'prior_review_authority_preserved' => false,
 					'new_source_created' => false,
+                    'functional_only' => $functional_only,
+                    'mariadb_crash_certified' => false,
+                    'independent_backup_certified' => false,
+                    'rollback_certified' => ! $functional_only,
 					'production_mutation' => false,
-				), 'mad4b/context-legacy-owner-transfer', array(
+				), $functional_only ? 'mad4b/context-native-functional-owner-transfer'
+                    : 'mad4b/context-legacy-owner-transfer', array(
 					'source_id_sha256' => hash( 'sha256', $source_id ),
 					'prior_source_sha256' => (string) $plan['source_record_sha256'],
 					'prior_assets_sha256' => (string) $plan['asset_records_sha256'],
@@ -808,6 +953,11 @@ final class MAD4B_SCP_Context_Authority {
 					'provider_inventory_digest' => $provider_inventory_digest,
 					'provider_scan_complete' => true,
 					'owner_approved_transfer' => true,
+                    'functional_only' => $functional_only,
+                    'native_shadow_job_sha256' => $functional_only
+                        ? hash( 'sha256', (string) $input['job_id'] ) : '',
+                    'mariadb_crash_certified' => false,
+                    'rollback_certified' => ! $functional_only,
 					'prior_reviews_invalidated' => true,
 					'supplier_rights_auto_granted' => false,
 					'production_mutation' => false,
