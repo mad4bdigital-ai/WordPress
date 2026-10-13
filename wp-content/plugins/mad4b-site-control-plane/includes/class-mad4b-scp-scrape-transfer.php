@@ -54,6 +54,28 @@ final class MAD4B_SCP_Scrape_Transfer {
                                     'attachment_id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
                                 'required' => array( 'source_url', 'attachment_id' ),
                                 'additionalProperties' => false ) ),
+                        'editorial_media' => array( 'type' => 'array', 'maxItems' => self::MAX_IMAGES,
+                            'items' => array( 'type' => 'object', 'properties' => array(
+                                'source_url' => array( 'type' => 'string' ),
+                                'brand_id' => array( 'type' => 'string' ),
+                                'locale' => array( 'type' => 'string' ),
+                                'title' => array( 'type' => 'string' ),
+                                'alt' => array( 'type' => 'string' ),
+                                'caption' => array( 'type' => 'string' ),
+                                'description' => array( 'type' => 'string' ),
+                                'reviewed' => array( 'type' => 'boolean' ) ),
+                                'required' => array( 'source_url', 'brand_id', 'locale',
+                                    'title', 'alt', 'caption', 'description', 'reviewed' ),
+                                'additionalProperties' => false ) ),
+                        'scrape_receipt' => array( 'type' => 'object', 'properties' => array(
+                            'record_id' => array( 'type' => 'string' ),
+                            'source_page_url' => array( 'type' => 'string' ),
+                            'body_sha256' => array( 'type' => 'string',
+                                'pattern' => '^[a-f0-9]{64}$' ),
+                            'captured_at' => array( 'type' => 'string' ) ),
+                            'required' => array( 'record_id', 'source_page_url',
+                                'body_sha256', 'captured_at' ),
+                            'additionalProperties' => false ),
                         'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     ), 'required' => array( 'source_page_url', 'html' ),
                     'additionalProperties' => false ),
@@ -202,7 +224,8 @@ final class MAD4B_SCP_Scrape_Transfer {
 
     private static function parse( $input ) {
         if ( ! is_array( $input ) || array_diff( array_keys( $input ), array(
-            'source_page_url', 'html', 'prices', 'link_overrides', 'media_bindings', 'expected_plan_sha256' ) ) )
+            'source_page_url', 'html', 'prices', 'link_overrides', 'media_bindings',
+            'editorial_media', 'scrape_receipt', 'expected_plan_sha256' ) ) )
             return new WP_Error( 'mad4b_scrape_transfer_input_invalid', 'Unexpected transfer input.' );
         $source = $input['source_page_url'] ?? '';
         $html = $input['html'] ?? '';
@@ -214,12 +237,43 @@ final class MAD4B_SCP_Scrape_Transfer {
         $prices = $input['prices'] ?? array();
         $overrides = $input['link_overrides'] ?? array();
         $bindings = $input['media_bindings'] ?? array();
+        $editorial_input = $input['editorial_media'] ?? array();
         if ( ! is_array( $prices ) || count( $prices ) > 80 ||
             ! is_array( $overrides ) || count( $overrides ) > self::MAX_LINKS ||
-            ! is_array( $bindings ) || count( $bindings ) > self::MAX_IMAGES )
+            ! is_array( $bindings ) || count( $bindings ) > self::MAX_IMAGES ||
+            ! is_array( $editorial_input ) || count( $editorial_input ) > self::MAX_IMAGES )
             return new WP_Error( 'mad4b_scrape_transfer_limit', 'Bounded scrape evidence required.' );
         foreach ( $prices as $item ) if ( ! is_array( $item ) )
             return new WP_Error( 'mad4b_scrape_transfer_price_invalid', 'Price records must be source data objects.' );
+        $editorial = array();
+        foreach ( $editorial_input as $row ) {
+            if ( ! is_array( $row ) || true !== ( $row['reviewed'] ?? false ) )
+                return new WP_Error( 'mad4b_scrape_transfer_editorial_invalid',
+                    'Branded SEO metadata requires explicit editorial review.' );
+            foreach ( array( 'brand_id', 'locale', 'title', 'alt', 'caption', 'description' ) as $field )
+                if ( ! is_string( $row[$field] ?? null ) || '' === trim( $row[$field] )
+                    || strlen( $row[$field] ) > 1000 )
+                    return new WP_Error( 'mad4b_scrape_transfer_editorial_invalid',
+                        'Complete bounded localized brand metadata required.' );
+            $image_url = self::absolute( $row['source_url'] ?? '', $source );
+            if ( '' === $image_url || isset( $editorial[$image_url] ) )
+                return new WP_Error( 'mad4b_scrape_transfer_editorial_invalid',
+                    'Duplicate or invalid editorial image source.' );
+            $editorial[$image_url] = $row;
+        }
+        $receipt = $input['scrape_receipt'] ?? null;
+        if ( null !== $receipt ) {
+            if ( ! is_array( $receipt ) || ! is_string( $receipt['record_id'] ?? null ) ||
+                '' === trim( $receipt['record_id'] ) || strlen( $receipt['record_id'] ) > 160 ||
+                ! is_string( $receipt['captured_at'] ?? null ) ||
+                '' === trim( $receipt['captured_at'] ) || strlen( $receipt['captured_at'] ) > 80 ||
+                ! is_string( $receipt['source_page_url'] ?? null ) ||
+                ! hash_equals( $source, $receipt['source_page_url'] ) ||
+                ! is_string( $receipt['body_sha256'] ?? null ) ||
+                ! hash_equals( hash( 'sha256', $html ), $receipt['body_sha256'] ) )
+                return new WP_Error( 'mad4b_scrape_transfer_receipt_mismatch',
+                    'Submitted capture receipt does not match the exact source URL and HTML body.' );
+        }
         $links = array(); $images = array();
         $processor = new WP_HTML_Tag_Processor( $html );
         $allowed_html_tags = array( 'A', 'P', 'DIV', 'SECTION', 'ARTICLE', 'SPAN',
@@ -277,9 +331,14 @@ final class MAD4B_SCP_Scrape_Transfer {
                     return new WP_Error( 'mad4b_scrape_transfer_media_limit', 'Too many image candidates.' );
             }
         }
+        foreach ( array_keys( $editorial ) as $image_url )
+            if ( ! isset( $images[$image_url] ) )
+                return new WP_Error( 'mad4b_scrape_transfer_editorial_orphan',
+                    'Editorial metadata must match an image in the extracted HTML.' );
         return array( 'source' => $source, 'html' => $html, 'links' => array_keys( $links ),
             'images' => array_values( $images ), 'prices' => $prices,
-            'overrides' => $overrides, 'bindings' => $bindings );
+            'overrides' => $overrides, 'bindings' => $bindings,
+            'editorial' => $editorial, 'scrape_receipt' => $receipt );
     }
 
     private static function build( $input ) {
@@ -332,6 +391,19 @@ final class MAD4B_SCP_Scrape_Transfer {
         }
         $media = array(); $manifest = array();
         foreach ( $parsed['images'] as $item ) {
+            $row = $parsed['editorial'][$item['source_url']] ?? null;
+            $item['source_metadata'] = array( 'title' => $item['title'],
+                'alt' => $item['alt'], 'caption' => $item['caption'],
+                'description' => $item['description'] );
+            $item['editorial_metadata_provided'] = null !== $row;
+            if ( null !== $row ) {
+                foreach ( array( 'title', 'alt', 'caption', 'description' ) as $field )
+                    $item[$field] = self::safe_text_cap( $row[$field],
+                        'description' === $field ? 1000 : 240 );
+                $item['brand_id'] = $row['brand_id'];
+                $item['locale'] = $row['locale'];
+            }
+            $item['media_metadata_readback_verified'] = false;
             $item['local_media_url'] = $attached[$item['source_url']] ?? '';
             $item['import_required'] = '' === $item['local_media_url'];
             if ( $item['import_required'] ) $manifest[] = array(
@@ -355,7 +427,8 @@ final class MAD4B_SCP_Scrape_Transfer {
             'source_url' => $source, 'source_html_sha256' => hash( 'sha256', $parsed['html'] ),
             'source_prices_sha256' => hash( 'sha256', wp_json_encode( $parsed['prices'] ) ),
             'links' => $mapped, 'missing_links' => $missing,
-            'suggested_links' => $suggested, 'images' => $media );
+            'suggested_links' => $suggested, 'images' => $media,
+            'scrape_receipt' => $parsed['scrape_receipt'] );
         return array( 'contract' => self::CONTRACT, 'state' => 'SCRAPED_EVIDENCE_CAPTURED',
             'identity' => $identity, 'plan_sha256' => hash( 'sha256', wp_json_encode( $identity ) ),
             'source_page_url' => $source,
@@ -368,8 +441,14 @@ final class MAD4B_SCP_Scrape_Transfer {
             'suggested_internal_links' => $suggested,
             'slug_matches_require_review' => true,
             'scrape_provenance_verified' => false,
-            'scrape_provenance_status' => 'caller_supplied_html_only',
-            'brand_editorial_metadata_required' => ! empty( $media ),
+            'scrape_provenance_status' => null === $parsed['scrape_receipt']
+                ? 'caller_supplied_html_only' : 'submitted_receipt_not_server_verified',
+            'scrape_receipt_id' => null === $parsed['scrape_receipt']
+                ? '' : $parsed['scrape_receipt']['record_id'],
+            'server_side_scrape_receipt_verification_required' => true,
+            'brand_editorial_metadata_required' => count( array_filter( $media,
+                static function ( $item ) { return ! $item['editorial_metadata_provided']; } ) ) > 0,
+            'media_metadata_readback_verified' => false,
             'image_import_tasks' => $media,
             'remote_media_manifest_items' => $manifest,
             'image_import_remaining' => count( array_filter( $media,
@@ -498,6 +577,7 @@ final class MAD4B_SCP_Scrape_Transfer {
             'html_safety_checked' => true,
             'scrape_provenance_verified' => false,
             'brand_editorial_metadata_required' => $plan['brand_editorial_metadata_required'],
+            'media_metadata_readback_verified' => false,
             'ready_for_draft_review' => false,
             'draft_review_blockers' => array_values( array_filter( array(
                 'editorial_semantic_review_required',
