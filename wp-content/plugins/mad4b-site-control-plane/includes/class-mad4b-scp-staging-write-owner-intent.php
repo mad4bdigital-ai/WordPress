@@ -111,7 +111,18 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! is_array( $plan ) || empty( $plan['ready_to_apply'] ) || empty( $plan['plan_sha256'] ) )
             return new WP_Error( 'mad4b_owner_plan_not_ready', 'Fresh eligible Staging Write plan required.' );
-        return array( 'plan'=>$plan, 'review_digest'=>self::digest( $plan ) );
+        // Return only the exact identity needed for owner review, not the
+        // broad grant inventory or private provider information.
+        $identity = array();
+        foreach ( array( 'plan_sha256', 'site_uuid', 'site_profile_revision',
+            'site_profile_digest', 'source_commit_sha', 'build_fingerprint',
+            'package_manifest_digest', 'artifact_identity' ) as $key )
+            $identity[ $key ] = $plan[ $key ] ?? null;
+        return array( 'contract'=>'mad4b.staging-write-owner-review.v1',
+            'review_digest'=>self::digest( $plan ), 'plan'=>$identity,
+            'read_only'=>true, 'authorizing'=>false, 'mutation_performed'=>false,
+            'decision_recorded'=>false,
+        );
     }
     public static function attest( $input ) {
         $review = self::review();
