@@ -805,9 +805,18 @@ final class MAD4B_SCP_Servers {
 	public static function chatgpt_materialization_optional_tools( array $requested_tools ) {
 		$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
 			? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+		$reviewed = self::chatgpt_reviewed_direct_step_up_tools();
+		// Keep the only direct management tool for editing an oversized optional
+		// catalog reachable *when it is already enrolled and reviewed*. Otherwise
+		// a valid projection can crowd out the very demotion route needed to recover.
+		// Never promote its authority; registration and execution still enforce
+		// exact CIMD bearer, scoped OAuth step-up, Write mount and execution fence.
+		$management = array_values( array_intersect(
+			array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
+		) );
 		return array_values( array_intersect(
 			array_values( array_unique( array_merge(
-				$dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools()
+				$management, $dynamic_optional, $reviewed
 			) ) ),
 			$requested_tools
 		) );
