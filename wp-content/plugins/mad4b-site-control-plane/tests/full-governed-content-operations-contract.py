@@ -326,6 +326,12 @@ for token in (
     "remote_candidate_score",
 ):
     assert token in remote_media_src, f"remote media adapter contract missing: {token}"
+srcset_helper = root / "includes" / "class-mad4b-scp-remote-media-srcset.php"
+assert srcset_helper.is_file(), "pure srcset parser helper missing"
+srcset_src = srcset_helper.read_text(encoding="utf-8")
+assert "preg_match_all(" in srcset_src and "PREG_SET_ORDER" in srcset_src, "descriptor-aware safe srcset selection missing"
+assert "MAD4B_SCP_Remote_Media_Srcset::best( $srcset )" in remote_media_src, "remote adapter must use shared candidate parser"
+assert "class-mad4b-scp-remote-media-srcset.php" in remote_media_src, "remote srcset helper not loaded"
 assert "class-mad4b-scp-remote-media-adapter.php" in plugin_src
 assert len(remote_media_src.splitlines()) <= 900, "remote media adapter exceeds the focused 900-line adapter budget"
 
