@@ -155,6 +155,21 @@ final class MAD4B_SCP_Servers {
 			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
 			$tools[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
 		}
+		if ( 'mad4b-admin' === $server_id
+			&& class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			// Dynamically declared Admin mutations must still be verified on the
+			// dedicated governed Write plane. The adapter's original execution
+			// callback, WordPress registration, provider/eligibility guard and
+			// authorization ticket remain authoritative; a name alone never mounts.
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			foreach ( $registry->ability_names( 'admin' ) as $candidate ) {
+				if ( self::registered_mutation_ability( $candidate )
+					&& self::is_external_write_candidate( $candidate )
+					&& self::ability_is_mounted( 'mad4b-write', $candidate ) )
+					$tools[] = (string) $candidate;
+			}
+		}
 		return array_values( array_unique( $tools ) );
 	}
 
