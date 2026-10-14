@@ -51,14 +51,19 @@ if ( 'structural_classification_only' !== (string) ( $raw_row['execution_eligibi
 
 
 // Feature007 WordPress-native circular-dependency recovery. Each exact
-// Staging operation is mounted on both its declared original Admin surface
-// and dedicated governed Write authority; discovery cannot itself grant
+// Eligible Staging operations mount on their original Admin surface and
+// governed Write authority. Native build/install remain blocked before the
+// separate source opt-in; discovery cannot itself grant
 // permission, owner OAuth, one-time approval, install, or Production access.
 $native_bootstrap_write = array(
     'mad4b/wordpress-native-candidate-opt-in-apply',
     'mad4b/wp-native-build-start',
     'mad4b/wp-native-self-approve-install',
 );
+$native_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'wp-native-build' );
+if ( ! $native_adapter instanceof MAD4B_SCP_WP_Native_Build_Adapter ) {
+    $fail( 'Native bootstrap requires its real first-party adapter.' );
+}
 foreach ( $native_bootstrap_write as $bounded_name ) {
     if ( ! wp_has_ability( $bounded_name ) ) {
         $fail( 'Native bootstrap ability must be registered before runtime projection.', $bounded_name );
@@ -66,6 +71,25 @@ foreach ( $native_bootstrap_write as $bounded_name ) {
     if ( 'mad4b/wp-native-build-start' === $bounded_name
         && ! in_array( $bounded_name, MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' ), true ) ) {
         $fail( 'Native build must be contributed by the registered first-party Admin adapter.', $bounded_name );
+    }
+    if ( in_array( $bounded_name, array( 'mad4b/wp-native-build-start', 'mad4b/wp-native-self-approve-install' ), true ) ) {
+        $eligibility = $native_adapter->mutation_ability_runtime_eligibility( $bounded_name );
+        if ( true !== $eligibility ) {
+            if ( ! is_wp_error( $eligibility ) || 'mad4b_native_adapter_staging_not_eligible' !== $eligibility->get_error_code()
+                || MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name ) ) {
+                $fail( 'Missing native Staging prerequisites must deny governed Write mounting.', $bounded_name );
+            }
+            $blocked = array_values( array_filter( MAD4B_SCP_Servers::blocked_write_tools(), static function ( $row ) use ( $bounded_name ) {
+                return $bounded_name === ( $row['ability'] ?? '' )
+                    && 'mad4b_native_adapter_staging_not_eligible' === ( $row['runtime_eligibility_code'] ?? '' );
+            } ) );
+            if ( 1 !== count( $blocked ) ) $fail( 'Native runtime denial must remain observable exactly once.', $bounded_name );
+            if ( 'mad4b/wp-native-build-start' === $bounded_name
+                && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', $bounded_name ) ) {
+                $fail( 'Dynamic Admin mounting bypassed the native prerequisite denial.', $bounded_name );
+            }
+            continue;
+        }
     }
     if ( ! MAD4B_SCP_Servers::is_external_write_candidate( $bounded_name )
         || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name )
