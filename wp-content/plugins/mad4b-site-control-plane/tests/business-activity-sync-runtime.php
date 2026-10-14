@@ -117,6 +117,9 @@ $begin=MAD4B_SCP_Activity_Sync_Runtime::begin(confirmed(array_merge(scope(101),a
 ck(!is_wp_error($begin)&&$begin['state']==='queued','Operation not persisted before write');
 $atomic_reserve=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','reserve_once');
 $atomic_release=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','release_once');
+// PHP 7.4 needs explicit access for private-method race regression only.
+$atomic_reserve->setAccessible(true);
+$atomic_release->setAccessible(true);
 $opKey='mad4b_asyn_operation_'.hash('sha256',
  MAD4B_SCP_Site_Profile::site_uuid().'|vendor|101');
 $originalOp=$GLOBALS['options'][$opKey];
@@ -148,9 +151,11 @@ $next=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(101));
 ck(!is_wp_error($next)&&!$next['has_conflicts']&&count($next['steps'])===0,'Checkpoint remained stale');
 $GLOBALS['wp_values'][102]['biography']='Different';
 $disagree=MAD4B_SCP_Activity_Sync_Runtime::plan(scope(102));
-ck(!is_wp_error($disagree)&&$disagree['mode']==='bootstrap'&&
- !$disagree['ready_for_apply']&&$disagree['requires_manual_reconciliation'],
- 'Divergent initial sources autoaccepted without arbitration');
+ck(!is_wp_error($disagree)&&$disagree['mode']==='bootstrap_arbitrate'&&
+ !$disagree['ready_for_apply']&&$disagree['requires_manual_reconciliation']&&
+ empty($disagree['steps']),
+ 'Divergent initial sources autoaccepted without arbitration; diagnostic='.
+ (is_wp_error($disagree)?$disagree->get_error_code():json_encode(array_intersect_key($disagree,array_flip(array('mode','sources_consistent','requires_manual_reconciliation','ready_for_apply','steps'))))));
 $arbitration=MAD4B_SCP_Activity_Sync_Runtime::plan(array_merge(scope(102),
  array('field_sources'=>array('biography'=>'wordpress'))));
 ck(!is_wp_error($arbitration)&&$arbitration['mode']==='bootstrap_arbitrate'&&
