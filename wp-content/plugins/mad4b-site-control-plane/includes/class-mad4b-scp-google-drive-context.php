@@ -558,6 +558,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'token_unreadable' => $token_unreadable,
 			'revocation_error' => $revocation_pending && isset( $token['revocation_error'] ) ? sanitize_key( (string) $token['revocation_error'] ) : '',
 			'revocation_attempted_at' => $revocation_pending && isset( $token['revocation_attempted_at'] ) ? sanitize_text_field( (string) $token['revocation_attempted_at'] ) : '',
+			'revocation_attempts' => $revocation_pending ? self::safe_revocation_attempts( $token['revocation_attempts'] ?? array() ) : array(),
 			'scope' => $scope,
 			'account_email' => $connected && isset( $token['account_email'] ) ? sanitize_email( (string) $token['account_email'] ) : '',
 			'account_name' => $connected && isset( $token['account_name'] ) ? sanitize_text_field( (string) $token['account_name'] ) : '',
@@ -600,6 +601,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'token_unreadable' => ! empty( $status['token_unreadable'] ),
 			'revocation_error' => isset( $status['revocation_error'] ) ? (string) $status['revocation_error'] : '',
 			'revocation_attempted_at' => isset( $status['revocation_attempted_at'] ) ? (string) $status['revocation_attempted_at'] : '',
+			'revocation_attempts' => $status['revocation_attempts'] ?? array(),
 			'expires_at' => isset( $status['expires_at'] ) ? (int) $status['expires_at'] : 0,
 			'credential_fresh' => ! empty( $status['credential_fresh'] ),
 			'refresh_required' => ! empty( $status['refresh_required'] ),
@@ -962,12 +964,28 @@ final class MAD4B_SCP_Google_Drive_Context {
 	 * of termination, so callers preserve disabled/pending retry state.
 	 * Never return or log bearer tokens or provider response bodies.
 	 */
+	private static function safe_revocation_attempts( $attempts ) {
+		$safe = array();
+		if ( ! is_array( $attempts ) ) return $safe;
+		foreach ( array_slice( $attempts, 0, 2 ) as $attempt ) {
+			if ( ! is_array( $attempt ) || ! in_array( $attempt['credential_type'] ?? '', array( 'refresh', 'access' ), true ) ) continue;
+			$provider = $attempt['provider_error'] ?? '';
+			$safe[] = array(
+				'credential_type' => $attempt['credential_type'],
+				'http_status' => max( 0, min( 599, (int) ( $attempt['http_status'] ?? 0 ) ) ),
+				'provider_error' => in_array( $provider, array( 'invalid_token', 'invalid_request', 'invalid_client', 'unsupported_token_type', 'invalid_grant', 'temporarily_unavailable', 'server_error' ), true ) ? $provider : '',
+			);
+		}
+		return $safe;
+	}
+
 	private static function revoke_google_token_attempt( $token ) {
 		if ( '' === (string) $token ) return array( 'confirmed' => false, 'error' => 'google_revocation_token_missing' );
 		try {
 			$response = wp_remote_post( self::REVOKE_ENDPOINT, array(
 				'timeout' => 20,
 				'redirection' => 0,
+				'limit_response_size' => 4096,
 				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
 				'body' => array( 'token' => (string) $token ),
 			) );
@@ -978,9 +996,17 @@ final class MAD4B_SCP_Google_Drive_Context {
 			return array( 'confirmed' => false, 'error' => 'google_revocation_transport_' . sanitize_key( $response->get_error_code() ) );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
+		// Decode only a bounded OAuth error enum; never retain descriptions,
+		// response bodies, URLs or tokens in status or audit evidence.
+		$body = wp_remote_retrieve_body( $response );
+		$data = is_string( $body ) && strlen( $body ) <= 4096 ? json_decode( $body, true ) : null;
+		$provider = is_array( $data ) ? ( $data['error'] ?? '' ) : '';
+		$safe = self::safe_revocation_attempts( array( array( 'credential_type' => 'refresh', 'http_status' => $code, 'provider_error' => $provider ) ) );
 		return array(
 			'confirmed' => 200 === $code,
 			'error' => 200 === $code ? '' : 'google_revocation_http_' . $code,
+			'http_status' => $code,
+			'provider_error' => $safe[0]['provider_error'],
 		);
 	}
 
@@ -1006,6 +1032,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		}
 
 		$attempt = self::revoke_google_token_attempt( $token );
+		$attempts = array( array_merge( $attempt, array( 'credential_type' => ! empty( $record['refresh_token'] ) ? 'refresh' : 'access' ) ) );
 		$confirmed = ! empty( $attempt['confirmed'] );
 		$revocation_error = (string) $attempt['error'];
 		$used_access_fallback = false;
@@ -1017,6 +1044,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! $confirmed && 'google_revocation_http_400' === $revocation_error && '' !== $access_token && ! hash_equals( $token, $access_token ) ) {
 			$used_access_fallback = true;
 			$fallback = self::revoke_google_token_attempt( $access_token );
+			$attempts[] = array_merge( $fallback, array( 'credential_type' => 'access' ) );
 			$confirmed = ! empty( $fallback['confirmed'] );
 			if ( $confirmed ) $revocation_error = '';
 			else $revocation_error = (string) $fallback['error'];
@@ -1028,12 +1056,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$status['remote_revocation_attempted'] = true;
 			$status['remote_revocation_confirmed'] = true;
 			$status['remote_revocation_error'] = '';
+			$status['revocation_attempts'] = self::safe_revocation_attempts( $attempts );
 			return $status;
 		}
 
 		$record['revocation_pending'] = true;
 		$record['revocation_error'] = $revocation_error ? $revocation_error : 'google_revocation_unconfirmed';
 		$record['revocation_attempted_at'] = gmdate( 'c' );
+		$record['revocation_attempts'] = self::safe_revocation_attempts( $attempts );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) {
 			self::delete_option_verified( self::TOKEN_OPTION );
@@ -1050,6 +1080,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'revocation_pending' => true,
 				'revocation_error' => (string) $record['revocation_error'],
 				'revocation_attempted_at' => (string) $record['revocation_attempted_at'],
+				'revocation_attempts' => $record['revocation_attempts'],
 			)
 		);
 	}

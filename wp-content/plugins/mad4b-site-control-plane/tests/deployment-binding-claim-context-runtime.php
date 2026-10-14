@@ -70,4 +70,30 @@ try {
 }
 assertion(!MAD4B_SCP_Authorization::native_binding_callback_is_claimed($input),
     'Finally must erase a temporary approval even after provider exception.');
+$google = $invoke->invoke(null, 'mad4b/google-revocation-retry', $claim, $input,
+    function($arg) {
+        $changed = $arg;
+        $changed['expected_plan_sha256'] = str_repeat('f', 64);
+        return MAD4B_SCP_Authorization::google_revocation_callback_is_claimed($arg)
+            && !MAD4B_SCP_Authorization::google_revocation_callback_is_claimed($changed)
+            && !MAD4B_SCP_Authorization::native_binding_callback_is_claimed($arg);
+    });
+assertion($google, 'Google proof is bound to its exact ability, ticket and input.');
+assertion(!MAD4B_SCP_Authorization::google_revocation_callback_is_claimed($input),
+    'Google callback receipt is erased after return.');
+try {
+    $invoke->invoke(null, 'mad4b/google-revocation-retry', $claim, $input,
+        function($arg) { throw new RuntimeException('google fixture exception'); });
+    assertion(false, 'Google fixture exception must propagate.');
+} catch (RuntimeException $expected) {
+    assertion('google fixture exception' === $expected->getMessage(), 'Exact Google fixture exception.');
+}
+assertion(!MAD4B_SCP_Authorization::google_revocation_callback_is_claimed($input),
+    'Google proof is erased even when the provider throws.');
+$nested = $invoke->invoke(null, 'mad4b/google-revocation-retry', $claim, $input,
+    function($arg) use ($invoke, $claim) {
+        return $invoke->invoke(null, 'mad4b/other-operation', $claim, $arg,
+            function($nested_arg) { return MAD4B_SCP_Authorization::google_revocation_callback_is_claimed($nested_arg); });
+    });
+assertion(!$nested, 'A nested unrelated callback cannot borrow the outer Google claim.');
 echo "PASS: exact governed native binding callback claim lifetime and denial policy\n";

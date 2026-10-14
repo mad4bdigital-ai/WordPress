@@ -1146,3 +1146,64 @@ suffix in Context Adapter. That suffix was removed on PR #258, and a new CI
 static refusal checks class uniqueness, unique method names, bounded source
 size, and exact registered recovery routes. Do not deploy any commit before
 that repair or without independent native PHP lint.
+
+
+## 2026-10-14 incident: package identity, pending Google revoke and folder onboarding
+
+Evidence supplied by the operator:
+
+- Built source: `1e77615ae6a6ce6054040add40d75003569d89fe`.
+- Offline ZIP SHA-256: `a9b21ff07959ffeff60684c78e35bb1418845d1274ab003a1d07ef8f1f233232`.
+- Local PHP 8.3 tree lint: 1,042 files. This does not certify CI or installation.
+- Last separately observed live source on both Staging sites: `7c369c1b…`.
+- Screenshots show the old deferred MCP inventory panel. Its zero peer count is
+  not a completed inventory. Audit Events are per-site history counts, not causes.
+
+The `1e77615a…` source already reuses the authority request's MCP peer inventory,
+shows actual foreign route/plugin evidence, and preflights source onboarding.
+Do not diagnose an unreviewed foreign transport from a deferred UI placeholder,
+and do not disable unrelated plugins or broaden grants without exact route evidence.
+A built ZIP is not proof that the active PHP request runs that source.
+
+Additional source corrections in this follow-up:
+
+1. The Google remote Retry callback consumes the immutable wrapper's exact
+   ability/ticket/input proof. It does not reauthorize or claim the same ticket a
+   second time. Direct PHP calls, mismatched claims and cross-ability borrowing
+   fail before provider contact. Proof is erased on return or exception.
+2. Pending revoke status retains at most two credential-type / HTTP / allowlisted
+   OAuth error entries. Response descriptions, bodies and tokens are never
+   projected. An HTTP 400, including `invalid_token`, remains unconfirmed;
+   it never clears pending state or enables Drive or reconnect.
+3. Operational Integrity preserves the deployment resolver's bounded reason.
+   Source onboarding exposes that dependency and the read-only
+   `mad4b/deployment-mode-status` next step. An unavailable census reports unknown
+   counts rather than zero and cannot authorize a new Managed source.
+4. Independent PHP 7.4/8.3 recovery jobs run even if another Context architecture
+   test fails earlier. Existing mandatory architecture tests are unchanged.
+
+Acceptance order (separate evidence for each site): installed source and full
+manifest verification in a fresh request; current MCP inventory with exact route
+and plugin list; separately approved native deployment binding and later readback;
+source onboarding preflight and legacy ownership reconciliation; Google revoke
+outcome and disabled-state readback; fresh consent only after confirmed revocation;
+original folder/file evidence, Managed policy approval and registry readback.
+Existing stored grants and a Staging checkpoint do not replace these gates.
+
+No live WordPress calls, provider revocation, installation, permission changes,
+master merge or Production action were performed in this source-only follow-up.
+
+Follow-up validation in an isolated PHP 8.3.6 CLI (Ubuntu package bytes verified
+against the package index): nine incident fixtures PASS without warnings; all
+12 changed PHP files pass lint. These are hermetic/fake-WordPress tests, not live
+MCP, database, Google or installation certification.
+
+Pre-existing CI limitations observed on `1e77615a…`: Context Authority job
+`115631056032` fails before runtime on `trusted-brand-scope-runtime.php` with
+`Stale transfer accepted`. Admin Performance job `115631055117` reports existing
+route-registry, post-update-continuation, Context atomicity and admin recovery
+fixture failures. The existing Brand Core source contract also expects the old
+literal tasks-only admin predicate; current source supports tasks plus controls.
+Delivery fingerprint check finds 22 pre-existing stale bindings, none to the
+runtime files changed in this follow-up. These issues are not certified repaired
+by the nine incident tests and remain release blockers.

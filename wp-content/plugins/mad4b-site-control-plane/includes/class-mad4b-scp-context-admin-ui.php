@@ -996,6 +996,11 @@ final class MAD4B_SCP_Context_Admin_UI {
 		if ( ! empty( $connection['revocation_pending'] ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google revocation is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'All Drive reads and writes are disabled locally. Retry may contact Google and invalidate the outstanding grant; HTTP 400 does not confirm revocation.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( ! empty( $connection['revocation_error'] ) ) echo '<p><code>' . esc_html( $connection['revocation_error'] ) . '</code></p>';
+			foreach ( array_slice( $connection['revocation_attempts'] ?? array(), 0, 2 ) as $attempt ) {
+				$label = 'refresh' === ( $attempt['credential_type'] ?? '' ) ? 'Refresh credential' : 'Access credential';
+				echo '<p>' . esc_html( $label ) . ': HTTP ' . esc_html( (string) ( $attempt['http_status'] ?? 0 ) )
+					. ( ! empty( $attempt['provider_error'] ) ? ' · <code>' . esc_html( $attempt['provider_error'] ) . '</code>' : '' ) . '</p>';
+			}
 			echo '</div>';
 			$attempted_at = isset( $connection['revocation_attempted_at'] ) ? (string) $connection['revocation_attempted_at'] : '';
 			$attempt_time = '' !== $attempted_at ? strtotime( $attempted_at ) : false;
@@ -1209,10 +1214,12 @@ final class MAD4B_SCP_Context_Admin_UI {
                 : (string) ( $preflight['state'] ?? 'SOURCE_RECOVERY_REQUIRED' );
             $next = is_wp_error( $preflight ) ? 'mad4b/context-source-onboarding-preflight'
                 : (string) ( $preflight['next_ability'] ?? '' );
+            $reason = is_array( $preflight ) ? (string) ( $preflight['reason_code'] ?? '' ) : '';
             echo '<div class="notice notice-warning inline" role="status"><p><strong>'
                 . esc_html__( 'This folder is selected, but governed source onboarding is blocked.', 'mad4b-site-control-plane' )
                 . '</strong> ' . esc_html__( 'Complete the exact-site recovery step shown below, then return here. No folder or Drive file was changed.', 'mad4b-site-control-plane' )
-                . '</p><p><code>' . esc_html( $state ) . '</code> · '
+                . '</p><p><code>' . esc_html( $state ) . '</code>'
+                . ( '' !== $reason ? ' · <code>' . esc_html( $reason ) . '</code>' : '' ) . ' · '
                 . esc_html__( 'Remote next step:', 'mad4b-site-control-plane' )
                 . ' <code>' . esc_html( $next ) . '</code></p></div>';
         }

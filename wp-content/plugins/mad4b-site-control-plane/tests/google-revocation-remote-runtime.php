@@ -64,18 +64,17 @@ class MAD4B_SCP_Local_OAuth_Server {
 class MAD4B_SCP_OAuth_Resource_Bridge {
     public static function verified_bearer_client_is( $id ) { return $id === 'chatgpt-fixture'; }
 }
-class MAD4B_SCP_Authorization {
-    public static $claims = 0;
-    public static function authorize_mutation( $ability, $server, $provider, $input ) {
-        return array( 'allowed' => true );
-    }
-    public static function permission_result_from_authorization( $decision ) {
-        return ! empty( $decision['allowed'] );
-    }
-    public static function claim_mutation( $ability, $server, $provider, $input ) {
-        ++self::$claims;
-        return array( 'allowed' => true );
-    }
+// Exercise the actual callback proof, not a stub authorizer which permits
+// repeated claims. The durable outer claim is fixture evidence only.
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-authorization.php';
+function invoke_remote_retry( $input, $overrides = array(), $name = 'mad4b/google-revocation-retry' ) {
+    $claim = array_merge( array( 'allowed' => true, 'reason_code' => 'execution_claimed',
+        'approval_required' => true, 'approval_claimed' => true,
+        'approval_ticket_id' => $input['_mad4b_approval_ticket_id'] ?? '' ), $overrides );
+    $invoke = new ReflectionMethod( 'MAD4B_SCP_Authorization', 'invoke_claimed_callback' );
+    $invoke->setAccessible( true );
+    return $invoke->invoke( null, $name, $claim, $input,
+        array( 'MAD4B_SCP_Google_Revocation_Remote', 'retry' ) );
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-google-revocation-remote.php';
 $check = static function ( $truth, $description ) {
@@ -132,22 +131,35 @@ $input = array(
     'expected_profile_revision' => $planned['expected_profile_revision'],
     'confirmation' => $planned['confirmation'],
 );
-$blocked = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$blocked = invoke_remote_retry( $input );
 $check( is_wp_error( $blocked ) && MAD4B_SCP_Google_Drive_Context::$calls === 0,
     'Missing real one-time approval cannot reach Google provider' );
 $input['_mad4b_approval_ticket_id'] = '12345678-abcd-abcd-abcd-123456789abc';
+$direct = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$check( is_wp_error( $direct ) && 'mad4b_google_revoke_claimed_callback_required' === $direct->get_error_code()
+    && MAD4B_SCP_Google_Drive_Context::$calls === 0, 'Direct retry cannot claim its own execution authority' );
+foreach ( array( array( 'approval_claimed' => false ), array( 'reason_code' => 'preflight_allowed' ),
+    array( 'approval_ticket_id' => 'ffffffff-ffff-ffff-ffff-ffffffffffff' ) ) as $bad_claim ) {
+    $denied = invoke_remote_retry( $input, $bad_claim );
+    $check( is_wp_error( $denied ) && MAD4B_SCP_Google_Drive_Context::$calls === 0,
+        'Missing, preflight-only or foreign ticket proof cannot contact Google' );
+}
+$foreign = invoke_remote_retry( $input, array(), 'mad4b/deployment-binding-native-apply' );
+$check( is_wp_error( $foreign ) && MAD4B_SCP_Google_Drive_Context::$calls === 0,
+    'Native binding claim cannot authorize Google revocation' );
+
 $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ]['ciphertext'] = 'changed';
-$blocked = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$blocked = invoke_remote_retry( $input );
 $check( is_wp_error( $blocked ) && MAD4B_SCP_Google_Drive_Context::$calls === 0,
     'Encrypted grant CAS drift is rejected before provider call' );
 $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ]['ciphertext'] = 'fixture-secret-not-for-output';
 MAD4B_SCP_Google_Drive_Context::$fail = true;
-$blocked = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$blocked = invoke_remote_retry( $input );
 $check( is_wp_error( $blocked ) && MAD4B_SCP_Google_Drive_Context::$pending
     && isset( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] ),
     'Remote HTTP 400 uncertainty cannot clear pending token or grant' );
 MAD4B_SCP_Google_Drive_Context::$fail = false;
-$stale = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$stale = invoke_remote_retry( $input );
 $check( is_wp_error( $stale ) && MAD4B_SCP_Google_Drive_Context::$calls === 1,
     'Second retry MUST refuse prior plan and approval after HTTP 400 persisted new pending evidence' );
 $cooldown = MAD4B_SCP_Google_Revocation_Remote::plan();
@@ -161,7 +173,7 @@ $check( ! is_wp_error( $next ) && $next['plan_sha256'] !== $planned['plan_sha256
 $input['expected_plan_sha256'] = $next['plan_sha256'];
 $input['_mad4b_approval_ticket_id'] = '87654321-dcba-dcba-dcba-abcdef123456';
 MAD4B_SCP_Google_Drive_Context::$partial_cleanup = true;
-$unverified = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$unverified = invoke_remote_retry( $input );
 $check( is_wp_error( $unverified )
     && 'mad4b_google_revoke_readback_unconfirmed' === $unverified->get_error_code()
     && isset( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] ),
@@ -169,11 +181,13 @@ $check( is_wp_error( $unverified )
 MAD4B_SCP_Google_Drive_Context::$partial_cleanup = false;
 MAD4B_SCP_Google_Drive_Context::$pending = true;
 $input['_mad4b_approval_ticket_id'] = '13572468-abcd-abcd-abcd-abcdef654321';
-$result = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$result = invoke_remote_retry( $input );
 $check( ! is_wp_error( $result ) && $result['remote_revocation_confirmed']
     && empty( $GLOBALS['mad4b_test_options'][ MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION ] )
     && ! MAD4B_SCP_Google_Drive_Context::$pending, 'Explicit confirmed revoke succeeds with token deleted' );
-$repeat = MAD4B_SCP_Google_Revocation_Remote::retry( $input );
+$check( ! MAD4B_SCP_Authorization::google_revocation_callback_is_claimed( $input ),
+    'Claim proof is erased after provider completion' );
+$repeat = invoke_remote_retry( $input );
 $check( is_wp_error( $repeat ), 'A completed revoke never reexecutes on stale approval' );
 MAD4B_SCP_Site_Profile::$environment = 'production';
 $check( is_wp_error( MAD4B_SCP_Google_Revocation_Remote::status() ),

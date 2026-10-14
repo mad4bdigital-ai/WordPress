@@ -76,6 +76,7 @@ class MAD4B_SCP_Site_Profile {
             'canonical_origin' => $stored['canonical_origin'],
             'profile_digest' => hash( 'sha256', json_encode( $stored ) ),
             'configured_environment' => self::$env, 'wordpress_environment' => self::$env,
+            'environment' => self::$env,
             'origin_match' => true, 'environment_match' => true,
             'authority_ready' => true, 'deployment_binding_configured' => $has,
             'deployment_binding_bound' => '' !== $bind,

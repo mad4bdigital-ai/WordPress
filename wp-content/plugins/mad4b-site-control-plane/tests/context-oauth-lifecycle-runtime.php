@@ -14,6 +14,7 @@ $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
 $GLOBALS['mad4b_context_revoke_queue'] = array();
+$GLOBALS['mad4b_context_revoke_body'] = '';
 $GLOBALS['mad4b_context_revocation_attempts'] = array();
 $GLOBALS['mad4b_context_last_token_request'] = array();
 $GLOBALS['mad4b_managed_requests'] = array();
@@ -160,7 +161,7 @@ function wp_remote_post( $url, $args = array() ) {
 	if ( false !== strpos( $url, 'oauth2.googleapis.com/revoke' ) ) {
 		$GLOBALS['mad4b_context_revocation_attempts'][] = isset( $args['body']['token'] ) ? (string) $args['body']['token'] : '';
 		$code = ! empty( $GLOBALS['mad4b_context_revoke_queue'] ) ? array_shift( $GLOBALS['mad4b_context_revoke_queue'] ) : $GLOBALS['mad4b_context_revoke_status'];
-		return array( 'response' => array( 'code' => (int) $code ), 'body' => '' );
+		return array( 'response' => array( 'code' => (int) $code ), 'body' => $GLOBALS['mad4b_context_revoke_body'] );
 	}
 	return new WP_Error( 'unexpected_post', 'Unexpected HTTP POST target.' );
 }
@@ -299,16 +300,31 @@ mad4b_oauth_assert( ! empty( $still_write['write_available'] ) && 'read_write' =
 // A 400 is not proof of remote revocation. Both token paths must fail closed
 // without returning any bearer token or exposing usable provider authority.
 $GLOBALS['mad4b_context_revoke_queue'] = array( 400, 400 );
+$GLOBALS['mad4b_context_revoke_body'] = json_encode( array( 'error' => 'invalid_token', 'error_description' => 'provider-secret-do-not-project' ) );
 $initial_revoke = MAD4B_SCP_Google_Drive_Context::disconnect();
 mad4b_oauth_assert( is_wp_error( $initial_revoke )
     && 'mad4b_google_drive_remote_revocation_unconfirmed' === $initial_revoke->get_error_code(),
     'Two Google 400 responses must preserve remote revocation uncertainty.', $initial_revoke );
 $pending = MAD4B_SCP_Google_Drive_Context::connection_status();
+mad4b_oauth_assert( array_column( $pending['revocation_attempts'], 'credential_type' ) === array( 'refresh', 'access' )
+    && array_column( $pending['revocation_attempts'], 'http_status' ) === array( 400, 400 )
+    && array_column( $pending['revocation_attempts'], 'provider_error' ) === array( 'invalid_token', 'invalid_token' ),
+    'Both rejected credential types retain bounded provider diagnostics without proving revocation.' );
 mad4b_oauth_assert( ! empty( $pending['revocation_pending'] )
     && empty( $pending['read_available'] ) && empty( $pending['write_available'] )
     && empty( $pending['refresh_required'] ),
     'Unconfirmed remote revoke remains locally disabled without prompting an OAuth refresh.', $pending );
 $pending_public = json_encode( MAD4B_SCP_Google_Drive_Context::public_connection_status() );
+mad4b_oauth_assert( false === strpos( $pending_public, 'provider-secret' ), 'Raw provider descriptions must never escape.' );
+$safe_attempts = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'safe_revocation_attempts' );
+$safe_attempts->setAccessible( true );
+$malformed = $safe_attempts->invoke( null, array(
+    array( 'credential_type' => 'refresh', 'http_status' => 400, 'provider_error' => array( 'secret' ) ),
+    array( 'credential_type' => 'access', 'http_status' => 400, 'provider_error' => 'reflected-bearer-secret' ),
+    array( 'credential_type' => 'refresh', 'http_status' => 400, 'provider_error' => 'invalid_token' ) ) );
+mad4b_oauth_assert( 2 === count( $malformed ) && array_column( $malformed, 'provider_error' ) === array( '', '' ),
+    'Unknown and non-scalar provider codes are redacted and attempts are bounded.' );
+$GLOBALS['mad4b_context_revoke_body'] = '';
 mad4b_oauth_assert( false === strpos( $pending_public, 'refresh-write-fixture' )
     && false === strpos( $pending_public, 'access-write-fixture' ),
     'Pending revoke public status must never expose bearer credentials.' );

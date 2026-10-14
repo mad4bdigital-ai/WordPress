@@ -22,7 +22,17 @@ final class MAD4B_SCP_Operational_Integrity {
         $resolved = MAD4B_SCP_Deployment_Mode_Resolver::resolve();
         if ( ! is_array( $resolved ) || 'RESOLVED_FOR_REVIEW_ONLY' !== ( $resolved['status'] ?? '' ) ||
             ! isset( $resolved['scope'] ) || ! is_array( $resolved['scope'] ) ) {
-            return new WP_Error( 'mad4b_integrity_scope_blocked', 'Trusted deployment identity is unavailable.' );
+            // Preserve the resolver's bounded reason so operators can repair
+            // the actual dependency instead of retrying the same folder save.
+            // Never project an untrusted scope or treat guidance as authority.
+            $reason = is_array( $resolved ) ? ( $resolved['reason'] ?? '' ) : '';
+            if ( ! is_string( $reason ) || ! preg_match( '/^[A-Z][A-Z0-9_]{0,79}$/D', $reason ) )
+                $reason = 'DEPLOYMENT_SCOPE_UNRESOLVED';
+            return new WP_Error( 'mad4b_integrity_scope_blocked', 'Trusted deployment identity is unavailable.', array(
+                'reason_code' => $reason,
+                'next_ability' => 'mad4b/deployment-mode-status',
+                'execution_authorized' => false,
+            ) );
         }
         $scope = $resolved['scope'];
         foreach ( self::REQUIRED_SCOPE as $name ) {

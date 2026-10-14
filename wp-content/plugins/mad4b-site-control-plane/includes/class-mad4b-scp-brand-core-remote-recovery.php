@@ -137,7 +137,29 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             return self::denial( 'exact_staging_site_required' );
         $profile = MAD4B_SCP_Context_Authority::profile();
         $census = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
-        if ( is_wp_error( $census ) ) return $census;
+        if ( is_wp_error( $census ) ) {
+            if ( 'mad4b_integrity_scope_blocked' !== $census->get_error_code() ) return $census;
+            $detail = $census->get_error_data();
+            $reason = is_array( $detail ) ? ( $detail['reason_code'] ?? '' ) : '';
+            if ( ! is_string( $reason ) || ! preg_match( '/^[A-Z][A-Z0-9_]{0,79}$/D', $reason ) ) $reason = 'DEPLOYMENT_SCOPE_UNRESOLVED';
+            // Scope failures other than the existing unbound-site census
+            // cannot reveal or count legacy records. Unknown is not zero.
+            return array(
+                'contract' => 'mad4b.context-source-onboarding-preflight.v1',
+                'state' => 'OPERATIONAL_SCOPE_RECOVERY_REQUIRED',
+                'reason_code' => $reason,
+                'next_ability' => 'mad4b/deployment-mode-status',
+                'operational_scope_verified' => false,
+                'quarantined_source_count' => null, 'quarantined_asset_count' => null,
+                'quarantine_counts_verified' => false,
+                'folder_selected' => '' !== $folder,
+                'folder_identity_sha256' => '' !== $folder ? hash( 'sha256', $folder ) : '',
+                'write_policy_requested' => $policy,
+                'new_source_write_eligible' => false, 'new_source_authorized' => false,
+                'source_registry_modified' => false, 'legacy_ownership_inferred' => false,
+                'production_authorized' => false, 'read_only' => true, 'mutation_performed' => false,
+            );
+        }
         if ( ! is_array( $census ) ) return self::denial( 'census_unavailable' );
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Native' )
             ? MAD4B_SCP_Deployment_Binding_Native::status() : array();

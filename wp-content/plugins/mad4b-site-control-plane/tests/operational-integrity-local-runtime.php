@@ -3,8 +3,10 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class WP_Error {
     private $code;
-    public function __construct( $code, $message = '', $data = null ) { $this->code = $code; }
+    private $data;
+    public function __construct( $code, $message = '', $data = null ) { $this->code = $code; $this->data = $data; }
     public function get_error_code() { return $this->code; }
+    public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function add_action() {}
@@ -27,6 +29,13 @@ function acceptance( $truth, $message ) {
 }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-deployment-mode-resolver.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-content-jobs.php';
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-integrity.php';
+$scope_failure = MAD4B_SCP_Operational_Integrity::capture();
+acceptance( is_wp_error( $scope_failure ) && 'mad4b_integrity_scope_blocked' === $scope_failure->get_error_code()
+    && 'SITE_PROFILE_UNAVAILABLE' === $scope_failure->get_error_data()['reason_code']
+    && 'mad4b/deployment-mode-status' === $scope_failure->get_error_data()['next_ability']
+    && false === $scope_failure->get_error_data()['execution_authorized'],
+    'scope failure exposes canonical dependency diagnosis without granting write authority' );
 $ability = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
 acceptance( MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status()['code'] === 'REGISTERED_NOT_MOUNTED', 'no auto-mount without owned registration' );
 MAD4B_SCP_Deployment_Mode_Resolver::register_ability();

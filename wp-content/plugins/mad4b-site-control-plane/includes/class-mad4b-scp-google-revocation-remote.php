@@ -118,6 +118,7 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             'retry_after_seconds' => (int) $admission['retry_after_seconds'],
             'retry_blocker' => (string) $admission['blocker'],
             'revocation_error' => isset( $c['revocation_error'] ) ? (string) $c['revocation_error'] : '',
+            'revocation_attempts' => $c['revocation_attempts'] ?? array(),
             'site_uuid' => (string) $s['site_uuid'],
             'profile_revision' => (int) $s['revision'],
             'next_ability' => ! empty( $admission['eligible'] ) ? self::PLAN : '',
@@ -189,6 +190,10 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
                 MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) )
             return new WP_Error( 'mad4b_google_revoke_client_denied', 'Verified enrolled ChatGPT bearer required.' );
+        // The immutable wrapper owns the ticket claim and completion. A
+        // second authorization here would reject the already-consumed ticket.
+        if ( MAD4B_SCP_Authorization::google_revocation_callback_is_claimed( $input ) )
+            return true;
         $decision = MAD4B_SCP_Authorization::authorize_mutation(
             self::RETRY, 'mad4b-write', 'core', is_array( $input ) ? $input : array() );
         return MAD4B_SCP_Authorization::permission_result_from_authorization( $decision );
@@ -204,6 +209,10 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             || self::CONFIRM !== (string) ( $input['confirmation'] ?? '' )
             || ! preg_match( '/^[a-f0-9-]{36}$/Di', (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) )
             return new WP_Error( 'mad4b_google_revoke_ticket_missing', 'Current one-time approval ticket and exact Staging plan are required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Authorization' )
+            || ! MAD4B_SCP_Authorization::google_revocation_callback_is_claimed( $input ) )
+            return new WP_Error( 'mad4b_google_revoke_claimed_callback_required',
+                'An exact approved and claimed governed execution callback is required.' );
         $permission = self::can_retry( $input );
         if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
         $plan = self::plan();
@@ -213,10 +222,8 @@ final class MAD4B_SCP_Google_Revocation_Remote {
             || ! hash_equals( (string) $input['expected_profile_digest'], (string) ( $plan['expected_profile_digest'] ?? '' ) )
             || (int) $input['expected_profile_revision'] !== (int) ( $plan['expected_profile_revision'] ?? 0 ) )
             return new WP_Error( 'mad4b_google_revoke_stale_plan', 'Pending grant or Staging identity changed after planning.' );
-        $claimed = MAD4B_SCP_Authorization::claim_mutation( self::RETRY, 'mad4b-write', 'core', $input );
-        if ( is_wp_error( $claimed ) || ! is_array( $claimed ) || true !== ( $claimed['allowed'] ?? false ) )
-            return is_wp_error( $claimed ) ? $claimed
-                : new WP_Error( 'mad4b_google_revoke_claim_denied', 'One-time mutation approval could not be claimed.' );
+        // Do not claim again: the wrapper has already reserved budget,
+        // consumed approval and persisted provider-entry evidence.
         // No concurrency fallback, no OAuth scope expansion, no new grant:
         // plan includes encrypted-token identity, so a changed grant fails.
         $again = self::plan();

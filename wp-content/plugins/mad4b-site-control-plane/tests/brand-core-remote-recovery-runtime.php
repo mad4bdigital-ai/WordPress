@@ -5,8 +5,10 @@ $GLOBALS['mad4b_abilities'] = array();
 $GLOBALS['mad4b_admin'] = true;
 class WP_Error {
     private $code;
-    public function __construct( $code, $message = '' ) { $this->code = $code; }
+    private $data;
+    public function __construct( $code, $message = '', $data = null ) { $this->code = $code; $this->data = $data; }
     public function get_error_code() { return $this->code; }
+    public function get_error_data() { return $this->data; }
 }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
 function add_action( $hook, $callback, $priority = 10 ) {}
@@ -36,7 +38,9 @@ class MAD4B_SCP_Context_Authority {
     public static $drift_second_census = false;
     public static $census_reads = 0;
     public static $scope_verified = true;
+    public static $census_error = null;
     public static function legacy_reconciliation_census() {
+        if ( self::$census_error ) return self::$census_error;
         ++self::$census_reads;
         $sources = self::$source_count;
         if ( self::$drift_second_census && 0 === self::$census_reads % 2 ) ++$sources;
@@ -138,7 +142,8 @@ foreach ( array( 'mad4b/brand-core-remote-recovery-status',
 }
 foreach ( $stages as $stage ) {
     foreach ( array( 'read', 'preflight', 'next', 'readback' ) as $slot ) {
-        if ( $stage[ $slot ] !== '' ) $GLOBALS['mad4b_abilities'][ $stage[ $slot ] ] = array( 'read_only_stub' => true );
+        $ability_name = $stage[ $slot ] ?? ( 'preflight' === $slot ? $stage['read'] : '' );
+        if ( $ability_name !== '' ) $GLOBALS['mad4b_abilities'][ $ability_name ] = array( 'read_only_stub' => true );
     }
 }
 brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue'
@@ -150,6 +155,20 @@ brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue
 // when requesting broader provider write authority. It never writes.
 $folder_intent = array( 'external_root_id' => 'original-drive-folder',
     'source_mode' => 'governed', 'write_policy' => 'managed', 'recursive' => true );
+MAD4B_SCP_Context_Authority::$census_error = new WP_Error( 'mad4b_integrity_scope_blocked', '',
+    array( 'reason_code' => 'BRAND_PROFILE_REVISION_MISSING', 'secret' => 'must-not-leak' ) );
+$scope_blocked = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( 'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' === $scope_blocked['state']
+    && 'BRAND_PROFILE_REVISION_MISSING' === $scope_blocked['reason_code']
+    && 'mad4b/deployment-mode-status' === $scope_blocked['next_ability']
+    && false === $scope_blocked['new_source_write_eligible']
+    && null === $scope_blocked['quarantined_asset_count']
+    && false === strpos( json_encode( $scope_blocked ), 'must-not-leak' ),
+    'Scope failure keeps the actual repair reason without fabricating zero records or permission' );
+MAD4B_SCP_Context_Authority::$census_error = new WP_Error( 'mad4b_legacy_census_snapshot_drift' );
+brand_remote_assert( is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent ) ),
+    'Unrelated registry drift is never converted to an eligible onboarding plan' );
+MAD4B_SCP_Context_Authority::$census_error = null;
 $before_binding = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
 brand_remote_assert( $before_binding['state'] === 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED'
     && $before_binding['next_ability'] === 'mad4b/deployment-binding-native-plan'

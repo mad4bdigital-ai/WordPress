@@ -17,20 +17,29 @@ final class MAD4B_SCP_Authorization {
 	private static $execution_callback_started = array();
 	private static $trusted_execution_boundaries = array();
     /** Ephemeral proof minted ONLY inside the existing governed callback. */
-    private static $native_binding_claim_in_callback = array();
+    private static $operation_claim_in_callback = array();
 
     public static function native_binding_callback_is_claimed( $input ) {
+        return self::operation_callback_is_claimed( 'mad4b/deployment-binding-native-apply', $input );
+    }
+
+    public static function google_revocation_callback_is_claimed( $input ) {
+        return self::operation_callback_is_claimed( 'mad4b/google-revocation-retry', $input );
+    }
+
+    private static function operation_callback_is_claimed( $name, $input ) {
         if ( ! is_array( $input )
-            || ! is_array( self::$native_binding_claim_in_callback )
-            || empty( self::$native_binding_claim_in_callback['claim_sha256'] )
-            || empty( self::$native_binding_claim_in_callback['approval_ticket_id'] ) )
+            || ! is_array( self::$operation_claim_in_callback )
+            || $name !== ( self::$operation_claim_in_callback['ability'] ?? '' )
+            || empty( self::$operation_claim_in_callback['claim_sha256'] )
+            || empty( self::$operation_claim_in_callback['approval_ticket_id'] ) )
             return false;
         $ticket_id = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
-        if ( ! hash_equals( (string) self::$native_binding_claim_in_callback['approval_ticket_id'], $ticket_id ) )
+        if ( ! hash_equals( (string) self::$operation_claim_in_callback['approval_ticket_id'], $ticket_id ) )
             return false;
         $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
         return is_string( $encoded ) && hash_equals(
-            (string) self::$native_binding_claim_in_callback['claim_sha256'],
+            (string) self::$operation_claim_in_callback['claim_sha256'],
             hash( 'sha256', $encoded ) );
     }
 
@@ -41,10 +50,11 @@ final class MAD4B_SCP_Authorization {
      * scoped to one exact ticket + input, erased even on PHP exceptions.
      */
     private static function invoke_claimed_callback( $name, array $claim, $input, $callback ) {
-        if ( 'mad4b/deployment-binding-native-apply' !== (string) $name )
-            return call_user_func( $callback, $input );
-        self::$native_binding_claim_in_callback = array();
-        if ( ! empty( $claim['allowed'] )
+        // An unrelated/nested callback must not borrow the outer operation's
+        // proof. These two operations alone consume this ephemeral receipt.
+        self::$operation_claim_in_callback = array();
+        if ( in_array( (string) $name, array( 'mad4b/deployment-binding-native-apply', 'mad4b/google-revocation-retry' ), true )
+            && true === ( $claim['allowed'] ?? false )
             && 'execution_claimed' === (string) ( $claim['reason_code'] ?? '' )
             && ! empty( $claim['approval_required'] )
             && ! empty( $claim['approval_claimed'] )
@@ -54,14 +64,15 @@ final class MAD4B_SCP_Authorization {
                 (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) ) {
             $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
             if ( is_string( $encoded ) )
-                self::$native_binding_claim_in_callback = array(
+                self::$operation_claim_in_callback = array(
+                    'ability' => (string) $name,
                     'approval_ticket_id' => (string) $claim['approval_ticket_id'],
                     'claim_sha256' => hash( 'sha256', $encoded ) );
         }
         try {
             return call_user_func( $callback, $input );
         } finally {
-            self::$native_binding_claim_in_callback = array();
+            self::$operation_claim_in_callback = array();
         }
     }
 
@@ -107,7 +118,7 @@ final class MAD4B_SCP_Authorization {
 			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
 		}
 		self::$execution_callback_started = array();
-        self::$native_binding_claim_in_callback = array();
+        self::$operation_claim_in_callback = array();
 		return true;
 	}
 
