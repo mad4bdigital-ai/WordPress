@@ -69,7 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for workflow in mad4b-control-plane-package.yml mad4b-release-verdict.yml; do
+          for workflow in mad4b-control-plane-package.yml mad4b-release-verdict.yml mad4b-admin-performance.yml mad4b-runtime-integration.yml; do
             gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?event=pull_request&head_sha=$SHA&per_page=100" \
               > "/tmp/$workflow.json"
             run="$(jq -r --arg sha "$SHA" --argjson pr "$PR" '
@@ -79,6 +79,7 @@ jobs:
               sort_by(.run_started_at) | last | .id // empty
             ' "/tmp/$workflow.json")"
             test -n "$run" || { echo "BLOCKED: successful exact PR CI missing: $workflow" >&2; exit 1; }
+            # Never downgrade package certification if governance or real WP integration fails.
             if [ "$workflow" = "mad4b-control-plane-package.yml" ]; then
               echo "PKG_RUN_ID=$run" >> "$GITHUB_ENV"
             else
