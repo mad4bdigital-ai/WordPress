@@ -49,6 +49,9 @@ MAD4B_SCP_Deployment_Mode_Resolver::register_ability();
 acceptance( MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status()['ready'] === false, 'collision remains fail-closed' );
 
 $method = new ReflectionMethod( 'MAD4B_SCP_Content_Jobs', 'normalize_datetime' );
+// PHP 7.4 requires explicit private ReflectionMethod accessibility; newer PHP
+// versions already permit invoke() but this remains a safe read-only fixture.
+$method->setAccessible( true );
 $correct = array(
     '2026-10-10T10:00:00+03:00' => '2026-10-10 07:00:00',
     '2026-10-10T07:00:00Z' => '2026-10-10 07:00:00',

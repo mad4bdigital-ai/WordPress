@@ -881,34 +881,61 @@ try {
 	$publish_input = array( 'post_id' => $post_id, 'expected_modified_gmt' => $current->post_modified_gmt, 'post_status' => 'publish' );
 	$rights_usage = get_post_meta( $post_id, 'ci_gallery_usage', true );
 
+	// This disposable WordPress site has NO independently reviewed Brand Core.
+	// A high-level publish must remain blocked until the separate recovery is
+	// certified. Independently exercise the media-rights predicate against real
+	// persisted WordPress meta without bypassing Brand Core publication authority.
+	$blocked_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( is_wp_error( $blocked_publish ) &&
+		'mad4b_publication_brand_core_recovery_required' === $blocked_publish->get_error_code(),
+		'Unreviewed Brand Core must deny real publication regardless of media rights.' );
+
+	$rights_guard = static function () use ( $post_id, $profile_v2 ) {
+		$media_state = MAD4B_SCP_Content_Experience_Media::effective_meta_state(
+			$post_id, $profile_v2['media_meta_fields'], array() );
+		if ( is_wp_error( $media_state ) ) return $media_state;
+		return MAD4B_SCP_Content_Experience_Media_Rights::publish_guard(
+			$profile_v2['media_meta_fields'], $media_state );
+	};
 	$expired_rights = $rights_usage;
 	$expired_rights[0]['license_expires_on'] = '2000-01-01';
 	update_post_meta( $post_id, 'ci_gallery_usage', $expired_rights );
-	$expired_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
-	$check( is_wp_error( $expired_publish ) && 'mad4b_content_experience_media_rights_expired' === $expired_publish->get_error_code(), 'Publish rejected/accepted expired media with unexpected reason: ' . ( is_wp_error( $expired_publish ) ? $expired_publish->get_error_code() : 'NO_ERROR' ) . ', effective_media_fields=' . implode( ',', array_keys( $profile_v2['media_meta_fields'] ?? array() ) ) . ', rights_policy=' . (string) ( $profile_v2['media_meta_fields']['ci_gallery_usage']['publish_rights_policy'] ?? 'UNSET' ) );
+	$expired = $rights_guard();
+	$check( is_wp_error( $expired ) &&
+		'mad4b_content_experience_media_rights_expired' === $expired->get_error_code(),
+		'Stored expired media rights must fail the independent publish predicate: ' .
+		( is_wp_error( $expired ) ? $expired->get_error_code() : 'NO_ERROR' ) );
 	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
 
 	$missing_expiry = $rights_usage;
 	$missing_expiry[0]['license_expires_on'] = '';
 	update_post_meta( $post_id, 'ci_gallery_usage', $missing_expiry );
-	$missing_expiry_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
-	$check( is_wp_error( $missing_expiry_publish ) && 'mad4b_content_experience_media_rights_expiry_required' === $missing_expiry_publish->get_error_code(), 'Publish accepted a licensed image without its required expiry date.' );
+	$missing_expiry_result = $rights_guard();
+	$check( is_wp_error( $missing_expiry_result ) &&
+		'mad4b_content_experience_media_rights_expiry_required' === $missing_expiry_result->get_error_code(),
+		'Stored licensed media lacking expiry must fail the independent publish predicate.' );
 	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
 
 	$missing_license = $rights_usage;
 	unset( $missing_license[0]['license'] );
 	update_post_meta( $post_id, 'ci_gallery_usage', $missing_license );
-	$missing_license_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
-	$check( is_wp_error( $missing_license_publish ) && 'mad4b_content_experience_media_rights_license_required' === $missing_license_publish->get_error_code(), 'Publish accepted contextual media without a governed license.' );
+	$missing_license_result = $rights_guard();
+	$check( is_wp_error( $missing_license_result ) &&
+		'mad4b_content_experience_media_rights_license_required' === $missing_license_result->get_error_code(),
+		'Stored contextual media lacking license must fail the independent publish predicate.' );
 	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
 
-	$publish_plan = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
-	$check( ! is_wp_error( $publish_plan ) && ! empty( $publish_plan['media_publish_rights']['valid'] ), 'Publish plan did not certify contextual media rights.' );
-	$check( 2 === (int) $publish_plan['media_publish_rights']['checked_item_count'] && '2099-12-31' === $publish_plan['media_publish_rights']['nearest_expiry'], 'Publish rights evidence did not preserve the reviewed gallery license state.' );
-	$publish = MAD4B_SCP_Content_Experience_Runtime::operation_apply( 'ci-trip', 'publish', array_merge( $publish_input, array( 'plan_sha256' => $publish_plan['plan_sha256'] ) ) );
-	$check( ! is_wp_error( $publish ) && 'publish' === get_post_status( $post_id ), 'Governed publish did not complete as final visible transition.' );
-	$verify = MAD4B_SCP_Content_Experience_Runtime::verify( 'ci-trip', array( 'post_id' => $post_id ) );
-	$check( ! is_wp_error( $verify ) && ! empty( $verify['authority_match'] ) && ! empty( $verify['marker_match'] ), 'Content Experience verification did not prove current profile authority.' );
+	$valid_rights = $rights_guard();
+	$check( ! is_wp_error( $valid_rights ) && ! empty( $valid_rights['valid'] ) &&
+		2 === (int) $valid_rights['checked_item_count'] &&
+		'2099-12-31' === $valid_rights['nearest_expiry'],
+		'Valid persisted gallery rights must preserve exact expiry identity.' );
+	$still_blocked = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
+	$check( is_wp_error( $still_blocked ) &&
+		'mad4b_publication_brand_core_recovery_required' === $still_blocked->get_error_code() &&
+		'draft' === get_post_status( $post_id ),
+		'Valid media license must never bypass missing Brand Core or publish draft content.' );
+	echo "CONTENT_EXPERIENCE_MEDIA_RIGHTS: PASS (persisted rights and Brand Core fail-closed)\n";
 
 	// Clone provides the safe migration path when post_type/route identity must change.
 	$clone_plan = MAD4B_SCP_Content_Experience_Profiles::profile_clone_plan( array( 'source_slug' => 'ci-trip', 'new_slug' => 'ci-trip-clone', 'label' => 'CI Clone' ) );

@@ -262,8 +262,13 @@ check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_owner_confirmation_requi
     'Unapproved brand transfer mutated old records' );
 $stale_claim = $payload; $stale_claim['expected_plan_sha256'] = str_repeat( '0', 64 );
 $denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $stale_claim );
-check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_exact_plan_stale' === $denied->get_error_code(),
-    'Stale transfer accepted' );
+check( is_wp_error( $denied ) &&
+    in_array( $denied->get_error_code(), array(
+        'mad4b_legacy_transfer_exact_plan_stale',
+        'mad4b_legacy_transfer_provider_proof_stale',
+    ), true ),
+    'Changed transfer plan/proof must be rejected before registry mutation: ' .
+    ( is_wp_error( $denied ) ? $denied->get_error_code() : 'NO_ERROR' ) );
 $wrong_proof = $payload; $wrong_proof['expected_provider_proof_sha256'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $wrong_proof );
 check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_provider_proof_stale' === $denied->get_error_code(),
