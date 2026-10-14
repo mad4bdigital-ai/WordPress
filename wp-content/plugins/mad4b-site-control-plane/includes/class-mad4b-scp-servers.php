@@ -124,11 +124,12 @@ final class MAD4B_SCP_Servers {
 			),
 			'mad4b-admin' => array(
 				'mad4b/standalone-build-request',
-                // Bounded WordPress-native Staging bootstrap lane. Mounting
+                // WordPress-native build START is contributed solely by its
+                // registered first-party adapter, not by this fixed catalog.
+                // Bounded Staging bootstrap lane. Mounting
                 // does NOT grant execution: exact NHI grants, owner OAuth
                 // step-up, ticket, Site Profile and source/ZIP checks still apply.
                 'mad4b/wordpress-native-candidate-opt-in-apply',
-                'mad4b/wp-native-build-start',
                 'mad4b/wp-native-self-approve-install',
 				'mad4b/provider-deep-diagnostic',
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
@@ -173,10 +174,9 @@ final class MAD4B_SCP_Servers {
                 // Exact Staging-native bootstrap was previously visible only
                 // as Admin and not mounted on the governed Write authority,
                 // so approval planning failed with target_not_write. The
-                // site opt-in, build-only start and reviewed install each
+                // site opt-in, adapter-projected build-only start and reviewed install each
                 // retain separate owner tickets and all original protections.
                 'mad4b/wordpress-native-candidate-opt-in-apply',
-                'mad4b/wp-native-build-start',
                 'mad4b/wp-native-self-approve-install',
 				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
