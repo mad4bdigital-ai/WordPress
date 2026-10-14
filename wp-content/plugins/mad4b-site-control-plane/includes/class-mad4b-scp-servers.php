@@ -253,7 +253,15 @@ final class MAD4B_SCP_Servers {
 			$candidates = array_values( array_diff( $candidates, array( 'mad4b/approval-ai-decide' ) ) );
 		}
 		$projection = self::adapter_write_projection();
-		$candidates = array_merge( $candidates, $projection['eligible'] );
+		// Core candidates can also be advertised by a provider adapter. A
+		// provider-specific runtime/certification DENIAL must win even when that
+		// same Ability appears in the static core catalog; never mount it as
+		// effective Write or issue exact grants through the alternate path.
+		$blocked_provider_abilities = array_keys( $projection['blocked'] );
+		$candidates = array_values( array_diff(
+			array_merge( $candidates, $projection['eligible'] ),
+			$blocked_provider_abilities
+		) );
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
