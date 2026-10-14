@@ -885,7 +885,7 @@ try {
 	$expired_rights[0]['license_expires_on'] = '2000-01-01';
 	update_post_meta( $post_id, 'ci_gallery_usage', $expired_rights );
 	$expired_publish = MAD4B_SCP_Content_Experience_Runtime::operation_plan( 'ci-trip', 'publish', $publish_input );
-	$check( is_wp_error( $expired_publish ) && 'mad4b_content_experience_media_rights_expired' === $expired_publish->get_error_code(), 'Publish accepted an expired contextual media license.' );
+	$check( is_wp_error( $expired_publish ) && 'mad4b_content_experience_media_rights_expired' === $expired_publish->get_error_code(), 'Publish rejected/accepted expired media with unexpected reason: ' . ( is_wp_error( $expired_publish ) ? $expired_publish->get_error_code() : 'NO_ERROR' ) . ', effective_media_fields=' . implode( ',', array_keys( $profile_v2['media_meta_fields'] ?? array() ) ) . ', rights_policy=' . (string) ( $profile_v2['media_meta_fields']['ci_gallery_usage']['publish_rights_policy'] ?? 'UNSET' ) );
 	update_post_meta( $post_id, 'ci_gallery_usage', $rights_usage );
 
 	$missing_expiry = $rights_usage;
