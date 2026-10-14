@@ -102,9 +102,15 @@ $check( is_array( $first_write_projection ), 'Write projection is not available 
 $check( is_array( $cache_after_first ), 'Write projection was not cached after the fully initialized Abilities lifecycle.' );
 $check( $cache_after_first === $cache_after_second, 'Repeated write projection lookup replaced the request-local cache.' );
 $servers_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php' );
-$projection_start = strpos( $servers_source, 'private static function adapter_write_projection()' );
-$check( false !== $projection_start, 'Write projection implementation is missing.' );
-$projection_source = substr( $servers_source, $projection_start );
+$catalog_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-server-write-catalog.php' );
+$check( is_string( $servers_source ) && is_string( $catalog_source )
+    && false !== strpos( $servers_source, "require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';" )
+    && false !== strpos( $servers_source, 'use MAD4B_SCP_Server_Write_Catalog;' )
+    && false !== strpos( $catalog_source, 'trait MAD4B_SCP_Server_Write_Catalog' ),
+    'Write projection implementation is not loaded from its reviewed server catalog.' );
+$projection_start = strpos( $catalog_source, 'private static function adapter_write_projection()' );
+$check( false !== $projection_start, 'Write projection implementation is missing from the mounted catalog.' );
+$projection_source = substr( $catalog_source, $projection_start );
 $candidate_filter_pos = strpos( $projection_source, '$mutation_candidates = array();' );
 $provider_status_pos = strpos( $projection_source, '$status = method_exists( $adapter, \'status\' )' );
 $check( false !== $candidate_filter_pos && false !== $provider_status_pos && $candidate_filter_pos < $provider_status_pos, 'Provider status/hashing occurs before mutation-candidate filtering inside write projection.' );
