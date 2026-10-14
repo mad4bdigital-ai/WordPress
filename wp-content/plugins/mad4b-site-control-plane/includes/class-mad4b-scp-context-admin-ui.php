@@ -270,6 +270,29 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$write_policy = 'task_attachment' === $mode
 			? 'read_only'
 			: ( isset( $_POST['write_policy'] ) ? sanitize_key( wp_unslash( $_POST['write_policy'] ) ) : 'read_only' );
+        $folder_id = isset( $_POST['folder_id'] )
+            ? sanitize_text_field( wp_unslash( $_POST['folder_id'] ) ) : '';
+        // The admin HTML form and remote MCP now share one read-only gate.
+        // A blocked attempt never enters the Context Registry write lock or
+        // creates a duplicate while old source ownership remains quarantined.
+        $intent = array( 'external_root_id' => $folder_id,
+            'source_mode' => $mode, 'write_policy' => $write_policy,
+            'recursive' => ! empty( $_POST['recursive'] ) );
+        $preflight = class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery' )
+            ? MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $intent )
+            : new WP_Error( 'mad4b_source_onboarding_preflight_missing',
+                'Source onboarding recovery is unavailable.' );
+        if ( is_wp_error( $preflight ) ||
+            empty( $preflight['new_source_write_eligible'] ) ) {
+            // Preserve only untrusted UI choices, not consent, ticket or
+            // authority. A new action MUST recheck a fresh live preflight.
+            $return_url = self::tab_url( 'google-drive', array(
+                'folder' => $folder_id,
+                'source_mode' => $mode, 'write_policy' => $write_policy,
+                'recursive' => ! empty( $_POST['recursive'] ) ? '1' : '0' ) );
+            wp_safe_redirect( $return_url );
+            exit;
+        }
 		$result = MAD4B_SCP_Context_Authority::upsert_source(
 			array(
 				'provider' => 'google_drive',
@@ -1158,24 +1181,62 @@ final class MAD4B_SCP_Context_Admin_UI {
 			echo '<hr><div class="mad4b-scp-next-step is-attention"><h3>' . esc_html__( 'Choose a specific folder', 'mad4b-site-control-plane' ) . '</h3><p>' . esc_html__( 'My Drive is available for navigation only. Open a Brand, project, or reference folder and select that folder as the governed source boundary.', 'mad4b-site-control-plane' ) . '</p></div></div>';
 			return;
 		}
-		echo '<hr><h3>' . esc_html__( 'Use this folder', 'mad4b-site-control-plane' ) . '</h3>';
+        // Retain only the folder and desired UI choices after a blocked POST.
+        // Never persist or reuse a checkbox consent, owner ticket, or grant.
+        $hint_mode = isset( $_GET['source_mode'] )
+            ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'source_mode' ) ) : 'governed';
+        if ( ! in_array( $hint_mode, array( 'governed', 'task_attachment' ), true ) )
+            $hint_mode = 'governed';
+        $hint_policy = isset( $_GET['write_policy'] )
+            ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'write_policy' ) ) : 'read_only';
+        if ( ! in_array( $hint_policy, array( 'read_only', 'repair_only', 'managed' ), true ) )
+            $hint_policy = 'read_only';
+        if ( 'task_attachment' === $hint_mode ) $hint_policy = 'read_only';
+        $hint_recursive = ! isset( $_GET['recursive'] )
+            || '0' !== MAD4B_SCP_Admin_Experience::query_string( 'recursive' );
+        $preflight = class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery' )
+            ? MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( array(
+                'external_root_id' => $current_folder_id,
+                'source_mode' => $hint_mode, 'write_policy' => $hint_policy,
+                'recursive' => $hint_recursive ) )
+            : new WP_Error( 'mad4b_source_onboarding_preflight_missing',
+                'Source onboarding preflight not loaded.' );
+        $source_ready = is_array( $preflight )
+            && ! empty( $preflight['new_source_write_eligible'] );
+        echo '<hr><h3>' . esc_html__( 'Use this folder', 'mad4b-site-control-plane' ) . '</h3>';
+        if ( ! $source_ready ) {
+            $state = is_wp_error( $preflight ) ? $preflight->get_error_code()
+                : (string) ( $preflight['state'] ?? 'SOURCE_RECOVERY_REQUIRED' );
+            $next = is_wp_error( $preflight ) ? 'mad4b/context-source-onboarding-preflight'
+                : (string) ( $preflight['next_ability'] ?? '' );
+            echo '<div class="notice notice-warning inline" role="status"><p><strong>'
+                . esc_html__( 'This folder is selected, but governed source onboarding is blocked.', 'mad4b-site-control-plane' )
+                . '</strong> ' . esc_html__( 'Complete the exact-site recovery step shown below, then return here. No folder or Drive file was changed.', 'mad4b-site-control-plane' )
+                . '</p><p><code>' . esc_html( $state ) . '</code> · '
+                . esc_html__( 'Remote next step:', 'mad4b-site-control-plane' )
+                . ' <code>' . esc_html( $next ) . '</code></p></div>';
+        }
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SELECT_SOURCE );
 		echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SELECT_SOURCE ) . '">';
 		echo '<input type="hidden" name="folder_id" value="' . esc_attr( isset( $folder['id'] ) ? $folder['id'] : '' ) . '">';
 		echo '<input type="hidden" name="folder_name" value="' . esc_attr( isset( $folder['name'] ) ? $folder['name'] : '' ) . '">';
-		echo '<div class="mad4b-context-source-mode"><label><input type="radio" name="source_mode" value="governed" checked> <strong>' . esc_html__( 'Governed Library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Affects Brand Context fingerprint and mandatory context.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="source_mode" value="task_attachment"> <strong>' . esc_html__( 'Task-only Source', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Temporary context; excluded from Brand Authority and always read-only in this release.', 'mad4b-site-control-plane' ) . '</span></label></div>';
+		echo '<div class="mad4b-context-source-mode"><label><input type="radio" name="source_mode" value="governed"' . checked( $hint_mode, 'governed', false ) . '> <strong>' . esc_html__( 'Governed Library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Affects Brand Context fingerprint and mandatory context.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="source_mode" value="task_attachment"' . checked( $hint_mode, 'task_attachment', false ) . '> <strong>' . esc_html__( 'Task-only Source', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Temporary context; excluded from Brand Authority and always read-only in this release.', 'mad4b-site-control-plane' ) . '</span></label></div>';
 		echo '<h4>' . esc_html__( 'Write policy for Governed Library', 'mad4b-site-control-plane' ) . '</h4>';
 		echo '<div class="mad4b-context-source-mode">';
-		echo '<label><input type="radio" name="write_policy" value="read_only" checked> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Recommended default. Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="write_policy" value="repair_only"> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
-		echo '<label><input type="radio" name="write_policy" value="managed"> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Managed policy reserves future create authority, but only update and recreate are currently certifiable. Every mounted write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="read_only"' . checked( $hint_policy, 'read_only', false ) . '> <strong>' . esc_html__( 'Read-only', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Recommended default. Scan and use context without Drive mutations.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="repair_only"' . checked( $hint_policy, 'repair_only', false ) . '> <strong>' . esc_html__( 'Repair existing assets', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Update existing assets and recreate ones confirmed unavailable. No unrelated new files.', 'mad4b-site-control-plane' ) . '</span></label>';
+		echo '<label><input type="radio" name="write_policy" value="managed"' . checked( $hint_policy, 'managed', false ) . '> <strong>' . esc_html__( 'Managed library', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'Managed policy reserves future create authority, but only update and recreate are currently certifiable. Every mounted write still needs governed approval.', 'mad4b-site-control-plane' ) . '</span></label>';
 		echo '</div>';
 		echo '<p><label><input type="checkbox" name="write_policy_confirmed" value="1"> <strong>' . esc_html__( 'Confirm any increase in Drive write authority for this source', 'mad4b-site-control-plane' ) . '</strong></label><br><span class="description">' . esc_html__( 'Required only when selecting Repair or Managed. Read-only remains the default and needs no confirmation.', 'mad4b-site-control-plane' ) . '</span></p>';
 		echo '<p><label for="mad4b-task-scope"><strong>' . esc_html__( 'Task scope', 'mad4b-site-control-plane' ) . '</strong> <span class="description">' . esc_html__( '(required only for Task-only Source)', 'mad4b-site-control-plane' ) . '</span></label><br><input id="mad4b-task-scope" type="text" name="task_scope" class="regular-text" placeholder="e.g. luxor-family-blog-2026"></p>';
-		echo '<p><label><input type="checkbox" name="recursive" value="1" checked> ' . esc_html__( 'Include subfolders', 'mad4b-site-control-plane' ) . '</label></p>';
-		submit_button( __( 'Add Source Folder', 'mad4b-site-control-plane' ), 'primary' );
+		echo '<p><label><input type="checkbox" name="recursive" value="1"' . checked( $hint_recursive, true, false ) . '> ' . esc_html__( 'Include subfolders', 'mad4b-site-control-plane' ) . '</label></p>';
+        if ( $source_ready ) {
+            submit_button( __( 'Add Source Folder', 'mad4b-site-control-plane' ), 'primary' );
+        } else {
+            echo '<p class="description">' . esc_html__( 'Add Source Folder is unavailable until the live Preflight is ready. Your selected folder and policy are shown above for review; write confirmation must be given again.', 'mad4b-site-control-plane' ) . '</p>';
+        }
 		echo '</form></div>';
 	}
 
@@ -1187,7 +1248,21 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<p>' . esc_html__( 'Governed folders participate in Context Authority. Task-only folders are isolated to their task scope and do not change the Brand Context fingerprint.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! empty( $review_queue['items'] ) ) echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Human review is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'Source scanning discovers content; exact human decisions are made in the Review workspace.', 'mad4b-site-control-plane' ) . ' <a class="button button-small" href="' . esc_url( self::tab_url( 'review' ) ) . '">' . esc_html__( 'Open Review Workspace', 'mad4b-site-control-plane' ) . '</a></p></div>';
 		if ( empty( $sources ) ) {
-			echo '<p>' . esc_html__( 'No source folders selected yet.', 'mad4b-site-control-plane' ) . '</p>';
+            $census = class_exists( 'MAD4B_SCP_Context_Authority' )
+                ? MAD4B_SCP_Context_Authority::legacy_reconciliation_census() : array();
+            if ( is_array( $census ) &&
+                ( (int) ( $census['source_quarantine_count'] ?? 0 ) > 0
+                 || (int) ( $census['asset_quarantine_count'] ?? 0 ) > 0 ) ) {
+                echo '<div class="notice notice-warning inline"><p><strong>'
+                    . esc_html__( 'Existing Source records require identity recovery.', 'mad4b-site-control-plane' )
+                    . '</strong> ' . esc_html( sprintf(
+                        __( '%1$d legacy source(s) and %2$d file(s) are quarantined and intentionally hidden from active sources.', 'mad4b-site-control-plane' ),
+                        (int) ( $census['source_quarantine_count'] ?? 0 ),
+                        (int) ( $census['asset_quarantine_count'] ?? 0 ) ) )
+                    . ' <code>mad4b/context-source-onboarding-preflight</code></p></div>';
+            } else {
+                echo '<p>' . esc_html__( 'No active source folders selected.', 'mad4b-site-control-plane' ) . '</p>';
+            }
 			if ( ! empty( $connection['connected'] ) ) echo '<p><a class="button button-primary" href="' . esc_url( self::tab_url( 'google-drive', array( 'folder' => 'root' ) ) ) . '">' . esc_html__( 'Choose a Folder', 'mad4b-site-control-plane' ) . '</a></p>';
 			echo '</div>';
 			return;
