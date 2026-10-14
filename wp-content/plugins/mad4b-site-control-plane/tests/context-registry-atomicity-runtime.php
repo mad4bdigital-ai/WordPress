@@ -273,7 +273,14 @@ mad4b_atomic_assert( 'google_drive' === $source_events[0]['summary']['provider']
 $before_profile = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ];
 $before_profile_revision = MAD4B_SCP_Context_Authority::registry_revision();
 MAD4B_SCP_Audit::$fail_append = true;
-$failed_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+// Exercise audit compensation AFTER satisfying the separately required
+// identity-preserving rename CAS. An omitted consent must fail earlier and
+// cannot be counted as an audit persistence/compensation test.
+$failed_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand', array(
+    'expected_brand_id' => (string) $before_profile['brand_id'],
+    'expected_revision' => (int) $before_profile['revision'],
+    'confirm_identity_preserving_rename' => true,
+) );
 mad4b_atomic_assert( is_wp_error( $failed_profile ), 'Brand Context Profile save must fail when append-only audit commit fails.', $failed_profile );
 mad4b_atomic_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_profile->get_error_code(), 'Profile audit failure must expose compensated audit error.', $failed_profile->get_error_code() );
 mad4b_atomic_assert( $before_profile === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ], 'Profile audit failure must restore exact prior Brand Context Profile.' );
