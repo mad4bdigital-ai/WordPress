@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 976,
+  "changed_file_count": 979,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -520,7 +520,7 @@
     },
     {
       "id": "autonomous-assistants-gc-gf-preview-foundation",
-      "semantic_unit": "GA\u2013GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
+      "semantic_unit": "GA–GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
       "revert_boundary": "Revert assistant convergence and task transition preview plus focused tests together without changing core durable journal, G4/G6/G9 executor or staging authority",
       "certification": "exact_head",
       "path_globs": [
@@ -583,57 +583,65 @@
     },
     {
       "id": "aci01-adaptive-content-intelligence-os-spec-kit",
-      "semantic_unit": "ACI01 optional non-authorizing complete Adaptive Content Intelligence OS target Spec Kit, five decision loops, typed relations/WPML, provider budget and publishing contracts, 43 requirements, 71 OPEN tasks, gated acceptance",
-      "revert_boundary": "Revert the ACI01 spec-only extension as one slice, with its root README/CI registration; no runtime service, grant, publication or frozen parent task changes.",
+      "semantic_unit": "ACI01 optional non-authorizing strategic specifications, governance/decision contracts, and release boundaries (documentation-only).",
+      "revert_boundary": "Revert the ACI01 strategic documentation as an independent reviewed, non-authorizing design slice.",
       "certification": "exact_head",
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/README.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance-gates.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/architecture.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/constitution.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/content-recipes.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/decision-evidence.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/native-relations-wpml.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/orchestration-budget.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/publication-growth.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/data-model.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/design-closure.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/design_closure.py",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/disposition-rules.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/domain-fact-authority.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic-foundation.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic-policy.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic_core.py",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/effect-contracts.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-p0-remediation.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-01.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-02.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-03.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/implementation-slice-04-acceptance-matrix.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/operations.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/optimization-policy.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/plan.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/preexecution-clarity-review.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/project-charter.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/quickstart.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/research.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/spec.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/tasks.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/traceability.md",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ui.md"
+      ]
+    },
+    {
+      "id": "aci01-adaptive-content-intelligence-os-typed-fixtures-and-verifiers",
+      "semantic_unit": "ACI01 machine-readable typed contracts, policy inventories, scenario validators and negative tests; no release or mutation authority.",
+      "revert_boundary": "Revert machine-readable ACI01 contracts, fixtures, and validators together without changing the approved strategic documentation or site runtime.",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/acceptance-gates.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/content-recipes.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/design_closure.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/disposition-rules.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/domain-fact-authority.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic-policy.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/dynamic_core.py",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/effect-contracts.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/evidence-trust.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ledger-contracts.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/manifest.json",
+        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/optimization-policy.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/release-profiles.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/requirements.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/research.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/reuse-authority-crosswalk.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/spec.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/system-map.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/task-integrity.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/task-registry.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/tasks.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_design_closure.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_dynamic_core.py",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/test_validate.py",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/traceability.md",
-        "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/ui.md",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/use-cases.json",
         "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/validate.py"
       ]
@@ -1124,7 +1132,8 @@
         "tools/feature007/google-apps-script/mad4b-activity-import-push.gs",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-review.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-preview-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-source-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/imp01-import-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-import-fallback-view.php"
       ]
     },
     {
@@ -1407,7 +1416,8 @@
       "certification": "source_only_native_staging_acceptance_pending",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-smoke.php"
       ]
     },
     {
@@ -2155,10 +2165,11 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-jetengine-reversible-adapter-smoke.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-owner-bootstrap-integration.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/security-diagnostics-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ]
     }
   ],
-  "changed_paths_sha256": "ec84ee99e6a8b8aa7a3a3b10402710e1095f0d5bb0f112c1fc6d1090ba130e12",
+  "changed_paths_sha256": "2f22da2ef37702361206a209c34140e212e7428356adbf4e778d453355790262",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
