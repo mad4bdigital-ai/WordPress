@@ -7,7 +7,7 @@ runtime=get("includes/class-mad4b-scp-activity-sync-runtime.php")
 docs=get("includes/class-mad4b-scp-activity-google-docs-adapter.php")
 managed=get("includes/class-mad4b-scp-google-drive-context.php")
 facet=get("includes/class-mad4b-scp-business-activity-contracts.php")
-profile=get("includes/class-mad4b-scp-content-experience-profiles.php")
+profile=(get("includes/class-mad4b-scp-content-experience-profiles.php") + get("includes/trait-mad4b-scp-content-experience-ability-definitions.php"))
 tests=get("tests/business-activity-sync-runtime.php")
 def ck(ok,desc):
  if not ok:raise AssertionError(desc)

@@ -199,8 +199,8 @@
   "evidence_integrity": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "c162189bb78edd176552e540d2c0970f4a8c5af3831303cba968120f4b6aea5c",
-      "bytes": 47972
+      "sha256": "c3866b7ca6001b8cbb8eafea15d3bcd9f91f0da0246f11b22c9f0e9dc5a00df9",
+      "bytes": 53737
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operations-context.php",
@@ -259,8 +259,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "2a2a8c7aa4b5cbe99b5470367bfc92c8460468497a0dadc72acb070f86baacd7",
-      "bytes": 45148
+      "sha256": "9b141a71f13a188f59e204ad12d8b3b63174d1f3f5e6a587b7c9cec29df991df",
+      "bytes": 49877
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",

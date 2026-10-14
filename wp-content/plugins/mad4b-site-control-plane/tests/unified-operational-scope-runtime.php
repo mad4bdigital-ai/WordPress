@@ -23,11 +23,12 @@ class MAD4B_SCP_Site_Profile {
 }
 class MAD4B_SCP_Deployment_Mode_Resolver {
     public static $blocked = false;
+    public static $dependency_revision = array( 'site_profile' => 2, 'brand_profile' => 3 );
     public static function resolve() {
         if ( self::$blocked ) return array( 'status' => 'BLOCKED', 'reason' => 'SOURCE_REVOKED' );
         return array( 'status' => 'RESOLVED_FOR_REVIEW_ONLY', 'active_mode' => 'wordpress_dedicated',
             'scope' => array( 'site_uuid' => $GLOBALS['site_uuid'], 'brand_ref' => $GLOBALS['brand_id'], 'tenant_ref' => 'wp-site:' . $GLOBALS['site_uuid'], 'blog_id' => 1, 'network_id' => 1, 'environment' => 'staging', 'deployment_mode' => 'wordpress_dedicated' ),
-            'dependency_revision' => array( 'site_profile' => 2, 'brand_profile' => 3 ) );
+            'dependency_revision' => self::$dependency_revision );
     }
 }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-integrity.php';
@@ -57,11 +58,11 @@ $GLOBALS['mock_actor_id'] = 9;
 check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
     'authorization actor switch is rejected' );
 unset( $GLOBALS['mock_actor_id'] );
-$GLOBALS['mock_mode_revision'] = $GLOBALS['mode_resolution']['dependency_revision'];
-$GLOBALS['mode_resolution']['dependency_revision']['brand_profile'] = 4;
+$original_revision = MAD4B_SCP_Deployment_Mode_Resolver::$dependency_revision;
+MAD4B_SCP_Deployment_Mode_Resolver::$dependency_revision['brand_profile'] = 4;
 check( is_wp_error( MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true ) ),
     'brand revision drift invalidates prior approval' );
-$GLOBALS['mode_resolution']['dependency_revision'] = $GLOBALS['mock_mode_revision'];
+MAD4B_SCP_Deployment_Mode_Resolver::$dependency_revision = $original_revision;
 MAD4B_SCP_Policy::$writes_allowed = false;
 $denied = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, true );
 check( is_wp_error( $denied ) && 'mad4b_integrity_authorization_revoked' === $denied->get_error_code(),
@@ -164,7 +165,9 @@ check( is_wp_error( MAD4B_SCP_Operational_Scope_Guard::require_current() ), 'mis
 check( empty( $source_filter->invoke( null, $sources, array( 'site_uuid' => $GLOBALS['site_uuid'] ) ) ), 'revoked site sees no sources' );
 $mutation = $ref->getMethod( 'with_registry_lock' );
 $mutation->setAccessible( true );
-$blocked_mutation = $mutation->invoke( null, 'upsert_source', static function () { return true; } );
-check( is_wp_error( $blocked_mutation ) && 'mad4b_scope_not_bound' === $blocked_mutation->get_error_code(),
+$mutation_callback_entered = false;
+$blocked_mutation = $mutation->invoke( null, 'upsert_source', static function () use ( &$mutation_callback_entered ) { $mutation_callback_entered = true; return true; } );
+check( is_wp_error( $blocked_mutation ) && 'mad4b_integrity_scope_blocked' === $blocked_mutation->get_error_code()
+    && false === $mutation_callback_entered,
     'all Context governance mutations are fenced before locks and callbacks' );
 echo 'PASS unified operational scope synthetic PHP tests' . PHP_EOL;

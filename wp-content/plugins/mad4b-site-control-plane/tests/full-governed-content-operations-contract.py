@@ -49,7 +49,13 @@ media_response_src = media_response.read_text(encoding="utf-8")
 remote_media_src = remote_media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
-experience_src = experience.read_text(encoding="utf-8")
+experience_registry_src = experience.read_text(encoding="utf-8")
+experience_definitions = root / "includes" / "trait-mad4b-scp-content-experience-ability-definitions.php"
+assert experience_definitions.is_file(), "Content Experience Ability definitions missing"
+experience_definitions_src = experience_definitions.read_text(encoding="utf-8")
+assert "use MAD4B_SCP_Content_Experience_Ability_Definitions;" in experience_registry_src
+assert "trait-mad4b-scp-content-experience-ability-definitions.php" in experience_registry_src
+experience_src = experience_registry_src + experience_definitions_src
 experience_bootstrap_src = experience_bootstrap.read_text(encoding="utf-8")
 experience_governance_src = experience_governance.read_text(encoding="utf-8")
 experience_media_src = experience_media.read_text(encoding="utf-8")
@@ -61,7 +67,13 @@ remote_media_recovery_src = remote_media_recovery.read_text(encoding="utf-8")
 experience_media_rights_src = experience_media_rights.read_text(encoding="utf-8")
 remote_media_rights_src = remote_media_rights.read_text(encoding="utf-8")
 remote_media_manifest_src = remote_media_manifest.read_text(encoding="utf-8")
-experience_runtime_src = experience_runtime.read_text(encoding="utf-8")
+experience_execution_src = experience_runtime.read_text(encoding="utf-8")
+experience_input_validation = root / "includes" / "trait-mad4b-scp-content-experience-input-validation.php"
+assert experience_input_validation.is_file(), "Content Experience input validation missing"
+experience_input_validation_src = experience_input_validation.read_text(encoding="utf-8")
+assert "use MAD4B_SCP_Content_Experience_Input_Validation;" in experience_execution_src
+assert "trait-mad4b-scp-content-experience-input-validation.php" in experience_execution_src
+experience_runtime_src = experience_execution_src + experience_input_validation_src
 descriptor_src = descriptor.read_text(encoding="utf-8")
 experience_runtime_smoke_src = experience_runtime_smoke.read_text(encoding="utf-8")
 reversible_src = reversible.read_text(encoding="utf-8")
@@ -336,9 +348,11 @@ assert "class-mad4b-scp-remote-media-adapter.php" in plugin_src
 assert len(remote_media_src.splitlines()) <= 900, "remote media adapter exceeds the focused 900-line adapter budget"
 
 for src, label in (
-    (experience_src, "experience-registry"),
+    (experience_registry_src, "experience-registry"),
+    (experience_definitions_src, "experience-ability-definitions"),
     (experience_governance_src, "experience-governance"),
-    (experience_runtime_src, "experience-runtime"),
+    (experience_execution_src, "experience-runtime"),
+    (experience_input_validation_src, "experience-input-validation"),
 ):
     assert "tours-and-activities" not in src.lower(), f"{label} must not hardcode the ETG tour CPT"
     assert "mad4b/tour-" not in src.lower(), f"{label} must not hardcode tour routes"

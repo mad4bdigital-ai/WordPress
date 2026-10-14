@@ -10,7 +10,7 @@ mutations = [
     ('content/admin lane omission', 'class-mad4b-scp-unified-capability-gateway.php', "'content' => 'mad4b/write-execute',", "'content' => 'mad4b/missing-dispatch',", 'gateway-regression-runtime.php'),
     ('invalid bearer cookie fallback', 'class-mad4b-scp-ability-catalog-transport.php', "$request->get_header( 'authorization' ) && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()", 'false', 'gateway-regression-runtime.php'),
     ('classification pin ignored', 'class-mad4b-scp-abilities.php', 'private function validate_prepared_classification( $ability_name, array $input ) {', 'private function validate_prepared_classification( $ability_name, array $input ) { return true;', 'gateway-regression-runtime.php'),
-    ('eager schema search', 'class-mad4b-scp-unified-capability-gateway.php', '$ability = wp_get_ability( $ability_name );', '$ability = wp_get_ability( $ability_name ); $ability->get_input_schema();', 'gateway-regression-runtime.php'),
+    ('eager schema search', 'class-mad4b-scp-capability-search-index.php', '$ability = wp_get_ability( $name );', '$ability = wp_get_ability( $name ); $ability->get_input_schema();', 'gateway-regression-runtime.php'),
     ('cross-blog registry reuse', 'class-mad4b-scp-unified-capability-gateway.php', 'public static function runtime_blog_matches() {', 'public static function runtime_blog_matches() { return true;', 'gateway-regression-runtime.php'),
     ('ability build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', 'count( $abilities ) > $max_abilities', 'false', 'catalog-transport-runtime.php'),
     ('byte build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', '$definition_bytes > $max_bytes', 'false', 'catalog-transport-runtime.php'),

@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 R=ROOT.parent.parent.parent
 read=lambda p:(ROOT/p).read_text(encoding="utf-8")
 code=read("includes/class-mad4b-scp-activity-import-review.php")
-profile=read("includes/class-mad4b-scp-content-experience-profiles.php")
+profile=(read("includes/class-mad4b-scp-content-experience-profiles.php") + read("includes/trait-mad4b-scp-content-experience-ability-definitions.php"))
 spec=(R/"specs/007-content-intelligence-workflow-platform/extensions/imp01-dynamic-spreadsheet-import-and-apps-script.md").read_text(encoding="utf-8")
 script=(R/"tools/feature007/google-apps-script/mad4b-activity-import-push.gs").read_text(encoding="utf-8")
 def check(value, reason):

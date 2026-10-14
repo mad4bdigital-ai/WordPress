@@ -27,7 +27,8 @@ assert "MAD4B_SCP_Policy::can_mutate()" in integrity
 assert "class-mad4b-scp-operational-scope-guard.php" in bootstrap
 assert "get_option( MAD4B_SCP_Site_Profile::OPTION, null )" in resolver
 assert "mcp_registration_status()" in resolver
-assert "mad4b/deployment-mode-status" in server
+assert server.count("MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status()") >= 2
+assert server.count("if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;") >= 2
 assert "function legacy_migration_plan()" in profile
 assert "function apply_legacy_migration(" in profile
 assert "legacy_v1_migration_available" in profile

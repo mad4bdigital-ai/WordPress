@@ -4,7 +4,7 @@ from pathlib import Path
 P=Path(__file__).resolve().parents[1]
 repo=P.parent.parent.parent
 get=lambda x:(P/"includes"/x).read_text(encoding="utf8")
-profile=get("class-mad4b-scp-content-experience-profiles.php")
+profile=(get("class-mad4b-scp-content-experience-profiles.php") + get("trait-mad4b-scp-content-experience-ability-definitions.php"))
 policy=get("class-mad4b-scp-activity-import-authority.php")
 review=get("class-mad4b-scp-activity-import-review.php")
 identity=get("class-mad4b-scp-activity-import-reconciliation.php")
@@ -44,7 +44,8 @@ for marker in (
     "approved_file_source_config_verified' => false",
     "provider_write_fence_verified' => false",
     "job_execution_authorized' => false",
-    "mad4b_wpai_observation_active",
+    "mad4b_wpai_observation_",
+    "hash( 'sha256', MAD4B_SCP_Site_Profile::site_uuid() . '|' . $job )",
     "'run_sequence_ambiguous' => false",
     "external_import_hook_order_ambiguous",
 ):

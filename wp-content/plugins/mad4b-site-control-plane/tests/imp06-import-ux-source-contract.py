@@ -7,7 +7,7 @@ def read(p): return (P / p).read_text(encoding="utf8")
 ui = read("includes/class-mad4b-scp-activity-import-experience.php")
 review = read("includes/class-mad4b-scp-activity-import-review.php")
 snapshot = read("includes/class-mad4b-scp-activity-import-snapshot.php")
-loader = read("includes/class-mad4b-scp-content-experience-profiles.php")
+loader = (read("includes/class-mad4b-scp-content-experience-profiles.php") + read("includes/trait-mad4b-scp-content-experience-ability-definitions.php"))
 preflight = read("tests/feature007-manual-preflight.py")
 fixture = read("tests/imp06-import-ux-runtime.php")
 def require(pred, message):

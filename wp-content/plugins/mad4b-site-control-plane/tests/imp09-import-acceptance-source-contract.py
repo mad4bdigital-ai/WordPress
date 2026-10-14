@@ -4,7 +4,7 @@ from pathlib import Path
 P=Path(__file__).resolve().parents[1]
 get=lambda p:(P/"includes"/p).read_text(encoding="utf8")
 gates=get("class-mad4b-scp-import-acceptance-gates.php")
-profiles=get("class-mad4b-scp-content-experience-profiles.php")
+profiles=(get("class-mad4b-scp-content-experience-profiles.php") + get("trait-mad4b-scp-content-experience-ability-definitions.php"))
 fixture=(P/"tests"/"imp09-import-acceptance-runtime.php").read_text(encoding="utf8")
 preflight=(P/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")
 def require(predicate,message):

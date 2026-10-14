@@ -4,6 +4,7 @@ from pathlib import Path
 P=Path(__file__).resolve().parents[1]
 s=(P/"includes"/"class-mad4b-scp-import-schema-onboarding.php").read_text()
 registry=(P/"includes"/"class-mad4b-scp-content-experience-profiles.php").read_text()
+registry += (P/"includes"/"trait-mad4b-scp-content-experience-ability-definitions.php").read_text()
 ux=(P/"includes"/"class-mad4b-scp-activity-import-experience.php").read_text()
 fixture=(P/"tests"/"imp12-schema-onboarding-runtime.php").read_text()
 preflight=(P/"tests"/"feature007-manual-preflight.py").read_text()

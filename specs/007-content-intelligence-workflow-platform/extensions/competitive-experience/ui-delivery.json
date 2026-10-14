@@ -20,7 +20,7 @@
   "code_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php",
-      "sha256": "18ed434c4834b23a85ceec9a2a4f8adea20a6fb1a280383688a476ff5045bef6"
+      "sha256": "4630d59142f6a16c8c82b7d20247d724bd2319c1d149d3fb055bced361dd6d41"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
@@ -36,11 +36,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
-      "sha256": "fe695a6489ddbc7278c6b8122a4984d07f68e70245d3022efa794b2454c75cbd"
+      "sha256": "1e43f142a0b0dc07f20a7bfc2e6422dfc54d231bef97e0894dc471d77940e32e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-experience.php",
-      "sha256": "b7b090efb4b2a2e0cec6d6830a3e836c45cd32abb3c29f21e84048b13e2350eb"
+      "sha256": "a7f93d5fa1adb93aa56ecaf2b1cc047bf476fe35df2a36945bcfe7056d88e59e"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-provider-connections.php",
@@ -48,7 +48,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dynamic-content-pipeline-admin.php",
-      "sha256": "ea4827dee4eabd971ec45f56a270c436f1dbb64cb259523fc8762255aaca779c"
+      "sha256": "48ccac77b8d6840f2eb508908f97e864f298d708ba36fa3cb09d3674cc622615"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.css",
@@ -90,7 +90,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "57e108b615319790d77d2099f4e6dff18360dfa4a6e2455926d1f47cc4906f77"
+      "sha256": "58e7c478dca4cc5370fae03d9c418b7bf97b846f61130a44ac280b09e8eeb722"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",

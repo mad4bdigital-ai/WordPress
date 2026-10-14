@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parents[1]
 read=lambda path:(root/path).read_text(encoding="utf-8")
 facet=read("includes/class-mad4b-scp-business-activity-contracts.php")
 reconcile=read("includes/class-mad4b-scp-activity-source-reconciliation.php")
-experience=read("includes/class-mad4b-scp-content-experience-profiles.php")
+experience=(read("includes/class-mad4b-scp-content-experience-profiles.php") + read("includes/trait-mad4b-scp-content-experience-ability-definitions.php"))
 runtime=read("tests/business-activity-source-reconciliation-runtime.php")
 def ensure(flag,msg):
  if not flag: raise AssertionError(msg)

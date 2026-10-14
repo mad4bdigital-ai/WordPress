@@ -63,8 +63,11 @@ foreach ( $native_bootstrap_write as $bounded_name ) {
     if ( ! wp_has_ability( $bounded_name ) ) {
         $fail( 'Native bootstrap ability must be registered before runtime projection.', $bounded_name );
     }
-    if ( ! in_array( $bounded_name, MAD4B_SCP_Servers::core_tools( 'mad4b-admin' ), true )
-        || ! MAD4B_SCP_Servers::is_external_write_candidate( $bounded_name )
+    if ( 'mad4b/wp-native-build-start' === $bounded_name
+        && ! in_array( $bounded_name, MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' ), true ) ) {
+        $fail( 'Native build must be contributed by the registered first-party Admin adapter.', $bounded_name );
+    }
+    if ( ! MAD4B_SCP_Servers::is_external_write_candidate( $bounded_name )
         || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name )
         || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', $bounded_name ) ) {
         $fail( 'Bootstrap mutation not mounted on original Admin plus governed Write; cannot request exact ticket.', $bounded_name );

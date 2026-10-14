@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def source(name):
     return (ROOT/"includes"/name).read_text(encoding="utf8")
 batch=source("class-mad4b-scp-activity-import-batches.php")
-profiles=source("class-mad4b-scp-content-experience-profiles.php")
+profiles=(source("class-mad4b-scp-content-experience-profiles.php") + source("trait-mad4b-scp-content-experience-ability-definitions.php"))
 ux=source("class-mad4b-scp-activity-import-experience.php")
 fixture=(ROOT/"tests"/"imp08-batch-review-runtime.php").read_text(encoding="utf8")
 preflight=(ROOT/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")

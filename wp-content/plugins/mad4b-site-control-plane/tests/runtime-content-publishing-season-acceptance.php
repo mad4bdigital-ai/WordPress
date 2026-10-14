@@ -1,9 +1,9 @@
 <?php
 /**
- * Disposable acceptance proof for the exact content flow requested before release:
- * publish a Page, publish a Trip, create seasonal terms (صيف/شتاء), and bind one
- * season to the Trip. The persistent taxonomy provider route is asserted as a
- * registered governed Ability; provider execution is certified separately.
+ * Disposable runtime proof: create draft Page/Trip, create seasonal terms,
+ * bind one season, and reject publication until reviewed Brand Core exists.
+ * This fixture does not certify live publication or fabricate Context approval.
+ * The persistent taxonomy provider route is registered; execution is separate.
  */
 if ( ! defined( 'ABSPATH' ) ) throw new RuntimeException( 'WordPress is not loaded.' );
 if ( ! isset( $check ) || ! is_callable( $check ) ) {
@@ -56,34 +56,43 @@ try {
 	$adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'core-content-modeling' );
 	$check( $adapter instanceof MAD4B_SCP_Core_Content_Modeling_Adapter, 'Core Content Modeling adapter is not registered.' );
 	$check( $adapter->is_available(), 'Core Content Modeling adapter is not runtime-available.' );
+	foreach ( array( 'page', $trip_type ) as $type ) {
+		$blocked_publish = $adapter->create_post( array(
+			'post_type' => $type, 'post_title' => 'Unreviewed publication must stop',
+			'post_content' => 'Disposable acceptance content.', 'post_status' => 'publish',
+		) );
+		if ( is_array( $blocked_publish ) && ! empty( $blocked_publish['post_id'] ) ) $post_ids[] = (int) $blocked_publish['post_id'];
+		$check( is_wp_error( $blocked_publish ) && 'mad4b_publication_brand_core_recovery_required' === $blocked_publish->get_error_code(),
+			'Publication must remain blocked until the mandatory Brand Core review is complete: ' . $type );
+	}
 
 	$page = $adapter->create_post(
 		array(
 			'post_type' => 'page',
 			'post_title' => 'MAD4B Acceptance Page',
 			'post_content' => 'Disposable acceptance content.',
-			'post_status' => 'publish',
+			'post_status' => 'draft',
 		)
 	);
 	$check( ! is_wp_error( $page ) && ! empty( $page['post_id'] ), 'Acceptance Page creation failed.' );
 	$page_id = (int) $page['post_id'];
 	$post_ids[] = $page_id;
-	$check( 'publish' === get_post_status( $page_id ), 'Acceptance Page was not published.' );
-	$check( '' !== (string) get_permalink( $page_id ), 'Acceptance Page has no public permalink.' );
+	$check( 'draft' === get_post_status( $page_id ), 'Acceptance Page must remain a draft pending Brand Core review.' );
+	$check( '' !== (string) get_permalink( $page_id ), 'Acceptance Page permalink readback failed.' );
 
 	$trip = $adapter->create_post(
 		array(
 			'post_type' => $trip_type,
 			'post_title' => 'MAD4B Acceptance Trip',
 			'post_content' => 'Disposable acceptance trip content.',
-			'post_status' => 'publish',
+			'post_status' => 'draft',
 		)
 	);
 	$check( ! is_wp_error( $trip ) && ! empty( $trip['post_id'] ), 'Acceptance Trip creation failed.' );
 	$trip_id = (int) $trip['post_id'];
 	$post_ids[] = $trip_id;
-	$check( 'publish' === get_post_status( $trip_id ), 'Acceptance Trip was not published.' );
-	$check( '' !== (string) get_permalink( $trip_id ), 'Acceptance Trip has no public permalink.' );
+	$check( 'draft' === get_post_status( $trip_id ), 'Acceptance Trip must remain a draft pending Brand Core review.' );
+	$check( '' !== (string) get_permalink( $trip_id ), 'Acceptance Trip permalink readback failed.' );
 
 	$summer = $adapter->create_term(
 		array(
@@ -136,7 +145,7 @@ try {
 	foreach ( $terms as $term ) $names[] = (string) $term->name;
 	$check( in_array( 'صيف', $names, true ) && in_array( 'شتاء', $names, true ), 'Season taxonomy does not contain both صيف and شتاء.' );
 
-	echo "mad4b.content-publishing-season-acceptance.v1: PASS page={$page_id} trip={$trip_id} summer={$summer_id} winter={$winter_id}\n";
+	echo "mad4b.content-season-runtime.v2: PASS publication=blocked_pending_brand_core page={$page_id} trip={$trip_id} summer={$summer_id} winter={$winter_id}\n";
 } finally {
 	foreach ( array_reverse( array_unique( array_map( 'absint', $post_ids ) ) ) as $id ) {
 		if ( $id > 0 ) wp_delete_post( $id, true );

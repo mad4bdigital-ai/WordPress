@@ -870,6 +870,9 @@ try {
 	$restored_old = MAD4B_SCP_Content_Experience_Runtime::restore_reversible_state( $before_update['target'], $before_update['state'] );
 	$check( true === $restored_old, 'Historical rollback could not restore after current profile advanced.' );
 	$check( '' === get_post( $post_id )->post_excerpt, 'Historical rollback used mutable current profile state.' );
+	$old_authority_readback = MAD4B_SCP_Content_Experience_Runtime::verify( 'ci-trip', array( 'post_id' => $post_id ) );
+	$check( ! is_wp_error( $old_authority_readback ) && false === ( $old_authority_readback['authority_match'] ?? null ),
+		'Historical rollback must not promote an earlier profile fingerprint into current publication authority.' );
 
 	$invalid_type = $profile_input;
 	$invalid_type['post_type'] = 'page';

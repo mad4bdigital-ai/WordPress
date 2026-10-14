@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "2a2a8c7aa4b5cbe99b5470367bfc92c8460468497a0dadc72acb070f86baacd7",
-      "bytes": 45148
+      "sha256": "9b141a71f13a188f59e204ad12d8b3b63174d1f3f5e6a587b7c9cec29df991df",
+      "bytes": 49877
     }
   ],
   "test_paths": [
@@ -211,13 +211,13 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "c162189bb78edd176552e540d2c0970f4a8c5af3831303cba968120f4b6aea5c",
-      "bytes": 47972
+      "sha256": "c3866b7ca6001b8cbb8eafea15d3bcd9f91f0da0246f11b22c9f0e9dc5a00df9",
+      "bytes": 53737
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "f4741d9d03129468e7e65765876ae6d9da60d100c8f288948b341a23898afe72",
-      "bytes": 42142
+      "sha256": "22fe9ca2c154ee711f443f133c2be0f6aa9aa87b851aadfc65716997594f667e",
+      "bytes": 47960
     }
   ],
   "repository_foundations": [

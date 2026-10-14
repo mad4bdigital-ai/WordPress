@@ -1207,3 +1207,48 @@ literal tasks-only admin predicate; current source supports tasks plus controls.
 Delivery fingerprint check finds 22 pre-existing stale bindings, none to the
 runtime files changed in this follow-up. These issues are not certified repaired
 by the nine incident tests and remain release blockers.
+
+
+### Follow-up source review after `ffff29ca` (2026-10-14)
+
+The branch advanced by 49 commits after `a033272d`. Review used the current
+`ffff29ca2287a460357028c4780a3b644079b65f` source and its GitHub Actions logs,
+without connecting to either WordPress site.
+
+The concurrent `625abcb1` head already corrected the misleading unknown-MU-loader
+automatic-recovery notice; this follow-up preserves that implementation.
+The existing administrator-only POST recovery route is now reachable through its
+nonce, current-build fingerprint, exact observed-file SHA and explicit confirmation.
+Cron and convergence requests still cannot replace a foreign loader. Existing
+runtime recovery fixtures retain the backup, audit, lease, CAS and rollback denials.
+
+Content Experience Ability definitions and payload validation moved unchanged into
+loaded traits. The registry, definition, runtime and validation files are respectively
+863, 589, 803 and 170 lines; each remains below the existing 900-line domain-service
+budget. Contract checks inspect both halves and verify their loading, without raising
+the budget or changing callbacks, schemas or permissions.
+
+The remaining fixture corrections exercise the actual resolver revision, reject
+Context callbacks before entry on a blocked scope, require provider-projected native
+build rather than a static core bypass, and distinguish the strict Browser Acceptance
+input-schema rejection from the domain's bounded unsupported-field rejection.
+Disposable content tests preserve the Brand Core publication denial while checking
+draft Page/Trip creation and season assignment. They do not certify live publication.
+
+Only source hashes and byte counts were refreshed across 224 existing delivery
+bindings; all authority and acceptance fields were compared to the prior committed
+JSON and remained unchanged. The ETG installed-content manifest updates only the
+changed BrowserAcceptanceProvider hash. These updates do not grant runtime or
+release certification.
+
+Local PHP 8.3 checks passed for all changed PHP files and all nine Google,
+binding, folder-scope and MCP inventory regression fixtures. The gateway mutation
+guards, complete Content Operations source contract, G6/G9 integrity checks,
+operational-scope runtime/source contracts, owned-MU recovery contracts and ETG
+build-identity smoke also passed. The real WordPress Browser Acceptance, dynamic
+projection and content-season fixtures still require exact-head CI readback.
+
+Known independent gates on the reviewed head include protected workflow/source
+contract drift, Feature007/ETG path boundaries, missing exact-head owner attestation,
+and unreachable external WPML diagnostics. Governance PR #385 remains an independent
+draft review, not an approval. No gate was relaxed and no site was deployed.

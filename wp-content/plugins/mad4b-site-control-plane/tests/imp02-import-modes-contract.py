@@ -6,6 +6,7 @@ ROOT=P.parent.parent.parent
 modes=(P/"includes/class-mad4b-scp-activity-import-modes.php").read_text(encoding="utf8")
 review=(P/"includes/class-mad4b-scp-activity-import-review.php").read_text(encoding="utf8")
 profile=(P/"includes/class-mad4b-scp-content-experience-profiles.php").read_text(encoding="utf8")
+profile += (P/"includes"/"trait-mad4b-scp-content-experience-ability-definitions.php").read_text()
 activity=(P/"includes/class-mad4b-scp-business-activity-contracts.php").read_text(encoding="utf8")
 script=(ROOT/"tools/feature007/import-modes/signed-generic-webhook-push.mjs").read_text(encoding="utf8")
 spec=(ROOT/"specs/007-content-intelligence-workflow-platform/extensions/imp02-alternative-import-modes.md").read_text(encoding="utf8")

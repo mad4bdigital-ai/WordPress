@@ -5,7 +5,7 @@ root=Path(__file__).resolve().parents[1]
 src=lambda name:(root/"includes"/name).read_text(encoding="utf-8")
 mapping=src("class-mad4b-scp-import-mapping-evolution.php")
 wpml=src("class-mad4b-scp-import-wpml-readback.php")
-profiles=src("class-mad4b-scp-content-experience-profiles.php")
+profiles=(src("class-mad4b-scp-content-experience-profiles.php") + src("trait-mad4b-scp-content-experience-ability-definitions.php"))
 reconciliation=src("class-mad4b-scp-activity-import-reconciliation.php")
 review=src("class-mad4b-scp-activity-import-review.php")
 experience=src("class-mad4b-scp-activity-import-experience.php")

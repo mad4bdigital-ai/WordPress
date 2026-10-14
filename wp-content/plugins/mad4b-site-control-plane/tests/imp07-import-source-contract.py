@@ -10,7 +10,7 @@ snapshot=get("class-mad4b-scp-activity-import-snapshot.php")
 xlsx=get("class-mad4b-scp-activity-import-xlsx.php")
 modes=get("class-mad4b-scp-activity-import-modes.php")
 ux=get("class-mad4b-scp-activity-import-experience.php")
-profiles=get("class-mad4b-scp-content-experience-profiles.php")
+profiles=(get("class-mad4b-scp-content-experience-profiles.php") + get("trait-mad4b-scp-content-experience-ability-definitions.php"))
 test=(P/"tests"/"imp07-import-source-runtime.php").read_text(encoding="utf8")
 preflight=(P/"tests"/"feature007-manual-preflight.py").read_text(encoding="utf8")
 def ensure(test,why):
