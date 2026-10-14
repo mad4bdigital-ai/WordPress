@@ -4,13 +4,60 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Staging_Write_Owner_Intent {
     const OPTION = 'mad4b_scp_staging_write_owner_intent_v1';
     const PAGE = 'mad4b-staging-write-owner-review';
+    const ATTEST_ABILITY = 'mad4b/staging-write-owner-attest';
     const ACTION = 'mad4b_staging_write_owner_review';
     const CONFIRM = 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE';
     const TTL = 600;
 
     public static function boot() {
+        add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 18 );
         add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'post' ) );
+    }
+    public static function register_ability() {
+        if ( ! function_exists( 'wp_register_ability' ) ) return;
+        if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ATTEST_ABILITY ) ) return;
+        wp_register_ability( self::ATTEST_ABILITY, array(
+            'label' => 'Attest Exact Staging Write Owner Decision',
+            'description' => 'Record only a short-lived, independently reviewed plan-bound owner intent, not an execution ticket, grant or deployment.',
+            'category' => 'mad4b-staging-write-authority',
+            'execute_callback' => array( __CLASS__, 'attest' ),
+            'permission_callback' => array( __CLASS__, 'can_remote_attest' ),
+            'input_schema' => array(
+                'type' => 'object',
+                'properties' => array(
+                    'review_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+                    'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRM ) ),
+                ),
+                'required' => array( 'review_digest', 'confirmation' ),
+                'additionalProperties' => false,
+            ),
+            'output_schema' => array( 'type'=>'object', 'additionalProperties'=>true ),
+            'meta' => array( 'public'=>false, 'show_in_rest'=>false,
+                'mcp' => array( 'public'=>false, 'type'=>'tool', 'surface'=>'enrollment',
+                    'chatgpt_direct_step_up'=>true, 'exact_chatgpt_client_required'=>true,
+                    'generic_remote_admin'=>false, 'production_mutation_allowed'=>false,
+                    'owner_intent_only'=>true, 'breakglass_allowed'=>false ),
+                'annotations' => array( 'readonly'=>false, 'destructive'=>false, 'idempotent'=>false ),
+            ),
+        ) );
+    }
+    public static function can_remote_attest( $input = null ) {
+        if ( ! self::owner() ) return new WP_Error( 'mad4b_staging_owner_not_explicitly_enrolled', 'Exact enrolled Staging owner required.' );
+        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
+            return new WP_Error( 'mad4b_staging_owner_oauth_step_up_required', 'Verified owner OAuth authority step-up required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) )
+            return new WP_Error( 'mad4b_staging_owner_chatgpt_client_required', 'Exact ChatGPT OAuth client required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) return new WP_Error( 'mad4b_staging_owner_identity_missing', 'Verified OAuth subject required.' );
+        $id = MAD4B_SCP_Identity_Context::current();
+        if ( is_wp_error( $id ) || ! is_array( $id ) || empty( $id['authenticated'] )
+            || 'oauth' !== (string) ( $id['subject_type'] ?? '' )
+            || 'oauth2_bearer' !== (string) ( $id['auth_method'] ?? '' ) )
+            return new WP_Error( 'mad4b_staging_owner_oauth_subject_required', 'Normal OAuth bearer identity required.' );
+        return true;
     }
     public static function owner() {
         if ( ! current_user_can( 'manage_options' ) || ! class_exists( 'MAD4B_SCP_Site_Profile' )

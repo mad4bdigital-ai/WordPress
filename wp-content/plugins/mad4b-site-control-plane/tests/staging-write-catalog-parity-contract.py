@@ -19,3 +19,11 @@ assert "'core' === (string) ( $r['trust_class']" in p
 assert "'deny' === (string) ( $r['production_policy']" in p
 assert "MAD4B_SCP_Execution_Fence::with_governed_child(" in d
 print('STAGING_WRITE_CATALOG_PARITY: PASS (source contract only)')
+
+# Only this exact short-lived owner review Ability may bootstrap before Write grants.
+servers=(root/'includes/class-mad4b-scp-servers.php').read_text()
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY" in servers
+assert "public static function can_remote_attest(" in o
+assert "'chatgpt_direct_step_up'=>true" in o
+assert "'production_mutation_allowed'=>false" in o
+assert "'owner_intent_only'=>true" in o

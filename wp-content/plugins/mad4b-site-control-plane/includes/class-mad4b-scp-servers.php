@@ -109,6 +109,7 @@ final class MAD4B_SCP_Servers {
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
 					: array(),
 				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
+                class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ? array( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY ) : array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()
@@ -584,6 +585,7 @@ final class MAD4B_SCP_Servers {
 	public static function chatgpt_reviewed_direct_step_up_tools() {
 		$candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
