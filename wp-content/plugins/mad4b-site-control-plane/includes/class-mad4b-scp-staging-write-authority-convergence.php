@@ -161,6 +161,8 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				'enables_developer_authority' => false,
 				'developer_breakglass_included' => false,
 				'generic_raw_sql_breakglass_included' => false,
+				'generic_remote_admin' => false,
+				'production_mutation_allowed' => false,
 				'chatgpt_direct_step_up' => $step_up,
 				'exact_chatgpt_client_required' => $step_up,
 			),

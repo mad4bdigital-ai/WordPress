@@ -670,7 +670,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'remote_caller_role' => 'owner',
 				'production_policy' => 'deny',
 				'human_decision_required' => true,
-				'chatgpt_direct_step_up' => false,
+				// This owner-reviewed operation has its own exact plan and OAuth
+				// step-up admission. No Developer/Breakglass rights are included.
+				'chatgpt_direct_step_up' => true,
 			),
 			'staging_candidate_binding' => array(
 				'feature_id' => 'staging-write-authority',

@@ -143,6 +143,28 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		return hash( 'sha256', is_string( $json ) ? $json : '' );
 	}
 
+	/**
+	 * The one reviewed owner-only bootstrap exception. It is not a generic
+	 * waiver for human decisions: the caller must still pass can_execute()
+	 * (enrolled Staging administrator + verified ChatGPT OAuth step-up), the
+	 * target Ability permission_callback and exact plan-bound confirmation.
+	 * Never permit Developer, Breakglass, add-ons, other owner operations,
+	 * or a catalog row that merely copies the operation name.
+	 */
+	private static function owner_staging_write_convergence( $operation_id, array $row ) {
+		return 'staging_write_authority_convergence' === (string) $operation_id
+			&& 'mad4b/staging-write-authority-convergence-apply' === (string) ( $row['remote_ability'] ?? '' )
+			&& 'exact_write_only_convergence' === (string) ( $row['remote_mode'] ?? '' )
+			&& 'mad4b-enrollment' === (string) ( $row['authority_surface'] ?? '' )
+			&& 'owner' === (string) ( $row['remote_caller_role'] ?? '' )
+			&& ! empty( $row['human_decision_required'] )
+			&& ! empty( $row['chatgpt_direct_step_up'] )
+			&& 'deny' === (string) ( $row['production_policy'] ?? '' )
+			&& 'core' === (string) ( $row['trust_class'] ?? '' )
+			&& 'mad4b-core' === (string) ( $row['registrar_id'] ?? '' )
+			&& 'mad4b-site-control-plane' === (string) ( $row['source_plugin'] ?? '' );
+	}
+
 	private static function operation( $operation_id ) {
 		$operation_id = sanitize_key( (string) $operation_id );
 		if ( '' === $operation_id || ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) {
@@ -155,10 +177,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		$row = $catalog[ $operation_id ];
 		$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
 		$enrollment_abilities = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
+		$owner_convergence = self::owner_staging_write_convergence( $operation_id, $row );
 		if ( 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
-			|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
+			|| ( ! $owner_convergence && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
 			|| ! in_array( $ability_name, $enrollment_abilities, true )
-			|| ! empty( $row['human_decision_required'] )
+			|| ( ! $owner_convergence && ! empty( $row['human_decision_required'] ) )
 			|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
 			|| empty( $row['remote_registered'] )
 			|| empty( $row['execution_eligible'] )
@@ -167,6 +190,15 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		}
 		$ability = self::target_ability( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
+		if ( $owner_convergence ) {
+			$meta = $ability->get_meta();
+			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+			if ( empty( $mcp['chatgpt_direct_step_up'] )
+				|| empty( $mcp['exact_chatgpt_client_required'] )
+				|| 'mad4b.staging-write-authority-convergence.v1' !== (string) ( $mcp['mad4b_staging_write_authority_convergence'] ?? '' ) ) {
+				return new WP_Error( 'mad4b_enrollment_dispatch_owner_step_up_contract_missing', 'Exact owner step-up target contract is required.' );
+			}
+		}
 		$schema_sha = self::ability_input_schema_sha256( $ability );
 		$row['operation_id'] = $operation_id;
 		$row['input_schema_sha256'] = $schema_sha;
@@ -388,6 +420,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'count' => count( $items ),
 			'operations' => $items,
 			'human_decision_operations_excluded' => true,
+			'owner_step_up_exception' => 'staging_write_authority_convergence_only',
 			'production_mutation_allowed' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
@@ -415,7 +448,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'request_permission_preflight' => 'managed_skills_reconciliation' === $operation_id
 				? self::live_managed_skills_permission_preflight() : null,
 			'step_up_scope_required' => MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE,
-			'human_decision_required' => false,
+			'human_decision_required' => ! empty( $row['human_decision_required'] ),
 			'production_mutation_allowed' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
@@ -502,7 +535,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'dispatch_policy_digest' => $row['dispatch_policy_digest'],
 			'input_schema_sha256' => $row['input_schema_sha256'],
 			'result' => $result,
-			'human_decision_required' => false,
+			'human_decision_required' => ! empty( $row['human_decision_required'] ),
 			'production_mutation' => false,
 			'breakglass_included' => false,
 			'operation_invoked' => true,
