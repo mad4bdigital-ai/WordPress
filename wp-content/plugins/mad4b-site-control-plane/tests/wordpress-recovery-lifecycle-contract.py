@@ -48,8 +48,8 @@ for marker in (
     require(cert, marker)
 for marker in (
     "'mad4b.staging-convergence-plan.v1' === $plan['contract']",
-    "empty( $plan['mutation_performed'] )",
-    "empty( $plan['production_mutation_performed'] )",
+    "false === ( $plan['mutation_performed'] ?? null )",
+    "false === ( $plan['production_mutation_performed'] ?? null )",
     "self::MAX_ACTIONS",
     "isset( $seen[ $id ] )",
     "current_user_can( 'manage_options' )",
