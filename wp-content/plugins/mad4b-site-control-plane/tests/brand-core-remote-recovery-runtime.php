@@ -17,10 +17,15 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 class MAD4B_SCP_Policy { public static function can_read() { return true; } }
 class MAD4B_SCP_Site_Profile {
     public static $environment = 'staging';
+    public static $bound = false;
     public static function status() {
         return array( 'environment' => self::$environment, 'origin_match' => true,
+            'configured' => true, 'authority_ready' => true,
+            'deployment_binding_configured' => self::$bound,
+            'deployment_binding_bound' => self::$bound,
+            'deployment_binding_match' => true,
             'environment_match' => true, 'site_uuid' => 'site-a',
-            'profile_digest' => str_repeat( 'a', 64 ) );
+            'revision' => 3, 'profile_digest' => str_repeat( 'a', 64 ) );
     }
 }
 class MAD4B_SCP_Context_Authority {
@@ -38,9 +43,14 @@ class MAD4B_SCP_Context_Authority {
         return array( 'source_quarantine_count' => $sources,
             'asset_quarantine_count' => self::$asset_count,
             'scope_fingerprint' => self::$scope_verified ? str_repeat( 'b', 64 ) : '',
-            'state' => self::$scope_verified ? 'READY' : 'UNVERIFIED_DEPLOYMENT_BINDING',
+            'state' => self::$scope_verified ? 'TRUSTED_SCOPE_VERIFIED' : 'UNVERIFIED_DEPLOYMENT_BINDING',
             'operational_scope_verified' => self::$scope_verified );
     }
+    public static function profile() {
+        return array( 'brand_id' => str_repeat( 'c', 32 ),
+            'brand_name' => 'All Royal Egypt', 'revision' => 2 );
+    }
+    public static function sources() { return $GLOBALS['onboarding_sources'] ?? array(); }
     public static function brand_core_coverage() {
         $e = array( 'ready' => self::$ready );
         return array( 'ready' => self::$ready,
@@ -71,6 +81,14 @@ class MAD4B_SCP_Context_Authority {
             'source_id' => $input['source_id'],
             'provider_proof_sha256' => hash( 'sha256', self::$proof_version ),
             'matched_file_count' => 12 );
+    }
+}
+class MAD4B_SCP_Google_Drive_Context {
+    public static $write = false;
+    public static function connection_status() {
+        return array( 'connected' => true, 'read_available' => true,
+            'write_available' => self::$write, 'revocation_pending' => false,
+            'token_unreadable' => false );
     }
 }
 class MAD4B_SCP_Deployment_Binding_Native {
@@ -109,7 +127,8 @@ MAD4B_SCP_Brand_Core_Remote_Recovery::register_abilities();
 foreach ( array( 'mad4b/brand-core-remote-recovery-status',
     'mad4b/brand-core-remote-recovery-prepare',
     'mad4b/brand-core-recovery-alternatives',
-    'mad4b/brand-core-wordpress-mode' ) as $name ) {
+    'mad4b/brand-core-wordpress-mode',
+    'mad4b/context-source-onboarding-preflight' ) as $name ) {
     $ability = $GLOBALS['mad4b_abilities'][ $name ];
     brand_remote_assert( $ability['category'] === 'mad4b-read' &&
         $ability['meta']['annotations']['readonly'] === true &&
@@ -127,6 +146,51 @@ brand_remote_assert( $stages['brand_approval']['read'] === 'context/review-queue
     && $stages['brand_approval']['next'] === 'context/remote-owner-review-apply'
     && $stages['brand_approval']['approval'] === true,
     'Brand approval lifecycle must use exact remote owner plan and separately governed decision' );
+// The same remote preflight is safe before binding, inside quarantine and
+// when requesting broader provider write authority. It never writes.
+$folder_intent = array( 'external_root_id' => 'original-drive-folder',
+    'source_mode' => 'governed', 'write_policy' => 'managed', 'recursive' => true );
+$before_binding = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( $before_binding['state'] === 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED'
+    && $before_binding['next_ability'] === 'mad4b/deployment-binding-native-plan'
+    && $before_binding['quarantined_asset_count'] === 12
+    && !$before_binding['operational_scope_verified']
+    && !$before_binding['source_registry_modified']
+    && !$before_binding['legacy_ownership_inferred'],
+    'Missing native binding directs to exact per-site plan, never adopts quarantined source' );
+MAD4B_SCP_Site_Profile::$bound = true;
+$still_quarantined = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( 'LEGACY_SOURCE_RECONCILIATION_REQUIRED' === $still_quarantined['state']
+    && $still_quarantined['next_ability'] === 'context/legacy-owner-transfer-discover',
+    'A bound Site Profile does not skip quarantined source owner proof' );
+MAD4B_SCP_Context_Authority::$source_count = 0;
+MAD4B_SCP_Context_Authority::$asset_count = 0;
+$write_pending = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( 'GOOGLE_WRITE_CONSENT_REQUIRED' === $write_pending['state']
+    && !$write_pending['new_source_write_eligible'],
+    'Managed library requires current provider consent in addition to policy selection' );
+MAD4B_SCP_Google_Drive_Context::$write = true;
+$ready_source = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( 'READY_FOR_GOVERNED_SOURCE_PLAN' === $ready_source['state']
+    && $ready_source['new_source_write_eligible']
+    && !$ready_source['new_source_authorized']
+    && !$ready_source['folder_membership_verified'],
+    'Current managed source can be planned, never registered or ownership-certified by readback alone' );
+$GLOBALS['onboarding_sources'] = array(
+    'a' => array( 'external_root_id' => 'original-drive-folder', 'mode' => 'governed' ) );
+$existing_source = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $folder_intent );
+brand_remote_assert( 'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' === $existing_source['state']
+    && !$existing_source['new_source_write_eligible'],
+    'Re-selecting original source must never create a duplicate record' );
+unset($GLOBALS['onboarding_sources']);
+brand_remote_assert( is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight(
+    array( 'external_root_id' => 'root' ) ) )
+    && is_wp_error( MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight(
+    array( 'production_override' => true ) ) ),
+    'Root and caller-invented authority parameters are denied' );
+MAD4B_SCP_Site_Profile::$bound = false;
+MAD4B_SCP_Context_Authority::$source_count = 1;
+MAD4B_SCP_Context_Authority::$asset_count = 12;
 // WordPress-only mode never treats a saved legacy folder as owned.
 $native_view = MAD4B_SCP_Brand_Core_Remote_Recovery::wordpress_mode();
 brand_remote_assert( ! is_wp_error( $native_view )
