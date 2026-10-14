@@ -62,7 +62,8 @@ $check( ! is_wp_error( $recorded ), 'Unable to seed audit evidence for UI redact
 $before = $counts();
 
 // Overview is the hotpath used by ordinary navigation. It must remain bounded
-// and must not trigger deep provider/MCP diagnostics.
+// and must not trigger deep provider/MCP diagnostics. Its peer evidence must
+// agree with the current-request inventory already required by authority.
 $overview_queries_before = isset( $wpdb->num_queries ) ? (int) $wpdb->num_queries : 0;
 $overview_started = microtime( true );
 $overview_peak_before = memory_get_peak_usage( true );
@@ -76,7 +77,10 @@ foreach ( array( 'authority', 'agents', 'effective_access', 'approvals', 'mutati
 	$check( array_key_exists( $key, $snapshot ), 'Admin governance overview snapshot missing key: ' . $key );
 }
 $check( 'deferred' === ( isset( $snapshot['runtime_self_test']['status'] ) ? (string) $snapshot['runtime_self_test']['status'] : '' ), 'Overview unexpectedly ran deep adapter runtime self-test.' );
-$check( empty( $snapshot['mcp_peer_governance']['inventory_ready'] ), 'Overview unexpectedly ran MCP peer inventory.' );
+$check( isset( $snapshot['authority']['mcp_peer_governance'] ) && is_array( $snapshot['authority']['mcp_peer_governance'] ),
+	'Overview authority did not provide current-request peer evidence.' );
+$check( $snapshot['mcp_peer_governance'] === $snapshot['authority']['mcp_peer_governance'],
+	'Overview peer evidence disagrees with the inventory that governed current-request authority.' );
 $check( $overview_query_delta <= 40, 'Overview snapshot exceeded the 40-query CI budget: ' . $overview_query_delta );
 $check( $overview_elapsed_ms <= 1500, 'Overview snapshot exceeded the 1500ms CI budget: ' . round( $overview_elapsed_ms, 2 ) );
 $check( $overview_peak_delta <= 16 * 1024 * 1024, 'Overview snapshot exceeded the 16MiB incremental peak-memory CI budget.' );
