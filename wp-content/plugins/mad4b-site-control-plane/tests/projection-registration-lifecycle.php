@@ -111,9 +111,18 @@ if ( ! is_array( $summary ) || empty( $summary['bounded_status'] )
     || empty( $summary['storage']['measurements_deferred'] )
     || 'summary_metadata_only' !== $summary['storage']['reason']
     || MAD4B_SCP_Catalog_Object_Store::$status_calls !== $before_status_calls
-    || 'mad4b_protocol_diagnostic_unavailable' !== $summary['protocol_profile']['blocker']
+    || 'deferred' !== $summary['protocol_profile']['state']
+    || ! empty( $summary['protocol_profile_inspection_performed'] )
     || empty( $summary['read_only'] ) || ! empty( $summary['mutation_performed'] ) ) {
     throw new RuntimeException( 'Summary unexpectedly ran deep storage SQL or lost fail-soft protocol metadata' );
+}
+// Explicitly requested protocol inspection remains fail-soft, without authorizing anything.
+$protocol = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'include_protocol_profile' => true ) );
+if ( ! is_array( $protocol ) || empty( $protocol['protocol_profile_inspection_performed'] )
+    || 'mad4b_protocol_diagnostic_unavailable' !== ( $protocol['protocol_profile']['blocker'] ?? '' )
+    || MAD4B_SCP_Catalog_Object_Store::$status_calls !== $before_status_calls
+    || empty( $protocol['read_only'] ) || ! empty( $protocol['mutation_performed'] ) ) {
+    throw new RuntimeException( 'Opt-in protocol failure did not degrade safely' );
 }
 $deep = MAD4B_SCP_ChatGPT_Tool_Projection::status( array( 'include_catalog_preflight' => true ) );
 if ( empty( $deep['catalog_preflight_performed'] )
