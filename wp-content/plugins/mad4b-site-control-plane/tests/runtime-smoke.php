@@ -102,9 +102,12 @@ $check( is_array( $first_write_projection ), 'Write projection is not available 
 $check( is_array( $cache_after_first ), 'Write projection was not cached after the fully initialized Abilities lifecycle.' );
 $check( $cache_after_first === $cache_after_second, 'Repeated write projection lookup replaced the request-local cache.' );
 $servers_source = file_get_contents( MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php' );
-$candidate_filter_pos = strpos( $servers_source, '$mutation_candidates = array();' );
-$provider_status_pos = strpos( $servers_source, '$status = method_exists( $adapter, \'status\' )' );
-$check( false !== $candidate_filter_pos && false !== $provider_status_pos && $candidate_filter_pos < $provider_status_pos, 'Provider status/hashing occurs before mutation-candidate filtering.' );
+$projection_start = strpos( $servers_source, 'private static function adapter_write_projection()' );
+$check( false !== $projection_start, 'Write projection implementation is missing.' );
+$projection_source = substr( $servers_source, $projection_start );
+$candidate_filter_pos = strpos( $projection_source, '$mutation_candidates = array();' );
+$provider_status_pos = strpos( $projection_source, '$status = method_exists( $adapter, \'status\' )' );
+$check( false !== $candidate_filter_pos && false !== $provider_status_pos && $candidate_filter_pos < $provider_status_pos, 'Provider status/hashing occurs before mutation-candidate filtering inside write projection.' );
 $adapter_base_source = file_get_contents( MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-adapter-base.php' );
 $check( false !== strpos( $adapter_base_source, 'MAD4B_SCP_Provider_Contracts::mutation_guard' ), 'Mutation-time provider certification guard was removed while optimizing discovery.' );
 
