@@ -343,7 +343,10 @@ chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].sp
 assert "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()" in chatgpt_base
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in chatgpt_base
 assert "$step_up = self::chatgpt_reviewed_direct_step_up_tools();" in chatgpt_base
-assert "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in chatgpt_base
+assert "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap )" in chatgpt_base
+assert "$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();" in chatgpt_base
+assert "if ( ! self::chatgpt_unified_catalog_enabled() )" in chatgpt_base
+assert "array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) )" in chatgpt_base
 assert "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" in chatgpt_map
 assert "$candidates = array_merge( $core, $bootstrap )" in chatgpt_base
 assert "MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()" in chatgpt_tools
