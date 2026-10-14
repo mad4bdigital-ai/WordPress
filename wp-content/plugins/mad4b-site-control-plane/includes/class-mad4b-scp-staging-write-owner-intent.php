@@ -20,7 +20,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return false;
         $ids = MAD4B_SCP_Site_Profile::oauth_user_ids();
         // Never accept legacy_zero_touch fallback as an owner attestation.
-        if ( ! is_array( $ids ) || ! in_array( (int) get_current_user_id(), array_map( 'intval', $ids ), true ) ) return false;
+        if ( ! is_array( $ids ) || 1 !== count( array_unique( array_map( 'intval', $ids ) ) )
+            || ! in_array( (int) get_current_user_id(), array_map( 'intval', $ids ), true ) ) return false;
         if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return false;
         if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
             && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) return false;
@@ -32,6 +33,14 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key )
             $bound[ $key ] = $plan[ $key ] ?? null;
         return hash( 'sha256', wp_json_encode( $bound, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+    }
+    /** Site-secret keyed receipt, not a forgeable bare options digest. */
+    private static function signature( array $record ) {
+        if ( ! function_exists( 'wp_salt' ) ) return '';
+        $secret = (string) wp_salt( 'auth' );
+        if ( '' === $secret ) return '';
+        return hash_hmac( 'sha256',
+            wp_json_encode( $record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), $secret );
     }
     public static function review() {
         if ( ! self::owner() ) return new WP_Error( 'mad4b_owner_explicit_enrollment_required', 'Explicit Staging owner required.' );
@@ -55,7 +64,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         catch ( Throwable $exception ) { return new WP_Error( 'mad4b_owner_entropy_unavailable', 'Secure nonce unavailable.' ); }
         $record = array( 'owner'=>(int) get_current_user_id(), 'review_digest'=>$review['review_digest'],
             'issued'=>time(), 'expires'=>time()+self::TTL, 'nonce'=>$nonce );
-        $record['receipt_sha256'] = hash( 'sha256', wp_json_encode( $record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        $record['receipt_sha256'] = self::signature( $record );
+        if ( '' === $record['receipt_sha256'] ) return new WP_Error( 'mad4b_owner_signing_unavailable', 'Site-secret signature unavailable.' );
         $audit = MAD4B_SCP_Audit::record( 'mad4b/staging-write-owner-reviewed', array(
             'owner'=>$record['owner'], 'site_uuid'=>$review['plan']['site_uuid'],
             'review_digest'=>$review['review_digest'], 'receipt_sha256'=>$record['receipt_sha256'],
@@ -79,12 +89,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             return new WP_Error( 'mad4b_owner_receipt_missing', 'Exact owner intent required.' );
         $payload = $saved;
         unset( $payload['receipt_sha256'] );
-        $computed = hash( 'sha256', wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        $computed = self::signature( $payload );
         if ( ! hash_equals( $computed, (string) $saved['receipt_sha256'] )
             || ! hash_equals( $hash, (string) $saved['receipt_sha256'] )
             || ! hash_equals( self::digest( $plan ), (string) $saved['review_digest'] )
             || (int) $saved['owner'] !== (int) get_current_user_id()
             || time() >= (int) $saved['expires']
+            || (int) $saved['issued'] > time()
             || (int) $saved['expires'] - (int) $saved['issued'] > self::TTL )
             return new WP_Error( 'mad4b_owner_receipt_stale', 'Expired, altered or different plan/owner.' );
         if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )

@@ -2,6 +2,7 @@
 /** Hermetic owner decision fixture. No real WordPress or network operations. */
 define( 'ABSPATH', __DIR__ );
 function wp_json_encode( $v, $f = 0 ) { return json_encode( $v, $f ); }
+function wp_salt( $scheme = 'auth' ) { return 'fixture-random-local-secret-2026-'. $scheme; }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function current_user_can( $c ) { return $GLOBALS['admin'] && 'manage_options' === $c; }
 function get_current_user_id() { return $GLOBALS['user']; }
