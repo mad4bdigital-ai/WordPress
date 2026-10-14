@@ -72,8 +72,28 @@ foreach ( $preauth_tools as $dto ) {
 	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
 	$reviewed_step_up_names[] = (string) $tool_name;
 }
+// The server formally designates reviewed direct step-ups OPTIONAL under
+// the 36-tool budget. Compare against the same deterministic selection as
+// registration: only budget-retained tools must be bound. Missing optional
+// tools must be explicitly excluded by that policy, not silently disappear.
+$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+    ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+$all_requested = MAD4B_SCP_Servers::chatgpt_tools();
+$optional = array_values( array_intersect(
+    array_values( array_unique( array_merge( $dynamic_optional, $reviewed_step_up_abilities ) ) ),
+    $all_requested
+) );
+$budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
+if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
-	if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+    if ( ! in_array( $ability_name, $budget['selected'], true ) ) {
+        if ( ! in_array( $ability_name, $budget['excluded_optional'], true )
+            || ! empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
+            $fail( 'Non-selected direct step-up is not a genuine bounded optional exclusion.', $ability_name );
+        continue;
+    }
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
+        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', $ability_name );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
