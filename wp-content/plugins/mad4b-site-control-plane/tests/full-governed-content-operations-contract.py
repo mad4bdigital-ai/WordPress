@@ -43,6 +43,9 @@ provider_src = provider.read_text(encoding="utf-8")
 jetengine_src = jetengine.read_text(encoding="utf-8")
 jetengine_client_src = jetengine_client.read_text(encoding="utf-8")
 media_src = media.read_text(encoding="utf-8")
+media_response = root / "includes" / "class-mad4b-scp-media-response-payload.php"
+assert media_response.is_file(), "missing attachment response helper from reviewed package"
+media_response_src = media_response.read_text(encoding="utf-8")
 remote_media_src = remote_media.read_text(encoding="utf-8")
 servers_src = servers.read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
@@ -79,14 +82,11 @@ for token in (
     "mad4b.rollback.media-metadata.v1",
     "mad4b.rollback.featured-image.v1",
     "mad4b.rollback.media-parent.v1",
-    "metadata_sha256",
     "parent_id",
     "parent_post_id",
     "unattached_only",
     "image_only",
-    "detail_level",
     "mutable_state_from_post",
-    "wp_attachment_is_image(",
     "mad4b_media_metadata_readback_mismatch",
     "mad4b_media_parent_readback_mismatch",
     "mad4b_media_featured_readback_mismatch",
@@ -94,6 +94,14 @@ for token in (
 ):
     assert token in media_src, f"media governance contract missing: {token}"
 
+for token in ("metadata_sha256", "detail_level", "wp_attachment_is_image(", "generated_size_count", "image_meta"):
+    assert token in media_response_src, f"attachment response projection contract missing: {token}"
+assert "class-mad4b-scp-media-response-payload.php" in media_src
+assert "MAD4B_SCP_Media_Response_Payload::from_post( $post, $include_details )" in media_src
+for source in (media_src, media_response_src):
+    assert "$wpdb" not in source
+    assert "database-raw-query" not in source
+    assert "BREAKGLASS" not in source.upper()
 assert "$wpdb" not in media_src
 assert "database-raw-query" not in media_src
 assert "BREAKGLASS" not in media_src.upper()
