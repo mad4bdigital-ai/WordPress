@@ -430,7 +430,10 @@ require("can_bootstrap_apply" not in catalog_projection, "runtime release-set ca
 require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
 require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
-require("array_merge( $management, $dynamic_optional, $reviewed" in servers, "materialization must reserve the reviewed demotion control before dynamic projection slots")
+# Match the actual ordered expression across formatting changes; retain
+# exact reviewed-only management and mandatory dispatcher checks below.
+import re
+require(bool(re.search(r"array_merge\\s*\\(\\s*\\$management\\s*,\\s*\\$dynamic_optional\\s*,\\s*\\$reviewed", servers)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
 require("$management = array_values( array_intersect(" in servers, "management reservation must be reviewed-only")
 require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in servers, "only the specific enrolled projection-management tool may reserve a slot")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
