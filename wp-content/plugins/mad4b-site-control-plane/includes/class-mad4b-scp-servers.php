@@ -1029,6 +1029,12 @@ final class MAD4B_SCP_Servers {
 				}
 			}
 		}
+		// An original Content/Admin declaration cannot override the provider's
+		// effective Write denial. Keep discovery separate from mount eligibility.
+		if ( in_array( $server_id, array( 'mad4b-content', 'mad4b-admin' ), true )
+			&& self::registered_mutation_ability( $ability_name )
+			&& self::is_external_write_candidate( $ability_name )
+			&& ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return $remember( 'core' );
 		$surface = self::surface_for_server( $server_id );
 		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $remember( null );
@@ -1127,6 +1133,15 @@ final class MAD4B_SCP_Servers {
 		return '' === (string) $target_server_id || hash_equals( (string) $target_server_id, (string) $server_id );
 	}
 
+	private static function original_mutation_mount_tools( $server_id, array $tools ) {
+		if ( ! in_array( $server_id, array( 'mad4b-content', 'mad4b-admin' ), true ) ) return $tools;
+		$eligible_write = array_fill_keys( self::write_tools(), true );
+		return array_values( array_filter( $tools, static function ( $name ) use ( $eligible_write ) {
+			return ! self::registered_mutation_ability( $name )
+				|| ! self::is_external_write_candidate( $name ) || isset( $eligible_write[ $name ] );
+		} ) );
+	}
+
 	public function register_servers( $adapter ) {
 		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) { foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable', 'materialized' => false, 'tool_count' => 0 ); return; }
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
@@ -1145,6 +1160,7 @@ final class MAD4B_SCP_Servers {
 		$materialize = static function ( $server_id, $factory ) use ( $target_server_id ) {
 			if ( ! self::should_materialize_server_tools( $server_id, $target_server_id ) ) return array();
 			$tools = call_user_func( $factory );
+			if ( is_array( $tools ) ) $tools = self::original_mutation_mount_tools( $server_id, $tools );
 			return is_array( $tools ) ? array_values( array_unique( $tools ) ) : array();
 		};
 

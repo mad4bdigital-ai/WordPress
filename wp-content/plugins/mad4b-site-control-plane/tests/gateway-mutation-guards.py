@@ -92,6 +92,7 @@ runpy.run_path(str(root / 'tests' / 'capability-fabric-bulk-hardening-contract.p
 for compatibility_fixture in (
     'runtime-compatibility-profile-runtime.php',
     'runtime-compatibility-profile-cron.php',
+    'original-mutation-mount-runtime.php',
 ):
     result = subprocess.run(
         ['php', str(root / 'tests' / compatibility_fixture)],
