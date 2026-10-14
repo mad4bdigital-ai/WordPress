@@ -1380,6 +1380,24 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return $tools;
 	}
 
+	/**
+	 * Single exact catalog contract shared by discovery and dispatch.
+	 * No third-party or general owner operation can inherit this exception.
+	 */
+	public static function reviewed_owner_staging_convergence( $id, array $r ) {
+		return 'staging_write_authority_convergence' === (string) $id
+			&& 'mad4b/staging-write-authority-convergence-apply' === (string) ( $r['remote_ability'] ?? '' )
+			&& 'exact_write_only_convergence' === (string) ( $r['remote_mode'] ?? '' )
+			&& 'mad4b-enrollment' === (string) ( $r['authority_surface'] ?? '' )
+			&& 'owner' === (string) ( $r['remote_caller_role'] ?? '' )
+			&& ! empty( $r['human_decision_required'] )
+			&& ! empty( $r['chatgpt_direct_step_up'] )
+			&& 'deny' === (string) ( $r['production_policy'] ?? '' )
+			&& 'core' === (string) ( $r['trust_class'] ?? '' )
+			&& 'mad4b-core' === (string) ( $r['registrar_id'] ?? '' )
+			&& 'mad4b-site-control-plane' === (string) ( $r['source_plugin'] ?? '' );
+	}
+
 	public static function chatgpt_direct_step_up_tools() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
 			|| ! MAD4B_SCP_Site_Profile::configured()
@@ -1388,14 +1406,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
 
 		$tools = array();
-		foreach ( self::catalog() as $row ) {
+		foreach ( self::catalog() as $operation_id => $row ) {
+			$owner = self::reviewed_owner_staging_convergence( $operation_id, $row );
 			if ( ! is_array( $row )
 				|| empty( $row['chatgpt_direct_step_up'] )
 				|| 'core' !== ( isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '' )
 				|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
-				|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
+				|| ( ! $owner && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
 				|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
-				|| ! empty( $row['human_decision_required'] )
+				|| ( ! $owner && ! empty( $row['human_decision_required'] ) )
 				|| empty( $row['remote_registered'] )
 				|| empty( $row['execution_eligible'] )
 				|| empty( $row['remote_parity_ready'] ) ) continue;
@@ -1406,7 +1425,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$meta = $ability->get_meta();
 			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( empty( $mcp['chatgpt_direct_step_up'] )
+			if ( ( $owner && ( empty( $mcp['exact_chatgpt_client_required'] )
+				|| 'mad4b.staging-write-authority-convergence.v1' !== (string) ( $mcp['mad4b_staging_write_authority_convergence'] ?? '' ) ) )
+				|| empty( $mcp['chatgpt_direct_step_up'] )
 				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
 				|| ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin']
 				|| ! array_key_exists( 'production_mutation_allowed', $mcp ) || false !== $mcp['production_mutation_allowed']

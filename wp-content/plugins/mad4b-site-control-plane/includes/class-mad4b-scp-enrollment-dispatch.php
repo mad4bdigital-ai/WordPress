@@ -154,17 +154,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	 * or a catalog row that merely copies the operation name.
 	 */
 	private static function owner_staging_write_convergence( $operation_id, array $row ) {
-		return 'staging_write_authority_convergence' === (string) $operation_id
-			&& 'mad4b/staging-write-authority-convergence-apply' === (string) ( $row['remote_ability'] ?? '' )
-			&& 'exact_write_only_convergence' === (string) ( $row['remote_mode'] ?? '' )
-			&& 'mad4b-enrollment' === (string) ( $row['authority_surface'] ?? '' )
-			&& 'owner' === (string) ( $row['remote_caller_role'] ?? '' )
-			&& ! empty( $row['human_decision_required'] )
-			&& ! empty( $row['chatgpt_direct_step_up'] )
-			&& 'deny' === (string) ( $row['production_policy'] ?? '' )
-			&& 'core' === (string) ( $row['trust_class'] ?? '' )
-			&& 'mad4b-core' === (string) ( $row['registrar_id'] ?? '' )
-			&& 'mad4b-site-control-plane' === (string) ( $row['source_plugin'] ?? '' );
+		return class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )
+			&& MAD4B_SCP_Remote_Operation_Parity::reviewed_owner_staging_convergence( $operation_id, $row );
 	}
 
 	private static function operation( $operation_id ) {

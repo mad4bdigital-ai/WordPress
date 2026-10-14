@@ -49,6 +49,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-owner-intent.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-intent-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/staging-write-catalog-parity-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/admin-query-performance-runtime.php
       - name: Adaptive runtime and admin recovery regressions

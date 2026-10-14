@@ -105,6 +105,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
     public static $owner_row_override = array();
     const SYSTEM = 'mad4b/system-test';
 
+    public static function reviewed_owner_staging_convergence( $id, array $row ) {
+        return 'staging_write_authority_convergence' === $id
+            && self::OWNER_CONVERGENCE === ( $row['remote_ability'] ?? '' )
+            && 'exact_write_only_convergence' === ( $row['remote_mode'] ?? '' )
+            && 'owner' === ( $row['remote_caller_role'] ?? '' )
+            && ! empty( $row['human_decision_required'] )
+            && ! empty( $row['chatgpt_direct_step_up'] )
+            && 'core' === ( $row['trust_class'] ?? '' )
+            && 'mad4b-core' === ( $row['registrar_id'] ?? '' )
+            && 'mad4b-site-control-plane' === ( $row['source_plugin'] ?? '' )
+            && 'deny' === ( $row['production_policy'] ?? '' )
+            && 'mad4b-enrollment' === ( $row['authority_surface'] ?? '' );
+    }
     public static function enrollment_abilities() {
         $abilities = array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
         if ( self::$include_owner ) $abilities[] = self::OWNER_CONVERGENCE;
