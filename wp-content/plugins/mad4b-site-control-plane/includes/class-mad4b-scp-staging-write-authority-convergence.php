@@ -119,6 +119,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 							'expected_profile_revision' => array( 'type' => 'integer', 'minimum' => 1 ),
 							'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 							'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) ),
+							'owner_intent_sha256' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[a-f0-9]{64}$' ),
 						),
 						array(
 							'expected_plan_sha256',
@@ -130,6 +131,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 							'expected_profile_revision',
 							'expected_profile_digest',
 							'confirmation',
+							'owner_intent_sha256',
 						)
 					),
 					'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -400,6 +402,9 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			if ( is_wp_error( $match ) ) return $match;
 			if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_staging_write_authority_audit_required', 'Ready append-only audit storage is required.' );
 			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) ) return new WP_Error( 'mad4b_staging_write_authority_candidate_binding_unavailable', 'Candidate-binding authority is unavailable.' );
+			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) return new WP_Error( 'mad4b_staging_owner_intent_unavailable', 'Explicit owner intent required.' );
+			$owner_intent = MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, $input );
+			if ( is_wp_error( $owner_intent ) ) return $owner_intent;
 
 			$reviewed_binding_status = isset( $plan['write_reconciliation']['candidate_binding'] ) && is_array( $plan['write_reconciliation']['candidate_binding'] )
 				? $plan['write_reconciliation']['candidate_binding']
@@ -417,6 +422,8 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				'site_profile_revision' => $plan['site_profile_revision'],
 				'reviewed_previous_binding' => $reviewed_previous_binding,
 				'confirmation' => self::CONFIRMATION,
+				'owner_intent_sha256' => (string) $owner_intent['receipt_sha256'],
+				'owner_user' => (int) $owner_intent['owner_user'],
 				'requested_authorities' => array( 'write' ),
 				'developer_authority_requested' => false,
 				'developer_breakglass_requested' => false,
