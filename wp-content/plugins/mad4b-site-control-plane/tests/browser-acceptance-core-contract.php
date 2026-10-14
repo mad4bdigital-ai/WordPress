@@ -55,7 +55,7 @@ foreach ( array(
 }
 foreach ( array(
 	"const BROWSER_ACCEPTANCE_ABILITY = 'mad4b/browser-acceptance-run';",
-	"'browser_acceptance_execution' => array(",
+	"'operation_id' => array( 'type' => 'string', 'enum' => array( 'frontend_performance_sampling', 'browser_acceptance_execution' ) )",
 	'private static function browser_acceptance_schema()',
 	'public static function queue_browser_acceptance(',
 	'private static function complete_browser_acceptance_work(',
