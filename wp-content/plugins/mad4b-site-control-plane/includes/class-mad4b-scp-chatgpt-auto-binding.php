@@ -129,7 +129,8 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
         foreach ( $expected as $field => $value ) {
             if ( ! isset( $record[ $field ] ) ||
                 ( ! is_string( $record[ $field ] ) &&
-                    !( 'wp_user_id' === $field && is_int( $record[ $field ] ) ) ) ||
+                    ! ( in_array( $field, array( 'wp_user_id', 'observed_at_unix' ), true )
+                        && is_int( $record[ $field ] ) ) ) ||
                 ! hash_equals( (string) $value, (string) $record[ $field ] ) )
                 return false;
         }
