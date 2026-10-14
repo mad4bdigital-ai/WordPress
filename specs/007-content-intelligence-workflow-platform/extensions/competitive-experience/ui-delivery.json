@@ -98,7 +98,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-profile-admin-runtime.php",
-      "sha256": "d7036b6318c3ef3827862e26bd5e551a4496c3d2aa6b6bd990850eae03f62db2"
+      "sha256": "630612960355746c5c63b160014e2adbcb4c63948625b57e940ccafbf0c0000c"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-wordpress.php",

@@ -337,8 +337,11 @@ try {
 
 	$optional = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $final );
 	if ( ! in_array( 'mad4b/diagnostics-health', $optional, true ) ) $fail( 'Dynamic projection was not classified as optional for isolation.', $optional );
+	$budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $final, $optional );
 	$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $final, $optional );
-	if ( empty( $preflight['ready'] ) || ! in_array( 'mad4b/diagnostics-health', $preflight['tools'], true ) ) {
+	$expected_projection = in_array( 'mad4b/diagnostics-health', $budget['selected'], true );
+	if ( empty( $budget['ready'] ) || empty( $preflight['ready'] )
+		|| $expected_projection !== in_array( 'mad4b/diagnostics-health', $preflight['tools'], true ) ) {
 		$fail( 'Dynamic projection did not survive exact MCP preflight.', $preflight );
 	}
 

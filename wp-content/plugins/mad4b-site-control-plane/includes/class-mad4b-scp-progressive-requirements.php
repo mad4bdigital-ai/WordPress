@@ -504,6 +504,7 @@ final class MAD4B_SCP_Progressive_Requirements {
 				$operation.':'.(string)($input['target_operation_id']??'') : $operation);
 		$decision['resolved_provider']=$operation;
 		$decision['resolved_operation_id']=(string)($input['target_operation_id']??$operation);
+		$decision['resolved_target_operation_id']=(string)($input['target_operation_id']??'');
 		$decision['resolved_target_ability_name']=(string)($input['target_ability_name']??'');
 		$decision['planner_inputs']=MAD4B_SCP_Progressive_Operation_Discovery::planner_variables(
 			(string)($observed['effect_ability']??''));

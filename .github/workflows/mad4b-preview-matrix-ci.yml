@@ -13,12 +13,17 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: mad4b-preview-matrix-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}-${{ github.event.pull_request.head.sha || github.ref }}
+  cancel-in-progress: true
 jobs:
   preview-source-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'

@@ -125,7 +125,10 @@ ok(count($high)===1 && $high[0]['declared_risk']==='exceptional'
     && $high[0]['qualification_verified']===false,
     'unknown plugin risk derived from existing plugin discovery not folder name');
 ok($r['coverage']['risk_coverage_complete']===true,'joined live risk registry complete');
-$plain=array_values(array_filter($r['candidates'],function($v){return $v['id']==='plugin:plain-cache/cache.php';}));
+$cache_input=$in; $cache_input['intent']='Layers'; $cache_input['related_terms']=array();
+$cache_result=MAD4B_SCP_Solution_Discovery::read_discover($cache_input);
+ok(is_array($cache_result) && count($cache_result['candidates'])===1,'cache query stays scoped to matching evidence');
+$plain=array_values(array_filter($cache_result['candidates'],function($v){return $v['id']==='plugin:plain-cache/cache.php';}));
 ok(count($plain)===1 && $plain[0]['functional_state']==='read_ready_write_blocked'
     && $plain[0]['read_ability_count']===2 && $plain[0]['qualification_verified']===false
     && $plain[0]['qualification_status']==='FUNCTIONAL_REVIEW_REQUIRED',

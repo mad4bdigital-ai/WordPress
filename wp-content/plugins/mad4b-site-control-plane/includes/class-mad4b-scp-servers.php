@@ -780,7 +780,8 @@ final class MAD4B_SCP_Servers {
 			$step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap ) ) );
+		$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );
+		$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
 		$tools = array();
