@@ -46,6 +46,23 @@ class MAD4B_SCP_Site_Profile {
 	}
 }
 
+// Scan and reuse fixtures carry one exact enrolled Staging Brand identity.
+class MAD4B_SCP_Operational_Integrity {
+    public static function capture() {
+        return array( 'scope' => array(
+            'tenant_ref' => 'scan-fixture-tenant',
+            'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'brand_ref' => str_repeat( 'a', 32 ),
+            'blog_id' => 1, 'network_id' => 1,
+            'environment' => 'staging', 'deployment_mode' => 'staging',
+        ) );
+    }
+    public static function assert_unchanged( $checkpoint, $for_write = true ) {
+        return self::capture()['scope'] === ( $checkpoint['scope'] ?? array() )
+            ? true : new WP_Error( 'scan_scope_changed' );
+    }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-scope-guard.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_scan_assert( $condition, $message, $context = null ) {
@@ -58,13 +75,20 @@ function mad4b_scan_assert( $condition, $message, $context = null ) {
 $source_id = str_repeat( 'a', 64 );
 $asset_id = str_repeat( 'b', 64 );
 $site_uuid = '11111111-1111-4111-8111-111111111111';
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+    'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+    'site_uuid' => $site_uuid,
+    'brand_id' => str_repeat( 'a', 32 ),
+    'brand_name' => 'Scan Completeness Fixture',
+    'revision' => 1,
+);
 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = array(
 	$source_id => array(
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-fixture',
@@ -87,7 +111,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $asset_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'source_id' => $source_id,
 		'source_mode' => 'governed',
 		'provider' => 'google_drive',
@@ -117,7 +141,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 	'source_id' => $reuse_source_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'provider' => 'google_drive',
 	'mode' => 'governed',
 	'external_root_id' => 'reuse-folder-fixture',
@@ -138,7 +162,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][
 	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 	'asset_id' => $reuse_asset_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'source_id' => $reuse_source_id,
 	'source_mode' => 'governed',
 	'provider' => 'google_drive',
@@ -259,7 +283,7 @@ for ( $i = 0; $i < MAD4B_SCP_Context_Authority::MAX_ASSETS - 1; ++$i ) {
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $hidden_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'source_id' => str_repeat( 'f', 64 ),
 		'source_mode' => 'governed',
 		'provider' => 'google_drive',
@@ -345,7 +369,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-fixture',
