@@ -883,7 +883,17 @@ final class MAD4B_SCP_WP_Native_Build {
                 ( $job['head'] ?? '' ) !== $observed['head'] ||
                 ( isset( $observed['job_id'] ) && ( $job['job_id'] ?? '' ) !== $observed['job_id'] ) ||
                 ! in_array( $job['state'] ?? '',
-                    array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
+                    array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
+                // Another worker may have completed the persisted job while
+                // this request still held a stale WordPress option cache.
+                // Invalidate only the cache; do not save the superseded job.
+                if ( function_exists( 'wp_cache_delete' ) ) {
+                    wp_cache_delete( self::OPTION, 'options' );
+                    wp_cache_delete( 'alloptions', 'options' );
+                    wp_cache_delete( 'notoptions', 'options' );
+                }
+                return;
+            }
             $site = self::site();
             if ( ! self::exact_staging() ||
                 ( $site['site_uuid'] ?? '' ) !== ( $job['site_uuid'] ?? '' ) ||

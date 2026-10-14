@@ -17,7 +17,12 @@ function wp_json_encode( $v, $options = 0 ) { return json_encode( $v, $options )
 function wp_get_environment_type() { return $GLOBALS['native_env'] ?? 'staging'; }
 function get_option( $name, $default = false ) {
     // Intentionally return the request-local cache: it might be stale.
-    return $GLOBALS['native_opts'][ $name ] ?? $default;
+    return $GLOBALS['native_opts'][ $name ] ?? ( $GLOBALS['native_db_opts'][ $name ] ?? $default );
+}
+function wp_cache_delete( $key, $group = '' ) {
+    if ( 'options' === $group && $key === MAD4B_SCP_WP_Native_Build::OPTION )
+        unset( $GLOBALS['native_opts'][ $key ] );
+    return true;
 }
 function maybe_unserialize( $value ) { return unserialize( $value ); }
 class MAD4B_Native_Test_DB {
