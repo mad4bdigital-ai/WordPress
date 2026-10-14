@@ -797,6 +797,22 @@ final class MAD4B_SCP_Servers {
 	 * dynamic projections. Dynamic projections are optional at MCP preflight and
 	 * never displace required transport tools.
 	 */
+	/**
+	 * Single optional-tool classification for real server registration,
+	 * official DTO preflight, refresh assertions and CI readback.
+	 * No bearer validation or authority grants are performed here.
+	 */
+	public static function chatgpt_materialization_optional_tools( array $requested_tools ) {
+		$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+		return array_values( array_intersect(
+			array_values( array_unique( array_merge(
+				$dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools()
+			) ) ),
+			$requested_tools
+		) );
+	}
+
 	public static function chatgpt_tools() {
 		$base = self::chatgpt_base_tools();
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
@@ -1152,15 +1168,8 @@ final class MAD4B_SCP_Servers {
 			return;
 		}
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
-			$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
-				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
-				: array();
-			$reviewed_optional = array_values( array_intersect(
-				// Persisted dynamic selections are explicit reviewed intent and therefore
-				// outrank convenience direct step-ups inside the optional catalog budget.
-				array_values( array_unique( array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() ) ) ),
-				$tools
-			) );
+			// Server registration and client/runtime checks must share this exact order.
+			$reviewed_optional = self::chatgpt_materialization_optional_tools( $tools );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
 			// A failed required preflight admits a route-only server for bounded
 			// failure reporting. Do not rebuild known-invalid DTOs in the Adapter.

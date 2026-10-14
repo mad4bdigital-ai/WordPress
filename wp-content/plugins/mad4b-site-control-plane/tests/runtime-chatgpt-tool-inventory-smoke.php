@@ -57,7 +57,7 @@ if ( empty( $requested_abilities ) ) {
 }
 // The MCP Adapter certifies this exact budgeted, serializable inventory.
 // Never claim that an optional schema dropped by preflight was published.
-$optional_abilities = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $requested_abilities );
+$optional_abilities = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $requested_abilities );
 $certified_catalog = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_abilities, $optional_abilities );
 if ( empty( $certified_catalog['ready'] ) || empty( $certified_catalog['tools'] ) ) {
 	$fail( 'The reviewed ChatGPT tool catalog did not pass actual MCP preflight.', $certified_catalog );

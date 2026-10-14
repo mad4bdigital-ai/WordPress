@@ -469,7 +469,7 @@ foreach ( $catalog_tools as $dto ) {
 	$catalog_names[] = $wire_name;
 }
 $requested_catalog = MAD4B_SCP_Servers::chatgpt_tools();
-$catalog_optional = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $requested_catalog );
+$catalog_optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $requested_catalog );
 $nonbudget_failures = static function ( $result ) {
     return array_values( array_filter( (array) ( $result['failures'] ?? array() ), static function ( $error ) {
         return 'mcp_optional_catalog_budget_excluded' !== ( $error['error_code'] ?? '' );
