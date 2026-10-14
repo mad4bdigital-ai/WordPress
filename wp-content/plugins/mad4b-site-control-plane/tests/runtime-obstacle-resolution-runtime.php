@@ -35,6 +35,13 @@ class MAD4B_SCP_Context_Authority {
             'original_folder_id' => 'selected-source-folder', 'matched_file_count' => 12 );
     }
 }
+class MAD4B_SCP_Brand_Core_Remote_Recovery {
+    public static function source_onboarding_preflight( $input ) {
+        return array( 'state' => 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED',
+            'next_ability' => 'mad4b/deployment-binding-native-plan',
+            'source_registry_modified' => false, 'mutation_performed' => false );
+    }
+}
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-obstacle-resolution.php';
 $GLOBALS['site_uuid'] = 'site-1';
 $GLOBALS['site_environment'] = 'staging';
@@ -71,6 +78,18 @@ insist( in_array( 'selected_folder_scope', $cats, true ) &&
     in_array( 'semantic_structure', $cats, true ) &&
     in_array( 'brand_context', $cats, true ) &&
     in_array( 'source_rights', $cats, true ), 'Distinct remediation routes preserved.' );
+// A missing integrity scope must route into bound-site recovery BEFORE
+// attempting quarantined source membership or any write.
+$integrity = MAD4B_SCP_Runtime_Obstacle_Resolution::plan( array(
+    'blockers' => array( 'mad4b_integrity_scope_blocked' ),
+    'perform_safe_probes' => true ) );
+insist( 'source_onboarding' === $integrity['resolution_routes'][0]['category']
+    && 'mad4b/context-source-onboarding-preflight' ===
+        $integrity['resolution_routes'][0]['next_read_ability']
+    && 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' ===
+        $integrity['source_onboarding_live_probe']['state']
+    && !$integrity['source_onboarding_live_probe']['mutation_performed'],
+    'Missing integrity scope must never be sent into legacy folder transfer or unknown blocker.' );
 $GLOBALS['candidates'][] = array( 'source_id' => str_repeat( 'c', 64 ) );
 $ambiguous = MAD4B_SCP_Runtime_Obstacle_Resolution::selected_folder_proof();
 insist( ! is_wp_error( $ambiguous ) && $ambiguous['state'] === 'EXACT_FOLDER_SELECTION_REQUIRED',
