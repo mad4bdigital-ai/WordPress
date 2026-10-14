@@ -90,6 +90,9 @@ if ( 'developer_breakglass' === $case ) $_SERVER['REQUEST_URI'] = '/wp-json/mcp/
 $source = dirname( __DIR__ );
 mkdir( WP_PLUGIN_DIR . '/' . $control_slug . '/includes', 0777, true );
 copy( $source . '/includes/class-mad4b-scp-site-profile.php', WP_PLUGIN_DIR . '/' . $control_slug . '/includes/class-mad4b-scp-site-profile.php' );
+// Site Profile now resolves a strictly host-local binding class on reads.
+// The disposable MU fixture must include the same non-mutating dependency.
+copy( $source . '/includes/class-mad4b-scp-deployment-binding-native.php', WP_PLUGIN_DIR . '/' . $control_slug . '/includes/class-mad4b-scp-deployment-binding-native.php' );
 require $source . '/includes/class-mad4b-scp-mcp-class-provenance.php';
 $map = array(); $manifest = array();
 foreach ( MAD4B_SCP_MCP_Class_Provenance::critical_classes() as $spec ) $map[ $spec['class'] ] = $spec['file'];
