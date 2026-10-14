@@ -282,8 +282,11 @@ for marker in [
 ]:
     if marker not in ai_approval:
         raise SystemExit('AI approval decision contract missing: ' + marker)
+# A reserved raw-SQL name in a negative denylist is not exposure.
+# Require its explicit fail-closed denial instead of forbidding the literal.
+if "'mad4b/database-raw-query' ), true ) ) $blockers[] = 'ai_approval_reserved_human_or_governance_operation'" not in ai_approval:
+    raise SystemExit('AI approval raw-SQL exclusion is missing from the auto-all denylist')
 for forbidden in [
-    "mad4b/database-raw-query",
     "mad4b-developer-breakglass",
     "production_authorized' => true",
     "breakglass_authorized' => true",
