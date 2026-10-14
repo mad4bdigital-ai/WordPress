@@ -32,6 +32,16 @@ class MAD4B_SCP_Operation_Registry {
             'executor' => 'example/trip-apply' );
     }
 }
+// A registered semantic operation is reviewed by the dependency planner
+// before route selection. The fixture needs to supply this independent read
+// gate rather than treating its deliberate absence as a successful route.
+class MAD4B_SCP_Capability_Dependency_Planner {
+    public static $ready = true;
+    public static function inspect( $input ) {
+        return self::$ready ? array( 'missing_registered_abilities' => array() )
+            : new WP_Error( 'mad4b_dependency_planner_blocked' );
+    }
+}
 class MAD4B_SCP_Unified_Capability_Gateway {
     public static function search( $input ) {
         if ( 'nonexistent' === $input['task'] ) return array( 'items' => array() );
