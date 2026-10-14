@@ -191,8 +191,14 @@ require_route( is_wp_error( $router::plan( array(
 MAD4B_SCP_Policy::$can = false;
 require_route( is_wp_error( $router::plan( array( 'ability_name' => 'example/trip-plan' ) ) ),
     'canonical policy reader remains mandatory' );
-// Restore canonical read authority before testing separate eligible routes.
+// Restore canonical read authority AND all previously deliberately removed
+// dispatcher transports. The missing-write test may not accidentally deny
+// subsequent enrollment/developer semantic routing.
 MAD4B_SCP_Policy::$can = true;
+MAD4B_SCP_Servers::$base = array(
+    'mad4b/read-execute', 'mad4b/write-execute',
+    'mad4b/enrollment-execute', 'mad4b/developer-execute',
+);
 $enrollment = $router::plan( array(
     'ability_name' => 'example/enroll-managed-skills', 'intent' => 'write' ) );
 require_route( $enrollment['state'] === 'ENROLLMENT_OPERATION_ID_AND_DIGESTS_REQUIRED'
