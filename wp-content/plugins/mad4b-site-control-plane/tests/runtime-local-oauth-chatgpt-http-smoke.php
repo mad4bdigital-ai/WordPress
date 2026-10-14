@@ -307,7 +307,14 @@ try {
 	$registry_property->setValue( $registry, $rich_registry );
 	$catalog_cache->setValue( null, null ); $preflight_catalog = MAD4B_SCP_Servers::chatgpt_tools();
 	if ( $baseline_catalog !== $preflight_catalog ) $fail( 'Rich provider registration must not change the reviewed direct catalog.' );
-	if ( count( $preflight_catalog ) > 36 || array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) ) $fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its budget.' );
+	$rich_optional = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $preflight_catalog );
+	$rich_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $preflight_catalog, $rich_optional );
+	$required_rich = array_values( array_diff( $preflight_catalog, $rich_optional ) );
+	if ( empty( $rich_budget['ready'] )
+		|| count( $rich_budget['selected'] ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
+		|| array_diff( $required_rich, $rich_budget['selected'] )
+		|| array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) )
+		$fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its effective budget.', $rich_budget );
 } finally { $registry_property->setValue( $registry, $saved_registry ); }
 
 // Large normal reads/writes and low-level enrollment mutations must remain

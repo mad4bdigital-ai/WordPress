@@ -51,9 +51,21 @@ foreach ( $tools as $tool ) {
 $actual_names = array_values( array_unique( $actual_names ) );
 sort( $actual_names );
 
-$expected_abilities = MAD4B_SCP_Servers::chatgpt_tools();
-if ( empty( $expected_abilities ) ) {
+$requested_abilities = MAD4B_SCP_Servers::chatgpt_tools();
+if ( empty( $requested_abilities ) ) {
 	$fail( 'Governed ChatGPT allowlist unexpectedly resolved to zero abilities.' );
+}
+// The MCP Adapter certifies this exact budgeted, serializable inventory.
+// Never claim that an optional schema dropped by preflight was published.
+$optional_abilities = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $requested_abilities );
+$certified_catalog = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_abilities, $optional_abilities );
+if ( empty( $certified_catalog['ready'] ) || empty( $certified_catalog['tools'] ) ) {
+	$fail( 'The reviewed ChatGPT tool catalog did not pass actual MCP preflight.', $certified_catalog );
+}
+$expected_abilities = $certified_catalog['tools'];
+if ( count( $expected_abilities ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
+	|| array_diff( array_diff( $requested_abilities, $optional_abilities ), $expected_abilities ) ) {
+	$fail( 'Required tools cannot be silently omitted by catalog budget.', $certified_catalog );
 }
 
 $expected_names = array();
