@@ -106,7 +106,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
     const SYSTEM = 'mad4b/system-test';
 
     public static function enrollment_abilities() {
-        return array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
+        $abilities = array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
+        if ( self::$include_owner ) $abilities[] = self::OWNER_CONVERGENCE;
+        return $abilities;
     }
 
     public static function catalog() {
