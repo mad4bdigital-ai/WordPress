@@ -128,7 +128,8 @@ for marker in (
     "public static function chatgpt_reviewed_direct_step_up_tools()",
     "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap ) ) );",
+    "$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );",
+    "$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );",
 ):
     if marker not in servers:
         raise SystemExit(f"bootstrap self-update stable registration invariant missing: {marker}")

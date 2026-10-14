@@ -133,7 +133,7 @@ class MultiEnvironmentCITest(unittest.TestCase):
                 if mode == "remove_gate":
                     gates.pop(0)
                 elif mode == "rewrite_file":
-                    gates[0]["file"] = "staging-source-selector-runtime.php"
+                    gates[0]["file"] = "different-contract.py" if gates[0]["language"] == "python" else "staging-source-selector-runtime.php"
                 elif mode == "rewrite_args":
                     gates[0]["args"] = ["unexpected"]
                 else:

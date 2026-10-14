@@ -11,6 +11,9 @@ $stop_http = static function () use ( &$requests ) { ++$requests; return new WP_
 add_filter( 'pre_http_request', $stop_http, PHP_INT_MAX );
 set_error_handler( static function ( $severity, $message, $file, $line ) { if ( ( error_reporting() & $severity ) && false !== strpos( $file, 'mad4b-site-control-plane/' ) ) throw new ErrorException( $message, 0, $severity, $file, $line ); } );
 $pages = array(
+	'mad4b-assistant-workspace' => array( 'MAD4B_SCP_Assistant_Operator_Workspace', 'render', array( '' ) ),
+	'mad4b-provider-connections' => array( 'MAD4B_SCP_Provider_Connections_Admin_UI', 'render', array( '' ) ),
+	'mad4b-operational-remediation' => array( 'MAD4B_SCP_Operational_Remediation', 'render_page', array( '' ) ),
 	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'tasks', 'controls', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ) ),
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
@@ -30,7 +33,7 @@ $pages = array(
 	'mad4b-ai-knowledge-workspace' => array( 'MAD4B_SCP_G6_Acceptance', 'render', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
-$check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case.' );
+$check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );
 $workspaces = MAD4B_SCP_Admin_Workspace::inventory();
 $check( ! array_diff( array_keys( $routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $routes ) ), 'Every registered page is discoverable in the workspace directory.' );
 foreach ( $workspaces as $slug => $workspace ) {
