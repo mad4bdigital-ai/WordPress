@@ -334,6 +334,9 @@ echo "PASS MSR02 failure-injected prewrite/postwrite journal checks and serializ
 
 echo "PASS MSR02 durable checkpoint, WordPress/Drive CAS, stale plan, conflict, readback, uncertain-write recovery and archival\n";
 $method=new ReflectionMethod('MAD4B_SCP_Activity_Sync_Runtime','bind');
+// Exercise the private trusted binder without changing production visibility.
+// ReflectionMethod::invoke() on private methods needs setAccessible on PHP 7.4.
+$method->setAccessible(true);
 $binding=$method->invoke(null,scope(101));
 ck(!is_wp_error($binding),'Trusted source unavailable for direct write guard regression');
 $source=$binding['sources']['wordpress'];
