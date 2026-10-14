@@ -7,6 +7,19 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
+// Exercise the actual identity-scoped metadata index used by current Gateway.
+function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+function wp_salt( $scheme = 'auth' ) { return 'cso01-fixture-private-hmac-secret'; }
+function wp_strip_all_tags( $value ) { return strip_tags( (string) $value ); }
+function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\\-]/', '', (string) $value ) ); }
+function get_current_user_id() { return 77; }
+function get_current_blog_id() { return 1; }
+class MAD4B_SCP_Ability_Catalog_Transport {
+    public static function current_authority_scope() { return hash( 'sha256', 'cso01-user-77:site-1:read-only' ); }
+}
+class MAD4B_SCP_Site_Profile {
+    public static function status() { return array( 'profile_digest' => str_repeat( 'a', 64 ) ); }
+}
 class MAD4B_SCP_Policy {
     public static function can_read() { return true; }
 }
@@ -45,6 +58,7 @@ $GLOBALS['gateway_abilities']['zzz-read/arabic'] = array(
     'category' => 'locale',
     'meta' => array( 'annotations' => array( 'readonly' => true ) ),
 );
+require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-capability-search-index.php';
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-unified-capability-gateway.php';
 $normal = MAD4B_SCP_Unified_Capability_Gateway::search( array(
     'task' => 'travel guide', 'limit' => 25 ) );
