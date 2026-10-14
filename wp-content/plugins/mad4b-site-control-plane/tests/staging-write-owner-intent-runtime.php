@@ -55,6 +55,18 @@ $GLOBALS['plan'] = array(
     'package_manifest_digest' => str_repeat( 'e', 64 ),
     'artifact_identity' => 'artifact-a',
 );
+// Verified owner OAuth step-up is independent of Write candidate freshness.
+class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID='https://chatgpt.com/oauth/client.json'; }
+class MAD4B_SCP_OAuth_Resource_Bridge {
+ const AUTHORITY_STEP_UP_SCOPE='mad4b:authority:step-up';
+ static function verified_bearer_active(){return $GLOBALS['bearer'];}
+ static function verified_bearer_has_scope($s){return $GLOBALS['scope'] && self::AUTHORITY_STEP_UP_SCOPE===$s;}
+ static function verified_bearer_client_is($s){return $GLOBALS['client'] && MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID===$s;}
+}
+class MAD4B_SCP_Identity_Context {
+ static function current(){return array('authenticated'=>$GLOBALS['identity'],'subject_type'=>'oauth','auth_method'=>'oauth2_bearer');}
+}
+$GLOBALS['bearer']=true;$GLOBALS['scope']=true;$GLOBALS['client']=true;$GLOBALS['identity']=true;
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-owner-intent.php';
 $klass = 'MAD4B_SCP_Staging_Write_Owner_Intent';
 $review = $klass::review();
@@ -97,4 +109,19 @@ $claim = $klass::claim( $GLOBALS['plan'], array('owner_intent_sha256'=>$receipt)
 assertion( is_array( $claim ) && $claim['claimed_once'], 'Exact claim accepted once' );
 assertion( is_wp_error( $klass::claim( $GLOBALS['plan'], array('owner_intent_sha256'=>$receipt) ) ), 'Replay denied' );
 assertion( in_array( 'mad4b/staging-write-owner-claimed', $GLOBALS['events'], true ), 'Claim audited' );
+
+// Remote owner decision must preserve the exact OAuth client/step-up boundary.
+assertion( true === $klass::can_remote_attest(), 'Normal enrolled owner OAuth admitted' );
+$GLOBALS['bearer']=false;
+assertion( is_wp_error( $klass::can_remote_attest() ), 'Missing bearer denied' );
+$GLOBALS['bearer']=true;$GLOBALS['scope']=false;
+assertion( is_wp_error( $klass::can_remote_attest() ), 'Missing step-up denied' );
+$GLOBALS['scope']=true;$GLOBALS['client']=false;
+assertion( is_wp_error( $klass::can_remote_attest() ), 'Foreign client denied' );
+$GLOBALS['client']=true;$GLOBALS['identity']=false;
+assertion( is_wp_error( $klass::can_remote_attest() ), 'Unauthenticated subject denied' );
+$GLOBALS['identity']=true;$GLOBALS['environment']='production';
+assertion( is_wp_error( $klass::can_remote_attest() ), 'Production remote owner attest denied' );
+$GLOBALS['environment']='staging';
+
 echo "STAGING_WRITE_OWNER_INTENT: PASS (hermetic fixture)\n";
