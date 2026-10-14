@@ -26,9 +26,12 @@ foreach ( $cases as $index => $case ) {
 		$case[2] !== $output['admin_autopilot_action_allowed'] ||
 		! $output['read_only'] || $output['mutation_performed'] ||
 		$output['production_mutation_allowed'] || $output['write_grants_auto_apply'] ||
-		count( $output['assistant_workflow'] ) !== 5 ||
+		count( $output['assistant_workflow'] ) !== 6 ||
 		$output['assistant_workflow'][2]['remote_write_allowed'] ||
-		$output['assistant_workflow'][3]['host_prerequisites_auto_install'] ) {
+		$output['assistant_workflow'][3]['host_prerequisites_auto_install'] ||
+        $output['assistant_workflow'][4]['step_id'] !== 'universal_plugin_update_recovery' ||
+        $output['assistant_workflow'][4]['remote_write_allowed'] ||
+        $output['assistant_workflow'][4]['unknown_provider_auto_enrollment'] ) {
 		fwrite( STDERR, "FAIL case $index\n" );
 		exit( 1 );
 	}
@@ -75,7 +78,9 @@ foreach ( $scenarios as $index => $case ) {
 		fwrite( STDERR, "FAIL automation gate $index: " . $result['state'] . " / " . $result['next_action_id'] . "\n" );
 		exit( 1 );
 	}
-	if ( count( $result['assistant_workflow'] ) !== 5 || ! $result['read_only']
+	if ( count( $result['assistant_workflow'] ) !== 6 ||
+        $result['assistant_workflow'][4]['step_id'] !== 'universal_plugin_update_recovery' ||
+        $result['assistant_workflow'][4]['remote_write_allowed'] || ! $result['read_only']
 		|| $result['mutation_performed'] || $result['authorizing'] || $result['completion_certified']
 		|| $result['execution_policy']['unattended_write_grant_allowed']
 		|| $result['execution_policy']['unattended_host_install_allowed']
