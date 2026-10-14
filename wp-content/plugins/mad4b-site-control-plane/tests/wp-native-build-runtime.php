@@ -208,8 +208,10 @@ $server_source = file_get_contents(
     dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
 assert_native( is_string( $server_source ) &&
     strpos( $server_source, "'mad4b/wp-native-build-start'" ) === false &&
-    strpos( $server_source, 'registered_adapter_write_candidates' ) !== false,
-    'Do not add fixed build ability to central Servers catalog' );
+    strpos( $server_source, 'registered_adapter_write_candidates' ) !== false &&
+    strpos( $server_source, "$registry->ability_names( 'admin' )" ) !== false &&
+    strpos( $server_source, "self::ability_is_mounted( 'mad4b-write', $candidate )" ) !== false,
+    'Dynamic Admin catalog requires enrolled adapter, registered mutation and matching governed Write mount' );
 $GLOBALS['native_env'] = 'production';
 assert_native( $adapter->mutation_ability_runtime_eligibility( $ability ) instanceof WP_Error,
     'Dynamic adapter cannot mount native build on Production' );
