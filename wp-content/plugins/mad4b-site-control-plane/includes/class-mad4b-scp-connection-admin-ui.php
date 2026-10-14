@@ -260,13 +260,25 @@ final class MAD4B_SCP_Connection_Admin_UI {
 			$mu_conflict = class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', false ) ? MAD4B_SCP_MCP_MU_Bootstrap_Refresh::conflict_status() : array();
 			if ( 'unmanaged_mu_bootstrap_path_conflict' === ( $mu_conflict['blocker'] ?? '' ) ) {
 				$observed = strtolower( trim( (string) ( $mu_conflict['destination_sha256_before'] ?? '' ) ) );
-				$scheduled = wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK );
-				echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Automatic MCP MU bootstrap recovery pending', 'mad4b-site-control-plane' ) . '</strong></p>';
-				echo '<p>' . esc_html__( 'Staging recovery is automatic. MAD4B will re-check the exact observed SHA-256 inside the recovery lifecycle, write a protected backup, atomically install the certified loader, record audit evidence, create a site-bound ownership receipt, and require a fresh request for verification. No browser POST is required.', 'mad4b-site-control-plane' ) . '</p>';
+				// An unknown existing MU loader has no provenance evidence. The
+				// automatic lease/cron path must never authorize overwriting it.
+				echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Unknown MCP MU bootstrap owner — review required', 'mad4b-site-control-plane' ) . '</strong></p>';
+				echo '<p>' . esc_html__( 'Automatic recovery is blocked because the existing MU bootstrap is not confirmed as MAD4B-owned. A separate administrator request can make a protected backup and replace it only after an exact SHA-256 confirmation. Production remains denied.', 'mad4b-site-control-plane' ) . '</p>';
 				echo '<p><code>' . esc_html( $observed ) . '</code></p>';
-				if ( $scheduled ) echo '<p>' . esc_html__( 'Background recovery scheduled.', 'mad4b-site-control-plane' ) . '</p>';
-				else echo '<p>' . esc_html__( 'Background recovery will be scheduled automatically on the next ordinary Staging lifecycle request.', 'mad4b-site-control-plane' ) . '</p>';
-				echo '<p class="description">' . esc_html__( 'Production remains fail-closed. This process does not grant OAuth, Write, Developer, Breakglass, Production mutation, or raw-SQL authority.', 'mad4b-site-control-plane' ) . '</p></div>';
+				if ( 1 === preg_match( '/^[a-f0-9]{64}$/D', $observed ) ) {
+					echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+					echo '<input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION ) . '">';
+					wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION, 'nonce' );
+					echo '<input type="hidden" name="build" value="' . esc_attr( MAD4B_SCP_Endpoint_Diagnostic::build_fingerprint() ) . '">';
+					echo '<input type="hidden" name="observed_sha256" value="' . esc_attr( $observed ) . '">';
+					echo '<p><label for="mad4b-mcp-conflict-confirm">' . esc_html__( 'Type the exact replacement confirmation:', 'mad4b-site-control-plane' ) . '</label> <code>' . esc_html( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION ) . '</code></p>';
+					echo '<input type="text" id="mad4b-mcp-conflict-confirm" name="confirmation" value="" required autocomplete="off" class="regular-text">';
+					submit_button( __( 'Back up and replace unknown MCP bootstrap', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+					echo '</form>';
+				} else {
+					echo '<p>' . esc_html__( 'Existing loader fingerprint unavailable. No replacement action is offered until the fingerprint can be verified.', 'mad4b-site-control-plane' ) . '</p>';
+				}
+				echo '<p class="description">' . esc_html__( 'This operation does not grant OAuth, Write, Developer, Breakglass, Production mutation or raw-SQL access. Reload and recheck after any change.', 'mad4b-site-control-plane' ) . '</p></div>';
 			} else {
 				echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_MCP_Runtime_Recovery::ACTION ) . '">';
 				wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::ACTION, 'nonce' );

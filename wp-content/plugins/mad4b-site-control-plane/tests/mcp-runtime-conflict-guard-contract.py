@@ -214,39 +214,39 @@ for marker in (
     "'mad4b_mcp_conflict_repair_admin_only'",
     'conflict_expected_sha256()',
     'conflict_recovery_source()',
-    'automatic_staging_conflict_sha256()',
     'maybe_schedule_conflict_recovery()',
     "add_action( 'init', array( __CLASS__, 'maybe_schedule_conflict_recovery' ), 50 )",
-    "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )",
-    "$automatic_context = $cron || '' !== $convergence_lease",
-    "'automatic_staging_recovery'",
-    "'mad4b_mcp_conflict_auto_lifecycle_required'",
+    "$expected_unmanaged_sha256 = $manual_expected_sha256",
+    "'unmanaged_mu_bootstrap_path_conflict'",
+    "'explicit_admin_conflict_recovery'",
     "self::$conflict_expected_sha256 = $conflict_mode ? $expected_unmanaged_sha256 : ''",
-    "self::$conflict_recovery_source = $automatic_conflict ? 'automatic_staging_recovery'",
     "self::$conflict_expected_sha256 = ''",
     "self::$conflict_recovery_source = ''",
     "MAD4B_SCP_MCP_MU_Bootstrap_Refresh::bootstrap()",
     "'automatic_conflict_recovery' => $automatic_conflict",
     "'explicit_conflict_recovery' => $explicit_conflict",
 ):
-    require(recovery, marker, 'automatic-mu-conflict-recovery')
+    require(recovery, marker, 'safe-mu-conflict-recovery')
 
 for marker in (
-    'Automatic MCP MU bootstrap recovery pending',
-    'Staging recovery is automatic.',
-    'No browser POST is required.',
-    'Background recovery scheduled.',
-    'Production remains fail-closed.',
-    'wp_next_scheduled( MAD4B_SCP_MCP_Runtime_Recovery::HOOK )',
-):
-    require(connection_ui, marker, 'automatic-mu-conflict-ui')
-
-for forbidden in (
-    'Back up and replace unknown MCP bootstrap',
+    'Unknown MCP MU bootstrap owner',
+    'Automatic recovery is blocked',
     'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION',
     'MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_CONFIRMATION',
+    "wp_nonce_field( MAD4B_SCP_MCP_Runtime_Recovery::CONFLICT_ACTION, 'nonce' )",
+    'name="observed_sha256"',
+    'name="confirmation"',
+    'Back up and replace unknown MCP bootstrap',
+    'Production remains denied.',
 ):
-    forbid(connection_ui, forbidden, 'no-manual-browser-conflict-post')
+    require(connection_ui, marker, 'explicit-mu-conflict-ui')
+
+for forbidden in (
+    'Staging recovery is automatic.',
+    'No browser POST is required.',
+    'Background recovery will be scheduled automatically on the next ordinary Staging lifecycle request.',
+):
+    forbid(connection_ui, forbidden, 'unknown-mu-must-not-auto-replace')
 
 for marker in (
     "'runtime_recovery'",
@@ -257,9 +257,8 @@ for marker in (
 ):
     require(endpoint_diagnostic, marker, 'mu-conflict-diagnostic')
 
-# Unknown bytes may be adopted only by the coordinator after it captured the
-# exact observed SHA in an eligible Staging scheduled/convergence lifecycle.
-# Never pass a live destination hash directly into the filesystem refresher.
+# Unknown bytes may be replaced only by exact-SHA administrator confirmation.
+# Cron/convergence leases cannot infer ownership from an observed destination hash.
 for forbidden in (
     "bootstrap( $status['destination_sha256_before'] )",
     "bootstrap( hash_file( 'sha256', $destination ) )",
