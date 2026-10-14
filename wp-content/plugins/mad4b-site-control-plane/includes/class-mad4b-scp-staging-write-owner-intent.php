@@ -5,6 +5,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
     const OPTION = 'mad4b_scp_staging_write_owner_intent_v1';
     const PAGE = 'mad4b-staging-write-owner-review';
     const ATTEST_ABILITY = 'mad4b/staging-write-owner-attest';
+    const REVIEW_ABILITY = 'mad4b/staging-write-owner-review';
     const ACTION = 'mad4b_staging_write_owner_review';
     const CONFIRM = 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE';
     const TTL = 600;
@@ -16,6 +17,21 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
     }
     public static function register_ability() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
+        if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( self::REVIEW_ABILITY ) ) {
+            wp_register_ability( self::REVIEW_ABILITY, array(
+                'label' => 'Review Exact Staging Write Owner Plan',
+                'description' => 'Read-only, nonauthorizing exact owner review for current source and Site Profile.',
+                'category' => 'mad4b-staging-write-authority',
+                'execute_callback' => array( __CLASS__, 'review' ),
+                'permission_callback' => array( __CLASS__, 'can_remote_attest' ),
+                'input_schema' => array( 'type'=>'object', 'properties'=>array(), 'additionalProperties'=>false ),
+                'output_schema' => array( 'type'=>'object', 'additionalProperties'=>true ),
+                'meta' => array( 'public'=>false, 'show_in_rest'=>false,
+                    'mcp'=>array( 'public'=>false, 'type'=>'tool', 'surface'=>'read',
+                        'non_authorizing'=>true, 'production_mutation_allowed'=>false ),
+                    'annotations'=>array( 'readonly'=>true, 'destructive'=>false, 'idempotent'=>true ) ),
+            ) );
+        }
         if ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::ATTEST_ABILITY ) ) return;
         wp_register_ability( self::ATTEST_ABILITY, array(
             'label' => 'Attest Exact Staging Write Owner Decision',

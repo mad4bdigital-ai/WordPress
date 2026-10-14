@@ -10,7 +10,8 @@ if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) )
 $target = 'mad4b/staging-write-authority-convergence-apply';
 $parent = 'mad4b/enrollment-execute';
 if ( ! wp_has_ability( $target ) || ! wp_has_ability( $parent )
-    || ! wp_has_ability( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY ) )
+    || ! wp_has_ability( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY )
+    || ! wp_has_ability( MAD4B_SCP_Staging_Write_Owner_Intent::REVIEW_ABILITY ) )
     throw new RuntimeException( 'Owner target or dispatcher is not registered in WordPress.' );
 $ability = wp_get_ability( $target );
 $dispatcher = wp_get_ability( $parent );
@@ -22,6 +23,11 @@ $input_schema = $ability->get_input_schema();
 $props = is_array( $input_schema ) && isset( $input_schema['properties'] ) ? $input_schema['properties'] : array();
 if ( ! isset( $props['owner_intent_sha256'] ) || ! in_array( 'owner_intent_sha256', $input_schema['required'] ?? array(), true ) )
     throw new RuntimeException( 'Exact owner-intent receipt missing from live write Ability schema.' );
+$reviewAbility = wp_get_ability( MAD4B_SCP_Staging_Write_Owner_Intent::REVIEW_ABILITY );
+$reviewMeta = $reviewAbility->get_meta();
+if ( empty( $reviewMeta['annotations']['readonly'] ) ||
+    ! empty( $reviewMeta['mcp']['production_mutation_allowed'] ) )
+    throw new RuntimeException( 'Remote owner review must remain read-only.' );
 $ownerAbility = wp_get_ability( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY );
 $ownerMeta = $ownerAbility->get_meta();
 $ownerMcp = is_array( $ownerMeta['mcp'] ?? null ) ? $ownerMeta['mcp'] : array();

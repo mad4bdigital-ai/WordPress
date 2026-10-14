@@ -27,3 +27,7 @@ assert "public static function can_remote_attest(" in o
 assert "'chatgpt_direct_step_up'=>true" in o
 assert "'production_mutation_allowed'=>false" in o
 assert "'owner_intent_only'=>true" in o
+
+assert "REVIEW_ABILITY = 'mad4b/staging-write-owner-review'" in o
+assert "'non_authorizing'=>true" in o
+assert "'mad4b/staging-write-owner-review'" in servers
