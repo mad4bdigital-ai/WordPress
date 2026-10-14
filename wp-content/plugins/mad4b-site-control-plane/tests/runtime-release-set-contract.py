@@ -398,7 +398,7 @@ require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, 
 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
 runtime_ui = (INCLUDES / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
-servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 for needle in (
@@ -476,7 +476,7 @@ print("mad4b.runtime-release-set-contract.v1: PASS")
 
 
 # Normal runtime release-set execution must be mounted, but remains governed.
-servers_source = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers_source = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 admin_start = servers_source.find("'mad4b-admin' => array(")
 admin_end = servers_source.find("'mad4b-developer' =>", admin_start)
 require(
@@ -486,7 +486,7 @@ require(
     "normal runtime release-set apply must be mounted on the governed admin lane",
 )
 write_candidates_start = servers_source.find("private static function core_write_candidates()")
-write_candidates_end = servers_source.find("private static function catalog_cacheable()", write_candidates_start)
+write_candidates_end = servers_source.find("private static function registered_adapter_write_candidates()", write_candidates_start)
 require(
     write_candidates_start >= 0
     and write_candidates_end > write_candidates_start

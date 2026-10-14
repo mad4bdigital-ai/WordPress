@@ -47,7 +47,7 @@ media_response = root / "includes" / "class-mad4b-scp-media-response-payload.php
 assert media_response.is_file(), "missing attachment response helper from reviewed package"
 media_response_src = media_response.read_text(encoding="utf-8")
 remote_media_src = remote_media.read_text(encoding="utf-8")
-servers_src = servers.read_text(encoding="utf-8")
+servers_src = servers.read_text(encoding="utf-8") + (root / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
 semantic_src = semantic.read_text(encoding="utf-8")
 experience_registry_src = experience.read_text(encoding="utf-8")
 experience_definitions = root / "includes" / "trait-mad4b-scp-content-experience-ability-definitions.php"

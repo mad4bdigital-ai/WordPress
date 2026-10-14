@@ -15,7 +15,7 @@ def forbid(text, needle, label):
         raise SystemExit(f'FAIL {label}: forbidden {needle!r}')
 
 peer = read('includes/class-mad4b-scp-mcp-peer-governance.php')
-authz = read('includes/class-mad4b-scp-authorization.php')
+authz = read('includes/class-mad4b-scp-authorization.php') + read('includes/class-mad4b-scp-authority-health-projection.php')
 adapter_registry = read('includes/class-mad4b-scp-adapter-registry.php')
 write_cert = read('includes/class-mad4b-scp-write-runtime-certification.php')
 bootstrap = read('mad4b-site-control-plane.php')

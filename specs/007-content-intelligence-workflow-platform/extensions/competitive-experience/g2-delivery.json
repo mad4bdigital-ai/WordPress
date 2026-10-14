@@ -63,17 +63,29 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "sha256": "8bacf7f284bd5c1e774a9639e87e374fa57b85cf0483b1b7413babac610b350e"
+      "sha256": "a137291431c73447f1df6f273fb5c867a317e7d3099c603d558d1fd1d2f459ba"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
       "sha256": "9b141a71f13a188f59e204ad12d8b3b63174d1f3f5e6a587b7c9cec29df991df"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "sha256": "c3c19c075823ed3848e29fec753f0e1978cfc13815ad3af18cb9d3881486408c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-health-projection.php",
+      "sha256": "4a2e13686fec69f73eef4009478a426ac06fe9dd1643d97a3fec28a199909cb0"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "sha256": "345cc98fc9bffc05392c9928d0788b42a961c310c9a496b92c233cd09b05f276"
     }
   ],
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
-      "sha256": "eca6b597a9c9c9a60942b237deca7e08489e6c129089f56bf3ef2ce779c132cb"
+      "sha256": "d0429babbc9a73d6dbc54d054e2d40ae1ac135815a3e0bfd2a6a7bcf26dfdf73"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
@@ -81,7 +93,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
-      "sha256": "2c3297989ae1df487bc15d5082ade9758973c7f334996cd05ffaeb6ef85baa8d"
+      "sha256": "456c0c8498a2d7a47768f545141c547dbcbf4cee17c495f69f3ab5c2eab1ccbf"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",

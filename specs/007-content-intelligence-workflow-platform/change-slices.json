@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 886,
+  "changed_file_count": 976,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -520,7 +520,7 @@
     },
     {
       "id": "autonomous-assistants-gc-gf-preview-foundation",
-      "semantic_unit": "GA–GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
+      "semantic_unit": "GA\u2013GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
       "revert_boundary": "Revert assistant convergence and task transition preview plus focused tests together without changing core durable journal, G4/G6/G9 executor or staging authority",
       "certification": "exact_head",
       "path_globs": [
@@ -2018,8 +2018,147 @@
         "tools/Install-MAD4B-G9-PreCommit.ps1",
         "tools/mad4b_g9_precommit.py"
       ]
+    },
+    {
+      "id": "lifecycle-closure-context-provider-recovery",
+      "semantic_unit": "context provider recovery and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded context-provider-recovery slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connection-center.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-connections-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-builder-concurrency-runtime.sh",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-google-retry-admission-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-live-post-update-reconciliation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-recreate-registry-rollback-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-registry-atomicity-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-site-binding-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-source-write-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-source-contract.py"
+      ]
+    },
+    {
+      "id": "lifecycle-closure-media-semantic-intake",
+      "semantic_unit": "media semantic intake and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded media-semantic-intake slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-media-response-payload.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-media-srcset.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scrape-transfer.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-structure-intelligence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-ability-definitions.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-input-validation.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/core-content-modeling-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-media-capture-only-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-content-publishing-season-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/scrape-transfer-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/semantic-structure-intelligence-runtime.php"
+      ]
+    },
+    {
+      "id": "lifecycle-closure-mcp-transport-catalog",
+      "semantic_unit": "mcp transport catalog and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded mcp-transport-catalog slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "docs/runbooks/feature007-security-diagnostics-mcp.md",
+        "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-catalog-performance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/chatgpt-refresh-compact-catalog-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-client-compatibility-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-recovery-boundaries-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-official-required-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-provider-isolation-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-conflict-guard-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-runtime-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-side-channel-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-local-oauth-chatgpt-http-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-catalog-parity-contract.py"
+      ]
+    },
+    {
+      "id": "lifecycle-closure-authority-admission",
+      "semantic_unit": "authority admission and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded authority-admission slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-health-projection.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-owner-intent.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/agent-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/approval-decision-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/execution-commit-guard-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-mutation-guards.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/gateway-regression-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-write-enablement-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-convergence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-candidate-binding-audit-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-intent-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-transport-runtime.php"
+      ]
+    },
+    {
+      "id": "lifecycle-closure-runtime-release-recovery",
+      "semantic_unit": "runtime release recovery and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded runtime-release-recovery slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/general-distribution-environment-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-package-mcp-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-plugin-update-governance-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-release-set-admin-preflight-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-owner-release-gate-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/upgrade-continuity-runtime.php"
+      ]
+    },
+    {
+      "id": "lifecycle-closure-admin-diagnostics",
+      "semantic_unit": "admin diagnostics and corresponding exact-source regression contracts",
+      "revert_boundary": "Revert this bounded admin-diagnostics slice together with its dependent source readers; preserve all pre-existing authority and acceptance gates.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-admin-performance.yml",
+        ".github/workflows/mad4b-runtime-integration.yml",
+        "wp-content/plugins/etg-dynamic-filter-seo-bridge/installed-content-manifest.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/CONTEXT-POST-UPDATE-RECOVERY-STAGING.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/ETG-STAGING-ADMIN-SURFACE-DRIFT-AUDIT-20261013.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-CONNECTION-LIFECYCLE-STAGING.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/STAGING-WRITE-BOOTSTRAP-ACCEPTANCE.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-security-diagnostics.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-intent-router.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-action-notice-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-governance-ui-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-parity-diagnostics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-post-and-route-boundary-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-readiness-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/original-mutation-mount-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-matrix-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-admin-governance-ui-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-browser-acceptance-core-etg-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-jetengine-reversible-adapter-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-owner-bootstrap-integration.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/security-diagnostics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "db166bae25908ae1dee4f25b101ae590123b942f2e1681816dcb8f1e2689ac7d",
+  "changed_paths_sha256": "ec84ee99e6a8b8aa7a3a3b10402710e1095f0d5bb0f112c1fc6d1090ba130e12",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

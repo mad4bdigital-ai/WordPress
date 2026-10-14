@@ -7,7 +7,7 @@ root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 full = (inc / "class-mad4b-scp-full-staging-authority.php").read_text(encoding="utf-8")
-servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 developer = (inc / "class-mad4b-scp-developer-runtime.php").read_text(encoding="utf-8")
 developer_authority = (inc / "class-mad4b-scp-developer-authority.php").read_text(encoding="utf-8")
 oauth = (inc / "class-mad4b-scp-local-oauth-server.php").read_text(encoding="utf-8")

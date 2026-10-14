@@ -15,9 +15,9 @@ impact_policy = (wp / 'includes' / 'class-mad4b-scp-impact-policy.php').read_tex
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
-servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
-auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
@@ -1147,7 +1147,10 @@ for marker in [
     if marker not in authorize_mutation:
         raise SystemExit('central mutation authorization lost current write-drift gate: ' + marker)
 
-authority_status = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+authority_status_wrapper = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+if "MAD4B_SCP_Authority_Health_Projection::authority_status()" not in authority_status_wrapper:
+    raise SystemExit("global authority status must delegate to its non-authorizing health projection")
+authority_status = (Path(__file__).resolve().parents[1] / "includes/class-mad4b-scp-authority-health-projection.php").read_text(encoding="utf-8")
 for marker in (
     "'status_scope' => 'global_policy_and_peer_governance_only'",
     "'per_ability_authorization_required' => true",

@@ -8,7 +8,7 @@ root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 continuation = (root / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
 peer_governance = (root / "includes" / "class-mad4b-scp-mcp-peer-governance.php").read_text(encoding="utf-8")
-servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
@@ -945,7 +945,7 @@ admin_end = servers.find("'mad4b-developer' =>", admin_start)
 if admin_start < 0 or admin_end < 0 or "'mad4b/runtime-release-set-apply'" not in servers[admin_start:admin_end]:
     raise SystemExit("runtime release-set normal apply is not mounted on mad4b-admin")
 write_candidates_start = servers.find("private static function core_write_candidates()")
-write_candidates_end = servers.find("private static function catalog_cacheable()", write_candidates_start)
+write_candidates_end = servers.find("private static function registered_adapter_write_candidates()", write_candidates_start)
 if write_candidates_start < 0 or write_candidates_end < 0 or "'mad4b/runtime-release-set-apply'" not in servers[write_candidates_start:write_candidates_end]:
     raise SystemExit("runtime release-set normal apply is missing from governed write candidates")
 if "current_execution_readiness()" not in self_update or "current governed write authority is ready" not in self_update:

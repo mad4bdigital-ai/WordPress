@@ -11,7 +11,7 @@ for path in (adapter, registry, servers):
 
 src = adapter.read_text(encoding="utf-8")
 reg = registry.read_text(encoding="utf-8")
-srv = servers.read_text(encoding="utf-8")
+srv = servers.read_text(encoding="utf-8") + (root / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
 
 required_abilities = (
     "mad4b/list-taxonomies",

@@ -13,7 +13,7 @@ skills_admin = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text
 adapter = (root / "includes/adapters/class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
-servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 preflight = (root / "includes/class-mad4b-scp-context-preflight.php").read_text(encoding="utf-8")
 semantic_fields = (root / "includes/class-mad4b-scp-semantic-content-field-contracts.php").read_text(encoding="utf-8")
 semantic_field_catalog = json.loads((root / "config/semantic-content-field-contracts.json").read_text(encoding="utf-8"))

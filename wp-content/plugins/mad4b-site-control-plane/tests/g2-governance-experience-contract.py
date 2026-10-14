@@ -16,7 +16,7 @@ def require(raw: str, needle: str, code: str) -> None:
 
 runtime = RUNTIME.read_text(encoding="utf-8")
 admin = ADMIN.read_text(encoding="utf-8")
-servers = SERVERS.read_text(encoding="utf-8")
+servers = SERVERS.read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / "includes/class-mad4b-scp-server-write-catalog.php").read_text(encoding="utf-8")
 main = MAIN.read_text(encoding="utf-8")
 
 for ability in (

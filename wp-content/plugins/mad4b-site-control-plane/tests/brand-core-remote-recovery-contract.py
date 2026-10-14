@@ -3,8 +3,8 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 remote = (root / "includes/class-mad4b-scp-brand-core-remote-recovery.php").read_text(encoding="utf-8")
 remediation = (root / "includes/class-mad4b-scp-operational-remediation.php").read_text(encoding="utf-8")
-parity = (root / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
-servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+parity = (root / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
+servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 host_bridge = (root / "includes/class-mad4b-scp-host-bridge.php").read_text(encoding="utf-8")
 workflow = (root.parents[2] / ".github/workflows/feature-007-spec-ci.yml").read_text(encoding="utf-8")
 runbook = (root.parents[2] / "docs/runbooks/brand-core-mcp-complete-recovery.md").read_text(encoding="utf-8")
@@ -189,7 +189,7 @@ must(operator_test, "nine distinct task journeys", "standalone whole-plugin UX f
 main_admin = (root / "includes/class-mad4b-scp-admin-ui.php").read_text(encoding="utf-8")
 for marker in (
     "'tasks' => __( 'Tasks & Workflows'",
-    "if ( 'tasks' === $section ) return array(",
+    "if ( in_array( $section, array( 'tasks', 'controls' ), true ) ) return array(",
     "if ( 'tasks' === $tab ) self::render_tasks();",
     "private static function render_tasks()",
     "Unable to inspect task routes",
@@ -303,7 +303,7 @@ for marker in (
     "const PLAN = 'mad4b/deployment-binding-native-plan'",
     "const APPLY = 'mad4b/deployment-binding-native-apply'",
     "MAD4B_SCP_Authorization::authorize_mutation(",
-    "MAD4B_SCP_Authorization::claim_mutation(",
+    "MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input )",
     "MAD4B_SCP_Site_Profile::commit_record_with_audit(",
     "MAD4B_SCP_Site_Profile_Enrollment::can_execute(",
     "'staging' !== ( $site['configured_environment'] ?? '' )",
@@ -315,10 +315,10 @@ for marker in (
     "'x' )",
 ):
     must(native_binding, marker, "missing safe one-approved host-local binding contract")
-for forbidden in ("update_option(", "wp_remote_post(", "shell_exec(", "proc_open("):
+for forbidden in ("MAD4B_SCP_Authorization::claim_mutation(", "update_option(", "wp_remote_post(", "shell_exec(", "proc_open("):
     if forbidden in native_binding:
         raise AssertionError("native host binding must not write arbitrary WordPress options or execute shell: " + forbidden)
-must(native_binding_test, "single approved WordPress native transaction creates and binds key",
+must(native_binding_test, "Single outer ticket claim only; no duplicate internal claim or budget",
     "native binding integration fixture missing")
 must(site_profile, "MAD4B_SCP_Deployment_Binding_Native::read_host_secret(",
     "host-local secret is not automatically read during WordPress boot")
@@ -343,7 +343,8 @@ for marker in (
     "false === $annotations['readonly']",
     "self::chatgpt_approval_bootstrap_tools()",
     "self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap",
-    "self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap",
+    "$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );",
+    "array_merge( $direct_mutation_transport, $approval_bootstrap )",
     "'mad4b/approval-plan', 'mad4b/approval-ai-decide'",
 ):
     must(servers, marker, "approval bootstrap routing must be limited to guarded Staging abilities")
@@ -381,7 +382,7 @@ for marker in (
 for forbidden in (
     "update_option(", "file_put_contents(", "shell_exec(", "proc_open(",
     "MAD4B_SCP_Approval_Tickets::create_pending(",
-    "MAD4B_SCP_Authorization::claim_mutation(",
+    "MAD4B_SCP_Authorization::native_binding_callback_is_claimed( $input )",
     "wp_insert_post(", "delete_option(",
 ):
     if forbidden in router:
