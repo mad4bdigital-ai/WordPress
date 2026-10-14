@@ -32,6 +32,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -90,6 +93,9 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -173,6 +179,9 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
@@ -229,6 +238,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php
 
       - name: Execute Google Drive OAuth lifecycle runtime
         shell: bash
