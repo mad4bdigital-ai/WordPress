@@ -53,8 +53,14 @@ class MAD4B_SCP_Google_Drive_Context {
     public static $scan_file_ids = array( 'file_one' );
     public static function scan_folder( $folder, $recursive = true ) {
         $assets = array();
-        foreach ( self::$scan_file_ids as $file_id ) $assets[] = array( 'file_id' => $file_id );
-        return array( 'complete' => self::$scan_complete, 'assets' => $assets );
+        foreach ( self::$scan_file_ids as $file_id ) $assets[] = array(
+            'file_id' => $file_id, 'parent_folder_id' => $folder,
+            'mimeType' => 'text/plain', 'modifiedTime' => '2026-10-14T00:00:00Z',
+            'content_hash' => hash('sha256', $file_id) );
+        return array( 'complete' => self::$scan_complete,
+            'truncated' => false, 'recursive' => (bool) $recursive,
+            'folder' => array( 'id' => $folder, 'mimeType' => 'application/vnd.google-apps.folder' ),
+            'assets' => $assets );
     }
     public static function get_folder( $folder ) {
         return self::$file_exists
@@ -240,8 +246,12 @@ $discover = MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover();
 check( is_array( $discover ) && $discover['candidate_count'] === 1 &&
     $discover['eligible_unbound_candidates'][0]['source_id'] === $legacy_source_id,
     'Unbound source ID cannot be discovered without adopting foreign records' );
+$provider_evidence = MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence( array( 'source_id' => $legacy_source_id ) );
+check( is_array( $provider_evidence ) && ! empty( $provider_evidence['folder_membership_verified'] )
+    && 64 === strlen( $provider_evidence['provider_proof_sha256'] ), 'Exact provider inventory proof required before owner approval' );
 $payload = array(
     'source_id' => $legacy_source_id, 'expected_plan_sha256' => $legacy_plan['plan_sha256'],
+    'expected_provider_proof_sha256' => $provider_evidence['provider_proof_sha256'],
     'expected_brand_id' => $a, 'reviewed_external_root_id' => 'folder_legacy_verified',
     'owner_evidence_reference' => 'reviewed-google-drive-folder-proof-v1',
     'confirmation' => 'APPROVE EXACT UNBOUND BRAND TRANSFER',
@@ -254,6 +264,10 @@ $stale_claim = $payload; $stale_claim['expected_plan_sha256'] = str_repeat( '0',
 $denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $stale_claim );
 check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_exact_plan_stale' === $denied->get_error_code(),
     'Stale transfer accepted' );
+$wrong_proof = $payload; $wrong_proof['expected_provider_proof_sha256'] = str_repeat( 'f', 64 );
+$denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $wrong_proof );
+check( is_wp_error( $denied ) && 'mad4b_legacy_transfer_provider_proof_stale' === $denied->get_error_code(),
+    'Different provider inventory digest must never transfer source ownership' );
 MAD4B_SCP_Google_Drive_Context::$file_exists = false;
 $denied = MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply( $payload );
 check( is_wp_error( $denied ) && 'mad4b_provider_folder_missing' === $denied->get_error_code(),

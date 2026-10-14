@@ -74,13 +74,29 @@ final class MAD4B_SCP_Operational_Integrity {
     public static function capture() {
         return self::$trusted
             ? array( 'site_uuid' => '11111111-1111-4111-8111-111111111111',
-                'revision' => 7, 'brand_id' => 'brand-fixture',
+                'revision' => 7, 'brand_id' => 'ffffffffffffffffffffffffffffffff',
                 'scope_digest' => str_repeat('c',64) )
             : new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture Site Profile binding absent.' );
     }
     public static function assert_unchanged( $checkpoint ) {
         return ! self::$drift && self::$trusted
             ? true : new WP_Error( 'mad4b_integrity_scope_changed', 'Trusted scope changed during registry mutation.' );
+    }
+}
+final class MAD4B_SCP_Operational_Scope_Guard {
+    public static function require_current() {
+        if ( ! MAD4B_SCP_Operational_Integrity::$trusted )
+            return new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture scope unavailable.' );
+        return array( 'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'brand_ref' => 'ffffffffffffffffffffffffffffffff',
+            'tenant_ref' => 'wp-site:11111111-1111-4111-8111-111111111111',
+            'blog_id' => 1, 'network_id' => 1, 'environment' => 'staging',
+            'deployment_mode' => 'wordpress_dedicated' );
+    }
+    public static function record_metadata_matches( $record, $scope ) {
+        foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $k )
+            if ( isset( $record[$k] ) && (string)$record[$k] !== (string)$scope[$k] ) return false;
+        return true;
     }
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
@@ -99,7 +115,7 @@ $source = array(
 	'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 	'source_id' => $source_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'provider' => 'google_drive',
 	'mode' => 'governed',
 	'external_root_id' => 'folder-fixture',
@@ -120,7 +136,7 @@ $asset = array(
 	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 	'asset_id' => $asset_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'source_id' => $source_id,
 	'source_mode' => 'governed',
 	'provider' => 'google_drive',
@@ -141,7 +157,7 @@ $asset = array(
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
 	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'brand_name' => 'Fixture Brand',
 	'revision' => 1,
 	'status' => 'configured',
@@ -155,6 +171,8 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISIO
 
 $baseline_sources = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
 $baseline_assets = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+mad4b_atomic_assert( isset( MAD4B_SCP_Context_Authority::sources()[ $source_id ] ),
+    'Trusted exact scoped source must be visible before testing atomic registry writes.' );
 
 // Denied scope must fail before acquiring a registry lock or modifying options.
 MAD4B_SCP_Operational_Integrity::$trusted = false;
