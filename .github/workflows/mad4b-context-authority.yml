@@ -5,6 +5,13 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-integrity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operational-integrity-local-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-google-retry-admission-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-peer-admin-rest-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-peer-inventory-bounds-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php'
@@ -23,6 +30,18 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -54,6 +73,13 @@ on:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-integrity.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/operational-integrity-local-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-google-retry-admission-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-peer-admin-rest-lifecycle-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/mcp-peer-inventory-bounds-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-intelligence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php'
@@ -72,6 +98,18 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-managed-google-signin-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php'
@@ -107,6 +145,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Keep incident coverage observable even when the separate, mandatory
+  # Context architecture job fails before reaching its PHP runtime steps.
+  recovery-incident-regressions:
+    name: Context recovery regressions (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Verify pending revoke, exact callback, source scope and MCP inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          tests=wp-content/plugins/mad4b-site-control-plane/tests
+          for fixture in \
+            google-revocation-remote-runtime \
+            context-oauth-lifecycle-runtime \
+            context-google-retry-admission-runtime \
+            deployment-binding-claim-context-runtime \
+            deployment-binding-native-runtime \
+            brand-core-remote-recovery-runtime \
+            operational-integrity-local-runtime \
+            mcp-peer-admin-rest-lifecycle-runtime \
+            mcp-peer-inventory-bounds-runtime; do
+            php -l "$tests/$fixture.php"
+            php "$tests/$fixture.php"
+          done
+
   context-authority:
     name: Context Authority (${{ matrix.php }})
     runs-on: ubuntu-latest
@@ -146,6 +220,18 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-obstacle-resolution.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-journeys.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-oauth-lifecycle-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php
@@ -187,6 +273,22 @@ jobs:
         run: |
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/context-authority-runtime.php
+
+      - name: WordPress-only functional owner transfer — provider, shadow and human approval
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/context-native-owner-transfer-runtime.php
+
+      - name: Execute native binding and functional/disaster lifecycle regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-claim-context-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-obstacle-resolution-runtime.php
 
       - name: Execute Google Drive OAuth lifecycle runtime
         shell: bash
