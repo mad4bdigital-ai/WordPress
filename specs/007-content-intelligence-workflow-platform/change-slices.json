@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 979,
+  "changed_file_count": 982,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -1118,7 +1118,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-google-docs-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-sync-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-sync-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-activity-sync-binding.php"
       ]
     },
     {
@@ -1320,7 +1321,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-collision-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-registration-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso01-read-foundation-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-unified-discovery-funnel-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/cso01-unified-discovery-funnel-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso01-read-context-provider.php"
       ]
     },
     {
@@ -1738,7 +1740,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-write-runtime-certification.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/ci-outage-dynamic-enrollment-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-build-worker.php"
       ]
     },
     {
@@ -2170,6 +2173,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "2f22da2ef37702361206a209c34140e212e7428356adbf4e778d453355790262",
+  "changed_paths_sha256": "37c178c2daa587bb440f216fcd58c2f714f06fe8d79439a8d8c7d505a60d154b",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
