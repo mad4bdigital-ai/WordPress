@@ -33,13 +33,23 @@ for marker in [
 
 capture = "MAD4B_SCP_Execution_Commit_Guard::capture( $decision, $input )"
 revalidate = "MAD4B_SCP_Execution_Commit_Guard::revalidate( $claim, $input )"
-callback = "call_user_func( $original, $input )"
+callback = "MAD4B_SCP_Authorization::invoke_claimed_callback("
 if capture not in auth:
     raise SystemExit("authorization claim does not capture a commit-guard snapshot")
 if revalidate not in auth:
     raise SystemExit("execution boundary does not revalidate the commit guard")
+if callback not in auth:
+    raise SystemExit("governed execution callback is missing from its wrapper")
 if auth.index(revalidate) > auth.index(callback, auth.index(revalidate)):
     raise SystemExit("commit guard does not execute before the governed mutation callback")
+# A separately scoped pre-existing local approval planner may call its
+# original callback; it must not be confused with governed remote execution.
+local_planner_branch = "if ( MAD4B_SCP_Authorization::local_approval_planner_execution( $name ) ) {"
+if local_planner_branch not in auth or auth.index(local_planner_branch) > auth.index(revalidate):
+    raise SystemExit("pre-claim direct callback is not limited to the local approval planner")
+local_end = auth.index('}', auth.index(local_planner_branch))
+if "return call_user_func( $original, $input );" not in auth[auth.index(local_planner_branch):local_end]:
+    raise SystemExit("local planner exemption changed unexpectedly")
 if "finalize_execution_claim( $claim, $commit_guard )" not in auth:
     raise SystemExit("commit-guard denial does not terminalize the claimed approval")
 if "MAD4B_SCP_Approval_Tickets::finalize_claim( $decision['approval_ticket_id'], 'failed' )" not in auth:
