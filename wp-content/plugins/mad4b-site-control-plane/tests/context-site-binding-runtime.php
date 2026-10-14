@@ -34,6 +34,21 @@ class MAD4B_SCP_Site_Profile {
 	}
 }
 
+// Produce an explicit, revision-bound fixture identity. The production guard
+// still enforces record ownership; it is not replaced or bypassed.
+class MAD4B_SCP_Operational_Integrity {
+ public static function capture() {
+  $site = MAD4B_SCP_Site_Profile::$site_uuid;
+  $brand = 0 === strpos( $site, '1111' ) ? str_repeat( 'a', 32 ) : str_repeat( 'b', 32 );
+  return array( 'scope' => array(
+   'tenant_ref' => 'site-binding-fixture',
+   'site_uuid' => $site, 'brand_ref' => $brand,
+   'blog_id' => 1, 'network_id' => 1,
+   'environment' => 'staging', 'deployment_mode' => 'staging',
+  ) );
+ }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-scope-guard.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_context_binding_assert( $condition, $message, $context = null ) {
@@ -53,7 +68,7 @@ $foreign_asset = str_repeat( 'd', 64 );
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
 	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
 	'site_uuid' => $current,
-	'brand_id' => 'brand-current',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'brand_name' => 'Current Brand',
 	'revision' => 1,
 );
@@ -63,7 +78,7 @@ function mad4b_site_binding_source_fixture( $id, $site_uuid ) {
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-' . substr( $site_uuid, 0, 8 ),
+		'brand_id' => ( 0 === strpos( $site_uuid, '1111' ) ? str_repeat( 'a', 32 ) : str_repeat( 'b', 32 ) ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-' . substr( $id, 0, 8 ),
@@ -77,7 +92,7 @@ function mad4b_site_binding_asset_fixture( $id, $source_id, $site_uuid ) {
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-' . substr( $site_uuid, 0, 8 ),
+		'brand_id' => ( 0 === strpos( $site_uuid, '1111' ) ? str_repeat( 'a', 32 ) : str_repeat( 'b', 32 ) ),
 		'source_id' => $source_id,
 		'source_mode' => 'governed',
 		'provider' => 'google_drive',
@@ -100,7 +115,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 $profile = MAD4B_SCP_Context_Authority::profile();
 $sources = MAD4B_SCP_Context_Authority::sources();
 $assets = MAD4B_SCP_Context_Authority::assets();
-mad4b_context_binding_assert( 'brand-current' === $profile['brand_id'], 'Current-site profile must be visible.', $profile );
+mad4b_context_binding_assert( str_repeat( 'a', 32 ) === $profile['brand_id'], 'Current-site profile must be visible.', $profile );
 mad4b_context_binding_assert( isset( $sources[ $current_source ] ) && ! isset( $sources[ $foreign_source ] ), 'Only current-site source must be visible.', $sources );
 mad4b_context_binding_assert( isset( $assets[ $current_asset ] ) && ! isset( $assets[ $foreign_asset ] ), 'Only current-site asset must be visible.', $assets );
 
@@ -108,8 +123,21 @@ MAD4B_SCP_Site_Profile::$site_uuid = $foreign;
 mad4b_context_binding_assert( array() === MAD4B_SCP_Context_Authority::profile(), 'Profile from prior Site UUID must disappear after re-enroll.' );
 $sources = MAD4B_SCP_Context_Authority::sources();
 $assets = MAD4B_SCP_Context_Authority::assets();
-mad4b_context_binding_assert( isset( $sources[ $foreign_source ] ) && ! isset( $sources[ $current_source ] ), 'Source visibility must follow the current Site UUID after re-enroll.', $sources );
-mad4b_context_binding_assert( isset( $assets[ $foreign_asset ] ) && ! isset( $assets[ $current_asset ] ), 'Asset visibility must follow the current Site UUID after re-enroll.', $assets );
+mad4b_context_binding_assert( array() === $sources && array() === $assets,
+ 'Switching site without an enrolled Brand Profile must never adopt orphaned foreign sources.', array( $sources, $assets ) );
+// Only explicit same-site enrollment of the foreign fixture's owned brand may
+// make its previously stored records visible; switching a site alone is insufficient.
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+ 'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+ 'site_uuid' => $foreign, 'brand_id' => str_repeat( 'b', 32 ),
+ 'brand_name' => 'Foreign Fixture Brand', 'revision' => 1,
+);
+$sources = MAD4B_SCP_Context_Authority::sources();
+$assets = MAD4B_SCP_Context_Authority::assets();
+mad4b_context_binding_assert( isset( $sources[ $foreign_source ] ) && ! isset( $sources[ $current_source ] ),
+ 'Only explicitly enrolled foreign Brand may read foreign-site source.', $sources );
+mad4b_context_binding_assert( isset( $assets[ $foreign_asset ] ) && ! isset( $assets[ $current_asset ] ),
+ 'Only explicitly enrolled foreign Brand may read foreign-site asset.', $assets );
 
 MAD4B_SCP_Site_Profile::$ready = false;
 mad4b_context_binding_assert( array() === MAD4B_SCP_Context_Authority::profile(), 'Unenrolled Site Profile must expose no Context profile.' );
