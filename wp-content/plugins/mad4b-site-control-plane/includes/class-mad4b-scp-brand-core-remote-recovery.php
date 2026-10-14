@@ -13,6 +13,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
     const PREPARE_ABILITY = 'mad4b/brand-core-remote-recovery-prepare';
     const ALTERNATIVES_ABILITY = 'mad4b/brand-core-recovery-alternatives';
     const WORDPRESS_MODE_ABILITY = 'mad4b/brand-core-wordpress-mode';
+    const SOURCE_PREFLIGHT_ABILITY = 'mad4b/context-source-onboarding-preflight';
     private static $booted = false;
 
     public static function boot() {
@@ -26,6 +27,17 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
     public static function register_abilities() {
         if ( ! function_exists( 'wp_register_ability' ) || ! function_exists( 'wp_has_ability' ) ) return;
         $definitions = array(
+            self::SOURCE_PREFLIGHT_ABILITY => array(
+                'label' => 'Preflight Governed Google Drive Source Onboarding and Recovery',
+                'callback' => 'source_onboarding_preflight',
+                'properties' => array(
+                    'external_root_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 255 ),
+                    'source_mode' => array( 'type' => 'string', 'enum' => array( 'governed', 'task_attachment' ) ),
+                    'write_policy' => array( 'type' => 'string', 'enum' => array( 'read_only', 'repair_only', 'managed' ) ),
+                    'recursive' => array( 'type' => 'boolean' ),
+                ),
+                'required' => array(),
+            ),
             self::WORDPRESS_MODE_ABILITY => array(
                 'label' => 'WordPress-only Brand Core Recovery and File Review',
                 'callback' => 'wordpress_mode',
@@ -87,6 +99,128 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 ),
             ) );
         }
+    }
+
+    /**
+     * One bounded read-only entry point shared by wp-admin and MCP.
+     * Before site binding, never inspect or infer ownership from raw
+     * quarantine records. The selected folder is a claim, not proof.
+     * No ticket, Drive mutation, registry write or implicit approval.
+     */
+    public static function source_onboarding_preflight( $input = array() ) {
+        if ( ! self::can_read() )
+            return self::denial( 'permission_required' );
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+            array( 'external_root_id', 'source_mode', 'write_policy', 'recursive' ) ) )
+            return self::denial( 'unexpected_parameter' );
+        $folder = trim( (string) ( $input['external_root_id'] ?? '' ) );
+        if ( '' !== $folder &&
+            ( strlen( $folder ) > 255 || 'root' === strtolower( $folder )
+              || 1 !== preg_match( '/^[A-Za-z0-9_.-]+$/D', $folder ) ) )
+            return self::denial( 'invalid_folder_identity' );
+        $mode = (string) ( $input['source_mode'] ?? 'governed' );
+        $policy = (string) ( $input['write_policy'] ?? 'read_only' );
+        if ( ! in_array( $mode, array( 'governed', 'task_attachment' ), true )
+            || ! in_array( $policy, array( 'read_only', 'repair_only', 'managed' ), true )
+            || ( 'task_attachment' === $mode && 'read_only' !== $policy )
+            || ( array_key_exists( 'recursive', $input ) && ! is_bool( $input['recursive'] ) ) )
+            return self::denial( 'invalid_source_policy' );
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! class_exists( 'MAD4B_SCP_Context_Authority' ) )
+            return self::denial( 'site_or_context_unavailable' );
+        $before = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $before ) || empty( $before['configured'] )
+            || 'staging' !== (string) ( $before['environment'] ?? '' )
+            || empty( $before['origin_match'] )
+            || empty( $before['environment_match'] )
+            || empty( $before['authority_ready'] ) )
+            return self::denial( 'exact_staging_site_required' );
+        $profile = MAD4B_SCP_Context_Authority::profile();
+        $census = MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
+        if ( is_wp_error( $census ) ) return $census;
+        if ( ! is_array( $census ) ) return self::denial( 'census_unavailable' );
+        $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Native' )
+            ? MAD4B_SCP_Deployment_Binding_Native::status() : array();
+        $binding_state = is_array( $binding )
+            ? (string) ( $binding['state'] ?? 'UNKNOWN' ) : 'UNKNOWN';
+        $connected = class_exists( 'MAD4B_SCP_Google_Drive_Context' )
+            ? MAD4B_SCP_Google_Drive_Context::connection_status() : array();
+        $connected = is_array( $connected ) ? $connected : array();
+        $safe_google = ! empty( $connected['connected'] )
+            && empty( $connected['revocation_pending'] )
+            && empty( $connected['token_unreadable'] );
+        $scope_verified = 'TRUSTED_SCOPE_VERIFIED' === (string) ( $census['state'] ?? '' )
+            && true === ( $census['operational_scope_verified'] ?? false )
+            && ! empty( $before['deployment_binding_bound'] )
+            && ! empty( $before['deployment_binding_configured'] )
+            && ! empty( $before['deployment_binding_match'] );
+        $quarantined = (int) ( $census['source_quarantine_count'] ?? 0 )
+            + (int) ( $census['asset_quarantine_count'] ?? 0 );
+        $status = 'READY_FOR_GOVERNED_SOURCE_PLAN';
+        $next = 'context/governed-source-upsert';
+        $needs_ticket = true;
+        if ( ! $scope_verified ) {
+            $status = 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED';
+            $next = 'READY_FOR_OWNER_APPROVAL' === $binding_state
+                ? 'mad4b/deployment-binding-native-plan'
+                : 'mad4b/deployment-binding-native-status';
+        } elseif ( empty( $profile ) ) {
+            $status = 'BRAND_PROFILE_REQUIRED';
+            $next = 'context/brand-profile-save';
+        } elseif ( $quarantined > 0 ) {
+            $status = 'LEGACY_SOURCE_RECONCILIATION_REQUIRED';
+            $next = 'context/legacy-owner-transfer-discover';
+        } elseif ( ! $safe_google || empty( $connected['read_available'] ) ) {
+            $status = 'GOOGLE_CONNECTION_RECOVERY_REQUIRED';
+            $next = 'context/runtime-readiness';
+        } elseif ( 'managed' === $policy && empty( $connected['write_available'] ) ) {
+            $status = 'GOOGLE_WRITE_CONSENT_REQUIRED';
+            $next = 'context/provider-capabilities';
+        } elseif ( '' === $folder ) {
+            $status = 'FOLDER_SELECTION_REQUIRED';
+            $next = self::SOURCE_PREFLIGHT_ABILITY;
+            $needs_ticket = false;
+        } else {
+            // Existing authorized source: no duplicate creation or ownership
+            // migration. Only the existing per-source policy may be reviewed.
+            foreach ( MAD4B_SCP_Context_Authority::sources() as $source ) {
+                if ( ! is_array( $source ) ) continue;
+                if ( hash_equals( $folder, (string) ( $source['external_root_id'] ?? '' ) )
+                    && $mode === (string) ( $source['mode'] ?? '' ) ) {
+                    $status = 'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED';
+                    $next = 'context/brand-core-coverage';
+                    break;
+                }
+            }
+        }
+        $after = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $after )
+            || (string) ( $before['profile_digest'] ?? '' )
+                !== (string) ( $after['profile_digest'] ?? '' ) )
+            return self::denial( 'site_profile_drift_replan' );
+        return array(
+            'contract' => 'mad4b.context-source-onboarding-preflight.v1',
+            'state' => $status, 'next_ability' => $next,
+            'site_uuid' => (string) ( $before['site_uuid'] ?? '' ),
+            'profile_revision' => (int) ( $before['revision'] ?? 0 ),
+            'deployment_binding_state' => $binding_state,
+            'operational_scope_verified' => $scope_verified,
+            'quarantined_source_count' => (int) ( $census['source_quarantine_count'] ?? 0 ),
+            'quarantined_asset_count' => (int) ( $census['asset_quarantine_count'] ?? 0 ),
+            'folder_selected' => '' !== $folder,
+            'folder_identity_sha256' => '' !== $folder ? hash( 'sha256', $folder ) : '',
+            'folder_membership_verified' => false,
+            'write_policy_requested' => $policy,
+            'write_permission_available' => ! empty( $connected['write_available'] ),
+            'new_source_write_eligible' => 'READY_FOR_GOVERNED_SOURCE_PLAN' === $status,
+            'new_source_authorized' => false,
+            'owner_approval_required_for_mutation' => $needs_ticket,
+            'legacy_ownership_inferred' => false,
+            'quarantine_mutated' => false,
+            'source_registry_modified' => false,
+            'production_authorized' => false,
+            'read_only' => true, 'mutation_performed' => false,
+        );
     }
 
     /**
