@@ -86,10 +86,16 @@ if ( $actual_names !== $expected_names ) {
 	$fail(
 		'mad4b-chatgpt protocol inventory drifted from the governed allowlist.',
 		array(
-			'expected' => $expected_names,
-			'actual'   => $actual_names,
-			'missing'  => array_values( array_diff( $expected_names, $actual_names ) ),
-			'extra'    => array_values( array_diff( $actual_names, $expected_names ) ),
+			'expected_count' => count( $expected_names ),
+			'actual_count' => count( $actual_names ),
+			'missing' => array_values( array_diff( $expected_names, $actual_names ) ),
+			'extra' => array_values( array_diff( $actual_names, $expected_names ) ),
+			'preflight_failures' => array_map( static function ( $row ) {
+				return array(
+					'ability' => (string) ( $row['failing_ability'] ?? '' ),
+					'code' => (string) ( $row['error_code'] ?? '' ),
+				);
+			}, (array) ( $certified_catalog['failures'] ?? array() ) ),
 		)
 	);
 }
