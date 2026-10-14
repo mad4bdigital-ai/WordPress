@@ -66,7 +66,23 @@ class MAD4B_SCP_Site_Profile {
 		);
 	}
 }
-
+// Local fixture: a bounded, verified Site/Brand scope is required before
+// any registry write. Do not bypass the production Integrity fence.
+final class MAD4B_SCP_Operational_Integrity {
+    public static $trusted = true;
+    public static $drift = false;
+    public static function capture() {
+        return self::$trusted
+            ? array( 'site_uuid' => '11111111-1111-4111-8111-111111111111',
+                'revision' => 7, 'brand_id' => 'brand-fixture',
+                'scope_digest' => str_repeat('c',64) )
+            : new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture Site Profile binding absent.' );
+    }
+    public static function assert_unchanged( $checkpoint ) {
+        return ! self::$drift && self::$trusted
+            ? true : new WP_Error( 'mad4b_integrity_scope_changed', 'Trusted scope changed during registry mutation.' );
+    }
+}
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_atomic_assert( $condition, $message, $context = null ) {
@@ -139,6 +155,15 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISIO
 
 $baseline_sources = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
 $baseline_assets = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+
+// Denied scope must fail before acquiring a registry lock or modifying options.
+MAD4B_SCP_Operational_Integrity::$trusted = false;
+$denied_scope = MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, array() );
+mad4b_atomic_assert( is_wp_error( $denied_scope )
+    && 'mad4b_integrity_scope_blocked' === $denied_scope->get_error_code(), 'Untrusted scope must be rejected.' );
+mad4b_atomic_assert( $baseline_assets === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]
+    && $baseline_sources === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ], 'Denied scope cannot mutate registry.' );
+MAD4B_SCP_Operational_Integrity::$trusted = true;
 
 $GLOBALS['mad4b_fail_option'] = MAD4B_SCP_Context_Authority::SOURCES_OPTION;
 $failed_second_write = MAD4B_SCP_Context_Authority::replace_source_assets(

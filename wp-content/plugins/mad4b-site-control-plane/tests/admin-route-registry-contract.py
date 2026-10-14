@@ -72,6 +72,18 @@ for path in (root / 'includes').rglob('*.php'):
         raise SystemExit(f'FAIL direct constant admin URL: {path.name}')
     if not re.search(r'add_(?:sub)?menu_page\(', source):
         continue
+    # The native plugins.php GET shell is intentionally earlier than the normal
+    # route registry. Validate its tiny manifest/capabilities separately; it
+    # never executes an admin page callback or creates a dynamic WP route.
+    if path.name == 'class-mad4b-scp-native-plugin-admin-menu.php':
+        manifest = (root / 'includes/class-mad4b-scp-admin-navigation-manifest.php').read_text(encoding='utf-8')
+        for marker in ("MAD4B_SCP_Admin_Navigation_Manifest::menu_rows()", "self::PARENT", "'manage_options'", "render_only_after_normal_boot"):
+            if marker not in source:
+                raise SystemExit('FAIL native menu guard missing: ' + marker)
+        for marker in ('public static function menu_rows()', "'capability' => 'manage_options'", "public static function normalize_submenus()"):
+            if marker not in manifest:
+                raise SystemExit('FAIL native manifest guard missing: ' + marker)
+        continue
     if 'add_submenu_page(' in source and (
         'MAD4B_SCP_Admin_Route_Registry::schedule_submenu(' not in source
         or re.search(r"add_action\(\s*['\"]admin_menu['\"]", source)

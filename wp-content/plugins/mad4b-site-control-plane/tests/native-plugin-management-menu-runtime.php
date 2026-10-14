@@ -38,9 +38,8 @@ native_nav_assert( count( $GLOBALS['native_nav_menus'] ) === 1,
 native_nav_assert( $GLOBALS['native_nav_menus'][0]['slug'] === 'mad4b-control-plane'
     && $GLOBALS['native_nav_menus'][0]['cap'] === 'manage_options',
     'Parent slug/capability must match canonical admin UI' );
-$expected = array( 'mad4b-control-plane-connection', 'mad4b-control-plane-chatgpt',
-    'mad4b-adapter-coverage', 'mad4b-control-plane-skills', 'mad4b-runtime-components',
-    'mad4b-control-plane-oauth-canary', 'mad4b-control-plane-context' );
+$expected = array_keys( MAD4B_SCP_Admin_Navigation_Manifest::menu_rows() );
+native_nav_assert( count( $expected ) >= 20, 'Native shell must reflect the complete presentation-only workspace inventory' );
 $actual = array_column( $GLOBALS['native_nav_submenus'], 'slug' );
 native_nav_assert( $expected === $actual, 'Child routes mismatch canonical MAD4B admin slugs' );
 native_nav_assert( count( array_filter( $GLOBALS['native_nav_submenus'],

@@ -282,23 +282,6 @@ foreach ( array( 'healthy', 'missing', 'expired', 'tampered', 'actor', 'grant', 
 }
 echo "Periodic authority observation guards: PASS\n";
 
-// Breakglass is process-global and is tested last so the fixture remains resettable.
-// Automatic reconciliation must hard-block before candidate-binding mutation.
-$target = setup_fixture();
-$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
-check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Breakglass preflight baseline setup failed.' );
-MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
-MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
-check( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ), 'Breakglass fixture constant unexpectedly pre-defined.' );
-define( 'MAD4B_MCP_BREAKGLASS_ENABLED', true );
-$calls = MAD4B_SCP_Staging_Write_Authority::$calls;
-$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $target );
-check( 'HARD_BLOCK' === ( $preflight['disposition'] ?? '' ), 'Breakglass must hard-block automatic reconciliation.' );
-check( in_array( 'breakglass_excluded', $preflight['reasons'] ?? array(), true ), 'Breakglass hard-block reason missing.' );
-check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls && empty( $preflight['mutation_performed'] ), 'Breakglass preflight reached mutation.' );
-echo "Breakglass auto-reconciliation exclusion: PASS\n";
-
-
 // Exact owner-approved local candidate continuation: never a release verdict.
 foreach ( array( 'success', 'no_claim', 'no_oauth', 'no_scope', 'wrong_client',
     'owner_revoked', 'foreign_channel', 'unsigned_regular_release', 'production',
@@ -345,3 +328,19 @@ foreach ( array( 'success', 'no_claim', 'no_oauth', 'no_scope', 'wrong_client',
     }
 }
 echo "post-update owner Staging self-cert continuation: PASS\n";
+
+// Breakglass is process-global and is tested last so the fixture remains resettable.
+// Automatic reconciliation must hard-block before candidate-binding mutation.
+$target = setup_fixture();
+$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
+check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Breakglass preflight baseline setup failed.' );
+MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
+MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
+check( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ), 'Breakglass fixture constant unexpectedly pre-defined.' );
+define( 'MAD4B_MCP_BREAKGLASS_ENABLED', true );
+$calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $target );
+check( 'HARD_BLOCK' === ( $preflight['disposition'] ?? '' ), 'Breakglass must hard-block automatic reconciliation.' );
+check( in_array( 'breakglass_excluded', $preflight['reasons'] ?? array(), true ), 'Breakglass hard-block reason missing.' );
+check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls && empty( $preflight['mutation_performed'] ), 'Breakglass preflight reached mutation.' );
+echo "Breakglass auto-reconciliation exclusion: PASS\n";

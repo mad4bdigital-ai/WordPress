@@ -81,7 +81,13 @@ MAD4B_SCP_Google_Drive_Context::$mode = 'dedicated_google'; MAD4B_SCP_Google_Dri
 check( false === strpos( render( 'render_google_drive' ), 'class="mad4b-google-primary-signin-form"' ), 'Configured unrelated broker concealed missing Dedicated setup' );
 MAD4B_SCP_Google_Drive_Context::$dedicated = true;
 foreach ( array( 'first-source', 'second-source' ) as $id ) MAD4B_SCP_Context_Authority::$sources[ $id ] = array( 'source_id' => $id, 'label' => $id, 'external_root_id' => $id, 'mode' => 'governed', 'write_policy' => 'read_only', 'task_scope' => '', 'status' => 'active', 'asset_count' => 0, 'last_synced_at' => '' );
+// AJAX handlers require a POST. A missing method must fail closed; the
+// prior fixture accidentally tested the denial while expecting a successful save.
+$_SERVER['REQUEST_METHOD'] = 'GET';
 $_POST = array( 'source_id' => 'second-source', 'write_policy' => 'update_only' );
+try { MAD4B_SCP_Context_Admin_UI::handle_update_source_policy(); throw new RuntimeException( 'GET did not terminate' ); }
+catch ( JsonResult $response ) { check( ! $response->success && 'mad4b_context_post_required' === $response->data['code'], 'GET should remain denied' ); }
+$_SERVER['REQUEST_METHOD'] = 'POST';
 try { MAD4B_SCP_Context_Admin_UI::handle_update_source_policy(); throw new RuntimeException( 'AJAX did not terminate' ); } catch ( JsonResult $response ) {
  check( $response->success && $response->data['persistence_verified'], 'Source policy handler lost persisted readback' );
  $rendered = views( render( 'render_sources' ) );

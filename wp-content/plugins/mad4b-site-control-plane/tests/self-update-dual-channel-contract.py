@@ -128,10 +128,19 @@ for marker in (
     "public static function chatgpt_reviewed_direct_step_up_tools()",
     "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
+    "$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap ) ) );",
 ):
     if marker not in servers:
         raise SystemExit(f"bootstrap self-update stable registration invariant missing: {marker}")
+base = servers.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
+for marker in (
+    "self::chatgpt_dispatch_transport_tools()",
+    "self::chatgpt_reviewed_direct_step_up_tools()",
+    "self::chatgpt_approval_bootstrap_tools()",
+    "in_array( $ability_name, $direct_mutation_transport, true )",
+):
+    if marker not in base:
+        raise SystemExit("bootstrap direct dispatch guard missing: " + marker)
 chatgpt_direct = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for forbidden in (
     "'mad4b/site-profile-feature-reenroll'",
