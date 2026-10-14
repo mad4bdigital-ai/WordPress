@@ -423,7 +423,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		return $encoded . '.' . hash_hmac( 'sha256', $encoded, wp_salt( 'auth' ) );
 	}
 
-	private static function decode_search_cursor( $cursor, $query_digest, $result_digest ) {
+	private static function decode_search_cursor( $cursor, $query_digest, $result_digest = null ) {
 		if ( ! is_string( $cursor ) || strlen( $cursor ) > 2048 ||
 			! preg_match( '/^[A-Za-z0-9_-]+\\.[a-f0-9]{64}$/D', $cursor ) )
 			return new WP_Error( 'mad4b_capability_search_cursor_invalid', 'Search cursor is malformed.' );
@@ -436,7 +436,7 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		if ( ! is_array( $data ) || self::SEARCH_CURSOR_CONTRACT !== ( $data['contract'] ?? '' ) ||
 			! hash_equals( self::search_cursor_scope(), (string) ( $data['scope'] ?? '' ) ) ||
 			! hash_equals( $query_digest, (string) ( $data['query_sha256'] ?? '' ) ) ||
-			! hash_equals( $result_digest, (string) ( $data['results_sha256'] ?? '' ) ) ||
+			( null !== $result_digest && ! hash_equals( $result_digest, (string) ( $data['results_sha256'] ?? '' ) ) ) ||
 			! is_int( $data['offset'] ?? null ) || $data['offset'] < 0 ||
 			! is_int( $data['expires_at'] ?? null ) || $data['expires_at'] <= time() )
 			return new WP_Error( 'mad4b_capability_search_cursor_stale', 'Search identity or results changed; restart the query.', array( 'status' => 409 ) );
@@ -467,6 +467,12 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 			'declared_writeonly_only' => $writeonly_only, 'match_mode' => $mode,
 			'sort' => $sort, 'min_score' => $min_score, 'browse' => $browse );
 		$query_digest = hash( 'sha256', wp_json_encode( array( $task, $terms, $facets ) ) );
+		// Fail on cross-user/OAuth/site or expired cursors before any cache read.
+		// Snapshot integrity is still rechecked after ranking the current results.
+		if ( ! empty( $input['cursor'] ) ) {
+			$cursor_preflight = self::decode_search_cursor( $input['cursor'], $query_digest );
+			if ( is_wp_error( $cursor_preflight ) ) return $cursor_preflight;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Capability_Search_Index' ) )
 			return new WP_Error( 'mad4b_capability_index_unavailable', 'Capability index must be loaded by the plugin bootstrap.' );
 		$scope = self::search_cursor_scope();
