@@ -433,7 +433,7 @@ require("array_merge( $optional, $base_optional )" in projection, "explicit dyna
 # Match the actual ordered expression across formatting changes; retain
 # exact reviewed-only management and mandatory dispatcher checks below.
 import re
-require(bool(re.search(r"array_merge\\s*\\(\\s*\\$management\\s*,\\s*\\$dynamic_optional\\s*,\\s*\\$reviewed", servers)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
+require(bool(re.search(r"array_merge\s*\(\s*\$management\s*,\s*\$dynamic_optional\s*,\s*\$reviewed", servers)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
 require("$management = array_values( array_intersect(" in servers, "management reservation must be reviewed-only")
 require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in servers, "only the specific enrolled projection-management tool may reserve a slot")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
