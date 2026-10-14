@@ -214,7 +214,9 @@ echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
 if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization:
     raise SystemExit("remote permission denial audit must not hide non-replay denial reason codes")
 
-dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools", 1)[1].split("public static function chatgpt_tools", 1)[0]
+# Inspect the exact dispatcher function, not its neighboring, separately
+# gated Staging bootstrap helper; a name in a denylist is not a dispatch grant.
+dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[0]
 if "mad4b/approval-plan" in dispatch_catalog:
     raise SystemExit("approval-plan must remain hidden behind write-execute, not mounted as a direct ChatGPT mutation transport")
 if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:
