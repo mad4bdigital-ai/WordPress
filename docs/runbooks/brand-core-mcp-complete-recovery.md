@@ -1,5 +1,50 @@
 # Feature 007 — Brand Core recovery from A to Z through the existing MAD4B MCP
 
+## Governed Source Onboarding — 14 October 2026
+
+The exact Staging failure `mad4b_integrity_scope_blocked` after **Add Source Folder**
+is a deployment identity gate, not a Google Drive folder permission or Managed
+policy failure. The HTML form previously called `upsert_source()` directly,
+where `with_registry_lock()` must deny any unbound site identity.
+
+**Remediation in this HEAD:** The non-authorizing
+`mad4b/context-source-onboarding-preflight` is registered as a governed read
+Ability and exposed through `mad4b-read`. It rejects arbitrary input and
+Production, then determines the next safe action from the current Site Profile,
+actual native Deployment Binding, original Context legacy census, existing
+authorized sources and saved Google Drive connection. It reports only bounded
+quarantine counts and a hash of the selected folder ID before trusted identity
+is established. It cannot grant ownership, alter files, persist options or
+issue an approval ticket.
+
+The wp-admin Folder Picker calls the same preflight **before displaying an
+enabled Add button**, and the POST handler re-runs it immediately before
+registry mutation. When blocked, no registry write is attempted; the page
+returns to the selected folder with nonauthorizing display hints for policy
+and recursive scope, but **never carries forward an approval ticket, owner
+consent, token, source ownership, or a signed plan**. The Source Folders tab
+now shows counts of quarantined original records rather than falsely saying
+there are no recorded sources. Runtime Obstacle Resolver classifies the
+integrity error as `source_onboarding`, and Operator Journeys surfaces the
+preflight ahead of native binding, owner transfer, exact source upsert, scan,
+review and coverage.
+
+**Expected recovery sequence:** Preflight → independently approved
+WordPress-native Deployment Binding Apply → new-request readback → Context
+Census → original source and folder/file evidence → native shadow and owner
+transfer (if applicable) → readback → explicit managed policy authorization
+→ complete source scan → file-by-file governed review → Brand Core Context
+Receipt. Re-query the preflight at each stage. Do not infer legal ownership
+or certified disaster recovery from a verified WordPress scope.
+
+**As-built validation:** Static delimiter/quote scanner PASS for the changed
+PHP files and fixtures, and GitHub content readback confirms the expected
+Ability/UI/CI registrations. PHP CLI execution, live mounted plugin
+acceptance, exact-head ZIP build and owner-authorized operations remain
+independent acceptance gates.
+
+---
+
 ## Incident: ETG native binding fails after one-time approval claim (2026-10-14)
 
 **Evidence:** The original ETG native-binding ticket
