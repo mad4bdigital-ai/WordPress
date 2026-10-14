@@ -51,6 +51,19 @@ $GLOBALS['abilities']['example/approval-unknown'] =
     new FakeAbility( 'example/approval-unknown', null );
 $GLOBALS['abilities']['example/approval-untrusted-annotation'] =
     new FakeAbility( 'example/approval-untrusted-annotation', 'false' );
+// The live gateway now requires a canonical authority scope and a bounded
+// catalog index. Reproduce these readers, not a fabricated remote grant.
+class MAD4B_SCP_Ability_Catalog_Transport {
+    public static $scope_ready = true;
+    public static function current_authority_scope() {
+        return self::$scope_ready ? str_repeat( 'a', 64 ) : '';
+    }
+}
+class MAD4B_SCP_Site_Profile {
+    public static function status() { return array( 'profile_digest' => str_repeat( 'b', 64 ) ); }
+}
+function wp_salt( $scheme = 'auth' ) { return 'fixture-readonly-cursor-key'; }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-capability-search-index.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-unified-capability-gateway.php';
 $gateway = 'MAD4B_SCP_Unified_Capability_Gateway';
 // Default concurrency must be safe on slow/unmeasured WordPress hosts.
@@ -79,6 +92,12 @@ $bounded = $gateway::negotiate( array( 'client_capabilities' => array(
 ) ), 'mcp' );
 check_route( $bounded['transfer_policy']['recommended_parallel_schema_fetches'] === 1,
     'Explicit client serial preference is respected' );
+MAD4B_SCP_Ability_Catalog_Transport::$scope_ready = false;
+$unscoped = $gateway::search( array( 'task' => 'approval' ) );
+check_route( is_wp_error( $unscoped ) &&
+    'mad4b_capability_search_scope_unavailable' === $unscoped->get_error_code(),
+    'Missing authority scope denies capability discovery.' );
+MAD4B_SCP_Ability_Catalog_Transport::$scope_ready = true;
 $only_mutating = $gateway::search( array(
     'task' => 'approval', 'limit' => 5, 'declared_writeonly_only' => true ) );
 check_route( $only_mutating['count'] === 1

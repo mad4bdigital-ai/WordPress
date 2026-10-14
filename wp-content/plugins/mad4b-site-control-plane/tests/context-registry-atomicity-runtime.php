@@ -287,7 +287,11 @@ mad4b_atomic_assert( $before_profile === $GLOBALS['mad4b_context_options'][ MAD4
 mad4b_atomic_assert( $before_profile_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Profile audit failure must restore pre-save registry revision.' );
 
 MAD4B_SCP_Audit::$fail_append = false;
-$saved_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+$saved_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand', array(
+    'expected_brand_id' => (string) $before_profile['brand_id'],
+    'expected_revision' => (int) $before_profile['revision'],
+    'confirm_identity_preserving_rename' => true,
+) );
 mad4b_atomic_assert( ! is_wp_error( $saved_profile ), 'Healthy Brand Context Profile save must commit with audit evidence.', $saved_profile );
 mad4b_atomic_assert( $before_profile_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Healthy audited profile save must advance registry revision exactly once.' );
 $profile_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-profile-save' === $row['ability']; } ) );
