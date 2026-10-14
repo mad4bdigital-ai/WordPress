@@ -133,6 +133,9 @@ require __DIR__ . '/../includes/class-mad4b-scp-crypto-profile.php';
 require __DIR__ . '/../includes/class-mad4b-scp-preparation-receipt.php';
 require __DIR__ . '/../includes/class-mad4b-scp-chatgpt-tool-projection.php';
 require __DIR__ . '/../includes/class-mad4b-scp-ability-catalog-transport.php';
+// The production Gateway now depends on the exact scoped metadata index.
+// Missing it must not turn a simulated search into a WP_Error-as-array crash.
+require __DIR__ . '/../includes/class-mad4b-scp-capability-search-index.php';
 require __DIR__ . '/../includes/class-mad4b-scp-unified-capability-gateway.php';
 require __DIR__ . '/../includes/class-mad4b-scp-abilities.php';
 function check_gateway( $condition, $message ) { if ( ! $condition ) throw new RuntimeException( $message ); }
