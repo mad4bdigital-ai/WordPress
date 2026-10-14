@@ -145,6 +145,7 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
     private static function routes() {
         return array(
             'selected_folder_scope' => array( 'mad4b/selected-folder-scope-proof', 'context/legacy-owner-transfer-plan', true ),
+            'source_onboarding' => array( 'mad4b/context-source-onboarding-preflight', 'mad4b/deployment-binding-native-plan', true ),
             'google_drive_auth' => array( 'context/runtime-readiness', 'context/brand-core-control-loop', true ),
             'brand_context' => array( 'mad4b/brand-core-remote-recovery-status', 'context/remote-owner-review-plan', true ),
             'host_binding' => array( 'mad4b/deployment-binding-native-plan', 'mad4b/host-doctor', true ),
@@ -160,6 +161,10 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
     }
 
     private static function classify( $blocker ) {
+        // A missing Site/Brand scope is a bootstrap issue, not a request
+        // to prove ownership of a still-invisible quarantined source.
+        if ( preg_match( '/integrity_scope_blocked|integrity_scope_incomplete|source_onboarding|source.*binding|source_registry|brand_source_quarantine_first/i', $blocker ) )
+            return 'source_onboarding';
         if ( preg_match( '/folder|source_.*ownership|legacy_owner|quarantine/i', $blocker ) ) return 'selected_folder_scope';
         if ( preg_match( '/drive|oauth|token|revocation|refresh|reauth/i', $blocker ) ) return 'google_drive_auth';
         if ( preg_match( '/brand_core|tone_of_voice|editorial_guidelines|brand_strategy|context_receipt/i', $blocker ) ) return 'brand_context';
@@ -181,6 +186,13 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
         if ( is_wp_error( $planned ) ) return $planned;
         if ( ! empty( $input['perform_safe_probes'] ) ) {
             foreach ( $planned['resolution_routes'] as $route ) {
+                if ( 'source_onboarding' === $route['category']
+                    && class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery' ) ) {
+                    $probe = MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( array() );
+                    $planned['source_onboarding_live_probe'] = is_wp_error( $probe )
+                        ? array( 'state' => 'BLOCKED', 'error_code' => $probe->get_error_code() ) : $probe;
+                    break; // Bounded, non-authorizing; do not probe Drive files.
+                }
                 if ( 'selected_folder_scope' !== $route['category'] ) continue;
                 $probe = self::selected_folder_proof( array() );
                 $planned['selected_folder_live_probe'] = is_wp_error( $probe )
@@ -224,6 +236,7 @@ final class MAD4B_SCP_Runtime_Obstacle_Resolution {
         $flow = array(
             'discover_site_model' => array( 'mad4b/content-model-discover' ),
             'inspect_relationships_and_shared_data' => array( 'mad4b/semantic-structure-inspect' ),
+            'preflight_brand_source_onboarding' => array( 'mad4b/context-source-onboarding-preflight' ),
             'select_brand_sources_and_scope' => array( 'mad4b/selected-folder-scope-proof' ),
             'review_brand_context' => array( 'mad4b/brand-core-remote-recovery-status' ),
             'scrape_source_evidence' => array( 'mad4b/scrape-transfer-plan' ),
