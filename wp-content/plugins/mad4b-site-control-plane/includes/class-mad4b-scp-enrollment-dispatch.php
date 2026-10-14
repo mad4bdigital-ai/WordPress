@@ -11,10 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * already admitted by Remote Operation Parity may be selected, and only when
  * the current catalog says they are:
  * - mounted on mad4b-enrollment,
- * - addressed to the operator caller role,
+ * - addressed to the operator role OR the single audited owner-only
+ *   staging_write_authority_convergence operation,
  * - remote-parity ready and execution eligible,
  * - Staging/production-denied,
- * - not human-decision operations.
+ * - not generic human-decision operations. The owner convergence remains
+ *   human-reviewed and must validate exact plan + step-up on the target.
  *
  * Execution additionally requires the dedicated OAuth authority step-up scope,
  * the exact ChatGPT CIMD client, an enrolled Staging administrator, exact
@@ -419,7 +421,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'query' => $query,
 			'count' => count( $items ),
 			'operations' => $items,
-			'human_decision_operations_excluded' => true,
+			'generic_human_decision_operations_excluded' => true,
 			'owner_step_up_exception' => 'staging_write_authority_convergence_only',
 			'production_mutation_allowed' => false,
 			'breakglass_included' => false,
