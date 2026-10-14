@@ -430,7 +430,9 @@ require("can_bootstrap_apply" not in catalog_projection, "runtime release-set ca
 require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
 require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
-require("array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() )" in servers, "server materialization must preserve explicit dynamic projection priority")
+require("array_merge( $management, $dynamic_optional, $reviewed" in servers, "materialization must reserve the reviewed demotion control before dynamic projection slots")
+require("$management = array_values( array_intersect(" in servers, "management reservation must be reviewed-only")
+require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in servers, "only the specific enrolled projection-management tool may reserve a slot")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
 require("add_filter( 'plugin_action_links_'" not in runtime, "runtime release-set mutation must not be injected into the generic Plugins action row")
 plugin_links = runtime.split("public static function plugin_action_links( $links )", 1)[1].split("public static function handle_admin_apply()", 1)[0]

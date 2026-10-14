@@ -559,10 +559,16 @@ for marker in (
     'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
     'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
-    'array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )',
+    'array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap )',
 ):
     if marker not in servers:
         raise SystemExit('reviewed direct ChatGPT step-up invariant missing: ' + marker)
+assert "private static function chatgpt_approval_bootstrap_tools()" in servers
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers
+assert "MAD4B_SCP_Staging_Write_Authority::effective()" in servers
+assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers
+assert "array( 'mad4b/approval-plan' )" in servers
+assert "'mad4b/approval-ai-decide'" in servers
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
     if dispatcher not in dispatcher_helper:
@@ -814,7 +820,7 @@ for marker in [
     "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
     "public static function chatgpt_dispatch_transport_tools()",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
+    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up, $approval_bootstrap )",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "self::provider_for_ability( 'mad4b-write', $ability_name )",
