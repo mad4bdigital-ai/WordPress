@@ -47,12 +47,37 @@ class MAD4B_SCP_Audit {
 	public static function record( $ability, $payload = array(), $status = 'ok' ) { self::$events[] = array( $ability, $payload, $status ); return true; }
 }
 
+// Real scoped ownership guard, with a single enrolled fixture brand.
+// A valid Site UUID alone must not authorize a legacy Google Drive record.
+class MAD4B_SCP_Operational_Integrity {
+    public static function capture() {
+        return array( 'scope' => array(
+            'tenant_ref' => 'context-rollback-fixture',
+            'site_uuid' => MAD4B_SCP_Site_Profile::$site_uuid,
+            'brand_ref' => str_repeat( 'a', 32 ),
+            'blog_id' => 1, 'network_id' => 1,
+            'environment' => 'staging', 'deployment_mode' => 'staging',
+        ) );
+    }
+    public static function assert_unchanged( $checkpoint, $for_write = true ) {
+        return self::capture()['scope'] === ( $checkpoint['scope'] ?? null )
+            ? true : new WP_Error( 'fixture_scope_changed' );
+    }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-scope-guard.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_context_rollback_assert( $condition, $message ) {
 	if ( ! $condition ) { fwrite( STDERR, "FAIL: {$message}\n" ); exit( 1 ); }
 }
 
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+    'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+    'site_uuid' => MAD4B_SCP_Site_Profile::$site_uuid,
+    'brand_id' => str_repeat( 'a', 32 ),
+    'brand_name' => 'Atomic Rollback Fixture',
+    'revision' => 1,
+);
 $source_id = str_repeat( 'a', 64 );
 $old_id = str_repeat( 'b', 64 );
 $new_id = str_repeat( 'c', 64 );
@@ -63,7 +88,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-fixture',
@@ -82,7 +107,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 $base = array(
 	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'source_id' => $source_id,
 	'source_mode' => 'governed',
 	'task_scope' => '',
