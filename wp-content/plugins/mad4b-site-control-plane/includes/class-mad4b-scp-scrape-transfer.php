@@ -519,6 +519,10 @@ final class MAD4B_SCP_Scrape_Transfer {
                 if ( ! is_string( $set ) || '' === trim( $set ) )
                     $set = $processor->get_attribute( 'srcset' );
                 $source_url = self::srcset_candidate( $set, $source );
+                // Keep rewrite and manifest discovery in parity for native
+                // <source> tags that provide src or lazy URL fallbacks.
+                if ( '' === $source_url )
+                    $source_url = self::image_fallback_url( $processor, $source );
                 if ( '' !== $source_url && isset( $local[$source_url] ) ) {
                     $processor->set_attribute( 'srcset', $local[$source_url] . ' 1x' );
                     $rewritten_media++;
@@ -529,6 +533,8 @@ final class MAD4B_SCP_Scrape_Transfer {
                 $processor->remove_attribute( 'data-srcset' );
                 $processor->remove_attribute( 'src' );
                 $processor->remove_attribute( 'data-src' );
+                $processor->remove_attribute( 'data-original' );
+                $processor->remove_attribute( 'data-lazy-src' );
             } elseif ( 'IMG' === $tag ) {
                 $set = $processor->get_attribute( 'data-srcset' );
                 if ( ! is_string( $set ) || '' === trim( $set ) )

@@ -254,6 +254,32 @@ check( ! is_wp_error( $picture_rewrite ) &&
     !$picture_rewrite['ready_for_draft_review'] &&
     $picture_rewrite['pending_media'] > 0,
     'Missing native imported picture image must keep draft review blocked' );
+foreach ( array( 'src', 'data-src', 'data-original', 'data-lazy-src' ) as $source_attribute ) {
+    $picture_fallback = $input;
+    $picture_fallback['html'] = '<picture><source ' . $source_attribute . '="' . $img .
+        '"><img src="data:image/gif;base64,R0lG" alt="Fallback"></picture>';
+    $fallback_plan = MAD4B_SCP_Scrape_Transfer::plan( $picture_fallback );
+    check( ! is_wp_error( $fallback_plan ) &&
+        count( $fallback_plan['image_import_tasks'] ) === 1 &&
+        $fallback_plan['image_import_tasks'][0]['source_url'] === $img &&
+        $fallback_plan['image_import_remaining'] === 0,
+        'Picture SOURCE ' . $source_attribute . ' must discover the bound local image' );
+    $fallback_out = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $picture_fallback, array( 'expected_plan_sha256' => $fallback_plan['plan_sha256'] ) ) );
+    check( ! is_wp_error( $fallback_out ) && $fallback_out['pending_media'] === 0 &&
+        $fallback_out['rewritten_to_local_media'] === 1 &&
+        strpos( $fallback_out['html'], 'srcset="https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg 1x"' ) !== false &&
+        strpos( $fallback_out['html'], $img ) === false,
+        'Picture SOURCE ' . $source_attribute . ' must rewrite imported image to local srcset' );
+    unset( $picture_fallback['media_bindings'] );
+    $fallback_pending = MAD4B_SCP_Scrape_Transfer::plan( $picture_fallback );
+    $fallback_pending_out = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $picture_fallback, array( 'expected_plan_sha256' => $fallback_pending['plan_sha256'] ) ) );
+    check( ! is_wp_error( $fallback_pending_out ) &&
+        $fallback_pending_out['pending_media'] === 1 && !$fallback_pending_out['media_ready'] &&
+        strpos( $fallback_pending_out['html'], $img ) === false,
+        'Unimported picture SOURCE ' . $source_attribute . ' must stay pending without exposing remote image' );
+}
 $utf8 = $input;
 $utf8['media_bindings'] = array();
 $utf8['html'] = '<img src="' . $img . '" alt="' . str_repeat( 'جمال النيل', 40 ) . '">';
