@@ -28,10 +28,9 @@ for s in (
 ):
     assert s in update, "Missing WordPress native update lifecycle: "+s
 for s in (
-    "READY_FOR_OWNER_APPROVAL",
-    "MAD4B_SCP_Deployment_Binding_Native::status()",
     "MAD4B_SCP_Staging_Write_Authority::effective()",
     "mad4b/approval-plan",
+    "Use the compact governed write dispatcher",
     "'staging' !== sanitize_key",
     "self::ability_is_mounted( 'mad4b-write', $ability_name )",
 ):

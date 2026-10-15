@@ -462,30 +462,19 @@ final class MAD4B_SCP_Servers {
      * enrolled, current-authority Staging. An MCP tool is never an approval.
      */
     private static function chatgpt_approval_bootstrap_tools() {
-        // The planner must be discoverable *before* Write reconciliation:
-        // otherwise the UI advertises a pending ticket path while the MCP
-        // server returns Tool not found. Discovery never authorizes a ticket.
+        // Do not materialize an underlying Write schema merely because a
+        // fresh Staging Site Profile still lacks its host binding. Dynamic
+        // Skills and the generic ChatGPT catalog forbid that exposure.
+        // Use the compact governed write dispatcher for ticket planning,
+        // or the explicit WordPress admin POST for a local first binding.
+        // An untrusted tools/list is never the approval authority.
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
-            || ! method_exists( 'MAD4B_SCP_Site_Profile', 'origin_enrolled' )
-            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
-            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            || ! MAD4B_SCP_Staging_Write_Authority::effective() )
             return array();
-        $write_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
-            && MAD4B_SCP_Staging_Write_Authority::effective();
-        $initial_binding = false;
-        if ( ! $write_effective && class_exists( 'MAD4B_SCP_Deployment_Binding_Native' ) ) {
-            $binding = MAD4B_SCP_Deployment_Binding_Native::status();
-            $initial_binding = is_array( $binding )
-                && 'READY_FOR_OWNER_APPROVAL' === ( $binding['state'] ?? '' )
-                && ! empty( $binding['eligible'] );
-        }
-        if ( ! $write_effective && ! $initial_binding ) return array();
-        // Ticket creation remains subject to the original Ability permission,
-        // central authorization and exact target grant. No generic mutation
-        // becomes visible just because an initial host key is missing.
         $names = array( 'mad4b/approval-plan' );
-        if ( $write_effective && class_exists( 'MAD4B_SCP_AI_Approval' )
+        if ( class_exists( 'MAD4B_SCP_AI_Approval' )
             && MAD4B_SCP_AI_Approval::catalog_eligible() )
             $names[] = 'mad4b/approval-ai-decide';
         $result = array();

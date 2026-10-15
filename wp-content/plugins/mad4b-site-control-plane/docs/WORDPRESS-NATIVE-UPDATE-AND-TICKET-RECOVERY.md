@@ -12,7 +12,7 @@ This explicit continuation is also available after updating through the native W
 
 ## MCP approval planner discovery
 
-A strict initial-binding Staging state may publish the existing approval-plan tool while Write authority is awaiting reconciliation. This corrects a circular catalog gate that previously hid the only ticket-planning path. Visibility is not a grant: existing WordPress Ability permission callback, NHI grants, candidate/source validation, one-time tickets, owner decision and central mutation audit remain required. AI approval is not enabled through this exception.
+The direct ChatGPT tools/list deliberately does **not** publish the underlying approval-plan Write schema while authority is awaiting reconciliation. A live Dynamic Skills integration gate specifically rejects that exposure, including for a newly enrolled Staging Site Profile. The original governed **mad4b/write-execute** dispatcher is the permitted planning transport where its existing authority and grant preconditions are satisfied; otherwise use the exact authenticated WordPress Plugins POST for first-time **local** host-binding setup. Neither path automatically approves a ticket. The remote approval-plan ability, NHI grant, source candidate, owner decision and central mutation audit remain separately enforced.
 
 The MCP host's registered tools and any connected client's cached list are independent: a direct tool advertised by an older connector may still return Tool not found until the current host registers it and the client refreshes. The original governed write dispatcher remains the sanctioned transport; neither local setup nor this catalog patch bypasses a missing ticket.
 
