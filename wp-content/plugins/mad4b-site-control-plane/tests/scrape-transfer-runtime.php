@@ -210,6 +210,37 @@ $orphan_plan = MAD4B_SCP_Scrape_Transfer::plan( $orphan_binding );
 check( is_wp_error( $orphan_plan ) &&
     $orphan_plan->get_error_code() === 'mad4b_scrape_transfer_media_binding_invalid',
     'A proven attachment may not be bound to a media URL missing from the captured source HTML' );
+$relative_media = $input;
+$relative_media['html'] = '<img src="../assets/photo.jpg" alt="Relative media">';
+$relative_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_media );
+check( ! is_wp_error( $relative_plan ) &&
+    $relative_plan['image_import_remaining'] === 0 &&
+    $relative_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Relative ../ image URL must normalize to the actual imported source identity' );
+$relative_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+    $relative_media, array( 'expected_plan_sha256' => $relative_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $relative_rewrite ) && $relative_rewrite['pending_media'] === 0 &&
+    $relative_rewrite['rewritten_to_local_media'] === 1,
+    'Normalized ../ image must use the verified WordPress Media Library binding' );
+$relative_clamped = $input;
+unset( $relative_clamped['media_bindings'] );
+$relative_clamped['html'] = '<img src="../../../assets/photo.jpg" alt="Clamped root">';
+$clamped_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_clamped );
+check( ! is_wp_error( $clamped_plan ) &&
+    $clamped_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Dot-segment URL normalization must clamp traversal to origin root' );
+$relative_query = $relative_clamped;
+$relative_query['html'] = '<img src="../assets/photo.jpg?size=large" alt="Relative image query">';
+$query_image_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_query );
+check( ! is_wp_error( $query_image_plan ) &&
+    $query_image_plan['image_import_tasks'][0]['source_url'] === $img . '?size=large',
+    'Dot segments in image URLs must normalize while retaining query parameters' );
+$relative_root = $relative_clamped;
+$relative_root['html'] = '<img src="/deals/../assets/photo.jpg" alt="Root image">';
+$root_image_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_root );
+check( ! is_wp_error( $root_image_plan ) &&
+    $root_image_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Root-relative URLs with dot segments must use the canonical source image identity' );
 $none = $input;
 unset( $none['media_bindings'] );
 $pending = MAD4B_SCP_Scrape_Transfer::plan( $none );

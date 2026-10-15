@@ -87,6 +87,39 @@ final class MAD4B_SCP_Scrape_Transfer {
         }
     }
 
+    /**
+     * Normalize literal RFC 3986 dot path segments before matching source
+     * media identities. Do not decode percent escapes or alter queries.
+     */
+    private static function normalized_url_path( $url, $parts ) {
+        $path = (string) ( $parts['path'] ?? '' );
+        if ( '' === $path ) return $url;
+        $segments = explode( '/', $path );
+        $resolved = array(); $changed = false;
+        foreach ( $segments as $segment ) {
+            if ( '.' === $segment ) { $changed = true; continue; }
+            if ( '..' === $segment ) {
+                $changed = true;
+                if ( count( $resolved ) > 1 ) array_pop( $resolved );
+                continue;
+            }
+            $resolved[] = $segment;
+        }
+        if ( ! $changed ) return $url;
+        $normalized = implode( '/', $resolved );
+        if ( '' === $normalized || '/' !== substr( $normalized, 0, 1 ) )
+            $normalized = '/' . $normalized;
+        $last = end( $segments );
+        if ( ( '.' === $last || '..' === $last ) &&
+            '/' !== substr( $normalized, -1 ) ) $normalized .= '/';
+        return strtolower( (string) $parts['scheme'] ) . '://' .
+            (string) $parts['host'] .
+            ( isset( $parts['port'] ) ? ':' . (int) $parts['port'] : '' ) .
+            $normalized .
+            ( isset( $parts['query'] ) ? '?' . $parts['query'] : '' ) .
+            ( isset( $parts['fragment'] ) ? '#' . $parts['fragment'] : '' );
+    }
+
     private static function absolute( $raw, $page ) {
         if ( ! is_string( $raw ) || '' === trim( $raw ) || strlen( $raw ) > 2048 ) return '';
         $raw = trim( html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' ) );
@@ -106,7 +139,8 @@ final class MAD4B_SCP_Scrape_Transfer {
         $u = wp_parse_url( $raw );
         if ( ! is_array( $u ) || ! in_array( strtolower( (string) ( $u['scheme'] ?? '' ) ), array( 'https', 'http' ), true )
             || empty( $u['host'] ) || isset( $u['user'] ) || isset( $u['pass'] ) ) return '';
-        return $raw;
+        $normalized = self::normalized_url_path( $raw, $u );
+        return strlen( $normalized ) <= 2048 ? $normalized : '';
     }
 
     private static function same_origin( $a, $b ) {
