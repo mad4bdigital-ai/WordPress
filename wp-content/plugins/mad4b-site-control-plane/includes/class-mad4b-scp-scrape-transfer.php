@@ -202,6 +202,15 @@ final class MAD4B_SCP_Scrape_Transfer {
         return is_array( $chars ) ? implode( '', array_slice( $chars, 0, $limit ) ) : '';
     }
 
+    /** Resolve lazy image fallbacks without trusting placeholders or new URL schemes. */
+    private static function image_fallback_url( $processor, $source ) {
+        foreach ( array( 'data-src', 'data-original', 'data-lazy-src', 'src' ) as $attribute ) {
+            $url = self::absolute( $processor->get_attribute( $attribute ), $source );
+            if ( '' !== $url ) return $url;
+        }
+        return '';
+    }
+
     private static function srcset_candidate( $srcset, $source ) {
         if ( ! is_string( $srcset ) || '' === trim( $srcset ) ||
             strlen( $srcset ) > 4096 ) return '';
@@ -298,10 +307,7 @@ final class MAD4B_SCP_Scrape_Transfer {
                     $candidate = $processor->get_attribute( 'srcset' );
                 $url = self::srcset_candidate( $candidate, $source );
                 if ( '' === $url ) {
-                    $src = $processor->get_attribute( 'data-src' );
-                    if ( ! is_string( $src ) || '' === trim( $src ) )
-                        $src = $processor->get_attribute( 'src' );
-                    $url = self::absolute( $src, $source );
+                    $url = self::image_fallback_url( $processor, $source );
                 }
                 if ( '' === $url ) continue;
                 $original_alt = (string) ( $processor->get_attribute( 'alt' ) ?: '' );
@@ -524,10 +530,7 @@ final class MAD4B_SCP_Scrape_Transfer {
                     $set = $processor->get_attribute( 'srcset' );
                 $url = self::srcset_candidate( $set, $source );
                 if ( '' === $url ) {
-                    $src = $processor->get_attribute( 'data-src' );
-                    if ( ! is_string( $src ) || '' === trim( $src ) )
-                        $src = $processor->get_attribute( 'src' );
-                    $url = self::absolute( (string) ( $src ?: '' ), $source );
+                    $url = self::image_fallback_url( $processor, $source );
                 }
                 if ( '' === $url ) continue;
                 if ( isset( $local[$url] ) ) {

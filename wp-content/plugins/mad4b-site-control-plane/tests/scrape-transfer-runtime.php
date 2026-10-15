@@ -199,6 +199,24 @@ check( ! is_wp_error( $lazy_plan ) &&
     count( $lazy_plan['image_import_tasks'] ) === 1 &&
     $lazy_plan['image_import_tasks'][0]['source_url'] === $img,
     'Lazy image data-src should be imported instead of a placeholder' );
+foreach ( array( 'data-original', 'data-lazy-src' ) as $attribute ) {
+    $lazy_variant = $input;
+    unset( $lazy_variant['media_bindings'] );
+    $lazy_variant['html'] = '<img src="data:image/gif;base64,R0lG" ' . $attribute .
+        '="' . $img . '" alt="Nile image">';
+    $lazy_variant_plan = MAD4B_SCP_Scrape_Transfer::plan( $lazy_variant );
+    check( ! is_wp_error( $lazy_variant_plan ) &&
+        $lazy_variant_plan['image_import_remaining'] === 1 &&
+        $lazy_variant_plan['image_import_tasks'][0]['source_url'] === $img,
+        'Lazy image ' . $attribute . ' must be included in the governed media import manifest' );
+    $lazy_variant_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $lazy_variant, array( 'expected_plan_sha256' => $lazy_variant_plan['plan_sha256'] ) ) );
+    check( ! is_wp_error( $lazy_variant_rewrite ) &&
+        $lazy_variant_rewrite['pending_media'] === 1 &&
+        !$lazy_variant_rewrite['media_ready'] &&
+        !$lazy_variant_rewrite['ready_for_draft_review'],
+        'Lazy image ' . $attribute . ' must not falsely claim media completeness' );
+}
 $picture = $input;
 $large = 'https://example-competitor.test/assets/photo-large.jpg';
 $picture['html'] = '<picture><source srcset="' . $img . ' 300w, ' . $large .
