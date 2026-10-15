@@ -109,9 +109,14 @@ final class MAD4B_SCP_Scrape_Transfer {
 
     private static function same_origin( $a, $b ) {
         $x = wp_parse_url( $a ); $y = wp_parse_url( $b );
-        return is_array( $x ) && is_array( $y )
-            && strtolower( (string) ( $x['host'] ?? '' ) ) === strtolower( (string) ( $y['host'] ?? '' ) )
-            && (int) ( $x['port'] ?? 0 ) === (int) ( $y['port'] ?? 0 );
+        if ( ! is_array( $x ) || ! is_array( $y ) ) return false;
+        $scheme = strtolower( (string) ( $x['scheme'] ?? '' ) );
+        if ( ! in_array( $scheme, array( 'http', 'https' ), true ) ||
+            $scheme !== strtolower( (string) ( $y['scheme'] ?? '' ) ) ) return false;
+        $default_port = 'https' === $scheme ? 443 : 80;
+        return '' !== (string) ( $x['host'] ?? '' )
+            && strtolower( (string) $x['host'] ) === strtolower( (string) ( $y['host'] ?? '' ) )
+            && (int) ( $x['port'] ?? $default_port ) === (int) ( $y['port'] ?? $default_port );
     }
 
     /** Read an actual existing public local WordPress target, never invent it. */

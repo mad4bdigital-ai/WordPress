@@ -159,6 +159,25 @@ check( ! is_wp_error( $review_rewrite ) &&
     $review_rewrite['rewritten_internal_links'] === 1 &&
     strpos( $review_rewrite['html'], 'https://staging.our-site.test/products/exact-route/' ) !== false,
     'Only reviewed link bindings may map to existing local WordPress permalinks' );
+$original_permalink = $GLOBALS['posts'][7]['permalink'];
+$GLOBALS['posts'][7]['permalink'] = 'http://staging.our-site.test/products/exact-route/';
+$insecure_target = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+check( is_wp_error( $insecure_target ) &&
+    $insecure_target->get_error_code() === 'mad4b_scrape_transfer_target_missing',
+    'An HTTP permalink must never be accepted as the origin of an HTTPS WordPress site' );
+$GLOBALS['posts'][7]['permalink'] = 'https://staging.our-site.test:443/products/exact-route/';
+$default_https_port = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+check( ! is_wp_error( $default_https_port ) &&
+    count( $default_https_port['internal_link_map'] ) === 1,
+    'Explicit HTTPS default port must be equivalent to the implicit default port' );
+$GLOBALS['posts'][7]['permalink'] = $original_permalink;
+$original_attachment_url = $GLOBALS['posts'][19]['permalink'];
+$GLOBALS['posts'][19]['permalink'] = 'http://staging.our-site.test/wp-content/uploads/2026/10/import.jpg';
+$insecure_media = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( is_wp_error( $insecure_media ) &&
+    $insecure_media->get_error_code() === 'mad4b_scrape_transfer_media_provenance_missing',
+    'An HTTP attachment cannot claim to be local media on an HTTPS WordPress origin' );
+$GLOBALS['posts'][19]['permalink'] = $original_attachment_url;
 $rejected = $reviewed; $rejected['link_overrides'][0]['reviewed'] = false;
 check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $rejected ) ),
     'Manual link missing review must not be accepted' );
