@@ -43,7 +43,8 @@ final class MAD4B_SCP_Servers {
 		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
-	public static function core_tools( $server_id ) {
+	/** Core declarations before dynamically mounted Admin tools are added. */
+	private static function declared_core_tools( $server_id ) {
         $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
             && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
             ? MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() : array();
@@ -157,6 +158,11 @@ final class MAD4B_SCP_Servers {
 			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
 			$tools[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
 		}
+		return array_values( array_unique( $tools ) );
+	}
+
+	public static function core_tools( $server_id ) {
+		$tools = self::declared_core_tools( $server_id );
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
 			// Dynamically declared Admin mutations must still be verified on the
@@ -752,17 +758,6 @@ final class MAD4B_SCP_Servers {
 		return null;
 	}
 
-	// Resolve structural provider identity; runtime mount/certification remains a separate live authorization gate.
-	public static function provider_for_capability_descriptor( $server_id, $ability_name ) {
-		$server_id = sanitize_key( (string) $server_id );
-		$ability_name = (string) $ability_name;
-		if ( 'mad4b-write' === $server_id ) {
-			if ( in_array( $ability_name, self::core_write_candidates(), true ) && self::registered_mutation_ability( $ability_name ) ) return 'core';
-			$candidates = self::registered_adapter_write_candidates();
-			if ( isset( $candidates[ $ability_name ] ) && self::registered_mutation_ability( $ability_name ) ) return (string) $candidates[ $ability_name ];
-		}
-		return self::provider_for_ability( $server_id, $ability_name );
-	}
 
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );

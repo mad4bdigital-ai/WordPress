@@ -63,7 +63,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "sha256": "06afea7a1400f9afafcdeaea6e3033d730ae7b15572a2fb9ba92126482b2317a"
+      "sha256": "ed7ef7f427f1beb93c12c0bb5baaba03ceb220d71bc85b55d24ed4440e6b896c"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
@@ -71,7 +71,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
-      "sha256": "c3c19c075823ed3848e29fec753f0e1978cfc13815ad3af18cb9d3881486408c"
+      "sha256": "3c91b90d206cc04dc7f0a44d627a4f25e1cf74e5b2e11e5815dedf48301a7d68"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-health-projection.php",

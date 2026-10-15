@@ -208,4 +208,34 @@ trait MAD4B_SCP_Server_Write_Catalog {
 		if ( $cacheable ) self::$adapter_write_projection_cache = $result;
 		return $result;
 	}
+
+	// Resolve structural provider identity; runtime mount/certification remains a separate live authorization gate.
+	public static function provider_for_capability_descriptor( $server_id, $ability_name ) {
+		$server_id = sanitize_key( (string) $server_id );
+		$ability_name = (string) $ability_name;
+		if ( 'mad4b-write' === $server_id ) {
+			if ( in_array( $ability_name, self::core_write_candidates(), true ) && self::registered_mutation_ability( $ability_name ) ) return 'core';
+			$candidates = self::registered_adapter_write_candidates();
+			if ( isset( $candidates[ $ability_name ] ) && self::registered_mutation_ability( $ability_name ) ) return (string) $candidates[ $ability_name ];
+		}
+		if ( in_array( $server_id, array( 'mad4b-content', 'mad4b-admin' ), true ) ) {
+			// Canonical descriptor identity must not enumerate runtime Write eligibility
+			// for every Content/Admin ability. Those live gates still run in
+			// provider_for_ability(), original materialization and authorization.
+			if ( in_array( $ability_name, self::declared_core_tools( $server_id ), true ) ) return 'core';
+			if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return null;
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			$surface = self::surface_for_server( $server_id );
+			foreach ( $registry->all() as $adapter ) {
+				$map = $adapter->ability_names();
+				if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) && in_array( $ability_name, $map[ $surface ], true ) ) {
+					return method_exists( $adapter, 'provider_key' ) ? $adapter->provider_key() : sanitize_key( (string) $adapter->id() );
+				}
+			}
+			return null;
+		}
+		return self::provider_for_ability( $server_id, $ability_name );
+	}
+
 }
