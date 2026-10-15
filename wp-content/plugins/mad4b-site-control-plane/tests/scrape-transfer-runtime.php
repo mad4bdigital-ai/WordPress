@@ -183,6 +183,7 @@ check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $rejected ) ),
     'Manual link missing review must not be accepted' );
 $term_page = $input;
 $term_page['html'] = '<p><a href="/collections/shared-category">Browse category</a></p>';
+unset( $term_page['media_bindings'] );
 $term_plan = MAD4B_SCP_Scrape_Transfer::plan( $term_page );
 check( ! is_wp_error( $term_plan ) &&
     count( $term_plan['internal_link_map'] ) === 0 &&
@@ -196,6 +197,19 @@ check( ! is_wp_error( $ambiguous_term ) &&
     count( $ambiguous_term['unmatched_competitor_links'] ) === 2,
     'Post vs public taxonomy slug conflict must require explicit selection.' );
 array_pop( $GLOBALS['taxonomy_terms'] );
+$query_only = $input;
+$query_only['html'] = '<p><a href="?offer=river">River offer</a></p><img src="' . $img . '">';
+$query_plan = MAD4B_SCP_Scrape_Transfer::plan( $query_only );
+check( ! is_wp_error( $query_plan ) &&
+    $query_plan['unmatched_competitor_links'][0] ===
+        'https://example-competitor.test/deals/special-ship?offer=river',
+    'A query-only link must resolve against the full current source page, not its parent directory' );
+$orphan_binding = $input;
+$orphan_binding['html'] = '<p>Page without a captured image</p>';
+$orphan_plan = MAD4B_SCP_Scrape_Transfer::plan( $orphan_binding );
+check( is_wp_error( $orphan_plan ) &&
+    $orphan_plan->get_error_code() === 'mad4b_scrape_transfer_media_binding_invalid',
+    'A proven attachment may not be bound to a media URL missing from the captured source HTML' );
 $none = $input;
 unset( $none['media_bindings'] );
 $pending = MAD4B_SCP_Scrape_Transfer::plan( $none );
@@ -237,6 +251,7 @@ foreach ( array( 'data-original', 'data-lazy-src' ) as $attribute ) {
         'Lazy image ' . $attribute . ' must not falsely claim media completeness' );
 }
 $picture = $input;
+unset( $picture['media_bindings'] );
 $large = 'https://example-competitor.test/assets/photo-large.jpg';
 $picture['html'] = '<picture><source srcset="' . $img . ' 300w, ' . $large .
     ' 1200w"><img src="data:image/gif;base64,R0lG" alt="River deck"></picture>';

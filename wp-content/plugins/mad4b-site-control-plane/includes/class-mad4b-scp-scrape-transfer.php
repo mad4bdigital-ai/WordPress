@@ -97,6 +97,8 @@ final class MAD4B_SCP_Scrape_Transfer {
         if ( isset( $p['port'] ) ) $origin .= ':' . (int) $p['port'];
         if ( 0 === strpos( $raw, '//' ) ) $raw = strtolower( $p['scheme'] ) . ':' . $raw;
         elseif ( '/' === substr( $raw, 0, 1 ) ) $raw = $origin . $raw;
+        elseif ( '?' === substr( $raw, 0, 1 ) )
+            $raw = $origin . ( (string) ( $p['path'] ?? '' ) ?: '/' ) . $raw;
         elseif ( false === strpos( $raw, '://' ) ) {
             $dir = isset( $p['path'] ) ? dirname( $p['path'] ) : '/';
             $raw = $origin . rtrim( str_replace( '\\', '/', $dir ), '/' ) . '/' . $raw;
@@ -377,13 +379,16 @@ final class MAD4B_SCP_Scrape_Transfer {
             $explicit[$url] = $target;
         }
         $attached = array();
+        $captured_image_urls = array_column( $parsed['images'], 'source_url' );
         foreach ( $parsed['bindings'] as $row ) {
             if ( ! is_array( $row ) || ! is_int( $row['attachment_id'] ?? null ) ||
                 ! is_string( $row['source_url'] ?? null ) )
                 return new WP_Error( 'mad4b_scrape_transfer_media_binding_invalid', 'Exact existing attachment required.' );
             $url = self::absolute( $row['source_url'], $source );
-            if ( '' === $url || isset( $attached[$url] ) )
-                return new WP_Error( 'mad4b_scrape_transfer_media_binding_invalid', 'Invalid duplicate media binding.' );
+            if ( '' === $url || isset( $attached[$url] ) ||
+                ! in_array( $url, $captured_image_urls, true ) )
+                return new WP_Error( 'mad4b_scrape_transfer_media_binding_invalid',
+                    'Media binding must target a unique image captured in the exact source HTML.' );
             $target = self::media_target( $url, $row['attachment_id'] );
             if ( '' === $target )
                 return new WP_Error( 'mad4b_scrape_transfer_media_provenance_missing',
