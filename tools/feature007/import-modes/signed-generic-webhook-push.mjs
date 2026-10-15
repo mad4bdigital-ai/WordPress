@@ -11,12 +11,39 @@
  */
 import {createHmac,randomBytes} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
+import {isIP} from 'node:net';
+
+// This endpoint carries signed business input. Validate its actual URL parts,
+// not a regex matching substrings of credentials or an attacker-controlled host.
+// An operator must also enforce public DNS resolution at the egress boundary.
+function validIntakeUrl(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 || !raw.startsWith('https://'))
+    return false;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password ||
+        parsed.search || parsed.hash || parsed.port ||
+        parsed.pathname !== '/wp-json/mad4b/v1/activity-import/intake')
+      return false;
+    const host = parsed.hostname.toLowerCase();
+    const labels = host.split('.');
+    if (isIP(host) || host.length > 253 || host.endsWith('.') ||
+        labels.length < 2 ||
+        labels.some(label => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)) ||
+        ['localhost', 'local', 'internal', 'test', 'invalid', 'example', 'onion']
+          .includes(labels[labels.length - 1]))
+      return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 const [file] = process.argv.slice(2);
 const url = process.env.MAD4B_INTAKE_URL || '';
 const secret = process.env.MAD4B_INTAKE_SECRET || '';
 const site = process.env.MAD4B_SITE_UUID || '';
 const keyId = process.env.MAD4B_INTAKE_KEY_ID || '';
-if (!file || !/^https:\/\/[^\s]+\/wp-json\/mad4b\/v1\/activity-import\/intake$/.test(url) ||
+if (!file || !validIntakeUrl(url) ||
     secret.length < 32 || !/^[0-9a-f-]{20,64}$/i.test(site) ||
     !/^[a-z][a-z0-9_-]{2,60}$/.test(keyId))
   throw new Error('Configure exact HTTPS intake, site UUID and managed site secret');
