@@ -83,6 +83,9 @@ $def=$GLOBALS['aci03_registered']['mad4b/aci01-opportunity-preview'];
 check($def['meta']['annotations']['readonly']===true&&$def['meta']['mcp']['surface']==='read','read only');
 check($def['input_schema']['additionalProperties']===false,'schema bounded');
 $input=array('job_id'=>'11111111-1111-4111-8111-111111111111','post_type'=>'post','goal'=>'Useful market guide');
+// Direct compiler fixtures must use the same complete scope supplied by preview().
+$intake_input=array('post_type'=>$input['post_type'],
+    'brand_id'=>'b1','locale'=>'ar','market'=>'EG');
 $out=$cls::preview($input);
 check($out['status']==='NEEDS_EVIDENCE'&&$out['review_status']==='NEEDS_REVIEW','no auto approval');
 check($out['candidate_kind']==='OpportunityHypothesis_BlueprintCandidate','candidate type');
@@ -105,20 +108,20 @@ check($cls::preview($input)['status']==='DENIED','denied evidence');
 MAD4B_SCP_ACI01_Evidence_Preview::$denied=false;
 check($cls::preview(array_merge($input,array('run_shell'=>true)))['status']==='DENIED','unknown field');
 check($cls::preview(array_merge($input,array('goal'=>array())))['status']==='DENIED','invalid goal');
-check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input),
+check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input),
     array_merge(MAD4B_SCP_ACI01_Evidence_Preview::preview($input),
         array('scope'=>array_merge(MAD4B_SCP_ACI01_Evidence_Preview::preview($input)['scope'],array('brand_id'=>'wrong')))),
     $input['goal'])['status']==='DENIED','cross-brand');
 $badt= MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
 $badt['scope']['binding']['restore_epoch']=2;
-check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input), $badt, $input['goal'],
+check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input), $badt, $input['goal'],
     MAD4B_SCP_ACI01_Semantic_Recipe::current(array('content_type'=>'article'),
-        MAD4B_SCP_ACI01_Intake_Preview::preview($input)))['status']==='DENIED', 'restore epoch mismatch');
+        MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input)))['status']==='DENIED', 'restore epoch mismatch');
 $badtype=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
 $badtype['scope']['content_type']='comparison';
-check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($input), $badtype, $input['goal'],
+check($cls::compile(MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input), $badtype, $input['goal'],
     MAD4B_SCP_ACI01_Semantic_Recipe::current(array('content_type'=>'article'),
-        MAD4B_SCP_ACI01_Intake_Preview::preview($input)))['status']==='DENIED', 'job content type mismatch');
+        MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input)))['status']==='DENIED', 'job content type mismatch');
 
 $handoff=$out['blueprint_handoff'];
 check($handoff['contract']==='mad4b.aci01.blueprint-handoff.v1',
@@ -135,7 +138,7 @@ check(in_array('context_artifact_id',$handoff['required_input_keys'],true)
     'handoff lists required native pipeline fields');
 check(in_array('research_rights_and_freshness',$handoff['unverified_prerequisites'],true),
     'observed research is not provider rights');
-$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($input);
+$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input);
 $semantic=MAD4B_SCP_ACI01_Semantic_Recipe::current(
     array('content_type'=>'article'),$intake);
 $evidence=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);
@@ -276,7 +279,7 @@ MAD4B_SCP_Content_Experience_Profiles::$variants=array();
 // non-dispatchable Blueprint candidate rather than promoted twice.
 $primary='22222222-2222-4222-8222-222222222222';
 $duplicate_id='44444444-4444-4444-8444-444444444444';
-$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($input);
+$intake=MAD4B_SCP_ACI01_Intake_Preview::preview($intake_input);
 $semantic=MAD4B_SCP_ACI01_Semantic_Recipe::current(
     array('content_type'=>'article'),$intake);
 $evidence=MAD4B_SCP_ACI01_Evidence_Preview::preview($input);

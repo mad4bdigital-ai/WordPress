@@ -35,7 +35,7 @@ def fixture():
             identity(36475, post_type="properties", locale="en", translation_group="props"),
             identity(36005, post_type="properties", locale="fr", translation_group="props"),
             identity(2288, kind="term", taxonomy="package_category", id_scheme="term_id", locale="en"),
-            identity(2294, kind="term", taxonomy="package_category", id_scheme="term_id", locale="fr")]))
+            identity(2294, kind="term", taxonomy="package_category", id_scheme="term_id", locale="fr")])
 
 def invalid(bundle, reason):
     try:
