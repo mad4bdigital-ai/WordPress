@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 986,
+  "changed_file_count": 987,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -572,7 +572,7 @@
     },
     {
       "id": "browser-acceptance-operator-setup-20261008",
-      "semantic_unit": "Nonsecret wp-admin browser provider setup, read-only operator preference projection and fail-closed PHP 7.4/8.3 contract",
+      "semantic_unit": "Nonsecret wp-admin browser provider setup, read-only operator preference projection and fail-closed PHP 7.4/8.3 contract, with validated provider availability and bounded catalog registration",
       "revert_boundary": "Revert admin setup, preference projection, PHP negative fixture and dedicated Browser Acceptance CI coverage together; external browser runner and credentials stay outside WordPress",
       "certification": "exact_head",
       "path_globs": [
@@ -581,7 +581,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-provider-registry.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-core-contract.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/catalog-executor-discovery-boundary-runtime.php"
       ]
     },
     {
@@ -2226,6 +2227,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "217207bffa134ab382e490f13a69b1efb689bbbb97a151153a8a19b6058324df",
+  "changed_paths_sha256": "fefee9327fac3ea23eaae94c3f9e3c00b25777b0017a4c60339776a199b38dd2",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

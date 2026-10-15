@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "22ad69e27bdf671cbceb64f48d376408bbc3d42226a5a88fcc0f021e069e751a",
-      "bytes": 48094
+      "sha256": "ae6974674c22e2d7aabcad3c660b34f0f6f544be02c8ccb55b8f482531d1130c",
+      "bytes": 48206
     }
   ],
   "repository_foundations": [

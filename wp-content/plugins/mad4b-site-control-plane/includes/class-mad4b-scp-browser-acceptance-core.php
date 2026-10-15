@@ -63,6 +63,11 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 		) );
 	}
 
+	/** Registration availability only; explicit capabilities() owns site discovery. */
+	public static function registered_provider_count() {
+		return count( self::registry()->all() );
+	}
+
 	public static function capabilities() {
 		$inventory = self::registry()->inventory();
 		$registered = self::registry()->all();

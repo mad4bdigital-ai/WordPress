@@ -176,6 +176,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/catalog-executor-discovery-boundary-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-heartbeat-runtime.php
 
       - name: Auto-Reconcile registry safety and worker policy

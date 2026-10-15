@@ -9,7 +9,7 @@ $mad4b_ci_http = array();
 $mad4b_ci_emit = static function ( array $row ) {
     fwrite( STDERR, 'MAD4B_BOOTSTRAP_PROFILE ' . json_encode( $row, JSON_UNESCAPED_SLASHES ) . PHP_EOL );
 };
-foreach ( array( 'muplugins_loaded', 'plugins_loaded', 'after_setup_theme', 'init', 'wp_loaded', 'wp_abilities_api_init' ) as $mad4b_ci_hook ) {
+foreach ( array( 'muplugins_loaded', 'plugins_loaded', 'after_setup_theme', 'init', 'wp_loaded', 'wp_abilities_api_init', 'mcp_adapter_init' ) as $mad4b_ci_hook ) {
     $mad4b_ci_phase = null;
     WP_CLI::add_wp_hook( $mad4b_ci_hook, static function () use ( &$mad4b_ci_phase ) {
         $mad4b_ci_phase = microtime( true );

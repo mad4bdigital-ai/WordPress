@@ -447,9 +447,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	private static function executor_status( $executor ) {
 		$executor = sanitize_key( (string) $executor );
 		if ( 'external_browser_agent' === $executor ) {
-			if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) || ! method_exists( 'MAD4B_SCP_Browser_Acceptance_Core', 'capabilities' ) ) return array( 'available' => false, 'state' => 'browser_acceptance_core_unavailable' );
-			$capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
-			$count = is_array( $capabilities ) && isset( $capabilities['provider_count'] ) ? (int) $capabilities['provider_count'] : 0;
+			if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) || ! method_exists( 'MAD4B_SCP_Browser_Acceptance_Core', 'registered_provider_count' ) ) return array( 'available' => false, 'state' => 'browser_acceptance_core_unavailable' );
+			$count = MAD4B_SCP_Browser_Acceptance_Core::registered_provider_count();
 			return array( 'available' => $count > 0, 'state' => $count > 0 ? 'browser_provider_available' : 'browser_provider_waiting' );
 		}
 		if ( 'wordpress_cron_maintenance_worker' === $executor ) {

@@ -109,7 +109,7 @@ final class MAD4B_SCP_Servers {
 					'mad4b/staging-write-candidate-binding-audit',
 					'mad4b/runtime-convergence-apply',
 				),
-				class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
+				'mad4b-enrollment' === $server_id && class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
 					: array(),
 				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
