@@ -100,7 +100,7 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
             . '</li></ol>';
-        echo '<h2>' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<h2 id="mad4b-staging-deployment-identity">' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false )
             ? MAD4B_SCP_Deployment_Binding_Setup::status() : new WP_Error( 'binding_setup_not_mounted' );
         if ( is_wp_error( $binding ) ) {

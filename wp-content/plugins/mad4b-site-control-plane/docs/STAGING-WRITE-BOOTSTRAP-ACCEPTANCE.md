@@ -8,7 +8,7 @@
 
 - `mad4b/staging-write-owner-review` is a bounded, read-only plan review. It yields a server-computed `review_digest`; discovery is **not authorization**.
 - `mad4b/staging-write-owner-attest` records short-lived intent for one explicitly enrolled Staging owner, requires normal ChatGPT CIMD OAuth with authority Step-Up, and **does not create grants, tickets, a release certificate or deployment binding**.
-- `owner_intent_sha256` is the site-secret-HMAC-bound receipt field required by `mad4b/staging-write-authority-convergence-apply`. Claims are atomic and single-use (including if subsequent work fails).
+- An exact owner-approved apply accepts **either** `owner_review_digest` (same-request signer path) **or** the legacy site-secret-HMAC-bound `owner_intent_sha256` receipt, never both. Both paths require verified enrolled owner OAuth Step-Up, exact reviewed plan, signed audit and an atomic single-use claim. The review digest itself is not a mutation authority.
 - The owner intent binds the **entire exact current plan identity**: site UUID, Site Profile revision/digest, source SHA, build fingerprint, package manifest digest, artifact identity and plan SHA.
 - The only pre-Write transport bootstrap exception is the **owner intent attestation** Ability. All normal writes still require the governed Write authority.
 - Production, Developer, Breakglass, arbitrary provider writes and cross-site reuse remain ineligible.
@@ -32,10 +32,10 @@ A hermetic PASS does not certify a deployed MCP request or a signed artifact.
 
 1. Read current installed source and Site Profile identity. Compare to **certified** package SHA; never automatically apply a Draft PR.
 2. Review fresh Write Convergence Plan; require `ready_to_apply=true` with `hard_blockers=[]`.
-3. Read the owner review, obtain exact `review_digest`, and obtain an independently authorized owner decision. Owner attestation lasts ten minutes, requires one explicitly enrolled user, and cannot be replayed.
-4. Execute **only** the reviewed Staging Write convergence with exact plan inputs, one-time owner intent receipt, OAuth Step-Up, current fingerprint and the exact confirmation. Any error requires independent reconciliation; no blind retry.
+3. Read the owner review, obtain exact `review_digest`, and obtain an independently authorized owner decision; the same exact reviewed digest may be sent directly with the Step-Up apply, removing the separate manual receipt transfer. The legacy explicit attestation path remains available.
+4. Execute **only** the reviewed Staging Write convergence with exact plan inputs, `owner_review_digest` **or** legacy one-time owner intent receipt, OAuth Step-Up, current fingerprint and the exact confirmation. The server attests and claims in the same request for the reviewed-digest path. Any error requires independent reconciliation; no blind retry.
 5. Read Write Authority and candidate binding **in a new MCP request**, compare current source/profile and granted inventory.
-6. Plan the native Deployment Binding for that specific site, obtain its **separate** approval ticket and owner decision, apply, and verify in a new request. Owner Write intent is **not** a native-binding approval ticket.
+6. Plan the native Deployment Binding for that specific site, obtain its **separate** approval ticket and owner decision, apply, and verify in a new request. Owner Write intent is **not** a native-binding approval ticket. **If binding is performed before Write, regenerate the Write plan because the Site Profile revision changes.**
 7. Confirm Operational Integrity, then review quarantined legacy Context source ownership and source folders. Google provider revocation remains a separate lifecycle, especially on ETG.
 8. Perform the real Browser/Context and release acceptance. Keep Production untouched until independent evidence is signed.
 

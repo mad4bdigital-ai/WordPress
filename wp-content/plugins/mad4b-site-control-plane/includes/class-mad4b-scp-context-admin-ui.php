@@ -1247,21 +1247,39 @@ final class MAD4B_SCP_Context_Admin_UI {
             __( 'Review this folder and approve the source policy', 'mad4b-site-control-plane' ),
         );
         $map = array(
-            'exact_staging_site_required' => array( 0, 'overview', __( 'The current Site Profile or its Staging authority is not ready. Verify the site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
-            'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' => array( 0, 'overview', __( 'Deployment scope has not been verified. Review the operational remediation and deployment identity status first.', 'mad4b-site-control-plane' ) ),
-            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'overview', __( 'The source cannot be attached until this Staging site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
+            'exact_staging_site_required' => array( 0, 'site-profile', __( 'The current Site Profile or its Staging authority is not ready. Verify the site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'Deployment scope has not been verified. Review the operational remediation and deployment identity status first.', 'mad4b-site-control-plane' ) ),
+            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation', __( 'The source cannot be attached until this Staging site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
             'BRAND_PROFILE_REQUIRED' => array( 1, 'overview', __( 'Create or verify the Brand Profile before choosing a governed source.', 'mad4b-site-control-plane' ) ),
             'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources', __( 'Historical source or asset ownership needs review. Existing quarantined records must not be assigned to the selected folder automatically.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive', __( 'Reconnect or recover Google access after any pending revocation is resolved. Read-only access is enough for a read-only source.', 'mad4b-site-control-plane' ) ),
             'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive', __( 'Managed library needs the separately consented Google write grant. You can choose Read-only while that grant is unavailable.', 'mad4b-site-control-plane' ) ),
             'FOLDER_SELECTION_REQUIRED' => array( 3, 'google-drive', __( 'Choose a specific folder rather than the Drive root.', 'mad4b-site-control-plane' ) ),
             'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources', __( 'This folder is already registered. Review its existing policy instead of creating a duplicate.', 'mad4b-site-control-plane' ) ),
-            'mad4b_source_onboarding_preflight_missing' => array( 0, 'overview', __( 'The read-only onboarding preflight is not loaded in this installed build. Verify the exact plugin package and reopen this page; no save is possible until the gate is available.', 'mad4b-site-control-plane' ) ),
+            'mad4b_source_onboarding_preflight_missing' => array( 0, 'operational-remediation', __( 'The read-only onboarding preflight is not loaded in this installed build. Verify the exact plugin package and reopen this page; no save is possible until the gate is available.', 'mad4b-site-control-plane' ) ),
         );
-        $match = isset( $map[ $state ] ) ? $map[ $state ] : array( 0, 'overview',
+        $match = isset( $map[ $state ] ) ? $map[ $state ] : array( 0, '',
             __( 'The live source preflight is not yet eligible. Review the technical reason and complete the indicated recovery before saving.', 'mad4b-site-control-plane' ) );
         return array( 'steps' => $steps, 'active' => $match[0],
             'tab' => $match[1], 'message' => $match[2] );
+    }
+
+    /**
+     * Resolve only concrete, registered admin destinations. A missing or
+     * unknown recovery state must not silently send an operator to Overview.
+     */
+    private static function source_onboarding_setup_url( $state, $destination ) {
+        if ( 'site-profile' === $destination ) {
+            return admin_url( 'admin.php?page=mad4b-control-plane-site-profile' );
+        }
+        if ( 'operational-remediation' === $destination ) {
+            return admin_url( 'admin.php?page=mad4b-operational-remediation' )
+                . '#mad4b-staging-deployment-identity';
+        }
+        if ( in_array( $destination, array( 'overview', 'google-drive', 'sources', 'review' ), true ) ) {
+            return self::tab_url( $destination );
+        }
+        return '';
     }
 
 	private static function render_folder_browser() {
@@ -1323,12 +1341,19 @@ final class MAD4B_SCP_Context_Admin_UI {
                 : (string) ( $preflight['next_ability'] ?? '' );
             $reason = is_array( $preflight ) ? (string) ( $preflight['reason_code'] ?? '' ) : '';
             $guide = self::source_onboarding_guidance( $state );
+            $setup_url = self::source_onboarding_setup_url( $state, $guide['tab'] );
+            $setup_label = 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' === $state
+                ? __( 'Open Staging deployment binding instructions', 'mad4b-site-control-plane' )
+                : __( 'Open the required setup step', 'mad4b-site-control-plane' );
             echo '<div class="notice notice-warning inline" role="status"><p><strong>'
                 . esc_html__( 'Source folder selected — save is waiting for preflight.', 'mad4b-site-control-plane' )
                 . '</strong> ' . esc_html( $guide['message'] ) . '</p>'
                 . '<p>' . esc_html__( 'The options below are a preview only. No folder or Drive file was changed, and no write approval was saved.', 'mad4b-site-control-plane' ) . '</p>'
-                . '<p><a class="button button-secondary" href="' . esc_url( self::tab_url( $guide['tab'] ) ) . '">'
-                . esc_html__( 'Open the required setup step', 'mad4b-site-control-plane' ) . '</a></p></div>';
+                . ( '' !== $setup_url
+                    ? '<p><a class="button button-secondary" href="' . esc_url( $setup_url ) . '">'
+                        . esc_html( $setup_label ) . '</a></p>'
+                    : '<p>' . esc_html__( 'No verified setup destination is available for this preflight state. Review the technical reason below.', 'mad4b-site-control-plane' ) . '</p>' )
+                . '</div>';
             echo '<div class="mad4b-scp-next-step is-attention"><h4>'
                 . esc_html__( 'Source onboarding — one step at a time', 'mad4b-site-control-plane' )
                 . '</h4><ol>';
