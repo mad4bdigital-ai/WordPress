@@ -49,6 +49,14 @@ def sha(raw: bytes) -> str:
 def verify_archive(archive: Path, canonical_receipt: dict, report: dict) -> None:
     require(archive.is_file() and not archive.is_symlink() and
             archive.stat().st_size <= 16 * 1024 * 1024, "archive_missing_or_oversized")
+    source = report.get("source_commit_sha")
+    require(isinstance(source, str) and SHA40.fullmatch(source) is not None and
+            canonical_receipt.get("source_commit_sha") == source,
+            "canonical_source_mismatch")
+    require(canonical_receipt.get("contract") == "mad4b.deterministic-control-plane-package.v1" and
+            canonical_receipt.get("archive_bytes") == archive.stat().st_size and
+            canonical_receipt.get("archive_compression") == "stored",
+            "canonical_archive_identity_invalid")
     require(canonical_receipt.get("archive_sha256") == report.get("archive_sha256") and
             canonical_receipt.get("archive_sha256") == sha(archive.read_bytes()),
             "archive_digest_mismatch")
@@ -71,6 +79,10 @@ def verify_archive(archive: Path, canonical_receipt: dict, report: dict) -> None
                     stat.S_IFMT(item.external_attr >> 16) == stat.S_IFREG,
                     "unsafe_archive_entry")
         p = json.loads(z.read("mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json"))
+        require(isinstance(p, dict) and p.get("source_commit_sha") == source,
+                "embedded_source_mismatch")
+        require(p.get("package_manifest_digest") == report.get("package_manifest_digest"),
+                "embedded_manifest_identity_mismatch")
         entries = p.get("package_files")
         require(isinstance(entries, list) and
                 len(entries) == canonical_receipt.get("manifest_file_count"),

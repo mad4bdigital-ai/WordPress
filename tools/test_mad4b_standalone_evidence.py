@@ -127,39 +127,81 @@ class RunnerReceiptTests(unittest.TestCase):
                 key.public_key().verify(sig, raw + b"tamper")
             self.assertNotIn("lease_token", raw.decode())
 
+    def archive_fixture(self, out, provenance_source=None):
+        file_name = "includes/test.php"
+        raw = b"<?php return true;\n"
+        digest = hashlib.sha256(raw).hexdigest()
+        manifest = (file_name + chr(0) + str(len(raw)) + chr(0) + digest + "\n").encode()
+        msha = hashlib.sha256(manifest).hexdigest()
+        provenance = {"package_files": [{"path": file_name,
+            "sha256": digest, "bytes": len(raw)}],
+            "build_fingerprint": "d" * 64,
+            "source_commit_sha": self.head if provenance_source is None else provenance_source,
+            "package_manifest_digest": msha}
+        archive = out / "sample.zip"
+        import stat
+        with zipfile.ZipFile(archive, "w") as z:
+            for name, data in (
+                ("mad4b-site-control-plane/" + file_name, raw),
+                ("mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json",
+                 json.dumps(provenance).encode()),
+            ):
+                item = zipfile.ZipInfo(name)
+                item.compress_type = zipfile.ZIP_STORED
+                item.external_attr = (stat.S_IFREG | 0o644) << 16
+                z.writestr(item, data)
+        self.report["archive_sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.report["package_manifest_digest"] = msha
+        canonical = {"archive_sha256": self.report["archive_sha256"],
+            "contract": "mad4b.deterministic-control-plane-package.v1",
+            "source_commit_sha": self.head, "archive_bytes": archive.stat().st_size,
+            "archive_compression": "stored",
+            "build_fingerprint": self.report["build_fingerprint"],
+            "package_manifest_digest": msha, "archive_file_count": 2,
+            "manifest_file_count": 1}
+        return archive, canonical
+
     def test_archive_hash_manifest_verified_before_signing(self):
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp)
-            file_name = "includes/test.php"
-            raw = b"<?php return true;\n"
-            digest = hashlib.sha256(raw).hexdigest()
-            manifest = (file_name + chr(0) + str(len(raw)) + chr(0) + digest + "\n").encode()
-            msha = hashlib.sha256(manifest).hexdigest()
-            provenance = {"package_files": [{"path": file_name,
-                "sha256": digest, "bytes": len(raw)}],
-                "build_fingerprint": "d" * 64}
-            archive = out / "sample.zip"
-            import stat
-            with zipfile.ZipFile(archive, "w") as z:
-                for name, data in (
-                    ("mad4b-site-control-plane/" + file_name, raw),
-                    ("mad4b-site-control-plane/MAD4B-BUILD-PROVENANCE.json",
-                     json.dumps(provenance).encode()),
-                ):
-                    item = zipfile.ZipInfo(name)
-                    item.compress_type = zipfile.ZIP_STORED
-                    item.external_attr = (stat.S_IFREG | 0o644) << 16
-                    z.writestr(item, data)
-            self.report["archive_sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
-            self.report["package_manifest_digest"] = msha
-            canonical = {"archive_sha256": self.report["archive_sha256"],
-                "build_fingerprint": self.report["build_fingerprint"],
-                "package_manifest_digest": msha, "archive_file_count": 2,
-                "manifest_file_count": 1}
+            archive, canonical = self.archive_fixture(Path(tmp))
             signer.verify_archive(archive, canonical, self.report)
             canonical["archive_sha256"] = "f" * 64
             with self.assertRaisesRegex(signer.Refusal, "archive_digest_mismatch"):
                 signer.verify_archive(archive, canonical, self.report)
+
+    def test_receipt_cannot_relabel_archive_from_another_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive, canonical = self.archive_fixture(Path(tmp), "f" * 40)
+            # ZIP hash and all content fingerprints remain internally valid.
+            with self.assertRaisesRegex(signer.Refusal, "embedded_source_mismatch"):
+                signer.verify_archive(archive, canonical, self.report)
+
+    def test_canonical_receipt_must_match_report_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive, canonical = self.archive_fixture(Path(tmp))
+            for source in ("f" * 40, "", None):
+                with self.subTest(source=source):
+                    canonical["source_commit_sha"] = source
+                    with self.assertRaisesRegex(signer.Refusal, "canonical_source_mismatch"):
+                        signer.verify_archive(archive, canonical, self.report)
+
+    def test_report_source_must_be_an_exact_sha(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive, canonical = self.archive_fixture(Path(tmp))
+            canonical["source_commit_sha"] = self.report["source_commit_sha"] = "x" * 40
+            with self.assertRaisesRegex(signer.Refusal, "canonical_source_mismatch"):
+                signer.verify_archive(archive, canonical, self.report)
+
+    def test_canonical_archive_metadata_cannot_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive, canonical = self.archive_fixture(Path(tmp))
+            for field, wrong in (("contract", "fixture/other"),
+                                 ("archive_bytes", canonical["archive_bytes"] + 1),
+                                 ("archive_compression", "deflated")):
+                with self.subTest(field=field):
+                    changed = dict(canonical, **{field: wrong})
+                    with self.assertRaisesRegex(signer.Refusal, "canonical_archive_identity_invalid"):
+                        signer.verify_archive(archive, changed, self.report)
 
 if __name__ == "__main__":
     unittest.main()
