@@ -226,16 +226,46 @@ jobs:
       - name: Enforce PR change boundary
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_BRANCH: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          BASE_SHA="$PR_BASE_SHA"
           test -n "$BASE_SHA"
           git cat-file -e "$BASE_SHA^{commit}" || git fetch --no-tags origin "$BASE_SHA"
           MERGE_BASE=$(git merge-base "$BASE_SHA" HEAD)
           test -n "$MERGE_BASE"
+
+          # An integration hub uses its baseline-owned feature policy. The
+          # source branch cannot grant itself paths or replace the verifier.
+          BOUNDARY_MODE=$(python - <<'PY_BOUNDARY'
+          import json, os, subprocess
+          base = os.environ["PR_BASE_SHA"]
+          catalog = json.loads(subprocess.check_output([
+              "git", "show", f"{base}:.github/mad4b-feature-boundary-grants.json"
+          ], text=True))
+          if (catalog.get("contract") != "mad4b.repository-feature-boundary-grants.v1"
+                  or catalog.get("default_policy") != "deny"):
+              raise SystemExit("ETG_BOUNDARY_BASELINE_GRANT_INVALID")
+          hubs = catalog["grants"]["007"]["integration_hubs"]
+          registered = any(row["branch"] == os.environ["PR_HEAD_BRANCH"] for row in hubs)
+          print("baseline_feature" if registered else "etg")
+          PY_BOUNDARY
+          )
+          if [ "$BOUNDARY_MODE" = baseline_feature ]; then
+            TRUSTED_DIR=$(mktemp -d)
+            trap 'rm -rf "$TRUSTED_DIR"' EXIT
+            git show "$BASE_SHA:tools/verify_feature_boundary.py" > "$TRUSTED_DIR/verify_feature_boundary.py"
+            python "$TRUSTED_DIR/verify_feature_boundary.py" \
+              --base "$BASE_SHA" --head HEAD \
+              --head-branch "$PR_HEAD_BRANCH" --pr-number "$PR_NUMBER"
+            exit 0
+          fi
           git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
-              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|specs/008-dynamic-content-runtime-hardening/*|.specify/*|.github/workflows/feature-007-pre-staging-hybrid-audit.yml|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tools/capture-functional-gap-contract-evidence.py|tools/evaluate-functional-gap-contract-promotion.py|tools/browser-acceptance/*|tests/premium-provider-semantic-review-request-contract.py) ;;
+              wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|specs/008-dynamic-content-runtime-hardening/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tools/capture-functional-gap-contract-evidence.py|tools/evaluate-functional-gap-contract-promotion.py|tools/browser-acceptance/*|tests/premium-provider-semantic-review-request-contract.py) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
             esac
           done
