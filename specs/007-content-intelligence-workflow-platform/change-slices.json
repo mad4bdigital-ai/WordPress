@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "698ed304048948890a884deed2c646a68978e434",
-  "changed_file_count": 922,
+  "changed_file_count": 924,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -203,7 +203,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/remote-operation-parity-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-authority-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-scope-delegation-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-scope-delegation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/google-manual-revocation-admission-runtime.php"
       ]
     },
     {
@@ -270,7 +271,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-settings-persistence-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-ai-agent-review-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-human-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-admin-preflight-loader-runtime.php"
       ]
     },
     {
@@ -2236,6 +2238,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "448b77b6f2499d31bf08124b2304bca9333401b9f9e5eb803f07b98fa55f01f3",
+  "changed_paths_sha256": "8dfe158703a387cdb44dabd7fa6fe027b8720bc4e66a247d40b8350280260c28",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
