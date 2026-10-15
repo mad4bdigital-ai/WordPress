@@ -117,7 +117,8 @@ assert handle_save.count("self::persisted_readback_matches( $input, $result, $st
 native_tail = handle_save.rsplit("if ( is_wp_error( $result ) ) self::redirect", 1)[1]
 assert "MAD4B_SCP_Site_Profile::reset_cache();" in native_tail
 assert "mad4b_site_profile_readback_mismatch" in native_tail
-assert native_tail.index("persisted_readback_matches") < native_tail.index("self::redirect( 'saved' )")
+assert native_tail.index("persisted_readback_matches") < native_tail.index("self::redirect( 'config_written_verified_new_request_required'")
+assert "'saved'" in native_tail.split("self::redirect( 'config_written_verified_new_request_required'", 1)[1], "successful post-commit redirect must remain behind exact readback"
 
 # Site Profile save is now audit-committed: the visible record is first written
 # as pending_audit through byte-exact CAS, then finalized only after audit.
@@ -149,9 +150,16 @@ for marker in [
     "mad4b-settings-ajax-form",
     "data-mad4b-settings-feedback",
     "data-mad4b-one-time-confirm",
-    "intentionally resets after save/reload",
+    "mad4b-context-delegation-confirmation is-hidden",
+    "data-mad4b-original-mode",
+    "data-mad4b-original-agent",
+    "syncDelegationConfirmation",
+    "Future changes to the delegated agent require a new explicit confirmation.",
 ]:
     assert marker in context_admin, marker
+
+assert "intentionally resets after save/reload" not in context_admin
+assert "needs=!!(changed&&mode&&mode.value===\"human_and_ai\")" in context_admin
 
 for marker in [
     "private static function clear_option_read_cache( $name, $aggressive = false )",

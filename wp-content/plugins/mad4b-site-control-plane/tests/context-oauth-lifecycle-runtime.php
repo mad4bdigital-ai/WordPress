@@ -13,6 +13,9 @@ $GLOBALS['mad4b_context_option_cache'] = array( 'notoptions' => array(), 'ignore
 $GLOBALS['mad4b_context_transients'] = array();
 $GLOBALS['mad4b_context_token_responses'] = array();
 $GLOBALS['mad4b_context_revoke_status'] = 200;
+$GLOBALS['mad4b_context_revoke_queue'] = array();
+$GLOBALS['mad4b_context_revoke_body'] = '';
+$GLOBALS['mad4b_context_revocation_attempts'] = array();
 $GLOBALS['mad4b_context_last_token_request'] = array();
 $GLOBALS['mad4b_managed_requests'] = array();
 $GLOBALS['mad4b_managed_redeem_responses'] = array();
@@ -156,7 +159,9 @@ function wp_remote_post( $url, $args = array() ) {
 		return array( 'response' => array( 'code' => 200 ), 'body' => json_encode( $data ) );
 	}
 	if ( false !== strpos( $url, 'oauth2.googleapis.com/revoke' ) ) {
-		return array( 'response' => array( 'code' => (int) $GLOBALS['mad4b_context_revoke_status'] ), 'body' => '' );
+		$GLOBALS['mad4b_context_revocation_attempts'][] = isset( $args['body']['token'] ) ? (string) $args['body']['token'] : '';
+		$code = ! empty( $GLOBALS['mad4b_context_revoke_queue'] ) ? array_shift( $GLOBALS['mad4b_context_revoke_queue'] ) : $GLOBALS['mad4b_context_revoke_status'];
+		return array( 'response' => array( 'code' => (int) $code ), 'body' => $GLOBALS['mad4b_context_revoke_body'] );
 	}
 	return new WP_Error( 'unexpected_post', 'Unexpected HTTP POST target.' );
 }
@@ -292,8 +297,58 @@ mad4b_oauth_assert( 'mad4b_google_drive_readonly_downgrade_requires_revoke' === 
 $still_write = MAD4B_SCP_Google_Drive_Context::connection_status();
 mad4b_oauth_assert( ! empty( $still_write['write_available'] ) && 'read_write' === $still_write['access_mode'], 'Failed downgrade must leave the prior governed connection unchanged until revoke.', $still_write );
 
+// A 400 is not proof of remote revocation. Both token paths must fail closed
+// without returning any bearer token or exposing usable provider authority.
+$GLOBALS['mad4b_context_revoke_queue'] = array( 400, 400 );
+$GLOBALS['mad4b_context_revoke_body'] = json_encode( array( 'error' => 'invalid_token', 'error_description' => 'provider-secret-do-not-project' ) );
+$initial_revoke = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( is_wp_error( $initial_revoke )
+    && 'mad4b_google_drive_remote_revocation_unconfirmed' === $initial_revoke->get_error_code(),
+    'Two Google 400 responses must preserve remote revocation uncertainty.', $initial_revoke );
+$pending = MAD4B_SCP_Google_Drive_Context::connection_status();
+mad4b_oauth_assert( array_column( $pending['revocation_attempts'], 'credential_type' ) === array( 'refresh', 'access' )
+    && array_column( $pending['revocation_attempts'], 'http_status' ) === array( 400, 400 )
+    && array_column( $pending['revocation_attempts'], 'provider_error' ) === array( 'invalid_token', 'invalid_token' ),
+    'Both rejected credential types retain bounded provider diagnostics without proving revocation.' );
+mad4b_oauth_assert( ! empty( $pending['revocation_pending'] )
+    && empty( $pending['read_available'] ) && empty( $pending['write_available'] )
+    && empty( $pending['refresh_required'] ),
+    'Unconfirmed remote revoke remains locally disabled without prompting an OAuth refresh.', $pending );
+$pending_public = json_encode( MAD4B_SCP_Google_Drive_Context::public_connection_status() );
+mad4b_oauth_assert( false === strpos( $pending_public, 'provider-secret' ), 'Raw provider descriptions must never escape.' );
+$safe_attempts = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'safe_revocation_attempts' );
+$safe_attempts->setAccessible( true );
+$malformed = $safe_attempts->invoke( null, array(
+    array( 'credential_type' => 'refresh', 'http_status' => 400, 'provider_error' => array( 'secret' ) ),
+    array( 'credential_type' => 'access', 'http_status' => 400, 'provider_error' => 'reflected-bearer-secret' ),
+    array( 'credential_type' => 'refresh', 'http_status' => 400, 'provider_error' => 'invalid_token' ) ) );
+mad4b_oauth_assert( 2 === count( $malformed ) && array_column( $malformed, 'provider_error' ) === array( '', '' ),
+    'Unknown and non-scalar provider codes are redacted and attempts are bounded.' );
+$GLOBALS['mad4b_context_revoke_body'] = '';
+mad4b_oauth_assert( false === strpos( $pending_public, 'refresh-write-fixture' )
+    && false === strpos( $pending_public, 'access-write-fixture' ),
+    'Pending revoke public status must never expose bearer credentials.' );
+// A transient 500 does not prove the refresh-token revoke outcome, so
+// it MUST NOT automatically submit a second independent access token.
+$before_uncertain_attempts = count( $GLOBALS['mad4b_context_revocation_attempts'] );
+$GLOBALS['mad4b_context_revoke_queue'] = array( 500, 200 );
+$uncertain_revoke = MAD4B_SCP_Google_Drive_Context::disconnect();
+mad4b_oauth_assert( is_wp_error( $uncertain_revoke )
+    && 'mad4b_google_drive_remote_revocation_unconfirmed' === $uncertain_revoke->get_error_code(),
+    'Google HTTP 500 must remain revocation-unconfirmed.', $uncertain_revoke );
+mad4b_oauth_assert( count( $GLOBALS['mad4b_context_revocation_attempts'] ) === $before_uncertain_attempts + 1,
+    'An ambiguous Google HTTP 500 must not trigger a second revoke attempt using a different token.' );
+$uncertain_status = MAD4B_SCP_Google_Drive_Context::connection_status();
+mad4b_oauth_assert( ! empty( $uncertain_status['revocation_pending'] )
+    && 'google_revocation_http_500' === $uncertain_status['revocation_error'],
+    'An uncertain Google response must preserve disabled pending status and exact diagnostic.', $uncertain_status );
+// A later approved retry can recover when the refresh token returns 400
+// but its distinct access token returns an explicit Google HTTP 200.
+$GLOBALS['mad4b_context_revoke_queue'] = array( 400, 200 );
 $disconnected = MAD4B_SCP_Google_Drive_Context::disconnect();
-mad4b_oauth_assert( ! is_wp_error( $disconnected ), 'Confirmed Google revoke must disconnect cleanly.', $disconnected );
+mad4b_oauth_assert( ! is_wp_error( $disconnected ), 'Revoke retry through access-token fallback must disconnect cleanly.', $disconnected );
+mad4b_oauth_assert( array_slice( $GLOBALS['mad4b_context_revocation_attempts'], -2 ) === array( 'refresh-write-fixture', 'access-write-fixture' ),
+    'Revoke retry must attempt only the exact prior refresh and distinct access token, in order.' );
 mad4b_oauth_assert( empty( $disconnected['connected'] ), 'Confirmed revoke must remove the local encrypted token.', $disconnected );
 mad4b_oauth_assert( ! empty( $disconnected['remote_revocation_attempted'] ) && ! empty( $disconnected['remote_revocation_confirmed'] ), 'Disconnect must expose confirmed remote revocation evidence.', $disconnected );
 mad4b_oauth_assert( false === get_option( MAD4B_SCP_Google_Drive_Context::TOKEN_OPTION, false ), 'Confirmed revoke must leave no local token option.' );
@@ -642,7 +697,14 @@ $record_rejection = new ReflectionMethod( 'MAD4B_SCP_Google_Drive_Context', 'rec
 $record_rejection->setAccessible( true ); $record_rejection->invoke( null, $rejected_grant );
 $scope_evidence = MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status();
 mad4b_oauth_assert( ! empty( $scope_evidence ) && false === $scope_evidence['tokens_persisted'] && false === $scope_evidence['authorizing'], 'Rejection evidence claimed token storage or authority.' );
+mad4b_oauth_assert( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_RULE_REVISION === (int) $scope_evidence['rule_revision'], 'Scope diagnostic is not bound to active normalization rules.' );
 $sealed_scope_evidence = get_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION );
+$legacy_scope_evidence = $sealed_scope_evidence;
+unset( $legacy_scope_evidence['seal'], $legacy_scope_evidence['rule_revision'] );
+$legacy_scope_evidence['seal'] = hash_hmac( 'sha256', wp_json_encode( $legacy_scope_evidence ), wp_salt( 'auth' ) );
+update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $legacy_scope_evidence );
+mad4b_oauth_assert( array() === MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status(), 'Legacy scope diagnostic survived a normalization-rule revision.' );
+update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $sealed_scope_evidence );
 $altered = $sealed_scope_evidence; $altered['unsupported_scopes'] = array( 'FORGED_SCOPE' ); update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $altered );
 mad4b_oauth_assert( array() === MAD4B_SCP_Google_Drive_Context::scope_diagnostic_status(), 'Tampered scope diagnostic was accepted.' );
 update_option( MAD4B_SCP_Google_Drive_Context::SCOPE_DIAGNOSTIC_OPTION, $sealed_scope_evidence );

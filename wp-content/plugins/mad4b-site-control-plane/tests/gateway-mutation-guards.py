@@ -10,7 +10,7 @@ mutations = [
     ('content/admin lane omission', 'class-mad4b-scp-unified-capability-gateway.php', "'content' => 'mad4b/write-execute',", "'content' => 'mad4b/missing-dispatch',", 'gateway-regression-runtime.php'),
     ('invalid bearer cookie fallback', 'class-mad4b-scp-ability-catalog-transport.php', "$request->get_header( 'authorization' ) && ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()", 'false', 'gateway-regression-runtime.php'),
     ('classification pin ignored', 'class-mad4b-scp-abilities.php', 'private function validate_prepared_classification( $ability_name, array $input ) {', 'private function validate_prepared_classification( $ability_name, array $input ) { return true;', 'gateway-regression-runtime.php'),
-    ('eager schema search', 'class-mad4b-scp-unified-capability-gateway.php', '$ability = wp_get_ability( $ability_name );', '$ability = wp_get_ability( $ability_name ); $ability->get_input_schema();', 'gateway-regression-runtime.php'),
+    ('eager schema search', 'class-mad4b-scp-capability-search-index.php', '$ability = wp_get_ability( $name );', '$ability = wp_get_ability( $name ); $ability->get_input_schema();', 'gateway-regression-runtime.php'),
     ('cross-blog registry reuse', 'class-mad4b-scp-unified-capability-gateway.php', 'public static function runtime_blog_matches() {', 'public static function runtime_blog_matches() { return true;', 'gateway-regression-runtime.php'),
     ('ability build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', 'count( $abilities ) > $max_abilities', 'false', 'catalog-transport-runtime.php'),
     ('byte build budget removed', 'class-mad4b-scp-ability-catalog-transport.php', '$definition_bytes > $max_bytes', 'false', 'catalog-transport-runtime.php'),
@@ -45,7 +45,7 @@ mutations = [
     ('not-started execution-entry proof ignored', 'class-mad4b-scp-execution-state-view.php', "'not_started' === $mutation_state && $target_execution_known && false === $target_execution_entered", "'not_started' === $mutation_state", 'execution-state-view-runtime.php'),
     ('cron cleanup omitted', 'class-mad4b-scp-catalog-lifecycle.php', "wp_clear_scheduled_hook( 'mad4b_catalog_gc' );", '/* omitted */', 'catalog-lifecycle-runtime.php'),
 ]
-files = ['class-mad4b-scp-execution-state-view.php', 'class-mad4b-scp-identifiers.php', 'class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-semantic-content-field-contracts.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-canonicalization.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-entropy.php', 'class-mad4b-scp-crypto-profile.php', 'class-mad4b-scp-time-policy.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-projection-hotset-recommender.php', 'class-mad4b-scp-mcp-adapter-compatibility.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
+files = ['class-mad4b-scp-execution-state-view.php', 'class-mad4b-scp-identifiers.php', 'class-mad4b-scp-identity-context.php', 'class-mad4b-scp-context-preflight.php', 'class-mad4b-scp-semantic-content-field-contracts.php', 'class-mad4b-scp-ability-contract-inspector.php', 'class-mad4b-scp-canonicalization.php', 'class-mad4b-scp-capability-descriptor-registry.php', 'class-mad4b-scp-preparation-receipt.php', 'class-mad4b-scp-entropy.php', 'class-mad4b-scp-crypto-profile.php', 'class-mad4b-scp-time-policy.php', 'class-mad4b-scp-distributed-lock.php', 'class-mad4b-scp-unified-capability-gateway.php', 'class-mad4b-scp-capability-search-index.php', 'class-mad4b-scp-chatgpt-tool-projection.php', 'class-mad4b-scp-projection-hotset-recommender.php', 'class-mad4b-scp-mcp-adapter-compatibility.php', 'class-mad4b-scp-ability-catalog-transport.php', 'class-mad4b-scp-catalog-object-store.php', 'class-mad4b-scp-abilities.php', 'class-mad4b-scp-catalog-lifecycle.php']
 with tempfile.TemporaryDirectory(prefix='mad4b-gateway-mutants-') as tmp:
     target = Path(tmp)
     (target / 'includes').mkdir()
@@ -92,6 +92,7 @@ runpy.run_path(str(root / 'tests' / 'capability-fabric-bulk-hardening-contract.p
 for compatibility_fixture in (
     'runtime-compatibility-profile-runtime.php',
     'runtime-compatibility-profile-cron.php',
+    'original-mutation-mount-runtime.php',
 ):
     result = subprocess.run(
         ['php', str(root / 'tests' / compatibility_fixture)],

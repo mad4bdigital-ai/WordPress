@@ -15,6 +15,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	const CONTRACT = 'mad4b.oauth-resource-bridge.v5';
 	const READ_SCOPE = 'mad4b:read';
 	const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+	const AI_AUTO_ALL_SCOPE = 'mad4b:approval:auto:all';
 	const BREAKGLASS_SCOPE = 'server:mad4b-breakglass';
 	const DEVELOPER_SCOPE = 'server:mad4b-developer';
 	const DEVELOPER_BREAKGLASS_SCOPE = 'server:mad4b-developer-breakglass';
@@ -132,7 +133,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::BREAKGLASS_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+			'scopes_supported' => array_merge(
+				array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::BREAKGLASS_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+				'staging' === $environment ? array( self::AI_AUTO_ALL_SCOPE ) : array()
+			),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => self::resources_are_https(),
@@ -205,7 +209,10 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'resources' => self::resource_identifiers(),
 			'metadata_url' => self::metadata_url(),
 			'authorization_server_metadata_urls' => self::authorization_server_metadata_urls(),
-			'scopes_supported' => array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::BREAKGLASS_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+			'scopes_supported' => array_merge(
+				array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE, self::BREAKGLASS_SCOPE, self::DEVELOPER_SCOPE, self::DEVELOPER_BREAKGLASS_SCOPE ),
+				'staging' === $environment ? array( self::AI_AUTO_ALL_SCOPE ) : array()
+			),
 			'wp_user_id' => self::configured_user_id( self::primary_issuer() ),
 			'wp_user_capable' => $wp_users_ready,
 			'https' => $https,
@@ -259,6 +266,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			&& ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::oauth_enabled() );
 		if ( ! $portable_only && hash_equals( self::resource_identifier(), $resource ) && self::authority_step_up_scope_available() ) {
 			$scopes = array( self::READ_SCOPE, self::AUTHORITY_STEP_UP_SCOPE );
+			if ( 'staging' === self::current_environment() ) $scopes[] = self::AI_AUTO_ALL_SCOPE;
 			if ( self::breakglass_scope_available() ) $scopes[] = self::BREAKGLASS_SCOPE;
 			return $scopes;
 		}
@@ -639,6 +647,11 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 			'wp_user_id' => $user_id,
 			'origin' => $developer_resource ? 'mcp_developer' : 'mcp',
 		);
+		// Backfill an ALREADY linked account on its first verified MCP call;
+		// no reconnect, manually copied App ID or Site Profile write needed.
+		if ( ! $developer_resource && class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ) {
+			MAD4B_SCP_ChatGPT_Auto_Binding::observe_verified_mcp_request( $resource, $user_id );
+		}
 		return $result;
 	}
 

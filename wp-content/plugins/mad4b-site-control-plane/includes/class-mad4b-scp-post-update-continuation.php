@@ -61,7 +61,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		}
 		$target_identity = self::target_identity( $target );
 		if ( is_wp_error( $target_identity ) ) return $target_identity;
-		$release = self::release_identity( $target );
+		$release = self::release_identity( $target, $channel, $update_plan_sha256 );
 		if ( is_wp_error( $release ) ) return $release;
 
 		$plan = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
@@ -287,6 +287,134 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return self::status();
 	}
 
+
+	/**
+	 * Read-only preflight for automatic observed-package reconciliation.
+	 *
+	 * This method never creates a permit and never mutates grants, subjects,
+	 * agents or candidate binding.  It reuses the exact continuation delta
+	 * classifier so future scenario discovery cannot weaken ZERO_DELTA.
+	 */
+	public static function observed_reconciliation_preflight( array $trusted_target ) {
+		$result = array(
+			'contract' => 'mad4b.observed-reconciliation-preflight.v1',
+			'disposition' => 'HARD_BLOCK',
+			'eligible' => false,
+			'reasons' => array(),
+			'authority_delta' => 'zero_required',
+			'mutation_class' => 'candidate_binding_only',
+			'production_allowed' => false,
+			'breakglass_allowed' => false,
+			'grant_mutation_allowed' => false,
+			'subject_mutation_allowed' => false,
+			'agent_mutation_allowed' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'retryable' => false,
+			'retry_after_seconds' => 0,
+		);
+
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			: '';
+		if ( 'staging' !== $environment ) {
+			$result['reasons'][] = 'production_or_environment_changed';
+			return $result;
+		}
+		if ( self::breakglass_enabled() ) {
+			$result['reasons'][] = 'breakglass_excluded';
+			return $result;
+		}
+
+		$target = self::target_identity( $trusted_target );
+		if ( is_wp_error( $target ) ) {
+			$result['reasons'][] = sanitize_key( (string) $target->get_error_code() );
+			return $result;
+		}
+		$release = self::release_identity( $trusted_target );
+		if ( is_wp_error( $release ) ) {
+			$result['reasons'][] = sanitize_key( (string) $release->get_error_code() );
+			return $result;
+		}
+		if ( ! self::identity_matches( $target, self::current_identity() ) ) {
+			$result['reasons'][] = 'package_identity_mismatch';
+			return $result;
+		}
+
+		$physical = class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+			? MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status()
+			: array();
+		if ( empty( $physical['runtime_manifest_match'] ) || ! self::identity_matches( $target, $physical ) ) {
+			$result['reasons'][] = 'package_integrity_unverified';
+			return $result;
+		}
+
+		$binding = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
+			: array();
+		if ( empty( $binding['required'] ) || ! empty( $binding['match'] ) ) {
+			$result['disposition'] = 'NO_OP';
+			$result['eligible'] = true;
+			$result['reasons'][] = empty( $binding['required'] ) ? 'candidate_binding_not_required' : 'candidate_binding_already_current';
+			return $result;
+		}
+
+		$baseline = get_option( self::BASELINE_OPTION, array() );
+		if ( ! self::baseline_valid( $baseline ) ) {
+			$result['disposition'] = 'REVIEW_REQUIRED';
+			$result['reasons'][] = 'sealed_baseline_missing_or_expired';
+			return $result;
+		}
+
+		$current = self::read_permit();
+		if ( self::permit_active( $current, true ) || ( is_array( $current ) && 'executing' === ( $current['state'] ?? '' ) ) ) {
+			$result['disposition'] = 'DEFER';
+			$result['reasons'][] = 'continuation_already_active';
+			return $result;
+		}
+
+		$preview = array(
+			'target_identity' => $target,
+			'release' => $release,
+			'site' => $baseline['site'],
+			'actor' => $baseline['actor'],
+			'previous_binding' => $baseline['previous_binding'],
+			'write_snapshot' => $baseline['write_snapshot'],
+			'transport_snapshot' => $baseline['transport_snapshot'],
+			'write_contract_fingerprint' => $baseline['write_contract_fingerprint'],
+		);
+		$delta = self::classify_current_delta( $preview );
+		$result['classification'] = isset( $delta['classification'] ) ? (string) $delta['classification'] : self::CLASS_HARD;
+		$result['reasons'] = isset( $delta['reasons'] ) && is_array( $delta['reasons'] )
+			? array_values( array_unique( array_map( 'sanitize_key', $delta['reasons'] ) ) )
+			: array( 'delta_classification_unavailable' );
+
+		if ( self::CLASS_HARD === $result['classification'] ) {
+			$result['disposition'] = 'HARD_BLOCK';
+			return $result;
+		}
+		if ( self::CLASS_REVIEW === $result['classification'] ) {
+			$result['disposition'] = 'REVIEW_REQUIRED';
+			return $result;
+		}
+
+		$skills = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification' )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status()
+			: array();
+		if ( empty( $skills['ready'] ) || empty( $skills['build_identity_current'] ) || ! self::identity_matches( $target, $skills ) ) {
+			$result['disposition'] = 'DEFER';
+			$result['reasons'] = array( 'current_build_skill_certification_pending' );
+			$result['retryable'] = true;
+			$result['retry_after_seconds'] = 15;
+			return $result;
+		}
+
+		$result['disposition'] = 'AUTO_REBIND';
+		$result['eligible'] = true;
+		$result['reasons'] = array();
+		return $result;
+	}
+
 	private static function baseline_seal( array $baseline ) { unset( $baseline['seal'] ); return hash_hmac( 'sha256', self::digest( $baseline ), wp_salt( 'auth' ) ); }
 	private static function baseline_valid( $baseline ) {
 		return is_array( $baseline ) && self::BASELINE_CONTRACT === ( $baseline['contract'] ?? '' ) && is_string( $baseline['seal'] ?? null ) && preg_match( '/^[a-f0-9]{64}$/D', $baseline['seal'] )
@@ -451,7 +579,7 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		$current_identity_result = self::current_identity();
 		$current_identity = is_wp_error( $current_identity_result ) ? array( 'available' => false ) : $current_identity_result;
 		if ( is_wp_error( $current_identity_result ) || ! self::identity_matches( $permit['target_identity'], $current_identity_result ) ) $hard[] = 'package_identity_mismatch';
-		if ( ! self::release_trusted( isset( $permit['release'] ) ? $permit['release'] : array() ) ) $hard[] = 'release_trust_invalid';
+		if ( ! self::continuation_release_valid( $permit ) ) $hard[] = 'release_trust_invalid';
 
 		$site = isset( $permit['site'] ) && is_array( $permit['site'] ) ? $permit['site'] : array();
 		$current_revision = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::revision() : 0;
@@ -664,7 +792,12 @@ final class MAD4B_SCP_Post_Update_Continuation {
 		return $identity;
 	}
 
-	private static function release_identity( array $target ) {
+	/**
+	 * Release verdicts remain mandatory everywhere except the already claimed
+	 * owner-specific local WP-native Staging install. This narrower authority
+	 * carries the existing write binding; it never certifies a release.
+	 */
+	private static function release_identity( array $target, $channel = '', $update_plan_sha256 = '' ) {
 		$release = array(
 			'archive_sha256' => isset( $target['archive_sha256'] ) ? strtolower( trim( (string) $target['archive_sha256'] ) ) : '',
 			'release_verdict_run_id' => isset( $target['release_verdict_run_id'] ) ? absint( $target['release_verdict_run_id'] ) : 0,
@@ -672,8 +805,83 @@ final class MAD4B_SCP_Post_Update_Continuation {
 			'release_root_trust_verified' => ! empty( $target['release_root_trust_verified'] ),
 			'published_from_master' => ! empty( $target['published_from_master'] ),
 		);
-		if ( ! self::release_trusted( $release ) ) return new WP_Error( 'mad4b_post_update_continuation_release_untrusted', 'Continuation requires an immutable archive bound to a successful trusted master Release Verdict.' );
-		return $release;
+		if ( self::release_trusted( $release ) ) return $release;
+		if ( ! self::owner_self_certified_execution_active( $channel ) )
+			return new WP_Error( 'mad4b_post_update_continuation_release_untrusted',
+				'Continuation requires trusted master release evidence or a currently claimed exact owner Staging self-install.' );
+		$identity = self::target_identity( $target );
+		if ( is_wp_error( $identity ) ) return $identity;
+		$site = MAD4B_SCP_Site_Profile::status();
+		$plan = strtolower( trim( (string) $update_plan_sha256 ) );
+		if ( ! is_array( $site ) || ! preg_match( '/^[a-f0-9]{64}$/D', $plan )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', $release['archive_sha256'] )
+			|| ! preg_match( '/^[a-f0-9]{40}$/D', $identity['source_commit_sha'] )
+			|| empty( $site['site_uuid'] ) || empty( $site['profile_digest'] )
+			|| empty( $site['canonical_origin'] ) )
+			return new WP_Error( 'mad4b_post_update_continuation_self_certified_evidence_invalid',
+				'Exact verified local package, approved update plan and enrolled Site Profile required.' );
+		return array(
+			'evidence_mode' => 'site_self_certified_staging',
+			'archive_sha256' => $release['archive_sha256'],
+			'source_commit_sha' => $identity['source_commit_sha'],
+			'build_fingerprint' => $identity['build_fingerprint'],
+			'package_manifest_digest' => $identity['package_manifest_digest'],
+			'artifact_identity' => $identity['artifact_identity'],
+			'update_plan_sha256' => $plan,
+			'site_uuid' => strtolower( (string) $site['site_uuid'] ),
+			'profile_digest' => strtolower( (string) $site['profile_digest'] ),
+			'origin' => untrailingslashit( (string) $site['canonical_origin'] ),
+			'release_certified' => false,
+			'production_allowed' => false,
+			'owner_step_up_verified_at_prepare' => true,
+			'governed_execution_claim_verified_at_prepare' => true,
+		);
+	}
+
+	private static function owner_self_certified_execution_active( $channel ) {
+		if ( 'governed_staging_candidate_upload' !== (string) $channel
+			|| ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval' )
+			|| ! class_exists( 'MAD4B_SCP_Authorization' )
+			|| ! method_exists( 'MAD4B_SCP_Authorization', 'execution_callback_started' )
+			|| ! MAD4B_SCP_Authorization::execution_callback_started( MAD4B_SCP_WP_Native_Self_Approval::APPLY )
+			|| ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE )
+			|| ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+			|| ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID )
+			|| ! current_user_can( 'manage_options' ) || ! current_user_can( 'update_plugins' )
+			|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+			return false;
+		return true;
+	}
+
+	/** Re-check the *sealed*, site/plan/source-bound permit after replacing PHP. */
+	private static function continuation_release_valid( array $permit ) {
+		$release = isset( $permit['release'] ) && is_array( $permit['release'] ) ? $permit['release'] : array();
+		if ( ! isset( $release['evidence_mode'] ) ) return self::release_trusted( $release );
+		if ( 'site_self_certified_staging' !== $release['evidence_mode']
+			|| 'governed_staging_candidate_upload' !== ( $permit['channel'] ?? '' )
+			|| ! empty( $release['release_certified'] ) || ! empty( $release['production_allowed'] )
+			|| empty( $release['owner_step_up_verified_at_prepare'] )
+			|| empty( $release['governed_execution_claim_verified_at_prepare'] ) )
+			return false;
+		$identity = isset( $permit['target_identity'] ) && is_array( $permit['target_identity'] ) ? $permit['target_identity'] : array();
+		$site = isset( $permit['site'] ) && is_array( $permit['site'] ) ? $permit['site'] : array();
+		foreach ( array( 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest', 'artifact_identity' ) as $key ) {
+			if ( empty( $identity[$key] ) || empty( $release[$key] ) || ! hash_equals( (string) $identity[$key], (string) $release[$key] ) ) return false;
+		}
+		foreach ( array( 'site_uuid', 'origin', 'profile_digest' ) as $key ) {
+			if ( empty( $site[$key] ) || empty( $release[$key] ) || ! hash_equals( (string) $site[$key], (string) $release[$key] ) ) return false;
+		}
+		return ! empty( $release['archive_sha256'] )
+			&& preg_match( '/^[a-f0-9]{64}$/D', (string) $release['archive_sha256'] )
+			&& ! empty( $release['update_plan_sha256'] )
+			&& preg_match( '/^[a-f0-9]{64}$/D', (string) $release['update_plan_sha256'] )
+			&& hash_equals( (string) ( $permit['update_plan_sha256'] ?? '' ), (string) $release['update_plan_sha256'] )
+			&& ! empty( $site['environment'] ) && 'staging' === $site['environment'];
 	}
 
 	private static function release_trusted( array $release ) {

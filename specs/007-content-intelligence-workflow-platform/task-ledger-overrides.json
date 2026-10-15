@@ -7,6 +7,132 @@
     "DEFERRED"
   ],
   "overrides": {
+    "T1529": {
+      "status": "PARTIAL",
+      "evidence_refs": [
+        "PR:#258-comment:6067138486",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-multi-authority-registry.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/multi-authority-registry-contract.py",
+        "live:mad4b.multi-authority-registry.v1:verdict:PENDING"
+      ],
+      "reason": "Live multi-authority-registry-status exposes configured/effective read-only authority policy, the explicit mad4b.multi-authority-live-certification.v1 contract, and a PENDING external live certification verdict; source and repository contract fixture are present. A contract/projection is observable, but the complete actual external live certification evidence path and MULTI_AUTHORITY_LIVE=PASS have not been proven. Remain PARTIAL pending independent signed external authority acceptance; T1536 remains OPEN."
+    },
+    "T1706": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#258-comment:6067138486",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-provider-discovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-autoconfig.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/skill-runtime-certification-contract.py",
+        "live:mad4b.skill-runtime-certification.v2:snapshot:12c9f37614101dd3431e7ec8d13136772ad132fa05df540903e217c323d38c62"
+      ],
+      "reason": "Live All Royal Egypt Staging Skill Runtime Certification v2 reports ready=true with 19 Skills, ready seed and provider reconciliation and independent active provider families while Bit Flows is not installed/inactive with no enabled Bit Flows Skill; current Skill provider-discovery/autoconfig source is provider-neutral and does not hardcode Bit Flows. This closes only the non-Bit-Flows-dependency requirement, not external client Skill snapshot refresh or all provider behavior certification."
+    },
+    "T1526": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#258-comment:6067138486",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-protocol-profile.php",
+        "wp-content/plugins/mad4b-site-control-plane/config/mcp-protocol-profiles.json",
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-protocol-profile-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-mcp-protocol-profile.php",
+        "live:mad4b.session-safe-diagnostics.v1:2026-10-08T18:46:35Z:runtime_mcp_protocol_profile_ready"
+      ],
+      "reason": "Exact packaged MCP protocol-profile implementation is present in source and contract/runtime fixtures; All Royal Egypt Staging rc.96 independently reported mcp_protocol_profile.ready=true, certified_adapter_version=runtime_adapter_version=0.7.0, adapter_version_match=true. This completes implementation of the exact-package protocol profile only; successor release certification and external client OAuth/MCP handshake remain separately OPEN."
+    },
+    "T0013": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "git_tree:9e4ee7de1ad86a7adadadbb171b4585f04a08014",
+        "semantic_classification:EQUIVALENT_NO_TREE_DELTA"
+      ],
+      "reason": "EQUIVALENT_NO_TREE_DELTA: This two-parent merge commit's Git tree 9e4ee7de1ad86a7adadadbb171b4585f04a08014 exactly equals its first parent's ced93ea7148f4b8adc74499cd0df42fdf350c4ba tree. It contributes no additional tree change beyond the first-parent lineage; no cherry-pick of the merge wrapper is necessary."
+    },
+    "T0011": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:8775f56cc25cf66e6c22b091a3af2bc00e57ad00",
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "semantic_classification:SUPERSEDED_WITH_SEMANTIC_EQUIVALENCE"
+      ],
+      "reason": "SUPERSEDED_WITH_SEMANTIC_EQUIVALENCE: The historical rc.59 README release literal and detailed wording have been superseded by rc.96, while the reviewed live README still identifies the nine governed MCP servers including chatgpt, enrollment, developer, developer-breakglass and excluded default breakglass. This classifies documentation topology, not real endpoint acceptance."
+    },
+    "T0010": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:173985efded8f53279e864bcc48f4236562c0897",
+        "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
+        "semantic_classification:SUPERSEDED"
+      ],
+      "reason": "SUPERSEDED: The commit's only change was release=0.4.0-rc.58 to rc.59. The exact current source file has release=0.4.0-rc.96 and retains runtime-build evidence purpose/contract; rc.59 identity is historical and must not be restored."
+    },
+    "T0007": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:b0f2c8a6a0849303df94f7f4b84c1a42ef3d4d9d",
+        "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+        "semantic_classification:SUPERSEDED_WITH_FUNCTIONAL_EQUIVALENCE"
+      ],
+      "reason": "SUPERSEDED_WITH_FUNCTIONAL_EQUIVALENCE: The historical rc.59 plugin header and MAD4B_SCP_VERSION literal are superseded by rc.96; the commit's functional developer-runtime require_once remains present in the Hub. No rc.59 downgrade, duplicate boot include or new authority is needed."
+    },
+    "T0006": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:5ea91a70cc5750689f29ed4571bdab53149f5cfb",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+        "semantic_classification:EQUIVALENT"
+      ],
+      "reason": "EQUIVALENT: The sole added exact provider mapping mad4b/context-ai-review => core remains present in the current reviewed, explicit grant-allowlist source. Mapping existence alone does not provision a grant or enable review."
+    },
+    "T0005": {
+      "status": "DONE",
+      "evidence_refs": [
+        "commit:a533de8ae815e78fe43f9a1b74d8db909272dfb9",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-impact-policy.php",
+        "semantic_classification:EQUIVALENT"
+      ],
+      "reason": "EQUIVALENT: Both two developer impact-policy additions from the exact PR #45 commit remain present verbatim in current Hub: developer-breakglass is exceptional and non-status developer actions are high impact. This classifies the delta only, not end-to-end grant/runtime certification."
+    },
+    "T0003": {
+      "status": "DONE",
+      "evidence_refs": [
+        "compare:4b6e72efe9eb74ca31259eb571745198dd9fdea4...b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "merge_base:f43ec3bead478749ead2c3939c8d362922f4b80a",
+        "commit:0313e03aad8ee081c770ff9a31016202979e59e2",
+        "commit:a533de8ae815e78fe43f9a1b74d8db909272dfb9",
+        "commit:5ea91a70cc5750689f29ed4571bdab53149f5cfb",
+        "commit:b0f2c8a6a0849303df94f7f4b84c1a42ef3d4d9d",
+        "commit:93f99fbf5a5d9b94339b39b478f56376f8924912",
+        "commit:218bf660bd7a4d24ed2a4086640ea73a1ed9c9d6",
+        "commit:173985efded8f53279e864bcc48f4236562c0897",
+        "commit:8775f56cc25cf66e6c22b091a3af2bc00e57ad00",
+        "commit:ced93ea7148f4b8adc74499cd0df42fdf350c4ba",
+        "commit:b5d697f05a939d87ca0b2ede1a08eb9e15f97312"
+      ],
+      "reason": "GitHub's exact compare PR #47 HEAD...PR #45 HEAD identifies precisely these 10 PR45-only commits (ahead_by=10, total_commits=10) and the source merge base. The extraction is complete; T0004-T0013 semantic equivalence/required/superseded classifications remain independent OPEN tasks."
+    },
+    "T0001": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#47",
+        "pr_head:4b6e72efe9eb74ca31259eb571745198dd9fdea4",
+        "workflow_run:36003069773",
+        "workflow_run:36003069722",
+        "ci:58_completed_success_at_exact_head"
+      ],
+      "reason": "GitHub PR #47 exact HEAD was read back as 4b6e72efe9eb74ca31259eb571745198dd9fdea4; all 58 observed PR-head workflow runs are completed with success. This closes only the historical exact-head CI snapshot, not current PR #258 release acceptance."
+    },
+    "T0002": {
+      "status": "DONE",
+      "evidence_refs": [
+        "PR:#45",
+        "pr_head:b5d697f05a939d87ca0b2ede1a08eb9e15f97312",
+        "merge_base:f43ec3bead478749ead2c3939c8d362922f4b80a",
+        "compare:pr45_head...pr47_head"
+      ],
+      "reason": "GitHub PR #45 exact HEAD was read back as b5d697f05a939d87ca0b2ede1a08eb9e15f97312 and the comparative merge-base with PR #47 as f43ec3bead478749ead2c3939c8d362922f4b80a. This closes the historical snapshot only; PR #45 itself is closed unmerged and 10 of its workflow checks failed."
+    },
     "T3601": {
       "status": "DONE",
       "evidence_refs": [

@@ -52,6 +52,7 @@ final class BrowserAcceptanceProvider {
         return array(
             'contract'=>self::CONTRACT,
             'provider_id'=>self::PROVIDER_ID,
+            'recognition'=>array('source_plugins'=>array('etg-dynamic-filter-seo-bridge')),
             'read_only'=>true,
             'authorizing'=>false,
             'execution_mode'=>'external_browser_agent',
@@ -77,6 +78,7 @@ final class BrowserAcceptanceProvider {
             'contract'=>self::CAPABILITIES_CONTRACT,
             'provider_contract'=>self::CONTRACT,
             'provider_id'=>self::PROVIDER_ID,
+            'default_profile_id'=>'tours',
             'authorizing'=>false,
             'read_only'=>true,
             'execution_mode'=>'external_browser_agent',

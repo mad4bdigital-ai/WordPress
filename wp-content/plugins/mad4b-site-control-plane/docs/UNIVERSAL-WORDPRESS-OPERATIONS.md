@@ -75,3 +75,150 @@ Default automatic behavior:
 - enable mutation: disabled
 
 Automatic candidate generation and shadow identity certification stop at L1/lifecycle. L2/read requires a registered runtime adapter with at least one bounded read ability and clear side-channel governance. L3/L4 additionally require governed promotion with reversible contracts, certification evidence, functional acceptance and the normal authorization boundary.
+
+
+## Content Experience bootstrap scenarios
+
+Business content types remain configuration-driven. The fixed read-only ability
+`mad4b/content-experience-bootstrap-plan` can inspect any registered post type and
+produce a safe Content Experience profile proposal without creating content or
+changing authority.
+
+The bootstrap planner supports the generic scenarios:
+
+`create_nonpublic → create_structured → update_existing → publish_or_private → verify → rollback`
+
+Safe defaults are deliberate: new content is non-public, metadata starts with an
+empty allowlist, external helpers are not auto-enabled, and taxonomy access is an
+explicit allowlist. The planner can include assignable public/operator-visible
+taxonomies and infer featured-media support from the live post type. It also
+returns external helper candidates as evidence only; enabling SEO, translation,
+builder or other provider helpers remains an explicit reviewed profile change.
+
+The returned `profile_plan` is applied only through the existing governed
+`mad4b/content-experience-profile-apply` mutation. Generated create/update/publish
+routes become active on the next request, so this adds an ergonomic bootstrap
+layer without creating a generic write bypass or hardcoding business types such
+as tours, products, properties or jobs.
+
+
+### Provider-compatible post media storage
+
+The Content Experience layer keeps **attachment identity** canonical even when a
+provider field stores a different database representation. A profile can now
+project verified Media Library attachments into bounded storage shapes:
+
+- single: `id`, `url`, `id_url`, `json_id_url`;
+- gallery: `ids`, `csv_ids`, `urls`, `csv_urls`,
+  `id_url_items`, `json_id_url_items`.
+
+The adaptive bootstrap can infer these shapes from existing content without
+returning the underlying values. This is useful for field systems that support
+Media ID, Media URL, or combined ID+URL formats while preserving the rule that
+remote acquisition creates a WordPress attachment first.
+
+`mad4b/content-experience-media-binding-plan` is the read-only bridge from
+verified attachment IDs to one exact Content Experience profile. It resolves a
+single featured image and ordered single/gallery targets, validates contextual
+usage fields, previews the exact provider storage projection, and returns the
+logical `featured_media_id` / `meta` fragment consumed by the normal
+create/update planner. Ambiguous field targets remain fail-closed.
+
+
+### JetEngine field-definition discovery
+
+When JetEngine is active, the JetEngine adapter now contributes media-field
+candidates from its live post-type field context instead of relying only on
+meta-key names or sampled posts. Media/Gallery fields with a declared
+`value_format` of `id`, `url`, or `both` are translated into the
+canonical Content Experience storage projections. Unknown provider formats are
+reported but not mapped.
+
+Provider declarations, registered-meta heuristics, and sampled live values are
+kept as separate evidence sources. If they disagree, bootstrap marks
+`spec_conflict=true`, keeps the alternative specs, and requires review rather
+than silently widening or guessing the post-meta storage contract.
+
+
+### Manifest lifecycle and recoverable imported media
+
+Multi-image acquisition now has an explicit lifecycle instead of treating each
+successful sideload as an isolated write:
+
+```
+remote manifest plan
+→ per-item import plan
+→ per-item verified Media Library import/reuse
+→ durable recovery stage
+→ exact manifest receipt
+→ post-media binding plan
+→ content plan
+→ content apply
+→ manifest bound to post
+```
+
+The manifest SHA and item index are execution-correlation evidence; they do not
+change the reviewed per-image import plan identity. Every successful manifest
+item receives durable stage evidence on the attachment. The stage records
+whether the asset was **created for this manifest** or was a **pre-existing
+reused attachment**.
+
+If a later post plan or post apply fails, the imported Media Library asset is
+not deleted. Its state remains `staged_unbound` and
+`media/remote-recovery-status` can surface it for deterministic retry.
+Calling the same Ability without a manifest returns a bounded overview of
+unbound manifests and created-but-unbound attachment counts.
+
+There is deliberately no automatic orphan deletion. Recovery reports
+`auto_delete=false` and `cleanup_policy=manual_only_after_reference_review`.
+This prevents data loss while also preventing abandoned imports from becoming
+invisible operational debt.
+
+Before content creation, `mad4b/content-experience-media-binding-plan` verifies
+that every manifest index completed exactly once, that each staged attachment
+matches the reviewed import plan, and that every staged item is consumed by the
+post binding. It emits four exact hand-off identities:
+
+- `expected_media_manifest_sha256`
+- `expected_media_manifest_item_count`
+- `expected_media_recovery_receipt_sha256`
+- `expected_media_binding_state_sha256`
+
+The generic content planner independently recomputes the recovery receipt,
+attachment set, provider-normalized media mapping, and remote provenance state.
+Any TOCTOU drift fails closed before mutation. After a successful content
+mutation, the manifest is bound to the post and verified during readback;
+rollback restores/removes this binding with the post state.
+
+
+Manifest correlation now also carries a per-item SHA and the reviewed binding
+role. The import stage persists both. The post-binding planner rejects role
+drift (for example, a reviewed gallery item silently becoming featured).
+A manifest item may declare `shared` when the same imported asset is
+intentionally reused across multiple final post roles; otherwise the reviewed
+role remains exact.
+
+
+Manifest execution correlation is now fail-closed even when an Ability is
+invoked directly rather than through schema validation. A manifest-correlated
+item must carry the exact manifest SHA, bounded index, per-item SHA, reviewed
+import-plan SHA, and a supported binding role. The per-item SHA is recomputed
+from `index + binding_role + plan_sha256` before any media mutation. Unknown
+roles are rejected instead of being silently coerced to gallery. The same
+correlation survives source reuse, pre-download content reuse, and post-download
+dedupe reuse paths.
+
+
+### Partial manifest recovery
+
+Recovery state now distinguishes a partially imported media set from a complete
+but still-unbound one. Every manifest-correlated import carries the reviewed
+total item count. Recovery reports `expected_item_count`,
+`staged_item_count`, and exact `missing_manifest_indices`.
+
+A partial set reports `state=staged_partial` and
+`next_action=resume_remaining_media_imports`. Only after all reviewed indexes
+have staged successfully does it become `staged_unbound`, at which point the
+next step is the post media-binding/content plan. This prevents a half-imported
+gallery from being treated as post-ready while preserving already verified
+Media Library assets.

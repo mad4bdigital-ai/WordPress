@@ -11,7 +11,7 @@ gateway_path = cp / "includes" / "class-mad4b-scp-context-provider-gateway.php"
 gateway = gateway_path.read_text(encoding="utf-8") if gateway_path.is_file() else ""
 durable = (cp / "includes" / "class-mad4b-scp-durable-execution.php").read_text(encoding="utf-8")
 adapter = (cp / "includes" / "adapters" / "class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
-remote_parity = (cp / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
+remote_parity = (cp / "includes" / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 artifacts = (cp / "includes" / "class-mad4b-scp-artifacts.php").read_text(encoding="utf-8")
 content_jobs = (cp / "includes" / "class-mad4b-scp-content-jobs.php").read_text(encoding="utf-8")
 staging = (cp / "includes" / "class-mad4b-scp-staging-certification.php").read_text(encoding="utf-8")
@@ -119,7 +119,8 @@ for marker in [
     "sort( $changed_files, SORT_STRING )",
     "sort( $unchanged_files, SORT_STRING )",
     "expected_registry_revision",
-    "mad4b_context_source_scan_incomplete",
+    "continuation_required",
+    "continue_source_scan",
     "array( 'markdown', 'text' )",
     "'brand_core_ready' => false",
     "evidence_quality",

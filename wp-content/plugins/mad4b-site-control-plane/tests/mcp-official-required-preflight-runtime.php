@@ -48,6 +48,7 @@ $registrations = array(
 	'plugin-package' => array( 'MAD4B_SCP_Plugin_Package', 'register_abilities' ),
 	'remote-plugin-update' => array( 'MAD4B_SCP_Remote_Plugin_Update', 'register_abilities' ),
 	'self-update' => array( 'MAD4B_SCP_Self_Update', 'register_abilities' ),
+	'selected-head-update' => array( 'MAD4B_SCP_Selected_Head_Update', 'register_abilities' ),
 	'remote-operation-parity' => array( 'MAD4B_SCP_Remote_Operation_Parity', 'register_abilities' ),
 	'provider-closure-matrix' => array( 'MAD4B_SCP_Provider_Closure_Matrix', 'register_ability' ),
 	'staging-write-candidate-binding' => array( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'register_audit_ability' ),

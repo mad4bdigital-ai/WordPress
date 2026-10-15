@@ -3,19 +3,19 @@
 Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ## Phase 0 — rc.59 canonicalization
-- [ ] T0001 P0 GATE Snapshot PR #47 exact head and CI.
-- [ ] T0002 P0 GATE Snapshot PR #45 head and merge base.
-- [ ] T0003 P0 Extract the 10 PR #45-only commits.
+- [x] T0001 P0 GATE Snapshot PR #47 exact head and CI.
+- [x] T0002 P0 GATE Snapshot PR #45 head and merge base.
+- [x] T0003 P0 Extract the 10 PR #45-only commits.
 - [ ] T0004 P0 Classify 0313e03 semantics.
-- [ ] T0005 P0 Classify a533de8 semantics.
-- [ ] T0006 P0 Classify 5ea91a7 semantics.
-- [ ] T0007 P0 Classify b0f2c8a semantics.
+- [x] T0005 P0 Classify a533de8 semantics.
+- [x] T0006 P0 Classify 5ea91a7 semantics.
+- [x] T0007 P0 Classify b0f2c8a semantics.
 - [ ] T0008 P0 Classify 93f99fb semantics.
 - [ ] T0009 P0 Classify 218bf66 semantics.
-- [ ] T0010 P0 Classify 173985e semantics.
-- [ ] T0011 P0 Classify 8775f56 semantics.
+- [x] T0010 P0 Classify 173985e semantics.
+- [x] T0011 P0 Classify 8775f56 semantics.
 - [ ] T0012 P0 Classify ced93ea semantics.
-- [ ] T0013 P0 Classify b5d697f semantics.
+- [x] T0013 P0 Classify b5d697f semantics.
 - [ ] T0014 P0 GATE Require evidence-backed SUPERSEDED/EQUIVALENT/REQUIRED for every commit.
 - [ ] T0015 P0 Port any REQUIRED semantics deliberately; no blind cherry-pick.
 - [ ] T0016 P0 Rerun exact-head CI.
@@ -298,7 +298,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1523 P1 Unknown-kid bounded refresh/deny test.
 - [ ] T1524 P1 Refresh replay/family poisoning regression.
 - [ ] T1525 P1 Key rotation overlap test.
-- [ ] T1526 P1 Add MCP Adapter exact-package protocol profile.
+- [x] T1526 P1 Add MCP Adapter exact-package protocol profile.
 - [ ] T1527 P1 Add successor official release certification workflow.
 - [ ] T1528 P1 Dual-protocol regression when successor supports newer MCP.
 - [ ] T1529 P0 GATE Multi-Authority Live Certification contract implementation.
@@ -344,7 +344,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 - [ ] T1703 P0 Implement ProviderResolutionDecision.
 - [ ] T1704 P0 Consider certification/environment/risk/cost/locality/performance.
 - [ ] T1705 P0 Ensure Resolver is non-authorizing.
-- [ ] T1706 P0 Ensure Skills do not hardcode Bit Flows.
+- [x] T1706 P0 Ensure Skills do not hardcode Bit Flows.
 - [ ] T1707 P0 Define signed workflow-execution-request.v1.
 - [ ] T1708 P0 Bind request to site/workflow SHA/plan SHA/expiry/nonce.
 - [ ] T1709 P0 Replay denial.
@@ -988,3 +988,7 @@ Notation: [ ] pending; P0/P1/P2 priority; GATE blocks downstream work.
 
 ### 38O — Composed adversarial acceptance
 - [x] T3880 P0 GATE Execute composed cross-fault matrix covering profile/provider/language/surface drift, shared-budget races, lease loss, quota reset, partial capture, cache equivalence, uncertain provider effects and adaptive UI state; exact-head executable evidence required.
+
+## Optional CSO01 task ledger (81 OPEN; excluded from parent denominator)
+
+The authoritative machine-readable CSO01 backlog is [tasks.json](extensions/conversational-site-operations/tasks.json) with corresponding [tasks.md](extensions/conversational-site-operations/tasks.md). Each of 27 requirement families has design, implementation and independent acceptance tasks. All remain OPEN; the parent Feature 007 task-ledger.generated.json and frozen implementation closure are unchanged. Do not mark CSO01 complete until exact-head native and external adversarial proofs, owner review and independent readbacks.

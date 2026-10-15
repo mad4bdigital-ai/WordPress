@@ -17,6 +17,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 	const STATUS_ABILITY = 'mad4b/chatgpt-tool-projection-status';
 	const DISCOVER_ABILITY = 'mad4b/chatgpt-tool-projection-discover';
 	const PLAN_ABILITY = 'mad4b/chatgpt-tool-projection-plan';
+	const RECOVERY_ABILITY = 'mad4b/chatgpt-tool-projection-recovery-plan';
 	const APPLY_ABILITY = 'mad4b/chatgpt-tool-projection-apply';
 	const CONFIRMATION = 'APPLY CHATGPT TOOL PROJECTION';
 	const MAX_SELECTED = 64;
@@ -48,6 +49,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 						'ability_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 2147483647, 'default' => 0 ),
 						'include_catalog_preflight' => array( 'type' => 'boolean', 'default' => false ),
 						'include_universe_count' => array( 'type' => 'boolean', 'default' => false ),
+						'include_protocol_profile' => array( 'type' => 'boolean', 'default' => false ),
 						'include_recommendations' => array( 'type' => 'boolean', 'default' => false ),
 						'recommendation_quota' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_QUOTA, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_QUOTA ),
 						'recommendation_hours' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => MAD4B_SCP_Projection_Hotset_Recommender::MAX_HOURS, 'default' => MAD4B_SCP_Projection_Hotset_Recommender::DEFAULT_HOURS ),
@@ -73,8 +75,23 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 						'cursor' => array( 'type' => 'string', 'maxLength' => 4096 ),
 						'schema_format' => array( 'type' => 'string', 'enum' => array( 'source', 'wire' ) ),
 						'force_refresh' => array( 'type' => 'boolean' ),
-						'gateway_action' => array( 'type' => 'string', 'enum' => array( 'negotiate', 'search', 'prepare', 'schema', 'chunk' ) ),
+						'gateway_action' => array( 'type' => 'string', 'enum' => array( 'negotiate', 'sources', 'search', 'dependencies', 'recovery', 'prepare', 'schema', 'chunk' ) ),
+						'operation' => array( 'type' => 'string', 'maxLength' => 120 ),
+						'target_kind' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+						'goal' => array( 'type' => 'string', 'enum' => array( 'general', 'source_build', 'staging_install', 'capability_discovery', 'frontend_diagnostics' ) ),
+						'expected_head' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
+						'blockers' => array( 'type' => 'array', 'maxItems' => 16, 'items' => array( 'type' => 'string', 'maxLength' => 128 ) ),
 						'task' => array( 'type' => 'string', 'maxLength' => 512 ),
+                        'declared_readonly_only' => array( 'type' => 'boolean' ),
+                        'declared_writeonly_only' => array( 'type' => 'boolean' ),
+						'category' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'surface' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'ability_prefix' => array( 'type' => 'string', 'maxLength' => 160 ),
+						'match_mode' => array( 'type' => 'string', 'enum' => array( 'any', 'all' ) ),
+						'sort' => array( 'type' => 'string', 'enum' => array( 'relevance', 'name' ) ),
+						'min_score' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 10000 ),
+						'browse' => array( 'type' => 'boolean' ),
 						'keywords' => array( 'type' => 'array', 'maxItems' => 24, 'items' => array( 'type' => 'string', 'maxLength' => 80 ) ),
 						'ability_names' => array( 'type' => 'array', 'maxItems' => 16, 'items' => array( 'type' => 'string', 'maxLength' => 180 ) ),
 						'ability_name' => array( 'type' => 'string', 'maxLength' => 180 ),
@@ -105,6 +122,21 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 				'execute_callback' => array( __CLASS__, 'plan' ),
 				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
 				'input_schema' => self::change_schema( false ),
+				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+				'meta' => self::meta( true ),
+			) );
+		}
+
+		// Source-only recovery planner. A stale site-global projection must not
+		// silently rebind a list of privileged tools after an update.
+		if ( ! ( function_exists( 'wp_has_ability' ) && wp_has_ability( self::RECOVERY_ABILITY ) ) ) {
+			wp_register_ability( self::RECOVERY_ABILITY, array(
+				'label' => 'Plan Safe Dynamic Tool Projection Recovery',
+				'description' => 'Inspect stale saved projection bindings and propose a bounded, governed rebind without changing any MCP tools.',
+				'category' => 'mad4b-read',
+				'execute_callback' => array( __CLASS__, 'recovery_plan' ),
+				'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
+				'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
 				'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 				'meta' => self::meta( true ),
 			) );
@@ -409,10 +441,13 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$limit = isset( $input['limit'] ) ? max( 1, min( 100, absint( $input['limit'] ) ) ) : 50;
 		$offset = isset( $input['offset'] ) ? max( 0, absint( $input['offset'] ) ) : 0;
 		$projected = array_fill_keys( self::projected_ability_names(), true );
+		// One request-local registry inventory for matching AND count. WordPress
+		// abilities may be expensive to enumerate on plugin-heavy MCP hosts.
+		$all_site_names = self::all_site_ability_names();
 		$items = array();
 		$matched = 0;
 		$has_more = false;
-		foreach ( self::all_site_ability_names() as $ability_name ) {
+		foreach ( $all_site_names as $ability_name ) {
 			// Match and paginate metadata before inspecting schemas/classification.
 			try {
 				$ability = wp_get_ability( $ability_name );
@@ -448,7 +483,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'count' => count( $items ),
 			'has_more' => $has_more,
 			'next_offset' => $has_more ? $offset + count( $items ) : null,
-			'universe_count' => count( self::all_site_ability_names() ),
+			'universe_count' => count( $all_site_names ),
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
@@ -567,6 +602,78 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) ) return new WP_Error( 'mad4b_chatgpt_projection_step_up_required', 'Dedicated authority step-up scope is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) ) return new WP_Error( 'mad4b_chatgpt_projection_chatgpt_client_required', 'Projection mutation requires the exact ChatGPT CIMD client.' );
 		return true;
+	}
+
+	/**
+	 * A fail-closed projection recovery proposal for a changed Site Profile or
+	 * plugin build. Only stable, execution-admissible and non-Breakglass Abilities
+	 * survive into the proposal; the standard CAS/step-up apply stays separate.
+	 */
+	public static function recovery_plan( $input = array() ) {
+		if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
+			return new WP_Error( 'mad4b_projection_recovery_read_denied', 'Governed read permission is required.' );
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured()
+			|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+			|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() )
+			return new WP_Error( 'mad4b_projection_recovery_staging_only', 'Exact enrolled Staging profile is required.' );
+		$state = self::raw_state();
+		$saved = array_keys( $state['abilities'] );
+		$binding_match = self::binding_matches( $state );
+		$eligible = array();
+		$excluded = array();
+		foreach ( array_slice( $saved, 0, self::MAX_SELECTED ) as $ability_name ) {
+			$row = self::planning_row( $ability_name );
+			if ( is_wp_error( $row ) ) {
+				$excluded[ $ability_name ] = array( $row->get_error_code() );
+				continue;
+			}
+			$reasons = array();
+			if ( ! empty( $row['breakglass'] ) ) $reasons[] = 'breakglass_not_automatically_rebound';
+			if ( empty( $row['projection_eligible'] ) ) $reasons[] = 'projection_policy_not_eligible';
+			if ( empty( $row['execution_eligible'] ) ) $reasons[] = 'execution_not_structurally_eligible';
+			if ( ! empty( $reasons ) ) {
+				$excluded[ $ability_name ] = $reasons;
+				continue;
+			}
+			$eligible[] = $ability_name;
+		}
+		sort( $eligible, SORT_STRING );
+		$plan = null;
+		$blockers = array();
+		if ( ! $saved ) {
+			$blockers[] = 'no_saved_selection';
+		} elseif ( ! $eligible ) {
+			$blockers[] = 'no_eligible_saved_tools';
+		} else {
+			$plan = self::plan( array( 'mode' => 'replace', 'ability_names' => $eligible, 'include_breakglass' => false ) );
+			if ( is_wp_error( $plan ) ) {
+				$blockers[] = $plan->get_error_code();
+				$plan = null;
+			} elseif ( empty( $plan['ready_for_apply'] ) ) {
+				$blockers[] = 'mcp_catalog_preflight_not_ready';
+			}
+		}
+		$ready = is_array( $plan ) && ! empty( $plan['ready_for_apply'] ) && empty( $blockers );
+		return array(
+			'contract' => 'mad4b.projection-recovery-plan.v1',
+			'state' => $ready ? 'REVIEW_READY_NO_MUTATION' : 'BLOCKED_NO_MUTATION',
+			'stored_revision' => (int) $state['revision'],
+			'stored_count' => count( $saved ),
+			'binding_match' => $binding_match,
+			'current_binding_sha256' => hash( 'sha256', wp_json_encode( self::current_binding() ) ),
+			'retained_ability_names' => $eligible,
+			'excluded_abilities' => $excluded,
+			'blockers' => $blockers,
+			'proposed_plan_sha256' => $ready ? (string) $plan['plan_sha256'] : '',
+			'proposed_selection' => $ready ? array( 'mode' => 'replace', 'ability_names' => $eligible, 'include_breakglass' => false ) : array(),
+			'confirmation_required' => self::CONFIRMATION,
+			'site_global_projection' => true,
+			'host_tools_list_refresh_required_after_apply' => true,
+			'fixed_dispatch_unaffected' => true,
+			'execution_authority_granted' => false,
+			'read_only' => true, 'mutation_performed' => false,
+		);
 	}
 
 	public static function apply( $input = array() ) {
@@ -727,6 +834,7 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 		$include_page = 'page' === $detail;
 		$include_preflight = ! empty( $input['include_catalog_preflight'] );
 		$include_universe = ! empty( $input['include_universe_count'] );
+		$include_protocol = ! empty( $input['include_protocol_profile'] );
 
 		$state = self::raw_state();
 		$binding_match = self::binding_matches( $state );
@@ -823,6 +931,56 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			);
 		}
 
+		// Metadata-only Summary must never walk catalog table-backend SQL or
+		// unbounded optional diagnostics. Those reads can terminate an otherwise
+		// healthy MCP session. Defer storage inspection unless the caller opts
+		// into the existing explicit catalog preflight mode.
+		$storage = array(
+			'state' => 'deferred',
+			'measurements_deferred' => true,
+			'reason' => 'summary_metadata_only',
+			'authority_effect' => 'none',
+			'read_only' => true,
+		);
+		if ( $include_preflight ) {
+			try {
+				$storage = MAD4B_SCP_Catalog_Object_Store::status();
+				if ( ! is_array( $storage ) ) throw new UnexpectedValueException( 'invalid_catalog_storage_diagnostic' );
+			} catch ( Throwable $error ) {
+				$storage = array(
+					'state' => 'degraded',
+					'error_code' => 'mad4b_catalog_storage_diagnostic_unavailable',
+					'measurements_deferred' => true,
+					'authority_effect' => 'none',
+					'read_only' => true,
+				);
+			}
+		}
+
+		// Protocol certification is useful read metadata, but an optional
+		// provider exception cannot erase a healthy projection Summary.
+		// A compact projection status should never start optional protocol
+		// diagnostics by default. Expose an explicit opt-in instead of making
+		// one slow provider take down an otherwise healthy MCP status read.
+		$protocol_profile = array(
+			'contract' => 'mad4b.mcp-protocol-profile.deferred.v1',
+			'ready' => null, 'state' => 'deferred',
+			'read_only' => true, 'authorizing' => false,
+		);
+		if ( $include_protocol && class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ) {
+			try {
+				$protocol_profile = MAD4B_SCP_MCP_Protocol_Profile::status();
+				if ( ! is_array( $protocol_profile ) ) throw new UnexpectedValueException( 'invalid_protocol_status' );
+			} catch ( Throwable $error ) {
+				$protocol_profile = array(
+					'contract' => 'mad4b.mcp-protocol-profile.degraded.v1',
+					'ready' => false,
+					'blocker' => 'mad4b_protocol_diagnostic_unavailable',
+					'authorizing' => false,
+				);
+			}
+		}
+
 		$universe_count = $include_universe ? count( self::all_site_ability_names() ) : null;
 		$effective_count = null;
 		$effective_count_exact = false;
@@ -874,13 +1032,14 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'catalog_refresh_action' => 'Request tools/list after a projection change; reconnect if the host caches tools.',
 			'deep_inspection_action' => 'Use mad4b/chatgpt-tool-projection-discover or detail=page for bounded per-Ability inspection.',
 			'isolation' => self::isolation_contract(),
-			'protocol_profile' => class_exists( 'MAD4B_SCP_MCP_Protocol_Profile' ) ? MAD4B_SCP_MCP_Protocol_Profile::status() : array(),
+			'protocol_profile' => $protocol_profile,
+			'protocol_profile_inspection_performed' => $include_protocol,
 			'hotset_recommendation_available' => class_exists( 'MAD4B_SCP_Projection_Hotset_Recommender' ),
 			'hotset_recommendations' => $recommendations,
 			'primary_execution_mode' => 'fixed_dispatch',
 			'projection_role' => 'optional_hot_set',
 			'server_tools_list_changed' => false,
-			'storage' => MAD4B_SCP_Catalog_Object_Store::status(),
+			'storage' => $storage,
 			'abilities' => $stored,
 			'projection_changes_authority' => false,
 			'read_only' => true,

@@ -14,6 +14,11 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function current_user_can( $capability ) { return 'manage_options' === (string) $capability; }
 function get_current_user_id() { return 7; }
+function get_option( $name, $default = false ) {
+    // Missing managed-Skills lock is an empty observation, not an authorization.
+    if ( 'mad4b_scp_remote_skills_reconciliation_lock_v1' === (string) $name ) return array();
+    return $default;
+}
 
 class WP_Error {
     private $code;
@@ -54,7 +59,7 @@ function wp_get_ability( $name ) { return isset( $GLOBALS['mad4b_test_abilities'
 
 final class MAD4B_SCP_Site_Profile {
     public static function configured() { return true; }
-    public static function current_environment() { return 'staging'; }
+    public static function current_environment() { return isset( $GLOBALS['mad4b_test_env'] ) ? $GLOBALS['mad4b_test_env'] : 'staging'; }
     public static function origin_enrolled() { return true; }
     public static function site_urls_match_enrollment() { return true; }
     public static function user_is_enrolled( $user_id ) { return 7 === (int) $user_id; }
@@ -95,19 +100,51 @@ final class MAD4B_SCP_Remote_Operation_Parity {
     const SKILLS = 'mad4b/reconcile-managed-skills';
     const CLAIM = 'mad4b/remote-operation-work-claim';
     const HUMAN = 'mad4b/human-decision-test';
+    const OWNER_CONVERGENCE = 'mad4b/staging-write-authority-convergence-apply';
+    public static $include_owner = false;
+    public static $owner_row_override = array();
     const SYSTEM = 'mad4b/system-test';
 
+    public static function reviewed_owner_staging_convergence( $id, array $row ) {
+        return 'staging_write_authority_convergence' === $id
+            && self::OWNER_CONVERGENCE === ( $row['remote_ability'] ?? '' )
+            && 'exact_write_only_convergence' === ( $row['remote_mode'] ?? '' )
+            && 'owner' === ( $row['remote_caller_role'] ?? '' )
+            && ! empty( $row['human_decision_required'] )
+            && ! empty( $row['chatgpt_direct_step_up'] )
+            && 'core' === ( $row['trust_class'] ?? '' )
+            && 'mad4b-core' === ( $row['registrar_id'] ?? '' )
+            && 'mad4b-site-control-plane' === ( $row['source_plugin'] ?? '' )
+            && 'deny' === ( $row['production_policy'] ?? '' )
+            && 'mad4b-enrollment' === ( $row['authority_surface'] ?? '' );
+    }
     public static function enrollment_abilities() {
-        return array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
+        $abilities = array( self::SKILLS, self::CLAIM, self::HUMAN, self::SYSTEM );
+        if ( self::$include_owner ) $abilities[] = self::OWNER_CONVERGENCE;
+        return $abilities;
     }
 
     public static function catalog() {
-        return array(
+        $operations = array(
             'managed_skills_reconciliation' => self::row( self::SKILLS, 'operator', false, 'deny', '1' ),
             'external_executor_work_claim' => self::row( self::CLAIM, 'external_executor', false, 'deny', '2' ),
             'human_decision_test' => self::row( self::HUMAN, 'operator', true, 'deny', '3' ),
             'system_test' => self::row( self::SYSTEM, 'system', false, 'deny', '4' ),
         );
+        if ( self::$include_owner ) {
+            $operations['staging_write_authority_convergence'] = array_merge(
+                self::row( self::OWNER_CONVERGENCE, 'owner', true, 'deny', '5' ),
+                array(
+                    'remote_mode' => 'exact_write_only_convergence',
+                    'chatgpt_direct_step_up' => true,
+                    'trust_class' => 'core',
+                    'registrar_id' => 'mad4b-core',
+                    'source_plugin' => 'mad4b-site-control-plane',
+                ),
+                self::$owner_row_override
+            );
+        }
+        return $operations;
     }
 
     private static function row( $ability, $role, $human, $production, $digit ) {
@@ -191,11 +228,38 @@ $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::HUMAN ] = n
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SYSTEM ] = new MAD4B_Test_Ability( mad4b_test_meta(), $schema, array() );
 MAD4B_SCP_Servers::$mounted = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 
+// Simulate the exact parent-bound single-use child permit; the production
+// runtime uses MAD4B_SCP_Execution_Fence rather than this isolated fixture.
+final class MAD4B_SCP_Execution_Fence {
+    public static $parent_active = true;
+    public static $pending = false;
+    public static $child_calls = array();
+    public static function with_governed_child( $name, $input, $callback, $reason = 'dispatcher' ) {
+        if ( ! self::$parent_active ) return new WP_Error( 'mad4b_child_operation_parent_required' );
+        if ( self::$pending ) return new WP_Error( 'mad4b_child_operation_permit_pending' );
+        self::$pending = true;
+        self::$child_calls[] = array( 'name' => $name, 'input' => $input, 'reason' => $reason );
+        try { return call_user_func( $callback ); }
+        finally { self::$pending = false; }
+    }
+}
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php';
 
 $discover = MAD4B_SCP_Enrollment_Dispatch::discover( array() );
 mad4b_assert( 1 === (int) $discover['count'], 'dispatcher discovery must expose only operator-role non-human Staging operations' );
 mad4b_assert( isset( $discover['operations']['managed_skills_reconciliation'] ), 'managed Skills reconciliation was not discoverable' );
+$preflight = $discover['operations']['managed_skills_reconciliation']['execution_preflight'];
+mad4b_assert( 'mad4b.enrollment-skills-preflight.v1' === $preflight['contract'], 'discovery lost the bounded managed-Skills preflight' );
+mad4b_assert( 'blocked' === $preflight['state'] && false === $preflight['structurally_ready'],
+    'partial Site Profile without status() was incorrectly treated as ready' );
+mad4b_assert( in_array( 'site_profile_not_authoritative_staging', $preflight['blockers'], true )
+    && in_array( 'skills_disabled_for_site', $preflight['blockers'], true ),
+    'missing authoritative Site Profile did not fail closed' );
+mad4b_assert( false === $preflight['authorization_performed'] && false === $preflight['permission_evaluated']
+    && false === $preflight['execution_performed'] && false === $preflight['mutation_performed']
+    && false === $preflight['production_mutation_allowed'],
+    'read-only discovery preflight widened authority or claimed execution' );
 mad4b_assert( ! isset( $discover['operations']['external_executor_work_claim'] ), 'external executor lease claim leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['human_decision_test'] ), 'human-decision operation leaked into ChatGPT dispatcher' );
 mad4b_assert( ! isset( $discover['operations']['system_test'] ), 'system caller operation leaked into ChatGPT dispatcher' );
@@ -238,6 +302,44 @@ mad4b_assert( true === $result['operation_invoked'], 'dispatcher did not report 
 mad4b_assert( false === $result['mutation_performed'], 'dispatcher overwrote explicit target no-op mutation evidence' );
 mad4b_assert( 'target_result' === $result['mutation_evidence_source'], 'dispatcher did not identify target mutation evidence source' );
 mad4b_assert( 1 === $skills->calls, 'eligible target did not execute exactly once' );
+mad4b_assert( 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'enrollment dispatch skipped its exact governed child permit' );
+$child = MAD4B_SCP_Execution_Fence::$child_calls[0];
+mad4b_assert( MAD4B_SCP_Remote_Operation_Parity::SKILLS === $child['name'], 'child permit was issued for a different ability' );
+mad4b_assert( $execute_input['input'] === $child['input'] && 'enrollment_dispatch' === $child['reason'], 'child permit did not bind the exact caller payload' );
+mad4b_assert( false === MAD4B_SCP_Execution_Fence::$pending, 'child permit leaked after execution' );
+
+// A missing parent must never fall back to direct target execution. The
+// managed-Skills adapter returns a bounded uncertain-error envelope.
+MAD4B_SCP_Execution_Fence::$parent_active = false;
+$without_parent = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
+mad4b_assert( is_array( $without_parent ) && 'target_error_reconciliation_required' === $without_parent['state'], 'missing parent did not fail closed' );
+mad4b_assert( 'mad4b_child_operation_parent_required' === $without_parent['target_error_code'], 'missing parent was not preserved as redacted error code' );
+mad4b_assert( null === $without_parent['mutation_performed'] && false === $without_parent['blind_retry_allowed'], 'missing parent was misclassified as a safe retry' );
+mad4b_assert( 1 === $skills->calls && 1 === count( MAD4B_SCP_Execution_Fence::$child_calls ), 'missing parent executed a child target' );
+MAD4B_SCP_Execution_Fence::$parent_active = true;
+
+
+$sensitive_target = new MAD4B_Test_Ability(
+    mad4b_test_meta(),
+    $schema,
+    new WP_Error( 'mad4b_remote_skill_editor_disabled', 'INTERNAL_SECRET_MESSAGE', array( 'secret' => 'DO_NOT_DISCLOSE' ) )
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $sensitive_target;
+$failure_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$failure_input = $execute_input;
+$failure_input['expected_registration_digest'] = $failure_info['registration_digest'];
+$failure_input['expected_dispatch_policy_digest'] = $failure_info['dispatch_policy_digest'];
+$failure_input['expected_input_schema_sha256'] = $failure_info['input_schema_sha256'];
+$blocked = MAD4B_SCP_Enrollment_Dispatch::execute( $failure_input );
+mad4b_assert( is_array( $blocked ) && true === $blocked['failed'] && false === $blocked['ready'], 'failed managed Skills unexpectedly reported success' );
+mad4b_assert( 'target_error_reconciliation_required' === $blocked['state'], 'failed managed Skills omitted reconciliation state' );
+mad4b_assert( 'mad4b_remote_skill_editor_disabled' === $blocked['target_error_code'], 'bounded managed Skills target failure code missing' );
+mad4b_assert( true === $blocked['reconciliation_required'] && false === $blocked['blind_retry_allowed'], 'managed Skills target error permitted blind retry' );
+mad4b_assert( null === $blocked['mutation_performed'] && 'unknown_after_target_error' === $blocked['mutation_evidence_source'], 'unknown target side-effects were fabricated' );
+mad4b_assert( ! array_key_exists( 'result', $blocked ) && ! array_key_exists( 'target_error_data', $blocked ) && ! array_key_exists( 'target_error_message', $blocked ), 'managed Skills failure disclosed sensitive target material' );
+mad4b_assert( false === strpos( wp_json_encode( $blocked ), 'DO_NOT_DISCLOSE' ) && false === strpos( wp_json_encode( $blocked ), 'INTERNAL_SECRET_MESSAGE' ), 'sensitive target message/data leaked' );
+mad4b_assert( 1 === $sensitive_target->calls && 1 === $skills->calls, 'bounded target invocation count drifted' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $skills;
 
 $bad = $execute_input;
 $bad['expected_registration_digest'] = str_repeat( 'f', 64 );
@@ -286,5 +388,82 @@ $execute_input['expected_input_schema_sha256'] = $info['input_schema_sha256'];
 $result = MAD4B_SCP_Enrollment_Dispatch::execute( $execute_input );
 mad4b_assert( null === $result['mutation_performed'], 'dispatcher fabricated mutation evidence when target did not report it' );
 mad4b_assert( 'not_reported' === $result['mutation_evidence_source'], 'dispatcher did not label absent target mutation evidence' );
+
+
+/**
+ * Owner-reviewed Staging Write convergence is the only human-decision
+ * operation admitted by the compact enrollment dispatcher. This fixture
+ * does not grant permission or execute WordPress/host mutations.
+ */
+MAD4B_SCP_Remote_Operation_Parity::$include_owner = true;
+MAD4B_SCP_Servers::$mounted = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
+$owner = new MAD4B_Test_Ability(
+    mad4b_test_meta( array(
+        'chatgpt_direct_step_up' => true,
+        'exact_chatgpt_client_required' => true,
+        'mad4b_staging_write_authority_convergence' => 'mad4b.staging-write-authority-convergence.v1',
+    ) ),
+    $schema,
+    array( 'state' => 'exact_plan_confirmed', 'mutation_performed' => false )
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner;
+$owner_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) );
+mad4b_assert( is_array( $owner_info ) && true === $owner_info['human_decision_required'],
+    'owner decision was downgraded or bootstrap operation absent' );
+$owner_input = array(
+    'operation_id' => 'staging_write_authority_convergence',
+    'expected_registration_digest' => $owner_info['registration_digest'],
+    'expected_dispatch_policy_digest' => $owner_info['dispatch_policy_digest'],
+    'expected_input_schema_sha256' => $owner_info['input_schema_sha256'],
+    'input' => array( 'expected_source_commit_sha' => str_repeat( 'a', 40 ), 'confirmation' => 'ENABLE GOVERNED STAGING WRITE AUTHORITY' ),
+);
+mad4b_assert( true === MAD4B_SCP_Enrollment_Dispatch::can_execute( $owner_input ),
+    'owner operation rejected despite exact verified staging step-up fixture' );
+$owner_result = MAD4B_SCP_Enrollment_Dispatch::execute( $owner_input );
+mad4b_assert( 1 === $owner->calls && true === $owner_result['human_decision_required']
+    && 'exact_plan_confirmed' === $owner_result['result']['state'],
+    'owner convergence did not preserve governed execution and human decision' );
+
+// Metadata and catalog are both independently required. A spoofed or downgraded
+// operation, missing client binding, or lost OAuth step-up must fail closed.
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] =
+    new MAD4B_Test_Ability( mad4b_test_meta( array(
+        'chatgpt_direct_step_up' => true,
+        'mad4b_staging_write_authority_convergence' => 'mad4b.staging-write-authority-convergence.v1',
+    ) ), $schema, array() );
+mad4b_assert( 'mad4b_enrollment_dispatch_owner_step_up_contract_missing' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) ) ),
+    'missing exact ChatGPT client binding accepted' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner;
+MAD4B_SCP_Remote_Operation_Parity::$owner_row_override = array( 'remote_mode' => 'generic_admin_convergence' );
+mad4b_assert( 'mad4b_enrollment_dispatch_operation_not_eligible' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) ) ),
+    'wrong remote mode accepted for owner exception' );
+MAD4B_SCP_Remote_Operation_Parity::$owner_row_override = array( 'trust_class' => 'certified_addon' );
+mad4b_assert( 'mad4b_enrollment_dispatch_operation_not_eligible' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) ) ),
+    'addon core impersonation accepted' );
+MAD4B_SCP_Remote_Operation_Parity::$owner_row_override = array( 'human_decision_required' => false );
+mad4b_assert( 'mad4b_enrollment_dispatch_operation_not_eligible' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) ) ),
+    'owner approval removed without detection' );
+MAD4B_SCP_Remote_Operation_Parity::$owner_row_override = array();
+MAD4B_SCP_OAuth_Resource_Bridge::$scope = false;
+mad4b_assert( 'mad4b_enrollment_dispatch_step_up_scope_required' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::can_execute( $owner_input ) ),
+    'scope-less owner action was accepted' );
+MAD4B_SCP_OAuth_Resource_Bridge::$scope = true;
+MAD4B_SCP_OAuth_Resource_Bridge::$client = false;
+mad4b_assert( 'mad4b_enrollment_dispatch_chatgpt_client_required' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::can_execute( $owner_input ) ),
+    'foreign OAuth client was accepted' );
+MAD4B_SCP_OAuth_Resource_Bridge::$client = true;
+$GLOBALS['mad4b_test_env'] = 'production';
+mad4b_assert( 'mad4b_enrollment_dispatch_staging_profile_required' === mad4b_error_code(
+    MAD4B_SCP_Enrollment_Dispatch::can_execute( $owner_input ) ),
+    'Production owner convergence was not rejected' );
+unset( $GLOBALS['mad4b_test_env'] );
+mad4b_assert( 1 === $owner->calls, 'unauthorized or malformed owner convergence invoked target unexpectedly' );
+MAD4B_SCP_Remote_Operation_Parity::$include_owner = false;
 
 echo "mad4b.enrollment-dispatch.runtime.v1: PASS\n";

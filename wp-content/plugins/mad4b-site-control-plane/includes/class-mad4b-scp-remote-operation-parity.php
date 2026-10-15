@@ -312,221 +312,7 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	}
 
 	public static function catalog() {
-		$rows = array(
-			'managed_skills_reconciliation' => array(
-				'feature_id' => 'dynamic-skills',
-				'capability_tags' => array( 'skills', 'seed', 'provider-reconciliation', 'maintenance', 'bootstrap' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/skills-runtime-certification',
-				'local_surface' => 'wp-admin:MAD4B/Skills/Reconcile Managed Skills',
-				'remote_ability' => self::SKILLS_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'checkpointed_convergence',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-				'chatgpt_direct_step_up' => true,
-			),
-			'frontend_performance_sampling' => array(
-				'feature_id' => 'live-acceptance-performance',
-				'capability_tags' => array( 'frontend', 'performance', 'sampling', 'acceptance', 'telemetry' ),
-				'provider' => 'browser-acceptance-core',
-				'status_ability' => 'mad4b/frontend-performance-status',
-				'local_surface' => 'frontend-browser-visit',
-				'remote_ability' => self::FRONTEND_SAMPLE_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'external_browser_agent',
-				'remote_mode' => 'durable_external_executor_request',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'browser_acceptance_execution' => array(
-				'feature_id' => 'browser-acceptance-core',
-				'capability_tags' => array( 'browser', 'acceptance', 'javascript', 'ajax', 'dataset-parity', 'seo-non-authority', 'external-executor' ),
-				'provider' => 'browser-acceptance-core',
-				'status_ability' => 'mad4b/browser-acceptance-result',
-				'local_surface' => 'external-browser-agent',
-				'remote_ability' => self::BROWSER_ACCEPTANCE_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'external_browser_agent',
-				'remote_mode' => 'durable_signed_browser_acceptance',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'external_executor_work_claim' => array(
-				'feature_id' => 'remote-operation-parity',
-				'capability_tags' => array( 'external-executor', 'queue', 'lease', 'fencing', 'browser', 'acceptance' ),
-				'provider' => 'remote-work-queue',
-				'status_ability' => self::WORK_QUEUE_ABILITY,
-				'local_surface' => '',
-				'remote_ability' => self::WORK_CLAIM_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'external_browser_agent',
-				'remote_mode' => 'leased_semantic_work_queue',
-				'remote_caller_role' => 'external_executor',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'external_executor_work_completion' => array(
-				'feature_id' => 'remote-operation-parity',
-				'capability_tags' => array( 'external-executor', 'queue', 'lease', 'fencing', 'completion', 'browser', 'acceptance' ),
-				'provider' => 'remote-work-queue',
-				'status_ability' => self::WORK_QUEUE_ABILITY,
-				'local_surface' => '',
-				'remote_ability' => self::WORK_COMPLETE_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'external_browser_agent',
-				'remote_mode' => 'leased_semantic_work_completion',
-				'remote_caller_role' => 'external_executor',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'brand_context_materialization_reconciliation' => array(
-				'feature_id' => '007-content-intelligence-workflow-platform',
-				'capability_tags' => array( 'brand-context', 'materialization', 'reconciliation', 'idempotency', 'provider-readback', 'self-healing' ),
-				'provider' => 'context-provider-gateway',
-				'status_ability' => 'context/provider-capabilities',
-				'local_surface' => '',
-				'remote_ability' => 'context/reconcile-brand-materialization',
-				'authority_surface' => 'context',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'durable_multi_observation_reconciliation',
-				'remote_caller_role' => 'system',
-				'production_policy' => 'governed_source_policy',
-				'human_decision_required' => false,
-			),
-			'query_monitor_db_attribution_bootstrap' => array(
-				'feature_id' => 'live-acceptance-performance',
-				'capability_tags' => array( 'query-monitor', 'database', 'attribution', 'observability', 'bootstrap' ),
-				'provider' => 'query-monitor',
-				'status_ability' => 'mad4b/query-monitor-db-attribution-status',
-				'local_surface' => 'wp-admin:MAD4B/Diagnostics',
-				'remote_ability' => self::QUERY_MONITOR_ATTRIBUTION_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'exact_staging_instrumentation_bootstrap',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-				'chatgpt_direct_step_up' => true,
-			),
-			'admin_query_performance_indexes' => array(
-				'feature_id' => 'admin-query-performance',
-				'capability_tags' => array( 'database', 'index', 'performance', 'maintenance', 'ddl' ),
-				'provider' => 'wordpress-database',
-				'status_ability' => 'mad4b/admin-query-performance-status',
-				'local_surface' => 'wp-admin:MAD4B/Performance/Apply performance indexes',
-				'remote_ability' => self::PERFORMANCE_INDEX_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_cron_maintenance_worker',
-				'remote_mode' => 'durable_scheduled_operation',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'admin_query_performance_reconciliation' => array(
-				'feature_id' => 'admin-query-performance',
-				'capability_tags' => array( 'database', 'index', 'performance', 'maintenance', 'reconciliation', 'uncertain-execution' ),
-				'provider' => 'wordpress-database',
-				'status_ability' => 'mad4b/admin-query-performance-status',
-				'local_surface' => '',
-				'remote_ability' => self::PERFORMANCE_RECONCILE_ABILITY,
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'postcondition_only_reconciliation',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'deny',
-				'human_decision_required' => false,
-			),
-			'staging_write_authority_convergence' => array(
-				'feature_id' => 'staging-write-authority',
-				'capability_tags' => array( 'write-authority', 'reconciliation', 'candidate-binding', 'bootstrap', 'staging', 'no-breakglass' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/staging-write-authority-convergence-status',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/staging-write-authority-convergence-apply',
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'exact_write_only_convergence',
-				'remote_caller_role' => 'owner',
-				'production_policy' => 'deny',
-				'human_decision_required' => true,
-				'chatgpt_direct_step_up' => false,
-			),
-			'staging_candidate_binding' => array(
-				'feature_id' => 'staging-write-authority',
-				'capability_tags' => array( 'candidate', 'binding', 'write-authority', 'bootstrap', 'staging' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/staging-write-candidate-binding-plan',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/staging-write-candidate-bind',
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'exact_candidate_binding',
-				'remote_caller_role' => 'owner',
-				'production_policy' => 'deny',
-				'human_decision_required' => true,
-			),
-			'full_staging_authority_convergence' => array(
-				'feature_id' => 'full-staging-authority',
-				'capability_tags' => array( 'authority', 'convergence', 'candidate-binding', 'developer', 'breakglass', 'staging' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/full-staging-authority-status',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/full-staging-authority-apply',
-				'authority_surface' => 'mad4b-enrollment',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'exact_plan_composite_convergence',
-				'remote_caller_role' => 'owner',
-				'production_policy' => 'deny',
-				'human_decision_required' => true,
-			),
-			'provider_closure_matrix' => array(
-				'feature_id' => 'provider-certification',
-				'capability_tags' => array( 'provider', 'certification', 'write-eligibility', 'closure', 'diagnostics' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/provider-closure-matrix',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/provider-closure-matrix',
-				'authority_surface' => 'mad4b-read',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'read_only_diagnostic',
-				'remote_caller_role' => 'operator',
-				'production_policy' => 'read_only',
-				'human_decision_required' => false,
-			),
-			'provider_behavioral_recertification' => array(
-				'feature_id' => 'provider-certification',
-				'capability_tags' => array( 'provider', 'behavioral', 'recertification', 'rollback', 'write-eligibility' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/provider-closure-matrix',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/provider-behavioral-recertify',
-				'authority_surface' => 'mad4b-write',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'exact_reversible_probe',
-				'remote_caller_role' => 'owner',
-				'production_policy' => 'deny',
-				'human_decision_required' => true,
-			),
-			'provider_canary_execution' => array(
-				'feature_id' => 'provider-certification',
-				'capability_tags' => array( 'provider', 'canary', 'activation', 'high-risk-write', 'rollback' ),
-				'provider' => 'core',
-				'status_ability' => 'mad4b/provider-closure-matrix',
-				'local_surface' => '',
-				'remote_ability' => 'mad4b/provider-canary-execute',
-				'authority_surface' => 'mad4b-write',
-				'executor' => 'wordpress_native',
-				'remote_mode' => 'owner_governed_canary',
-				'remote_caller_role' => 'owner',
-				'production_policy' => 'deny',
-				'human_decision_required' => true,
-			),
-		);
+		$rows = require __DIR__ . '/../config/remote-operation-catalog.php';
 		foreach ( $rows as &$builtin_row ) {
 			$builtin_row['registrar_id'] = 'mad4b-core';
 			$builtin_row['source_plugin'] = 'mad4b-site-control-plane';
@@ -556,11 +342,22 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_trust_class_invalid', 'trust_class' => (string) $row['trust_class'] );
 				continue;
 			}
-			if ( ! in_array( (string) $row['remote_caller_role'], array( 'operator', 'external_executor', 'owner', 'system' ), true ) ) {
-				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => (string) $row['remote_caller_role'] );
+			$is_builtin = isset( $builtin_operation_ids[ $key ] );
+			// Site-administrator is a discoverable caller category only for
+			// first-party, Staging-only READ operations. This does not provide
+			// the caller admin credentials or bypass Ability permission checks.
+			$admin_read_only = $is_builtin
+				&& 'core' === (string) $row['trust_class']
+				&& 'mad4b-core' === (string) $row['registrar_id']
+				&& 'mad4b-site-control-plane' === (string) $row['source_plugin']
+				&& 'mad4b-read' === (string) $row['authority_surface']
+				&& 'deny' === (string) $row['production_policy'];
+			$role = (string) $row['remote_caller_role'];
+			if ( ! in_array( $role, array( 'operator', 'external_executor', 'owner', 'system' ), true )
+				&& ! ( 'site_administrator' === $role && $admin_read_only ) ) {
+				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'registration_remote_caller_role_invalid', 'remote_caller_role' => $role );
 				continue;
 			}
-			$is_builtin = isset( $builtin_operation_ids[ $key ] );
 			if ( ! $is_builtin && ! empty( $row['chatgpt_direct_step_up'] ) ) {
 				self::$catalog_rejections[] = array( 'operation_id' => $key, 'reason' => 'external_registration_direct_chatgpt_step_up_denied' );
 				continue;
@@ -650,9 +447,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 	private static function executor_status( $executor ) {
 		$executor = sanitize_key( (string) $executor );
 		if ( 'external_browser_agent' === $executor ) {
-			if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) || ! method_exists( 'MAD4B_SCP_Browser_Acceptance_Core', 'capabilities' ) ) return array( 'available' => false, 'state' => 'browser_acceptance_core_unavailable' );
-			$capabilities = MAD4B_SCP_Browser_Acceptance_Core::capabilities();
-			$count = is_array( $capabilities ) && isset( $capabilities['provider_count'] ) ? (int) $capabilities['provider_count'] : 0;
+			if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) || ! method_exists( 'MAD4B_SCP_Browser_Acceptance_Core', 'registered_provider_count' ) ) return array( 'available' => false, 'state' => 'browser_acceptance_core_unavailable' );
+			$count = MAD4B_SCP_Browser_Acceptance_Core::registered_provider_count();
 			return array( 'available' => $count > 0, 'state' => $count > 0 ? 'browser_provider_available' : 'browser_provider_waiting' );
 		}
 		if ( 'wordpress_cron_maintenance_worker' === $executor ) {
@@ -1151,6 +947,24 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return $tools;
 	}
 
+	/**
+	 * Single exact catalog contract shared by discovery and dispatch.
+	 * No third-party or general owner operation can inherit this exception.
+	 */
+	public static function reviewed_owner_staging_convergence( $id, array $r ) {
+		return 'staging_write_authority_convergence' === (string) $id
+			&& 'mad4b/staging-write-authority-convergence-apply' === (string) ( $r['remote_ability'] ?? '' )
+			&& 'exact_write_only_convergence' === (string) ( $r['remote_mode'] ?? '' )
+			&& 'mad4b-enrollment' === (string) ( $r['authority_surface'] ?? '' )
+			&& 'owner' === (string) ( $r['remote_caller_role'] ?? '' )
+			&& ! empty( $r['human_decision_required'] )
+			&& ! empty( $r['chatgpt_direct_step_up'] )
+			&& 'deny' === (string) ( $r['production_policy'] ?? '' )
+			&& 'core' === (string) ( $r['trust_class'] ?? '' )
+			&& 'mad4b-core' === (string) ( $r['registrar_id'] ?? '' )
+			&& 'mad4b-site-control-plane' === (string) ( $r['source_plugin'] ?? '' );
+	}
+
 	public static function chatgpt_direct_step_up_tools() {
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
 			|| ! MAD4B_SCP_Site_Profile::configured()
@@ -1159,14 +973,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
 
 		$tools = array();
-		foreach ( self::catalog() as $row ) {
+		foreach ( self::catalog() as $operation_id => $row ) {
+			$owner = self::reviewed_owner_staging_convergence( $operation_id, $row );
 			if ( ! is_array( $row )
 				|| empty( $row['chatgpt_direct_step_up'] )
 				|| 'core' !== ( isset( $row['trust_class'] ) ? (string) $row['trust_class'] : '' )
 				|| 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
-				|| 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' )
+				|| ( ! $owner && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
 				|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
-				|| ! empty( $row['human_decision_required'] )
+				|| ( ! $owner && ! empty( $row['human_decision_required'] ) )
 				|| empty( $row['remote_registered'] )
 				|| empty( $row['execution_eligible'] )
 				|| empty( $row['remote_parity_ready'] ) ) continue;
@@ -1177,7 +992,9 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			$meta = $ability->get_meta();
 			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
 			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( empty( $mcp['chatgpt_direct_step_up'] )
+			if ( ( $owner && ( empty( $mcp['exact_chatgpt_client_required'] )
+				|| 'mad4b.staging-write-authority-convergence.v1' !== (string) ( $mcp['mad4b_staging_write_authority_convergence'] ?? '' ) ) )
+				|| empty( $mcp['chatgpt_direct_step_up'] )
 				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
 				|| ! array_key_exists( 'generic_remote_admin', $mcp ) || false !== $mcp['generic_remote_admin']
 				|| ! array_key_exists( 'production_mutation_allowed', $mcp ) || false !== $mcp['production_mutation_allowed']
@@ -1295,6 +1112,13 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		$properties['executor_id'] = array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64, 'pattern' => '^[A-Za-z0-9._-]+$' );
 		$properties['lease_token'] = array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' );
 		$properties['browser_evidence'] = array( 'type' => 'object', 'maxProperties' => 9, 'additionalProperties' => true );
+		$properties['build_receipt'] = array( 'type' => 'object', 'additionalProperties' => false,
+			'required' => array( 'claims_b64', 'signature_b64' ),
+			'properties' => array(
+				'claims_b64' => array( 'type' => 'string', 'maxLength' => 8192 ),
+				'signature_b64' => array( 'type' => 'string', 'maxLength' => 128 ),
+			),
+		);
 		return array(
 			'type' => 'object',
 			'properties' => $properties,
@@ -1478,6 +1302,19 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $job ) ) return $job;
 		$operation_id = isset( $job['operation_id'] ) ? (string) $job['operation_id'] : '';
 		if ( 'browser_acceptance_execution' === $operation_id ) return self::complete_browser_acceptance_work( $input, $job );
+		if ( 'standalone_source_build' === $operation_id ) {
+			if ( ! class_exists( 'MAD4B_SCP_Standalone_Build_Control', false ) )
+				return new WP_Error( 'mad4b_build_verifier_unavailable', 'Signed build verifier is not loaded.' );
+			$verified = MAD4B_SCP_Standalone_Build_Control::complete_signed_job( $input, $job );
+			if ( is_wp_error( $verified ) ) return $verified;
+			$audit = self::audit( self::WORK_COMPLETE_ABILITY, array(
+				'operation_id' => 'standalone_source_build',
+				'job_id' => (string) $input['job_id'],
+				'verification' => 'pinned_ed25519_job_bound_runner_receipt',
+				'release_certified' => false, 'production_mutation' => false,
+			) );
+			return is_wp_error( $audit ) ? $audit : $verified;
+		}
 		if ( 'frontend_performance_sampling' !== $operation_id ) return new WP_Error( 'mad4b_remote_work_completion_operation_unsupported', 'This remote work completion verifier does not support the requested semantic operation.' );
 
 		$payload = isset( $job['payload'] ) && is_array( $job['payload'] ) ? $job['payload'] : array();
@@ -2020,9 +1857,16 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		if ( is_wp_error( $provenance ) ) return $provenance;
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return new WP_Error( 'mad4b_browser_acceptance_core_unavailable', 'Browser Acceptance Core is unavailable.' );
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Work_Queue' ) ) return new WP_Error( 'mad4b_remote_work_queue_unavailable', 'Remote Work Queue is unavailable.' );
-		$provider_id = sanitize_key( isset( $input['provider_id'] ) ? (string) $input['provider_id'] : '' );
-		$profile_id = sanitize_key( isset( $input['profile_id'] ) ? (string) $input['profile_id'] : '' );
-		if ( '' === $provider_id || '' === $profile_id ) return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires bounded provider_id and profile_id selectors.' );
+		$provider_id = isset( $input['provider_id'] ) && is_string( $input['provider_id'] ) ? strtolower( trim( $input['provider_id'] ) ) : '';
+		$profile_id = isset( $input['profile_id'] ) && is_string( $input['profile_id'] ) ? strtolower( trim( $input['profile_id'] ) ) : '';
+		if ( ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $provider_id )
+			|| ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $profile_id ) ) {
+			return new WP_Error( 'mad4b_browser_acceptance_selector_invalid', 'Browser Acceptance requires exact bounded provider_id and profile_id selectors.' );
+		}
+		if ( class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' ) ) {
+			$operator_guard = MAD4B_SCP_Browser_Acceptance_Admin_UI::runtime_target_guard( $provider_id, $profile_id );
+			if ( is_wp_error( $operator_guard ) ) return $operator_guard;
+		}
 		$plan = MAD4B_SCP_Browser_Acceptance_Core::plan( array( 'provider_id' => $provider_id, 'profile_id' => $profile_id, 'suite' => 'browser_runtime' ) );
 		if ( ! is_array( $plan ) || 'ready' !== ( isset( $plan['state'] ) ? (string) $plan['state'] : '' ) ) return new WP_Error( 'mad4b_browser_acceptance_plan_not_ready', 'Browser Acceptance plan is not ready.', array( 'plan' => is_array( $plan ) ? $plan : array() ) );
 		$plan_digest = strtolower( trim( (string) ( isset( $plan['plan_digest'] ) ? $plan['plan_digest'] : '' ) ) );

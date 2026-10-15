@@ -146,18 +146,19 @@ final class MAD4B_SCP_Search_Provider_Connections {
 
 	public static function render( $profile_id = '' ) {
 		if ( ! current_user_can( 'manage_options' ) ) return;
-		echo '<h2 id="search-providers">Search providers</h2><p>Save API credentials, then test the account connection. Saving or testing does not enable search capture. An approved provider, Search Profile and governed budget are required before observations can run.</p>';
+		echo '<h2 id="search-providers">' . esc_html__( 'Search providers', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Save API credentials, then test the saved account. Search capture requires separate provider certification, a Search Profile and a governed budget.', 'mad4b-site-control-plane' ) . '</p>';
 		$editable = MAD4B_SCP_Search_Runtime::can_configure();
-		if ( ! $editable ) echo '<p>Provider setup requires an enrolled Staging, Development or Local environment.</p>';
+		if ( ! $editable ) MAD4B_SCP_Admin_Experience::next_step( __( 'Site enrollment required', 'mad4b-site-control-plane' ), __( 'Provider setup requires an enrolled Staging, Development or Local environment.', 'mad4b-site-control-plane' ), 'attention', MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane-site-profile' ), __( 'Review Site Profile', 'mad4b-site-control-plane' ) );
 		foreach ( MAD4B_SCP_Search_Providers::adapters() as $id => $a ) {
 			if ( ! $a instanceof MAD4B_SCP_Search_SERP_Enrollment ) continue;
 			$m = $a->enrollment(); $s = self::status( $id ); $d = $a->descriptor();
-			echo '<section class="postbox" style="padding:16px"><h3>' . esc_html( $m['label'] ) . '</h3><p>' . esc_html( $m['help'] ) . ' <a href="' . esc_url( $m['help_url'] ) . '" target="_blank" rel="noopener noreferrer">API credentials</a></p>';
+			echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-provider-title-' . esc_attr( $id ) . '"><h3 id="mad4b-provider-title-' . esc_attr( $id ) . '">' . esc_html( $m['label'] ) . '</h3><p>' . esc_html( $m['help'] ) . ' <a href="' . esc_url( $m['help_url'] ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'API credentials', 'mad4b-site-control-plane' ) . ' <span class="screen-reader-text">' . esc_html__( '(opens in a new tab)', 'mad4b-site-control-plane' ) . '</span></a></p>';
 			$revision = is_wp_error( $s ) ? MAD4B_SCP_Search_Store::read( self::KIND, $id ) : null;
 			$revision = is_wp_error( $s ) ? ( is_array( $revision ) ? $revision['_revision'] : 0 ) : $s['revision'];
-			if ( is_wp_error( $s ) ) echo '<p>' . esc_html( $s->get_error_message() ) . '</p>';
+			if ( is_wp_error( $s ) ) echo '<p role="alert">' . esc_html( $s->get_error_message() ) . '</p>';
 			else {
-				echo '<dl><dt>Credentials</dt><dd>' . esc_html( $s['configured'] ? 'Saved securely; fields remain blank' : 'Not configured' ) . '</dd><dt>Connection</dt><dd>' . esc_html( str_replace( '_', ' ', $s['connection_state'] ) ) . '</dd>';
+				self::feedback( $id, $s );
+				echo '<dl><dt>' . esc_html__( 'Credentials', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( $s['configured'] ? __( 'Saved securely; fields remain blank', 'mad4b-site-control-plane' ) : __( 'Not configured', 'mad4b-site-control-plane' ) ) . '</dd><dt>' . esc_html__( 'Connection', 'mad4b-site-control-plane' ) . '</dt><dd>' . esc_html( str_replace( '_', ' ', $s['connection_state'] ) ) . '</dd>';
 				echo '<dt>Observed search allowance</dt><dd>' . esc_html( isset( $s['quota']['remaining'] ) ? (string) $s['quota']['remaining'] . ( isset( $s['quota']['monthly_limit'] ) ? ' remaining; monthly plan: ' . $s['quota']['monthly_limit'] : ' remaining' ) : 'Not observed; monetary balance does not establish a search allowance' ) . '</dd>';
 				if ( isset( $s['quota']['renewal_date'] ) ) echo '<dt>Provider renewal date</dt><dd>' . esc_html( $s['quota']['renewal_date'] ) . '</dd>';
 				if ( null !== $s['balance'] ) echo '<dt>Observed account balance</dt><dd>' . esc_html( (string) $s['balance']['amount'] . ' ' . $s['balance']['currency'] ) . '</dd>';
@@ -174,12 +175,21 @@ final class MAD4B_SCP_Search_Provider_Connections {
 				wp_nonce_field( 'mad4b_search_provider_connection:' . $id );
 				foreach ( $m['fields'] as $key => $field ) {
 					$input_id = 'mad4b-provider-' . $id . '-' . $key;
-					echo '<p><label for="' . esc_attr( $input_id ) . '">' . esc_html( $field['label'] ) . '</label><br><input class="regular-text" type="password" id="' . esc_attr( $input_id ) . '" name="credentials[' . esc_attr( $key ) . ']" value="" maxlength="' . esc_attr( (string) $field['max_length'] ) . '" autocomplete="new-password" spellcheck="false"></p>';
+					echo '<p><label for="' . esc_attr( $input_id ) . '">' . esc_html( $field['label'] ) . '</label><br><input class="regular-text" type="password" id="' . esc_attr( $input_id ) . '" name="credentials[' . esc_attr( $key ) . ']" value="" maxlength="' . esc_attr( (string) $field['max_length'] ) . '" autocomplete="new-password" spellcheck="false" aria-describedby="mad4b-provider-help-' . esc_attr( $id ) . '"></p>';
 				}
-				echo '<p>Leave every credential field blank to keep the saved connection. To replace credentials, complete every field.</p><button class="button button-primary" name="operation" value="save" type="submit">Save credentials</button> <button class="button" name="operation" value="test" type="submit">Test saved connection</button> <button class="button" name="operation" value="remove" type="submit">Remove credentials</button></form>';
+				echo '<p id="mad4b-provider-help-' . esc_attr( $id ) . '">' . esc_html__( 'Leave all credential fields blank to keep the saved connection. Complete every field to replace it.', 'mad4b-site-control-plane' ) . '</p><p><button class="button button-primary" name="operation" value="save" type="submit">' . esc_html__( 'Save credentials', 'mad4b-site-control-plane' ) . '</button> <button class="button" name="operation" value="test" type="submit">' . esc_html__( 'Test saved connection', 'mad4b-site-control-plane' ) . '</button></p><details><summary>' . esc_html__( 'Remove saved connection', 'mad4b-site-control-plane' ) . '</summary><p>' . esc_html__( 'Removing credentials invalidates this local connection. A new connection must be saved and checked before use.', 'mad4b-site-control-plane' ) . '</p><button class="button" name="operation" value="remove" type="submit">' . esc_html__( 'Remove credentials', 'mad4b-site-control-plane' ) . '</button></details></form>';
 			}
 			echo '</section>';
 		}
+	}
+	private static function feedback( $id, array $status ) {
+		$provider = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_notice', '', 96 );
+		$operation = MAD4B_SCP_Admin_Experience::query_string( 'mad4b_provider_operation', '', 16 );
+		if ( $provider !== $id || ! in_array( $operation, array( 'save', 'test', 'remove' ), true ) ) return;
+		$binding = $id . ':' . $status['revision'] . ':' . $operation . ':' . $status['connection_state'];
+		if ( ! MAD4B_SCP_Admin_Experience::notice_verified( 'mad4b-search-intelligence', 'provider_' . $operation, $binding ) ) return;
+		$messages = array( 'save' => __( 'Provider settings saved and verified.', 'mad4b-site-control-plane' ), 'test' => __( 'Saved account checked. Certification and budget gates remain separate.', 'mad4b-site-control-plane' ), 'remove' => __( 'Saved connection removed and verified.', 'mad4b-site-control-plane' ) );
+		echo '<div class="notice notice-success inline" role="status"><p>' . esc_html( $messages[ $operation ] ) . '</p></div>';
 	}
 	public static function post_input( array $input ) {
 		$revision = isset( $input['expected_revision'] ) ? $input['expected_revision'] : null;
@@ -195,6 +205,9 @@ final class MAD4B_SCP_Search_Provider_Connections {
 		check_admin_referer( 'mad4b_search_provider_connection:' . $id );
 		$result = self::post_input( wp_unslash( $_POST ) );
 		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400, 'back_link' => true ) );
-		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-search-intelligence&section=providers&profile_id=' . rawurlencode( $profile_id ) ) ); exit;
+		$operation = isset( $_POST['operation'] ) && is_string( $_POST['operation'] ) ? wp_unslash( $_POST['operation'] ) : '';
+		$binding = $id . ':' . $result['revision'] . ':' . $operation . ':' . $result['connection_state'];
+		$args = array( 'page' => 'mad4b-search-intelligence', 'section' => 'providers', 'profile_id' => $profile_id, 'mad4b_provider_notice' => $id, 'mad4b_provider_operation' => $operation, 'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_' . $operation, $binding ) );
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) . '#search-providers' ); exit;
 	}
 }

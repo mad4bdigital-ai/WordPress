@@ -1,0 +1,816 @@
+{
+  "contract": "mad4b.cso01.tasks.v1",
+  "status": "OPEN",
+  "tasks": [
+    {
+      "id": "CSO-T001",
+      "requirement_id": "CSO-R001",
+      "gate_id": "CSO-G1",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Site Explorer",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T002",
+      "requirement_id": "CSO-R001",
+      "gate_id": "CSO-G1",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Site Explorer",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T003",
+      "requirement_id": "CSO-R001",
+      "gate_id": "CSO-G1",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Site Explorer",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T004",
+      "requirement_id": "CSO-R002",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Universal Form Bridge",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T005",
+      "requirement_id": "CSO-R002",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Universal Form Bridge",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T006",
+      "requirement_id": "CSO-R002",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Universal Form Bridge",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T007",
+      "requirement_id": "CSO-R003",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Smart Autocomplete",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T008",
+      "requirement_id": "CSO-R003",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Smart Autocomplete",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T009",
+      "requirement_id": "CSO-R003",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Smart Autocomplete",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T010",
+      "requirement_id": "CSO-R004",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Dependency-aware Forms",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T011",
+      "requirement_id": "CSO-R004",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Dependency-aware Forms",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T012",
+      "requirement_id": "CSO-R004",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Dependency-aware Forms",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T013",
+      "requirement_id": "CSO-R005",
+      "gate_id": "CSO-G3",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Visual Diff and Preview",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T014",
+      "requirement_id": "CSO-R005",
+      "gate_id": "CSO-G3",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Visual Diff and Preview",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T015",
+      "requirement_id": "CSO-R005",
+      "gate_id": "CSO-G3",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Visual Diff and Preview",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T016",
+      "requirement_id": "CSO-R006",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Secure Credentials Center",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T017",
+      "requirement_id": "CSO-R006",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Secure Credentials Center",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T018",
+      "requirement_id": "CSO-R006",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Secure Credentials Center",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T019",
+      "requirement_id": "CSO-R007",
+      "gate_id": "CSO-G4",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Bulk Operations",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T020",
+      "requirement_id": "CSO-R007",
+      "gate_id": "CSO-G4",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Bulk Operations",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T021",
+      "requirement_id": "CSO-R007",
+      "gate_id": "CSO-G4",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Bulk Operations",
+      "priority": "P0",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T022",
+      "requirement_id": "CSO-R008",
+      "gate_id": "CSO-G4",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Conversation Workflow Builder",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T023",
+      "requirement_id": "CSO-R008",
+      "gate_id": "CSO-G4",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Conversation Workflow Builder",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T024",
+      "requirement_id": "CSO-R008",
+      "gate_id": "CSO-G4",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Conversation Workflow Builder",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T025",
+      "requirement_id": "CSO-R009",
+      "gate_id": "CSO-G4",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for History, Reconcile and Rollback",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T026",
+      "requirement_id": "CSO-R009",
+      "gate_id": "CSO-G4",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for History, Reconcile and Rollback",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T027",
+      "requirement_id": "CSO-R009",
+      "gate_id": "CSO-G4",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of History, Reconcile and Rollback",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T028",
+      "requirement_id": "CSO-R010",
+      "gate_id": "CSO-G5",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Content and Media Studio",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T029",
+      "requirement_id": "CSO-R010",
+      "gate_id": "CSO-G5",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Content and Media Studio",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T030",
+      "requirement_id": "CSO-R010",
+      "gate_id": "CSO-G5",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Content and Media Studio",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T031",
+      "requirement_id": "CSO-R011",
+      "gate_id": "CSO-G6",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Multi-site Command Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T032",
+      "requirement_id": "CSO-R011",
+      "gate_id": "CSO-G6",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Multi-site Command Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T033",
+      "requirement_id": "CSO-R011",
+      "gate_id": "CSO-G6",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Multi-site Command Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T034",
+      "requirement_id": "CSO-R012",
+      "gate_id": "CSO-G3",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Approval and Delegation Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T035",
+      "requirement_id": "CSO-R012",
+      "gate_id": "CSO-G3",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Approval and Delegation Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T036",
+      "requirement_id": "CSO-R012",
+      "gate_id": "CSO-G3",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Approval and Delegation Center",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T037",
+      "requirement_id": "CSO-R013",
+      "gate_id": "CSO-G7",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Monitoring and Smart Alerts",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T038",
+      "requirement_id": "CSO-R013",
+      "gate_id": "CSO-G7",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Monitoring and Smart Alerts",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T039",
+      "requirement_id": "CSO-R013",
+      "gate_id": "CSO-G7",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Monitoring and Smart Alerts",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T040",
+      "requirement_id": "CSO-R014",
+      "gate_id": "CSO-G8",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Staging to Production Promotion",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T041",
+      "requirement_id": "CSO-R014",
+      "gate_id": "CSO-G8",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Staging to Production Promotion",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T042",
+      "requirement_id": "CSO-R014",
+      "gate_id": "CSO-G8",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Staging to Production Promotion",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T043",
+      "requirement_id": "CSO-R015",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Reusable Templates",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T044",
+      "requirement_id": "CSO-R015",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Reusable Templates",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T045",
+      "requirement_id": "CSO-R015",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Reusable Templates",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T046",
+      "requirement_id": "CSO-R016",
+      "gate_id": "CSO-G9",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Contextual Help and Troubleshooting",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T047",
+      "requirement_id": "CSO-R016",
+      "gate_id": "CSO-G9",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Contextual Help and Troubleshooting",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T048",
+      "requirement_id": "CSO-R016",
+      "gate_id": "CSO-G9",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Contextual Help and Troubleshooting",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T049",
+      "requirement_id": "CSO-R017",
+      "gate_id": "CSO-G7",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Self Diagnostics and Guided Recovery",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T050",
+      "requirement_id": "CSO-R017",
+      "gate_id": "CSO-G7",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Self Diagnostics and Guided Recovery",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T051",
+      "requirement_id": "CSO-R017",
+      "gate_id": "CSO-G7",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Self Diagnostics and Guided Recovery",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T052",
+      "requirement_id": "CSO-R018",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Conversation Intent and Session Continuity",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T053",
+      "requirement_id": "CSO-R018",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Conversation Intent and Session Continuity",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T054",
+      "requirement_id": "CSO-R018",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Conversation Intent and Session Continuity",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T055",
+      "requirement_id": "CSO-R019",
+      "gate_id": "CSO-G1",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Dynamic Storage Adapter Registry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T056",
+      "requirement_id": "CSO-R019",
+      "gate_id": "CSO-G1",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Dynamic Storage Adapter Registry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T057",
+      "requirement_id": "CSO-R019",
+      "gate_id": "CSO-G1",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Dynamic Storage Adapter Registry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T058",
+      "requirement_id": "CSO-R020",
+      "gate_id": "CSO-G9",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Localization, RTL and Accessibility",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T059",
+      "requirement_id": "CSO-R020",
+      "gate_id": "CSO-G9",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Localization, RTL and Accessibility",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T060",
+      "requirement_id": "CSO-R020",
+      "gate_id": "CSO-G9",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Localization, RTL and Accessibility",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T061",
+      "requirement_id": "CSO-R021",
+      "gate_id": "CSO-G9",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Workflow Quality and Usage Telemetry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T062",
+      "requirement_id": "CSO-R021",
+      "gate_id": "CSO-G9",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Workflow Quality and Usage Telemetry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T063",
+      "requirement_id": "CSO-R021",
+      "gate_id": "CSO-G9",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Workflow Quality and Usage Telemetry",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T064",
+      "requirement_id": "CSO-R022",
+      "gate_id": "CSO-G1",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Policy and Data Governance",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T065",
+      "requirement_id": "CSO-R022",
+      "gate_id": "CSO-G1",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Policy and Data Governance",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T066",
+      "requirement_id": "CSO-R022",
+      "gate_id": "CSO-G1",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Policy and Data Governance",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T067",
+      "requirement_id": "CSO-R023",
+      "gate_id": "CSO-G4",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Durable Cross-plugin Orchestration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T068",
+      "requirement_id": "CSO-R023",
+      "gate_id": "CSO-G4",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Durable Cross-plugin Orchestration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T069",
+      "requirement_id": "CSO-R023",
+      "gate_id": "CSO-G4",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Durable Cross-plugin Orchestration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T070",
+      "requirement_id": "CSO-R024",
+      "gate_id": "CSO-G7",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Drift and Lifecycle Management",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T071",
+      "requirement_id": "CSO-R024",
+      "gate_id": "CSO-G7",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Drift and Lifecycle Management",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T072",
+      "requirement_id": "CSO-R024",
+      "gate_id": "CSO-G7",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Drift and Lifecycle Management",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T073",
+      "requirement_id": "CSO-R025",
+      "gate_id": "CSO-G2",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Credential Lifecycle and Rotation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T074",
+      "requirement_id": "CSO-R025",
+      "gate_id": "CSO-G2",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Credential Lifecycle and Rotation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T075",
+      "requirement_id": "CSO-R025",
+      "gate_id": "CSO-G2",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Credential Lifecycle and Rotation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T076",
+      "requirement_id": "CSO-R026",
+      "gate_id": "CSO-G4",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Event Trigger and Webhook Automation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T077",
+      "requirement_id": "CSO-R026",
+      "gate_id": "CSO-G4",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Event Trigger and Webhook Automation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T078",
+      "requirement_id": "CSO-R026",
+      "gate_id": "CSO-G4",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Event Trigger and Webhook Automation",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    },
+    {
+      "id": "CSO-T079",
+      "requirement_id": "CSO-R027",
+      "gate_id": "CSO-G5",
+      "stage": "design",
+      "description": "Specify typed adapter contracts, ownership, threat cases and lifecycle for Commerce and Custom Object Integration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "schema-and-review"
+    },
+    {
+      "id": "CSO-T080",
+      "requirement_id": "CSO-R027",
+      "gate_id": "CSO-G5",
+      "stage": "implement",
+      "description": "Implement non-authorizing discovery/preview plus separately governed execution for Commerce and Custom Object Integration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "native-php-and-wordpress-fixtures"
+    },
+    {
+      "id": "CSO-T081",
+      "requirement_id": "CSO-R027",
+      "gate_id": "CSO-G5",
+      "stage": "accept",
+      "description": "Certify source identity, adversarial denial and independent postcondition of Commerce and Custom Object Integration",
+      "priority": "P1",
+      "status": "OPEN",
+      "proof": "exact-head-live-or-disposable-receipt"
+    }
+  ]
+}

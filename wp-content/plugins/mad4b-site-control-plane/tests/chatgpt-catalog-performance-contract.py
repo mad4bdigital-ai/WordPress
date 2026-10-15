@@ -4,7 +4,7 @@ import subprocess
 import sys
 
 root = Path(__file__).resolve().parents[1]
-servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 plugin = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 readme = (root / "README.md").read_text(encoding="utf-8")

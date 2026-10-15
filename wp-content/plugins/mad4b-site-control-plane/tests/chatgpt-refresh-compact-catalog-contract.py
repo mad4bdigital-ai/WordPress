@@ -226,7 +226,8 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/developer-execute'", "'mad4b
     require(dispatcher in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory is incomplete: " + dispatcher)
 require("array_values( array_unique( array_map( 'strval', $tools ) ) )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deduplicated")
 require("sort( $tools, SORT_STRING )" in dispatcher_helper, "canonical ChatGPT mutation dispatcher inventory must remain deterministic")
-require("array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )" in base_chatgpt_body, "normal governed mutation dispatch plus guarded authority step-ups must derive from the canonical dispatcher inventory")
+require("$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );" in base_chatgpt_body and "array_merge( $direct_mutation_transport, $approval_bootstrap )" in base_chatgpt_body, "canonical dispatch and reviewed optional approval bootstrap must remain bounded")
+require("chatgpt_approval_bootstrap_tools()" in base_chatgpt_body, "approval bootstrap requires protected Staging classification")
 require("MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" in base_chatgpt_body, "unified enrolled Staging base catalog must include read-only full authority diagnostics")
 for low_level in [
     "'mad4b/site-profile-feature-reenroll'",

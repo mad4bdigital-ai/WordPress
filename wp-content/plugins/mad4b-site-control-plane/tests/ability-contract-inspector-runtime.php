@@ -19,7 +19,9 @@ class MAD4B_SCP_Authorization {
 	public static function execution_boundary_verified( $ability ) { return true; }
 }
 class MAD4B_SCP_Servers {
-	public static function provider_for_ability( $server, $ability ) { return 'fixture'; }
+	public static $descriptor_calls = 0;
+	public static function provider_for_ability( $server, $ability ) { return 'runtime-fixture'; }
+	public static function provider_for_capability_descriptor( $server, $ability ) { ++self::$descriptor_calls; return 'fixture'; }
 	public static function core_tools( $server ) { return array(); }
 }
 
@@ -63,6 +65,7 @@ $GLOBALS['abilities'] = array( $name => new InspectorFixture( $name, 'normal' ) 
 $first = MAD4B_SCP_Ability_Contract_Inspector::inspect( $name );
 $first_descriptor = MAD4B_SCP_Capability_Descriptor_Registry::describe( $name );
 $check( ! is_wp_error( $first ) && ! is_wp_error( $first_descriptor ), 'Initial canonical inspection failed.' );
+$check( 'fixture' === $first['execution_provider'] && MAD4B_SCP_Servers::$descriptor_calls > 0, 'Canonical inspection used transient runtime mount resolution instead of structural descriptor provider resolution.' );
 $check( ! class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection', false ), 'Descriptor registry unexpectedly depends on ChatGPT projection loading.' );
 
 $GLOBALS['abilities'][ $name ] = new InspectorFixture( $name, 'reverse' );

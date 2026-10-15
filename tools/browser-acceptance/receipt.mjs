@@ -19,6 +19,7 @@ export function buildBrowserExecutionReceipt({
   attempts,
   evidence,
   result,
+  consumption = null,
   sourceHead = "",
   generatedAt = new Date().toISOString()
 }) {
@@ -46,7 +47,12 @@ export function buildBrowserExecutionReceipt({
     case_count: Array.isArray(evidence?.cases) ? evidence.cases.length : 0,
     authorizing: false,
     integrity_model: "content_addressed_receipt_anchored_by_mad4b_reducer_signature",
-    independently_signed_by_browser_runner: false
+    independently_signed_by_browser_runner: false,
+    local_replay_claim: consumption?.contract === "mad4b.browser-consumption-local.v1"
+      ? { claim_key: consumption.claim_key, scope: consumption.scope,
+          consumed_at: consumption.consumed_at } : null,
+    globally_unique_consumption_proven: false,
+    release_ready: false
   };
   return { ...base, receipt_sha256: canonicalSha256(base) };
 }

@@ -5,15 +5,30 @@ function wp_salt( $scheme ) { return isset( $GLOBALS['enrollment_salt'] ) ? $GLO
 function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $v ) { return esc_html( $v ); }
 function esc_url( $v ) { return esc_html( $v ); }
+function __( $v, $domain = '' ) { return (string) $v; }
+function esc_html__( $v, $domain = '' ) { return esc_html( __( $v, $domain ) ); }
+function esc_attr__( $v, $domain = '' ) { return esc_attr( __( $v, $domain ) ); }
+function wp_get_session_token() { return isset( $GLOBALS['enrollment_session'] ) ? $GLOBALS['enrollment_session'] : 'fixture-session'; }
+function add_query_arg( $key, $value = null, $url = null ) {
+	if ( is_array( $key ) ) { $query = $key; $url = $value; } else $query = array( $key => $value );
+	$url = null === $url ? home_url( '/' ) : $url;
+	$parts = explode( '?', $url, 2 ); $existing = array();
+	if ( isset( $parts[1] ) ) parse_str( $parts[1], $existing );
+	return $parts[0] . '?' . http_build_query( array_merge( $existing, $query ) );
+}
 function wp_unslash( $v ) { return is_array( $v ) ? array_map( 'wp_unslash', $v ) : ( is_string( $v ) ? stripslashes( $v ) : $v ); }
 function wp_nonce_field( $action ) { echo '<input type="hidden" name="_wpnonce" value="' . esc_attr( hash( 'sha256', $action ) ) . '">'; }
 function check_admin_referer( $action ) { if ( ! isset( $_POST['_wpnonce'] ) || hash( 'sha256', $action ) !== $_POST['_wpnonce'] ) throw new RuntimeException( 'nonce_denied' ); }
 function wp_die( $message, $title = '', $args = array() ) { throw new RuntimeException( 'post_denied:' . ( isset( $args['response'] ) ? $args['response'] : '' ) ); }
 function submit_button( $text, $type, $name, $wrap ) { echo '<button>' . esc_html( $text ) . '</button>'; }
+// Use the actual registered route resolver; no synthetic link can bypass its capability checks.
+if ( ! class_exists( 'MAD4B_SCP_Admin_Workspace' ) ) require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-workspace.php';
+MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-search-intelligence', 'manage_options' );
+MAD4B_SCP_Admin_Route_Registry::register( 'mad4b-control-plane-site-profile', 'manage_options' );
 $assertions = 0; $results = array();
 function enrollment_check( $condition, $message ) { ++$GLOBALS['assertions']; if ( ! $condition ) throw new RuntimeException( $message ); }
 function enrollment_case( $id, $callback ) {
-	$start = $GLOBALS['assertions']; asi_reset(); unset( $GLOBALS['enrollment_salt'] );
+	$start = $GLOBALS['assertions']; asi_reset(); unset( $GLOBALS['enrollment_salt'], $GLOBALS['enrollment_session'] );
 	$GLOBALS['fixture_providers'] = array( new MAD4B_SCP_Search_SerpApi_Adapter(), new MAD4B_SCP_Search_DataForSEO_Adapter() );
 	$GLOBALS['fixture_http'] = array(); $GLOBALS['fixture_http_response'] = static function () { throw new RuntimeException( 'unexpected HTTP' ); };
 	MAD4B_SCP_Search_Provider_Connections::boot(); $_GET = array(); $_POST = array();
@@ -51,6 +66,24 @@ enrollment_case( 'local_enrollment_encryption_unconfigured_ui_and_secret_project
 	enrollment_check( false !== strpos( $profile_html, 'name="profile_id" value="fixture.search"' ), 'provider enrollment preserves the selected profile on return' );
 	$keep = enrollment_action( 'serpapi', 'save', 1, array( 'api_key' => '' ) );
 	enrollment_check( 1 === $keep['revision'] && $keep['configured'], 'blank save preserves the exact connection' );
+} );
+enrollment_case( 'provider_feedback_bound_to_current_revision_operation_and_session', static function () {
+	$saved = enrollment_action( 'serpapi', 'save', 0, array( 'api_key' => 'fixture-serp-private' ) );
+	$binding = 'serpapi:' . $saved['revision'] . ':save:' . $saved['connection_state'];
+	$_GET = array( 'mad4b_provider_notice' => 'serpapi', 'mad4b_provider_operation' => 'save' );
+	$render = static function () { ob_start(); MAD4B_SCP_Search_Provider_Connections::render(); return ob_get_clean(); };
+	enrollment_check( false === strpos( $render(), 'notice-success' ), 'query flags cannot manufacture successful feedback' );
+	$_GET['mad4b_notice_receipt'] = MAD4B_SCP_Admin_Experience::notice_receipt( 'mad4b-search-intelligence', 'provider_save', $binding );
+	enrollment_check( false !== strpos( $render(), 'Provider settings saved and verified.' ), 'current signed save receipt renders useful feedback' );
+	$GLOBALS['enrollment_session'] = 'different-fixture-session';
+	enrollment_check( false === strpos( $render(), 'notice-success' ), 'receipt cannot move to a different session' );
+	unset( $GLOBALS['enrollment_session'] );
+	$_GET['mad4b_provider_operation'] = 'test';
+	enrollment_check( false === strpos( $render(), 'notice-success' ), 'receipt cannot claim a different operation' );
+	$_GET['mad4b_provider_operation'] = 'save';
+	enrollment_action( 'serpapi', 'save', 1, array( 'api_key' => 'fixture-rotated-key' ) );
+	enrollment_check( false === strpos( $render(), 'notice-success' ), 'stale revision cannot claim the current saved configuration' );
+	enrollment_check( 0 === count( $GLOBALS['fixture_http'] ), 'feedback never probes an account or submits a search' );
 } );
 enrollment_case( 'native_account_probe_quota_privacy_and_capture_boundary', static function () {
 	enrollment_action( 'serpapi', 'save', 0, array( 'api_key' => 'fixture-serp-private' ) );

@@ -54,7 +54,8 @@ foreach ( MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) as $n
 }
 $_GET = array( 'page' => 'mad4b-search-intelligence' ); ob_start(); MAD4B_SCP_Search_Experience::render(); $html = ob_get_clean();
 $check( false !== strpos( $html, 'Search Intelligence' ) && false !== strpos( $html, 'UNCONFIGURED' ), 'unconfigured operator page renders on real WordPress' );
-$check( false !== strpos( $html, '<nav aria-label=' ) && false !== strpos( $html, '<th scope=' ), 'navigation and table have accessible semantics' );
+$document = new DOMDocument(); @$document->loadHTML( '<!doctype html><html><body>' . $html . '</body></html>' ); $xpath = new DOMXPath( $document );
+$check( $xpath->query( '//nav[string-length(normalize-space(@aria-label)) > 0]/a' )->length > 0 && $xpath->query( '//table//th[@scope="col" or @scope="row"]' )->length > 0, 'navigation and table have accessible semantics independent of attribute order' );
 $check( false !== strpos( $html, 'Search providers' ) && false !== strpos( $html, 'SerpApi' ) && false !== strpos( $html, 'DataForSEO' ), 'provider enrollment discoverable before a profile exists' );
 $check( ! preg_match( '/name="credentials\[[^"]+\]" value="[^"]+"/', $html ), 'saved credentials are never populated in real WordPress forms' );
 $check( false === strpos( $html, 'asi.local.' ), 'opaque secret handles are not rendered' );

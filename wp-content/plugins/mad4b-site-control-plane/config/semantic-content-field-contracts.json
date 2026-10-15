@@ -249,6 +249,258 @@
         "element_id",
         "expected_document_revision"
       ]
+    },
+    "mad4b/control-plane-native-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256"
+      ]
+    },
+    "mad4b/control-plane-upload-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "version",
+        "source_commit_sha",
+        "archive_sha256",
+        "build_fingerprint",
+        "package_manifest_digest",
+        "size_bytes",
+        "reason",
+        "expected_plan_sha256",
+        "package_base64"
+      ]
+    },
+    "mad4b/control-plane-bootstrap-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
+    },
+    "mad4b/runtime-release-set-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
+    },
+    "mad4b/runtime-release-set-bootstrap-apply": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "reason",
+        "expected_plan_sha256",
+        "confirmation"
+      ]
+    },
+    "context/source-scan-apply": {
+      "provider": "context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "source_id",
+        "expected_plan_sha256",
+        "expected_registry_revision",
+        "expected_provider_inventory_digest"
+      ]
+    },
+    "mad4b/context-ai-review": {
+      "provider": "context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "asset_id",
+        "decision",
+        "review_note",
+        "expected_content_hash",
+        "expected_registry_revision",
+        "expected_authority_manifest_fingerprint"
+      ]
+    },
+    "context/governed-source-upsert": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "external_root_id",
+        "label",
+        "recursive",
+        "recursive_scope_confirmed",
+        "write_policy",
+        "write_policy_confirmed",
+        "expected_registry_revision",
+        "expected_authority_manifest_fingerprint"
+      ]
+    },
+    "context/legacy-owner-transfer-apply": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "source_id",
+        "expected_plan_sha256",
+        "expected_brand_id",
+        "reviewed_external_root_id",
+        "owner_evidence_reference",
+        "expected_provider_proof_sha256",
+        "confirmation"
+      ]
+    },
+    "context/remote-owner-review-apply": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "asset_id",
+        "expected_plan_sha256",
+        "decision",
+        "confirmation",
+        "review_note"
+      ]
+    },
+    "context/brand-draft-create": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "category",
+        "evidence_digest",
+        "expected_plan_sha256",
+        "include_rendered_frontend"
+      ]
+    },
+    "context/brand-draft-append": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "category",
+        "draft_preflight_sha256",
+        "evidence_digest",
+        "expected_plan_sha256",
+        "include_rendered_frontend"
+      ]
+    },
+    "context/brand-profile-save": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "brand_name"
+      ],
+      "operational_paths": [
+        "confirm_identity_preserving_rename",
+        "expected_brand_id",
+        "expected_revision"
+      ]
+    },
+    "context/create-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "name",
+        "content"
+      ],
+      "operational_paths": [
+        "source_id",
+        "format"
+      ]
+    },
+    "context/update-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "asset_id",
+        "expected_content_hash"
+      ]
+    },
+    "context/recreate-drive-asset": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [
+        "content"
+      ],
+      "operational_paths": [
+        "asset_id",
+        "format"
+      ]
+    },
+    "context/materialize-brand-draft": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "artifact_id",
+        "expected_draft_content_sha256",
+        "format",
+        "source_id"
+      ]
+    },
+    "context/reconcile-brand-materialization": {
+      "provider": "google_drive_context",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "artifact_id",
+        "expected_draft_content_sha256",
+        "format",
+        "source_id"
+      ]
+    },
+    "mad4b/content-experience-profile-apply": {
+      "provider": "content_experience",
+      "mode": "object_fields",
+      "container_path": "profile",
+      "brand_fields": [],
+      "operational_key_regex": ".*",
+      "root_operational_paths": [
+        "expected_revision",
+        "plan_sha256"
+      ]
+    },
+    "mad4b/search-profile-apply": {
+      "provider": "search_intelligence",
+      "mode": "object_fields",
+      "container_path": "profile",
+      "brand_fields": [],
+      "operational_key_regex": ".*",
+      "root_operational_paths": [
+        "expected_revision",
+        "plan_sha256"
+      ]
+    },
+    "mad4b/approval-ai-decide": {
+      "provider": "core",
+      "mode": "exact_paths",
+      "brand_paths": [],
+      "operational_paths": [
+        "ticket_id",
+        "decision",
+        "expected_payload_sha256",
+        "expected_classification_sha256",
+        "review_note",
+        "operation_input.expected_head",
+        "operation_input.expected_plan_sha256",
+        "operation_input.confirmation"
+      ]
     }
   }
 }

@@ -36,7 +36,7 @@ final class MAD4B_SCP_Adaptive_Search_Intelligence {
 				'budget_plan' => array( 'profile_id', 'provider_id' ), 'budget_apply' => array( 'profile_id', 'provider_id', 'plan_sha256' ),
 				'capture_plan' => array( 'profile_id', 'target_id', 'observation_epoch' ), 'capture_apply' => array( 'profile_id', 'target_id', 'observation_epoch', 'plan_sha256' ),
 				'reconcile' => array( 'job_id' ), 'cohort' => array( 'profile_id', 'cursor', 'limit' ), 'proposal' => array( 'signal_id', 'experience_slug' ),
-				'control' => array( 'profile_id', 'control', 'provider_id', 'target_id' ), 'provider_probe' => array( 'provider_id' ),
+				'control' => array( 'profile_id', 'control', 'provider_id', 'target_id', 'expected_revision' ), 'provider_probe' => array( 'provider_id' ),
 				'post_change_plan' => array( 'profile_id', 'target_id', 'experience_slug', 'post_id' ), 'post_change_apply' => array( 'profile_id', 'target_id', 'experience_slug', 'post_id', 'plan_sha256' ),
 				'experiment' => array( 'experiment_id', 'snapshot_ids' ), 'recompute' => array( 'snapshot_id', 'prior_snapshot_id' ), 'import_evidence' => array( 'source_class', 'evidence' ), 'retention' => array( 'cursor' ), 'execution_profiles' => array()
 			);

@@ -201,4 +201,10 @@ final class MAD4B_SCP_Semantic_Intent_Router {
 		return$out;
 	}
 }
+// Dynamic, domain-neutral WordPress structure observations are an additional
+// read-only interpretation layer, not a change to semantic operation authority.
+if ( defined( 'MAD4B_SCP_DIR' ) ) {
+    require_once __DIR__ . '/class-mad4b-scp-semantic-structure-intelligence.php';
+    MAD4B_SCP_Semantic_Structure_Intelligence::boot();
+}
 MAD4B_SCP_Semantic_Intent_Router::boot();

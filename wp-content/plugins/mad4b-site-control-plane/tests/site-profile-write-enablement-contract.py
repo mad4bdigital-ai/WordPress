@@ -4,7 +4,7 @@ from pathlib import Path
 repo = Path(__file__).resolve().parents[4]
 wp = repo / 'wp-content' / 'plugins' / 'mad4b-site-control-plane'
 impl = (wp / 'includes' / 'class-mad4b-scp-site-profile-write-enablement.php').read_text(encoding='utf-8')
-servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 
 required = [
     "const CONTRACT = 'mad4b.site-profile-write-enablement.v1'",

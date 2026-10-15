@@ -62,7 +62,7 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			public function is_available() { return true; }
 			public function ability_names() {
 				return array(
-					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/query-monitor-db-attribution-status', 'mad4b/frontend-performance-status', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
+					'read' => array( 'mad4b/query-monitor-regression-status', 'mad4b/query-monitor-db-attribution-status', 'mad4b/frontend-performance-status', 'mad4b/frontend-origin-diagnostic', 'mad4b/build-provenance-status', 'mad4b/external-handshake-attestation-status', 'mad4b/external-wpml-receipt-status', 'mad4b/snapshot-verify', 'mad4b/live-acceptance-status' ),
 					'content' => array(), 'admin' => array(),
 				);
 			}
@@ -261,6 +261,8 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 			|| in_array( $page, array( 'mad4b-adapter-coverage', 'mad4b-runtime-components', 'mad4b-approval-decisions' ), true );
 	}
 	private static function request_class() {
+		// Signed diagnostic traffic is a distinct request class, not a real user visit.
+		if ( class_exists( 'MAD4B_SCP_Frontend_Origin_Diagnostic', false ) && MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request() ) return 'synthetic_frontend_probe';
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
 		if ( false !== strpos( $uri, '/mcp/' ) || false !== strpos( $uri, '/wp-json/mcp/' ) ) return 'mcp';
 		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) ) return 'cron';
@@ -926,6 +928,10 @@ final class MAD4B_SCP_Live_Acceptance_Observer {
 	}
 
 	public static function staging_capture_allowed() {
+		// Do not persist synthetic self-loopback visits into frontend performance
+		// or surface-coverage baselines, even when the proxy drops their header.
+		if ( class_exists( 'MAD4B_SCP_Frontend_Origin_Diagnostic', false )
+			&& MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request() ) return false;
 		if ( ! self::staging_passive_receipt_allowed() ) return false;
 		if ( class_exists( 'MAD4B_SCP_Provider_Diagnostic_Policy', false )
 			&& MAD4B_SCP_Provider_Diagnostic_Policy::current_request_is_zero_touch_surface() ) return false;

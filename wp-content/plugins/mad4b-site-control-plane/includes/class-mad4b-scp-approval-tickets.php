@@ -254,6 +254,8 @@ final class MAD4B_SCP_Approval_Tickets {
 			'build_fingerprint' => isset( $ticket['build_fingerprint'] ) ? strtolower( (string) $ticket['build_fingerprint'] ) : '',
 			'approver_type' => 'ai_agent',
 			'approver_agent_public_id' => isset( $guard['resolved_agent_public_id'] ) ? (string) $guard['resolved_agent_public_id'] : '',
+			'authorization_mode' => isset( $guard['authorization_mode'] ) ? (string) $guard['authorization_mode'] : 'standing_agent_policy',
+			'owner_oauth_delegation_verified' => ! empty( $guard['owner_oauth_delegation_verified'] ),
 			'operation_type' => isset( $classification['operation_type'] ) ? (string) $classification['operation_type'] : '',
 			'risk_tier' => isset( $classification['risk_tier'] ) ? (string) $classification['risk_tier'] : '',
 			'approval_lane' => isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : '',

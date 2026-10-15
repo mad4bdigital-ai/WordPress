@@ -1,6 +1,25 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-content-experience-recipe-scope.php';
+require_once __DIR__ . '/trait-mad4b-scp-content-experience-ability-definitions.php';
+if ( ! class_exists( 'MAD4B_SCP_Business_Activity_Contracts' ) ) require_once __DIR__ . '/class-mad4b-scp-business-activity-contracts.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Source_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-source-reconciliation.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Sync_Runtime' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-sync-runtime.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Google_Docs_Adapter' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-google-docs-adapter.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Authority' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-authority.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-snapshot.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Reconciliation' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-reconciliation.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_WPAI_Observer' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-wpai-observer.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Xlsx' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-xlsx.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Review' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-review.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Experience' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-experience.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Batches' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-batches.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_Acceptance_Gates' ) ) require_once __DIR__ . '/class-mad4b-scp-import-acceptance-gates.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_WPML_Readback' ) ) require_once __DIR__ . '/class-mad4b-scp-import-wpml-readback.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_Schema_Onboarding' ) ) require_once __DIR__ . '/class-mad4b-scp-import-schema-onboarding.php';
+if ( ! class_exists( 'MAD4B_SCP_Import_Mapping_Evolution' ) ) require_once __DIR__ . '/class-mad4b-scp-import-mapping-evolution.php';
+if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Modes' ) ) require_once __DIR__ . '/class-mad4b-scp-activity-import-modes.php';
 
 /**
  * Configuration-driven content experience registry.
@@ -9,12 +28,16 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * registered post type to a generated family of governed MCP Abilities.
  */
 final class MAD4B_SCP_Content_Experience_Profiles {
+	use MAD4B_SCP_Content_Experience_Ability_Definitions;
 	const CONTRACT = 'mad4b.content-experience-profiles.v1';
 	const PROFILE_PLAN_CONTRACT = 'mad4b.content-experience-profile-plan.v1';
 	const OPTION = 'mad4b_content_experience_profiles_v1';
 	const PROFILE_APPLY_ABILITY = 'mad4b/content-experience-profile-apply';
 	const PROFILE_CLONE_APPLY_ABILITY = 'mad4b/content-experience-profile-clone-apply';
 	const PROFILE_DELETE_APPLY_ABILITY = 'mad4b/content-experience-profile-delete-apply';
+	const BOOTSTRAP_PLAN_ABILITY = 'mad4b/content-experience-bootstrap-plan';
+	const MEDIA_BINDING_PLAN_ABILITY = 'mad4b/content-experience-media-binding-plan';
+	const BOOTSTRAP_PLAN_CONTRACT = 'mad4b.content-experience-bootstrap-plan.v1';
 	const MAX_PROFILES = 64;
 	const MAX_META_KEYS = 128;
 	const MAX_MEDIA_META_FIELDS = 32;
@@ -196,6 +219,15 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 		return hash( 'sha256', wp_json_encode( self::helper_catalog(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
+	/**
+	 * ACI01 content requirements are operator-declared data under the existing
+	 * governed Content Experience Profile plan/apply/revision. No second store,
+	 * wildcard locale, cross-site fallback or self-certified factual receipt.
+	 */
+	private static function normalize_aci01_recipe_variants( $rows ) {
+		return MAD4B_SCP_Content_Experience_Recipe_Scope::normalize( $rows );
+	}
+
 	private static function normalize_profile( array $raw, $next_revision ) {
 		$slug = self::route_slug( isset( $raw['slug'] ) ? $raw['slug'] : '' );
 		if ( is_wp_error( $slug ) ) return $slug;
@@ -271,6 +303,18 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			return new WP_Error( 'mad4b_content_experience_live_update_mode_invalid', 'live_update_mode must be draft_first or direct.' );
 		}
 
+		$aci01_recipe_variants = self::normalize_aci01_recipe_variants(
+			isset( $raw['aci01_recipe_variants'] ) ? $raw['aci01_recipe_variants'] : array() );
+		if ( is_wp_error( $aci01_recipe_variants ) ) return $aci01_recipe_variants;
+
+		$activity_contract = MAD4B_SCP_Business_Activity_Contracts::normalize(
+			isset( $raw['activity_contract'] ) ? $raw['activity_contract'] : array(), $post_type, $meta_keys, $taxonomies );
+		if ( is_wp_error( $activity_contract ) ) return $activity_contract;
+        $import_contract = MAD4B_SCP_Activity_Import_Authority::normalize_contract(
+            isset( $raw['import_contract'] ) ? $raw['import_contract'] : array(), $meta_keys );
+        if ( is_wp_error( $import_contract ) ) return $import_contract;
+        $import_contract['configured_explicitly'] = array_key_exists( 'import_contract', $raw );
+
 		$profile = array(
 			'contract' => self::CONTRACT,
 			'slug' => $slug,
@@ -291,6 +335,9 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'enabled_helpers' => $enabled_helpers,
 			'helper_bindings' => $helper_bindings,
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
+			'aci01_recipe_variants' => $aci01_recipe_variants,
+			'activity_contract' => $activity_contract,
+            'import_contract' => $import_contract,
 			'routes' => self::profile_routes( $slug, max( 1, (int) $next_revision ) ),
 		);
 		$profile['authority_sha256'] = class_exists( 'MAD4B_SCP_Content_Experience_Governance' )
@@ -468,6 +515,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'migration_required' => empty( $profile['authority_sha256'] ),
 				'authority_blocker' => is_wp_error( $authority_guard ) ? $authority_guard->get_error_code() : '',
 				'executor_generation' => isset( $profile['revision'] ) ? (int) $profile['revision'] : 0,
+				'business_activity_enabled' => ! empty( $profile['activity_contract']['enabled'] ),
 				'routes' => self::routes_for_profile( $profile ),
 			);
 		}
@@ -494,6 +542,8 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 					'can_assign' => current_user_can( isset( $taxonomy->cap->assign_terms ) ? $taxonomy->cap->assign_terms : 'edit_posts' ),
 				);
 			}
+			$configured_profiles = array();
+			foreach ( self::stored_profiles() as $stored_slug => $stored_profile ) if ( isset( $stored_profile['post_type'] ) && (string) $post_type === (string) $stored_profile['post_type'] ) $configured_profiles[] = (string) $stored_slug;
 			$items[] = array(
 				'post_type' => (string) $post_type,
 				'label' => (string) $object->label,
@@ -503,7 +553,10 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 				'hierarchical' => ! empty( $object->hierarchical ),
 				'can_create' => current_user_can( self::post_type_create_cap( $object ) ),
 				'can_publish' => current_user_can( self::post_type_publish_cap( $object ) ),
-				'suggested_profile_slug' => substr( sanitize_title( $post_type ), 0, 48 ),
+				'suggested_profile_slug' => trim( substr( preg_replace( '/[^a-z0-9]+/', '-', strtolower( (string) $post_type ) ), 0, 48 ), '-' ),
+				'configured_profile_slugs' => $configured_profiles,
+				'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+				'media_field_candidates' => MAD4B_SCP_Content_Experience_Bootstrap::media_field_candidates( (string) $post_type, false ),
 				'taxonomies' => $taxonomies,
 			);
 		}
@@ -514,15 +567,73 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'helper_catalog' => array_values( self::helper_catalog() ),
 			'helper_catalog_sha256' => self::helper_catalog_sha256(),
 			'profile_configuration_required_before_routes_exist' => true,
+			'bootstrap_plan_ability' => self::BOOTSTRAP_PLAN_ABILITY,
+			'supported_scenarios' => array( 'remote_media_library_first', 'create_nonpublic', 'create_structured', 'update_existing', 'publish_or_private', 'verify', 'rollback' ),
 			'safe_defaults' => array( 'meta_mode' => 'allowlist', 'taxonomy_mode' => 'allowlist', 'live_update_mode' => 'draft_first' ),
 			'mutation_performed' => false,
 		);
 	}
 
+	/**
+	 * Build a safe, non-authorizing profile proposal from the live post-type model.
+	 *
+	 * This intentionally does not infer business-specific meta keys or enable
+	 * external helpers. Those remain explicit operator decisions. The goal is to
+	 * remove expert-only boilerplate while preserving exact profile authority.
+	 */
+	public static function bootstrap_plan( $input = array() ) {
+		return MAD4B_SCP_Content_Experience_Bootstrap::plan( $input );
+	}
+
+	public static function media_binding_plan( $input = array() ) {
+		return MAD4B_SCP_Content_Experience_Media_Binding::plan( $input );
+	}
+
 	public static function ability_names( $surface ) {
 		$surface = sanitize_key( (string) $surface );
-		$read = array( 'mad4b/content-experience-discover', 'mad4b/content-experience-profile-status', 'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan', 'mad4b/content-experience-profile-delete-plan' );
-		$content = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
+		$read = array(
+            'mad4b/content-experience-discover', self::BOOTSTRAP_PLAN_ABILITY,
+            self::MEDIA_BINDING_PLAN_ABILITY, 'mad4b/content-experience-profile-status',
+            'mad4b/content-experience-profile-plan', 'mad4b/content-experience-profile-clone-plan',
+            'mad4b/content-experience-profile-delete-plan',
+            'mad4b/business-activity-status', 'mad4b/business-activity-link-plan',
+            'mad4b/business-activity-sync-plan', 'mad4b/business-activity-reconcile-plan',
+            'mad4b/business-activity-context-impact-plan',
+            'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
+            'mad4b/business-activity-import-capabilities',
+            'mad4b/business-activity-import-experience-plan',
+            'mad4b/business-activity-import-batch-verify',
+            'mad4b/business-activity-import-batch-mutation-status',
+            'mad4b/business-activity-import-acceptance-gates',
+            'mad4b/business-activity-import-wpml-readback',
+            'mad4b/business-activity-import-mapping-evolution-plan',
+            'mad4b/business-activity-import-schema-onboarding-plan',
+            'mad4b/business-activity-import-mapping-mutation-simulate',
+            'mad4b/business-activity-import-modes',
+            'mad4b/business-activity-import-mode-plan',
+            'mad4b/business-activity-import-reconciliation-plan',
+            'mad4b/business-activity-import-issues-page',
+            'mad4b/business-activity-wpai-observation-plan',
+            'mad4b/business-activity-wpai-observation-status',
+            'mad4b/business-activity-import-approval-plan',
+            'mad4b/business-activity-import-approval-receipt',
+            'mad4b/business-activity-import-plan', 'mad4b/business-activity-import-review',
+            'mad4b/business-activity-wp-all-import-plan',
+            'mad4b/brand-core-acceptance-plan',
+        );
+        $content = array(
+            self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
+            'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-import-approve',
+            'mad4b/business-activity-import-batch-begin',
+            'mad4b/business-activity-import-batch-append',
+            'mad4b/business-activity-import-batch-approve',
+            'mad4b/business-activity-import-batch-archive',
+            'mad4b/business-activity-wpai-observation-arm',
+            'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
+            'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
+            'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
+        );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::routes_for_profile( $profile );
@@ -535,7 +646,19 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 	}
 
 	public static function high_impact_abilities() {
-		$abilities = array( self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY );
+		$abilities = array(
+            self::PROFILE_APPLY_ABILITY, self::PROFILE_CLONE_APPLY_ABILITY, self::PROFILE_DELETE_APPLY_ABILITY,
+            'mad4b/business-activity-link-apply',
+            'mad4b/business-activity-import-approve',
+            'mad4b/business-activity-import-batch-begin',
+            'mad4b/business-activity-import-batch-append',
+            'mad4b/business-activity-import-batch-approve',
+            'mad4b/business-activity-import-batch-archive',
+            'mad4b/business-activity-wpai-observation-arm',
+            'mad4b/business-activity-sync-begin', 'mad4b/business-activity-sync-advance',
+            'mad4b/business-activity-sync-recover', 'mad4b/business-activity-sync-finalize-reconciled',
+            'mad4b/business-activity-sync-cancel', 'mad4b/business-activity-sync-archive',
+        );
 		foreach ( self::stored_profiles() as $profile ) {
 			if ( empty( $profile['enabled'] ) ) continue;
 			$routes = self::routes_for_profile( $profile );
@@ -558,88 +681,6 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			foreach ( array( 'create_apply', 'update_apply', 'publish_apply' ) as $key ) $result[ $routes[ $key ] ] = 'mad4b.rollback.content-experience.v1';
 		}
 		return $result;
-	}
-
-	private static function common_payload_schema( $require_post_id ) {
-		$properties = array(
-			'post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
-			'expected_modified_gmt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 32 ),
-			'post_title' => array( 'type' => 'string' ),
-			'post_content' => array( 'type' => 'string' ),
-			'post_excerpt' => array( 'type' => 'string' ),
-			'post_name' => array( 'type' => 'string', 'maxLength' => 200 ),
-			'post_parent' => array( 'type' => 'integer', 'minimum' => 0 ),
-			'menu_order' => array( 'type' => 'integer' ),
-			'featured_media_id' => array( 'type' => 'integer', 'minimum' => 0 ),
-			'meta' => array( 'type' => 'object', 'additionalProperties' => self::json_schema() ),
-			'taxonomies' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'helpers' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'plan_sha256' => self::sha_schema(),
-		);
-		return self::schema( $properties, $require_post_id ? array( 'post_id', 'expected_modified_gmt' ) : array( 'post_title' ) );
-	}
-
-	private static function publish_schema() {
-		return self::schema( array(
-			'post_id' => array( 'type' => 'integer', 'minimum' => 1 ),
-			'expected_modified_gmt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 32 ),
-			'post_status' => array( 'type' => 'string', 'enum' => array( 'publish', 'private' ), 'default' => 'publish' ),
-			'helpers' => array( 'type' => 'object', 'additionalProperties' => true ),
-			'plan_sha256' => self::sha_schema(),
-		), array( 'post_id', 'expected_modified_gmt' ) );
-	}
-
-	public static function ability_definitions() {
-		$read = array( 'MAD4B_SCP_Policy', 'can_read' );
-		$definitions = array(
-			array( 'name' => 'mad4b/content-experience-discover', 'label' => 'Discover Content Experience Profiles', 'callback' => array( __CLASS__, 'discover' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-			array( 'name' => 'mad4b/content-experience-profile-status', 'label' => 'Content Experience Profile Status', 'callback' => array( __CLASS__, 'profile_status' ), 'permission' => $read, 'schema' => self::schema( array() ), 'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-			array(
-				'name' => 'mad4b/content-experience-profile-plan', 'label' => 'Plan Content Experience Profile', 'callback' => array( __CLASS__, 'profile_plan' ), 'permission' => $read,
-				'schema' => self::schema( array( 'profile' => array( 'type' => 'object', 'additionalProperties' => true ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ) ), array( 'profile' ) ),
-				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
-			),
-			array(
-				'name' => 'mad4b/content-experience-profile-clone-plan', 'label' => 'Plan Content Experience Profile Clone', 'callback' => array( __CLASS__, 'profile_clone_plan' ), 'permission' => $read,
-				'schema' => self::schema( array( 'source_slug' => array( 'type' => 'string' ), 'new_slug' => array( 'type' => 'string' ), 'label' => array( 'type' => 'string' ), 'post_type' => array( 'type' => 'string' ) ), array( 'source_slug', 'new_slug' ) ),
-				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
-			),
-			array(
-				'name' => self::PROFILE_CLONE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Clone', 'callback' => array( __CLASS__, 'profile_clone_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
-				'schema' => self::schema( array( 'source_slug' => array( 'type' => 'string' ), 'new_slug' => array( 'type' => 'string' ), 'label' => array( 'type' => 'string' ), 'post_type' => array( 'type' => 'string' ), 'plan_sha256' => self::sha_schema() ), array( 'source_slug', 'new_slug', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
-			),
-			array(
-				'name' => 'mad4b/content-experience-profile-delete-plan', 'label' => 'Plan Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_plan' ), 'permission' => $read,
-				'schema' => self::schema( array( 'slug' => array( 'type' => 'string' ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'slug' ) ),
-				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true,
-			),
-			array(
-				'name' => self::PROFILE_DELETE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile Decommission', 'callback' => array( __CLASS__, 'profile_delete_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
-				'schema' => self::schema( array( 'slug' => array( 'type' => 'string' ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 1 ), 'plan_sha256' => self::sha_schema() ), array( 'slug', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
-			),
-			array(
-				'name' => self::PROFILE_APPLY_ABILITY, 'label' => 'Apply Content Experience Profile', 'callback' => array( __CLASS__, 'profile_apply' ), 'permission' => array( __CLASS__, 'can_manage_profiles' ),
-				'schema' => self::schema( array( 'profile' => array( 'type' => 'object', 'additionalProperties' => true ), 'expected_revision' => array( 'type' => 'integer', 'minimum' => 0 ), 'plan_sha256' => self::sha_schema() ), array( 'profile', 'plan_sha256' ) ),
-				'surface' => 'content', 'readonly' => false, 'destructive' => true, 'idempotent' => false,
-			),
-		);
-		foreach ( self::stored_profiles() as $profile ) {
-			if ( empty( $profile['enabled'] ) ) continue;
-			$slug = (string) $profile['slug'];
-			$routes = self::routes_for_profile( $profile );
-			$label = isset( $profile['label'] ) ? (string) $profile['label'] : $slug;
-			$definitions[] = self::route_definition( $routes['helpers'], $label . ' Helpers', $slug, 'helpers', 'read', self::schema( array() ) );
-			$definitions[] = self::route_definition( $routes['create_plan'], 'Plan ' . $label . ' Create', $slug, 'create', 'plan', self::common_payload_schema( false ) );
-			$definitions[] = self::route_definition( $routes['create_apply'], 'Apply ' . $label . ' Create', $slug, 'create', 'apply', self::common_payload_schema( false ) );
-			$definitions[] = self::route_definition( $routes['update_plan'], 'Plan ' . $label . ' Update', $slug, 'update', 'plan', self::common_payload_schema( true ) );
-			$definitions[] = self::route_definition( $routes['update_apply'], 'Apply ' . $label . ' Update', $slug, 'update', 'apply', self::common_payload_schema( true ) );
-			$definitions[] = self::route_definition( $routes['publish_plan'], 'Plan ' . $label . ' Publish', $slug, 'publish', 'plan', self::publish_schema() );
-			$definitions[] = self::route_definition( $routes['publish_apply'], 'Apply ' . $label . ' Publish', $slug, 'publish', 'apply', self::publish_schema() );
-			$definitions[] = self::route_definition( $routes['verify'], 'Verify ' . $label, $slug, 'verify', 'read', self::schema( array( 'post_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'post_id' ) ) );
-		}
-		return $definitions;
 	}
 
 	private static function route_definition( $name, $label, $slug, $operation, $phase, $schema ) {
@@ -740,13 +781,14 @@ final class MAD4B_SCP_Content_Experience_Profiles {
 			'brand_key_regex' => '(^|[_-])(title|headline|heading|subtitle|content|body|description|excerpt|summary|text|copy|caption|label|tagline|slogan|bio|about|intro|overview|details|message|note|notes|question|answer|faq|cta|button_text|placeholder|keyword|keywords|editor|html|wysiwyg)([_-]|$)',
 			'operational_fields' => array(
 				'post_id', 'expected_modified_gmt', 'post_name', 'post_parent', 'menu_order',
-				'featured_media_id', 'taxonomies', 'post_status', 'plan_sha256',
+				'featured_media_id', 'expected_remote_media_state_sha256', 'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256', 'taxonomies', 'post_status', 'plan_sha256',
 			),
 			'operational_key_regex' => '^(?:term_ids?|taxonomy|taxonomies|post_status|post_id|featured_media_id|menu_order|post_parent|expected_modified_gmt|plan_sha256|id|ids|uuid|hash|checksum|status|enabled|disabled|price|amount|count|order|priority|color|size|width|height|position|timestamp|date|url|path)$',
 			'root_operational_paths' => array(
 				'post_id', 'expected_modified_gmt',
 				'post_title', 'post_content', 'post_excerpt',
-				'post_name', 'post_parent', 'menu_order', 'featured_media_id',
+				'post_name', 'post_parent', 'menu_order', 'featured_media_id', 'expected_remote_media_state_sha256',
+				'expected_media_manifest_sha256', 'expected_media_manifest_item_count', 'expected_media_recovery_receipt_sha256', 'expected_media_binding_state_sha256',
 				'post_status', 'plan_sha256',
 				'meta.*', 'taxonomies.*', 'helpers.*',
 				'_mad4b_approval_ticket_id', '_mad4b_context_receipt',

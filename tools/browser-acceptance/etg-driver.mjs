@@ -86,11 +86,11 @@ function neutralArchivePath(archivePath) {
 }
 
 async function getPage(browser) {
-  const contexts = browser.contexts();
-  const context = contexts[0] || await browser.newContext();
-  const pages = context.pages();
-  const page = pages[0] || await context.newPage();
-  return { context, page };
+  // Never borrow contexts/pages from a remote browser session. They can hold
+  // other-site cookies, service workers, route handlers or already open tabs.
+  const context = await browser.newContext({ serviceWorkers: "block" });
+  try { return { context, page: await context.newPage() }; }
+  catch (error) { await context.close().catch(() => {}); throw error; }
 }
 
 async function enforceTopLevelOrigin(page, origin) {
@@ -390,15 +390,19 @@ export function buildEvidenceEnvelope({ plan, providerId, browserEngine, cases }
 export async function runBrowserPlan({ browser, providerId, plan }) {
   plan = validatePlan(plan);
   const { context, page } = await getPage(browser);
-  await installContextNetworkBoundary(context, plan.origin, process.env);
-  await enforceTopLevelOrigin(page, plan.origin);
-  const browserEngine = await browser.version().catch(() => "Chromium/CDP");
-  const cases = [];
-  for (const planCase of plan.cases) {
-    const evidence = await executeCase(page, plan, planCase);
-    evidence.case_id = planCase.case_id;
-    evidence.challenge_nonce = plan.challenge.nonce;
-    cases.push(evidence);
+  try {
+    await installContextNetworkBoundary(context, plan.origin, process.env);
+    await enforceTopLevelOrigin(page, plan.origin);
+    const browserEngine = await browser.version().catch(() => "Chromium/CDP");
+    const cases = [];
+    for (const planCase of plan.cases) {
+      const evidence = await executeCase(page, plan, planCase);
+      evidence.case_id = planCase.case_id;
+      evidence.challenge_nonce = plan.challenge.nonce;
+      cases.push(evidence);
+    }
+    return buildEvidenceEnvelope({ plan, providerId, browserEngine, cases });
+  } finally {
+    await context.close().catch(() => {});
   }
-  return buildEvidenceEnvelope({ plan, providerId, browserEngine, cases });
 }

@@ -109,6 +109,7 @@ final class MAD4B_SCP_Endpoint_Diagnostic {
 					'destination_sha256_before' => isset( $recovery['destination_sha256_before'] ) ? strtolower( trim( (string) $recovery['destination_sha256_before'] ) ) : '',
 					'ownership_receipt_present' => ! empty( $recovery['ownership_receipt_present'] ),
 					'ownership_receipt_valid' => ! empty( $recovery['ownership_receipt_valid'] ),
+					'owned_history_valid' => ! empty( $recovery['owned_history_valid'] ),
 					'ownership_source' => isset( $recovery['ownership_source'] ) ? sanitize_key( (string) $recovery['ownership_source'] ) : '',
 					'manual_conflict_recovery_available' => ! empty( $recovery['manual_conflict_recovery_available'] ),
 					'automatic_conflict_recovery_available' => ! empty( $recovery['automatic_conflict_recovery_available'] ),

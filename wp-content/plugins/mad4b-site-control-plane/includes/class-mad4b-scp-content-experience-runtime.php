@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/trait-mad4b-scp-content-experience-input-validation.php';
 
 /**
  * Execution plane for configuration-driven content experience profiles.
@@ -10,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * No business content type or provider is hardcoded here.
  */
 final class MAD4B_SCP_Content_Experience_Runtime {
+	use MAD4B_SCP_Content_Experience_Input_Validation;
 	const OPERATION_PLAN_CONTRACT = 'mad4b.content-experience-operation-plan.v1';
 	const VERIFY_CONTRACT = 'mad4b.content-experience-verify.v1';
 	const MAX_HELPER_BYTES = 65536;
@@ -48,171 +50,6 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		return MAD4B_SCP_Provider_Contracts::mutation_guard( $provider, (bool) $adapter->is_available() );
 	}
 
-	private static function validate_meta_payload( array $profile, $meta ) {
-		$meta = is_array( $meta ) ? $meta : array();
-		if ( count( $meta ) > MAD4B_SCP_Content_Experience_Profiles::MAX_META_KEYS ) {
-			return new WP_Error( 'mad4b_content_experience_meta_limit', 'Meta payload exceeds the profile limit.' );
-		}
-		$result = array();
-		foreach ( $meta as $key => $value ) {
-			$key = (string) $key;
-			if ( '' === $key || strlen( $key ) > 191 || ! preg_match( '/^[A-Za-z0-9_-]+$/', $key ) ) {
-				return new WP_Error( 'mad4b_content_experience_meta_key_invalid', 'Meta payload contains an invalid key.' );
-			}
-			if ( MAD4B_SCP_Policy::is_sensitive_database_column( $key ) ) {
-				return new WP_Error( 'mad4b_content_experience_sensitive_meta_denied', 'Sensitive/authentication-like metadata is outside the content experience authority.' );
-			}
-			if ( 0 === strpos( $key, '_' ) && ! in_array( $key, (array) $profile['protected_meta_keys'], true ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_protected_meta_denied',
-					'Protected meta key is not explicitly enabled by the experience profile.',
-					array( 'key' => $key )
-				);
-			}
-			if ( 0 === strpos( $key, '_' ) && ! current_user_can( 'manage_options' ) ) {
-				return new WP_Error( 'mad4b_content_experience_protected_meta_capability_denied', 'Protected meta writes require administrator capability.' );
-			}
-			if ( 'allowlist' === $profile['meta_mode']
-				&& ! in_array( $key, (array) $profile['meta_keys'], true )
-				&& ! in_array( $key, (array) $profile['protected_meta_keys'], true ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_meta_not_allowlisted',
-					'Meta key is outside the configured profile allowlist.',
-					array( 'key' => $key )
-				);
-			}
-			$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
-			if ( isset( $media_fields[ $key ] ) && is_array( $media_fields[ $key ] ) ) {
-				$value = MAD4B_SCP_Content_Experience_Media::normalize_meta_value( $key, $value, $media_fields[ $key ] );
-				if ( is_wp_error( $value ) ) return $value;
-			}
-			if ( ! MAD4B_SCP_Content_Experience_Media::value_within_budget( $value ) ) {
-				return new WP_Error( 'mad4b_content_experience_meta_value_too_large', 'Meta value exceeds the bounded content-experience payload size.', array( 'key' => $key ) );
-			}
-			$result[ $key ] = $value;
-		}
-		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
-		$usage_guard = MAD4B_SCP_Content_Experience_Media::validate_usage_bindings( $media_fields, $result );
-		if ( is_wp_error( $usage_guard ) ) return $usage_guard;
-		ksort( $result, SORT_STRING );
-		return $result;
-	}
-
-	private static function allowed_taxonomies( array $profile ) {
-		$attached = array_keys( get_object_taxonomies( $profile['post_type'], 'objects' ) );
-		$configured = isset( $profile['taxonomies'] ) ? (array) $profile['taxonomies'] : array();
-		$mode = isset( $profile['taxonomy_mode'] ) ? (string) $profile['taxonomy_mode'] : 'allowlist';
-		return 'all_attached' === $mode ? $attached : array_values( array_intersect( $attached, $configured ) );
-	}
-
-	private static function normalize_taxonomy_payload( array $profile, $payload ) {
-		$payload = is_array( $payload ) ? $payload : array();
-		if ( count( $payload ) > MAD4B_SCP_Content_Experience_Profiles::MAX_TAXONOMIES ) {
-			return new WP_Error( 'mad4b_content_experience_taxonomy_limit', 'Taxonomy payload exceeds the profile limit.' );
-		}
-		$allowed = self::allowed_taxonomies( $profile );
-		$result = array();
-		foreach ( $payload as $taxonomy => $refs ) {
-			$taxonomy = sanitize_key( (string) $taxonomy );
-			if ( ! in_array( $taxonomy, $allowed, true ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_taxonomy_denied',
-					'Taxonomy is not enabled for this experience profile.',
-					array( 'taxonomy' => $taxonomy )
-				);
-			}
-			$tax = get_taxonomy( $taxonomy );
-			$assign = $tax && isset( $tax->cap->assign_terms ) ? (string) $tax->cap->assign_terms : 'edit_posts';
-			if ( ! $tax || ! current_user_can( $assign ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_taxonomy_capability_denied',
-					'Current user cannot assign one requested taxonomy.',
-					array( 'taxonomy' => $taxonomy )
-				);
-			}
-			$ids = array();
-			foreach ( (array) $refs as $ref ) {
-				$term = null;
-				if ( is_int( $ref ) || ( is_string( $ref ) && ctype_digit( $ref ) ) ) {
-					$term = get_term( absint( $ref ), $taxonomy );
-				} else {
-					$slug = sanitize_title( (string) $ref );
-					if ( '' !== $slug ) $term = get_term_by( 'slug', $slug, $taxonomy );
-				}
-				if ( ! $term || is_wp_error( $term ) ) {
-					return new WP_Error(
-						'mad4b_content_experience_term_missing',
-						'Taxonomy reference does not resolve to an existing term.',
-						array( 'taxonomy' => $taxonomy, 'reference' => $ref )
-					);
-				}
-				$ids[] = (int) $term->term_id;
-			}
-			$ids = array_values( array_unique( $ids ) );
-			sort( $ids, SORT_NUMERIC );
-			$result[ $taxonomy ] = $ids;
-		}
-		ksort( $result, SORT_STRING );
-		return $result;
-	}
-
-	private static function normalize_helper_payloads( array $profile, $operation, $payload ) {
-		$payload = is_array( $payload ) ? $payload : array();
-		if ( count( $payload ) > MAD4B_SCP_Content_Experience_Profiles::MAX_HELPERS ) {
-			return new WP_Error( 'mad4b_content_experience_helper_limit', 'Helper payload exceeds the profile limit.' );
-		}
-		$encoded = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		if ( false === $encoded || strlen( $encoded ) > self::MAX_HELPER_BYTES ) {
-			return new WP_Error( 'mad4b_content_experience_helper_payload_too_large', 'Helper payload exceeds the bounded canonical size.' );
-		}
-		$catalog = MAD4B_SCP_Content_Experience_Profiles::helper_catalog();
-		$result = array();
-		foreach ( $payload as $helper_id => $helper_input ) {
-			$helper_id = strtolower( trim( (string) $helper_id ) );
-			if ( ! in_array( $helper_id, (array) $profile['enabled_helpers'], true ) || ! isset( $catalog[ $helper_id ] ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_helper_not_enabled',
-					'Helper is not enabled for this experience profile.',
-					array( 'helper_id' => $helper_id )
-				);
-			}
-			if ( ! in_array( $operation, (array) $catalog[ $helper_id ]['operations'], true ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_helper_operation_denied',
-					'Helper does not declare support for this operation.',
-					array( 'helper_id' => $helper_id, 'operation' => $operation )
-				);
-			}
-			$guard = self::helper_mutation_guard( $helper_id );
-			if ( is_wp_error( $guard ) || true !== $guard ) return is_wp_error( $guard ) ? $guard : new WP_Error( 'mad4b_content_experience_helper_not_certified', 'External helper is not certified for mutation.' );
-			$adapter = self::helper_adapter( $helper_id );
-			$planned = $adapter
-				? $adapter->plan_content_experience_helper( $helper_id, $helper_input, $profile, $operation )
-				: apply_filters(
-					'mad4b_scp_content_experience_plan_helper',
-					null,
-					$helper_id,
-					$helper_input,
-					$profile,
-					$operation
-				);
-			if ( ! is_array( $planned )
-				|| empty( $planned['ready'] )
-				|| empty( $planned['state_sha256'] )
-				|| ! preg_match( '/^[a-f0-9]{64}$/', (string) $planned['state_sha256'] ) ) {
-				return new WP_Error(
-					'mad4b_content_experience_helper_plan_unavailable',
-					'Enabled helper did not provide an exact reversible plan.',
-					array( 'helper_id' => $helper_id )
-				);
-			}
-			$planned['helper_id'] = $helper_id;
-			$result[ $helper_id ] = $planned;
-		}
-		ksort( $result, SORT_STRING );
-		return $result;
-	}
-
 	private static function post_state_hash( $post ) {
 		if ( ! $post ) return '';
 		return hash( 'sha256', wp_json_encode( array(
@@ -244,6 +81,13 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			return new WP_Error( 'mad4b_content_experience_operation_invalid', 'Unsupported experience operation.' );
 		}
 
+		$brand_preflight = null;
+		if ( 'publish' === $operation || ( 'create' === $operation && in_array( (string) $profile['creation_status'], array( 'publish', 'private', 'future' ), true ) ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core recovery guard is unavailable.' );
+			$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => $operation, 'post_type' => (string) $profile['post_type'] ) );
+			if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+		}
+
 		$post = null;
 		$current_state_sha256 = '';
 		if ( 'create' !== $operation ) {
@@ -262,6 +106,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				);
 			}
 			$current_state_sha256 = self::post_state_hash( $post );
+			// An update can change an already-public post without a separate
+			// publish operation. All such live edits must observe the same
+			// reviewed Brand Core preflight as a publish transition.
+			if ( 'update' === $operation && in_array( (string) $post->post_status, array( 'publish', 'private', 'future' ), true ) ) {
+				if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core recovery guard is unavailable.' );
+				$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+			}
 		}
 
 		if ( 'create' === $operation ) {
@@ -292,43 +144,26 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 
 		$meta = self::validate_meta_payload( $profile, isset( $input['meta'] ) ? $input['meta'] : array() );
 		if ( is_wp_error( $meta ) ) return $meta;
-		$media_fields = isset( $profile['media_meta_fields'] ) && is_array( $profile['media_meta_fields'] ) ? $profile['media_meta_fields'] : array();
-		$effective_media_state = MAD4B_SCP_Content_Experience_Media::effective_meta_state(
-			$post ? (int) $post->ID : 0,
-			$media_fields,
-			$meta
-		);
-		if ( is_wp_error( $effective_media_state ) ) return $effective_media_state;
-		$effective_media_state_sha256 = MAD4B_SCP_Content_Experience_Media::effective_state_sha256( $effective_media_state );
-		$media_publish_rights = null;
-		if ( 'publish' === $operation ) {
-			$rights_enforced = false;
-			foreach ( $media_fields as $media_spec ) {
-				if ( is_array( $media_spec ) && 'require_valid' === ( isset( $media_spec['publish_rights_policy'] ) ? (string) $media_spec['publish_rights_policy'] : 'none' ) ) {
-					$rights_enforced = true;
-					break;
-				}
-			}
-			if ( $rights_enforced ) {
-				$media_publish_rights = MAD4B_SCP_Content_Experience_Media_Rights::publish_guard( $media_fields, $effective_media_state );
-				if ( is_wp_error( $media_publish_rights ) ) return $media_publish_rights;
-			}
-		}
+		$media_planning = MAD4B_SCP_Content_Experience_Media_Planning::guard( $operation, $post, $profile, $meta, $input );
+		if ( is_wp_error( $media_planning ) ) return $media_planning;
+		$media_fields = $media_planning['media_fields'];
+		$effective_media_state = $media_planning['effective_media_state'];
+		$effective_media_state_sha256 = $media_planning['effective_media_state_sha256'];
+		$featured_media_id = $media_planning['featured_media_id'];
+		$expected_remote_media_state = $media_planning['expected_remote_media_state_sha256'];
+		$remote_media_state = $media_planning['remote_media_state'];
+		$media_publish_rights = $media_planning['media_publish_rights'];
+		$media_manifest_guard = $media_planning['manifest_guard'];
+		$manifest_normalized = $media_manifest_guard['normalized'];
+		$remote_media_provenance_rights = $media_planning['remote_media_provenance_rights'];
+
+		// Taxonomy and helper payloads are independent governed mutation inputs.
+		// Keep their normalization in the planning phase so omitted values become
+		// exact empty plans while invalid values fail closed before any mutation.
 		$taxonomies = self::normalize_taxonomy_payload( $profile, isset( $input['taxonomies'] ) ? $input['taxonomies'] : array() );
 		if ( is_wp_error( $taxonomies ) ) return $taxonomies;
 		$helpers = self::normalize_helper_payloads( $profile, $operation, isset( $input['helpers'] ) ? $input['helpers'] : array() );
 		if ( is_wp_error( $helpers ) ) return $helpers;
-
-		$featured_media_id = array_key_exists( 'featured_media_id', $input ) ? absint( $input['featured_media_id'] ) : null;
-		if ( null !== $featured_media_id ) {
-			if ( empty( $profile['featured_media'] ) ) return new WP_Error( 'mad4b_content_experience_featured_media_disabled', 'Featured media is disabled for this experience profile.' );
-			if ( $featured_media_id > 0 && 'attachment' !== get_post_type( $featured_media_id ) ) {
-				return new WP_Error( 'mad4b_content_experience_featured_media_invalid', 'featured_media_id must reference an attachment.' );
-			}
-			if ( $featured_media_id > 0 && ! current_user_can( 'read_post', $featured_media_id ) ) {
-				return new WP_Error( 'mad4b_content_experience_featured_media_read_denied', 'Current user cannot read the requested featured media attachment.' );
-			}
-		}
 
 		$post_parent = array_key_exists( 'post_parent', $input ) ? absint( $input['post_parent'] ) : null;
 		if ( null !== $post_parent ) {
@@ -351,6 +186,11 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'post_parent' => $post_parent,
 			'menu_order' => array_key_exists( 'menu_order', $input ) ? (int) $input['menu_order'] : null,
 			'featured_media_id' => $featured_media_id,
+			'expected_remote_media_state_sha256' => $expected_remote_media_state,
+			'expected_media_manifest_sha256' => $manifest_normalized['expected_media_manifest_sha256'],
+			'expected_media_manifest_item_count' => $manifest_normalized['expected_media_manifest_item_count'],
+			'expected_media_recovery_receipt_sha256' => $manifest_normalized['expected_media_recovery_receipt_sha256'],
+			'expected_media_binding_state_sha256' => $manifest_normalized['expected_media_binding_state_sha256'],
 			'meta' => $meta,
 			'taxonomies' => $taxonomies,
 			'helpers' => $helpers,
@@ -370,9 +210,14 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			'helper_catalog_sha256' => MAD4B_SCP_Content_Experience_Profiles::helper_catalog_sha256(),
 			'operation' => $operation,
 			'post_type' => (string) $profile['post_type'],
+			'publication_brand_core' => $brand_preflight,
 			'current_state_sha256' => $current_state_sha256,
 			'effective_media_state_sha256' => $effective_media_state_sha256,
 			'media_publish_rights' => $media_publish_rights,
+			'remote_media_state' => $remote_media_state,
+			'remote_media_manifest_receipt' => $media_manifest_guard['receipt'],
+			'media_binding_state_sha256' => $media_manifest_guard['binding_state_sha256'],
+			'remote_media_provenance_rights' => $remote_media_provenance_rights,
 			'normalized_input' => $normalized,
 			'mutation_performed' => false,
 		);
@@ -472,6 +317,8 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		if ( (string) get_post_meta( $post_id, self::MARKER_META, true ) !== (string) $profile['slug'] ) {
 			return new WP_Error( 'mad4b_content_experience_marker_readback_mismatch', 'Experience profile marker readback mismatch.' );
 		}
+		$binding_guard = MAD4B_SCP_Content_Experience_Media_Manifest::verify_post_binding( $input, $post_id );
+		if ( is_wp_error( $binding_guard ) ) return $binding_guard;
 		return true;
 	}
 
@@ -560,6 +407,19 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( is_wp_error( $before ) ) return $before;
 			$mutated = false;
 
+			// Creation profiles may themselves permit a live initial state.
+			// Recheck immediately before insertion; snapshot drift invalidates
+			// the earlier reviewed Content Experience plan.
+			if ( 'create' === $operation && in_array( (string) $normalized['post_status'], array( 'publish', 'private', 'future' ), true ) ) {
+				$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'create', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_now ) ) return $brand_now;
+				if ( ! is_array( $brand_now ) || empty( $plan['publication_brand_core'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+					return new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core evidence changed before live post creation.' );
+			}
+
 			if ( 'create' === $operation ) {
 				$postarr = array(
 					'post_type' => $profile['post_type'], 'post_title' => (string) $normalized['post_title'],
@@ -574,6 +434,18 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				$mutated = true;
 				update_post_meta( $post_id, self::CREATION_BINDING_META, $binding );
 			} elseif ( 'update' === $operation ) {
+				// The first live mutation occurs here, before meta, taxonomy or
+				// helper operations. Recheck the plan-bound reviewed context.
+				if ( is_array( $plan['publication_brand_core'] ) ) {
+					$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+					if ( is_wp_error( $brand_now ) ) return $brand_now;
+					if ( ! is_array( $brand_now )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+						|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+						|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+						return new WP_Error( 'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed before live content update.' );
+				}
 				$update = array( 'ID' => $post_id );
 				foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_parent', 'menu_order' ) as $field ) if ( null !== $normalized[ $field ] ) $update[ $field ] = $normalized[ $field ];
 				if ( count( $update ) > 1 ) {
@@ -597,14 +469,45 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 			if ( is_wp_error( $media_result ) ) return self::compensated_error( $media_result, $before );
 			$helper_results = self::apply_helpers( $profile, $operation, $post_id, $normalized['helpers'] );
 			if ( is_wp_error( $helper_results ) ) return self::compensated_error( $helper_results, $before );
+			$apply_manifest_guard = MAD4B_SCP_Content_Experience_Media_Manifest::plan_guard(
+				$profile, $normalized['featured_media_id'], isset( $profile['media_meta_fields'] ) ? (array) $profile['media_meta_fields'] : array(), $normalized['meta'], $normalized
+			);
+			if ( is_wp_error( $apply_manifest_guard ) ) return self::compensated_error( $apply_manifest_guard, $before );
+			$recovery_binding = MAD4B_SCP_Content_Experience_Media_Manifest::bind_post( $apply_manifest_guard, $post_id );
+			if ( is_wp_error( $recovery_binding ) ) return self::compensated_error( $recovery_binding, $before );
 
-			// Publish is the final externally visible state transition.
+			// Recheck original Brand authority at the last possible point before
+			// making the post externally visible, after helper/media effects.
 			if ( 'publish' === $operation ) {
+				$brand_now = class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' )
+					? MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'publish', 'post_type' => (string) $profile['post_type'] ) )
+					: new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core guard unavailable.' );
+				if ( is_wp_error( $brand_now ) ) return self::compensated_error( $brand_now, $before );
+				if ( ! isset( $plan['publication_brand_core'] ) || ! is_array( $plan['publication_brand_core'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) $brand_now['reviewed_asset_fingerprint'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) $brand_now['authority_manifest_fingerprint'] )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) $brand_now['context_fingerprint'] )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) $brand_now['registry_revision'] ) {
+					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed after the exact publication plan.' ), $before );
+				}
+
 				update_post_meta( $post_id, self::MARKER_META, (string) $profile['slug'] );
 				update_post_meta( $post_id, self::REVISION_META, (int) $profile['revision'] );
 				update_post_meta( $post_id, self::AUTHORITY_META, (string) $profile['authority_sha256'] );
 				$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => $normalized['post_status'] ), true );
 				if ( is_wp_error( $result ) ) return self::compensated_error( $result, $before );
+			}
+			// Recheck after helper, media and taxonomy writes. A live update
+			// must not finish verified against revoked Brand Core authority.
+			if ( 'update' === $operation && is_array( $plan['publication_brand_core'] ) ) {
+				$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'update', 'post_type' => (string) $profile['post_type'] ) );
+				if ( is_wp_error( $brand_now ) ) return self::compensated_error( $brand_now, $before );
+				if ( ! is_array( $brand_now )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+					|| ! hash_equals( (string) $plan['publication_brand_core']['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+					|| (int) $plan['publication_brand_core']['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+					return self::compensated_error( new WP_Error( 'mad4b_publication_brand_core_drift', 'Reviewed Brand Core changed during live content update.' ), $before );
 			}
 			$verified = self::verify_plan_readback( $profile, $plan, $post_id );
 			if ( is_wp_error( $verified ) ) return self::compensated_error( $verified, $before );
@@ -614,7 +517,7 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				'contract' => MAD4B_SCP_Content_Experience_Profiles::CONTRACT, 'profile_slug' => $profile['slug'],
 				'profile_authority_sha256' => $profile['authority_sha256'], 'operation' => $operation, 'post_id' => $post_id,
 				'post_status' => $post ? $post->post_status : '', 'modified_gmt' => $post ? $post->post_modified_gmt : '',
-				'verified' => true, 'helper_results' => $helper_results, 'plan_sha256' => $plan['plan_sha256'],
+				'verified' => true, 'helper_results' => $helper_results, 'recovery_binding' => $recovery_binding, 'plan_sha256' => $plan['plan_sha256'],
 			);
 		} finally {
 			MAD4B_SCP_Content_Experience_Governance::release_lock( $lock );
@@ -652,10 +555,17 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 				'value' => get_post_meta( $post_id, $key, true ),
 			);
 		}
-		foreach ( array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META ) as $key ) {
+		$internal_meta_keys = array_merge(
+			array( self::MARKER_META, self::REVISION_META, self::AUTHORITY_META, self::CREATION_BINDING_META ),
+			MAD4B_SCP_Content_Experience_Media_Manifest::post_meta_keys()
+		);
+		$multi_internal_meta = MAD4B_SCP_Content_Experience_Media_Manifest::multi_post_meta_keys();
+		foreach ( $internal_meta_keys as $key ) {
+			$is_multi = in_array( $key, $multi_internal_meta, true );
 			$meta[ $key ] = array(
 				'exists' => metadata_exists( 'post', $post_id, $key ),
-				'value' => get_post_meta( $post_id, $key, true ),
+				'multi' => $is_multi,
+				'value' => get_post_meta( $post_id, $key, $is_multi ? false : true ),
 			);
 		}
 		$terms = array();
@@ -781,7 +691,10 @@ final class MAD4B_SCP_Content_Experience_Runtime {
 		$result = wp_update_post( wp_slash( $postarr ), true );
 		if ( is_wp_error( $result ) ) return $result;
 		foreach ( (array) $state['meta'] as $key => $entry ) {
-			if ( ! empty( $entry['exists'] ) ) update_post_meta( $post_id, $key, $entry['value'] );
+			if ( ! empty( $entry['multi'] ) ) {
+				delete_post_meta( $post_id, $key );
+				if ( ! empty( $entry['exists'] ) ) foreach ( (array) $entry['value'] as $value ) add_post_meta( $post_id, $key, $value, false );
+			} elseif ( ! empty( $entry['exists'] ) ) update_post_meta( $post_id, $key, $entry['value'] );
 			else delete_post_meta( $post_id, $key );
 		}
 		foreach ( (array) $state['terms'] as $taxonomy => $ids ) {

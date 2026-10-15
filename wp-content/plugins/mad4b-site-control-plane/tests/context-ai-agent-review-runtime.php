@@ -153,6 +153,39 @@ class MAD4B_SCP_Agent_Registry {
 	}
 }
 
+// The AI-review fixture must enter the same exact Site/Brand scope as the
+// human-review fixture. This does not mint Agent NHI grants or approvals.
+final class MAD4B_SCP_Operational_Integrity {
+    public static $trusted = true;
+    public static function capture() {
+        return self::$trusted ? array(
+            'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'scope_digest' => str_repeat( 'c', 64 ), 'revision' => 1,
+        ) : new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture Site scope missing.' );
+    }
+    public static function assert_unchanged( $checkpoint ) {
+        return self::$trusted && is_array( $checkpoint ) ? true
+            : new WP_Error( 'mad4b_integrity_scope_changed', 'Fixture Site scope changed.' );
+    }
+}
+final class MAD4B_SCP_Operational_Scope_Guard {
+    public static function require_current() {
+        return array(
+            'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'brand_ref' => str_repeat( 'f', 32 ),
+            'tenant_ref' => 'wp-site:11111111-1111-4111-8111-111111111111',
+            'blog_id' => 1, 'network_id' => 1, 'environment' => 'staging',
+            'deployment_mode' => 'wordpress_dedicated',
+        );
+    }
+    public static function record_metadata_matches( $record, $scope ) {
+        foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $field )
+            if ( isset( $record[ $field ] ) && (string) $record[ $field ] !== (string) $scope[ $field ] ) return false;
+        return true;
+    }
+}
+function current_user_can( $cap ) { return true; }
+
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_review_assert( $condition, $message, $context = null ) {
@@ -194,7 +227,7 @@ $asset_id = hash( 'sha256', $source_id . '|' . $file_id );
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
 	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'f', 32 ),
 	'brand_name' => 'Fixture Brand',
 	'revision' => 1,
 	'status' => 'configured',
@@ -210,7 +243,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'f', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'write_policy' => 'repair_only',
@@ -229,7 +262,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $task_source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'f', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'task_attachment',
 		'write_policy' => 'read_only',
@@ -265,6 +298,12 @@ $initial_text = str_repeat(
 	"Brand voice guidance. Keep claims precise, useful, and consistent. Approved terminology applies across channels.\n\n",
 	12
 );
+MAD4B_SCP_Operational_Integrity::$trusted = false;
+$denied_scan = MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, array() );
+mad4b_review_assert( is_wp_error( $denied_scan ) &&
+    'mad4b_integrity_scope_blocked' === $denied_scan->get_error_code(),
+    'Unverified deployment must deny AI-review source mutation.' );
+MAD4B_SCP_Operational_Integrity::$trusted = true;
 $scan1 = MAD4B_SCP_Context_Authority::replace_source_assets(
 	$source_id,
 	array(
@@ -755,6 +794,16 @@ MAD4B_SCP_Agent_Registry::$grant_enabled = true;
 $policy_ready = MAD4B_SCP_Context_Authority::ai_review_policy_status();
 mad4b_review_assert( ! empty( $policy_ready['ready'] ) && ! empty( $policy_ready['exact_grant_ready'] ), 'AI review policy must become ready only after exact grant evidence.', $policy_ready );
 
+$ai_raw_original = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ];
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_confidence'] = 0.42;
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ]['classification_source'] = 'automatic';
+$low_confidence_ai_revision = MAD4B_SCP_Context_Authority::registry_revision();
+$low_confidence_ai_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
+mad4b_review_assert( is_wp_error( $low_confidence_ai_review ), 'Delegated AI must not approve low-confidence automatic classification.', $low_confidence_ai_review );
+mad4b_review_assert( 'mad4b_context_ai_review_classification_confirmation_required' === $low_confidence_ai_review->get_error_code(), 'Low-confidence AI denial must expose the exact Human-confirmation requirement.', $low_confidence_ai_review->get_error_code() );
+mad4b_review_assert( $low_confidence_ai_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Denied low-confidence AI review must not advance registry revision.' );
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][ $asset_id ] = $ai_raw_original;
+
 MAD4B_SCP_Identity_Context::$mode = 'wrong';
 $wrong_identity_revision = MAD4B_SCP_Context_Authority::registry_revision();
 $wrong_identity_review = MAD4B_SCP_Context_Authority::review_asset_by_agent( mad4b_ai_review_input( $asset_id ) );
@@ -794,6 +843,8 @@ mad4b_review_assert( 'ai_agent' === $ai_approval['review_actor_type'], 'AI appro
 mad4b_review_assert( MAD4B_SCP_Agent_Registry::$configured_public_id === $ai_approval['review_agent_public_id'], 'AI approval must bind the configured agent public ID.', $ai_approval );
 mad4b_review_assert( 0 === (int) $ai_approval['reviewed_by'], 'AI approval must not impersonate a WordPress user.', $ai_approval );
 mad4b_review_assert( hash_equals( (string) $ai_approval['content_hash'], (string) $ai_approval['reviewed_content_hash'] ), 'AI approval must bind exactly to current content hash.', $ai_approval );
+mad4b_review_assert( isset( $ai_approval['review_binding']['registry_revision_after'] ) && (int) $ai_approval['review_binding']['registry_revision_after'] === MAD4B_SCP_Context_Authority::registry_revision(), 'AI review must return the committed next registry revision for sequential exact-bound review.', $ai_approval );
+mad4b_review_assert( ! empty( $ai_approval['review_binding']['authority_manifest_after'] ) && hash_equals( (string) $ai_approval['review_binding']['authority_manifest_after'], MAD4B_SCP_Context_Authority::authority_manifest_fingerprint() ), 'AI review must return the committed next authority manifest for sequential exact-bound review.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['category'] === $ai_approval['category'], 'AI review must not change category.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['authority_class'] === $ai_approval['authority_class'], 'AI review must not change authority class.', $ai_approval );
 mad4b_review_assert( $before_ai_governance['required'] === ! empty( $ai_approval['required'] ), 'AI review must not change Required scope.', $ai_approval );

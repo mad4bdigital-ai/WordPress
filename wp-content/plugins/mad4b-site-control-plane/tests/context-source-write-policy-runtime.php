@@ -43,12 +43,31 @@ class MAD4B_SCP_Site_Profile {
 	}
 }
 
+// This is a source-policy fixture, not an Operational Integrity certification.
+// Supply one exact revision-bound test identity; exercise the production scope
+// guard against all source/asset records instead of silently dropping them.
+class MAD4B_SCP_Operational_Integrity {
+    public static function capture() {
+        return array( 'scope' => array(
+            'tenant_ref' => 'fixture-tenant',
+            'site_uuid' => MAD4B_SCP_Site_Profile::$site_uuid,
+            'brand_ref' => str_repeat( 'b', 32 ),
+            'blog_id' => 1, 'network_id' => 1,
+            'environment' => 'staging', 'deployment_mode' => 'staging',
+        ) );
+    }
+    public static function assert_unchanged( $checkpoint, $for_write = true ) {
+        return self::capture()['scope'] === $checkpoint['scope'] ? true
+            : new WP_Error( 'fixture_operational_scope_drift' );
+    }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-scope-guard.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
 	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
 	'site_uuid' => '11111111-1111-4111-8111-111111111111',
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'b', 32 ),
 	'brand_name' => 'Fixture Brand',
 	'revision' => 1,
 	'status' => 'configured',
@@ -68,7 +87,7 @@ function mad4b_source_fixture( $source_id, $mode, $policy = null ) {
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => '11111111-1111-4111-8111-111111111111',
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'b', 32 ),
 		'provider' => 'google_drive',
 		'mode' => $mode,
 		'external_root_id' => 'folder-' . substr( $source_id, 0, 8 ),
@@ -109,7 +128,7 @@ function mad4b_asset_fixture( $asset_id, $source_id, $mode ) {
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $asset_id,
 		'site_uuid' => '11111111-1111-4111-8111-111111111111',
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'b', 32 ),
 		'source_id' => $source_id,
 		'source_mode' => $mode,
 		'file_id' => 'file-' . substr( $asset_id, 0, 8 ),

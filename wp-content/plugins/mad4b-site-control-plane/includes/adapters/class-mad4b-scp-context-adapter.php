@@ -6,11 +6,21 @@ if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-builder.php';
 }
 
+if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Reconstruction' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-brand-context-reconstruction.php';
+}
+if ( ! class_exists( 'MAD4B_SCP_Recovery_Attempt_Budget' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-recovery-attempt-budget.php';
+}
+
 if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) {
 	require_once dirname( __DIR__ ) . '/class-mad4b-scp-context-provider-gateway.php';
 }
 
+require_once __DIR__ . '/class-mad4b-scp-context-asset-read-model.php';
+
 final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
+	use MAD4B_SCP_Context_Asset_Read_Model;
 	const PROVIDER_CONTRACT = 'mad4b.google-drive-context-provider.v1';
 	public function id() { return 'context'; }
 	public function label() { return 'Context Authority'; }
@@ -32,9 +42,20 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 				'context/status',
 				'context/assets',
 				'context/review-queue',
+				'context/remote-owner-review-plan',
 				'context/review-audit',
 				'context/brand-core-coverage',
 				'context/brand-core-convergence-plan',
+				'context/brand-core-control-loop',
+				'context/legacy-reconciliation-census',
+				'context/legacy-owner-transfer-discover',
+				'context/legacy-owner-transfer-plan',
+                'context/native-owner-transfer-plan',
+                'context/native-owner-transfer-readback',
+				'context/legacy-owner-transfer-evidence',
+				'context/legacy-owner-transfer-readback',
+				'context/brand-reconstruction-plan',
+				'context/recovery-attempt-status',
 				'context/google-drive-status',
 				'context/runtime-readiness',
 				'context/conflicts',
@@ -48,6 +69,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			),
 			'content' => array(),
 			'write' => array(
+				'context/brand-profile-save',
+				'context/governed-source-upsert',
+				'context/legacy-owner-transfer-apply',
+                'context/native-owner-transfer-apply',
+				'context/remote-owner-review-apply',
 				'context/create-drive-asset',
 				'context/update-drive-asset',
 				'context/recreate-drive-asset',
@@ -93,6 +119,13 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema( array() )
 		);
 		$this->add_ability(
+			'context/remote-owner-review-plan',
+			'Plan One Exact Remote Owner Context Review',
+			'remote_owner_review_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'asset_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ) ), array( 'asset_id' ) )
+		);
+		$this->add_ability(
 			'context/review-audit',
 			'Context Review Audit',
 			'context_review_audit',
@@ -126,6 +159,93 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 					'include_rendered_frontend' => array( 'type' => 'boolean', 'default' => false ),
 				)
 			)
+		);
+		$this->add_ability(
+			'context/brand-core-control-loop',
+			'Recover and Certify Brand Core from Existing Authority',
+			'brand_core_control_loop',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/legacy-reconciliation-census',
+			'Review Quarantined Legacy Brand Counts',
+			'legacy_reconciliation_census',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-discover',
+			'Discover Unbound Legacy Sources Requiring Owner Review',
+			'legacy_owner_transfer_discover',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array() )
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-plan',
+			'Plan One Reviewed Unbound Legacy Context Source',
+			'legacy_owner_transfer_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+        $this->add_ability(
+            'context/native-owner-transfer-plan',
+            'Plan Exact WordPress Functional Legacy Owner Transfer',
+            'native_owner_transfer_plan',
+            array( 'MAD4B_SCP_Policy', 'can_read' ),
+            $this->schema( array(
+                'source_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+            ), array('source_id','job_id') )
+        );
+        $this->add_ability(
+            'context/native-owner-transfer-readback',
+            'Verify One Exact WordPress Functional Transfer From Original Context Source',
+            'native_owner_transfer_readback',
+            array( 'MAD4B_SCP_Policy', 'can_read' ),
+            $this->schema( array(
+                'source_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id' => array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'expected_native_plan_sha256' => array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+            ), array('source_id','job_id','expected_native_plan_sha256') )
+        );
+		$this->add_ability(
+			'context/legacy-owner-transfer-evidence',
+			'Verify Original Folder and Every Legacy File Before Owner Approval',
+			'legacy_owner_transfer_evidence',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-readback',
+			'Verify Transfer Postconditions without Reusing Reviews',
+			'legacy_owner_transfer_readback',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array( 'source_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ) ), array( 'source_id' ) )
+		);
+		$this->add_ability(
+			'context/brand-reconstruction-plan',
+			'Plan Governed Brand Context Reconstruction',
+			'brand_reconstruction_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'scenario' => array( 'type'=>'string', 'enum'=>MAD4B_SCP_Brand_Context_Reconstruction::scenarios(), 'default'=>'live' ),
+				'attempts' => array( 'type'=>'integer', 'minimum'=>0, 'maximum'=>100, 'default'=>0 ),
+				'assistant_available' => array( 'type'=>'boolean', 'default'=>true ),
+			) )
+		);
+		$this->add_ability(
+			'context/recovery-attempt-status',
+			'Persistent Brand Recovery Retry Budget',
+			'recovery_attempt_status',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'lane' => array( 'type' => 'string', 'enum' => MAD4B_SCP_Recovery_Attempt_Budget::LANES ),
+				'category' => array( 'type' => 'string', 'maxLength' => 64 ),
+				'artifact_id' => array( 'type' => 'string', 'maxLength' => 36 ),
+				'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+			), array( 'lane' ) )
 		);
 		$this->add_ability(
 			'context/google-drive-status',
@@ -246,6 +366,86 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 
 		$write_permission = array( 'MAD4B_SCP_Policy', 'can_admin' );
+		$this->add_ability(
+			'context/brand-profile-save',
+			'Save Exact Existing Brand Identity with CAS',
+			'brand_profile_save',
+			$write_permission,
+			$this->schema( array(
+				'brand_name'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+				'expected_brand_id'=>array('type'=>'string','maxLength'=>32),
+				'expected_revision'=>array('type'=>'integer','minimum'=>0),
+				'confirm_identity_preserving_rename'=>array('type'=>'boolean','default'=>false),
+			), array('brand_name','expected_brand_id','expected_revision')),
+			'write', false, true, false
+		);
+		$this->add_ability(
+			'context/governed-source-upsert',
+			'Upsert Existing Governed Drive Source Without Adopting Quarantine',
+			'governed_source_upsert',
+			$write_permission,
+			$this->schema( array(
+				'external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+				'label'=>array('type'=>'string','minLength'=>1,'maxLength'=>200),
+				'write_policy'=>array('type'=>'string','enum'=>array('read_only','repair_only','managed'),'default'=>'read_only'),
+				'recursive'=>array('type'=>'boolean','default'=>true),
+				'write_policy_confirmed'=>array('type'=>'boolean','default'=>false),
+				'recursive_scope_confirmed'=>array('type'=>'boolean','default'=>false),
+				'expected_registry_revision'=>array('type'=>'integer','minimum'=>0),
+				'expected_authority_manifest_fingerprint'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+			), array('external_root_id','label','write_policy','expected_registry_revision','expected_authority_manifest_fingerprint')),
+			'write', false, true, false
+		);
+		$this->add_ability(
+			'context/remote-owner-review-apply',
+			'Approve or Reject One Exact Context Asset as Authenticated Remote Owner',
+			'remote_owner_review_apply',
+			$write_permission,
+			$this->schema( array(
+				'asset_id' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ),
+				'expected_plan_sha256' => array( 'type'=>'string', 'pattern'=>'^[a-f0-9]{64}$' ),
+				'decision' => array( 'type'=>'string', 'enum'=>array( 'approve', 'needs_changes', 'reject' ) ),
+				'review_note' => array( 'type'=>'string', 'maxLength'=>1000, 'default'=>'' ),
+				'confirmation' => array( 'type'=>'string', 'enum'=>array('I REVIEWED EXACT BRAND SOURCE') ),
+			), array('asset_id','expected_plan_sha256','decision','confirmation') ),
+			'write', false, true, false
+		);
+		$this->add_ability(
+			'context/legacy-owner-transfer-apply',
+			'Approve Exact Unbound Legacy Brand Context Transfer',
+			'legacy_owner_transfer_apply',
+			$write_permission,
+			$this->schema( array(
+				'source_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+				'expected_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+				'expected_brand_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+				'reviewed_external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+				'owner_evidence_reference'=>array('type'=>'string','minLength'=>12,'maxLength'=>500),
+				'expected_provider_proof_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+				'confirmation'=>array('type'=>'string','enum'=>array('APPROVE EXACT UNBOUND BRAND TRANSFER')),
+			), array('source_id','expected_plan_sha256','expected_brand_id','reviewed_external_root_id','owner_evidence_reference','expected_provider_proof_sha256','confirmation')),
+			'write', false, true, false
+		);
+        $this->add_ability(
+            'context/native-owner-transfer-apply',
+            'Owner-approved WordPress-only Functional Legacy Transfer (No Crash Certification)',
+            'native_owner_transfer_apply',
+            $write_permission,
+            $this->schema( array(
+                'source_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'job_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'expected_native_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'expected_plan_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'expected_brand_id'=>array('type'=>'string','pattern'=>'^[a-f0-9]{32}$'),
+                'reviewed_external_root_id'=>array('type'=>'string','minLength'=>1,'maxLength'=>255),
+                'owner_evidence_reference'=>array('type'=>'string','minLength'=>12,'maxLength'=>500),
+                'expected_provider_proof_sha256'=>array('type'=>'string','pattern'=>'^[a-f0-9]{64}$'),
+                'confirmation'=>array('type'=>'string','enum'=>array('APPROVE WORDPRESS FUNCTIONAL TRANSFER ONLY')),
+            ), array('source_id','job_id','expected_native_plan_sha256',
+                'expected_plan_sha256','expected_brand_id','reviewed_external_root_id',
+                'owner_evidence_reference','expected_provider_proof_sha256','confirmation')),
+            'write', false, true, false
+        );
 		$this->add_ability(
 			'context/create-drive-asset',
 			'Create Google Drive Context Asset',
@@ -442,6 +642,17 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$ability_name = (string) $ability_name;
 		if ( ! in_array( $ability_name, $this->ability_names()['write'], true ) ) return true;
 		if ( ! $this->is_available() ) return new WP_Error( 'mad4b_context_provider_unavailable', 'Context Authority Google Drive provider is unavailable.' );
+		if ( 'context/legacy-owner-transfer-apply' === $ability_name
+			&& ( ! defined( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' )
+				|| true !== (bool) constant( 'MAD4B_SCP_CONTEXT_LEGACY_TRANSFER_ROLLBACK_CERTIFIED' ) ) )
+			return new WP_Error( 'mad4b_legacy_transfer_rollback_certification_required',
+				'Host-certified crash-safe rollback acceptance is required before the legacy owner-transfer write can mount.' );
+		if ( in_array( $ability_name, array('context/brand-profile-save','context/governed-source-upsert','context/legacy-owner-transfer-apply','context/native-owner-transfer-apply','context/remote-owner-review-apply'), true ) ) {
+			$site = class_exists('MAD4B_SCP_Site_Profile') ? MAD4B_SCP_Site_Profile::status() : array();
+			return 'staging' === (string)($site['environment'] ?? '') &&
+				!empty($site['origin_match']) && !empty($site['environment_match']) ? true
+				: new WP_Error('mad4b_brand_registry_staging_only','Governed Brand Registry writes are exact Staging only.');
+		}
 		if ( in_array( $ability_name, array( 'context/brand-draft-append', 'context/brand-draft-create', 'context/source-scan-apply' ), true ) ) {
 			return true;
 		}
@@ -558,6 +769,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		$critical_hashes = array();
 		$critical_files = array(
 			'includes/adapters/class-mad4b-scp-context-adapter.php',
+			'includes/adapters/class-mad4b-scp-context-asset-read-model.php',
 			'includes/class-mad4b-scp-context-authority.php',
 			'includes/class-mad4b-scp-google-drive-context.php',
 			'includes/class-mad4b-scp-context-preflight.php',
@@ -743,86 +955,15 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Google_Drive_Context::runtime_readiness();
 	}
 
-	public function list_assets( $input ) {
-		$input = is_array( $input ) ? $input : array();
-		$mode = sanitize_key( isset( $input['mode'] ) ? (string) $input['mode'] : '' );
-		$task_scope = isset( $input['task_scope'] ) ? substr( sanitize_text_field( (string) $input['task_scope'] ), 0, 160 ) : '';
-		$status = sanitize_key( isset( $input['status'] ) ? (string) $input['status'] : '' );
-		$category = sanitize_key( isset( $input['category'] ) ? (string) $input['category'] : '' );
-		$limit = isset( $input['limit'] ) ? max( 1, min( 200, absint( $input['limit'] ) ) ) : 100;
-		if ( 'task_attachment' === $mode && '' === $task_scope ) {
-			return new WP_Error(
-				'mad4b_context_task_scope_required',
-				'Task-scoped Context asset metadata requires the exact task_scope.'
-			);
-		}
-		$items = array();
-		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
-			if ( ! is_array( $asset ) ) continue;
-			$asset_mode = isset( $asset['source_mode'] ) ? (string) $asset['source_mode'] : '';
-			if ( 'task_attachment' === $asset_mode ) {
-				$asset_scope = isset( $asset['task_scope'] ) ? (string) $asset['task_scope'] : '';
-				if ( '' === $task_scope || '' === $asset_scope || ! hash_equals( $asset_scope, $task_scope ) ) continue;
-			}
-			if ( '' !== $mode && $mode !== $asset_mode ) continue;
-			if ( '' !== $status && $status !== ( isset( $asset['status'] ) ? (string) $asset['status'] : '' ) ) continue;
-			if ( '' !== $category && $category !== ( isset( $asset['category'] ) ? (string) $asset['category'] : '' ) ) continue;
-			$current_content_hash = isset( $asset['content_hash'] ) ? strtolower( trim( (string) $asset['content_hash'] ) ) : '';
-			$reviewed_content_hash = isset( $asset['reviewed_content_hash'] ) ? strtolower( trim( (string) $asset['reviewed_content_hash'] ) ) : '';
-			$review_binding_exact = 'approved' === ( isset( $asset['review_status'] ) ? (string) $asset['review_status'] : '' ) && preg_match( '/^[a-f0-9]{64}$/', $current_content_hash ) && preg_match( '/^[a-f0-9]{64}$/', $reviewed_content_hash ) && hash_equals( $current_content_hash, $reviewed_content_hash );
-			$items[] = array(
-				'asset_id' => isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '',
-				'source_id' => isset( $asset['source_id'] ) ? (string) $asset['source_id'] : '',
-				'source_mode' => $asset_mode,
-				'source_write_policy' => class_exists( 'MAD4B_SCP_Context_Authority' ) && ! empty( $asset['source_id'] ) ? MAD4B_SCP_Context_Authority::source_write_policy( (string) $asset['source_id'] ) : 'read_only',
-				'title' => isset( $asset['title'] ) ? (string) $asset['title'] : '',
-				'category' => isset( $asset['category'] ) ? (string) $asset['category'] : '',
-				'authority_class' => isset( $asset['authority_class'] ) ? (string) $asset['authority_class'] : '',
-				'required' => ! empty( $asset['required'] ),
-				'quality_score' => isset( $asset['quality_score'] ) ? (int) $asset['quality_score'] : null,
-				'quality_mode' => isset( $asset['quality']['mode'] ) ? (string) $asset['quality']['mode'] : '',
-				'quality_confidence' => isset( $asset['quality']['confidence'] ) ? (float) $asset['quality']['confidence'] : null,
-				'quality_provisional' => ! empty( $asset['quality']['provisional'] ),
-				'status' => isset( $asset['status'] ) ? (string) $asset['status'] : '',
-				'review_status' => isset( $asset['review_status'] ) ? (string) $asset['review_status'] : 'unreviewed',
-				'review_decision' => isset( $asset['review_decision'] ) ? (string) $asset['review_decision'] : '',
-				'review_note' => isset( $asset['review_note'] ) ? (string) $asset['review_note'] : '',
-				'review_actor_type' => isset( $asset['review_actor_type'] ) ? (string) $asset['review_actor_type'] : '',
-				'review_agent_public_id' => isset( $asset['review_agent_public_id'] ) ? (string) $asset['review_agent_public_id'] : '',
-				'reviewed_at' => isset( $asset['reviewed_at'] ) ? (string) $asset['reviewed_at'] : '',
-				'reviewed_content_hash' => isset( $asset['reviewed_content_hash'] ) ? (string) $asset['reviewed_content_hash'] : '',
-				'review_binding_exact' => $review_binding_exact,
-				'content_complete' => ! array_key_exists( 'content_complete', $asset ) || ! empty( $asset['content_complete'] ),
-				'content_available' => ! empty( $asset['content_available'] ),
-				'content_excerpt' => isset( $asset['content_excerpt'] ) ? (string) $asset['content_excerpt'] : '',
-				'normalization_status' => isset( $asset['normalization_status'] ) ? (string) $asset['normalization_status'] : '',
-				'classification_source' => isset( $asset['classification_source'] ) ? (string) $asset['classification_source'] : '',
-				'classification_confidence' => isset( $asset['classification_confidence'] ) ? (float) $asset['classification_confidence'] : 0.0,
-				'automatic_classification' => isset( $asset['automatic_classification'] ) && is_array( $asset['automatic_classification'] ) ? $asset['automatic_classification'] : array(),
-				'availability_reason' => isset( $asset['availability_reason'] ) ? (string) $asset['availability_reason'] : '',
-				'content_hash' => isset( $asset['content_hash'] ) ? (string) $asset['content_hash'] : '',
-				'file_id' => isset( $asset['file_id'] ) ? (string) $asset['file_id'] : '',
-				'parent_folder_id' => isset( $asset['parent_folder_id'] ) ? (string) $asset['parent_folder_id'] : '',
-				'mime_type' => isset( $asset['mime_type'] ) ? (string) $asset['mime_type'] : '',
-				'last_synced_at' => isset( $asset['last_synced_at'] ) ? (string) $asset['last_synced_at'] : '',
-				'write_capabilities' => MAD4B_SCP_Google_Drive_Context::asset_write_capabilities( isset( $asset['asset_id'] ) ? (string) $asset['asset_id'] : '' ),
-			);
-			if ( count( $items ) >= $limit ) break;
-		}
-		$status = method_exists( 'MAD4B_SCP_Context_Authority', 'status' ) ? MAD4B_SCP_Context_Authority::status() : array();
-		return array(
-			'contract' => 'mad4b.context-asset-list.v4',
-			'items' => $items,
-			'count' => count( $items ),
-			'task_scope_bound' => '' !== $task_scope,
-			'registry_revision' => isset( $status['registry_revision'] ) ? (int) $status['registry_revision'] : MAD4B_SCP_Context_Authority::registry_revision(),
-			'context_fingerprint' => isset( $status['context_fingerprint'] ) ? (string) $status['context_fingerprint'] : MAD4B_SCP_Context_Authority::context_fingerprint(),
-			'authority_manifest_fingerprint' => isset( $status['authority_manifest_fingerprint'] ) ? (string) $status['authority_manifest_fingerprint'] : MAD4B_SCP_Context_Authority::authority_manifest_fingerprint(),
-		);
-	}
 
 	public function context_review_queue() {
 		return MAD4B_SCP_Context_Authority::review_queue();
+	}
+	public function remote_owner_review_plan( $input ) {
+		return MAD4B_SCP_Context_Authority::remote_owner_review_plan( $input );
+	}
+	public function remote_owner_review_apply( $input ) {
+		return MAD4B_SCP_Context_Authority::remote_owner_review_apply( $input );
 	}
 
 	public function context_review_audit( $input ) {
@@ -864,6 +1005,71 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Brand_Context_Builder::convergence_plan( is_array( $input ) ? $input : array() );
 	}
 
+	public function brand_core_control_loop( $input = array() ) {
+		return MAD4B_SCP_Brand_Core_Control_Loop::status( $input );
+	}
+	public function legacy_reconciliation_census( $input = array() ) {
+		if ( !is_array($input) || $input ) return new WP_Error('mad4b_brand_census_input_invalid','Census is read-only.');
+		return MAD4B_SCP_Context_Authority::legacy_reconciliation_census();
+	}
+	public function legacy_owner_transfer_discover( $input = array() ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_discover($input);
+	}
+	public function legacy_owner_transfer_plan( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_plan($input);
+	}
+	public function legacy_owner_transfer_evidence( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_evidence( $input );
+	}
+	public function legacy_owner_transfer_readback( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_readback($input);
+	}
+	public function legacy_owner_transfer_apply( $input ) {
+		return MAD4B_SCP_Context_Authority::legacy_owner_transfer_apply($input);
+	}
+    public function native_owner_transfer_plan( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_plan( $input );
+    }
+    public function native_owner_transfer_apply( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_apply( $input );
+    }
+    public function native_owner_transfer_readback( $input ) {
+        return MAD4B_SCP_Context_Authority::native_owner_transfer_readback( $input );
+    }
+	public function brand_profile_save( $input ) {
+		$current = MAD4B_SCP_Context_Authority::profile();
+		if ( (string)($current['brand_id']??'') !== (string)($input['expected_brand_id']??'')
+			|| (int)($current['revision']??0) !== (int)($input['expected_revision']??-1) )
+			return new WP_Error('mad4b_brand_profile_stale','Exact Brand revision and identity required.');
+		if ( !empty($current) && (string)$current['brand_name'] === trim((string)$input['brand_name']) )
+			return array('state'=>'already_current','mutation_performed'=>false);
+		return MAD4B_SCP_Context_Authority::save_profile((string)$input['brand_name'], array(
+			'expected_brand_id'=>(string)($input['expected_brand_id']??''),
+			'expected_revision'=>(int)($input['expected_revision']??0),
+			'confirm_identity_preserving_rename'=>!empty($input['confirm_identity_preserving_rename']),
+		));
+	}
+	public function governed_source_upsert( $input ) {
+		$status = MAD4B_SCP_Context_Authority::status();
+		if ( !is_array($status) || !empty($status['quarantined_source_record_count'])
+			|| !empty($status['quarantined_asset_record_count']) )
+			return new WP_Error('mad4b_brand_source_quarantine_first','Quarantined records must be reviewed before source creation.');
+		return MAD4B_SCP_Context_Authority::upsert_source(array(
+			'provider'=>'google_drive','mode'=>'governed',
+			'external_root_id'=>(string)($input['external_root_id']??''),
+			'label'=>(string)($input['label']??''),
+			'write_policy'=>(string)($input['write_policy']??'read_only'),
+			'recursive'=>!empty($input['recursive']),
+			'write_policy_confirmed'=>!empty($input['write_policy_confirmed']),
+			'recursive_scope_confirmed'=>!empty($input['recursive_scope_confirmed']),
+			'expected_registry_revision'=>(int)($input['expected_registry_revision']??-1),
+			'expected_authority_manifest_fingerprint'=>(string)($input['expected_authority_manifest_fingerprint']??''),
+		));
+	}
+	public function brand_reconstruction_plan( $input = array() ) {
+		return MAD4B_SCP_Brand_Context_Reconstruction::plan( is_array( $input ) ? $input : array() );
+	}
+
 	public function brand_draft_preflight( $input = array() ) {
 		return MAD4B_SCP_Brand_Context_Builder::draft_preflight( is_array( $input ) ? $input : array() );
 	}
@@ -876,8 +1082,31 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 		return MAD4B_SCP_Brand_Context_Builder::append_draft( is_array( $input ) ? $input : array() );
 	}
 
+	/** An option-backed retry reservation is a limit, never an authority ticket. */
+	private function guarded_brand_attempt( $lane, $method, $input ) {
+		$input = is_array( $input ) ? $input : array();
+		$reservation = MAD4B_SCP_Recovery_Attempt_Budget::reserve( $lane, $input );
+		if ( is_wp_error( $reservation ) ) return $reservation;
+		$result = call_user_func( array( 'MAD4B_SCP_Brand_Context_Builder', $method ), $input );
+		// Any error may conceal a completed remote provider write. Conservatively
+		// block blind retry until operator/provider readback resolves uncertainty.
+		$outcome = is_wp_error( $result ) ? 'uncertain' : 'succeeded';
+		$finished = MAD4B_SCP_Recovery_Attempt_Budget::finish( $reservation, $outcome );
+		if ( is_wp_error( $finished ) ) return new WP_Error(
+			'mad4b_brand_retry_outcome_unverified',
+			'Brand operation retry outcome could not be journaled; reconcile independently before next action.',
+			array( 'operation_lane' => $lane, 'recovery_required' => true )
+		);
+		return $result;
+	}
+
+	public function recovery_attempt_status( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		return MAD4B_SCP_Recovery_Attempt_Budget::status( isset( $input['lane'] ) ? $input['lane'] : '', $input );
+	}
+
 	public function brand_draft_create( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::create_draft( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'brand_draft_create', 'create_draft', $input );
 	}
 
 	public function source_scan_apply( $input ) {
@@ -885,11 +1114,11 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	public function materialize_brand_draft( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::materialize_draft( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'materialize_brand_draft', 'materialize_draft', $input );
 	}
 
 	public function reconcile_brand_materialization( $input ) {
-		return MAD4B_SCP_Brand_Context_Builder::reconcile_materialization( is_array( $input ) ? $input : array() );
+		return $this->guarded_brand_attempt( 'reconcile_brand_materialization', 'reconcile_materialization', $input );
 	}
 
 	public function rollback_materialized_brand_draft( $input ) {

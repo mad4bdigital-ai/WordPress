@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.aci-os.optimization-policy.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "scope": "PER_SITE_MARKET_METRIC",
+  "controls": [
+    "max_iterations_per_revision",
+    "max_provider_calls_per_job",
+    "cost_budget_account_site_job",
+    "min_comparable_sample",
+    "max_feedback_frequency",
+    "cooldown_since_previous_change",
+    "source_freshness",
+    "error_budget",
+    "latency_guard",
+    "human_override"
+  ],
+  "unknown_thresholds": "DISABLE_AUTOMATED_OPTIMIZATION",
+  "unknown_spend": "DENIED",
+  "unknown_external_effect": "QUARANTINED_RECONCILE",
+  "causal_claim_requires_control": true,
+  "proposals_never_auto_apply": true
+}

@@ -145,6 +145,7 @@ $check( is_wp_error($blocked_bootstrap) && 'mad4b_intent_bootstrap_incomplete' =
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-intent-registry.php' );
 $schema = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-schema.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
+$write_catalog = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-server-write-catalog.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 
 foreach ( array(
@@ -178,7 +179,11 @@ $check( false !== strpos( $source, 'The v11 intent_relations table is the author
 $check( false !== strpos( $servers, "'mad4b/intent-registry-current'" ), 'Intent Registry current read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-conflicts-analyze'" ), 'Intent conflict analysis read is not mounted' );
 $check( false !== strpos( $servers, "'mad4b/intent-bootstrap-plan'" ), 'Bootstrap→Intent planner is not mounted on read plane' );
-$check( false !== strpos( $servers, "'mad4b/intent-registry-reconcile'" ), 'Intent Registry reconcile is not governed write candidate' );
+$check( is_string( $write_catalog )
+    && false !== strpos( $write_catalog, "'mad4b/intent-registry-reconcile'" )
+    && false !== strpos( $servers, 'class-mad4b-scp-server-write-catalog.php' )
+    && false !== strpos( $servers, 'use MAD4B_SCP_Server_Write_Catalog;' ),
+    'Intent Registry reconcile is not a mounted governed write candidate' );
 
 foreach ( array(
 	'wp_insert_post(',

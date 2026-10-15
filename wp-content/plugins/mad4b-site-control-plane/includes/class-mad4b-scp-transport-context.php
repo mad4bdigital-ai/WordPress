@@ -65,6 +65,22 @@ final class MAD4B_SCP_Transport_Context {
 			return 'mad4b-developer';
 		}
 
+		// Only owner-intent ATTESTATION (not Write execution) can bootstrap before
+		// a stale Write candidate is reconciled. The real Ability permission still
+		// requires enrolled single owner, normal ChatGPT OAuth + authority step-up.
+		if ( 'mad4b-chatgpt' === $current && class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' )
+			&& MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY === $ability_name ) {
+			if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+				|| ! MAD4B_SCP_Site_Profile::configured()
+				|| 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+				|| ! MAD4B_SCP_Site_Profile::origin_enrolled()
+				|| ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment()
+				|| ! MAD4B_SCP_Servers::is_chatgpt_direct_step_up_tool( $ability_name )
+				|| ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $ability_name ) )
+				return new WP_Error( 'mad4b_owner_attest_bootstrap_denied', 'Exact Staging owner-attestation transport is unavailable.' );
+			return 'mad4b-enrollment';
+		}
+
 		// The exact enrolled Staging ChatGPT transport may expose the complete stable
 		// governed mutation catalog for discovery. Visibility is not authority. Every
 		// normal mutation is forced through mad4b-write and fails closed until the
@@ -222,6 +238,12 @@ final class MAD4B_SCP_Transport_Context {
 			'chatgpt_write_discovery_model' => 'stable_unified_catalog_fail_closed_execution',
 			'chatgpt_write_authority_server' => 'mad4b-write',
 			'write_dispatch_target_bound' => '' !== self::$write_dispatch_target,
+			// Request-local binding is intentionally absent in ordinary diagnostics.
+			// Never use an idle false here as evidence of broken MCP write routing.
+			'write_dispatch_binding_lifetime' => 'request_local',
+			'write_dispatch_idle_unbound_expected' => '' === self::$write_dispatch_target,
+			'write_dispatch_transport_only' => true,
+			'write_dispatch_requires_exact_execution_evidence' => true,
 			'developer_dispatch_target_bound' => '' !== self::$developer_dispatch_target,
 			'chatgpt_developer_dispatch_breakglass_allowed' => false,
 			'credential_material_stored' => false,

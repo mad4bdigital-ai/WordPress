@@ -1,0 +1,163 @@
+{
+  "contract": "mad4b.wordpress-domain-overlay.v1",
+  "authorizing": false,
+  "runtime_certification_inferred": false,
+  "identity_source": "mad4b.g4-provider-readiness.v1",
+  "overlays": [
+    {
+      "provider_id": "contact-form-7",
+      "prerequisites": [
+        "form_definition_contract",
+        "flamingo_required_independently_for_entries"
+      ]
+    },
+    {
+      "provider_id": "wpforms",
+      "prerequisites": [
+        "native_serialization",
+        "premium_entries_contract_independent"
+      ]
+    },
+    {
+      "provider_id": "gravityforms",
+      "prerequisites": [
+        "exact_version_and_native_schema",
+        "independent_private_entry_authority"
+      ]
+    },
+    {
+      "provider_id": "fluentforms",
+      "prerequisites": [
+        "metadata_read_is_not_native_definition_acceptance",
+        "entries_readiness_independent"
+      ]
+    },
+    {
+      "provider_id": "jetformbuilder",
+      "prerequisites": [
+        "native_block_definition_contract",
+        "entry_storage_readiness_independent"
+      ]
+    },
+    {
+      "provider_id": "woocommerce",
+      "prerequisites": [
+        "catalog_vs_order_store_independent",
+        "hpos_and_stock_hooks_acceptance",
+        "financial_effect_review_separate"
+      ]
+    },
+    {
+      "provider_id": "elementor",
+      "prerequisites": [
+        "native_controls_and_serialization",
+        "revision_editor_lock",
+        "rendered_readback_and_exact_rollback"
+      ]
+    },
+    {
+      "provider_id": "divi",
+      "prerequisites": [
+        "theme_provider_discovery_separate",
+        "divi4_shortcode_vs_divi5_block_contracts"
+      ]
+    },
+    {
+      "provider_id": "kadence",
+      "prerequisites": [
+        "registered_blocks_and_template_scope"
+      ]
+    },
+    {
+      "provider_id": "wordpress-core",
+      "prerequisites": [
+        "native_core_object_contracts",
+        "registered_object_and_field_ownership"
+      ]
+    },
+    {
+      "provider_id": "updraftplus",
+      "prerequisites": [
+        "protected_receipts",
+        "exact_artifact_root",
+        "restore_epoch_and_separate_restore_authority"
+      ]
+    },
+    {
+      "provider_id": "w3-total-cache",
+      "prerequisites": [
+        "bounded_cache_targets",
+        "independent_frontend_readback"
+      ]
+    },
+    {
+      "provider_id": "all-in-one-wp-migration",
+      "prerequisites": [
+        "no_installer_credentials",
+        "archive_path_admission",
+        "no_automatic_restore"
+      ]
+    },
+    {
+      "provider_id": "wordfence",
+      "prerequisites": [
+        "masked_logs",
+        "object_scope",
+        "no_self_lockout"
+      ]
+    },
+    {
+      "provider_id": "redirection",
+      "prerequisites": [
+        "complete_redirect_graph",
+        "same_origin_scope",
+        "frontend_cache_readback"
+      ]
+    },
+    {
+      "provider_id": "litespeed",
+      "prerequisites": [
+        "bounded_cache_targets",
+        "independent_frontend_readback"
+      ]
+    },
+    {
+      "provider_id": "wpml",
+      "prerequisites": [
+        "explicit_source_language",
+        "parent_and_translation_group_identity",
+        "license_repair_external_handoff"
+      ]
+    },
+    {
+      "provider_id": "polylang",
+      "prerequisites": [
+        "explicit_source_language",
+        "parent_and_translation_group_identity",
+        "exact_language_assignment_readback"
+      ]
+    },
+    {
+      "provider_id": "advanced-custom-fields",
+      "prerequisites": [
+        "native_field_owner_and_schema",
+        "no_sensitive_user_metadata"
+      ]
+    },
+    {
+      "provider_id": "buddypress",
+      "prerequisites": [
+        "private_object_and_field_authority",
+        "no_private_communication_export"
+      ]
+    },
+    {
+      "provider_id": "the-events-calendar",
+      "prerequisites": [
+        "bounded_paging",
+        "exact_provider_timezone",
+        "object_authority"
+      ]
+    }
+  ]
+}

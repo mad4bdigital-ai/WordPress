@@ -252,6 +252,12 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 		$input = is_array( $input ) ? $input : array();
 		$validated = $this->validate_post_create_input( $input, true );
 		if ( is_wp_error( $validated ) ) return $validated;
+		$brand_preflight = null;
+		if ( in_array( (string) $validated['post_status'], array( 'publish', 'private' ), true ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core guard unavailable.' );
+			$brand_preflight = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'create', 'post_type' => (string) $validated['post_type'] ) );
+			if ( is_wp_error( $brand_preflight ) ) return $brand_preflight;
+		}
 		$binding = $this->operation_binding( self::CREATE_POST_ABILITY, $validated );
 		if ( is_wp_error( $binding ) ) return $binding;
 		$existing = $this->post_state_for_binding( $validated['post_type'], $binding );
@@ -268,6 +274,16 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 			'meta_input' => array( self::POST_BINDING_META => $binding ),
 		);
 		if ( isset( $validated['post_author'] ) ) $postarr['post_author'] = (int) $validated['post_author'];
+		if ( $brand_preflight ) {
+			$brand_now = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'create', 'post_type' => (string) $validated['post_type'] ) );
+			if ( is_wp_error( $brand_now ) ) return $brand_now;
+			if ( ! is_array( $brand_now )
+				|| ! hash_equals( (string) $brand_preflight['reviewed_asset_fingerprint'], (string) ( $brand_now['reviewed_asset_fingerprint'] ?? '' ) )
+				|| ! hash_equals( (string) $brand_preflight['authority_manifest_fingerprint'], (string) ( $brand_now['authority_manifest_fingerprint'] ?? '' ) )
+				|| ! hash_equals( (string) $brand_preflight['context_fingerprint'], (string) ( $brand_now['context_fingerprint'] ?? '' ) )
+				|| (int) $brand_preflight['registry_revision'] !== (int) ( $brand_now['registry_revision'] ?? -1 ) )
+				return new WP_Error( 'mad4b_publication_brand_core_drift', 'Brand Core authority changed before public post creation.' );
+		}
 		$post_id = wp_insert_post( wp_slash( $postarr ), true );
 		if ( is_wp_error( $post_id ) ) return $post_id;
 		$after = $this->post_state_for_binding( $validated['post_type'], $binding );
@@ -451,6 +467,10 @@ final class MAD4B_SCP_Core_Content_Modeling_Adapter extends MAD4B_SCP_Adapter_Ba
 		$status = isset( $input['post_status'] ) ? sanitize_key( (string) $input['post_status'] ) : 'draft';
 		if ( ! in_array( $status, array( 'draft', 'pending', 'private', 'publish' ), true ) ) return new WP_Error( 'mad4b_post_status_invalid', 'Requested post status is not allowed by this governed create surface.' );
 		if ( in_array( $status, array( 'publish', 'private' ), true ) ) {
+			// Included in permission checks, reversible capture and creation.
+			if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Control_Loop' ) ) return new WP_Error( 'mad4b_publication_brand_guard_missing', 'Mandatory Brand Core guard unavailable.' );
+			$brand = MAD4B_SCP_Brand_Core_Control_Loop::publication_preflight( array( 'operation' => 'create', 'post_type' => $post_type ) );
+			if ( is_wp_error( $brand ) ) return $brand;
 			$publish_cap = isset( $object->cap->publish_posts ) ? (string) $object->cap->publish_posts : 'publish_posts';
 			if ( ! current_user_can( $publish_cap ) ) return new WP_Error( 'mad4b_post_publish_denied', 'Current user cannot publish/private-create the requested post type.' );
 		}

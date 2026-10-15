@@ -1,0 +1,158 @@
+{
+  "contract": "mad4b.competitive-g2-delivery.v1",
+  "status": "REPOSITORY_G2_CORE_IMPLEMENTED_LIVE_ACCEPTANCE_PENDING",
+  "integration_pr": 258,
+  "implementation_pr": 277,
+  "implementation_branch": "feat/007-g2-recovery-identity-consent-history-r2-20261007",
+  "integration_base": "spec/007-competitive-experience-20261006",
+  "baseline_hub_head": "a9561e6aae09743c5de42e003640c9695f293af8",
+  "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
+  "authorizing": false,
+  "production_authorized": false,
+  "runtime_parity_claimed": false,
+  "live_provider_acceptance": false,
+  "live_browser_acceptance": false,
+  "capability_ids": [
+    "CE006",
+    "CE007",
+    "CE008",
+    "CE009",
+    "CE010",
+    "CE011",
+    "CE025",
+    "CE026"
+  ],
+  "partial_task_ids": [
+    "T3911",
+    "T3912",
+    "T3913",
+    "T3914",
+    "T3915",
+    "T3916",
+    "T3917",
+    "T3918",
+    "T3919",
+    "T3920",
+    "T3921",
+    "T3922",
+    "T3923",
+    "T3924",
+    "T3925",
+    "T3951",
+    "T3952",
+    "T3953",
+    "T3954",
+    "T3955"
+  ],
+  "code_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-governance-experience.php",
+      "sha256": "b09b1266818c97eeb07014fe401662beb253f2e3b9189ec82990f7b570a86e58"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g2-permission-changes.php",
+      "sha256": "255ffd7addfccc56dff947f8e7387fd467e6d5a0120265840a47a933de14058d"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php",
+      "sha256": "78a28bcff1118077a3624576769e24f2e46337790fc9b3c3748b2faa6e2b65aa"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php",
+      "sha256": "4630d59142f6a16c8c82b7d20247d724bd2319c1d149d3fb055bced361dd6d41"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "sha256": "ed7ef7f427f1beb93c12c0bb5baaba03ceb220d71bc85b55d24ed4440e6b896c"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "sha256": "9b141a71f13a188f59e204ad12d8b3b63174d1f3f5e6a587b7c9cec29df991df"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php",
+      "sha256": "3c91b90d206cc04dc7f0a44d627a4f25e1cf74e5b2e11e5815dedf48301a7d68"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authority-health-projection.php",
+      "sha256": "4a2e13686fec69f73eef4009478a426ac06fe9dd1643d97a3fec28a199909cb0"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
+      "sha256": "345cc98fc9bffc05392c9928d0788b42a961c310c9a496b92c233cd09b05f276"
+    }
+  ],
+  "test_paths": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-contract.py",
+      "sha256": "d0429babbc9a73d6dbc54d054e2d40ae1ac135815a3e0bfd2a6a7bcf26dfdf73"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-governance-experience-runtime.php",
+      "sha256": "9451bb536739ce2f737906ca7e8743d043a44d062db4b7db33494683c25968bf"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-contract.py",
+      "sha256": "456c0c8498a2d7a47768f545141c547dbcbf4cee17c495f69f3ab5c2eab1ccbf"
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/tests/g2-permission-reduction-runtime.php",
+      "sha256": "220553d23d62285ee21c1e7c434bfb1a50285ecde316bfca7d1ba76e073bad1e"
+    }
+  ],
+  "spec_paths": [
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/capability-matrix.json",
+      "sha256": "8eadb0e8711c3ee2f13fabdc1c8924c9ac7075bf327ea63200c9e2febdcf184f"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/extension.json",
+      "sha256": "8bf650a96efcec16479b28f5c7716bd93ed551e13502ddc8016ad4f202e9cea5"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g2-delivery.md",
+      "sha256": "811c882d0e0e0303df9cb28298a01a8dfe566abd2f7defbbb1ca68ee91364086"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-ledger.generated.json",
+      "sha256": "0f5ffa7c82ef8712fb9d54c75e3730e93a7c38f38d7d8fc726e0630eaf2d8142"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/task-status.json",
+      "sha256": "f33165bdbbc0683ddb12bc3a68f39f7891d7719b99a4b8c16831c258e68a7a09"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/test_validation.py",
+      "sha256": "41ae3c56a25425f971015c8ccbd06a80100b87fddf03812ee258c22947c9b132"
+    },
+    {
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/validate.py",
+      "sha256": "876c4b428dfef541794d9ccf3e906612092c74b7e6fd06a953e72abc5fba73d1"
+    }
+  ],
+  "acceptance_contracts": [
+    "receipt_backed_readonly_recovery_preview_without_rollback_payload",
+    "current_state_drift_and_expiry_fail_closed",
+    "redacted_per_agent_effective_access_projection",
+    "reviewed_authority_reduction_plan_sha_revision_confirmation_readback_audit",
+    "authority_reduction_only_disable_agent_disable_subject_revoke_exact_allow_grant",
+    "no_authority_expansion_grant_creation_enable_restore_or_automatic_mount",
+    "production_permission_apply_denied_fail_closed",
+    "explicit_readonly_and_reviewed_step_up_consent_presets",
+    "new_scope_requires_external_reconsent",
+    "no_generic_full_access_consent",
+    "bounded_client_profile_pkce_refresh_revocation_projection",
+    "bounded_redacted_change_history_with_stable_paging",
+    "history_export_digest_and_audit_integrity_projection",
+    "history_never_creates_rollback_authority"
+  ],
+  "remaining_acceptance": [
+    "Complete all exact-head repository checks for PR #277 and preserve exact-head governance.",
+    "Staging recovery acceptance must prove drift, expiry, stale evidence, wrong subject and uncertain external-effect behavior without replaying consumed approvals.",
+    "Staging authority-reduction acceptance must prove disable-agent, disable-subject and exact allow-grant revoke under stale revision/plan, concurrent changes, readback failure and audit failure conditions; no authority-expanding operation is in scope.",
+    "External OAuth/MCP acceptance must prove initialize, tools/list, tools/call, PKCE, refresh rotation, revocation, Origin/resource/audience and stale-generation denials.",
+    "Browser acceptance must exercise Recovery, My Access, reviewed authority reduction, Consent & Clients and Change History on representative Staging state.",
+    "Provider-aware typed visual diffs and governed legal-hold lifecycle remain pending before those capabilities can be claimed complete.",
+    "After G2 child merge, cumulative Integration Hub CI and post-merge Staging acceptance are still required; Production remains unauthorized."
+  ]
+}

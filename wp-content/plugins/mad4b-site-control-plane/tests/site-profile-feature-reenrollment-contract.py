@@ -2,8 +2,8 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8')
-remote_parity = (ROOT / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text('utf-8')
+servers = (ROOT / 'includes/class-mad4b-scp-servers.php').read_text('utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+remote_parity = (ROOT / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text('utf-8') + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 enrollment = (ROOT / 'includes/class-mad4b-scp-site-profile-enrollment.php').read_text('utf-8')
 bridge = (ROOT / 'includes/class-mad4b-scp-oauth-resource-bridge.php').read_text('utf-8')
 local = (ROOT / 'includes/class-mad4b-scp-local-oauth-server.php').read_text('utf-8')

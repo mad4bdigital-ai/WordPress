@@ -72,8 +72,28 @@ foreach ( $preauth_tools as $dto ) {
 	$reviewed_step_up_by_ability[ $ability_name ] = (string) $tool_name;
 	$reviewed_step_up_names[] = (string) $tool_name;
 }
+// The server formally designates reviewed direct step-ups OPTIONAL under
+// the 36-tool budget. Compare against the same deterministic selection as
+// registration: only budget-retained tools must be bound. Missing optional
+// tools must be explicitly excluded by that policy, not silently disappear.
+$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+    ? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+$all_requested = MAD4B_SCP_Servers::chatgpt_tools();
+$optional = array_values( array_intersect(
+    array_values( array_unique( array_merge( $dynamic_optional, $reviewed_step_up_abilities ) ) ),
+    $all_requested
+) );
+$budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $all_requested, $optional );
+if ( empty( $budget['ready'] ) ) $fail( 'Reviewed direct-step-up catalog budget itself is invalid.', $budget );
 foreach ( $reviewed_step_up_abilities as $ability_name ) {
-	if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) ) $fail( 'Reviewed direct step-up ability has no bound MCP tool.', $ability_name );
+    if ( ! in_array( $ability_name, $budget['selected'], true ) ) {
+        if ( ! in_array( $ability_name, $budget['excluded_optional'], true )
+            || ! empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
+            $fail( 'Non-selected direct step-up is not a genuine bounded optional exclusion.', $ability_name );
+        continue;
+    }
+    if ( empty( $reviewed_step_up_by_ability[ $ability_name ] ) )
+        $fail( 'Budget-retained reviewed direct step-up ability has no bound MCP tool.', $ability_name );
 }
 $reviewed_step_up_names = array_values( array_unique( $reviewed_step_up_names ) );
 sort( $reviewed_step_up_names );
@@ -287,7 +307,14 @@ try {
 	$registry_property->setValue( $registry, $rich_registry );
 	$catalog_cache->setValue( null, null ); $preflight_catalog = MAD4B_SCP_Servers::chatgpt_tools();
 	if ( $baseline_catalog !== $preflight_catalog ) $fail( 'Rich provider registration must not change the reviewed direct catalog.' );
-	if ( count( $preflight_catalog ) > 36 || array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) ) $fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its budget.' );
+	$rich_optional = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $preflight_catalog );
+	$rich_budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $preflight_catalog, $rich_optional );
+	$required_rich = array_values( array_diff( $preflight_catalog, $rich_optional ) );
+	if ( empty( $rich_budget['ready'] )
+		|| count( $rich_budget['selected'] ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS
+		|| array_diff( $required_rich, $rich_budget['selected'] )
+		|| array_filter( $preflight_catalog, static function ( $name ) { return 0 === strpos( $name, 'provider/rich-step-' ); } ) )
+		$fail( 'Provider growth must not widen the reviewed direct catalog or exhaust its effective budget.', $rich_budget );
 } finally { $registry_property->setValue( $registry, $saved_registry ); }
 
 // Large normal reads/writes and low-level enrollment mutations must remain
@@ -441,8 +468,20 @@ foreach ( $catalog_tools as $dto ) {
 	if ( '' === $wire_name ) $fail( 'Actual packaged Adapter tool identity is unavailable.' );
 	$catalog_names[] = $wire_name;
 }
-$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
-if ( empty( $preflight['ready'] ) || ! empty( $preflight['failures'] ) ) $fail( 'Official ability-to-DTO preflight failed.', $preflight );
+$requested_catalog = MAD4B_SCP_Servers::chatgpt_tools();
+$catalog_optional = MAD4B_SCP_Servers::chatgpt_materialization_optional_tools( $requested_catalog );
+$nonbudget_failures = static function ( $result ) {
+    return array_values( array_filter( (array) ( $result['failures'] ?? array() ), static function ( $error ) {
+        return 'mcp_optional_catalog_budget_excluded' !== ( $error['error_code'] ?? '' );
+    } ) );
+};
+$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
+if ( empty( $preflight['ready'] )
+    || $nonbudget_failures( $preflight )
+    || array_diff( array_diff( $requested_catalog, $catalog_optional ), (array) ( $preflight['tools'] ?? array() ) ) )
+    $fail( 'Official required ability-to-DTO preflight failed.',
+        array( 'blocker' => $preflight['blocker'] ?? '', 'unexpected_failures' => $nonbudget_failures( $preflight ),
+            'missing_required' => array_values( array_diff( array_diff( $requested_catalog, $catalog_optional ), (array) ( $preflight['tools'] ?? array() ) ) ) ) );
 $step_list = $dispatch( array( 'jsonrpc' => '2.0', 'id' => 726, 'method' => 'tools/list', 'params' => new stdClass() ), $step_up_token, $step_session_id );
 $step_wire = json_decode( json_encode( $step_list->get_data(), JSON_THROW_ON_ERROR ) );
 if ( 200 !== $step_list->get_status() || ! isset( $step_wire->result->tools ) || count( $step_wire->result->tools ) !== count( $catalog_names ) ) $fail( 'Step-up bearer serialized inventory mismatch.' );
@@ -466,20 +505,20 @@ $optional_ability = wp_get_ability( 'mad4b/full-staging-authority-apply' );
 $original_description = $ability_description->getValue( $optional_ability );
 try {
 	$ability_description->setValue( $optional_ability, "\xB1\x31" );
-	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
-	if ( empty( $isolated['ready'] ) || empty( $isolated['degraded'] ) || 1 !== count( $isolated['failures'] ) || 'mad4b/full-staging-authority-apply' !== $isolated['failures'][0]['failing_ability'] || 64 !== strlen( $isolated['failures'][0]['source_schema_fingerprint'] ) || in_array( 'mad4b/full-staging-authority-apply', $isolated['tools'], true ) || ! in_array( 'mad4b/read-execute', $isolated['tools'], true ) ) $fail( 'Official preflight did not isolate invalid optional ability.', $isolated );
+	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
+	if ( empty( $isolated['ready'] ) || empty( $isolated['degraded'] ) || 1 !== count( $nonbudget_failures( $isolated ) ) || 'mad4b/full-staging-authority-apply' !== $nonbudget_failures( $isolated )[0]['failing_ability'] || 64 !== strlen( $nonbudget_failures( $isolated )[0]['source_schema_fingerprint'] ) || in_array( 'mad4b/full-staging-authority-apply', $isolated['tools'], true ) || ! in_array( 'mad4b/read-execute', $isolated['tools'], true ) ) $fail( 'Official preflight did not isolate invalid optional ability.', $isolated );
 } finally { $ability_description->setValue( $optional_ability, $original_description ); }
 $ability_schema = new ReflectionProperty( 'WP_Ability', 'input_schema' ); $ability_schema->setAccessible( true );
 $original_schema = $ability_schema->getValue( $optional_ability );
 try {
 	$ability_schema->setValue( $optional_ability, array( 'type' => 'object', 'properties' => 'INVALID_PROPERTIES' ) );
-	$isolated_schema = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
-	if ( empty( $isolated_schema['ready'] ) || empty( $isolated_schema['degraded'] ) || 1 !== count( $isolated_schema['failures'] ) || 'mad4b/full-staging-authority-apply' !== $isolated_schema['failures'][0]['failing_ability'] || 64 !== strlen( $isolated_schema['failures'][0]['source_schema_fingerprint'] ) ) $fail( 'Malformed real ability schema must be isolated by official conversion.', $isolated_schema );
+	$isolated_schema = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
+	if ( empty( $isolated_schema['ready'] ) || empty( $isolated_schema['degraded'] ) || 1 !== count( $nonbudget_failures( $isolated_schema ) ) || 'mad4b/full-staging-authority-apply' !== $nonbudget_failures( $isolated_schema )[0]['failing_ability'] || 64 !== strlen( $nonbudget_failures( $isolated_schema )[0]['source_schema_fingerprint'] ) ) $fail( 'Malformed real ability schema must be isolated by official conversion.', $isolated_schema );
 } finally { $ability_schema->setValue( $optional_ability, $original_schema ); }
 $required_ability = wp_get_ability( 'mad4b/site-info' ); $original_description = $ability_description->getValue( $required_ability );
 try {
 	$ability_description->setValue( $required_ability, "\xB1\x31" );
-	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( MAD4B_SCP_Servers::chatgpt_tools(), MAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools() );
+	$isolated = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $requested_catalog, $catalog_optional );
 	if ( ! empty( $isolated['ready'] ) || 'mcp_required_tool_preflight_failed' !== $isolated['blocker'] ) $fail( 'Required preflight failure must not degrade.', $isolated );
 } finally { $ability_description->setValue( $required_ability, $original_description ); }
 // Inject malformed UTF-8 at the last list-filter seam using the exact object

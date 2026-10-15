@@ -4,7 +4,9 @@
     "execution_receipt": "execution-receipt-rs256-v1",
     "preparation_receipt": "preparation-receipt-rs256-v1",
     "context_receipt": "context-receipt-rs256-v1",
-    "production_evidence": "production-evidence-rs256-v1"
+    "production_evidence": "production-evidence-rs256-v1",
+    "behavioral_evidence": "behavioral-evidence-rs256-v1",
+    "certification_pack": "certification-pack-rs256-v1"
   },
   "profiles": {
     "execution-receipt-rs256-v1": {
@@ -66,6 +68,22 @@
     "production-evidence-rs512-v2": {
       "purpose": "production_evidence",
       "algorithm": "RS512",
+      "key_bits": 3072,
+      "overlap_seconds": 86400,
+      "max_active_keys": 2,
+      "enabled": true
+    },
+    "behavioral-evidence-rs256-v1": {
+      "purpose": "behavioral_evidence",
+      "algorithm": "RS256",
+      "key_bits": 3072,
+      "overlap_seconds": 86400,
+      "max_active_keys": 2,
+      "enabled": true
+    },
+    "certification-pack-rs256-v1": {
+      "purpose": "certification_pack",
+      "algorithm": "RS256",
       "key_bits": 3072,
       "overlap_seconds": 86400,
       "max_active_keys": 2,
