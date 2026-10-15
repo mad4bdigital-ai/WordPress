@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildBrowserWorkerEnvironment } from "./worker-environment.mjs";
 import {
   createMad4bMcpSession,
   requestBrowserPlan,
@@ -12,6 +13,12 @@ import {
 } from "./mcp-bridge.mjs";
 import { buildBrowserExecutionReceipt, canonicalSha256 } from "./receipt.mjs";
 import { loadProviderContracts } from "./providers.mjs";
+import {
+  resolveEtgBrowserOperatorConfiguration,
+  assertEtgBrowserBindingUnchanged,
+  assertEtgBrowserPlanBinding,
+  assertEtgBrowserResultBinding
+} from "./site-provider-configuration.mjs";
 
 function arg(name, fallback = "") {
   const index = process.argv.indexOf(`--${name}`);
@@ -50,7 +57,16 @@ if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(profileId)) {
 }
 
 const session = await createMad4bMcpSession({ resource, accessToken });
-const plan = await requestBrowserPlan(session, { providerId: "etg-dfsb", profileId });
+const capabilities = await session.callAbility("mad4b/browser-acceptance-capabilities", {});
+const configured = resolveEtgBrowserOperatorConfiguration(capabilities, { profileId, requestedExecutor: browserProvider });
+const plan = await requestBrowserPlan(session, { providerId: configured.siteProviderId, profileId: configured.profileId });
+assertEtgBrowserPlanBinding(configured, plan);
+// Selection could have changed while the signed plan was being generated.
+const preExecution = resolveEtgBrowserOperatorConfiguration(
+  await session.callAbility("mad4b/browser-acceptance-capabilities", {}),
+  { profileId, requestedExecutor: browserProvider }
+);
+assertEtgBrowserBindingUnchanged(configured, preExecution);
 
 const contracts = loadProviderContracts();
 const now = Math.floor(Date.now() / 1000);
@@ -68,17 +84,15 @@ const planPath = path.join(tempDir, "signed-plan.json");
 fs.writeFileSync(planPath, JSON.stringify(plan), { mode: 0o600 });
 
 try {
-  const childEnv = {
-    ...process.env,
-    MAD4B_BROWSER_EXECUTION_DEADLINE_EPOCH: String(executionDeadline)
-  };
+  const childEnv = buildBrowserWorkerEnvironment(process.env, executionDeadline);
+  // No ambient MCP/GitHub credentials propagate to this process.
   delete childEnv.MAD4B_MCP_ACCESS_TOKEN;
 
   const runnerPath = path.join(HERE, "run-etg-browser-acceptance.mjs");
   const child = spawnSync(process.execPath, [
     runnerPath,
     "--plan", planPath,
-    "--provider", browserProvider,
+    "--provider", configured.executor,
     "--out", evidencePath,
     "--attempts-out", attemptsPath
   ], {
@@ -91,8 +105,14 @@ try {
   }
 
   const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
-  const result = await submitBrowserEvidence(session, plan, evidence);
-  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
+  const result = await submitBrowserEvidence(session, plan, evidence, { expectedContract: "etg.dfsb.browser-acceptance-evidence.v1" });
+  assertEtgBrowserResultBinding(plan, result);
+  // A changed administrator preference invalidates the local execution receipt.
+  const postExecution = resolveEtgBrowserOperatorConfiguration(
+    await session.callAbility("mad4b/browser-acceptance-capabilities", {}),
+    { profileId, requestedExecutor: browserProvider }
+  );
+  assertEtgBrowserBindingUnchanged(configured, postExecution);
 
   const localEvidenceDigest = canonicalSha256(evidence);
   const reducerEvidenceDigest = String(result?.evidence_digest || "");
@@ -102,6 +122,7 @@ try {
   if (!/^[a-f0-9]{64}$/.test(String(result?.receipt_signature || ""))) {
     throw new Error("mad4b_browser_receipt_signature_missing");
   }
+  fs.writeFileSync(resultPath, JSON.stringify(result, null, 2));
 
   const attempts = JSON.parse(fs.readFileSync(attemptsPath, "utf8"));
   const receipt = buildBrowserExecutionReceipt({
