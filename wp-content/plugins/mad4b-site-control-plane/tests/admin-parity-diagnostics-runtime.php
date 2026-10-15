@@ -45,6 +45,9 @@ if ( false === strpos( $output, 'not_evaluated' ) || false === strpos( $output, 
     || false !== strpos( $output, 'mcp_foreign_transport_unreviewed' ) ) throw new RuntimeException( 'Deferral rendered as confirmed security error.' );
 $s['mcp_peer_governance'] = array('inventory_ready'=>true,'foreign_transport_unreviewed'=>true,'foreign_route_count'=>1,'blockers'=>array('mcp_foreign_transport_unreviewed'),'foreign_transport_inventory'=>array('foreign_routes'=>array('/foreign-mcp')));
 ob_start(); $render->invoke( null, $s ); $output = ob_get_clean();
-if ( false === strpos( $output, 'mcp_foreign_transport_unreviewed' ) || false === strpos( $output, '/foreign-mcp' ) )
-    throw new RuntimeException( 'Verified malicious transport evidence hidden.' );
+if ( false === strpos( $output, 'mcp_foreign_transport_unreviewed' )
+    || false === strpos( $output, '/foreign-mcp' )
+    || false === strpos( $output, 'Foreign REST route count is not the number of connected MCP peers' )
+    || false === strpos( $output, 'do not disable providers or waive the blocker automatically' ) )
+    throw new RuntimeException( 'Verified foreign transport must include safe provider-review guidance.' );
 echo "MAD4B_ADMIN_PARITY_DIAGNOSTICS_PASS\n";
