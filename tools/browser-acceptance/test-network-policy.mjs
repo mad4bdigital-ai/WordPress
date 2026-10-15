@@ -79,6 +79,24 @@ for(const address of ["https://127.0.0.1/", "https://10.1.2.3/", "https://192.16
   "https://169.254.169.254/", "https://localhost/", "https://intranet.local/"]) {
   assert.throws(() => originHostname(address), /browser_origin_hostname_invalid/);
 }
+// Literal IP destinations must be publicly routable, even if a caller adds
+// them to the asset allowlist. The browser must not become an internal proxy.
+for (const ip of ["100.64.1.2", "192.0.0.5", "198.18.1.1",
+  "203.0.113.9", "224.0.0.1", "255.255.255.255"]) {
+  assert.throws(() => originHostname("https://" + ip + "/"),
+    /browser_origin_hostname_invalid/, "non-public origin " + ip);
+  assert.throws(() => configuredAllowedHosts({
+    MAD4B_BROWSER_ALLOWED_ASSET_DOMAINS: ip
+  }), /browser_allowed_asset_domain_invalid/, "non-public asset " + ip);
+}
+assert.equal(originHostname("https://1.1.1.1/"), "1.1.1.1");
+assert.throws(() => originHostname("https://user:pass@staging.egypttourgates.com/"),
+  /browser_origin_credentials_denied/);
+assert.equal(requestBoundaryDecision({
+  url:"https://user:pass@staging.egypttourgates.com/anything",
+  resourceType:"document", origin, env
+}).reason, "network_request_credentials_denied");
+
 assert.equal(requestBoundaryDecision({
   url:"https://staging.egypttourgates.com:4443/wp-admin/",
   resourceType:"document", origin, env
