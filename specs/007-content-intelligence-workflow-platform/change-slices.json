@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "698ed304048948890a884deed2c646a68978e434",
-  "changed_file_count": 921,
+  "changed_file_count": 922,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2225,8 +2225,17 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/write-dispatch-nested-transport-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/intent-registry-contract.php"
       ]
+    },
+    {
+      "id": "staging-candidate-nonauthorizing-source-contract",
+      "semantic_unit": "Immutable reviewed candidate of baseline-owned staging publishing workflow, retained as non-executable contract evidence until separately accepted by root CI",
+      "revert_boundary": "Revert the non-authorizing candidate snapshot together with the source contract test; actual baseline GitHub Actions workflow remains independently owned and protected",
+      "certification": "exact_head",
+      "path_globs": [
+        "specs/007-content-intelligence-workflow-platform/contracts/reviewed-workflow-candidates/mad4b-staging-candidate-publish.yml"
+      ]
     }
   ],
-  "changed_paths_sha256": "5721621c02d4f5799bb5823c2108fb521064b8a1e9de5cb109b81f0e86e11ef3",
+  "changed_paths_sha256": "448b77b6f2499d31bf08124b2304bca9333401b9f9e5eb803f07b98fa55f01f3",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
