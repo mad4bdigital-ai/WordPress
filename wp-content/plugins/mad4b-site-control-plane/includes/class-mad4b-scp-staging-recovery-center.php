@@ -51,9 +51,9 @@ final class MAD4B_SCP_Staging_Recovery_Center {
         } elseif ( 'READY_FOR_OWNER_APPROVAL' === $base['binding_state'] && ! empty( $binding['eligible'] ) ) {
             return array_merge( $base, array(
                 'state' => 'BINDING_OWNER_APPROVAL_REQUIRED',
-                'reason' => 'First-time host-local identity requires its separate exact governed approval ticket; this is not an update-time key rotation.',
-                'next_action' => 'Review binding approval',
-                'next_url' => 'admin.php?page=mad4b-approval-decisions',
+                'reason' => 'A verified WordPress activation or nonce-verified Site Profile save initializes the local Staging identity automatically; only remote MCP provisioning requires an approved exact ticket.',
+                'next_action' => 'Open Site Profile',
+                'next_url' => 'admin.php?page=mad4b-control-plane-site-profile',
                 'next_ability' => 'mad4b/deployment-binding-native-plan',
             ) );
         } else {

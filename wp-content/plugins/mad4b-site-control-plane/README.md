@@ -4,7 +4,7 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.97**.
+Current plugin version: **0.4.0-rc.98**.
 
 The administrator workspace includes a shared page/setup directory, direct search API credential links, Arabic/RTL presentation and an Action Center with explicit observed/unknown checks and prerequisite handoffs. These UI views use existing services and do not create new execution authority.
 

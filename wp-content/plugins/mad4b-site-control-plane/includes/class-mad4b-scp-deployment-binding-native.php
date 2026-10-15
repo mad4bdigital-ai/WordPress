@@ -440,6 +440,84 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             return self::error( 'recheck_failed' );
         $snap = self::profile_snapshot();
         if ( is_wp_error( $snap ) ) return $snap;
+        return self::commit_new_binding( $snap, 'mad4b/deployment-binding-native-enrolled', false );
+    }
+
+    /**
+     * WordPress activation is a privileged, locally authenticated lifecycle.
+     * This is NOT a new remote write ability. It does not issue an approval
+     * ticket, enable governed Write or repair a cloned/mismatched host.
+     */
+    public static function activation_bootstrap() {
+        $activation_hook = defined( 'MAD4B_SCP_FILE' ) && function_exists( 'plugin_basename' )
+            ? 'activate_' . plugin_basename( MAD4B_SCP_FILE ) : '';
+        $trusted = '' !== $activation_hook
+            && function_exists( 'current_filter' )
+            && current_filter() === $activation_hook
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'activate_plugins' )
+            && current_user_can( 'manage_options' )
+            && !( defined( 'WP_CLI' ) && WP_CLI )
+            && !( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+            && !( function_exists( 'wp_doing_cron' ) && wp_doing_cron() );
+        if ( ! $trusted ) return self::error( 'activation_context_required' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-activated' );
+    }
+
+    /**
+     * Called only AFTER nonce-verified WordPress Site Profile save and
+     * persisted readback. Initial plugin activation may precede enrollment.
+     * Never expose this as a WordPress Ability or general-purpose GET action.
+     */
+    public static function profile_save_bootstrap() {
+        $hook = function_exists( 'current_filter' ) ? current_filter() : '';
+        $trusted = class_exists( 'MAD4B_SCP_Site_Profile_Admin' )
+            && in_array( $hook, array(
+                'admin_post_' . MAD4B_SCP_Site_Profile_Admin::ACTION_SAVE,
+                'wp_ajax_' . MAD4B_SCP_Site_Profile_Admin::ACTION_SAVE,
+                'admin_post_' . MAD4B_SCP_Site_Profile_Admin::ACTION_AUTOPILOT,
+            ), true )
+            && 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'manage_options' )
+            && current_user_can( 'activate_plugins' )
+            && !( defined( 'WP_CLI' ) && WP_CLI );
+        if ( ! $trusted ) return self::error( 'profile_setup_context_required' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-profile-enrolled' );
+    }
+
+    private static function bootstrap_from_verified_lifecycle( $audit_action ) {
+        // The Profile must already be enrolled. A copied database alone is
+        // insufficient: foreign origin/host key, old keys or a non-private
+        // filesystem location always block rather than mint a new identity.
+        $state = self::status();
+        if ( is_wp_error( $state ) ) return $state;
+        if ( 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' ) ) {
+            return array( 'state' => 'EXISTING_BINDING_REUSED',
+                'read_only' => true, 'mutation_performed' => false );
+        }
+        if ( 'READY_FOR_OWNER_APPROVAL' !== ( $state['state'] ?? '' )
+            || empty( $state['eligible'] ) )
+            return self::error( 'activation_host_state_blocked' );
+        $plan = self::plan();
+        if ( is_wp_error( $plan ) || empty( $plan['eligible'] ) )
+            return self::error( 'activation_plan_blocked' );
+        $snap = self::profile_snapshot();
+        if ( is_wp_error( $snap ) ) return $snap;
+        // Re-evaluate the exact immutable plan after the snapshot read,
+        // so no host path or Site Profile change can be silently adopted.
+        $recheck = self::plan();
+        if ( is_wp_error( $recheck )
+            || ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ),
+                (string) ( $recheck['plan_sha256'] ?? '' ) ) )
+            return self::error( 'activation_plan_drift' );
+        return self::commit_new_binding( $snap, $audit_action, true );
+    }
+
+    /** One auditable, compensating implementation shared by ticket and activation paths. */
+    private static function commit_new_binding( array $snap, $audit_action, $activation ) {
         $key = self::provision( $snap['location'] );
         if ( is_wp_error( $key ) ) return $key;
         $before = $snap['stored'];
@@ -450,10 +528,10 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             hash( 'sha256', self::request_marker() );
         $after['updated_at'] = gmdate( 'c' );
         $committed = MAD4B_SCP_Site_Profile::commit_record_with_audit(
-            $before, $after, 'mad4b/deployment-binding-native-enrolled',
+            $before, $after, $audit_action,
             array( 'site_uuid' => $before['site_uuid'], 'host_file_outside_webroot' => true,
                 'no_plaintext_logged' => true, 'identity_preserved' => true,
-                'staging_only' => true ), 'mad4b_native_deployment_binding' );
+                'staging_only' => true, 'activation_bootstrap' => $activation ), 'mad4b_native_deployment_binding' );
         if ( is_wp_error( $committed ) ) {
             self::rollback( $snap['location'], $key );
             return $committed;
@@ -485,6 +563,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'plaintext_secret_returned' => false,
             'secret_written_to_wordpress_database' => false,
             'production_mutation' => false,
+            'activation_bootstrap' => $activation,
             'next_readback' => self::READBACK,
             'new_request_readback_input' => array(
                 'expected_site_uuid' => (string) $before['site_uuid'],
