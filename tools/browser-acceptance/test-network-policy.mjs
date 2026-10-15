@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import {
   allowedHostSet,
   configuredAllowedHosts,
@@ -193,4 +195,40 @@ assert.equal(report.exact_signed_document_paths,1);
 await assert.rejects(installContextNetworkBoundary(fakeContext,origin,env,{
   passiveOnly:true,allowedDocumentPaths:[]
 }),/browser_passive_document_scope_invalid/);
+// The signed generic import push carries business data. Invalid configured
+// webhook URLs must be rejected before the file is read or any HTTP request.
+const intakeScript = fileURLToPath(new URL("../feature007/import-modes/signed-generic-webhook-push.mjs", import.meta.url));
+const intakeEnvironment = {
+  ...process.env,
+  MAD4B_INTAKE_SECRET: "s".repeat(40),
+  MAD4B_SITE_UUID: "123e4567-e89b-12d3-a456-426614174000",
+  MAD4B_INTAKE_KEY_ID: "active_key"
+};
+const intakePath = "/wp-json/mad4b/v1/activity-import/intake";
+function probeIntakeDestination(destination) {
+  return spawnSync(process.execPath, [intakeScript, "__missing_intake_fixture__.json"], {
+    env: { ...intakeEnvironment, MAD4B_INTAKE_URL: destination },
+    encoding: "utf8",
+    timeout: 5000
+  });
+}
+for (const destination of [
+  "https://user:pw@staging.egypttourgates.com" + intakePath,
+  "https://127.0.0.1" + intakePath,
+  "https://[::1]" + intakePath,
+  "https://service.local" + intakePath,
+  "https://staging.egypttourgates.com:8443" + intakePath,
+  "https://staging.egypttourgates.com" + intakePath + "?mode=hidden",
+  "https://staging.egypttourgates.com" + intakePath + "#fragment",
+  "https://staging.egypttourgates.com." + intakePath,
+  "https://staging.egypttourgates.com/wp-json/mad4b/v1/activity-import/other"
+]) {
+  const result = probeIntakeDestination(destination);
+  assert.match(result.stderr, /Configure exact HTTPS intake/,
+    "Unsafe intake destination must fail closed: " + destination);
+}
+const validIntakeResult = probeIntakeDestination("https://staging.egypttourgates.com" + intakePath);
+assert.match(validIntakeResult.stderr, /ENOENT/,
+  "Canonical public HTTPS destination must pass URL validation (fixture file deliberately absent)");
+
 console.log("MAD4B browser network boundary PASS");
