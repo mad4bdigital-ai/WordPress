@@ -11,6 +11,7 @@ function esc_html( $value ) { return esc_attr( $value ); }
 function esc_html__( $text, $domain = '' ) { return esc_html( $text ); }
 function esc_url( $value ) { return esc_attr( $value ); }
 function wp_json_encode( $value ) { return json_encode( $value ); }
+function get_option( $key, $default = false ) { return $default; } // Isolated read-only WordPress option fixture.
 function admin_url( $path = '' ) { return 'https://fixture.test/wp-admin/' . $path; }
 function wp_nonce_field( $action ) { echo '<input name="_wpnonce" value="fixture">'; }
 function submit_button( $label, $style = '', $name = 'submit', $wrap = true ) { echo '<button type="submit">' . esc_html( $label ) . '</button>'; }
@@ -29,7 +30,7 @@ function wp_send_json_error( $data, $status = 200 ) { throw new JsonResult( fals
 function wp_send_json_success( $data ) { throw new JsonResult( true, $data ); }
 $GLOBALS['allowed'] = true; $GLOBALS['nonce_valid'] = true;
 final class MAD4B_SCP_Google_Drive_Context {
- const AUTH_MODE_MANAGED = 'managed_google'; const AUTH_MODE_DEDICATED = 'dedicated_google'; const AUTH_MODE_CUSTOM = 'custom_credentials';
+ const AUTH_MODE_MANAGED = 'managed_google'; const AUTH_MODE_DEDICATED = 'dedicated_google'; const AUTH_MODE_CUSTOM = 'custom_credentials'; const MANUAL_REVOCATION_AUDIT_OPTION = 'mad4b_test_google_manual_audit';
  static $mode = 'dedicated_google'; static $configured = true; static $connected = false; static $managed = true; static $dedicated = true;
  static function credentials_status() { return array( 'configured' => self::$configured, 'configured_by_constants' => true, 'client_id' => 'PUBLIC_ID', 'managed_redirect_uri' => 'https://fixture.test/managed', 'dedicated_redirect_uri' => 'https://fixture.test/dedicated', 'custom_redirect_uri' => 'https://fixture.test/custom' ); }
  static function connection_status() { return array( 'connected' => self::$connected, 'write_available' => self::$connected, 'read_available' => self::$connected, 'account_email' => '', 'revocation_pending' => false, 'token_unreadable' => false ); }
