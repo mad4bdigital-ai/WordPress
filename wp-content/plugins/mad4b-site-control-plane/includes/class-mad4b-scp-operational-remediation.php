@@ -99,6 +99,8 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
             require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
         MAD4B_SCP_Staging_Recovery_Center::render();
+        if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) )
+            MAD4B_SCP_Runtime_Recovery_Workspace::render();
         echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
         echo '<ol><li>' . esc_html__( 'Discover the required operation and identify its owner.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Check prerequisites and plan the exact change.', 'mad4b-site-control-plane' )

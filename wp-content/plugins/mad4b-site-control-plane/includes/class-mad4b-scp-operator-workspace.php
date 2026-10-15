@@ -67,7 +67,7 @@ final class MAD4B_SCP_Operator_Workspace {
 				'guidance' => __( 'An authority grant is not proof of isolated Host execution, a signed Host receipt or rollback.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'staging_release', 'label' => __( 'Staging release acceptance', 'mad4b-site-control-plane' ),
 				'state' => 'INDEPENDENT_ACCEPTANCE_REQUIRED', 'evidence' => 'mad4b/staging-convergence-verify',
-				'owner' => 'release_operator', 'page' => 'mad4b-operator-control-center', 'query' => array( 'recovery' => 'show' ),
+				'owner' => 'release_operator', 'page' => 'mad4b-operational-remediation', 'query' => array( 'recovery' => 'show' ),
 				'guidance' => __( 'Run exact-head Staging convergence and external Browser, Host, Skills and performance acceptance. Local HEALTHY never means release-ready.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'production_promotion', 'label' => __( 'Production promotion', 'mad4b-site-control-plane' ),
 				'state' => 'NOT_AUTHORIZED_HERE', 'evidence' => 'mad4b/production-readiness',
@@ -261,7 +261,7 @@ final class MAD4B_SCP_Operator_Workspace {
 			}
 			echo '<p>' . esc_html__( 'Verified automation rate: unavailable until the eligible workload and readback evidence are measured.', 'mad4b-site-control-plane' ) . '</p></details>';
 		}
-		if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) ) MAD4B_SCP_Runtime_Recovery_Workspace::render();
+		// Deep recovery diagnostics are located in Operational Remediation.
 		echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'Advanced setup reference', 'mad4b-site-control-plane' ) . '</summary>';
 		self::setup_path();
 		echo '</details>';

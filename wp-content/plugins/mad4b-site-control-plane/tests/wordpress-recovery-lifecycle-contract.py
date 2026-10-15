@@ -71,7 +71,10 @@ for marker in (
 require(scenarios, "|| ! empty( $context['skills_pending'] )")
 require(entry, "class-mad4b-scp-runtime-recovery-workspace.php")
 require(entry, "class-mad4b-scp-recovery-lifecycle.php")
-require(operator, "MAD4B_SCP_Runtime_Recovery_Workspace::render()")
+remediation = (root/"includes/class-mad4b-scp-operational-remediation.php").read_text()
+require(remediation, "MAD4B_SCP_Runtime_Recovery_Workspace::render()")
+if "MAD4B_SCP_Runtime_Recovery_Workspace::render()" in operator:
+    raise SystemExit("Action Center must delegate deep recovery to Operational Remediation")
 for marker in (
     "MAD4B_SCP_Recovery_Lifecycle::capture_identity()",
     "MAD4B_SCP_Recovery_Lifecycle::compile(",

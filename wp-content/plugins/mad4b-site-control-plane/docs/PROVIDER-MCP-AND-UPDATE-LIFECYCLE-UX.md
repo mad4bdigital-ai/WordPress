@@ -101,3 +101,9 @@ No implicit "Staging Recovery" executor runs just because Production sees a new 
 - Production real self-update / post-update test requires separately authorized Production
   staging-equivalent acceptance before any Production mutation; this code change does none.
 - Exact GitHub CI head, approved release package and ETG/ARE on-site readback are outstanding.
+
+## Action Center consolidation follow-up
+
+The expensive WordPress recovery plan is owned by **Operational Remediation** with explicit `?recovery=show` opt-in. Action Center remains the light triage dashboard and links to that registered remediation route. The static lifecycle test now enforces exactly this single rendering owner; deep plan computation does not happen on ordinary Action Center GET.
+
+The MCP Routes tab also avoids invoking the expensive full Plugin Coverage snapshot. It lists locally observed WordPress Ability namespaces from all providers, but never interprets namespace presence as signed provider-native tool identity or authorization. Full external MCP tools/list remains a separate authorized probe.
