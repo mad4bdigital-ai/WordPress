@@ -4,13 +4,13 @@ Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter 
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.
 
-Current plugin version: **0.4.0-rc.100**.
+Current plugin version: **0.4.0-rc.101**.
 
 The administrator workspace includes a shared page/setup directory, direct search API credential links, Arabic/RTL presentation and an Action Center with explicit observed/unknown checks and prerequisite handoffs. These UI views use existing services and do not create new execution authority.
 
 ### WordPress-native runtime recovery routing (Feature 007)
 
-Open **MAD4B Control Plane → Operator Control (Action Center)**, then select **Inspect current recovery plan** after a package update or when the site reports stale authority, Skills, Provider or Host evidence. The normal Action Center page stays lightweight; the deep read-only inspection is explicitly requested. The view derives an exact, non-authorizing recovery DAG from the installed WordPress runtime and enrolled Site Profile. Each row includes a responsible executor, approval/external-work classification, prerequisites, readback Ability and local settings link. A status view never executes the remediation by opening.
+Open **MAD4B Control Plane â†’ Operator Control (Action Center)**, then select **Inspect current recovery plan** after a package update or when the site reports stale authority, Skills, Provider or Host evidence. The normal Action Center page stays lightweight; the deep read-only inspection is explicitly requested. The view derives an exact, non-authorizing recovery DAG from the installed WordPress runtime and enrolled Site Profile. Each row includes a responsible executor, approval/external-work classification, prerequisites, readback Ability and local settings link. A status view never executes the remediation by opening.
 
 - **WordPress environment:** compare the explicit host `WP_ENVIRONMENT_TYPE`, the implicit WordPress default and the exact-origin Site Profile. For Production or a non-exact/unconfigured profile, offer diagnosis only; never relabel Production as Staging. A confirmed implicit default mismatch produces a separate authorized host-alignment action, not a Site Profile override.
 - **Managed Skills:** inspect live and persisted current-build certificates. Compare the persisted bootstrap provenance marker with the digest WordPress already computed at boot; stale or missing receipts become a Skills-only drift signal and can schedule the existing bounded Runtime Convergence safe-phase worker. Require persisted exact-build readback. Automatic execution continues to require the native worker's ticket, lock and site identity gates. The UI is not the dispatcher.
@@ -27,7 +27,7 @@ rc.95 repairs administrator submenu ordering, verifies refreshed settings agains
 
 rc.92 keeps the signed, immutable MAD4B release channel and exact archive/provenance verification unchanged while making the Plugins screen behave like a normal WordPress plugin. The plugin action row exposes one **Check for updates** action. A missing or failed governed-manifest cache no longer renders a diagnostic/update row and internal reason codes stay in governed diagnostics and audit evidence. When a verified newer build is cached, MAD4B renders the ordinary WordPress plugin-update row and the visible **Update now** action still routes only through the MAD4B governed updater, including release-manifest binding, SHA/provenance verification, maintenance fencing, backup, rollback and exact-build readback.
 
-The Plugins screen remains cache-only: it performs no outbound release-channel request while rendering, does not inject or replace WordPress core update transients, and does not enroll MAD4B in the WordPress core automatic-updater path. Explicit update checks are the only wp-admin action that refreshes the governed release manifest. The visible Plugins update lane resolves only the Release-Verdict-gated `mad4b-site-control-plane-update-channel`, whose pointer is published from `master`; unmerged pull-request candidates are deliberately excluded from that stable lane. The separate Control Plane + MCP Adapter release-set action is no longer injected into the generic Plugins row; it lives under **MAD4B Control Plane → Runtime Components → Runtime Update**, so the MAD4B plugin action row stays limited to the normal explicit update check.
+The Plugins screen remains cache-only: it performs no outbound release-channel request while rendering, does not inject or replace WordPress core update transients, and does not enroll MAD4B in the WordPress core automatic-updater path. Explicit update checks are the only wp-admin action that refreshes the governed release manifest. The visible Plugins update lane resolves only the Release-Verdict-gated `mad4b-site-control-plane-update-channel`, whose pointer is published from `master`; unmerged pull-request candidates are deliberately excluded from that stable lane. The separate Control Plane + MCP Adapter release-set action is no longer injected into the generic Plugins row; it lives under **MAD4B Control Plane â†’ Runtime Components â†’ Runtime Update**, so the MAD4B plugin action row stays limited to the normal explicit update check.
 
 ### rc.91 decoupled Staging Write authority
 
@@ -120,7 +120,7 @@ The WordPress Plugins update UI also stops failing silently. Administrators now 
 
 ### rc.79 resilient native update UI
 
-The Plugins screen now registers both the exact plugin-file hooks and a realpath-bound generic fallback for the manual governed update action. This keeps the visible `Update MAD4B…` / `Update now` affordance available when deployment paths, symlinks, or renamed release directories cause WordPress's plugin basename to differ from the loaded Control Plane file. The fallback is exact-file-bound, deduplicated, and still routes through the fixed Release-Verdict manifest, archive/provenance verification, backup, exact readback and rollback path. WordPress core update transients and automatic plugin updates remain untouched.
+The Plugins screen now registers both the exact plugin-file hooks and a realpath-bound generic fallback for the manual governed update action. This keeps the visible `Update MAD4Bâ€¦` / `Update now` affordance available when deployment paths, symlinks, or renamed release directories cause WordPress's plugin basename to differ from the loaded Control Plane file. The fallback is exact-file-bound, deduplicated, and still routes through the fixed Release-Verdict manifest, archive/provenance verification, backup, exact readback and rollback path. WordPress core update transients and automatic plugin updates remain untouched.
 
 
 ### rc.78 approval planner preflight truth preservation
@@ -187,13 +187,13 @@ The release also preserves the existing front-end performance budgets while back
 
 ### rc.71 governed remote updates for any installed plugin
 
-rc.71 adds a separate `mad4b/plugin-remote-update-plan` → `mad4b/plugin-remote-update-apply` path for installed plugins that expose a live WordPress update offer. The caller supplies only the installed `plugin_file` and reason; target URL, target version, package bytes and hashes remain server-resolved. Planning downloads the offer through WordPress safe HTTP handling, requires HTTPS, rejects unsafe ZIP paths/symlinks/root drift, verifies the exact plugin main file + Version header, computes the package SHA-256 and full archive-file manifest digest, and binds those values into the plan. Apply revalidates the same exact artifact, requires the normal one-time approval ticket, creates a protected rollback backup, preserves activation state and performs file-level readback. Control Plane, MCP Adapter and policy-protected dependencies stay on their dedicated update paths. Production, arbitrary URLs/paths and blind retry remain denied.
+rc.71 adds a separate `mad4b/plugin-remote-update-plan` â†’ `mad4b/plugin-remote-update-apply` path for installed plugins that expose a live WordPress update offer. The caller supplies only the installed `plugin_file` and reason; target URL, target version, package bytes and hashes remain server-resolved. Planning downloads the offer through WordPress safe HTTP handling, requires HTTPS, rejects unsafe ZIP paths/symlinks/root drift, verifies the exact plugin main file + Version header, computes the package SHA-256 and full archive-file manifest digest, and binds those values into the plan. Apply revalidates the same exact artifact, requires the normal one-time approval ticket, creates a protected rollback backup, preserves activation state and performs file-level readback. Control Plane, MCP Adapter and policy-protected dependencies stay on their dedicated update paths. Production, arbitrary URLs/paths and blind retry remain denied.
 
 ### rc.70 session-resilient metadata reads
 
 rc.70 hardens connector reads against MCP session termination without weakening mutation safety. Repeated `session terminated` failures consume a bounded retry budget, open a request-local read circuit breaker, stop additional fan-out, and direct the client to reconnect, re-read the snapshot header, and resume only when the exact `runtime_generation` still matches. Mutation and enrollment execution remain non-replayable.
 
-The release also adds `mad4b/read-metadata-envelope`, a compact generation-bound micro-read for one Ability or governed operation. It is mounted on `mad4b-read` and intentionally kept out of the compact direct `mad4b-chatgpt` tool list; ChatGPT reaches it through the existing governed `mad4b/read-execute` dispatcher. For governed enrollment operations it returns the canonical registration, dispatch-policy and input-schema digests accepted by execution, plus snapshot/runtime identity and an execution-binding digest in one response. This replaces fragile multi-call `discover → info → schema` metadata chains while avoiding a larger `tools/list`. No persistent session breaker, persistent authority cache, or Production authority is introduced.
+The release also adds `mad4b/read-metadata-envelope`, a compact generation-bound micro-read for one Ability or governed operation. It is mounted on `mad4b-read` and intentionally kept out of the compact direct `mad4b-chatgpt` tool list; ChatGPT reaches it through the existing governed `mad4b/read-execute` dispatcher. For governed enrollment operations it returns the canonical registration, dispatch-policy and input-schema digests accepted by execution, plus snapshot/runtime identity and an execution-binding digest in one response. This replaces fragile multi-call `discover â†’ info â†’ schema` metadata chains while avoiding a larger `tools/list`. No persistent session breaker, persistent authority cache, or Production authority is introduced.
 
 ### rc.70 repeated-preflight governance envelope retention
 
@@ -230,15 +230,15 @@ rc.58 keeps the compact rc.57 transport catalog and additionally removes two req
 
 MAD4B now owns nine governed custom MCP server IDs:
 
-- `mad4b-read` — privileged discovery and diagnostics.
-- `mad4b-chatgpt` — compact ChatGPT-safe discovery/dispatch gateway.
-- `mad4b-enrollment` — bounded Site Profile, candidate-binding, and authority bootstrap surface.
-- `mad4b-content` — specialist content/provider mutation surface.
-- `mad4b-write` — unified governed write ingress containing only already-registered Abilities with explicit runtime `annotations.readonly === false`.
-- `mad4b-admin` — specialist administrative repair/governance surface.
-- `mad4b-developer` — isolated non-Production Developer Agent plane.
-- `mad4b-developer-breakglass` — separately gated non-Production Developer recovery plane; disabled by default.
-- `mad4b-breakglass` — exceptional generic raw SQL recovery; disabled by default and excluded from Full Staging Authority.
+- `mad4b-read` â€” privileged discovery and diagnostics.
+- `mad4b-chatgpt` â€” compact ChatGPT-safe discovery/dispatch gateway.
+- `mad4b-enrollment` â€” bounded Site Profile, candidate-binding, and authority bootstrap surface.
+- `mad4b-content` â€” specialist content/provider mutation surface.
+- `mad4b-write` â€” unified governed write ingress containing only already-registered Abilities with explicit runtime `annotations.readonly === false`.
+- `mad4b-admin` â€” specialist administrative repair/governance surface.
+- `mad4b-developer` â€” isolated non-Production Developer Agent plane.
+- `mad4b-developer-breakglass` â€” separately gated non-Production Developer recovery plane; disabled by default.
+- `mad4b-breakglass` â€” exceptional generic raw SQL recovery; disabled by default and excluded from Full Staging Authority.
 
 Their effective REST URLs are derived from the MCP Adapter runtime. With standard rewrites they normally appear as `/wp-json/mcp/<server-id>`; WordPress may also represent the same REST route through `index.php?rest_route=/mcp/<server-id>` when pretty REST rewrites are unavailable. MAD4B validates the registered logical route rather than assuming one URL-rewrite form.
 
@@ -284,27 +284,27 @@ Mutation authorization is centrally intersected rather than inferred from posses
 
 ```text
 WordPress transport authentication
-→ exact governed MCP transport route/server binding
-→ Ability-specific WordPress capability
-→ global mutation gate
-→ authenticated subject binding
-→ enabled NHI
-→ exact effective server + ability + provider grant
-→ exact token scope when required
-→ resource constraints
-→ MCP peer write-side-channel guard
-→ transactional blast-radius budget
-→ exact short-lived approval when impact requires it
-→ provider execution
+â†’ exact governed MCP transport route/server binding
+â†’ Ability-specific WordPress capability
+â†’ global mutation gate
+â†’ authenticated subject binding
+â†’ enabled NHI
+â†’ exact effective server + ability + provider grant
+â†’ exact token scope when required
+â†’ resource constraints
+â†’ MCP peer write-side-channel guard
+â†’ transactional blast-radius budget
+â†’ exact short-lived approval when impact requires it
+â†’ provider execution
 ```
 
 Wildcard grants/scopes are rejected. Grant creation validates that the ability is actually mounted on the requested MAD4B server and that the provider matches the server membership model.
 
 Administrative governance abilities include:
 
-- `mad4b/agent-list` — bounded non-secret NHI summaries;
-- `mad4b/agent-effective-access` — read-only effective-access simulation without consuming budget or approval;
-- `mad4b/approval-plan` — creates a pending exact-operation ticket only; it never auto-approves or executes.
+- `mad4b/agent-list` â€” bounded non-secret NHI summaries;
+- `mad4b/agent-effective-access` â€” read-only effective-access simulation without consuming budget or approval;
+- `mad4b/approval-plan` â€” creates a pending exact-operation ticket only; it never auto-approves or executes.
 
 High-impact operations consume exact, short-lived, single-use approval tickets bound to NHI, effective server, ability, provider, target, ticket class, and canonical payload hash. Replay, expiry, class mismatch, NHI mismatch, server mismatch and payload mismatch fail closed.
 
@@ -328,7 +328,7 @@ A detected peer/foreign write path produces `mcp_write_side_channel_detected` an
 
 ## Connection Console
 
-`MAD4B Control Plane → Connection` is a read-only `manage_options` surface. It reports separately:
+`MAD4B Control Plane â†’ Connection` is a read-only `manage_options` surface. It reports separately:
 
 1. local transport readiness;
 2. remote HTTPS endpoint preflight readiness;
@@ -359,7 +359,7 @@ sha256: 1c3cd47c32e99b4e7d8690a44a7890256e92a8b96f61776cbe1894e5483cf676
 bytes:  455463
 ```
 
-Its runtime integrity manifest includes the zero-argument compatibility path `includes/Domain/Utils/AbilityArgumentNormalizer.php`, so the `{}` → `null` behavior used for no-input WordPress Abilities is verified by deployed file hash as well as package version.
+Its runtime integrity manifest includes the zero-argument compatibility path `includes/Domain/Utils/AbilityArgumentNormalizer.php`, so the `{}` â†’ `null` behavior used for no-input WordPress Abilities is verified by deployed file hash as well as package version.
 
 Known upstream 0.6.1 constraints are recorded in the baseline. MAD4B does not register the affected `mcp_adapter_validation_enabled` callback while issue #305 remains unresolved and explicitly sets known MCP type values rather than depending on the fallback behavior tracked in issue #297.
 
@@ -385,7 +385,7 @@ Read discovery remains root-contained by `realpath()` and denies sensitive crede
 
 Normal filesystem **mutation is not a source-code deployment channel**. By default it is restricted to the `uploads` data root and an explicit non-executable extension allowlist. Executable/browser-executable/server-configuration targets are denied, including PHP/PHTML/PHAR, shell/script families, JavaScript/HTML/SVG, `.htaccess`, `.user.ini`, `php.ini`, and `web.config`.
 
-Source-code changes belong to the governed repository → PR → CI → deployment path, not WordPress MCP filesystem mutation.
+Source-code changes belong to the governed repository â†’ PR â†’ CI â†’ deployment path, not WordPress MCP filesystem mutation.
 
 Existing data-file writes require the current SHA-256. Backups are created only in a protected temporary root outside WordPress/web roots, with restrictive permissions, and atomic replacement preserves the target mode.
 

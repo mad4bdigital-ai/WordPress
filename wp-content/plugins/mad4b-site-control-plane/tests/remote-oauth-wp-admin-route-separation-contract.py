@@ -18,7 +18,7 @@ for x in ("wp_nonce_field( 'mad4b_complete_staging_host_setup_v1'", "current_use
     assert x in remedy, "full admin form missing required user and nonce restriction"
 for x in ("check_admin_referer( self::WP_SETUP_NONCE )", "wordpress_setup_nonce_verified", "runtime_manifest_match", "bootstrap_from_verified_lifecycle"):
     assert x in native, "POST must preserve exact runtime and local user authority"
-for x in ("verified_bearer_active()", "subject_allowed(", "user_is_enrolled(", "wp_set_current_user( $user_id )", "site_identity_mismatch"):
+for x in ("verified_bearer_active()", "subject_allowed(", "user_is_enrolled(", "wp_set_current_user( $user_id )", "site_identity_mismatch", "/mcp/mad4b-developer", "/mcp/mad4b-developer-breakglass"):
     assert x in oauth, "OAuth mapping must bind actual enrolled delegated user"
 for x in ("current_user_can( 'manage_options' )", "current_user_can( 'edit_posts' )"):
     assert x in policy, "permission evaluator must consult current WordPress capabilities"

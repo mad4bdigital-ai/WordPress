@@ -54,8 +54,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 
 final class MAD4B_Test_Request {
 	private $authorization;
-	public function __construct( $authorization ) { $this->authorization = $authorization; }
-	public function get_route() { return '/mcp/mad4b-chatgpt'; }
+	private $route;
+	public function __construct( $authorization, $route = '/mcp/mad4b-chatgpt' ) { $this->authorization = $authorization; $this->route = $route; }
+	public function get_route() { return $this->route; }
 	public function get_header( $name ) { return 'authorization' === strtolower( (string) $name ) ? $this->authorization : ''; }
 }
 
@@ -100,6 +101,16 @@ mad4b_assert( 8 === $GLOBALS['mad4b_test_current_user'], 'user:8 maps to exact W
 mad4b_assert( current_user_can( 'manage_options' ), 'delegated owner has actual user capability' );
 $GLOBALS['mad4b_test_user_caps'][8] = array( 'edit_posts' );
 mad4b_assert( ! current_user_can( 'manage_options' ), 'revoked WordPress capability is effective immediately' );
+
+// All protected MCP resources map the verified OAuth subject, not a default administrator.
+foreach ( array( '/mcp/mad4b-enrollment', '/mcp/mad4b-developer', '/mcp/mad4b-developer-breakglass' ) as $route ) {
+    $GLOBALS['mad4b_test_current_user'] = 1;
+    $result = MAD4B_SCP_OAuth_Subject_User_Bridge::map_verified_subject( null, null,
+        new MAD4B_Test_Request( mad4b_bearer( 'user:7' ), $route ) );
+    mad4b_assert( null === $result && 7 === $GLOBALS['mad4b_test_current_user'],
+        'verified delegated user must bind identically on protected route ' . $route );
+    mad4b_assert( ! current_user_can( 'manage_options' ), 'a delegated editor cannot acquire Developer administration' );
+}
 
 // An issuer-allowed but non-enrolled user must fail closed.
 $result = mad4b_map( 'user:9' );

@@ -1,4 +1,4 @@
-# MAD4B — separate remote MCP and WordPress UI route audit (rc.100)
+# MAD4B — separate remote MCP and WordPress UI route audit (rc.101)
 
 ## Root cause: invisible Staging host setup link
 
@@ -39,3 +39,7 @@ All states must provide a meaningful failure reason. Rendering never creates key
 `oauth-multi-user-tenant-runtime.php` verifies that two independently enrolled OAuth subjects map to their own WordPress users, not the compatibility administrator; the editor is not an administrator; a revoked WordPress capability becomes ineffective; deleted enrollment and wrong Site UUID are denied.
 
 This code change repairs WordPress UI discoverability; the existing per-subject OAuth mapper and permission callbacks supply dynamic **server-side** delegation. No new role, write grant or elevation is created by this patch. Before declaring full live acceptance, inspect an actual logged-in administrator screen and two distinct OAuth delegates with appropriately differing WordPress capabilities, then verify the complete remote plan/ticket/readback on both Staging sites.
+
+## OAuth route completeness in rc.101
+
+Previously, verified-subject mapping ran only on `mad4b-chatgpt` and `mad4b-enrollment`, although the OAuth resource bridge also protects `mad4b-developer` and `mad4b-developer-breakglass`. The mapper now binds all four resources to the **exact enrolled token user** once the cryptographic bridge accepts the bearer. No OAuth token, role or transport can enable Developer/Breakglass on its own; original provider/NHI/host gates remain mandatory. Multi-route tests assert that an editor remains a non-admin on each protected route, and current WordPress capability withdrawal is respected on the next check.

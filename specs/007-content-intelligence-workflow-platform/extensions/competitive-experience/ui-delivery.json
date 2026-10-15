@@ -68,11 +68,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
-      "sha256": "f9e29c39fcae6c13560e8e1be2f26b14e162489e396f5b3eadf563067b1b9189"
+      "sha256": "8cf4b7f354006178d729f5db1cda74498e00eb193816803f2b847efae3beb039"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/README.md",
-      "sha256": "4bc5cb9fc0f38ecd1c7f4cf79bbac63a3bd9370873c3c96fe021fe2d3c1ef870"
+      "sha256": "553ed171a2b5fa7095eea413bd3aca9a7e34caec48b2c8c22e87f574fd992e20"
     }
   ],
   "test_paths": [
