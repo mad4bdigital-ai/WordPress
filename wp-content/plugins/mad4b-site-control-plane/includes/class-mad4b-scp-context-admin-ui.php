@@ -1274,7 +1274,7 @@ final class MAD4B_SCP_Context_Admin_UI {
         }
         if ( 'operational-remediation' === $destination ) {
             return admin_url( 'admin.php?page=mad4b-operational-remediation' )
-                . '#mad4b-staging-deployment-identity';
+                . '#mad4b-staging-recovery';
         }
         if ( in_array( $destination, array( 'overview', 'google-drive', 'sources', 'review' ), true ) ) {
             return self::tab_url( $destination );

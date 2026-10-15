@@ -63,3 +63,76 @@
 ## Remaining P1 gap
 
 This release improves error routing and one-call Write owner intent, **but does not yet provide a complete one-screen native-binding ticket creation/approval/apply wizard**. The existing protected ticket process is retained. Treat `one-click end-to-end recovery` as NOT DELIVERED until that separate owner workflow has an audited, executable UI with exact ticket creation and lifecycle readbacks.
+
+## Expanded scope — Unified Staging Recovery UX (PR #395 follow-up)
+
+The operator-facing Staging Recovery Center is mounted inside **Operational Remediation**.
+The Context Source Folder preflight's deployment-identity action links to
+`admin.php?page=mad4b-operational-remediation#mad4b-staging-recovery`.
+It must not fall back to Context Overview or silently pretend that an approval has occurred.
+
+The decision model `mad4b.staging-recovery-center.v1` is read-only.
+It observes the current exact Staging Site Profile, WordPress-native host binding,
+independent binding readback, governed Write status, Google provider status and
+quarantined Context ownership. Its decisions are:
+
+| Live state | UI outcome | Security property |
+|---|---|---|
+| Site is not exact enrolled Staging | Verify Site Profile | No staging writer, Production, Developer or Breakglass grant |
+| Binding is present and independently verified | Reuse binding; continue to Write/Context | **Never rotate a valid host key during plugin updates** |
+| Binding present, independent readback missing | Verify existing binding | Never trust an old write response alone |
+| First-time eligible binding | Show owner approval path and native binding plan | No ticket is created by GET or silently approved |
+| Foreign / inconsistent / unsafe binding | Block, offer exact diagnostic | Never overwrite a key, invent an attestation or downgrade to database storage |
+| Current binding + stale write | Offer a fresh exact Write handshake | Separate old `owner_review_digest` step-up proof from native binding ticket |
+| Current binding + Write + Google revoke pending | Show Google revocation blocker | HTTP 400 is not proof of provider revocation; keep Drive gated |
+| Current binding + Write + legacy ownership | Show Source Folders review | Do not auto-transfer archived/quarantined source or file ownership |
+| Current identity, Write and prerequisites observed | Proceed to source onboarding | Do not infer live acceptance, certification or Production promotion |
+
+The console is a consolidated **status-and-next-action user journey**,
+not yet a single authorization/execution endpoint. Its Approval Decisions link
+opens existing tickets; it does not generate a new approved native binding ticket.
+All dangerous operations are still owned by their exact registered governed
+executors and need explicit site-bound plan/ticket/actor verification.
+
+### End-to-end P1 acceptance to reach true one-action recovery
+
+- A reviewed composite intent may *display* both host binding and Write tasks
+  together, but must authorize the two distinct operations separately and
+  atomically according to each executor's existing policy.
+- If host binding already exists, the orchestrator must **skip** binding
+  creation and approvals on every subsequent package upgrade.
+- If new binding is required, the plan must use `deployment-binding-native-plan`;
+  an explicitly authorized creation of an immutable, per-site scoped ticket
+  must occur through the existing governed approval service and must be approved
+  by the enrolled owner before callback execution.
+- A successful native apply is **not** acceptance; require an independent new
+  request readback (site UUID, host digest and revision).
+- Because native binding increments Site Profile revision, the Write plan must
+  be regenerated after readback, not reused from before host binding.
+- Invoke governed Write only after verified owner OAuth step-up and exact plan
+  confirmation. The server creates its existing signed single-use owner intent
+  in the same request; unauthorized, ambiguous, expired or replayed proofs fail.
+- Present one clear progress timeline, per-stage audit receipt and reversible
+  recovery action. Never retry unknown mutation results without readback.
+- After Write verification, independently check Google OAuth/revocation and
+  Context ownership/sources. Do not block safe read-only siblings due to a
+  separate pending provider lane.
+- Required tests: WordPress-integrated approval ticket creation/approval/claim,
+  browser navigation, PHP 7.4 + 8.3, replay/parallel requests, external Google
+  errors, stale source SHA, host filesystem permission errors, site clone
+  mismatch, backup + rollback, latest exact-head CI and installed-source readback.
+
+### Evidence in this branch
+
+- `tests/staging-recovery-center-runtime.php` covers the decision model.
+- `tests/staging-recovery-center-ui-runtime.php` verifies actual passive
+  WordPress admin HTML, Google pending state, absence of mutation and Production
+  refusal.
+- `tests/staging-write-one-step-review-runtime.php` covers owner proof
+  single-use compatibility; the separate native binding runtime tests remain
+  required.
+- `tests/staging-write-catalog-parity-contract.py` covers the new helper
+  without weakening the immutable one-claim and OAuth checks.
+
+**Not yet delivered by this PR:** automatic ticket approval, automatic
+native-bound filesystem writes, or certification of ETG/ARE Staging `rc.97`.

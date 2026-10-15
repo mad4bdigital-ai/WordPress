@@ -95,7 +95,7 @@ foreach ( array(
 $route = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', 'source_onboarding_setup_url' );
 $route->setAccessible( true );
 $deployment_url = $route->invoke( null, 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED', 'operational-remediation' );
-mad4b_test_assert( 'https://staging.example.test/wp-admin/admin.php?page=mad4b-operational-remediation#mad4b-staging-deployment-identity' === $deployment_url,
+mad4b_test_assert( 'https://staging.example.test/wp-admin/admin.php?page=mad4b-operational-remediation#mad4b-staging-recovery' === $deployment_url,
     'Deployment binding setup link must land on the real Staging host identity instructions.' );
 mad4b_test_assert( 'https://staging.example.test/wp-admin/admin.php?page=mad4b-control-plane-site-profile' ===
     $route->invoke( null, 'exact_staging_site_required', 'site-profile' ),

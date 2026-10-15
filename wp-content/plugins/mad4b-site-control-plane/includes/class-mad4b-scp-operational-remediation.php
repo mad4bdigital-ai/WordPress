@@ -18,6 +18,8 @@ final class MAD4B_SCP_Operational_Remediation {
 	const MAX_ACTIONS = 256;
 
 	public static function boot() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
 		// Reuse the canonical read-only remediation/operation catalog as the
 		// parent for an extensible, separately governed MCP workflow bridge.
 		if ( ! class_exists( 'MAD4B_SCP_Manual_Workflow_Bridge', false ) )
@@ -94,6 +96,9 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</strong></p><p>' . esc_html(
                 sprintf( __( '%d unresolved tasks. This page is a read-only guide, not a release or approval.', 'mad4b-site-control-plane' ), count( $items ) )
             ) . '</p></div>';
+        if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
+        MAD4B_SCP_Staging_Recovery_Center::render();
         echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
         echo '<ol><li>' . esc_html__( 'Discover the required operation and identify its owner.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Check prerequisites and plan the exact change.', 'mad4b-site-control-plane' )
