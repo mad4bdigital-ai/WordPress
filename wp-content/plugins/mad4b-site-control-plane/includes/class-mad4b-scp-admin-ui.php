@@ -330,6 +330,16 @@ final class MAD4B_SCP_Admin_UI {
 		if ( ! empty( $peer['inventory_ready'] ) || ! empty( $peer['write_side_channel_detected'] ) || ! empty( $peer['foreign_transport_unreviewed'] ) ) {
 			self::render_blockers( isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
 			if ( ! empty( $peer['foreign_transport_unreviewed'] ) ) {
+                echo '<div class="mad4b-scp-next-step is-attention"><p><strong>'
+                    . esc_html__( 'MCP transport review is required before governed writes.', 'mad4b-site-control-plane' )
+                    . '</strong> ' . esc_html__( 'Foreign REST route count is not the number of connected MCP peers or proof of an active write side-channel. It is an independent transport inventory that must be reviewed.', 'mad4b-site-control-plane' )
+                    . '</p><ol><li>'
+                    . esc_html__( 'Identify the plugin/provider responsible for each listed foreign MCP route.', 'mad4b-site-control-plane' )
+                    . '</li><li>'
+                    . esc_html__( 'Review its transport ownership and write capabilities through the governed provider inventory; do not disable providers or waive the blocker automatically.', 'mad4b-site-control-plane' )
+                    . '</li><li>'
+                    . esc_html__( 'Run a fresh deep Connection diagnostic after any independently approved provider change.', 'mad4b-site-control-plane' )
+                    . '</li></ol></div>';
 				$foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
 				$details = array_merge( isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array(), isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? $foreign['foreign_plugins'] : array() );
 				if ( $details ) echo '<p class="description">' . esc_html__( 'Foreign transport evidence:', 'mad4b-site-control-plane' ) . ' ' . esc_html( implode( ', ', array_slice( $details, 0, 20 ) ) ) . '</p>';

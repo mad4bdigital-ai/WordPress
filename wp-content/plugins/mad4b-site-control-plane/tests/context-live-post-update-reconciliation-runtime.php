@@ -72,4 +72,27 @@ $unreadable = $render();
 mad4b_test_assert( false !== strpos( $unreadable, 'google_token_unreadable' )
     && false === strpos( $unreadable, 'google_revocation_pending' ),
     'Unreadable credential is distinct from unconfirmed Google revocation.' );
-echo "PASS: live Context recovery readback, zero stale notice, no token exposure\n";
+// The setup wizard is deliberately advisory: it must not change the live
+// preflight, create source records or infer provider revocation from UI state.
+$guidance = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', 'source_onboarding_guidance' );
+$guidance->setAccessible( true );
+foreach ( array(
+    'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'overview' ),
+    'BRAND_PROFILE_REQUIRED' => array( 1, 'overview' ),
+    'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources' ),
+    'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive' ),
+    'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive' ),
+    'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources' ),
+    'mad4b_source_onboarding_preflight_missing' => array( 0, 'overview' ),
+) as $state => $expected ) {
+    $actual = $guidance->invoke( null, $state );
+    mad4b_test_assert( $actual['active'] === $expected[0]
+        && $actual['tab'] === $expected[1]
+        && 4 === count( $actual['steps'] )
+        && '' !== $actual['message'],
+        'Preflight guidance must preserve the correct recovery order: ' . $state );
+}
+mad4b_test_assert( MAD4B_SCP_Google_Drive_Context::$reads === 3
+    && MAD4B_SCP_Context_Authority::$reads === 3,
+    'Rendering preflight guidance must not read provider or mutate Context.' );
+echo "PASS: live Context recovery readback, guided onboarding states, no token exposure\n";

@@ -1047,6 +1047,19 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 		if ( ! empty( $connection['revocation_pending'] ) ) {
+            echo '<div class="mad4b-scp-next-step is-attention"><h3>'
+                . esc_html__( 'Google connection recovery — follow this order', 'mad4b-site-control-plane' )
+                . '</h3><ol><li>'
+                . esc_html__( 'Review the current failed revoke attempts below. HTTP 400 invalid_token does not prove remote revocation.', 'mad4b-site-control-plane' )
+                . '</li><li>'
+                . esc_html__( 'Choose one recovery path: retry the provider revoke from this WordPress form, or independently remove app access in your Google Account.', 'mad4b-site-control-plane' )
+                . '</li><li>'
+                . esc_html__( 'After verified Google Account removal, use the separate attestation form only if shown. Never reconnect while revocation is pending.', 'mad4b-site-control-plane' )
+                . '</li><li>'
+                . esc_html__( 'After the pending state is resolved, reconnect Google with the saved grants and then return to Source Folders.', 'mad4b-site-control-plane' )
+                . '</li></ol><p>'
+                . esc_html__( 'WordPress form actions and remote MCP operations are separate. A remote Ability name is a diagnostic reference, not an automatically executed step.', 'mad4b-site-control-plane' )
+                . '</p></div>';
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Google revocation is pending.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html__( 'All Drive reads and writes are disabled locally. Retry may contact Google and invalidate the outstanding grant; HTTP 400 does not confirm revocation.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( ! empty( $connection['revocation_error'] ) ) echo '<p><code>' . esc_html( $connection['revocation_error'] ) . '</code></p>';
 			foreach ( array_slice( $connection['revocation_attempts'] ?? array(), 0, 2 ) as $attempt ) {
@@ -1222,6 +1235,35 @@ final class MAD4B_SCP_Context_Admin_UI {
 		echo '<div class="mad4b-context-governance-cell is-' . esc_attr( $state ) . '"><span>' . esc_html( $label ) . '</span><strong>' . esc_html( $value ) . '</strong></div>';
 	}
 
+    /**
+     * Read-only UX guidance for the exact live source preflight. This never
+     * turns a selected folder or a remote Ability hint into write approval.
+     */
+    private static function source_onboarding_guidance( $state ) {
+        $steps = array(
+            __( 'Verify Staging Site Profile and deployment binding', 'mad4b-site-control-plane' ),
+            __( 'Review Brand Profile and earlier source ownership', 'mad4b-site-control-plane' ),
+            __( 'Verify Google connection and the required scope', 'mad4b-site-control-plane' ),
+            __( 'Review this folder and approve the source policy', 'mad4b-site-control-plane' ),
+        );
+        $map = array(
+            'exact_staging_site_required' => array( 0, 'overview', __( 'The current Site Profile or its Staging authority is not ready. Verify the site identity before source onboarding.', 'mad4b-site-control-plane' ) ),
+            'OPERATIONAL_SCOPE_RECOVERY_REQUIRED' => array( 0, 'overview', __( 'Deployment scope has not been verified. Review the operational remediation and deployment identity status first.', 'mad4b-site-control-plane' ) ),
+            'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'overview', __( 'The source cannot be attached until this Staging site has a current verified deployment binding.', 'mad4b-site-control-plane' ) ),
+            'BRAND_PROFILE_REQUIRED' => array( 1, 'overview', __( 'Create or verify the Brand Profile before choosing a governed source.', 'mad4b-site-control-plane' ) ),
+            'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources', __( 'Historical source or asset ownership needs review. Existing quarantined records must not be assigned to the selected folder automatically.', 'mad4b-site-control-plane' ) ),
+            'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive', __( 'Reconnect or recover Google access after any pending revocation is resolved. Read-only access is enough for a read-only source.', 'mad4b-site-control-plane' ) ),
+            'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive', __( 'Managed library needs the separately consented Google write grant. You can choose Read-only while that grant is unavailable.', 'mad4b-site-control-plane' ) ),
+            'FOLDER_SELECTION_REQUIRED' => array( 3, 'google-drive', __( 'Choose a specific folder rather than the Drive root.', 'mad4b-site-control-plane' ) ),
+            'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources', __( 'This folder is already registered. Review its existing policy instead of creating a duplicate.', 'mad4b-site-control-plane' ) ),
+            'mad4b_source_onboarding_preflight_missing' => array( 0, 'overview', __( 'The read-only onboarding preflight is not loaded in this installed build. Verify the exact plugin package and reopen this page; no save is possible until the gate is available.', 'mad4b-site-control-plane' ) ),
+        );
+        $match = isset( $map[ $state ] ) ? $map[ $state ] : array( 0, 'overview',
+            __( 'The live source preflight is not yet eligible. Review the technical reason and complete the indicated recovery before saving.', 'mad4b-site-control-plane' ) );
+        return array( 'steps' => $steps, 'active' => $match[0],
+            'tab' => $match[1], 'message' => $match[2] );
+    }
+
 	private static function render_folder_browser() {
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
 		if ( empty( $connection['connected'] ) ) return;
@@ -1280,13 +1322,27 @@ final class MAD4B_SCP_Context_Admin_UI {
             $next = is_wp_error( $preflight ) ? 'mad4b/context-source-onboarding-preflight'
                 : (string) ( $preflight['next_ability'] ?? '' );
             $reason = is_array( $preflight ) ? (string) ( $preflight['reason_code'] ?? '' ) : '';
+            $guide = self::source_onboarding_guidance( $state );
             echo '<div class="notice notice-warning inline" role="status"><p><strong>'
-                . esc_html__( 'This folder is selected, but governed source onboarding is blocked.', 'mad4b-site-control-plane' )
-                . '</strong> ' . esc_html__( 'Complete the exact-site recovery step shown below, then return here. No folder or Drive file was changed.', 'mad4b-site-control-plane' )
-                . '</p><p><code>' . esc_html( $state ) . '</code>'
-                . ( '' !== $reason ? ' · <code>' . esc_html( $reason ) . '</code>' : '' ) . ' · '
-                . esc_html__( 'Remote next step:', 'mad4b-site-control-plane' )
-                . ' <code>' . esc_html( $next ) . '</code></p></div>';
+                . esc_html__( 'Source folder selected — save is waiting for preflight.', 'mad4b-site-control-plane' )
+                . '</strong> ' . esc_html( $guide['message'] ) . '</p>'
+                . '<p>' . esc_html__( 'The options below are a preview only. No folder or Drive file was changed, and no write approval was saved.', 'mad4b-site-control-plane' ) . '</p>'
+                . '<p><a class="button button-secondary" href="' . esc_url( self::tab_url( $guide['tab'] ) ) . '">'
+                . esc_html__( 'Open the required setup step', 'mad4b-site-control-plane' ) . '</a></p></div>';
+            echo '<div class="mad4b-scp-next-step is-attention"><h4>'
+                . esc_html__( 'Source onboarding — one step at a time', 'mad4b-site-control-plane' )
+                . '</h4><ol>';
+            foreach ( $guide['steps'] as $index => $step ) {
+                echo '<li' . ( $index === $guide['active'] ? ' aria-current="step"' : '' ) . '>'
+                    . ( $index === $guide['active'] ? '<strong>' : '' ) . esc_html( $step )
+                    . ( $index === $guide['active'] ? '</strong>' : '' ) . '</li>';
+            }
+            echo '</ol><details><summary>'
+                . esc_html__( 'Technical preflight details (read-only)', 'mad4b-site-control-plane' )
+                . '</summary><p><code>' . esc_html( $state ) . '</code>'
+                . ( '' !== $reason ? ' · <code>' . esc_html( $reason ) . '</code>' : '' )
+                . '</p><p>' . esc_html__( 'Remote Ability reference — not a WordPress button:', 'mad4b-site-control-plane' )
+                . ' <code>' . esc_html( $next ) . '</code></p></details></div>';
         }
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		wp_nonce_field( self::ACTION_SELECT_SOURCE );
@@ -1307,7 +1363,10 @@ final class MAD4B_SCP_Context_Admin_UI {
         if ( $source_ready ) {
             submit_button( __( 'Add Source Folder', 'mad4b-site-control-plane' ), 'primary' );
         } else {
-            echo '<p class="description">' . esc_html__( 'Add Source Folder is unavailable until the live Preflight is ready. Your selected folder and policy are shown above for review; write confirmation must be given again.', 'mad4b-site-control-plane' ) . '</p>';
+            echo '<p><button type="button" class="button button-primary" disabled aria-disabled="true">'
+                . esc_html__( 'Save source (complete preflight first)', 'mad4b-site-control-plane' )
+                . '</button></p>';
+            echo '<p class="description">' . esc_html__( 'The save button is disabled while the live preflight is blocked. Reopen this folder after completing the setup step; selection does not preserve or grant write consent.', 'mad4b-site-control-plane' ) . '</p>';
         }
 		echo '</form></div>';
 	}
@@ -2103,12 +2162,17 @@ final class MAD4B_SCP_Context_Admin_UI {
 			// A failed action is a signed, short-lived result, not persistent
 			// provider state. Old query-string errors must not survive upgrades.
 			if ( ! class_exists( 'MAD4B_SCP_Admin_Experience' ) || ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'error:' . $error, self::notice_binding() ) ) return;
-			echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Action stopped safely:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $error ) . '</code></p></div>';
+			echo '<div class="notice notice-error" role="status"><p><strong>' . esc_html__( 'Action stopped safely:', 'mad4b-site-control-plane' )
+                . '</strong> ' . esc_html__( 'The previous WordPress form submission was not completed. This is not the live Google connection state or the result of a remote MCP operation.', 'mad4b-site-control-plane' )
+                . '</p><details><summary>' . esc_html__( 'Technical form error', 'mad4b-site-control-plane' )
+                . '</summary><code>' . esc_html( $error ) . '</code></details></div>';
 			$actions = array(
 				'mad4b_google_workspace_scope_not_allowed' => __( 'EXTERNAL_ACTION_REQUIRED: Review this app in your Google Account connections, remove obsolete access if needed, then reconnect using the saved Google Workspace grants. The rejected tokens were not stored.', 'mad4b-site-control-plane' ),
 				'mad4b_google_drive_readonly_scope_escalated' => __( 'EXTERNAL_ACTION_REQUIRED: Remove the previous Google app access and reconnect with Read-only, or explicitly save Read + Write grants before connecting.', 'mad4b-site-control-plane' ),
 				'mad4b_google_managed_granted_scope_unproven' => __( 'EXTERNAL_ACTION_REQUIRED: Reconnect through the Managed Google broker after reviewing its current scope projection.', 'mad4b-site-control-plane' ),
 				'mad4b_context_registry_revision_write_failed' => __( 'Brand Context could not be committed. Retry after installing the current persistence repair; no partial profile should be treated as ready.', 'mad4b-site-control-plane' ),
+                'mad4b_google_drive_remote_revocation_unconfirmed' => __( 'The WordPress revoke request did not confirm that Google removed the grant. Google remains locally disabled. Review provider attempts under Google Drive and choose the verified recovery path; do not reconnect or clear the pending record based only on HTTP 400.', 'mad4b-site-control-plane' ),
+                'mad4b_source_onboarding_preflight_missing' => __( 'The installed source preflight definition is unavailable. Confirm the exact installed package, then reopen Source Folders; do not attempt a direct registry write.', 'mad4b-site-control-plane' ),
 			);
 			if ( isset( $actions[ $error ] ) ) echo '<div class="notice notice-info"><p>' . esc_html( $actions[ $error ] ) . '</p></div>';
 			return;
