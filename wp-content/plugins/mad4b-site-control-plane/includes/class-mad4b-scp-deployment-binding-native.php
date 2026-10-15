@@ -16,8 +16,11 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const HANDOFF = 'mad4b/deployment-binding-owner-handoff';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
+    const WP_SETUP_ACTION = 'mad4b_complete_staging_host_setup';
+    const WP_SETUP_NONCE = 'mad4b_complete_staging_host_setup_v1';
     const FILENAME = 'binding.key';
     private static $request_marker = '';
+    private static $wordpress_setup_nonce_verified = false;
 
     private static function request_marker() {
         if ( '' === self::$request_marker ) self::$request_marker = bin2hex( random_bytes( 16 ) );
@@ -26,6 +29,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
 
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+        // Local WordPress plugin update does not run register_activation_hook.
+        // The explicit authenticated continuation is available after ZIP/Update Now.
+        add_action( 'admin_post_' . self::WP_SETUP_ACTION, array( __CLASS__, 'handle_wordpress_setup' ) );
     }
     public static function register_abilities() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
@@ -486,6 +492,79 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             && !( defined( 'WP_CLI' ) && WP_CLI );
         if ( ! $trusted ) return self::error( 'profile_setup_context_required' );
         return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-profile-enrolled' );
+    }
+
+    /**
+     * One POST from WordPress Plugins -> Complete Staging Setup.
+     * A safe alternative to deactivation/reactivation after WP-native upgrades.
+     * Never creates a remote ticket or grants Governed Write.
+     */
+    public static function handle_wordpress_setup() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || ! function_exists( 'is_admin' )
+            || ! is_admin() || ! function_exists( 'current_user_can' )
+            || ! current_user_can( 'manage_options' ) || ! current_user_can( 'activate_plugins' ) )
+            wp_die( 'Authenticated plugin setup POST required.', '', array( 'response' => 403 ) );
+        check_admin_referer( self::WP_SETUP_NONCE );
+        self::$wordpress_setup_nonce_verified = true;
+        $result = self::wordpress_update_bootstrap();
+        self::$wordpress_setup_nonce_verified = false;
+        $state = is_wp_error( $result ) ? 'blocked' :
+            ( 'EXISTING_BINDING_REUSED' === ( $result['state'] ?? '' ) ? 'reused' : 'new_readback_required' );
+        $code = is_wp_error( $result ) ? sanitize_key( $result->get_error_code() ) : '';
+        $args = array( 'mad4b_native_host_setup' => $state );
+        if ( '' !== $code ) $args['mad4b_setup_reason'] = $code;
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'plugins.php' ) ) );
+        exit;
+    }
+
+    /**
+     * Called only from the POST+nonce-verified WordPress Admin route; never
+     * from update transient, a normal GET, background cron or remote MCP.
+     */
+    private static function wordpress_update_bootstrap() {
+        $hook = function_exists( 'current_filter' ) ? current_filter() : '';
+        $trusted = self::$wordpress_setup_nonce_verified
+            && 'admin_post_' . self::WP_SETUP_ACTION === $hook
+            && 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'manage_options' )
+            && current_user_can( 'activate_plugins' )
+            && !( defined( 'WP_CLI' ) && WP_CLI )
+            && !( function_exists( 'wp_doing_cron' ) && wp_doing_cron() );
+        if ( ! $trusted ) return self::error( 'wordpress_update_context_required' );
+        // The installed ZIP itself must be byte-consistent with provenance
+        // before a new host identity may be established after an update.
+        if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+            || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) )
+            return self::error( 'wordpress_update_provenance_unavailable' );
+        $identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+        if ( ! is_array( $identity ) || empty( $identity['runtime_manifest_match'] )
+            || ! empty( $identity['stale'] ) || ! empty( $identity['mismatch'] )
+            || 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) ) )
+            return self::error( 'wordpress_update_provenance_unverified' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-wordpress-updated' );
+    }
+
+    /** Rendering and status reads are non-authorizing: no hidden repair on GET. */
+    public static function wordpress_setup_action_link( $links ) {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin()
+            || ! function_exists( 'current_user_can' )
+            || ! current_user_can( 'manage_options' )
+            || ! current_user_can( 'activate_plugins' ) )
+            return $links;
+        $status = self::status();
+        if ( ! is_array( $status )
+            || 'READY_FOR_OWNER_APPROVAL' !== ( $status['state'] ?? '' )
+            || empty( $status['eligible'] ) ) return $links;
+        $links['mad4b_host_setup'] = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) )
+            . '" style="display:inline"><input type="hidden" name="action" value="'
+            . esc_attr( self::WP_SETUP_ACTION ) . '">'
+            . wp_nonce_field( self::WP_SETUP_NONCE, '_wpnonce', false, false )
+            . '<button type="submit" class="button-link">'
+            . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+            . '</button></form>';
+        return $links;
     }
 
     private static function bootstrap_from_verified_lifecycle( $audit_action ) {
