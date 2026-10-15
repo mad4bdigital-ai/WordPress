@@ -105,6 +105,7 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
             . '</li></ol>';
+        if ( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type() ) {
         echo '<h2 id="mad4b-staging-deployment-identity">' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false )
             ? MAD4B_SCP_Deployment_Binding_Setup::status() : new WP_Error( 'binding_setup_not_mounted' );
@@ -141,6 +142,9 @@ final class MAD4B_SCP_Operational_Remediation {
             echo '<p class="description">'
                 . esc_html__( 'A host-local key resists database-only cloning, but is not an independently issued Host attestation or crash-recovery certificate.', 'mad4b-site-control-plane' )
                 . '</p>';
+        }
+        } else {
+            echo '<p class="description">Production after update: inspect installed signed release, OAuth/MCP, database topology and audit. Native Staging binding and Staging Write recovery are unavailable here. Production corrections require independently approved release and policy gates.</p>';
         }
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )

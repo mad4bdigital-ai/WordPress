@@ -106,6 +106,11 @@ final class MAD4B_SCP_Staging_Recovery_Center {
         );
         $site = class_exists( 'MAD4B_SCP_Site_Profile' )
             ? MAD4B_SCP_Site_Profile::status() : array();
+        $site = is_array( $site ) ? $site : array();
+        // A Production post-update visit must not even enter Staging-specific
+        // binding, Write or provider discovery. Observe environment safely.
+        if ( 'staging' !== (string) ( $site['configured_environment'] ?? '' ) )
+            return self::decide( $site, array(), array(), array() );
         // Never ask the native binding reader to provision or rotate.
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Native' )
             ? MAD4B_SCP_Deployment_Binding_Native::status() : array();
@@ -147,7 +152,7 @@ final class MAD4B_SCP_Staging_Recovery_Center {
     public static function render() {
         $state = self::observe();
         echo '<section id="mad4b-staging-recovery" class="card" style="max-width:900px;margin:16px 0;padding:12px 20px">';
-        echo '<h2>Staging Recovery — one guided journey</h2>';
+        echo '<h2>' . esc_html( is_array( $state ) && ( 'production' === (string) ( $state['environment'] ?? '' ) ) ? 'Production post-update verification (read only)' : 'Staging Recovery - guided checks' ) . '</h2>';
         if ( is_wp_error( $state ) ) {
             echo '<p role="alert">' . esc_html( $state->get_error_code() ) . '</p></section>';
             return;
