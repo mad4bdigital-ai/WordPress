@@ -11,6 +11,9 @@ drive = (root / "includes/class-mad4b-scp-google-drive-context.php").read_text(e
 admin = (root / "includes/class-mad4b-scp-context-admin-ui.php").read_text(encoding="utf-8")
 skills_admin = (root / "includes/class-mad4b-scp-skills-admin-ui.php").read_text(encoding="utf-8")
 adapter = (root / "includes/adapters/class-mad4b-scp-context-adapter.php").read_text(encoding="utf-8")
+assert "require_once __DIR__ . '/class-mad4b-scp-context-asset-read-model.php';" in adapter
+assert "use MAD4B_SCP_Context_Asset_Read_Model;" in adapter
+adapter += (root / "includes/adapters/class-mad4b-scp-context-asset-read-model.php").read_text(encoding="utf-8")
 audit = (root / "includes/class-mad4b-scp-audit.php").read_text(encoding="utf-8")
 registry = (root / "includes/class-mad4b-scp-adapter-registry.php").read_text(encoding="utf-8")
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')

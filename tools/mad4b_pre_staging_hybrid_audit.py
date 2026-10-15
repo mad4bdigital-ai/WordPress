@@ -413,6 +413,18 @@ read_abilities = [
     "mad4b/operator-doctor",
 ]
 write_abilities = ["mad4b/data-processing-record-decision"]
+if any(ability not in servers for ability in write_abilities):
+    catalog_path = CP / "includes/class-mad4b-scp-server-write-catalog.php"
+    if (not catalog_path.is_file()
+            or "require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';" not in servers
+            or not re.search(r"\buse\s+MAD4B_SCP_Server_Write_Catalog\s*;", _mask_php_noncode(servers))):
+        fail("ability_surface_consistency", "extracted write catalog is not loaded by Servers")
+    else:
+        catalog = catalog_path.read_text(encoding="utf-8")
+        if not re.search(r"\btrait\s+MAD4B_SCP_Server_Write_Catalog\b", _mask_php_noncode(catalog)):
+            fail("ability_surface_consistency", "extracted write catalog trait declaration is missing")
+        else:
+            servers += "\n" + catalog
 missing_surface_markers = [a for a in read_abilities + write_abilities if a not in servers]
 if missing_surface_markers:
     fail("ability_surface_consistency", f"server projection missing abilities: {missing_surface_markers}")

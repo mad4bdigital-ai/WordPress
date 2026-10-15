@@ -569,7 +569,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          MAD4B_CI_BOOTSTRAP_PROFILE=1 php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-catalog-table-backend.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin --require="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/ci-bootstrap-profile.php"
 
       - name: Prove multi-worker publication fencing
         shell: bash

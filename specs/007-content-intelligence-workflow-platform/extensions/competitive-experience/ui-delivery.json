@@ -78,7 +78,7 @@
   "test_paths": [
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php",
-      "sha256": "9efa5f55f5b6d94b7f4317f33d9274f78074d8c21d8cf0267c6d42d9c752c4cb"
+      "sha256": "06814584737863faf8aaaacee7ae0bbc48c61d5241b08d97bae97a2fb07f6354"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",

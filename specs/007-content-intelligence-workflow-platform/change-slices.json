@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "c357bc995b2c831bd9d5a7d0df596d2d39bd3dd2",
-  "changed_file_count": 982,
+  "changed_file_count": 986,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -19,6 +19,7 @@
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
         "specs/007-content-intelligence-workflow-platform/plan.md",
         "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+        "specs/007-content-intelligence-workflow-platform/release-closure-readiness.json",
         "specs/007-content-intelligence-workflow-platform/traceability.md",
         "specs/007-content-intelligence-workflow-platform/validate_spec.py"
       ]
@@ -78,6 +79,7 @@
       "certification": "exact_head",
       "path_globs": [
         ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
+        "tools/mad4b_pre_staging_hybrid_audit.py",
         "wp-content/plugins/mad4b-site-control-plane/MAD4B-RUNTIME-BUILD.txt",
         "wp-content/plugins/mad4b-site-control-plane/README.md",
         "wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.css",
@@ -98,7 +100,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-browser.cjs",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-workspace-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/ci-bootstrap-profile.php"
       ]
     },
     {
@@ -520,7 +523,7 @@
     },
     {
       "id": "autonomous-assistants-gc-gf-preview-foundation",
-      "semantic_unit": "GA–GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
+      "semantic_unit": "GA\u2013GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
       "revert_boundary": "Revert assistant convergence and task transition preview plus focused tests together without changing core durable journal, G4/G6/G9 executor or staging authority",
       "certification": "exact_head",
       "path_globs": [
@@ -683,17 +686,18 @@
       "id": "aci01-native-readonly-intake-slice01",
       "semantic_unit": "ACI01 first native read-only intake ability: site/content post-type discovery, exact dimensions, conditional relation stage and denial fixture",
       "revert_boundary": "Read-only Ability class, PHP fixture and bootstrap wiring only; no new grants, database schema, WordPress content mutations or external provider calls",
-      "certification": "disposable_php_fixture_pass_live_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-intake-preview.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-intake-preview-contract.php"
-      ]
+      ],
+      "acceptance_status": "disposable_php_fixture_pass_live_staging_pending"
     },
     {
       "id": "feature007-universal-solution-discovery-runtime",
       "semantic_unit": "Universal read-only solution discovery and assistant GA gap router with independently governed execution boundary; source evidence only",
       "revert_boundary": "Revert universal discovery, GA gap router, tests and docs together; do not alter independent approval/grant or Production authority",
-      "certification": "existing_source_only_separate_owner_runtime_acceptance",
+      "certification": "exact_head",
       "path_globs": [
         "tools/solution-discovery/source-evidence.mjs",
         "tools/solution-discovery/test-source-evidence.mjs",
@@ -703,7 +707,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-solution-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/assistant-solution-router-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/solution-discovery-runtime.php"
-      ]
+      ],
+      "acceptance_status": "existing_source_only_separate_owner_runtime_acceptance"
     },
     {
       "id": "site-aware-browser-auto-discovery-20261009",
@@ -740,21 +745,23 @@
       "id": "aci01-evidence-read-slice02",
       "semantic_unit": "ACI01 governed ContentJob and ContextPack evidence projection; exact scoped research artifact read, expiry, provenance, no leakage",
       "revert_boundary": "Pure-read evidence preview and hermetic PHP fixture only; no ContentJob or Artifact mutation",
-      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-evidence-preview.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-evidence-read-contract.php"
-      ]
+      ],
+      "acceptance_status": "source_implemented_php_fixture_pending_staging_pending"
     },
     {
       "id": "aci01-opportunity-candidate-slice03",
       "semantic_unit": "No-effect OpportunityHypothesis and BlueprintCandidate scoped to existing ContentJob and exact source preview hashes",
       "revert_boundary": "Read-only pure candidate composer and negative contract fixture; never creates ContentJob/Artifact or calls provider",
-      "certification": "source_implemented_php_and_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-opportunity-preview.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-opportunity-candidate-contract.php"
-      ]
+      ],
+      "acceptance_status": "source_implemented_php_and_staging_pending"
     },
     {
       "id": "capability-native-generalization-20261009",
@@ -776,24 +783,26 @@
       "id": "aci01-p0-governed-semantic-binding",
       "semantic_unit": "Exact Site/Profile generation and restore-epoch check, dynamic reviewed ContentJob-to-CPT semantic relation and three read-only MCP mounts",
       "revert_boundary": "Read-only identity, semantic, adapter and test fixtures only; no mutation or provider execution",
-      "certification": "source_php_tests_partial_staging_and_native_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-aci01-read-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-runtime-binding.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-semantic-recipe.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-p0-governed-contract.php"
-      ]
+      ],
+      "acceptance_status": "source_php_tests_partial_staging_and_native_acceptance_pending"
     },
     {
       "id": "feature007-portable-federation-20261009",
       "semantic_unit": "Site-neutral bounded read-only cross-connector discovery with Node fixture and provenance documentation",
       "revert_boundary": "Revert portable federation module, native fixture and operator guide without mutating WordPress runtime or credential grants",
-      "certification": "source_v8_pass_native_node_pending",
+      "certification": "exact_head",
       "path_globs": [
         "tools/solution-discovery/federation.mjs",
         "tools/solution-discovery/test-federation.mjs",
         "wp-content/plugins/mad4b-site-control-plane/docs/UNIVERSAL-FEDERATED-DISCOVERY.md"
-      ]
+      ],
+      "acceptance_status": "source_v8_pass_native_node_pending"
     },
     {
       "id": "native-semantic-oracle-attestation-20261009",
@@ -814,23 +823,25 @@
       "id": "aci01-native-relations-dynamic-recipe-gap-20261009",
       "semantic_unit": "Read-only exact translation bridge audit, dynamic nonauthorizing content recipe requirement gap, independent PHP fixtures",
       "revert_boundary": "ACI01 source-only read adapter extension, native relation and recipe gap files, no content mutation, no provider calls, no host access",
-      "certification": "source_lint_and_fixtures_pending_exact_php_staging",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-native-relation-audit.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-aci01-recipe-gap.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-native-relation-audit-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/aci01-recipe-gap-contract.php"
-      ]
+      ],
+      "acceptance_status": "source_lint_and_fixtures_pending_exact_php_staging"
     },
     {
       "id": "feature007-provider-candidate-risk-boundary-20261009",
       "semantic_unit": "Risk classification hard stop for dynamic provider candidate support levels",
       "revert_boundary": "Plugin Discovery risk gate and its disposable WordPress smoke acceptance must revert together",
-      "certification": "source_review_native_runtime_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-plugin-adapter-discovery-smoke.php"
-      ]
+      ],
+      "acceptance_status": "source_review_native_runtime_pending"
     },
     {
       "id": "browser-local-consumption-ledger-20261009",
@@ -939,24 +950,26 @@
       "id": "feature007-universal-operational-remediation-control-20261009",
       "semantic_unit": "Read-only universal Staging operational remediation controller: two MCP abilities, site-scoped independent gate parity, non-authorizing exact action preparation, governed adapter availability, admin work queue, native/adversarial contract tests",
       "revert_boundary": "Revert new controller and its source/native acceptance fixtures together; existing main plugin wiring, offline preflight and ACI01 spec updates remain independently owned",
-      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-remediation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-remediation-control-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-remediation-source-contract.py"
-      ]
+      ],
+      "acceptance_status": "source_implemented_php_fixture_pending_staging_pending"
     },
     {
       "id": "feature007-dynamic-staging-candidate-selection-20261009",
       "semantic_unit": "Dynamic Staging exact-source candidate selection, safe update and rollback runbook, native package validation and source selector regression contract",
       "revert_boundary": "Revert candidate source selector, test fixtures and candidate-update runbook as one feature; no production mutation",
-      "certification": "source_implemented_php_fixture_pending_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/dynamic-staging-candidate-updates.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/self-update-staging-candidate-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_implemented_php_fixture_pending_staging_pending"
     },
     {
       "id": "feature007-governed-mcp-host-wordpress-environment-sync-20261009",
@@ -1054,6 +1067,7 @@
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/extensions/brand-core-reconstruction-state-machine.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-asset-read-model.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-reconstruction.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-source-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-reconstruction-state-machine-runtime.php"
@@ -1350,7 +1364,7 @@
       "id": "feature007-cso01-first-party-runtime-safe-core-20261010",
       "semantic_unit": "Opt-in first-party typed read forms and native provider secret handoff; bounded 64-slot metadata bank, nonconsuming precollection authorization and truthful unknown-effect projection. Incomplete routes remain denied; no new grant.",
       "revert_boundary": "Revert together CSO Scope, Forms, Registry, native fixtures and runtime readiness documentation; preserve original CSO01 seven read contracts and WordPress native authorization.",
-      "certification": "source_implementation_only_staging_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/docs/cso-runtime-readiness.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-forms.php",
@@ -1358,49 +1372,53 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-scope.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-forms-native-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-scope-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_implementation_only_staging_acceptance_required"
     },
     {
       "id": "feature007-cso-private-planning-adapters-20261010",
       "semantic_unit": "Deployment-owned typed storage descriptors, bounded actor/site private draft V2 slot bank, exact SQL CAS, explicit expired-owner erasure and sealed read-backed changes. Existing native approval/runtime authority remains separate.",
       "revert_boundary": "Revert all private CSO planning/storage modules and fixtures together, without touching original CSO01 read-only baseline or granting arbitrary wp_options writes.",
-      "certification": "source_only_native_and_staging_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-changes.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-drafts.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-storage-adapters.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-changes-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-drafts-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_and_staging_required"
     },
     {
       "id": "feature007-cso-bulk-dag-planning-20261010",
       "semantic_unit": "Scope-sealed canary bulk plans and cycle-safe typed DAG compiler; execution delegates only sealed write-only intents to the separately owned native ticket-gated runtime.",
       "revert_boundary": "Revert planner, compiler and fixture together; preserve fail-closed gated dispatch and future explicit native grant requirement.",
-      "certification": "source_only_native_and_staging_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-bulk.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-workflows.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-orchestration-plans-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_and_staging_required"
     },
     {
       "id": "feature007-cso-templates-diagnostics-fixtures-20261010",
       "semantic_unit": "Scope-sealed nonsecret template recipe, first-party read-only CSO readiness doctor, native adapter negative tests and template diagnostics; no monitoring/production authority.",
       "revert_boundary": "Revert read-only template/doctor module and fixtures as one CSO slice without affecting native WordPress source of authority.",
-      "certification": "source_implementation_only_external_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-operations.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-templates.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-storage-adapters-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-template-doctor-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_implementation_only_external_acceptance_required"
     },
     {
       "id": "feature007-cso-native-approved-write-bulk-dag-20261010",
       "semantic_unit": "Exact native approval tickets and one-use permits, current-blog INSERT ONLY/CAS journals, bounded bulk canary and write-only workflow admission, independently signed recovery protocol and explicit synthetic rejection fixtures. No live certification or Production authority.",
       "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
-      "certification": "source_only_native_staging_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-bulk-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cso-native-executor.php",
@@ -1409,38 +1427,42 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-native-executor-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-workflow-native-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/cso-wp-post-driver-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_staging_acceptance_pending"
     },
     {
       "id": "feature007-runtime-acceptance-core-20261010",
       "semantic_unit": "Independent runtime acceptance verifier and contract added by concurrent author.",
       "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
-      "certification": "source_only_native_staging_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-core.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-smoke.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_staging_acceptance_pending"
     },
     {
       "id": "feature007-selected-head-update-20261010",
       "semantic_unit": "Selected-head monotonicity and safe update tests added by concurrent author.",
       "revert_boundary": "Revert this coherent source/test slice without weakening Staging/Production isolation or trust gates.",
-      "certification": "source_only_native_staging_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_staging_acceptance_pending"
     },
     {
       "id": "feature007-optional-mcp-selected-head-update-documentation-20261010",
       "semantic_unit": "Source guidance and deterministic contract fixture for explicitly selected PR/branch/SHA update via opt-in staging-only MCP; default master release path unchanged.",
       "revert_boundary": "Revert source-selected update documentation and its source-only contract test together; keep canonical release immutability and owner confirmation.",
-      "certification": "source_only_staging_package_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/docs/OPT-IN-MCP-SELECTED-HEAD-UPDATE.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py"
-      ]
+      ],
+      "acceptance_status": "source_only_staging_package_acceptance_required"
     },
     {
       "id": "feature007-local-ci-multi-host-parity-source-20261010",
@@ -1469,12 +1491,13 @@
       "id": "feature007-admin-staging-config-sync-20261010",
       "semantic_unit": "Concurrent audited Site Profile admin flow with explicitly confirmed implicit-production to Staging wp-config sync, guarded filesystem write/readback/compensation, source fixtures and runbook; no live Host acceptance.",
       "revert_boundary": "Revert this source/fixture/runbook slice with its Site Profile admin integration without changing environment authority grants.",
-      "certification": "source_only_native_host_staging_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/site-profile-wp-config-auto-sync.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-config-environment-sync.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-wp-config-auto-sync-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_host_staging_acceptance_required"
     },
     {
       "id": "feature007-20261010-release-workflow",
@@ -1612,124 +1635,135 @@
       "id": "feature007-20261011-mandatory-publication-brand-core-runtime",
       "semantic_unit": "Mandatory reviewed Brand Core publication guard shared by native create, mutation-manager update, and an isolated PHP failure/identity regression",
       "revert_boundary": "Revert the two core content execution guards and fixture with Brand Core control-loop/runtime counterpart and publication acceptance runbook; never widen any grant",
-      "certification": "source_only_native_php_and_staging_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/mandatory-publication-brand-core-staging.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-core-content-modeling-adapter.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mutation-manager.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/publication-brand-core-mandatory-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_php_and_staging_acceptance_required"
     },
     {
       "id": "feature007-20261011-remote-owner-context-review",
       "semantic_unit": "Authenticated Staging OAuth owner review over governed MCP, exact asset plan/CAS/readback and AI impersonation denial",
       "revert_boundary": "Revert remote owner plan/decision APIs and runtime fixture; existing AI reviewer, quarantine and human wp-admin review remain unchanged",
-      "certification": "source_only_native_php_and_exact_head_staging_e2e_required",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/mcp-remote-brand-context-approval.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-remote-owner-review-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_native_php_and_exact_head_staging_e2e_required"
     },
     {
       "id": "feature007-20261011-brand-context-recovery-lifecycle",
       "semantic_unit": "Review and correct Brand Core remote recovery DAG: explicit owner review plan/decision, preflight mounted evidence and optional legacy transfer when census is clean",
       "revert_boundary": "Revert remote recovery DAG and its native reducer/contract tests as one source-owned slice; preserve legacy owner approval, CI and Production gates",
-      "certification": "source_only_php74_php83_and_exact_head_staging_acceptance_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
-      ]
+      ],
+      "acceptance_status": "source_only_php74_php83_and_exact_head_staging_acceptance_required"
     },
     {
       "id": "feature007-20261011-owner-oauth-ai-auto-all",
       "semantic_unit": "New owner-consented OAuth auto:all approval scope, verified bearer/local issuer gate, AI approval dispatcher decision mode and deterministic negative/positive fixture",
       "revert_boundary": "Revert new Staging-specific OAuth AI scope and linked AI-Approval policy/fixture; retain preexisting human_only and standing AI Agent policy without escalation",
-      "certification": "source_only_php74_php83_oauth_browser_and_exact_head_staging_e2e_required",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-owner-ai-auto-approval-runtime.php"
-      ]
+      ],
+      "acceptance_status": "source_only_php74_php83_oauth_browser_and_exact_head_staging_e2e_required"
     },
     {
       "id": "feature007-20261012-ai-approval-dashboard-read-model",
       "semantic_unit": "Feature007 global wp-admin dashboards AI approval status separation: persistent Brand review, optional OAuth AI ticket delegation, attributable approvals and one-time exact write authority",
       "revert_boundary": "Revert shared wp-admin AI mode projection and fixture plus ChatGPT optional scope projection without changing existing standing Agent/Brand approval policy",
-      "certification": "source_only_PHP74_PHP83_dashboard_browser_readback_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/feature007-ai-approval-admin-dashboard-audit.md",
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-ai-approval-dashboard-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-connection-admin-ui.php"
-      ]
+      ],
+      "acceptance_status": "source_only_PHP74_PHP83_dashboard_browser_readback_pending"
     },
     {
       "id": "feature007-20261012-plugin-control-ui-exhaustive-census",
       "semantic_unit": "Paginated 12-family WordPress Control inventory and admin UI coverage disclosure, native DOM census with no execution overclaims",
       "revert_boundary": "Revert new Control census fixture and UI coverage runbook; existing admin surface route/Ability registrations remain separately controlled",
-      "certification": "source_only_native_php74_php83_wp_disposable_dom_and_staging_browser_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/admin-control-census-runtime.php",
         "docs/runbooks/feature007-control-ui-coverage-census-20261012.md"
-      ]
+      ],
+      "acceptance_status": "source_only_native_php74_php83_wp_disposable_dom_and_staging_browser_pending"
     },
     {
       "id": "feature007-20261012-context-semantic-drive-approval",
       "semantic_unit": "Provider-exact operational metadata classification for governed Drive source onboarding, owner transfer and exact asset review; unrecognized brand-bearing fields still fail closed",
       "revert_boundary": "Revert the Google Drive semantic-contract additions and isolated PHP regression fixture without changing owner proof, Context Authority review or publication guards",
-      "certification": "source_only_php74_php83_staging_approval_and_publication_e2e_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/context-semantic-source-approval-runtime.php",
         "docs/runbooks/feature007-governed-drive-context-to-tour-publication-20261012.md"
-      ]
+      ],
+      "acceptance_status": "source_only_php74_php83_staging_approval_and_publication_e2e_pending"
     },
     {
       "id": "feature007-20261012-native-plugin-install-zero-touch",
       "semantic_unit": "Skip unrelated WP core plugin-management read-only requests before loading expensive MAD4B modules; preserve mutating plugin actions, activation callback and G9 exact bootstrap hash",
       "revert_boundary": "Revert root bootstrap early GET/HEAD management guard plus native PHP smoke and G9 fingerprint repin; do not touch database schema or plugin write authorities",
-      "certification": "source_only_php74_php83_native_plugin_install_and_staging_504_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-zero-touch-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php",
         "docs/runbooks/feature007-staging-plugin-installer-504-20261012.md"
-      ]
+      ],
+      "acceptance_status": "source_only_php74_php83_native_plugin_install_and_staging_504_acceptance_pending"
     },
     {
       "id": "feature007-20261012-review-evidence-audit",
       "semantic_unit": "Source review metadata and non-certifying risk backlog",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/reviews/feature007-all-sides-mcp-audit-20261011.md",
         "docs/reviews/feature007-pr258-file-ledger-20261011.json",
         "docs/reviews/feature007-pr258-file-review-batch01.md"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-operator-runbooks",
       "semantic_unit": "MCP reliability and operator experience recovery guides",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/mad4b-entire-plugin-operator-experience-review-20261011.md",
         "docs/runbooks/mcp-transport-reliability.md"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-source-diagnostic-tools",
       "semantic_unit": "G9, bottleneck and deployment identity diagnostic helpers",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "tools/mad4b_g9_integrity_repin.py",
         "tools/mad4b_mcp_bottleneck_inventory.py",
         "tools/mad4b_provision_deployment_binding.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-native-build-and-approval",
       "semantic_unit": "Native governed Staging build, self-approval and CI outage attestation boundaries",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/FEATURE007-WP-NATIVE-BUILD.md",
         "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-ci-outage-attestor-adapter.php",
@@ -1742,13 +1776,14 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-build-worker.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-adaptive-operation-routing",
       "semantic_unit": "Dynamic operation routing, operator journey code and fixtures",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/mad4b-adaptive-operation-routing-handoff-20261011.md",
         "docs/runbooks/mad4b-adaptive-operation-routing.md",
@@ -1757,13 +1792,14 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-capability-filter-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-operation-router-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operator-journeys-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-mcp-oauth-connection",
       "semantic_unit": "MCP read consistency, OAuth first paint and catalog transport resilience",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-ability.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-live-truth.php",
@@ -1773,69 +1809,75 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/oauth-consent-fast-first-paint-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-dynamic-tool-projection.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-transport-resilience-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-context-preflight",
       "semantic_unit": "Context evidence and legacy owner/provider proofs",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-preflight.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-legacy-owner-provider-proof-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-preflight-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/context-unbound-census-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-deployment-binding",
       "semantic_unit": "Exact host and environment deployment bindings",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-native.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-deployment-binding-setup.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-native-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-setup-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-native-recovery",
       "semantic_unit": "Safe recovery alternatives and fail-closed denial fixtures",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-recovery.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-alternatives.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/recovery-alternatives-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-site-profile-enrollment",
       "semantic_unit": "Exact Site Profile enrollment boundaries and fixtures",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-enrollment.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-profile-feature-reenrollment-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-operational-acceptance",
       "semantic_unit": "Independent runtime acceptance receipts and fixture",
       "revert_boundary": "Revert only the source and isolated fixtures in this slice; no Production or environment authority is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-acceptance-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-mcp-runtime-lineage",
       "semantic_unit": "Dynamic MU legacy lineage and MCP connection diagnostics",
       "revert_boundary": "Revert only the listed source and native fixtures; no Production or authority change is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "docs/runbooks/mad4b-chatgpt-automatic-oauth-client-binding.md",
         "wp-content/plugins/mad4b-site-control-plane/assets/connection-endpoint-diagnostics.js",
@@ -1847,106 +1889,117 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-endpoint-error-evidence-runtime.js",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-recovery-scheduler-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/mcp-mu-site-lineage-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-staging-activation-seed-continuation",
       "semantic_unit": "Bounded Staging activation seed deferral with conservative fallback",
       "revert_boundary": "Revert only the listed source and native fixtures; no Production or authority change is implied.",
-      "certification": "ownership_routing_only_individual_review_and_native_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_and_native_tests_pending"
     },
     {
       "id": "feature007-20261012-native-plugin-management-menu-visibility",
       "semantic_unit": "Keep native WordPress plugin-management admin navigation visible without loading Control Plane lifecycle",
       "revert_boundary": "Revert native admin menu shell and isolated fixture; update bootstrap reference and verified G9 digest together",
-      "certification": "ownership_routing_only_native_and_live_staging_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-plugin-admin-menu.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_native_and_live_staging_tests_pending"
     },
     {
       "id": "feature007-20261012-dynamic-skills-context-catalog-limit",
       "semantic_unit": "Preserve bounded custom Skill mutation policies while admitting only exact trusted dynamic semantic catalog for managed Skill seeds",
       "revert_boundary": "Revert Context Preflight catalog admission and its native regression test together; never relax unregistered ability or production guards",
-      "certification": "ownership_only_native_regression_and_live_staging_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/skill-context-catalog-bound-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_only_native_regression_and_live_staging_pending"
     },
     {
       "id": "feature007-20261012-staging-write-grant-review-parity",
       "semantic_unit": "Concurrent Staging write grant convergence plan and inventory review",
       "revert_boundary": "Review source and related fixtures together under exact build and Site Profile; no default authority promotion",
-      "certification": "ownership_routing_only_individual_review_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-plan-read-lane-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-grant-reviewed-inventory-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_individual_review_pending"
     },
     {
       "id": "feature007-20261012-provider-circuit-breaker-v5-site-identity",
       "semantic_unit": "Provider circuit breaker with explicit Staging site identity boundary and native regression",
       "revert_boundary": "Review provider circuit breaker implementation and exact site identity regression together",
-      "certification": "ownership_routing_only_source_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-circuit-breaker-v5-site-identity-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_source_tests_pending"
     },
     {
       "id": "feature007-20261012-wordpress-native-remote-opt-in",
       "semantic_unit": "WordPress-native remote operation opt-in isolation and runtime fixture",
       "revert_boundary": "Review WordPress native remote opt-in class and regression as one rollback unit",
-      "certification": "ownership_routing_only_source_tests_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wordpress-native-remote-opt-in.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wordpress-native-remote-opt-in-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_routing_only_source_tests_pending"
     },
     {
       "id": "feature007-20261012-google-firstparty-artifact-identity",
       "semantic_unit": "Build-bound six-file first-party Google Context identity proof; never convert package self-consistency into behavioral mutation certification",
       "revert_boundary": "Revert provider compatibility evidence and first-party fail-closed regression together",
-      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-compatibility-certification.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-first-party-context-artifact-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_only_offline_php_and_live_runtime_acceptance_pending"
     },
     {
       "id": "feature007-20261012-google-grant-provider-prerequisite-chain",
       "semantic_unit": "Expose distinct artifact, source, behavioral and create compensation prerequisites without granting operational writes",
       "revert_boundary": "Revert provider closure matrix prerequisite reporting and native chain regression together",
-      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-closure-matrix.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-google-grant-prerequisite-chain-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_only_offline_php_and_live_runtime_acceptance_pending"
     },
     {
       "id": "feature007-20261012-google-oauth-source-policy-lifecycle",
       "semantic_unit": "Regression coverage for pure Google grant and source policy readiness split; Google provider implementation is owned in preexisting slice",
       "revert_boundary": "Revert new grant readiness regression together with Google status implementation",
-      "certification": "ownership_only_offline_php_and_live_runtime_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/tests/google-grant-operational-lifecycle-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_only_offline_php_and_live_runtime_acceptance_pending"
     },
     {
       "id": "feature007-20261012-google-remote-revocation-governed-staging",
       "semantic_unit": "Staging-only remote Google OAuth pending revoke status plan one-time approval CAS retry and independent readback",
       "revert_boundary": "Treat governed Google remote revoke implementation and runtime regression as one rollback unit",
-      "certification": "ownership_only_offline_php_and_live_staging_acceptance_pending",
+      "certification": "exact_head",
       "path_globs": [
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-revocation-remote.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/google-revocation-remote-runtime.php"
-      ]
+      ],
+      "acceptance_status": "ownership_only_offline_php_and_live_staging_acceptance_pending"
     },
     {
       "id": "feature007-unified-capability-cursor-streaming-20261012",
@@ -2173,6 +2226,6 @@
       ]
     }
   ],
-  "changed_paths_sha256": "37c178c2daa587bb440f216fcd58c2f714f06fe8d79439a8d8c7d505a60d154b",
+  "changed_paths_sha256": "217207bffa134ab382e490f13a69b1efb689bbbb97a151153a8a19b6058324df",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
