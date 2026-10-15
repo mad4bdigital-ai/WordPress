@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 $GLOBALS['mad4b_test_current_user'] = 0;
 $GLOBALS['mad4b_test_enrolled_users'] = array( 7, 8 );
 $GLOBALS['mad4b_test_existing_users'] = array( 7 => true, 8 => true, 9 => true );
+$GLOBALS['mad4b_test_user_caps'] = array( 7 => array( 'edit_posts' ), 8 => array( 'edit_posts', 'manage_options' ) );
 
 class WP_Error {
 	private $code;
@@ -19,6 +20,9 @@ function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function sanitize_key( $value ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
 function wp_set_current_user( $user_id ) { $GLOBALS['mad4b_test_current_user'] = absint( $user_id ); return $GLOBALS['mad4b_test_current_user']; }
+function current_user_can( $cap ) {
+    return in_array( $cap, $GLOBALS['mad4b_test_user_caps'][ $GLOBALS['mad4b_test_current_user'] ] ?? array(), true );
+}
 function get_userdata( $user_id ) { $user_id = absint( $user_id ); return ! empty( $GLOBALS['mad4b_test_existing_users'][ $user_id ] ) ? (object) array( 'ID' => $user_id ) : false; }
 function add_filter() {}
 
@@ -76,6 +80,8 @@ function mad4b_map( $subject ) {
 $result = mad4b_map( 'user:7' );
 mad4b_assert( null === $result, 'user:7 mapping preserves dispatch' );
 mad4b_assert( 7 === $GLOBALS['mad4b_test_current_user'], 'user:7 maps to exact WordPress user 7' );
+mad4b_assert( current_user_can( 'edit_posts' ) && ! current_user_can( 'manage_options' ),
+    'delegated editor cannot inherit compatibility owner administrator capability' );
 $context = MAD4B_SCP_OAuth_Subject_User_Bridge::mapped_context();
 mad4b_assert( 7 === $context['wp_user_id'], 'identity context records exact user 7' );
 mad4b_assert( hash( 'sha256', "oauth\0https://client.test/oauth/mcp\0user:7" ) === $context['subject_fingerprint'], 'identity fingerprint remains exact issuer+subject' );
@@ -91,6 +97,9 @@ mad4b_assert( 1 === $GLOBALS['mad4b_test_current_user'], 'mismatched local token
 $result = mad4b_map( 'user:8' );
 mad4b_assert( null === $result, 'user:8 mapping preserves dispatch' );
 mad4b_assert( 8 === $GLOBALS['mad4b_test_current_user'], 'user:8 maps to exact WordPress user 8' );
+mad4b_assert( current_user_can( 'manage_options' ), 'delegated owner has actual user capability' );
+$GLOBALS['mad4b_test_user_caps'][8] = array( 'edit_posts' );
+mad4b_assert( ! current_user_can( 'manage_options' ), 'revoked WordPress capability is effective immediately' );
 
 // An issuer-allowed but non-enrolled user must fail closed.
 $result = mad4b_map( 'user:9' );

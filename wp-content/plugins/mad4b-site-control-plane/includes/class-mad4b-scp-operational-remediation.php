@@ -141,6 +141,15 @@ final class MAD4B_SCP_Operational_Remediation {
                 echo '<p class="description">'
                     . esc_html__( 'This host cannot safely create a private file outside the webroot, or a binding already exists. Use the external protected-host setting instead; the system will not fall back to uploads or database storage.', 'mad4b-site-control-plane' )
                     . '</p>';
+            if ( ! empty( $native_binding['eligible'] ) && current_user_can( 'manage_options' )
+                && current_user_can( 'activate_plugins' ) ) {
+                echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+                    . '<input type="hidden" name="action" value="mad4b_complete_staging_host_setup">'
+                    . wp_nonce_field( 'mad4b_complete_staging_host_setup_v1', '_wpnonce', false, false )
+                    . '<button type="submit" class="button button-primary">'
+                    . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+                    . '</button></form>';
+            }
             echo '<p class="description">'
                 . esc_html__( 'A host-local key resists database-only cloning, but is not an independently issued Host attestation or crash-recovery certificate.', 'mad4b-site-control-plane' )
                 . '</p>';
