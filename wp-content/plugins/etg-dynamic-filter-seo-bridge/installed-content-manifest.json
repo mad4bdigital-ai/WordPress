@@ -19,7 +19,7 @@
     "assets/js/usage-guide.js": "2be84ca8ae686e0b0533575bd6e3db0315989f6608991498f8ce8f08ce0a6dd8",
     "etg-dynamic-filter-seo-bridge.php": "ff388cc64b50d5b9002ee4366dd6ec64061ad30059647112e31d06c97c3ad5f3",
     "includes/Acceptance/BrowserAcceptanceFreshnessGuard.php": "e766b4009f1821bc128bf3fdcdc5fd440c4d9fa2f0f0cc3e902873f0acf759ef",
-    "includes/Acceptance/BrowserAcceptanceProvider.php": "9f09d6b3e9cff9622bbfc3646a86699f021a8a1d29df6867cb64b5101138b6bc",
+    "includes/Acceptance/BrowserAcceptanceProvider.php": "88fd6356c0ff6f51585473b8863f05d44a2e564af0b742f0cf1c246d2bdbda94",
     "includes/Acceptance/BrowserObserverAsset.php": "a5983f258841d66e836f269e38243a4cfacf183389bbaad4e58dd3c320ef19c2",
     "includes/Acceptance/CanonicalStateNormalizer.php": "7c26df2bae28b9825c8cde93a76145a6482cee32e7442a86d3e3a4c664ddee49",
     "includes/Acceptance/CaseSelector.php": "ff403b73e84391a897f9767ed28682470890abc1dc50f809cd593900dfdbb40a",

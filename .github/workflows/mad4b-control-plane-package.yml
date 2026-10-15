@@ -355,7 +355,16 @@ jobs:
           grep -Fq "MAD4B_SCP_Agent_Registry::grant_ability" "$write"
           grep -Fq "'mad4b/database-raw-query' === \$ability_name" "$servers"
           grep -Fq "public static function blocked_write_tools" "$servers"
-          grep -Fq "provider_runtime_contract_not_certified" "$servers"
+          # Provider denial is mandatory in the runtime-mounted catalog. Allow
+          # the reviewed implementation to extract this method to its trait.
+          if ! grep -Fq "provider_runtime_contract_not_certified" "$servers"; then
+            catalog="$plugin/includes/class-mad4b-scp-server-write-catalog.php"
+            test -f "$catalog"
+            grep -Fq "require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';" "$servers"
+            grep -Fq "use MAD4B_SCP_Server_Write_Catalog;" "$servers"
+            grep -Fq "trait MAD4B_SCP_Server_Write_Catalog" "$catalog"
+            grep -Fq "provider_runtime_contract_not_certified" "$catalog"
+          fi
           grep -Fq "mad4b.staging-write-planning-guard.v2" "$planning"
           grep -Fq "remote_planner_requires_exact_mad4b_write_grant" "$planning"
           grep -Fq "creates_pending_ticket_only" "$planning"
