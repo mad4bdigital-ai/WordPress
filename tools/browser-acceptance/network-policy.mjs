@@ -10,10 +10,18 @@ function validHostname(value) {
   if (/^\d+(?:\.\d+){3}$/.test(host)) {
     const octets = host.split(".").map(Number);
     if (octets.some(x => !Number.isInteger(x) || x < 0 || x > 255)) return "";
-    if (octets[0] === 10 || octets[0] === 127 || octets[0] === 0 ||
-        octets[0] === 169 && octets[1] === 254 ||
-        octets[0] === 192 && octets[1] === 168 ||
-        octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return "";
+    // Deny non-globally-routable literal IPv4, including CGNAT, benchmark,
+    // protocol-assignment, documentation, multicast and reserved ranges.
+    // DNS rebinding still requires a separate connect-time egress firewall.
+    const [a, b, c] = octets;
+    if (a === 0 || a === 10 || a === 127 || a >= 224 ||
+        a === 100 && b >= 64 && b <= 127 ||
+        a === 169 && b === 254 ||
+        a === 172 && b >= 16 && b <= 31 ||
+        a === 192 && (b === 168 || b === 0 && c === 0 ||
+          b === 0 && c === 2 || b === 88 && c === 99) ||
+        a === 198 && (b === 18 || b === 19 || b === 51 && c === 100) ||
+        a === 203 && b === 0 && c === 113) return "";
   }
   return host;
 }
@@ -21,6 +29,7 @@ function validHostname(value) {
 export function originHostname(origin) {
   const url = new URL(origin);
   if (url.protocol !== "https:") throw new Error("browser_origin_must_be_https");
+  if (url.username || url.password) throw new Error("browser_origin_credentials_denied");
   const host = validHostname(url.hostname);
   if (!host) throw new Error("browser_origin_hostname_invalid");
   return host;
@@ -81,6 +90,7 @@ export function requestBoundaryDecision({
   catch { return { allow: false, reason: "invalid_url" }; }
 
   if (parsed.protocol !== "https:") return { allow: false, reason: "non_https_network_request" };
+  if (parsed.username || parsed.password) return { allow: false, reason: "network_request_credentials_denied" };
   if (passiveOnly && String(resourceType || "").toLowerCase() === "document") {
     if (!Array.isArray(allowedDocumentPaths) || !allowedDocumentPaths.includes(parsed.pathname) ||
         parsed.search || parsed.hash || parsed.origin !== new URL(origin).origin) {
