@@ -295,6 +295,31 @@ foreach ( array( 'src', 'data-src', 'data-original', 'data-lazy-src' ) as $sourc
         strpos( $fallback_pending_out['html'], $img ) === false,
         'Unimported picture SOURCE ' . $source_attribute . ' must stay pending without exposing remote image' );
 }
+// An uninspectable source URL must fail closed, not claim images complete
+// or keep an untrusted external src in the WordPress handoff.
+$uninspectable = $input;
+unset( $uninspectable['media_bindings'] );
+$oversized_remote = 'https://example-competitor.test/assets/' . str_repeat( 'x', 2100 ) . '.jpg';
+$uninspectable['html'] = '<img src="' . $oversized_remote . '" alt="Unsafe image">';
+$uninspectable_plan = MAD4B_SCP_Scrape_Transfer::plan( $uninspectable );
+check( is_wp_error( $uninspectable_plan ) &&
+    $uninspectable_plan->get_error_code() === 'mad4b_scrape_transfer_media_url_invalid',
+    'Malformed or unbounded external IMG sources must fail closed before media_ready' );
+$uninspectable['html'] = '<picture><source srcset="' . $oversized_remote .
+    ' 2x"><img src="data:image/gif;base64,R0lG"></picture>';
+$bad_srcset = MAD4B_SCP_Scrape_Transfer::plan( $uninspectable );
+check( is_wp_error( $bad_srcset ) &&
+    $bad_srcset->get_error_code() === 'mad4b_scrape_transfer_media_url_invalid',
+    'Malformed or unbounded SOURCE srcset must fail closed before media_ready' );
+$placeholder_only = $input;
+unset( $placeholder_only['media_bindings'] );
+$placeholder_only['html'] = '<img src="data:image/gif;base64,R0lG" alt="Placeholder">';
+$placeholder_plan = MAD4B_SCP_Scrape_Transfer::plan( $placeholder_only );
+$placeholder_html = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+    $placeholder_only, array( 'expected_plan_sha256' => $placeholder_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $placeholder_html ) &&
+    false === strpos( $placeholder_html['html'], 'data:image' ),
+    'Unbound image-only data placeholders must not escape into sanitized WordPress HTML' );
 $utf8 = $input;
 $utf8['media_bindings'] = array();
 $utf8['html'] = '<img src="' . $img . '" alt="' . str_repeat( 'جمال النيل', 40 ) . '">';

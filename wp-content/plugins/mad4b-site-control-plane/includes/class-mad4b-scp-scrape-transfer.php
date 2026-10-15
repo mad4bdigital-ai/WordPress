@@ -218,6 +218,19 @@ final class MAD4B_SCP_Scrape_Transfer {
         return '';
     }
 
+    /** Do not silently lose invalid remote image candidates from the manifest. */
+    private static function image_has_unresolved_source( $processor ) {
+        foreach ( array( 'data-srcset', 'srcset', 'data-src', 'data-original',
+            'data-lazy-src', 'src' ) as $attribute ) {
+            $raw = $processor->get_attribute( $attribute );
+            if ( ! is_string( $raw ) || '' === trim( $raw ) ) continue;
+            // Inline data images are placeholders, not remote import targets.
+            if ( 0 === stripos( trim( $raw ), 'data:image/' ) ) continue;
+            return true;
+        }
+        return false;
+    }
+
     private static function srcset_candidate( $srcset, $source ) {
         if ( ! is_string( $srcset ) || '' === trim( $srcset ) ||
             strlen( $srcset ) > 4096 ) return '';
@@ -316,7 +329,12 @@ final class MAD4B_SCP_Scrape_Transfer {
                 if ( '' === $url ) {
                     $url = self::image_fallback_url( $processor, $source );
                 }
-                if ( '' === $url ) continue;
+                if ( '' === $url ) {
+                    if ( self::image_has_unresolved_source( $processor ) )
+                        return new WP_Error( 'mad4b_scrape_transfer_media_url_invalid',
+                            'Uninspectable remote image source must not be silently dropped.' );
+                    continue;
+                }
                 $original_alt = (string) ( $processor->get_attribute( 'alt' ) ?: '' );
                 $original_title = (string) ( $processor->get_attribute( 'title' ) ?: '' );
                 $filename = basename( (string) ( wp_parse_url( $url )['path'] ?? '' ) );
@@ -548,7 +566,14 @@ final class MAD4B_SCP_Scrape_Transfer {
                 if ( '' === $url ) {
                     $url = self::image_fallback_url( $processor, $source );
                 }
-                if ( '' === $url ) continue;
+                if ( '' === $url ) {
+                    // Native sanitizer cannot be relied on to remove every
+                    // unsupported image URL while retaining an IMG element.
+                    foreach ( array( 'src', 'srcset', 'data-src', 'data-srcset',
+                        'data-original', 'data-lazy-src' ) as $attribute )
+                        $processor->remove_attribute( $attribute );
+                    continue;
+                }
                 if ( isset( $local[$url] ) ) {
                     $processor->set_attribute( 'src', $local[$url] );
                     $processor->remove_attribute( 'srcset' );
