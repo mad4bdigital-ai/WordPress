@@ -51,6 +51,12 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
         $registered_adapter = array();
         $registered_provider_native = array();
         $origin_unverified = array();
+        $other_local = array();
+        foreach ( $observed as $tool_name => $row ) {
+            if ( 0 === strpos( (string) $tool_name, $family . '/' )
+                && ! in_array( $tool_name, array_merge( $spec['read'], $spec['write'] ), true ) )
+                $other_local[] = (string) $tool_name;
+        }
         foreach ( array_merge( $spec['read'], $spec['write'] ) as $name ) {
             if ( ! isset( $observed[ $name ] ) || ! is_array( $observed[ $name ] ) ) continue;
             $row = $observed[ $name ];
@@ -65,12 +71,13 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
         $status = $registered_provider_native ? 'NATIVE_WP_ABILITY_DISCOVERED_REVIEW_REQUIRED'
             : ( $registered_adapter ? 'MAD4B_ADAPTER_DISCOVERED_NATIVE_UNKNOWN'
                 : ( $origin_unverified ? 'ABILITY_ORIGIN_UNVERIFIED'
-                    : 'NATIVE_TRANSPORT_DISCOVERY_REQUIRED' ) );
+                    : ( $other_local ? 'ADDITIONAL_LOCAL_ABILITIES_UNVERIFIED' : 'NATIVE_TRANSPORT_DISCOVERY_REQUIRED' ) ) );
         return array(
             'family' => $family, 'label' => $spec['label'],
             'state' => $status, 'native_wp_abilities' => $registered_provider_native,
             'mad4b_adapter_abilities' => $registered_adapter,
             'origin_unverified_abilities' => $origin_unverified,
+            'additional_local_abilities' => array_slice( $other_local, 0, 40 ),
             'expected_read_abilities' => $spec['read'], 'expected_write_abilities' => $spec['write'],
             'external_native_mcp_state' => 'NOT_PROBED',
             'external_native_client_required_for_exhaustive_claim' => true,
@@ -103,6 +110,9 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
                         $namespace = $parts[1];
                         if ( 'mad4b' !== $namespace && ! isset( self::families()[ $namespace ] ) ) {
                             $other_namespaces[ $namespace ] = min( 100, (int) ( $other_namespaces[ $namespace ] ?? 0 ) + 1 );
+                        } elseif ( isset( self::families()[ $namespace ] ) ) {
+                            // Native or adapter origin cannot be inferred from namespace alone.
+                            $observed[ $name ] = array( 'origin' => 'origin-unverified' );
                         }
                     }
                     continue;
@@ -139,10 +149,11 @@ final class MAD4B_SCP_Provider_MCP_Path_Review {
             echo '<p role="alert">' . esc_html( $report->get_error_code() ) . '</p></section>';
             return;
         }
-        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Local discovery state</th><th>Known MAD4B tools</th><th>Next step</th></tr></thead><tbody>';
+        echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Local discovery state</th><th>Observed local tools and origin</th><th>Next step</th></tr></thead><tbody>';
         foreach ( $report['providers'] as $row ) {
             echo '<tr><th scope="row">' . esc_html( $row['label'] ) . '</th><td><code>' . esc_html( $row['state'] ) . '</code></td>';
-            echo '<td>' . esc_html( implode( ', ', $row['mad4b_adapter_abilities'] ) ?: 'Not observed locally' ) . '</td>';
+            echo '<td>Adapter: ' . esc_html( implode( ', ', $row['mad4b_adapter_abilities'] ) ?: 'none observed' )
+                . '; Other local: ' . esc_html( implode( ', ', array_merge( $row['origin_unverified_abilities'], $row['additional_local_abilities'] ) ) ?: 'none observed' ) . '</td>';
             echo '<td>' . esc_html( str_replace( '_', ' ', $row['execution_preference'] ) ) . '</td></tr>';
         }
         echo '</tbody></table>';

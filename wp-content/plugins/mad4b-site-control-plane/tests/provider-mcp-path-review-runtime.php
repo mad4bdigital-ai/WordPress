@@ -22,6 +22,10 @@ check_mcp('NATIVE_WP_ABILITY_DISCOVERED_REVIEW_REQUIRED'===$native['state'],'rev
 check_mcp(!$native['write_authorized'] && $native['external_native_mcp_state']==='NOT_PROBED','native not permission');
 $wpml=$klass::classify('wpml',array());
 check_mcp(count($wpml['expected_write_abilities'])===0 && $wpml['external_native_client_required_for_exhaustive_claim'],'unknown WPML writes not treated as unsupported');
+$wpml_local=$klass::classify('wpml',array('wpml/relationship-inventory'=>array('origin'=>'origin-unverified')));
+check_mcp('ADDITIONAL_LOCAL_ABILITIES_UNVERIFIED'===$wpml_local['state'],'WPML local unknown native path displayed');
+check_mcp(count($wpml_local['additional_local_abilities'])===1,'additional provider names retained for review');
+
 check_mcp(!$klass::classify('random-plugin',array())['authorizing'],'unknown provider denied');
 function current_user_can($cap){return 'manage_options'===$cap;}
 class Fake_Ability {function get_category(){return 'mad4b-read';}}
