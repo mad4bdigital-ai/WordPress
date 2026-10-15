@@ -169,7 +169,10 @@ jobs:
     name: Dynamic Skills + governed write generic Staging runtime
     needs: contract
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Two exact-source runner attempts were canceled at the 20-minute bound
+    # while mandatory WordPress persistence / lifecycle regressions were
+    # still running. Keep all checks mandatory; cap only this long-running job.
+    timeout-minutes: 45
 
     services:
       mysql:
