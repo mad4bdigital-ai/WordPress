@@ -18,6 +18,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const CONFIG_OPTION = 'mad4b_scp_google_drive_oauth_config_v1';
 	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
+	const MANUAL_REVOCATION_AUDIT_OPTION = 'mad4b_scp_google_drive_manual_revocation_audit_v1';
 	const SCOPE_DIAGNOSTIC_OPTION = 'mad4b_scp_google_scope_diagnostic_v1';
 	const SCOPE_DIAGNOSTIC_RULE_REVISION = 2;
 	const SCOPE_DIAGNOSTIC_CONTRACT = 'mad4b.google-scope-rejection.v1';
@@ -1009,6 +1010,95 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'provider_error' => $safe[0]['provider_error'],
 		);
 	}
+
+    /**
+     * Manual Google Account recovery is NEVER Google API revocation proof.
+     * It is an explicit, audited operator attestation after removing access
+     * from Google Account > Third-party connections. No automatic HTTP 400
+     * success inference, no token exposure and no Production token deletion.
+     */
+    public static function manual_revocation_admission( $connection, $expected_attempted_at ) {
+        if ( ! is_array( $connection ) || empty( $connection['connected'] )
+            || empty( $connection['revocation_pending'] )
+            || ! empty( $connection['read_available'] ) || ! empty( $connection['write_available'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_not_pending',
+                'Only an already disabled pending Google grant can enter manual recovery.' );
+        $observed = (string) ( $connection['revocation_attempted_at'] ?? '' );
+        if ( '' === $observed || '' === (string) $expected_attempted_at
+            || ! hash_equals( $observed, (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_snapshot_changed',
+                'Google revocation state changed; refresh and review the latest attempts.' );
+        $attempts = self::safe_revocation_attempts( $connection['revocation_attempts'] ?? array() );
+        if ( 2 !== count( $attempts )
+            || 'refresh' !== ( $attempts[0]['credential_type'] ?? '' )
+            || 'access' !== ( $attempts[1]['credential_type'] ?? '' ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_attempts_insufficient',
+                'Both refresh and access token revoke attempts must be accounted for.' );
+        foreach ( $attempts as $item ) {
+            if ( 400 !== (int) ( $item['http_status'] ?? 0 )
+                || 'invalid_token' !== (string) ( $item['provider_error'] ?? '' ) )
+                return new WP_Error( 'mad4b_google_manual_revoke_provider_outcome_ineligible',
+                    'Manual cleanup requires two explicit invalid_token responses and separate Google Account verification.' );
+        }
+        return true;
+    }
+
+    public static function complete_manual_revocation_attestation( $expected_attempted_at, $confirmation ) {
+        if ( 'I VERIFIED GOOGLE ACCOUNT REMOVAL' !== (string) $confirmation )
+            return new WP_Error( 'mad4b_google_manual_revoke_explicit_attestation_required',
+                'Independent Google Account removal must be explicitly attested before local cleanup.' );
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_admin_required', 'Staging administrator required.' );
+        $site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $site ) || 'staging' !== (string) ( $site['environment'] ?? '' )
+            || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
+            || empty( $site['authority_ready'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_staging_required', 'Exact enrolled Staging site required.' );
+        $connection = self::connection_status();
+        $admission = self::manual_revocation_admission( $connection, $expected_attempted_at );
+        if ( is_wp_error( $admission ) ) return $admission;
+        $record = self::token_record();
+        if ( ! is_array( $record ) || empty( $record['revocation_pending'] )
+            || ! hash_equals( (string) ( $record['revocation_attempted_at'] ?? '' ),
+                (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_record_drift',
+                'Encrypted Google grant changed before local cleanup.' );
+        $audit = array(
+            'contract' => 'mad4b.google-manual-revocation-attestation.v1',
+            'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
+            'revocation_attempted_at' => (string) $expected_attempted_at,
+            'attested_at' => gmdate( 'c' ),
+            'operator_user_id' => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
+            'google_account_removal_attested' => true,
+            'provider_api_revocation_confirmed' => false,
+            'recovery_method' => 'explicit_external_google_account_removal',
+            'revocation_attempts' => self::safe_revocation_attempts( $connection['revocation_attempts'] ?? array() ),
+        );
+        // Site-keyed integrity seal; never record plaintext tokens or their
+        // encrypted envelopes inside the durable operator attestation.
+        $audit['seal'] = hash_hmac( 'sha256', wp_json_encode( $audit ), wp_salt( 'auth' ) );
+        if ( ! self::write_option( self::MANUAL_REVOCATION_AUDIT_OPTION, $audit ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_audit_write_failed',
+                'No local token was deleted because manual attestation evidence could not be stored.' );
+        // Fail closed if the token option changed after the original admission.
+        $fresh = self::token_record();
+        if ( ! is_array( $fresh ) || empty( $fresh['revocation_pending'] )
+            || ! hash_equals( (string) ( $fresh['revocation_attempted_at'] ?? '' ),
+                (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_record_drift',
+                'Pending grant changed during manual cleanup. Retry from current state.' );
+        if ( ! self::delete_option_verified( self::TOKEN_OPTION ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_local_delete_failed',
+                'Manual attestation stored, but the old local token was not confirmed deleted.' );
+        $result = self::connection_status();
+        if ( ! empty( $result['connected'] ) || ! empty( $result['revocation_pending'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_readback_mismatch',
+                'Local credential readback still reports the pending grant; reconnect remains blocked.' );
+        $result['manual_google_account_removal_attested'] = true;
+        $result['remote_revocation_confirmed'] = false;
+        return $result;
+    }
 
 	public static function disconnect() {
 		$stored = get_option( self::TOKEN_OPTION, array() );

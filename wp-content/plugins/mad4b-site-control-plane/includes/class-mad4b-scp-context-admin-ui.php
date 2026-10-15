@@ -15,6 +15,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 	const ACTION_GOOGLE_DEDICATED_CALLBACK = 'mad4b_context_google_dedicated_callback';
 	const ACTION_GOOGLE_MANAGED_CALLBACK = 'mad4b_context_google_managed_callback';
 	const ACTION_DISCONNECT_GOOGLE = 'mad4b_context_google_disconnect';
+	const ACTION_MANUAL_GOOGLE_REVOCATION = 'mad4b_context_google_manual_revocation';
 	const ACTION_SELECT_SOURCE = 'mad4b_context_select_source';
 	const ACTION_SCAN_SOURCE = 'mad4b_context_scan_source';
 	const ACTION_REVIEW_ASSET = 'mad4b_context_review_asset';
@@ -41,6 +42,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			self::ACTION_GOOGLE_DEDICATED_CALLBACK => 'handle_google_dedicated_callback',
 			self::ACTION_GOOGLE_MANAGED_CALLBACK => 'handle_google_managed_callback',
 			self::ACTION_DISCONNECT_GOOGLE => 'handle_disconnect_google',
+			self::ACTION_MANUAL_GOOGLE_REVOCATION => 'handle_manual_google_revocation',
 			self::ACTION_SELECT_SOURCE => 'handle_select_source',
 			self::ACTION_SCAN_SOURCE => 'handle_scan_source',
 			self::ACTION_REVIEW_ASSET => 'handle_review_asset',
@@ -215,6 +217,26 @@ final class MAD4B_SCP_Context_Admin_UI {
 		self::redirect_result( $result, 'google-drive', 'google_connected' );
 	}
 
+    /**
+     * Explicit fallback only after Google Account access has been removed by
+     * the administrator. Does not misreport provider HTTP 400 as confirmed.
+     */
+    public static function handle_manual_google_revocation() {
+        self::require_admin( self::ACTION_MANUAL_GOOGLE_REVOCATION );
+        $confirmation = isset( $_POST['confirm_google_account_removed'] )
+            ? trim( (string) wp_unslash( $_POST['confirm_google_account_removed'] ) ) : '';
+        if ( 'I VERIFIED GOOGLE ACCOUNT REMOVAL' !== $confirmation ) {
+            self::redirect_result( new WP_Error( 'mad4b_google_manual_revoke_explicit_attestation_required',
+                'First remove the app access in Google Account, then type the required attestation exactly.' ),
+                'google-drive', '' );
+            return;
+        }
+        $snapshot = isset( $_POST['expected_revocation_attempted_at'] )
+            ? sanitize_text_field( wp_unslash( $_POST['expected_revocation_attempted_at'] ) ) : '';
+        $result = MAD4B_SCP_Google_Drive_Context::complete_manual_revocation_attestation( $snapshot, $confirmation );
+        self::redirect_result( $result, 'google-drive', 'google_manual_revocation_attested' );
+    }
+
 	public static function handle_disconnect_google() {
 		self::require_admin( self::ACTION_DISCONNECT_GOOGLE );
 		$connection = MAD4B_SCP_Google_Drive_Context::connection_status();
@@ -264,6 +286,23 @@ final class MAD4B_SCP_Context_Admin_UI {
 		return true;
 	}
 
+    /**
+     * Context admin may be rendered on the passive admin hotpath, where the
+     * heavier operational-remediation bootstrap is intentionally skipped.
+     * Load only the definition required for this read-only exact-site gate;
+     * never boot remediation workers, grant permissions or skip Preflight.
+     */
+    private static function source_onboarding_preflight( $intent ) {
+        if ( ! class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery', false ) ) {
+            $definition = __DIR__ . '/class-mad4b-scp-brand-core-remote-recovery.php';
+            if ( is_readable( $definition ) ) require_once $definition;
+        }
+        return class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery', false )
+            ? MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $intent )
+            : new WP_Error( 'mad4b_source_onboarding_preflight_missing',
+                'Source onboarding preflight definition could not be loaded.' );
+    }
+
 	public static function handle_select_source() {
 		self::require_admin( self::ACTION_SELECT_SOURCE );
 		$mode = isset( $_POST['source_mode'] ) ? sanitize_key( wp_unslash( $_POST['source_mode'] ) ) : 'governed';
@@ -278,10 +317,7 @@ final class MAD4B_SCP_Context_Admin_UI {
         $intent = array( 'external_root_id' => $folder_id,
             'source_mode' => $mode, 'write_policy' => $write_policy,
             'recursive' => ! empty( $_POST['recursive'] ) );
-        $preflight = class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery' )
-            ? MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( $intent )
-            : new WP_Error( 'mad4b_source_onboarding_preflight_missing',
-                'Source onboarding recovery is unavailable.' );
+        $preflight = self::source_onboarding_preflight( $intent );
         if ( is_wp_error( $preflight ) ||
             empty( $preflight['new_source_write_eligible'] ) ) {
             // Preserve only untrusted UI choices, not consent, ticket or
@@ -979,6 +1015,23 @@ final class MAD4B_SCP_Context_Admin_UI {
 			return;
 		}
 		if ( empty( $connection['connected'] ) ) {
+            // A manually attested Google Account removal is not an HTTP 200
+            // provider revocation. Display the exact distinction after local
+            // token deletion instead of silently presenting it as certified.
+            $manual_audit = get_option( MAD4B_SCP_Google_Drive_Context::MANUAL_REVOCATION_AUDIT_OPTION, array() );
+            if ( is_array( $manual_audit ) &&
+                'mad4b.google-manual-revocation-attestation.v1' === ( $manual_audit['contract'] ?? '' ) &&
+                ! empty( $manual_audit['google_account_removal_attested'] ) &&
+                empty( $manual_audit['provider_api_revocation_confirmed'] ) &&
+                isset( $manual_audit['seal'] ) && is_string( $manual_audit['seal'] ) ) {
+                $audit_seal = $manual_audit['seal'];
+                unset( $manual_audit['seal'] );
+                if ( hash_equals( hash_hmac( 'sha256', wp_json_encode( $manual_audit ), wp_salt( 'auth' ) ), $audit_seal ) ) {
+                    echo '<div class="notice notice-info inline"><p>'
+                        . esc_html__( 'Previously disabled Google credentials were removed after an administrator attested removal in Google Account. Google API revocation was not independently confirmed. Reconnection requires fresh Google consent.', 'mad4b-site-control-plane' )
+                        . '</p></div>';
+                }
+            }
 			if ( $managed_ready ) {
 				echo '<p>' . esc_html__( 'Ready for Managed Google Sign-In. Use the “Sign in with Google” button at the top of this page.', 'mad4b-site-control-plane' ) . '</p></div>';
 				return;
@@ -1015,7 +1068,22 @@ final class MAD4B_SCP_Context_Admin_UI {
 			if ( $retry_wait > 0 ) echo '<p class="description">' . esc_html( sprintf( __( 'Retry paused for %d more second(s) after the last attempt. Refresh to try again.', 'mad4b-site-control-plane' ), $retry_wait ) ) . '</p>';
 			echo '<p class="description">' . esc_html__( 'If Google continues returning HTTP 400, review access in your Google Account. Do not delete the local pending token or reconnect without confirming provider revocation.', 'mad4b-site-control-plane' ) . '</p>';
 			submit_button( __( 'Retry revoke', 'mad4b-site-control-plane' ), 'primary', 'submit', false, $retry_wait > 0 ? array( 'disabled' => 'disabled' ) : array() );
-			echo '</form></div>';
+            echo '</form>';
+            $manual_eligible = MAD4B_SCP_Google_Drive_Context::manual_revocation_admission(
+                $connection, $attempted_at );
+            if ( true === $manual_eligible ) {
+                echo '<hr><h3>' . esc_html__( 'Recovery after removing Google Account access', 'mad4b-site-control-plane' ) . '</h3>';
+                echo '<p>' . esc_html__( 'Only after independently removing this app under Google Account → Security → Third-party connections, you may attest that removal and discard this Staging site\'s disabled, pending local tokens. An HTTP 400 response is not provider confirmation. This action does not reconnect Google or certify remote revocation.', 'mad4b-site-control-plane' ) . '</p>';
+                echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                wp_nonce_field( self::ACTION_MANUAL_GOOGLE_REVOCATION );
+                echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_MANUAL_GOOGLE_REVOCATION ) . '">';
+                echo '<input type="hidden" name="expected_revocation_attempted_at" value="' . esc_attr( $attempted_at ) . '">';
+                echo '<p><label for="mad4b-manual-google-revocation">' . esc_html__( 'Type I VERIFIED GOOGLE ACCOUNT REMOVAL to record your external verification:', 'mad4b-site-control-plane' ) . '</label><br>';
+                echo '<input id="mad4b-manual-google-revocation" type="text" class="regular-text" autocomplete="off" name="confirm_google_account_removed" required></p>';
+                submit_button( __( 'Record verification and clear disabled local grant', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+                echo '</form>';
+            }
+            echo '</div>';
 			self::render_write_governance_readiness();
 			return;
 		}
@@ -1199,13 +1267,10 @@ final class MAD4B_SCP_Context_Admin_UI {
         if ( 'task_attachment' === $hint_mode ) $hint_policy = 'read_only';
         $hint_recursive = ! isset( $_GET['recursive'] )
             || '0' !== MAD4B_SCP_Admin_Experience::query_string( 'recursive' );
-        $preflight = class_exists( 'MAD4B_SCP_Brand_Core_Remote_Recovery' )
-            ? MAD4B_SCP_Brand_Core_Remote_Recovery::source_onboarding_preflight( array(
-                'external_root_id' => $current_folder_id,
-                'source_mode' => $hint_mode, 'write_policy' => $hint_policy,
-                'recursive' => $hint_recursive ) )
-            : new WP_Error( 'mad4b_source_onboarding_preflight_missing',
-                'Source onboarding preflight not loaded.' );
+        $preflight = self::source_onboarding_preflight( array(
+            'external_root_id' => $current_folder_id,
+            'source_mode' => $hint_mode, 'write_policy' => $hint_policy,
+            'recursive' => $hint_recursive ) );
         $source_ready = is_array( $preflight )
             && ! empty( $preflight['new_source_write_eligible'] );
         echo '<hr><h3>' . esc_html__( 'Use this folder', 'mad4b-site-control-plane' ) . '</h3>';
