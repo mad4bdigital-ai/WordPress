@@ -53,7 +53,7 @@ final class MAD4B_SCP_Staging_Operation_Journal {
             $record['signature'], $record['state'], $record['site_uuid'], $record['plan_sha256'] )
             || ! hash_equals( $id, (string) $record['operation_id'] )
             || ! in_array( (string) $record['state'],
-                array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED', 'VERIFIED' ), true ) ) return false;
+                array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED', 'FINALIZING', 'VERIFIED' ), true ) ) return false;
         $expected = self::signature( $record );
         return '' !== $expected && hash_equals( $expected, (string) $record['signature'] );
     }
@@ -64,8 +64,27 @@ final class MAD4B_SCP_Staging_Operation_Journal {
         $record = get_option( self::key( $id ), array() );
         if ( ! self::valid( $id, $record ) || ! hash_equals( $site_uuid, (string) $record['site_uuid'] ) )
             return array( 'state' => 'UNVERIFIED_OR_UNAVAILABLE', 'read_only' => true );
-        return array( 'state' => $record['state'], 'operation_id' => $id,
+        $active = get_option( self::active_key( $site_uuid ), '' );
+        $locked = is_string( $active ) && '' !== $active;
+        $active_matches = $locked && hash_equals( $id, $active );
+        $state = (string) $record['state'];
+        $index = get_option( self::latest_key( $site_uuid ), array() );
+        $historical_verified = 'VERIFIED' === $state && $locked && ! $active_matches
+            && is_array( $index ) && isset( $index['operation_id'] )
+            && ! hash_equals( $id, (string) $index['operation_id'] );
+        if ( $locked && ! $active_matches && ! $historical_verified )
+            $state = 'OPERATION_LOCK_CONFLICT';
+        elseif ( 'VERIFIED' === $state && $locked && ! $historical_verified )
+            $state = 'VERIFIED_LOCK_HELD';
+        elseif ( 'FINALIZING' === $state ) $state = $locked
+            ? 'FINALIZATION_LOCK_HELD' : 'FINALIZATION_INCOMPLETE';
+        elseif ( in_array( $state, array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED' ), true )
+            && ! $locked ) $state = 'OPERATION_LOCK_MISSING';
+        return array( 'state' => $state, 'operation_id' => $id,
             'site_uuid' => $site_uuid, 'plan_sha256' => (string) $record['plan_sha256'],
+            'post_execution_plan_sha256' => isset( $record['post_execution_plan_sha256'] )
+                ? (string) $record['post_execution_plan_sha256'] : '',
+            'lock_held' => $locked, 'lock_matches_operation' => $active_matches,
             'started_at' => (int) ( $record['started_at'] ?? 0 ),
             'updated_at' => (int) ( $record['updated_at'] ?? 0 ),
             'readback_required' => true, 'blind_retry_allowed' => false,
@@ -80,8 +99,8 @@ final class MAD4B_SCP_Staging_Operation_Journal {
         $id = self::id( $plan );
         if ( '' === $id ) return new WP_Error( 'mad4b_operation_plan_invalid', 'Exact operation identity required.' );
         $latest = self::latest( strtolower( $plan['site_uuid'] ) );
-        if ( in_array( $latest['state'], array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED',
-            'UNVERIFIED_OR_UNAVAILABLE', 'OPERATION_LOCK_WITHOUT_INDEX' ), true ) )
+        if ( ! in_array( $latest['state'], array(
+            'NO_CURRENT_OPERATION_POINTER', 'VERIFIED' ), true ) )
             return new WP_Error( 'mad4b_previous_operation_needs_reconciliation',
                 'A previous Staging operation has an uncertain or recovery-required outcome. Reconcile before a different plan.',
                 array( 'operation_id' => isset( $latest['operation_id'] )
@@ -126,32 +145,51 @@ final class MAD4B_SCP_Staging_Operation_Journal {
         return array( 'operation_id' => $id, 'state' => 'EXECUTION_UNCERTAIN',
             'mutation_performed' => false, 'blind_retry_allowed' => false );
     }
-    private static function transition( array $plan, $state, $receipt = '' ) {
+    private static function transition( array $plan, $state, $receipt = '', $post_plan = '' ) {
         $id = self::id( $plan );
         if ( '' === $id ) return false;
         $record = get_option( self::key( $id ), array() );
-        if ( ! self::valid( $id, $record ) || 'EXECUTION_UNCERTAIN' !== $record['state'] ) return false;
-        if ( 'VERIFIED' === $state && 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $receipt ) )
+        if ( ! self::valid( $id, $record ) ) return false;
+        $from = (string) $record['state'];
+        if ( 'EXECUTION_UNCERTAIN' === $from && 'FINALIZING' === $state ) {
+            if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $receipt )
+                || 1 !== preg_match( '/^[a-f0-9]{64}$/D', (string) $post_plan ) ) return false;
+            $record['result_receipt_sha256'] = $receipt;
+            $record['post_execution_plan_sha256'] = $post_plan;
+        } elseif ( 'FINALIZING' === $from && 'VERIFIED' === $state ) {
+            if ( ! empty( $receipt ) || ! empty( $post_plan ) ) return false;
+        } elseif ( 'EXECUTION_UNCERTAIN' !== $from || 'RECOVERY_REQUIRED' !== $state ) {
             return false;
+        }
         $record['state'] = $state;
         $record['updated_at'] = time();
-        $record['result_receipt_sha256'] = 'VERIFIED' === $state ? $receipt : '';
         $record['signature'] = self::signature( $record );
-        return '' !== $record['signature'] && update_option( self::key( $id ), $record, false )
-            && $state === self::inspect_plan( $plan )['state'];
+        if ( '' === $record['signature'] || ! update_option( self::key( $id ), $record, false ) )
+            return false;
+        $observed = self::inspect_plan( $plan );
+        $wanted = 'FINALIZING' === $state ? 'FINALIZATION_LOCK_HELD'
+            : ( 'VERIFIED' === $state ? 'VERIFIED' : 'RECOVERY_REQUIRED' );
+        return $wanted === $observed['state'];
     }
-    public static function complete( array $plan, $receipt ) {
-        if ( ! self::transition( $plan, 'VERIFIED', $receipt ) ) return false;
+    public static function complete( array $plan, $receipt, $post_plan = '' ) {
         $id = self::id( $plan );
+        if ( '' === $id ) return false;
+        // Two-phase terminal commit: never publish VERIFIED while an
+        // old site lock remains. A crash is diagnosed as FINALIZING.
+        if ( ! self::transition( $plan, 'FINALIZING', $receipt, $post_plan ) ) return false;
         $active = get_option( self::active_key( $plan['site_uuid'] ), '' );
         if ( ! is_string( $active ) || ! hash_equals( $id, $active )
             || ! function_exists( 'delete_option' ) ) return false;
-        if ( ! delete_option( self::active_key( $plan['site_uuid'] ) ) ) return false;
-        return 'VERIFIED' === self::inspect_plan( $plan )['state'];
+        if ( ! delete_option( self::active_key( $plan['site_uuid'] ) )
+            || '' !== get_option( self::active_key( $plan['site_uuid'] ), '' ) ) return false;
+        return self::transition( $plan, 'VERIFIED' )
+            && 'VERIFIED' === self::inspect_plan( $plan )['state'];
     }
     public static function suspend( array $plan ) {
         $status = self::inspect_plan( $plan );
         if ( 'VERIFIED' === $status['state'] || 'RECOVERY_REQUIRED' === $status['state'] ) return true;
+        if ( in_array( $status['state'], array( 'FINALIZATION_LOCK_HELD',
+            'FINALIZATION_INCOMPLETE', 'VERIFIED_LOCK_HELD' ), true ) ) return false;
         return self::transition( $plan, 'RECOVERY_REQUIRED' );
     }
     public static function latest( $site_uuid ) {

@@ -11,8 +11,10 @@ assert 'MAD4B_SCP_Remote_Operation_Parity::reviewed_owner_staging_convergence' i
 assert "foreach ( self::catalog() as $operation_id => $row )" in p
 assert "self::reviewed_owner_staging_convergence( $operation_id, $row )" in p
 assert "'owner_intent_sha256' => array(" in c
-assert "self::authorize_reviewed_owner_intent( $plan, $input )" in c
+assert "self::authorize_reviewed_owner_intent( $plan, $input, false )" in c
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::validate_claimable( $plan, $proof )" in c
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, array(" in c
+assert c.index("::reserve( $plan )") < c.index("MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, array(")
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest()" in c
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(" in c
 assert "'owner_review_digest' => array(" in c

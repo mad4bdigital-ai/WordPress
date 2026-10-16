@@ -330,6 +330,40 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         return array( 'state'=>'OWNER_INTENT_NOT_AUTHORITY', 'receipt_sha256'=>$record['receipt_sha256'],
             'expires_at'=>$record['expires'], 'mutation_performed'=>false );
     }
+    public static function validate_claimable( array $plan, $input ) {
+        if ( ! self::owner() ) return new WP_Error( 'mad4b_owner_claim_identity_denied', 'Explicit enrolled Staging owner required.' );
+        $hash = is_array( $input ) ? (string) ( $input['owner_intent_sha256'] ?? '' ) : '';
+        $saved = get_option( self::OPTION, array() );
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $hash ) || ! is_array( $saved )
+            || ! isset( $saved['receipt_sha256'], $saved['owner'], $saved['issued'],
+                $saved['expires'], $saved['nonce'], $saved['review_digest'] ) )
+            return new WP_Error( 'mad4b_owner_receipt_missing', 'Exact owner intent required.' );
+        $payload = $saved;
+        unset( $payload['receipt_sha256'] );
+        $computed = self::signature( $payload );
+        if ( ! hash_equals( $computed, (string) $saved['receipt_sha256'] )
+            || ! hash_equals( $hash, (string) $saved['receipt_sha256'] )
+            || ! hash_equals( self::digest( $plan ), (string) $saved['review_digest'] )
+            || (int) $saved['owner'] !== (int) get_current_user_id()
+            || time() >= (int) $saved['expires']
+            || (int) $saved['issued'] > time()
+            || (int) $saved['expires'] - (int) $saved['issued'] > self::TTL )
+            return new WP_Error( 'mad4b_owner_receipt_stale', 'Expired, altered or different plan/owner.' );
+        if ( ! self::audit_committed( $saved ) )
+            return new WP_Error( 'mad4b_owner_receipt_audit_unconfirmed',
+                'Owner intent is not accompanied by a durable signed audit completion marker.' );
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
+            return new WP_Error( 'mad4b_owner_claim_audit_unavailable', 'Durable claim audit unavailable.' );
+        // Preflight is explicitly non-authorizing. Do not consume a claim
+        // when an operation reservation is already occupied.
+        $claim_key = 'mad4b_scp_owner_claim_' . substr( $hash, 0, 40 );
+        if ( false !== get_option( $claim_key, false ) )
+            return new WP_Error( 'mad4b_owner_receipt_replayed', 'The owner receipt was already claimed.' );
+        return array( 'owner_user' => (int) $saved['owner'],
+            'receipt_sha256' => $hash,
+            'preflight_only' => true, 'mutation_performed' => false );
+    }
+
     public static function claim( array $plan, $input ) {
         if ( ! self::owner() ) return new WP_Error( 'mad4b_owner_claim_identity_denied', 'Explicit enrolled Staging owner required.' );
         $hash = is_array( $input ) ? (string) ( $input['owner_intent_sha256'] ?? '' ) : '';
@@ -490,7 +524,10 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             : array( 'state' => 'OPERATION_JOURNAL_NOT_AVAILABLE', 'read_only' => true );
         $operation_uncertain = in_array( (string) ( $latest_operation['state'] ?? '' ),
             array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED',
-                'OPERATION_LOCK_WITHOUT_INDEX', 'UNVERIFIED_OR_UNAVAILABLE' ), true );
+                'OPERATION_LOCK_WITHOUT_INDEX', 'UNVERIFIED_OR_UNAVAILABLE',
+                'OPERATION_LOCK_MISSING', 'OPERATION_LOCK_CONFLICT',
+                'FINALIZATION_LOCK_HELD', 'FINALIZATION_INCOMPLETE',
+                'VERIFIED_LOCK_HELD' ), true );
         $next = $operation_uncertain ? 'readback_write_runtime_binding_audit_do_not_replay'
             : ( ! $eligible ? 'repair_current_plan_blockers_then_review_fresh_plan'
             : ( $identity_drift || $digest_differs || $evidence_changed || $legacy

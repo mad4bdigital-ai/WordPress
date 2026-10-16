@@ -132,6 +132,19 @@ $payload = array( 'review_digest' => $review['review_digest'], 'confirmation' =>
 $record = $klass::attest( $payload );
 assertion( is_array( $record ) && 'OWNER_INTENT_NOT_AUTHORITY' === $record['state'], 'Owner intent not a mutation approval' );
 $receipt = $record['receipt_sha256'];
+$before_preflight_options = count( $GLOBALS['options'] );
+$preflight = $klass::validate_claimable( $GLOBALS['plan'], array(
+    'owner_intent_sha256' => $receipt ) );
+assertion( is_array( $preflight ) && ! empty( $preflight['preflight_only'] )
+    && $preflight['receipt_sha256'] === $receipt
+    && $before_preflight_options === count( $GLOBALS['options'] ),
+    'owner preflight must not claim an otherwise valid receipt' );
+$wrong_preflight = $GLOBALS['plan'];
+$wrong_preflight['source_commit_sha'] = str_repeat('f',40);
+assertion( is_wp_error( $klass::validate_claimable( $wrong_preflight, array(
+    'owner_intent_sha256' => $receipt ) ) ),
+    'owner preflight never accepts a different plan' );
+
 $diagnostic = $klass::diagnose();
 assertion( is_array( $diagnostic ) && $diagnostic['owner_intent_state'] === 'OWNER_INTENT_CURRENT'
     && !$diagnostic['identity_drift'] && !$diagnostic['review_digest_differs'],
