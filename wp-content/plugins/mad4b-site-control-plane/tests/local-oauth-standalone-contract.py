@@ -148,7 +148,7 @@ required_server = [
     "Signed in as:",
     "script-src 'nonce-",
     "connect-src 'self'",
-    "Live read-only authority refresh: immediate on focus/return, then every 15 seconds while visible; paused while hidden.",
+    "Live read-only authority refresh: on focus/return and every 60 seconds while visible; paused while hidden. OAuth consent does not depend on this status.",
     "private static $public_jwk_request_cache = null;",
     "if ( is_array( self::$public_jwk_request_cache ) ) return self::$public_jwk_request_cache;",
     "return self::$public_jwk_request_cache;",
