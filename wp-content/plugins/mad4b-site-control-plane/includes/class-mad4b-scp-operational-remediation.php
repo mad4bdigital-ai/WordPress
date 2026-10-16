@@ -41,6 +41,9 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operator-journeys.php';
         MAD4B_SCP_Operator_Journeys::boot();
+        if ( ! class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-recovery-route-matrix.php';
+        MAD4B_SCP_Recovery_Route_Matrix::boot();
         if ( ! class_exists( 'MAD4B_SCP_Operational_Acceptance_Evidence', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operational-acceptance-evidence.php';
         MAD4B_SCP_Operational_Acceptance_Evidence::boot();
@@ -214,6 +217,8 @@ final class MAD4B_SCP_Operational_Remediation {
             . esc_html__( 'Production verification never provisions a host key or enables Write. Missing or mismatched binding requires a separately approved Production release, protected host configuration, fresh plan and independent readback; the Staging setup button cannot be used.', 'mad4b-site-control-plane' )
             . '</p>';
         }
+        if ( class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
+            MAD4B_SCP_Recovery_Route_Matrix::render_admin();
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
             ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );

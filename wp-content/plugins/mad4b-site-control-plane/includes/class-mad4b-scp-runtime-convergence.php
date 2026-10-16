@@ -295,6 +295,16 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'candidate_binding_match' => $binding_match,
 				'current_source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
 				'stored_source_commit_sha' => isset( $candidate_binding['stored_source_commit_sha'] ) ? (string) $candidate_binding['stored_source_commit_sha'] : '',
+                'manual_owner_review_path' => 'tools.php?page=mad4b-staging-write-owner-review',
+                'manual_owner_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
+                'remote_handshake_ability' => 'mad4b/staging-write-authority-convergence-handshake',
+                'remote_apply_ability' => 'mad4b/staging-write-authority-convergence-apply',
+                'remote_apply_confirmation' => 'ENABLE GOVERNED STAGING WRITE AUTHORITY',
+                'remote_oauth_step_up_scope' => 'mad4b:authority:step-up',
+                'after_owner_approval' => 'exact_owner_intent_then_governed_remote_apply_then_independent_write_readback',
+                'post_readback_ability' => 'mad4b/staging-write-authority-convergence-status',
+                'safe_runtime_resumption' => 'requires_separate_signed_automation_policy_opt_in_and_slo_ticket',
+                'approval_itself_mutates_grants' => false,
 			) ),
 			'external_acceptance' => self::phase( 'external_acceptance', $wpml_verified ? 'ready' : 'pending', $wpml_required, array( 'deployment', 'schema' ), false, array(
 				'wpml_required' => $wpml_required,
@@ -682,6 +692,83 @@ final class MAD4B_SCP_Runtime_Convergence {
 			? $stored
 			: new WP_Error( 'mad4b_runtime_convergence_checkpoint_block_failed', 'Self-update convergence checkpoint could not be quarantined.' );
 	}
+
+    /**
+     * Pure, side-effect-free evaluation of a *previously denied* automatic
+     * safe-phase checkpoint after an explicitly approved automation switch
+     * change. This is NOT a write/Production authority transition.
+     */
+    public static function opt_in_recovery_preflight( $checkpoint, $switch, $identity_match ) {
+        $result = array( 'contract'=>'mad4b.runtime-safe-opt-in.v1',
+            'state'=>'BLOCKED', 'reason'=>'invalid_checkpoint', 'eligible'=>false,
+            'authorizing'=>false, 'mutation_performed'=>false, 'production_mutation'=>false );
+        if ( ! is_array( $checkpoint ) || ! is_array( $switch )
+            || 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+            || ! in_array( $checkpoint['source'] ?? '', array( 'plugin_activation', 'self_update' ), true )
+            || 'mad4b_automation_automation_kill_switch' !== ( $checkpoint['resume_blocker'] ?? '' ) )
+            return $result;
+        if ( ! is_bool( $identity_match ) || ! $identity_match ) {
+            $result['reason'] = 'exact_runtime_changed'; return $result;
+        }
+        if ( empty( $switch['integrity_valid'] ) || ! is_array( $switch['scopes'] ?? null ) ) {
+            $result['reason'] = 'switch_integrity_invalid'; return $result;
+        }
+        foreach ( array( '*', 'runtime-convergence:*', 'runtime-convergence:safe-phases' ) as $scope ) {
+            if ( ! empty( $switch['scopes'][ $scope ] ) ) {
+                $result['reason'] = 'automation_scope_still_paused'; return $result;
+            }
+        }
+        $result['state'] = 'SCHEDULE_SAFE_PHASES_ELIGIBLE';
+        $result['reason'] = '';
+        $result['eligible'] = true;
+        return $result;
+    }
+
+    /**
+     * Called ONLY after WP Admin's nonce-protected change_switch() succeeded.
+     * Replay of failed/unknown SLO outcomes remains prohibited: the checkpoint
+     * must be paused for the EXACT kill-switch reason, not another blocker.
+     */
+    public static function resume_after_automation_policy_opt_in() {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin()
+            || ! current_user_can( 'manage_options' )
+            || 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' )
+                ? MAD4B_SCP_Environment::effective()
+                : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '' ) ) )
+            return array( 'state'=>'ADMIN_STAGING_REQUIRED', 'scheduled'=>false );
+        $checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+        if ( ! is_array( $checkpoint ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
+            return array( 'state'=>'CHECKPOINT_OR_POLICY_UNAVAILABLE', 'scheduled'=>false );
+        $target = is_array( $checkpoint['target_identity'] ?? null ) ? $checkpoint['target_identity'] : array();
+        $current = self::current_identity();
+        $same = self::automatic_identity_safe( $target )
+            && self::identity_matches( $target, $current );
+        $status = self::opt_in_recovery_preflight( $checkpoint,
+            MAD4B_SCP_Automation_SLO::switch_status(), (bool) $same );
+        if ( ! $status['eligible'] )
+            return array( 'state'=>$status['reason'], 'scheduled'=>false );
+        $next = $checkpoint;
+        $next['state'] = 'pending_safe_phases';
+        $next['automatic_retry_allowed'] = true;
+        $next['retry_policy'] = 'approved_safe_phase_opt_in_subject_to_slo_ticket';
+        $next['updated_at'] = gmdate( 'c' );
+        unset( $next['resume_blocker'] );
+        $committed = self::automatic_checkpoint_cas( $checkpoint, $next );
+        if ( is_wp_error( $committed ) || true !== $committed )
+            return array( 'state'=>'CHECKPOINT_CAS_FAILED', 'scheduled'=>false );
+        $scheduled = self::schedule_resume( self::maintenance_not_before() );
+        if ( ! $scheduled ) {
+            $parked = $next;
+            $parked['state'] = 'pending_manual_resume';
+            $parked['resume_blocker'] = 'wp_cron_unavailable_after_owner_opt_in';
+            $parked['automatic_retry_allowed'] = false;
+            $parked['updated_at'] = gmdate( 'c' );
+            self::automatic_checkpoint_cas( $next, $parked );
+        }
+        return array( 'state'=>$scheduled ? 'SAFE_PHASES_QUEUED_FOR_SLO_ADMISSION'
+            : 'WP_CRON_NOT_SCHEDULED', 'scheduled'=>(bool)$scheduled,
+            'owner_write_granted'=>false, 'production_mutation'=>false );
+    }
 
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;

@@ -453,7 +453,18 @@ final class MAD4B_SCP_Automation_SLO {
 		$state = isset( $_POST['enabled'] ) && is_string( $_POST['enabled'] ) ? $_POST['enabled'] : '';
 		$result = in_array( $state, array( '0', '1' ), true ) ? self::change_switch( $scope, '1' === $state, $revision ) : new WP_Error( 'mad4b_automation_switch_input_invalid', 'Invalid switch state.' );
 		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_code() ), '', array( 'response' => 409 ) );
-		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-operator-control-center' ) ); exit;
+        // This owner-approved setting change only requeues an exact, already
+        // paused, same-build safe-phase checkpoint. Cron still needs separate
+        // G8 SLO admission; no Owner Write or Production grant is inferred.
+        $resume = array( 'state'=>'not_requested' );
+        if ( '0' === $state && in_array( $scope,
+            array( '*', 'runtime-convergence:*', 'runtime-convergence:safe-phases' ), true )
+            && class_exists( 'MAD4B_SCP_Runtime_Convergence', false )
+            && method_exists( 'MAD4B_SCP_Runtime_Convergence', 'resume_after_automation_policy_opt_in' ) )
+            $resume = MAD4B_SCP_Runtime_Convergence::resume_after_automation_policy_opt_in();
+        $resume_state = sanitize_key( (string) ( $resume['state'] ?? 'unknown' ) );
+		wp_safe_redirect( add_query_arg( 'mad4b_safe_resume', $resume_state,
+            admin_url( 'admin.php?page=mad4b-operator-control-center' ) ) ); exit;
 	}
 
 	public static function status() {
@@ -485,8 +496,15 @@ final class MAD4B_SCP_Automation_SLO {
 		if ( ! current_user_can( 'manage_options' ) || ! MAD4B_SCP_G8_Record::staging() ) return;
 		$status = self::status(); $switch = $status['kill_switch'];
 		echo '<section class="card"><h2>' . esc_html__( 'Automatic maintenance controls', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Pause automatic repair while observations and governed manual actions remain available.', 'mad4b-site-control-plane' ) . '</p>';
+        if ( isset( $_GET['mad4b_safe_resume'] ) ) {
+            $hint = sanitize_key( wp_unslash( $_GET['mad4b_safe_resume'] ) );
+            echo '<p><strong>Safe-phase resumption request:</strong> <code>' . esc_html( $hint )
+                . '</code> — informational redirect only; verify the current Runtime Convergence checkpoint and Cron/SLO results independently. No Write or Production grant was created.</p>';
+        }
 		echo '<p><strong>' . esc_html__( 'Automation telemetry:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( $status['state'] ) . '</p>';
-		echo '<p><strong>' . esc_html__( 'Global automatic work:', 'mad4b-site-control-plane' ) . '</strong> '
+		echo '<p><strong>Switch revision:</strong> <code>' . esc_html( (string) $switch['revision'] ) . '</code></p>';
+        echo '<p>To opt back into Staging safe-phase recovery, the operator must explicitly unpause <code>*</code> and any <code>runtime-convergence:*</code> or <code>runtime-convergence:safe-phases</code> scope. This schedules only a matching, previously kill-switch-paused checkpoint; actual work still requires a new independent SLO ticket. The form is not a Governed Write/Production approval.</p>';
+        echo '<p><strong>' . esc_html__( 'Global automatic work:', 'mad4b-site-control-plane' ) . '</strong> '
 			. esc_html( ! $switch['integrity_valid'] ? 'Blocked: switch integrity requires review' : ( ! empty( $switch['scopes']['*'] ) ? 'Paused' : 'Resume permitted by switch only; governed checks still apply' ) ) . '</p>';
 		echo '<p><strong>' . esc_html__( 'Admitted workload:', 'mad4b-site-control-plane' ) . '</strong> '
 			. esc_html( null === $status['eligible_workload_count'] ? 'Unknown' : (string) $status['eligible_workload_count'] ) . '</p>';

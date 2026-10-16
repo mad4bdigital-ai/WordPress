@@ -21,6 +21,23 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 
 	private static $booted = false;
 	private static $running = false;
+    // Exact local WordPress owner preview is read-only, single-request and
+    // NEVER a remote OAuth authority or a governed execution grant.
+    private static $local_owner_preview = false;
+
+    public static function plan_for_local_owner() {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin()
+            || ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in()
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+            || ! MAD4B_SCP_Staging_Write_Owner_Intent::owner() )
+            return new WP_Error( 'mad4b_local_owner_preview_denied',
+                'Verified logged-in, explicitly enrolled Staging owner required.' );
+        if ( self::$local_owner_preview )
+            return new WP_Error( 'mad4b_local_owner_preview_reentered', 'Nested review denied.' );
+        self::$local_owner_preview = true;
+        try { return self::plan(); }
+        finally { self::$local_owner_preview = false; }
+    }
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
@@ -182,17 +199,21 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 	public static function can_access( $input = null ) {
 		unset( $input );
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_staging_write_authority_admin_required', 'Administrator capability is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_staging_write_authority_bearer_required', 'Verified OAuth bearer identity is required.' );
+		$local = self::$local_owner_preview;
+        if ( ! $local && ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) )
+            return new WP_Error( 'mad4b_staging_write_authority_bearer_required', 'Verified OAuth bearer identity is required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_staging_write_authority_profile_required', 'An enrolled Site Profile is required.' );
 		if ( 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) ) return new WP_Error( 'mad4b_staging_write_authority_staging_only', 'Governed Write convergence is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_staging_write_authority_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Staging Site Profile.' );
 		$user_id = get_current_user_id();
 		if ( $user_id < 1 || ! MAD4B_SCP_Site_Profile::user_is_enrolled( $user_id ) ) return new WP_Error( 'mad4b_staging_write_authority_subject_not_enrolled', 'The authenticated administrator is not enrolled in this Site Profile.' );
-		$identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_staging_write_authority_identity_unavailable', 'Governance identity is unavailable.' );
-		if ( is_wp_error( $identity ) ) return $identity;
-		if ( empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) {
-			return new WP_Error( 'mad4b_staging_write_authority_normal_oauth_required', 'Governed Write convergence must originate from the enrolled normal OAuth identity.' );
-		}
+		if ( ! $local ) {
+            $identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : new WP_Error( 'mad4b_staging_write_authority_identity_unavailable', 'Governance identity is unavailable.' );
+            if ( is_wp_error( $identity ) ) return $identity;
+            if ( empty( $identity['authenticated'] ) || 'oauth' !== ( isset( $identity['subject_type'] ) ? (string) $identity['subject_type'] : '' ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) )
+                return new WP_Error( 'mad4b_staging_write_authority_normal_oauth_required', 'Verified normal OAuth identity required.' );
+        }
 		if ( self::generic_raw_sql_breakglass_gate_enabled() || ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) ) {
 			return new WP_Error( 'mad4b_staging_write_authority_breakglass_denied', 'All Breakglass authority must remain disabled during governed Write convergence.' );
 		}
@@ -200,6 +221,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 	}
 
 	public static function can_apply( $input = null ) {
+        if ( self::$local_owner_preview ) return new WP_Error( 'mad4b_local_owner_preview_never_executes', 'Local preview cannot execute writes.' );
 		$access = self::can_access( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
 		if ( ! defined( 'MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE' )
@@ -306,7 +328,26 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 						'owner_review_digest' => class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' )
 							? MAD4B_SCP_Staging_Write_Owner_Intent::digest( $plan ) : '',
 					),
-					'client_action' => $already_current ? 'readback_current_authority' : ( ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_write_only_handshake' : 'repair_blockers_then_request_fresh_handshake' ),
+					'owner_gate' => array(
+                        'state' => $already_current ? 'VERIFIED_CURRENT_NO_APPROVAL_NEEDED'
+                            : ( ! empty( $plan['ready_to_apply'] ) ? 'EXACT_OWNER_REVIEW_REQUIRED' : 'BLOCKED_REPAIR_PREREQUISITES' ),
+                        'manual_wordpress_path' => 'tools.php?page=mad4b-staging-write-owner-review',
+                        'manual_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
+                        'manual_result' => 'short_lived_owner_intent_not_execution_authority',
+                        'remote_review_ability' => 'mad4b/staging-write-owner-review',
+                        'remote_step_up_scope' => 'mad4b:authority:step-up',
+                        'remote_apply_ability' => self::APPLY_ABILITY,
+                        'remote_confirmation' => self::CONFIRMATION,
+                        'remote_owner_review_digest' => class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' )
+                            ? MAD4B_SCP_Staging_Write_Owner_Intent::digest( $plan ) : '',
+                        'remote_execution_requires_exact_plan' => true,
+                        'same_enrolled_owner_required' => true,
+                        'after_owner_intent' => 'present exact current plan in OAuth step-up and claim governed executor; owner intent alone has no effect',
+                        'after_write_apply' => 'new_request_current_grants_and_candidate_binding_readback_then_resume_safe_runtime_and_context_preflight',
+                        'developer_or_breakglass_allowed' => false,
+                        'production_mutation_allowed' => false,
+                    ),
+                    'client_action' => $already_current ? 'readback_current_authority' : ( ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_write_only_handshake' : 'repair_blockers_then_request_fresh_handshake' ),
 					'deep_reads_available_via_governed_dispatch' => true,
 				);
 			},

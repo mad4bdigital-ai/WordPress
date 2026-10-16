@@ -107,7 +107,12 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
     }
     public static function review() {
         if ( ! self::owner() ) return new WP_Error( 'mad4b_owner_explicit_enrollment_required', 'Explicit Staging owner required.' );
-        $plan = MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
+        $local = function_exists( 'is_admin' ) && is_admin()
+            && ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+              || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() );
+        $plan = $local
+            ? MAD4B_SCP_Staging_Write_Authority_Convergence::plan_for_local_owner()
+            : MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
         if ( is_wp_error( $plan ) ) return $plan;
         if ( ! is_array( $plan ) || empty( $plan['ready_to_apply'] ) || empty( $plan['plan_sha256'] ) )
             return new WP_Error( 'mad4b_owner_plan_not_ready', 'Fresh eligible Staging Write plan required.' );
@@ -197,12 +202,24 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         }
         $saved = get_option( self::OPTION, array() );
         echo '<p>Owner intent only: no grant, ticket, OAuth change or installation.</p>';
+        echo '<p><strong>Manual WordPress approval:</strong> confirm the exact site, revision, source, plan SHA and type '
+            . '<code>' . esc_html( self::CONFIRM ) . '</code>. This saves one owner intent for 600 seconds; it does not apply grants.</p>';
+        echo '<p><strong>Remote OAuth alternative:</strong> discover '
+            . '<code>' . esc_html( self::REVIEW_ABILITY ) . '</code>, obtain the current review digest, then use '
+            . '<code>' . esc_html( MAD4B_SCP_Staging_Write_Authority_Convergence::HANDSHAKE_ABILITY ) . '</code> '
+            . 'and a verified owner OAuth Step-Up to execute '
+            . '<code>' . esc_html( MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY ) . '</code> '
+            . 'with exact current plan fields and owner_review_digest. No direct grant or Developer/Breakglass authority.</p>';
         echo '<p>Site UUID: <code>' . esc_html( $review['plan']['site_uuid'] ) . '</code></p>';
         echo '<p>Source: <code>' . esc_html( $review['plan']['source_commit_sha'] ) . '</code></p>';
         echo '<p>Plan SHA: <code>' . esc_html( $review['plan']['plan_sha256'] ) . '</code></p>';
         if ( is_array( $saved ) && isset( $saved['receipt_sha256'], $saved['review_digest'] )
             && hash_equals( $review['review_digest'], (string) $saved['review_digest'] ) )
             echo '<p>Receipt: <code>' . esc_html( $saved['receipt_sha256'] ) . '</code></p>';
+        if ( is_array( $saved ) && isset( $saved['receipt_sha256'], $saved['review_digest'], $saved['expires'] )
+            && hash_equals( $review['review_digest'], (string) $saved['review_digest'] )
+            && time() < (int) $saved['expires'] )
+            echo '<p><strong>Next:</strong> use a delegated OAuth session for the SAME enrolled owner, get a fresh exact Staging Write handshake, then apply with <code>owner_intent_sha256</code> equal to the receipt above and all expected plan fields. The receipt is not an execution ticket. Finish with a NEW-REQUEST readback of grant counts and candidate binding, then recheck the runtime recovery checkpoint and Context source selection.</p>';
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
         echo '<input type="hidden" name="review_digest" value="' . esc_attr( $review['review_digest'] ) . '">';

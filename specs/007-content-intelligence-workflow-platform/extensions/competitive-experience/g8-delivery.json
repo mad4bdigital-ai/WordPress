@@ -105,8 +105,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-automation-slo.php",
-      "sha256": "cdd3e6e4925888e78df49af98f0386cc5edad84d3ae0638a77b59994c5fca1d5",
-      "bytes": 37466
+      "sha256": "ade6b62f3922533f64d37170787aa1442c5bef37d1695144ad77dce3674dd684",
+      "bytes": 39270
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php",
@@ -115,8 +115,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
-      "sha256": "380b916c7f5b1e242a3d8e1b4193447368038d18316a90612bcd9310e1257884",
-      "bytes": 114143
+      "sha256": "1c5291bf8793c45b4d82f23a08dbbd1b867ba635e2f5367de7dc6616a6fb3a4d",
+      "bytes": 119537
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",

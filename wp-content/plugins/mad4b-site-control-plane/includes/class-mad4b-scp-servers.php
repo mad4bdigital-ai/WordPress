@@ -66,7 +66,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives', 'mad4b/context-source-onboarding-preflight',
-                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys',
+                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys', 'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/admin-surface-coverage', 'mad4b/admin-adapter-blueprint', 'mad4b/admin-control-census', 'mad4b/operational-acceptance-evidence',
                 'mad4b/deployment-binding-setup-status', 'mad4b/deployment-binding-setup-plan',
                 'mad4b/deployment-binding-native-status', 'mad4b/deployment-binding-native-plan',
@@ -77,6 +77,7 @@ final class MAD4B_SCP_Servers {
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/session-safe-diagnostics',
+                'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/staging-write-owner-review',
 				'mad4b/full-staging-authority-handshake',
 				'mad4b/runtime-gates-handshake',
