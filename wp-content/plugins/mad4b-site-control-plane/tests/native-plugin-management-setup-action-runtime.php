@@ -3,6 +3,8 @@
 define( 'ABSPATH', dirname( __DIR__ ) . '/' );
 function plugin_dir_path( $file ) { return dirname( $file ) . '/'; }
 function plugin_basename( $file ) { return basename( dirname( $file ) ) . '/' . basename( $file ); }
+$GLOBALS['wp_environment'] = 'staging';
+function wp_get_environment_type() { return $GLOBALS['wp_environment']; }
 function is_admin() { return true; }
 function __( $label, $domain = '' ) { return $label; }
 function esc_html__( $label, $domain = '' ) { return $label; }
@@ -43,4 +45,15 @@ $GLOBALS['can_activate'] = false;
 check_setup( count( call_user_func( $renderer, array() ) ) === 0, 'non-activating user sees setup action' );
 $GLOBALS['can_activate'] = true; $GLOBALS['can_manage'] = false;
 check_setup( count( call_user_func( $renderer, array() ) ) === 0, 'non-admin user sees setup action' );
+$GLOBALS['can_manage'] = true;
+$GLOBALS['wp_environment'] = 'production';
+$prod = call_user_func( $renderer, array() );
+check_setup( isset( $prod['mad4b_host_setup'] )
+    && strpos( $prod['mad4b_host_setup'], 'Inspect Production host binding' ) !== false
+    && strpos( $prod['mad4b_host_setup'], '#mad4b-production-deployment-identity' ) !== false
+    && strpos( $prod['mad4b_host_setup'], 'Complete Staging host setup' ) === false,
+    'Production must show only a read-only inspection entry point' );
+$GLOBALS['wp_environment'] = 'development';
+check_setup( !isset( call_user_func( $renderer, array() )['mad4b_host_setup'] ),
+    'unknown/development environments must not advertise Staging setup' );
 echo "NATIVE_PLUGIN_LIGHT_SETUP_ROUTE_AND_CAPABILITIES: PASS\n";

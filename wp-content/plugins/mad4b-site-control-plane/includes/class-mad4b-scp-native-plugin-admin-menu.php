@@ -28,16 +28,25 @@ final class MAD4B_SCP_Native_Plugin_Admin_Menu {
         $links = is_array( $links ) ? $links : array();
         if ( ! is_admin() || ! current_user_can( 'manage_options' )
             || ! current_user_can( 'activate_plugins' ) ) return $links;
-        $links['mad4b_host_setup'] = self::setup_form_markup();
+        $environment = function_exists( 'wp_get_environment_type' )
+            ? wp_get_environment_type() : '';
+        if ( ! in_array( $environment, array( 'staging', 'production' ), true ) )
+            return $links;
+        $links['mad4b_host_setup'] = self::setup_form_markup( $environment );
         return $links;
     }
 
-    private static function setup_form_markup() {
-        // WordPress wraps the native plugins table in its own bulk-action
-        // form: a nested POST form would be invalid HTML and never submit.
-        // Navigate to the fully bootstrapped remediation screen instead.
-        return '<a href="' . esc_url( admin_url( 'admin.php?page=mad4b-operational-remediation#mad4b-staging-deployment-identity' ) ) . '">'
-            . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' ) . '</a>';
+    private static function setup_form_markup( $environment ) {
+        // Native Plugins GET is a lightweight, read-only navigation surface.
+        // Do not nest a form inside WordPress core's bulk-actions form.
+        $production = 'production' === $environment;
+        $anchor = $production ? '#mad4b-production-deployment-identity'
+            : '#mad4b-staging-deployment-identity';
+        $label = $production ? 'Inspect Production host binding'
+            : 'Complete Staging host setup';
+        return '<a href="' . esc_url( admin_url(
+            'admin.php?page=mad4b-operational-remediation' . $anchor ) ) . '">'
+            . esc_html__( $label, 'mad4b-site-control-plane' ) . '</a>';
     }
 
     public static function render_setup_result_notice() {

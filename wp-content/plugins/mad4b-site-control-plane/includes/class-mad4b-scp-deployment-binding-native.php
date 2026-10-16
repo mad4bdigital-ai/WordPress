@@ -629,13 +629,13 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         if ( ! is_array( $status )
             || 'READY_FOR_OWNER_APPROVAL' !== ( $status['state'] ?? '' )
             || empty( $status['eligible'] ) ) return $links;
-        $links['mad4b_host_setup'] = '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) )
-            . '" style="display:inline"><input type="hidden" name="action" value="'
-            . esc_attr( self::WP_SETUP_ACTION ) . '">'
-            . wp_nonce_field( self::WP_SETUP_NONCE, '_wpnonce', false, false )
-            . '<button type="submit" class="button-link">'
-            . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
-            . '</button></form>';
+        // WordPress core owns a surrounding Plugins bulk-action form.
+        // Never inject a nested POST form into the row, even on a full-boot
+        // non-passive request. The full remediation page owns the POST+nonce.
+        $links['mad4b_host_setup'] = '<a href="' . esc_url( admin_url(
+            'admin.php?page=mad4b-operational-remediation#mad4b-staging-deployment-identity' ) )
+            . '">' . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+            . '</a>';
         return $links;
     }
 

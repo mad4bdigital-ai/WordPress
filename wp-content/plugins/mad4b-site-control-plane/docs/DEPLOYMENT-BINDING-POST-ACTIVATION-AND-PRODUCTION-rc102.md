@@ -39,3 +39,7 @@ The **Production Admin UI** displays this diagnostic and states that creation, r
 - On an actual Production site, inspect `deployment-binding-production-status` as an enrolled administrator first. A Production mutation/release must not occur without a separate explicit owner decision and evidence.
 
 No Developer/Breakglass, implicit grants, Production mutation or Google grant changes are introduced.
+
+## Final UI-route parity correction
+
+WordPress Plugins is a WordPress-owned bulk-action form. Both the early lightweight Plugins action-link and the older full-boot self-update action-link now render navigation anchors only, never a nested POST form. The early link is environment-scoped: **Staging** offers local setup navigation; **Production** offers **Inspect Production host binding** to the read-only Production diagnostic. Development/unknown environments show neither entry. No Plugin GET grants authority, creates a secret or enables a remote write. The actual Staging POST is visible only inside the full Operational Remediation page after independent eligibility/capability checks.
