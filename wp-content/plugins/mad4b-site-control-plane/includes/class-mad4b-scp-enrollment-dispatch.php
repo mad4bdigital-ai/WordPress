@@ -421,6 +421,35 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		);
 	}
 
+	/** Compact, no-mutation post-transport-error checkpoint observation. */
+	private static function managed_skills_checkpoint_handoff() {
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )
+			|| ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'managed_skills_reconciliation_status' ) ) {
+			return array( 'state' => 'status_unavailable', 'read_only' => true, 'blind_retry_allowed' => false );
+		}
+		try {
+			$raw = MAD4B_SCP_Remote_Operation_Parity::managed_skills_reconciliation_status();
+			if ( ! is_array( $raw ) ) throw new UnexpectedValueException( 'invalid_checkpoint_status' );
+			$checkpoint = isset( $raw['checkpoint'] ) && is_array( $raw['checkpoint'] ) ? $raw['checkpoint'] : array();
+			return array(
+				'contract' => 'mad4b.enrollment-checkpoint-handoff.v1',
+				'state' => isset( $raw['state'] ) ? sanitize_key( (string) $raw['state'] ) : 'unverified',
+				'current_identity' => ! empty( $raw['checkpoint_identity_current'] ),
+				'checkpoint_ready' => ! empty( $raw['ready'] ),
+				'operation_id' => isset( $checkpoint['operation_id'] ) ? (string) $checkpoint['operation_id'] : '',
+				'stage' => isset( $checkpoint['stage'] ) ? sanitize_key( (string) $checkpoint['stage'] ) : '',
+				'seed_cursor' => isset( $checkpoint['seed_cursor'] ) ? (int) $checkpoint['seed_cursor'] : null,
+				'lock_active' => ! empty( $raw['lock']['active'] ),
+				'blind_retry_allowed' => false,
+				'next_action' => ! empty( $raw['ready'] ) ? 'none' : ( ! empty( $raw['lock']['active'] ) ? 'observe_same_operation' : 'replan_exact_candidate' ),
+				'read_only' => true, 'mutation_performed' => false,
+			);
+		} catch ( Throwable $error ) {
+			return array( 'state' => 'checkpoint_observation_failed', 'read_only' => true,
+				'blind_retry_allowed' => false, 'raw_exception_exposed' => false );
+		}
+	}
+
 	public static function info( $input ) {
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
 		$current = self::operation( $operation_id );
@@ -436,6 +465,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'input_schema_sha256' => $row['input_schema_sha256'],
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'operation' => $row,
+			// Operator can recover from a lost MCP mutation response using the
+			// same stable Enrollment Info tool, without a second expensive
+			// catalog projection or any replay of the target write.
+			'checkpoint_handoff' => 'managed_skills_reconciliation' === $operation_id
+				? self::managed_skills_checkpoint_handoff() : array( 'state' => 'independent_plan_required', 'read_only' => true ),
 			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
 				? self::live_managed_skills_preflight() : null,
 			'request_permission_preflight' => 'managed_skills_reconciliation' === $operation_id
@@ -484,12 +518,50 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			return new WP_Error( 'mad4b_enrollment_dispatch_child_fence_unavailable', 'Governed child execution is unavailable.' );
 		}
 		$child_ability = (string) $row['remote_ability'];
-		$result = MAD4B_SCP_Execution_Fence::with_governed_child(
-			$child_ability,
-			$params,
-			static function () use ( $ability, $params ) { return $ability->execute( $params ); },
-			'enrollment_dispatch'
-		);
+		// An internal Throwable after dispatch may follow a durable child
+		// checkpoint. Convert it to a typed, fail-closed result rather than
+		// terminating the MCP session with an opaque transport exception.
+		// Never retry here: the caller must observe the exact operation state.
+		try {
+			$result = MAD4B_SCP_Execution_Fence::with_governed_child(
+				$child_ability,
+				$params,
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); },
+				'enrollment_dispatch'
+			);
+		} catch ( Throwable $error ) {
+			if ( 'managed_skills_reconciliation' !== $operation_id ) {
+				return array(
+					'contract' => self::CONTRACT,
+					'operation_id' => $row['operation_id'],
+					'remote_ability' => $row['remote_ability'],
+					'state' => 'child_outcome_uncertain_reconciliation_required',
+					'ready' => false,
+					'target_error_code' => 'mad4b_enrollment_child_internal_exception',
+					'raw_exception_exposed' => false,
+					'human_decision_required' => ! empty( $row['human_decision_required'] ),
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'authority_granted' => false,
+					'operation_invoked' => true,
+					'mutation_performed' => null,
+					'mutation_evidence_source' => 'unknown_after_child_exception',
+					'production_mutation' => false,
+					'breakglass_included' => false,
+				);
+			}
+			$result = new WP_Error(
+				'mad4b_enrollment_child_internal_exception',
+				'The child operation outcome is uncertain; inspect its persisted checkpoint before any retry.',
+				array(
+					'operation_id' => $operation_id,
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'raw_exception_exposed' => false,
+					'production_mutation_allowed' => false,
+				)
+			);
+		}
 		if ( is_wp_error( $result ) ) {
 			// Only the bounded managed-Skills operation returns a non-authorizing
 			// diagnostic envelope. The generic dispatcher otherwise preserves WP_Error.

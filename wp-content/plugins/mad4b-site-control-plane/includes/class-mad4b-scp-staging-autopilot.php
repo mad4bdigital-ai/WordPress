@@ -18,8 +18,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 	public static function register_abilities() {
 		if ( ! function_exists( 'wp_register_ability' ) ) return;
 		$name = 'mad4b/site-autopilot-status';
-		if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) return;
-		wp_register_ability( $name, array(
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $name ) ) wp_register_ability( $name, array(
 			'label' => 'MAD4B Staging Autopilot Status and Assistant Handoff',
 			'description' => 'Read bounded next actions for Site Profile, WordPress environment and host/authority prerequisites; never execute a mutation.',
 			'category' => 'mad4b-governance',
@@ -34,6 +33,99 @@ final class MAD4B_SCP_Staging_Autopilot {
 				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
 			),
 		) );
+		// Low-cost default for MCP clients: no Full Staging Authority scan,
+		// live Skills enumeration, HTTP loopback or long provider inventory.
+		$fast = 'mad4b/site-autopilot-fast-status';
+		if ( ! function_exists( 'wp_has_ability' ) || ! wp_has_ability( $fast ) ) wp_register_ability( $fast, array(
+			'label' => 'MAD4B Fast Exact-Build Onboarding and Recovery',
+			'description' => 'One bounded read-only profile and checkpoint plan; verify exact owner gates separately before mutation.',
+			'category' => 'mad4b-governance',
+			'execute_callback' => array( __CLASS__, 'fast_status' ),
+			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
+			'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
+			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+			'meta' => array(
+				'public' => false, 'show_in_rest' => false,
+				'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read' ),
+				'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
+			),
+		) );
+	}
+
+	/**
+	 * Next-action reducer for the fast path. It never infers a write grant from
+	 * a stored checkpoint or a valid deployment profile. Optional integrations
+	 * are queried separately in paginated Provider Closure reads.
+	 */
+	public static function fast_plan( $site, $job ) {
+		$site = is_array( $site ) ? $site : array();
+		$job = is_array( $job ) ? $job : array();
+		$environment_ready = 'staging' === (string) ( $site['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
+			&& ! empty( $site['wordpress_environment_explicit'] )
+			&& ! empty( $site['authority_ready'] ) && ! empty( $site['origin_match'] )
+			&& ! empty( $site['environment_match'] ) && empty( $site['mutation_pending_audit'] );
+		$binding_ready = ! empty( $site['deployment_binding_configured'] )
+			&& ! empty( $site['deployment_binding_match'] )
+			&& ! empty( $site['deployment_binding_bound'] )
+			&& ! empty( $site['same_origin_clone_protection'] );
+		$skills_checkpoint_current = ! empty( $job['ready'] ) && ! empty( $job['checkpoint_identity_current'] );
+		$has_job = isset( $job['state'] ) && is_string( $job['state'] );
+		$job_running = $has_job && 'running' === $job['state'];
+		$steps = array();
+		$steps[] = array( 'id' => 'site_profile', 'state' => $environment_ready ? 'verified' : 'blocked', 'next_ability' => 'mad4b/site-profile-status', 'auto_execution' => false );
+		$steps[] = array( 'id' => 'deployment_binding', 'state' => $binding_ready ? 'verified' : 'blocked', 'next_ability' => 'mad4b/deployment-binding-status', 'auto_execution' => false );
+		$steps[] = array( 'id' => 'managed_skills', 'state' => $skills_checkpoint_current ? 'checkpoint_verified' : ( $job_running ? 'resume_existing_checkpoint' : 'needs_exact_reconciliation' ),
+			'next_ability' => $job_running ? 'mad4b/remote-operation-reconciliation-status' : 'mad4b/reconcile-managed-skills',
+			'auto_execution' => false, 'existing_operation_id' => isset( $job['checkpoint']['operation_id'] ) ? (string) $job['checkpoint']['operation_id'] : '' );
+		$steps[] = array( 'id' => 'governed_write', 'state' => 'independent_exact_read_required',
+			'next_ability' => 'mad4b/staging-write-authority-convergence-handshake', 'owner_review_required' => true, 'auto_execution' => false );
+		$steps[] = array( 'id' => 'plugin_compatibility', 'state' => 'independent_paginated_read_required',
+			'next_ability' => 'mad4b/provider-closure-matrix', 'auto_execution' => false );
+		$steps[] = array( 'id' => 'browser_and_host_acceptance', 'state' => 'external_evidence_required',
+			'next_ability' => 'mad4b/browser-acceptance-plan', 'auto_execution' => false );
+		$next = 'site_profile';
+		if ( $environment_ready ) $next = $binding_ready ? ( $skills_checkpoint_current ? 'governed_write' : 'managed_skills' ) : 'deployment_binding';
+		return array(
+			'contract' => 'mad4b.fast-onboarding-plan.v1',
+			'state' => ! $environment_ready ? 'site_profile_required' : ( ! $binding_ready ? 'deployment_binding_required' : ( $skills_checkpoint_current ? 'write_review_required' : ( $job_running ? 'existing_checkpoint_in_progress' : 'managed_skills_reconciliation_required' ) ) ),
+			'next_step' => $next, 'steps' => $steps,
+			'prefer_single_generation_fenced_read' => true,
+			'deep_diagnostic_policy' => 'opt_in_one_bundle_at_a_time',
+			'blind_retry_on_transport_failure' => false,
+			'automatic_approval' => false,
+			'authority_granted' => false,
+			'production_mutation' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	/** Extremely small MCP response; no expensive cross-provider discovery. */
+	public static function fast_status( $input = array() ) {
+		if ( null === $input ) $input = array();
+		if ( ! is_array( $input ) || ! empty( $input ) ) return new WP_Error( 'mad4b_fast_autopilot_input_invalid', 'Fast Autopilot accepts no arguments.' );
+		$site = array(); $job = array(); $incidents = array();
+		try {
+			$site = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::status() : array();
+		} catch ( Throwable $e ) { $incidents[] = 'site_profile_observation_failed'; }
+		try {
+			$job = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ? MAD4B_SCP_Remote_Operation_Parity::managed_skills_reconciliation_status() : array();
+		} catch ( Throwable $e ) { $incidents[] = 'managed_skills_checkpoint_observation_failed'; }
+		$plan = self::fast_plan( $site, $job );
+		return array(
+			'contract' => 'mad4b.fast-autopilot-status.v1',
+			'plan' => $plan,
+			'checkpoint' => array(
+				'state' => isset( $job['state'] ) ? (string) $job['state'] : 'unverified',
+				'identity_current' => ! empty( $job['checkpoint_identity_current'] ),
+				'operation_id' => isset( $job['checkpoint']['operation_id'] ) ? (string) $job['checkpoint']['operation_id'] : '',
+				'seed_cursor' => isset( $job['checkpoint']['seed_cursor'] ) ? (int) $job['checkpoint']['seed_cursor'] : null,
+				'lock_active' => ! empty( $job['lock']['active'] ),
+			),
+			'incidents' => $incidents,
+			'execution_performed' => false, 'mutation_performed' => false,
+			'authorizing' => false, 'production_mutation' => false,
+		);
 	}
 
 	/**
