@@ -114,8 +114,16 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             ? MAD4B_SCP_Staging_Write_Authority_Convergence::plan_for_local_owner()
             : MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
         if ( is_wp_error( $plan ) ) return $plan;
-        if ( ! is_array( $plan ) || empty( $plan['ready_to_apply'] ) || empty( $plan['plan_sha256'] ) )
-            return new WP_Error( 'mad4b_owner_plan_not_ready', 'Fresh eligible Staging Write plan required.' );
+        if ( ! is_array( $plan ) || empty( $plan['ready_to_apply'] ) || empty( $plan['plan_sha256'] ) ) {
+            $blockers = is_array( $plan ) && isset( $plan['hard_blockers'] ) && is_array( $plan['hard_blockers'] )
+                ? array_values( array_unique( array_filter( array_map( 'sanitize_key', $plan['hard_blockers'] ) ) ) ) : array();
+            $grant_blockers = is_array( $plan ) && isset( $plan['exact_grant_plan_blockers'] ) && is_array( $plan['exact_grant_plan_blockers'] )
+                ? array_values( array_unique( array_filter( array_map( 'sanitize_text_field', $plan['exact_grant_plan_blockers'] ) ) ) ) : array();
+            return new WP_Error( 'mad4b_owner_plan_not_ready', 'Fresh eligible Staging Write plan required.',
+                array( 'blockers' => array_slice( $blockers, 0, 20 ),
+                    'exact_grant_blockers' => array_slice( $grant_blockers, 0, 20 ),
+                    'read_only' => true, 'mutation_performed' => false ) );
+        }
         // Return only the exact identity needed for owner review, not the
         // broad grant inventory or private provider information.
         $identity = array();
@@ -197,7 +205,19 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         $review = self::review();
         echo '<div class="wrap"><h1>Staging Write — Exact Owner Review</h1>';
         if ( is_wp_error( $review ) ) {
-            echo '<p role="alert">' . esc_html( $review->get_error_code() ) . '</p></div>';
+            echo '<p role="alert">' . esc_html( $review->get_error_code() ) . '</p>';
+            $details = $review->get_error_data();
+            if ( is_array( $details ) ) {
+                foreach ( array( 'blockers', 'exact_grant_blockers' ) as $key ) {
+                    $items = isset( $details[ $key ] ) && is_array( $details[ $key ] ) ? $details[ $key ] : array();
+                    if ( ! $items ) continue;
+                    echo '<h2>' . esc_html( 'exact_grant_blockers' === $key ? 'Exact grant plan blockers' : 'Convergence prerequisites' ) . '</h2><ul>';
+                    foreach ( array_slice( $items, 0, 20 ) as $item )
+                        echo '<li><code>' . esc_html( (string) $item ) . '</code></li>';
+                    echo '</ul>';
+                }
+            }
+            echo '</div>';
             return;
         }
         $saved = get_option( self::OPTION, array() );

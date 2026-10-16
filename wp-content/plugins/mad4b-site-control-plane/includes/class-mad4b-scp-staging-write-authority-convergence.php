@@ -367,7 +367,9 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 		// reconcilable even when the narrower source-reviewed grant
 		// allowlist explicitly rejects it. Never advertise READY in that case.
 		$exact_grant_plan = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan' )
-			? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()
+			? ( self::$local_owner_preview
+				? MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan_for_local_owner()
+				: MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan() )
 			: new WP_Error( 'mad4b_exact_grant_plan_unavailable', 'Exact reviewed grant plan is unavailable.' );
 		$grant_plan_eligible = is_array( $exact_grant_plan ) && ! empty( $exact_grant_plan['eligible'] );
 		$grant_plan_blockers = is_array( $exact_grant_plan ) && isset( $exact_grant_plan['blockers'] ) && is_array( $exact_grant_plan['blockers'] )
