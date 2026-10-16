@@ -129,6 +129,9 @@ $GLOBALS['plan'] = $before_drift;
 assertion( is_wp_error( $klass::diagnose( array( 'apply' => true ) ) ),
     'diagnostic refuses mutation-like input' );
 
+$plan_unavailable = $klass::page_intent_status( null );
+assertion( 'OWNER_INTENT_PLAN_UNAVAILABLE' === $plan_unavailable['state'],
+    'missing current plan must not be mislabeled a changed digest' );
 $status = $klass::page_intent_status( $review );
 assertion( 'OWNER_INTENT_CURRENT' === $status['state'] && $receipt === $status['receipt_sha256'], 'fresh GET recognizes signed confirmation' );
 ob_start();

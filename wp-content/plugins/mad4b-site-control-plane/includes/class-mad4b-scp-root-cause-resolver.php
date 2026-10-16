@@ -144,9 +144,13 @@ final class MAD4B_SCP_Root_Cause_Resolver {
             array( 'priority' => 4, 'route' => 'governed_adapter_extension',
                 'status' => 'only_if_existing_native_routes_insufficient' ),
         );
-        $gap = ! $native_read && ! $adapter_read ? 'SETTINGS_READ_NOT_VERIFIED'
-            : ( ! $native_write && ! $adapter_write ? 'BOUNDED_SETTINGS_WRITE_NOT_VERIFIED'
-            : ( ! $rollback ? 'ROLLBACK_CONTRACT_NOT_VERIFIED' : 'NONE_REPORTED' ) );
+        $family = isset( $input['issue_family'] ) ? $input['issue_family'] : 'frontend_js';
+        $settings_family = in_array( $family, array( 'frontend_js', 'performance' ), true );
+        $gap = ! $native_read && ! $adapter_read
+            ? ( $settings_family ? 'SETTINGS_READ_NOT_VERIFIED' : 'PROVIDER_NATIVE_READ_NOT_VERIFIED' )
+            : ( ! $native_write && ! $adapter_write
+                ? ( $settings_family ? 'BOUNDED_SETTINGS_WRITE_NOT_VERIFIED' : 'BOUNDED_PROVIDER_MUTATION_NOT_VERIFIED' )
+                : ( ! $rollback ? 'ROLLBACK_CONTRACT_NOT_VERIFIED' : 'NONE_REPORTED' ) );
         // Even a complete caller-reported capability inventory is not an
         // authoritative runtime snapshot and cannot create a write plan.
         return array(
@@ -164,7 +168,8 @@ final class MAD4B_SCP_Root_Cause_Resolver {
                 ? 'isolate_each_optimizer_and_capture_new_browser_evidence'
                 : ( 'NO_REPRODUCED_FAILURE' === $diagnosis
                     ? 'capture_reproducible_browser_failure'
-                    : 'verify_provider_runtime_settings_and_script_dependency_order' ),
+                    : ( $settings_family ? 'verify_provider_runtime_settings_and_script_dependency_order'
+                        : 'verify_native_provider_behavior_and_registered_abilities' ) ),
             'standalone_plugin_creation_allowed' => false,
             'mutation_performed' => false,
             'automatic_write_allowed' => false,

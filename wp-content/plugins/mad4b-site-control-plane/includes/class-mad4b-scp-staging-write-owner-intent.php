@@ -290,9 +290,10 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         $claimed = is_array( $claim ) && isset( $claim['receipt'] )
             && hash_equals( $receipt, (string) $claim['receipt'] );
         return array(
-            'state' => ! $same_review ? 'OWNER_INTENT_PLAN_CHANGED'
-                : ( ! $valid_time ? 'OWNER_INTENT_EXPIRED'
-                : ( $claimed ? 'OWNER_INTENT_CLAIMED' : 'OWNER_INTENT_CURRENT' ) ),
+            'state' => ! $valid_time ? 'OWNER_INTENT_EXPIRED'
+                : ( ! is_array( $review ) ? 'OWNER_INTENT_PLAN_UNAVAILABLE'
+                : ( ! $same_review ? 'OWNER_INTENT_PLAN_CHANGED'
+                : ( $claimed ? 'OWNER_INTENT_CLAIMED' : 'OWNER_INTENT_CURRENT' ) ) ),
             'receipt_sha256' => $receipt,
             'expires_at' => (int) $saved['expires'],
             'read_only' => true, 'write_authorized' => false,
@@ -426,6 +427,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 echo '<div class="notice notice-warning"><p>Previous owner confirmation exists, but the current exact plan is not eligible. State: <code>'
                     . esc_html( $view['state'] ) . '</code>. Reconcile the plan before requesting a new confirmation.</p></div>';
             echo '<p role="alert">' . esc_html( $review->get_error_code() ) . '</p>';
+            echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-operational-remediation' ) )
+                . '">Inspect the current blocking gate and recommended next step</a></p>';
             $details = $review->get_error_data();
             if ( is_array( $details ) ) {
                 foreach ( array( 'blockers', 'exact_grant_blockers' ) as $key ) {
@@ -446,12 +449,14 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 . esc_html( gmdate( 'Y-m-d H:i:s', (int) $view['expires_at'] ) . ' UTC' ) . '</code>.</p></div>';
         elseif ( 'OWNER_INTENT_CLAIMED' === $view['state'] )
             echo '<div class="notice notice-info" role="status"><p><strong>Owner confirmation consumed.</strong> Check a fresh Governed Write status and candidate binding. Do not submit the same approval again.</p></div>';
-        elseif ( 'OWNER_INTENT_EXPIRED' === $view['state'] || 'OWNER_INTENT_PLAN_CHANGED' === $view['state'] )
+        elseif ( in_array( $view['state'], array( 'OWNER_INTENT_EXPIRED',
+            'OWNER_INTENT_PLAN_CHANGED', 'OWNER_INTENT_PLAN_UNAVAILABLE' ), true ) )
             echo '<div class="notice notice-warning" role="status"><p>Previous confirmation cannot be reused: <code>'
                 . esc_html( $view['state'] ) . '</code>. An exact current plan and a new confirmation are required.</p></div>';
         if ( ! in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) )
             echo '<p><strong>Manual WordPress approval:</strong> confirm the exact site, revision, source, plan SHA and type '
                 . '<code>' . esc_html( self::CONFIRM ) . '</code>. This saves one owner intent for 600 seconds; it does not apply grants.</p>';
+        echo '<details><summary>Advanced: OAuth and exact plan details</summary>';
         echo '<p><strong>Remote OAuth alternative:</strong> discover '
             . '<code>' . esc_html( self::REVIEW_ABILITY ) . '</code>, obtain the current review digest, then use '
             . '<code>' . esc_html( MAD4B_SCP_Staging_Write_Authority_Convergence::HANDSHAKE_ABILITY ) . '</code> '
@@ -465,6 +470,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             echo '<p>Verified receipt: <code>' . esc_html( $view['receipt_sha256'] ) . '</code></p>';
         if ( 'OWNER_INTENT_CURRENT' === $view['state'] )
             echo '<p><strong>Next:</strong> use a delegated OAuth session for the SAME enrolled owner, get a fresh exact Staging Write handshake, then apply with <code>owner_intent_sha256</code> equal to the receipt above and all expected plan fields. The receipt is not an execution ticket. Finish with a NEW-REQUEST readback of grant counts and candidate binding, then recheck the runtime recovery checkpoint and Context source selection.</p>';
+        echo '</details>';
         // Post/Redirect/Get must display the persisted terminal state, not
         // return to the same blank confirmation form after a successful POST.
         if ( in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) ) {

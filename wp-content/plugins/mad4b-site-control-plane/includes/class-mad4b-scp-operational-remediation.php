@@ -94,6 +94,17 @@ final class MAD4B_SCP_Operational_Remediation {
 		echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Observed diagnostic only. Provider installation, host commands, Browser execution, Brand approval, WordPress writes and release acceptance require separate governed steps.', 'mad4b-site-control-plane' ) . '</p>';
         $items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
+        $next = is_array( $view['primary_next_step'] ?? null ) ? $view['primary_next_step'] : array();
+        if ( $next ) {
+            echo '<div class="notice notice-info inline" role="status"><p><strong>Recommended next step:</strong> <code>'
+                . esc_html( (string) ( $next['state'] ?? 'UNAVAILABLE' ) ) . '</code></p><p>'
+                . esc_html( (string) ( $next['why'] ?? '' ) ) . '</p>';
+            if ( ! empty( $next['focus_gate'] ) ) echo '<p><strong>First open gate:</strong> <code>'
+                . esc_html( (string) $next['focus_gate'] ) . '</code></p>';
+            if ( ! empty( $next['next_ability'] ) ) echo '<p><strong>Read/plan tool:</strong> <code>'
+                . esc_html( (string) $next['next_ability'] ) . '</code></p>';
+            echo '<p class="description">No automatic changes; any mutation requires a fresh exact plan and approval.</p></div>';
+        }
         echo '<div class="notice notice-info inline"><p><strong>'
             . esc_html__( 'Operator summary', 'mad4b-site-control-plane' )
             . '</strong></p><p>' . esc_html(
@@ -350,6 +361,64 @@ final class MAD4B_SCP_Operational_Remediation {
 		}
 	}
 
+	/** One safe handoff, selected from canonical already-collected gate evidence. */
+	public static function primary_next_step( $integrity, array $issues, array $items, $native_ready, $live_requested, $live_ready ) {
+		$common = array( 'read_only' => true, 'automatic_execution_allowed' => false,
+			'owner_approval_created' => false, 'mutation_performed' => false,
+			'no_blind_retry' => true, 'independent_readback_required' => true );
+		if ( ! $integrity || $issues )
+			return array_merge( $common, array(
+				'state' => 'DIAGNOSTIC_INTEGRITY_FIRST',
+				'why' => 'One or more source, site, or plan integrity checks are unresolved.',
+				'next_ability' => 'mad4b/staging-certification-status',
+				'focus_gate' => '',
+				'blockers' => array_slice( array_values( $issues ), 0, 12 ),
+			) );
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) || empty( $item['gate_id'] ) ) continue;
+			$paths = isset( $item['paths'] ) && is_array( $item['paths'] ) ? $item['paths'] : array();
+			foreach ( $paths as $path ) {
+				if ( ! is_array( $path ) ) continue;
+				$action = isset( $path['action_id'] ) && is_string( $path['action_id'] )
+					? $path['action_id'] : '';
+				if ( ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $action ) ) continue;
+				// No effectful tool is ever a next step. Its registered existence
+				// is only a hint for a separate exact plan and human decision.
+				$readback = ! empty( $path['readback_registered'] ) && ! empty( $path['readback_ability'] )
+					? (string) $path['readback_ability'] : '';
+				return array_merge( $common, array(
+					'state' => $readback ? 'VERIFY_CURRENT_GATE_BEFORE_APPROVAL' :
+						( ! empty( $path['apply_registered'] ) ? 'PREPARE_EXACT_GOVERNED_REVIEW'
+						: 'DISCOVER_EXISTING_NATIVE_CAPABILITY' ),
+					'why' => $readback
+						? 'Read the current gate after prior or uncertain execution before approving any repeat.'
+						: 'Inspect an existing governed route; no new standalone plugin or automatic mutation.',
+					'next_ability' => $readback ?: ( ! empty( $path['apply_registered'] )
+                        ? 'mad4b/operational-remediation-prepare' : 'mad4b/operation-route-discover' ),
+					'focus_gate' => (string) $item['gate_id'],
+					'focus_action_id' => $action,
+					'approval_required_if_mutation' => true,
+				) );
+			}
+			return array_merge( $common, array(
+				'state' => 'CAPABILITY_GAP', 'why' => 'Blocked gate has no declared remediation route.',
+				'next_ability' => 'mad4b/operation-route-discover',
+				'focus_gate' => (string) $item['gate_id'] ) );
+		}
+		if ( ! $native_ready ) return array_merge( $common, array(
+			'state' => 'VERIFY_NATIVE_STAGING_READINESS',
+			'why' => 'No canonical blocked gate is listed but staging readiness is still unverified.',
+			'next_ability' => 'mad4b/staging-certification-status', 'focus_gate' => '' ) );
+		if ( $live_requested && ! $live_ready ) return array_merge( $common, array(
+			'state' => 'EXTERNAL_BROWSER_ACCEPTANCE_REQUIRED',
+			'why' => 'Staging gates alone do not certify frontend behavior or release acceptance.',
+			'next_ability' => 'mad4b/browser-acceptance-plan', 'focus_gate' => '' ) );
+		return array_merge( $common, array(
+			'state' => 'GATES_OBSERVED_READY_NOT_RELEASE_CERTIFIED',
+			'why' => 'Readiness is not a deployment certificate; independent acceptance is still required.',
+			'next_ability' => 'mad4b/operational-acceptance-evidence', 'focus_gate' => '' ) );
+	}
+
 	/** Two independent observations. Disagreement is explicitly blocked. */
 	public static function status( $input = array() ) {
 		$input = is_array( $input ) ? $input : array();
@@ -507,6 +576,9 @@ final class MAD4B_SCP_Operational_Remediation {
 			'readiness_domains' => $domains,
 			'blocking_gates' => array_keys( $blocked ),
 			'work_items' => $items,
+			'primary_next_step' => self::primary_next_step( $verified, $issues, $items,
+                ! empty( $native['ready'] ) && ! empty( $plan['current_ready'] ),
+                $live_requested, $live_ready ),
 			'plan_integrity_blockers' => $issues,
 			'reverify_ability' => 'mad4b/staging-convergence-verify',
 			'prepare_ability' => self::PREPARE_ABILITY,

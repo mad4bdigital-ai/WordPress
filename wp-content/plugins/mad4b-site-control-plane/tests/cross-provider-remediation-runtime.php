@@ -47,6 +47,9 @@ $case = MAD4B_SCP_Root_Cause_Resolver::assess( array(
 check( ! is_wp_error( $case ), 'generic root cause intake' );
 $coverage = $case['cross_provider_remediation'];
 check( $coverage['issue_family'] === 'visual_builder', 'issue domain supported' );
+check( $case['capability_gap'] === 'PROVIDER_NATIVE_READ_NOT_VERIFIED'
+    && $case['recommended_next_action'] === 'verify_native_provider_behavior_and_registered_abilities',
+    'dynamic non-JS provider diagnosis uses native behavior, not unrelated JS settings' );
 check( $coverage['isolation_assessment'] === 'REPORTED_REPEATABLE_PROVIDER_ISOLATION',
     'reported isolated causal relation categorized' );
 check( $coverage['cause_confirmed'] === false, 'never trust submitted browser evidence' );
