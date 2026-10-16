@@ -485,3 +485,7 @@ if "self::runtime_identity_status()" not in effective_for_protocol:
     raise SystemExit("Local OAuth protocol readiness must use runtime_identity_status()")
 if "self::status()" in effective_for_protocol:
     raise SystemExit("Local OAuth protocol readiness must not invoke deep status()")
+
+# Consent can POST same-origin and follow 302 only to a client-registered callback.
+assert 'consent_form_action_sources( $validated )' in server, 'OAuth consent CSP not derived from verified redirect'
+assert 'self::redirect_uri_allowed( $client, $uri )' in server, 'Unregistered redirect may enter CSP'

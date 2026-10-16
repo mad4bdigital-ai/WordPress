@@ -59,3 +59,15 @@ The plan directs callers to versioned Enrollment Info/Execute for Skills, exact 
 - GitHub CI on this exact source head; new exact-head ZIP and deployment are separate controlled steps
 
 Production, Developer, Breakglass, raw-SQL and unsupervised owner ticket approvals remain excluded.
+
+## OAuth POST 302 blocked by CSP form-action (local Chrome, 2026-10-16)
+
+**Live browser evidence on ETG Staging:** The logged-in Chrome window showed `POST /oauth/mcp/authorize` returning HTTP 302, followed by a CSP console violation for `form-action 'self'`; the expected navigation to the registered ChatGPT OAuth callback did not occur. Separate admin-ajax live authority reads continued returning HTTP 200. Chrome extension `runtime.lastError` messages were present but do not explain the form redirect block. POST latency of approximately 29.5 seconds is independently noteworthy and remains unverified until server timings can be correlated.
+
+**Source defect:** `Local_OAuth_Server::render_consent()` emitted `form-action 'self'` even for a previously validated external `redirect_uri`. Chromium checks the form navigation's redirect chain against this directive and blocks the cross-origin OAuth 302.
+
+**Source fix:** Build `form-action` from `'self'` plus the exact origin of the client-registered, server-validated redirect URI. The derived origin is strictly bounded to HTTP(S), with HTTPS required except for already-registered loopback HTTP clients; CSP injection and arbitrary form origins remain denied. The authorization-code grant, PKCE, nonce, redirect URI allowlist, `script-src nonce`, and fail-closed Write authority boundaries remain unchanged.
+
+**Regression evidence:** `tests/local-oauth-csp-redirect-runtime.php` passes PHP 7.4 and 8.3 on exact/trusted, foreign, path-mismatched, header-injection and loopback URLs. `tests/local-oauth-standalone-contract.py` asserts the trusted source derivation. A synthetic two-server test on the user's Windows Chrome reproduced a blocked form redirect under the old CSP and a completed callback under the corrected origin-bound policy. The existing `oauth-live-authority-browser-e2e.mjs` now asserts the trusted ChatGPT callback origin in the returned CSP.
+
+**Not yet established:** Live ETG acceptance after plugin deployment, actual OAuth code exchange, and the cause of the ~29.5s authorization POST response. A fresh connector-managed OAuth request is required after deployment; do not reuse an expired or previously interrupted authorization code.

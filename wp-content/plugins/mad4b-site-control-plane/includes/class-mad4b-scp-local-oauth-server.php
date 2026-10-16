@@ -827,6 +827,36 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		);
 	}
 
+	/**
+	 * Chrome evaluates CSP form-action on the OAuth form's redirect chain.
+	 * A self-only policy accepts the POST but blocks the subsequent 302 to
+	 * the registered ChatGPT callback, leaving the consent page stranded.
+	 *
+	 * Only the exact redirect URI from a validated registered client can
+	 * contribute a host source. No wildcard, user info, query, fragment or
+	 * unsanitized request URI can become a CSP directive.
+	 */
+	private static function consent_form_action_sources( array $validated ) {
+		$local = "'self'";
+		$uri = isset( $validated['redirect_uri'] ) ? $validated['redirect_uri'] : '';
+		$client = isset( $validated['client'] ) ? $validated['client'] : null;
+		if ( ! is_array( $client ) || ! is_string( $uri ) || ! self::redirect_uri_allowed( $client, $uri ) ) return $local;
+		$parts = wp_parse_url( $uri );
+		if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] )
+			|| ! empty( $parts['user'] ) || ! empty( $parts['pass'] ) ) return $local;
+		$scheme = strtolower( (string) $parts['scheme'] );
+		$host = strtolower( (string) $parts['host'] );
+		$is_loopback = in_array( trim( $host, '[]' ), array( '127.0.0.1', '::1', 'localhost' ), true );
+		if ( 'https' !== $scheme && ! ( 'http' === $scheme && $is_loopback ) ) return $local;
+		$is_hostname = 1 === preg_match( '/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/D', $host );
+		if ( ! $is_hostname && ! ( $is_loopback && '::1' === trim( $host, '[]' ) ) ) return $local;
+		$port = isset( $parts['port'] ) ? (int) $parts['port'] : 0;
+		if ( $port < 0 || $port > 65535 ) return $local;
+		$authority = '::1' === trim( $host, '[]' ) ? '[::1]' : $host;
+		$origin = $scheme . '://' . $authority . ( $port ? ':' . $port : '' );
+		return $local . ' ' . $origin;
+	}
+
 	private static function render_consent( array $validated, $user_id ) {
 		$client_name = isset( $validated['client']['client_name'] ) ? (string) $validated['client']['client_name'] : $validated['client_id'];
 		nocache_headers();
@@ -834,7 +864,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		header( 'Content-Type: text/html; charset=utf-8' );
 		header( 'X-Frame-Options: DENY' );
 		$script_nonce = rtrim( strtr( base64_encode( random_bytes( 18 ) ), '+/', '-_' ), '=' );
-		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-" . $script_nonce . "'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'" );
+		$consent_form_action = self::consent_form_action_sources( $validated );
+		header( "Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-" . $script_nonce . "'; connect-src 'self'; form-action " . $consent_form_action . "; base-uri 'none'; frame-ancestors 'none'" );
 		header( 'Referrer-Policy: no-referrer' );
 		header( 'X-Content-Type-Options: nosniff' );
 		$hidden = array(

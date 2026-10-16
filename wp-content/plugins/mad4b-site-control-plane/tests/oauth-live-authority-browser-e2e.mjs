@@ -94,6 +94,7 @@ try {
   const scriptNonce = await page.locator('script[nonce]').evaluate(el => el.nonce);
   assert(scriptNonce === nonceMatch[1], 'Rendered script nonce does not match CSP nonce.', { scriptNonce, csp });
   assert(csp.includes("connect-src 'self'"), 'Consent CSP lost same-origin connect boundary.', { csp });
+  assert(csp.includes("form-action 'self' https://chatgpt.com"), 'Registered ChatGPT redirect origin missing from consent CSP.', { csp });
 
   const { response: ajaxResponse, json } = await Promise.race([
     firstProjection,
