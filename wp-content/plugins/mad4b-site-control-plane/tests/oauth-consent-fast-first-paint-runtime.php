@@ -82,8 +82,8 @@ oauth_first_paint_assert(
     'OAuth approve and deny actions must precede optional diagnostic lists'
 );
 oauth_first_paint_assert(
-    1 === substr_count( $render, 'name=\"decision\" value=\"approve\"' )
-    && 1 === substr_count( $render, 'name=\"decision\" value=\"deny\"' ),
+    1 === substr_count( stripslashes( $render ), 'name="decision" value="approve"' )
+    && 1 === substr_count( stripslashes( $render ), 'name="decision" value="deny"' ),
     'OAuth primary form must have exactly one choice for each action'
 );
 oauth_first_paint_assert(
