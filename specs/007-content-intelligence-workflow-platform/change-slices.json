@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "4fea0bd09f58bb189b91bd9bd51db7a84a099b70",
-  "changed_file_count": 90,
+  "changed_file_count": 93,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2259,7 +2259,8 @@
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-mcp-path-review.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-matrix.php",
         "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-recovery-center.php",
-        "wp-content/plugins/mad4b-site-control-plane/docs/MCP-SKILLS-EXACT-CHECKPOINT-RESUME-FIX-20261016.md"
+        "wp-content/plugins/mad4b-site-control-plane/docs/MCP-SKILLS-EXACT-CHECKPOINT-RESUME-FIX-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/STAGING-LOCAL-OWNER-OAUTH-REVIEW-SEPARATION-20261016.md"
       ]
     },
     {
@@ -2290,10 +2291,11 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-recovery-center-ui-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-local-owner-preview-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-one-step-review-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-checkpoint-resume-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-checkpoint-resume-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php"
       ]
     }
   ],
-  "changed_paths_sha256": "ad4a6e12b9be80f75f3126d75c15d3f466ff37d8599abf59e8b554a18c776ee9",
+  "changed_paths_sha256": "1ebdc29cb835c4957fc8142348a57b5dbb1fc91bbf4dfd5839964e379fcc24c5",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
