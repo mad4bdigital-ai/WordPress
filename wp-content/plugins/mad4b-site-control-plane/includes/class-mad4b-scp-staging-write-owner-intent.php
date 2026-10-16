@@ -196,15 +196,62 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         if ( is_wp_error( $audit ) ) return new WP_Error( 'mad4b_owner_claim_audit_failed', 'Claim consumed; reconcile before retry.' );
         return array( 'owner_user'=>$saved['owner'], 'receipt_sha256'=>$hash, 'claimed_once'=>true );
     }
+    /**
+     * Read-only owner-intent UI receipt. The URL is NEVER evidence of success.
+     * The signed, same-owner, same-plan, unexpired option is authoritative for
+     * rendering a recorded/claimed state. This does not create write access.
+     */
+    public static function page_intent_status( $review = null ) {
+        $saved = get_option( self::OPTION, array() );
+        $absent = array( 'state' => 'NO_VERIFIED_OWNER_INTENT', 'receipt_sha256' => '',
+            'expires_at' => 0, 'read_only' => true, 'write_authorized' => false );
+        if ( ! is_array( $saved ) || ! isset( $saved['receipt_sha256'], $saved['owner'],
+            $saved['review_digest'], $saved['issued'], $saved['expires'], $saved['nonce'] ) )
+            return $absent;
+        $receipt = $saved['receipt_sha256'];
+        if ( ! is_string( $receipt ) || ! preg_match( '/^[a-f0-9]{64}$/D', $receipt ) )
+            return $absent;
+        $signed = $saved;
+        unset( $signed['receipt_sha256'] );
+        $actual = self::signature( $signed );
+        if ( '' === $actual || ! hash_equals( $actual, $receipt )
+            || (int) $saved['owner'] !== (int) get_current_user_id()
+            || ! self::owner() ) return $absent;
+        $valid_time = (int) $saved['issued'] <= time()
+            && (int) $saved['expires'] > time()
+            && (int) $saved['expires'] > (int) $saved['issued']
+            && (int) $saved['expires'] - (int) $saved['issued'] <= self::TTL;
+        $same_review = is_array( $review ) && isset( $review['review_digest'] )
+            && is_string( $review['review_digest'] )
+            && hash_equals( (string) $review['review_digest'], (string) $saved['review_digest'] );
+        $claim_key = 'mad4b_scp_owner_claim_' . substr( $receipt, 0, 40 );
+        $claim = get_option( $claim_key, array() );
+        $claimed = is_array( $claim ) && isset( $claim['receipt'] )
+            && hash_equals( $receipt, (string) $claim['receipt'] );
+        return array(
+            'state' => ! $same_review ? 'OWNER_INTENT_PLAN_CHANGED'
+                : ( ! $valid_time ? 'OWNER_INTENT_EXPIRED'
+                : ( $claimed ? 'OWNER_INTENT_CLAIMED' : 'OWNER_INTENT_CURRENT' ) ),
+            'receipt_sha256' => $receipt,
+            'expires_at' => (int) $saved['expires'],
+            'read_only' => true, 'write_authorized' => false,
+        );
+    }
+
     public static function menu() {
         add_management_page( 'MAD4B Staging Write Owner Review', 'MAD4B Write Review',
             'manage_options', self::PAGE, array( __CLASS__, 'page' ) );
     }
     public static function page() {
         if ( ! self::owner() ) wp_die( 'Explicit enrolled Staging owner required.' );
+        if ( ! headers_sent() && function_exists( 'nocache_headers' ) ) nocache_headers();
         $review = self::review();
+        $view = self::page_intent_status( is_array( $review ) ? $review : null );
         echo '<div class="wrap"><h1>Staging Write — Exact Owner Review</h1>';
         if ( is_wp_error( $review ) ) {
+            if ( 'NO_VERIFIED_OWNER_INTENT' !== $view['state'] )
+                echo '<div class="notice notice-warning"><p>Previous owner confirmation exists, but the current exact plan is not eligible. State: <code>'
+                    . esc_html( $view['state'] ) . '</code>. Reconcile the plan before requesting a new confirmation.</p></div>';
             echo '<p role="alert">' . esc_html( $review->get_error_code() ) . '</p>';
             $details = $review->get_error_data();
             if ( is_array( $details ) ) {
@@ -220,10 +267,18 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             echo '</div>';
             return;
         }
-        $saved = get_option( self::OPTION, array() );
         echo '<p>Owner intent only: no grant, ticket, OAuth change or installation.</p>';
-        echo '<p><strong>Manual WordPress approval:</strong> confirm the exact site, revision, source, plan SHA and type '
-            . '<code>' . esc_html( self::CONFIRM ) . '</code>. This saves one owner intent for 600 seconds; it does not apply grants.</p>';
+        if ( 'OWNER_INTENT_CURRENT' === $view['state'] )
+            echo '<div class="notice notice-success" role="status"><p><strong>Owner confirmation recorded and verified.</strong> This records intent only, not an applied write permission. Receipt expires at UTC timestamp <code>'
+                . esc_html( gmdate( 'Y-m-d H:i:s', (int) $view['expires_at'] ) . ' UTC' ) . '</code>.</p></div>';
+        elseif ( 'OWNER_INTENT_CLAIMED' === $view['state'] )
+            echo '<div class="notice notice-info" role="status"><p><strong>Owner confirmation consumed.</strong> Check a fresh Governed Write status and candidate binding. Do not submit the same approval again.</p></div>';
+        elseif ( 'OWNER_INTENT_EXPIRED' === $view['state'] || 'OWNER_INTENT_PLAN_CHANGED' === $view['state'] )
+            echo '<div class="notice notice-warning" role="status"><p>Previous confirmation cannot be reused: <code>'
+                . esc_html( $view['state'] ) . '</code>. An exact current plan and a new confirmation are required.</p></div>';
+        if ( ! in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) )
+            echo '<p><strong>Manual WordPress approval:</strong> confirm the exact site, revision, source, plan SHA and type '
+                . '<code>' . esc_html( self::CONFIRM ) . '</code>. This saves one owner intent for 600 seconds; it does not apply grants.</p>';
         echo '<p><strong>Remote OAuth alternative:</strong> discover '
             . '<code>' . esc_html( self::REVIEW_ABILITY ) . '</code>, obtain the current review digest, then use '
             . '<code>' . esc_html( MAD4B_SCP_Staging_Write_Authority_Convergence::HANDSHAKE_ABILITY ) . '</code> '
@@ -233,13 +288,16 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         echo '<p>Site UUID: <code>' . esc_html( $review['plan']['site_uuid'] ) . '</code></p>';
         echo '<p>Source: <code>' . esc_html( $review['plan']['source_commit_sha'] ) . '</code></p>';
         echo '<p>Plan SHA: <code>' . esc_html( $review['plan']['plan_sha256'] ) . '</code></p>';
-        if ( is_array( $saved ) && isset( $saved['receipt_sha256'], $saved['review_digest'] )
-            && hash_equals( $review['review_digest'], (string) $saved['review_digest'] ) )
-            echo '<p>Receipt: <code>' . esc_html( $saved['receipt_sha256'] ) . '</code></p>';
-        if ( is_array( $saved ) && isset( $saved['receipt_sha256'], $saved['review_digest'], $saved['expires'] )
-            && hash_equals( $review['review_digest'], (string) $saved['review_digest'] )
-            && time() < (int) $saved['expires'] )
+        if ( in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) )
+            echo '<p>Verified receipt: <code>' . esc_html( $view['receipt_sha256'] ) . '</code></p>';
+        if ( 'OWNER_INTENT_CURRENT' === $view['state'] )
             echo '<p><strong>Next:</strong> use a delegated OAuth session for the SAME enrolled owner, get a fresh exact Staging Write handshake, then apply with <code>owner_intent_sha256</code> equal to the receipt above and all expected plan fields. The receipt is not an execution ticket. Finish with a NEW-REQUEST readback of grant counts and candidate binding, then recheck the runtime recovery checkpoint and Context source selection.</p>';
+        // Post/Redirect/Get must display the persisted terminal state, not
+        // return to the same blank confirmation form after a successful POST.
+        if ( in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) ) {
+            echo '<p><a href="' . esc_url( admin_url( 'admin.php?page=mad4b-operational-remediation' ) ) . '">View current Control Plane runtime status</a></p></div>';
+            return;
+        }
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
         echo '<input type="hidden" name="review_digest" value="' . esc_attr( $review['review_digest'] ) . '">';
@@ -259,7 +317,14 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             ? sanitize_text_field( wp_unslash( $_POST['confirmation'] ) ) : '';
         $result = self::attest( array( 'review_digest'=>$review, 'confirmation'=>$confirmation ) );
         if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_code() ) );
-        wp_safe_redirect( admin_url( 'tools.php?page=' . self::PAGE . '&intent=recorded' ) );
+        // Read the just-persisted signed option. The redirect query is never
+        // an authority receipt and must not be shown as success if stale.
+        $fresh = self::review();
+        $verified = self::page_intent_status( is_array( $fresh ) ? $fresh : null );
+        if ( ! is_array( $fresh ) || 'OWNER_INTENT_CURRENT' !== $verified['state']
+            || ! hash_equals( (string) $result['receipt_sha256'], (string) $verified['receipt_sha256'] ) )
+            wp_die( 'Owner intent was submitted but a fresh signed readback could not be verified. Do not retry until the current status is inspected.' );
+        wp_safe_redirect( admin_url( 'tools.php?page=' . self::PAGE . '&intent=recorded' ), 303 );
         exit;
     }
 }
