@@ -319,9 +319,11 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_code() ) );
         // Read the just-persisted signed option. The redirect query is never
         // an authority receipt and must not be shown as success if stale.
-        $fresh = self::review();
-        $verified = self::page_intent_status( is_array( $fresh ) ? $fresh : null );
-        if ( ! is_array( $fresh ) || 'OWNER_INTENT_CURRENT' !== $verified['state']
+        // attest() already verified the exact current plan before persisting.
+        // Recheck the signed saved option against that reviewed plan digest here;
+        // the fresh GET re-evaluates present plan readiness independently.
+        $verified = self::page_intent_status( array( 'review_digest' => $review ) );
+        if ( 'OWNER_INTENT_CURRENT' !== $verified['state']
             || ! hash_equals( (string) $result['receipt_sha256'], (string) $verified['receipt_sha256'] ) )
             wp_die( 'Owner intent was submitted but a fresh signed readback could not be verified. Do not retry until the current status is inspected.' );
         wp_safe_redirect( admin_url( 'tools.php?page=' . self::PAGE . '&intent=recorded' ), 303 );
