@@ -105,6 +105,74 @@ final class MAD4B_SCP_Staging_Autopilot {
 		);
 	}
 
+	/** A compact read-only deployment plan; does not authorize or execute. */
+	public static function source_bound_runbook( $site, $job, $identity ) {
+		$site = is_array( $site ) ? $site : array();
+		$job = is_array( $job ) ? $job : array();
+		$identity = is_array( $identity ) ? $identity : array();
+		$sha = strtolower( trim( (string) ( $identity['source_commit_sha'] ?? '' ) ) );
+		$build = strtolower( trim( (string) ( $identity['build_fingerprint'] ?? '' ) ) );
+		$manifest = strtolower( trim( (string) ( $identity['package_manifest_digest'] ?? '' ) ) );
+		$valid = ! empty( $identity['identity_ready'] )
+			&& 1 === preg_match( '/^[0-9a-f]{40}$/', $sha )
+			&& 1 === preg_match( '/^[0-9a-f]{64}$/', $build )
+			&& 1 === preg_match( '/^[0-9a-f]{64}$/', $manifest );
+		$staging = 'staging' === (string) ( $site['configured_environment'] ?? '' )
+			&& 'staging' === (string) ( $site['wordpress_environment'] ?? '' )
+			&& ! empty( $site['wordpress_environment_explicit'] )
+			&& ! empty( $site['authority_ready'] )
+			&& ! empty( $site['origin_match'] )
+			&& ! empty( $site['environment_match'] )
+			&& empty( $site['mutation_pending_audit'] )
+			&& ! empty( $site['deployment_binding_configured'] )
+			&& ! empty( $site['deployment_binding_match'] )
+			&& ! empty( $site['deployment_binding_bound'] )
+			&& ! empty( $site['same_origin_clone_protection'] );
+		$current = ! empty( $job['checkpoint_identity_current'] );
+		$checkpoint = isset( $job['checkpoint'] ) && is_array( $job['checkpoint'] ) ? $job['checkpoint'] : array();
+		$operation_id = (string) ( $checkpoint['operation_id'] ?? '' );
+		$stage = (string) ( $checkpoint['stage'] ?? '' );
+		$verified_checkpoint = 1 === preg_match( '/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i', $operation_id )
+			&& in_array( $stage, array( 'preflight', 'seed_reconciliation', 'seed_ready', 'provider_reconciliation', 'provider_ready', 'runtime_certification' ), true );
+		$resume = $valid && $staging && $current && $verified_checkpoint
+			&& ! empty( $job['resume_eligible_after_fresh_permission'] )
+			&& empty( $job['lock']['active'] );
+		return array(
+			'contract' => 'mad4b.source-bound-runbook.v1',
+			'candidate_verified' => $valid && $staging,
+			'managed_skills' => array(
+				'operation_id' => 'managed_skills_reconciliation',
+				'candidate_input' => $valid && $staging ? array(
+					'expected_source_commit_sha' => $sha,
+					'expected_build_fingerprint' => $build,
+					'expected_package_manifest_digest' => $manifest,
+					'confirmation' => 'RECONCILE MANAGED SKILLS',
+				) : array(),
+				'checkpoint_operation_id' => $verified_checkpoint && $current ? $operation_id : '',
+				'resume_after_fresh_permission' => $resume,
+				'checkpoint_stage' => $verified_checkpoint && $current ? $stage : '',
+				'checkpoint_cursor' => $verified_checkpoint && $current ? (int) ( $checkpoint['seed_cursor'] ?? 0 ) : null,
+				'blind_retry_allowed' => false,
+				'fresh_execute_permission_required' => true,
+			),
+			'governed_write' => array(
+				'next_read' => 'mad4b/staging-write-authority-convergence-handshake',
+				'exact_owner_review_required' => true,
+				'previous_approval_reused' => false,
+				'plan_requires_current_source_digest' => true,
+			),
+			'plugin_capabilities' => array(
+				'next_read' => 'mad4b/provider-closure-matrix',
+				'capability_count_assumed' => false,
+				'uncertified_writes_automatically_eligible' => false,
+				'coverage_scan_mode' => 'paginated_all_discovered_plugins',
+				'behavioral_and_rollback_evidence_required' => true,
+			),
+			'write_executed' => false, 'approval_issued' => false,
+			'production_mutation' => false,
+		);
+	}
+
 	/** Extremely small MCP response; no expensive cross-provider discovery. */
 	public static function fast_status( $input = array() ) {
 		if ( null === $input ) $input = array();
@@ -117,9 +185,21 @@ final class MAD4B_SCP_Staging_Autopilot {
 			$job = class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ? MAD4B_SCP_Remote_Operation_Parity::managed_skills_reconciliation_status() : array();
 		} catch ( Throwable $e ) { $incidents[] = 'managed_skills_checkpoint_observation_failed'; }
 		$plan = self::fast_plan( $site, $job );
+		// Conversation intent provides scope only. The exact candidate must
+		// always come from the installed WordPress build.
+		$identity = array();
+		try {
+			if ( class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' ) ) {
+				$identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status();
+			}
+		} catch ( Throwable $error ) {
+			$incidents[] = 'exact_build_provenance_read_failed';
+		}
+		$runbook = self::source_bound_runbook( $site, $job, $identity );
 		return array(
 			'contract' => 'mad4b.fast-autopilot-status.v1',
 			'plan' => $plan,
+			'runbook' => $runbook,
 			'checkpoint' => array(
 				'state' => isset( $job['state'] ) ? (string) $job['state'] : 'unverified',
 				'identity_current' => ! empty( $job['checkpoint_identity_current'] ),
