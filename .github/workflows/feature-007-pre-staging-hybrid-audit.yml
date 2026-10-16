@@ -449,6 +449,21 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php
 
+      - name: Native-first recovery lifecycle security regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php -l "$P/includes/class-mad4b-scp-root-cause-resolver.php"
+          php -l "$P/includes/class-mad4b-scp-remediation-coverage.php"
+          php -l "$P/includes/class-mad4b-scp-operational-remediation.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-owner-intent.php"
+          php "$P/tests/native-first-root-cause-runtime.php"
+          php "$P/tests/cross-provider-remediation-runtime.php"
+          php "$P/tests/litespeed-optimization-hook-runtime.php"
+          php "$P/tests/operator-primary-next-step-runtime.php"
+          php "$P/tests/staging-write-owner-intent-runtime.php"
+
       - name: MAD4B-specific pre-Staging audit
         shell: bash
         run: |

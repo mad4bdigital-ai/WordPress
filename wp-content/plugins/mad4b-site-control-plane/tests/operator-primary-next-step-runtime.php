@@ -1,5 +1,17 @@
 <?php
 define( 'ABSPATH', __DIR__ );
+class Stub_Registered_Ability {
+    private $read;
+    public function __construct( $read ) { $this->read = $read; }
+    public function get_meta() { return array(
+        'annotations' => array( 'readonly' => $this->read ),
+        'mcp' => array( 'surface' => $this->read ? 'read' : 'write' ) ); }
+}
+function wp_get_ability( $name ) {
+    if ( 'mad4b/browser-acceptance-result' === $name ) return new Stub_Registered_Ability( true );
+    if ( 'mad4b/unsafe-write' === $name ) return new Stub_Registered_Ability( false );
+    return null;
+}
 require dirname(__DIR__) . '/includes/class-mad4b-scp-operational-remediation.php';
 function verify_step( $actual, $state, $ability, $reason ) {
     if ( ! is_array($actual) || ($actual['state'] ?? '') !== $state ||
@@ -18,6 +30,15 @@ verify_step($c::primary_next_step(false, array('invalid_site_binding'), $items, 
     'DIAGNOSTIC_INTEGRITY_FIRST', 'mad4b/staging-certification-status', 'integrity-precedes-write');
 verify_step($c::primary_next_step(true, array(), $items, false, false, false),
     'VERIFY_CURRENT_GATE_BEFORE_APPROVAL', 'mad4b/browser-acceptance-result', 'readback-before-retry');
+// No readback is allowed to masquerade as a readonly status tool.
+$unsafe = $path; $unsafe['readback_ability'] = 'mad4b/unsafe-write';
+verify_step($c::primary_next_step(true,array(),array(array(
+    'gate_id'=>'ajax_parity', 'paths'=>array($unsafe))),false,false,false),
+    'READBACK_CONTRACT_UNVERIFIED','mad4b/operation-route-discover','write route rejected as readback');
+$unknown = $path; $unknown['readback_ability'] = 'mad4b/not-registered';
+verify_step($c::primary_next_step(true,array(),array(array(
+    'gate_id'=>'ajax_parity', 'paths'=>array($unknown))),false,false,false),
+    'READBACK_CONTRACT_UNVERIFIED','mad4b/operation-route-discover','unmounted readback rejected');
 $x=$c::primary_next_step(true,array(),$items,false,false,false);
 if (($x['focus_gate']??'')!=='ajax_parity' || ($x['focus_action_id']??'')!=='restore_filters')
     {fwrite(STDERR,'FAILED dynamic primary route identity'."\n");exit(1);}

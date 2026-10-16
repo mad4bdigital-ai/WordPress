@@ -7,6 +7,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
     const ATTEST_ABILITY = 'mad4b/staging-write-owner-attest';
     const REVIEW_ABILITY = 'mad4b/staging-write-owner-review';
     const DIAGNOSE_ABILITY = 'mad4b/staging-write-owner-reconciliation-diagnose';
+    const AUDIT_COMMIT_PREFIX = 'mad4b_scp_owner_audit_commit_';
     const ACTION = 'mad4b_staging_write_owner_review';
     const CONFIRM = 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE';
     const TTL = 600;
@@ -24,7 +25,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 'description' => 'Read-only, nonauthorizing exact owner review for current source and Site Profile.',
                 'category' => 'mad4b-staging-write-authority',
                 'execute_callback' => array( __CLASS__, 'review' ),
-                'permission_callback' => array( __CLASS__, 'can_remote_attest' ),
+                'permission_callback' => array( __CLASS__, 'can_remote_diagnose' ),
                 'input_schema' => array( 'type'=>'object', 'properties'=>array(), 'additionalProperties'=>false ),
                 'output_schema' => array( 'type'=>'object', 'additionalProperties'=>true ),
                 'meta' => array( 'public'=>false, 'show_in_rest'=>false,
@@ -39,12 +40,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 'description' => 'Read-only exact owner plan, receipt and binding drift report; never grants or retries authority.',
                 'category' => 'mad4b-staging-write-authority',
                 'execute_callback' => array( __CLASS__, 'diagnose' ),
-                'permission_callback' => array( __CLASS__, 'can_remote_attest' ),
+                'permission_callback' => array( __CLASS__, 'can_remote_diagnose' ),
                 'input_schema' => array( 'type' => 'object', 'properties' => array(), 'additionalProperties' => false ),
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array( 'public' => false, 'show_in_rest' => false,
                     'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => 'read',
-                        'chatgpt_direct_step_up' => true, 'exact_chatgpt_client_required' => true,
+                        'owner_oauth_read_required' => true, 'exact_chatgpt_client_required' => true,
+                        'authority_step_up_required' => false,
                         'production_mutation_allowed' => false ),
                     'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
             ) );
@@ -74,6 +76,22 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 'annotations' => array( 'readonly'=>false, 'destructive'=>false, 'idempotent'=>false ),
             ),
         ) );
+    }
+    public static function can_remote_diagnose( $input = null ) {
+        if ( ! self::owner() ) return new WP_Error( 'mad4b_staging_owner_not_explicitly_enrolled', 'Exact enrolled Staging owner required.' );
+        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() )
+            return new WP_Error( 'mad4b_staging_owner_oauth_read_session_required', 'Verified owner OAuth session required for read-only diagnostics.' );
+        if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) )
+            return new WP_Error( 'mad4b_staging_owner_chatgpt_client_required', 'Exact ChatGPT OAuth client required.' );
+        if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) ) return new WP_Error( 'mad4b_staging_owner_identity_missing', 'Verified OAuth subject required.' );
+        $id = MAD4B_SCP_Identity_Context::current();
+        if ( is_wp_error( $id ) || ! is_array( $id ) || empty( $id['authenticated'] )
+            || 'oauth' !== (string) ( $id['subject_type'] ?? '' )
+            || 'oauth2_bearer' !== (string) ( $id['auth_method'] ?? '' ) )
+            return new WP_Error( 'mad4b_staging_owner_oauth_subject_required', 'Normal OAuth bearer identity required.' );
+        return true;
     }
     public static function can_remote_attest( $input = null ) {
         if ( ! self::owner() ) return new WP_Error( 'mad4b_staging_owner_not_explicitly_enrolled', 'Exact enrolled Staging owner required.' );
@@ -121,6 +139,35 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         if ( '' === $secret ) return '';
         return hash_hmac( 'sha256',
             wp_json_encode( $record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), $secret );
+    }
+    private static function audit_commit_key( $receipt ) {
+        return self::AUDIT_COMMIT_PREFIX . substr( $receipt, 0, 40 );
+    }
+    private static function audit_commit_signature( array $record ) {
+        return self::signature( array(
+            'contract' => 'mad4b.owner-audit-commit.v1',
+            'receipt_sha256' => (string) $record['receipt_sha256'],
+            'owner' => (int) $record['owner'],
+            'review_digest' => (string) $record['review_digest'],
+        ) );
+    }
+    private static function audit_committed( array $record ) {
+        if ( ! isset( $record['receipt_sha256'], $record['review_digest'], $record['owner'] ) )
+            return false;
+        $marker = get_option( self::audit_commit_key( $record['receipt_sha256'] ), array() );
+        $expected = self::audit_commit_signature( $record );
+        return is_array( $marker ) && isset( $marker['signature'], $marker['receipt'] )
+            && '' !== $expected
+            && hash_equals( $expected, (string) $marker['signature'] )
+            && hash_equals( (string) $record['receipt_sha256'], (string) $marker['receipt'] );
+    }
+    private static function mark_audit_committed( array $record ) {
+        $key = self::audit_commit_key( $record['receipt_sha256'] );
+        $value = array( 'receipt' => $record['receipt_sha256'],
+            'signature' => self::audit_commit_signature( $record ) );
+        if ( '' === $value['signature'] ) return false;
+        if ( ! add_option( $key, $value, '', false ) ) return self::audit_committed( $record );
+        return self::audit_committed( $record );
     }
     /**
      * Narrow plan diagnostics: no grant rows, agent secrets, tokens or URLs.
@@ -202,6 +249,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             return new WP_Error( 'mad4b_owner_review_mismatch', 'Exact plan and confirmation required.' );
         if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
             return new WP_Error( 'mad4b_owner_audit_unavailable', 'Durable audit required.' );
+        $existing = self::page_intent_status( $review );
+        if ( 'OWNER_INTENT_CURRENT' === $existing['state'] ) return array(
+            'state' => 'OWNER_INTENT_NOT_AUTHORITY',
+            'receipt_sha256' => $existing['receipt_sha256'],
+            'expires_at' => $existing['expires_at'],
+            'reused_existing_intent' => true,
+            'mutation_performed' => false );
         try { $nonce = bin2hex( random_bytes( 16 ) ); }
         catch ( Throwable $exception ) { return new WP_Error( 'mad4b_owner_entropy_unavailable', 'Secure nonce unavailable.' ); }
         $record = array( 'owner'=>(int) get_current_user_id(), 'review_digest'=>$review['review_digest'],
@@ -214,16 +268,22 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'issued'=>time(), 'expires'=>time()+self::TTL, 'nonce'=>$nonce );
         $record['receipt_sha256'] = self::signature( $record );
         if ( '' === $record['receipt_sha256'] ) return new WP_Error( 'mad4b_owner_signing_unavailable', 'Site-secret signature unavailable.' );
-        $audit = MAD4B_SCP_Audit::record( 'mad4b/staging-write-owner-reviewed', array(
-            'owner'=>$record['owner'], 'site_uuid'=>$review['plan']['site_uuid'],
-            'review_digest'=>$review['review_digest'], 'receipt_sha256'=>$record['receipt_sha256'],
-            'expires'=>$record['expires'], 'authority_granted'=>false, 'production_mutation'=>false ), 'ok' );
-        if ( is_wp_error( $audit ) ) return $audit;
+        // Persist and read back before recording a successful review. An
+        // uncommitted receipt is NEVER claimable even if a later audit fails.
         if ( ! update_option( self::OPTION, $record, false ) )
             return new WP_Error( 'mad4b_owner_review_persist_failed', 'Owner intent not persisted.' );
         $saved = get_option( self::OPTION, array() );
         if ( ! is_array( $saved ) || ! hash_equals( $record['receipt_sha256'], (string) ( $saved['receipt_sha256'] ?? '' ) ) )
             return new WP_Error( 'mad4b_owner_review_readback_failed', 'Owner intent readback failed.' );
+        $audit = MAD4B_SCP_Audit::record( 'mad4b/staging-write-owner-reviewed', array(
+            'owner'=>$record['owner'], 'site_uuid'=>$review['plan']['site_uuid'],
+            'review_digest'=>$review['review_digest'], 'receipt_sha256'=>$record['receipt_sha256'],
+            'expires'=>$record['expires'], 'authority_granted'=>false, 'production_mutation'=>false ), 'ok' );
+        if ( is_wp_error( $audit ) || false === $audit ) return new WP_Error( 'mad4b_owner_audit_commit_failed',
+            'Signed owner intent persisted but audit did not commit; it cannot be claimed.' );
+        if ( ! self::mark_audit_committed( $record ) )
+            return new WP_Error( 'mad4b_owner_audit_marker_failed',
+                'Owner audit recorded but durable completion marker is unavailable; do not retry blindly.' );
         return array( 'state'=>'OWNER_INTENT_NOT_AUTHORITY', 'receipt_sha256'=>$record['receipt_sha256'],
             'expires_at'=>$record['expires'], 'mutation_performed'=>false );
     }
@@ -246,6 +306,9 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             || (int) $saved['issued'] > time()
             || (int) $saved['expires'] - (int) $saved['issued'] > self::TTL )
             return new WP_Error( 'mad4b_owner_receipt_stale', 'Expired, altered or different plan/owner.' );
+        if ( ! self::audit_committed( $saved ) )
+            return new WP_Error( 'mad4b_owner_receipt_audit_unconfirmed',
+                'Owner intent is not accompanied by a durable signed audit completion marker.' );
         if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) )
             return new WP_Error( 'mad4b_owner_claim_audit_unavailable', 'Durable claim audit unavailable.' );
         // wp_options.option_name is unique. Failed/unknown attempts consume this receipt.
@@ -289,11 +352,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         $claim = get_option( $claim_key, array() );
         $claimed = is_array( $claim ) && isset( $claim['receipt'] )
             && hash_equals( $receipt, (string) $claim['receipt'] );
+        $audited = self::audit_committed( $saved );
         return array(
-            'state' => ! $valid_time ? 'OWNER_INTENT_EXPIRED'
+            'state' => ! $audited ? 'OWNER_INTENT_AUDIT_UNCONFIRMED'
+                : ( ! $valid_time ? 'OWNER_INTENT_EXPIRED'
                 : ( ! is_array( $review ) ? 'OWNER_INTENT_PLAN_UNAVAILABLE'
                 : ( ! $same_review ? 'OWNER_INTENT_PLAN_CHANGED'
-                : ( $claimed ? 'OWNER_INTENT_CLAIMED' : 'OWNER_INTENT_CURRENT' ) ) ),
+                : ( $claimed ? 'OWNER_INTENT_CLAIMED' : 'OWNER_INTENT_CURRENT' ) ) ) ),
             'receipt_sha256' => $receipt,
             'expires_at' => (int) $saved['expires'],
             'read_only' => true, 'write_authorized' => false,
@@ -308,7 +373,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
     public static function diagnose( $input = array() ) {
         if ( ! is_array( $input ) || $input ) return new WP_Error(
             'mad4b_owner_diagnose_invalid_input', 'This read-only diagnostic accepts no parameters.' );
-        $permission = self::can_remote_attest();
+        $permission = self::can_remote_diagnose();
         if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
         $review = self::review();
         $eligible = is_array( $review );
@@ -319,6 +384,17 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             && is_array( $saved['plan_identity'] ) ? $saved['plan_identity'] : array();
         $current = $eligible && isset( $review['plan'] ) && is_array( $review['plan'] )
             ? $review['plan'] : array();
+        $blocked_plan = array();
+        if ( ! $eligible ) {
+            $raw = MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
+            if ( is_array( $raw ) ) {
+                $blocked_plan = $raw;
+                foreach ( array( 'plan_sha256', 'site_uuid', 'site_profile_revision',
+                    'site_profile_digest', 'source_commit_sha', 'build_fingerprint',
+                    'package_manifest_digest', 'artifact_identity' ) as $key )
+                    $current[ $key ] = $raw[ $key ] ?? null;
+            }
+        }
         $identity_fields = array( 'plan_sha256', 'site_uuid', 'site_profile_revision',
             'site_profile_digest', 'source_commit_sha', 'build_fingerprint',
             'package_manifest_digest', 'artifact_identity' );
@@ -332,7 +408,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         $stored_evidence = $valid_record && is_array( $saved ) && isset( $saved['plan_evidence'] )
             && is_array( $saved['plan_evidence'] ) ? $saved['plan_evidence'] : array();
         $current_evidence = $eligible && isset( $review['plan_evidence'] )
-            && is_array( $review['plan_evidence'] ) ? $review['plan_evidence'] : array();
+            && is_array( $review['plan_evidence'] ) ? $review['plan_evidence']
+            : ( $blocked_plan ? self::evidence_snapshot( $blocked_plan ) : array() );
         $evidence_changed = array();
         if ( $stored_evidence && $current_evidence ) {
             foreach ( $current_evidence as $key => $value ) {
@@ -391,6 +468,12 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'owner_intent_receipt_sha256' => 'OWNER_INTENT_CURRENT' === $state['state']
                 ? $state['receipt_sha256'] : '',
             'plan_read_error' => is_wp_error( $review ) ? $review->get_error_code() : '',
+            'plan_blockers' => $blocked_plan && isset( $blocked_plan['hard_blockers'] )
+                && is_array( $blocked_plan['hard_blockers'] )
+                ? array_slice( $blocked_plan['hard_blockers'], 0, 20 )
+                : ( is_wp_error( $review ) && method_exists( $review, 'get_error_data' )
+                    && is_array( $review->get_error_data() )
+                    ? array_slice( (array) ( $review->get_error_data()['blockers'] ?? array() ), 0, 20 ) : array() ),
             'grant_rows_existing' => $grants,
             'registered_write_abilities' => $count,
             'exact_grant_count_parity' => $exact_grants,
@@ -404,7 +487,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'current_binding_source_commit_sha' => isset( $binding['current_source_commit_sha'] )
                 ? (string) $binding['current_source_commit_sha'] : '',
             'evidence_scope' => 'same_request_read_only_not_independent_browser_or_release_certification',
-            'oauth_step_up_verified_for_diagnostic' => true,
+            'oauth_step_up_required_for_diagnostic' => false,
+            'oauth_step_up_still_required_for_apply' => true,
             'requested_plan_not_replayed' => true,
             'next_action' => $next,
             'read_only' => true, 'authorizing' => false, 'mutation_performed' => false,
@@ -450,7 +534,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         elseif ( 'OWNER_INTENT_CLAIMED' === $view['state'] )
             echo '<div class="notice notice-info" role="status"><p><strong>Owner confirmation consumed.</strong> Check a fresh Governed Write status and candidate binding. Do not submit the same approval again.</p></div>';
         elseif ( in_array( $view['state'], array( 'OWNER_INTENT_EXPIRED',
-            'OWNER_INTENT_PLAN_CHANGED', 'OWNER_INTENT_PLAN_UNAVAILABLE' ), true ) )
+            'OWNER_INTENT_PLAN_CHANGED', 'OWNER_INTENT_PLAN_UNAVAILABLE',
+            'OWNER_INTENT_AUDIT_UNCONFIRMED' ), true ) )
             echo '<div class="notice notice-warning" role="status"><p>Previous confirmation cannot be reused: <code>'
                 . esc_html( $view['state'] ) . '</code>. An exact current plan and a new confirmation are required.</p></div>';
         if ( ! in_array( $view['state'], array( 'OWNER_INTENT_CURRENT', 'OWNER_INTENT_CLAIMED' ), true ) )

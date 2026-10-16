@@ -361,6 +361,18 @@ final class MAD4B_SCP_Operational_Remediation {
 		}
 	}
 
+	/** A declared readback is not sufficient without registered readonly metadata. */
+	public static function verified_readback_ability( $name ) {
+		if ( ! is_string( $name ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}\/[a-z][a-z0-9_-]{0,95}$/D', $name )
+			|| ! function_exists( 'wp_get_ability' ) ) return false;
+		$ability = wp_get_ability( $name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+		$meta = $ability->get_meta();
+		return is_array( $meta )
+			&& isset( $meta['annotations']['readonly'] ) && true === $meta['annotations']['readonly']
+			&& isset( $meta['mcp']['surface'] ) && 'read' === $meta['mcp']['surface'];
+	}
+
 	/** One safe handoff, selected from canonical already-collected gate evidence. */
 	public static function primary_next_step( $integrity, array $issues, array $items, $native_ready, $live_requested, $live_ready ) {
 		$common = array( 'read_only' => true, 'automatic_execution_allowed' => false,
@@ -384,8 +396,20 @@ final class MAD4B_SCP_Operational_Remediation {
 				if ( ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $action ) ) continue;
 				// No effectful tool is ever a next step. Its registered existence
 				// is only a hint for a separate exact plan and human decision.
-				$readback = ! empty( $path['readback_registered'] ) && ! empty( $path['readback_ability'] )
+				$declared_readback = ! empty( $path['readback_registered'] )
+					&& is_string( $path['readback_ability'] ?? null )
 					? (string) $path['readback_ability'] : '';
+				$readback = self::verified_readback_ability( $declared_readback )
+					? $declared_readback : '';
+				if ( '' !== $declared_readback && '' === $readback ) return array_merge(
+					$common, array(
+						'state' => 'READBACK_CONTRACT_UNVERIFIED',
+						'why' => 'Declared readback is missing registered readonly metadata; do not execute or repeat a write.',
+						'next_ability' => 'mad4b/operation-route-discover',
+						'focus_gate' => (string) $item['gate_id'],
+						'focus_action_id' => $action,
+						'approval_required_if_mutation' => true,
+					) );
 				return array_merge( $common, array(
 					'state' => $readback ? 'VERIFY_CURRENT_GATE_BEFORE_APPROVAL' :
 						( ! empty( $path['apply_registered'] ) ? 'PREPARE_EXACT_GOVERNED_REVIEW'

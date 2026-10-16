@@ -6,18 +6,26 @@ function wp_salt( $scheme = 'auth' ) { return 'fixture-random-local-secret-2026-
 function nocache_headers() { $GLOBALS['no_cache_called'] = true; }
 function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $v ) { return esc_html( $v ); }
+function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_-]/', '', (string) $v ) ); }
+function sanitize_text_field( $v ) { return trim( (string) $v ); }
 function esc_url( $v ) { return esc_html( $v ); }
 function admin_url( $p = '' ) { return 'https://staging.test/wp-admin/' . ltrim( $p, '/' ); }
 function wp_nonce_field( $action ) { echo '<input type="hidden" name="_wpnonce" value="fixture" />'; }
 function submit_button( $label ) { echo '<button>' . esc_html( $label ) . '</button>'; }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
+function wp_register_ability( $name, $args ) { $GLOBALS['test_abilities'][$name] = $args; }
+function wp_has_ability( $name ) { return isset( $GLOBALS['test_abilities'][$name] ); }
 function current_user_can( $c ) { return $GLOBALS['admin'] && 'manage_options' === $c; }
 function is_admin() { return ! empty( $GLOBALS['is_admin_request'] ); }
 function is_user_logged_in() { return true; }
 function get_current_user_id() { return $GLOBALS['user']; }
 function get_option( $k, $default = false ) { return isset( $GLOBALS['options'][$k] ) ? $GLOBALS['options'][$k] : $default; }
-function update_option( $k, $v, $autoload = false ) { $GLOBALS['options'][$k] = $v; return true; }
+function update_option( $k, $v, $autoload = false ) {
+    if ( ! empty( $GLOBALS['persist_fail'] ) ) return false;
+    $GLOBALS['options'][$k] = $v; return true;
+}
 function add_option( $k, $v, $deprecated = '', $autoload = false ) {
+    if ( ! empty( $GLOBALS['marker_fail'] ) && strpos( $k, 'mad4b_scp_owner_audit_commit_' ) === 0 ) return false;
     if ( array_key_exists( $k, $GLOBALS['options'] ) ) return false;
     $GLOBALS['options'][$k] = $v; return true;
 }
@@ -96,6 +104,15 @@ class MAD4B_SCP_Identity_Context {
 $GLOBALS['bearer']=true;$GLOBALS['scope']=true;$GLOBALS['client']=true;$GLOBALS['identity']=true;
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-owner-intent.php';
 $klass = 'MAD4B_SCP_Staging_Write_Owner_Intent';
+$klass::register_ability();
+$read_meta = $GLOBALS['test_abilities'][$klass::DIAGNOSE_ABILITY];
+$write_meta = $GLOBALS['test_abilities'][$klass::ATTEST_ABILITY];
+assertion( $read_meta['permission_callback'][1] === 'can_remote_diagnose'
+    && empty( $read_meta['meta']['mcp']['chatgpt_direct_step_up'] )
+    && $read_meta['meta']['annotations']['readonly'] === true
+    && $write_meta['permission_callback'][1] === 'can_remote_attest'
+    && $write_meta['meta']['mcp']['chatgpt_direct_step_up'] === true,
+    'metadata enforces OAuth read / Step-Up mutation separation' );
 $review = $klass::review();
 assertion( is_array( $review ), 'Staging owner review available' );
 $payload = array( 'review_digest' => $review['review_digest'], 'confirmation' => $klass::CONFIRM );
@@ -125,6 +142,14 @@ assertion( $fingerprint_drift['state'] === 'OWNER_REVIEW_PLAN_DRIFT'
     && in_array( 'grant_rows_fingerprint',
         $fingerprint_drift['non_authorizing_plan_evidence_fields_changed'], true ),
     'grant inventory snapshot drift is diagnosed, never silently normalized' );
+$GLOBALS['plan'] = $before_drift;
+$GLOBALS['plan']['ready_to_apply'] = false;
+$GLOBALS['plan']['hard_blockers'] = array('candidate_binding_mismatch');
+$blocked = $klass::diagnose();
+assertion( $blocked['state'] === 'PLAN_BLOCKED'
+    && $blocked['current_plan_sha256'] === $before_drift['plan_sha256']
+    && in_array('candidate_binding_mismatch', $blocked['plan_blockers'], true),
+    'diagnostics retain exact read-only identity and blockers when approval plan is not ready' );
 $GLOBALS['plan'] = $before_drift;
 assertion( is_wp_error( $klass::diagnose( array( 'apply' => true ) ) ),
     'diagnostic refuses mutation-like input' );
@@ -250,13 +275,65 @@ $legacy['receipt_sha256'] = hash_hmac( 'sha256',
     wp_json_encode( $legacy, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), wp_salt( 'auth' ) );
 $GLOBALS['options'][ $klass::OPTION ] = $legacy;
 $legacy_status = $klass::diagnose();
-assertion( $legacy_status['state'] === 'LEGACY_RECEIPT_IDENTITY_UNAVAILABLE'
+assertion( $legacy_status['owner_intent_state'] === 'OWNER_INTENT_AUDIT_UNCONFIRMED'
     && $legacy_status['recorded_receipt_legacy_identity_missing']
     && !$legacy_status['identity_drift'],
-    'legacy receipt mismatch cannot invent fields' );
+    'legacy signed receipt remains readable for diagnosis but cannot be consumed without marker' );
+assertion( is_wp_error( $klass::claim( $GLOBALS['plan'], array(
+    'owner_intent_sha256' => $legacy['receipt_sha256'] ) ) ),
+    'old uncommitted receipt cannot claim a write grant' );
 $GLOBALS['options'][ $klass::OPTION ] = $stored_admin;
 $GLOBALS['scope'] = false;
-assertion( is_wp_error( $klass::diagnose() ), 'OAuth diagnostic requires owner step-up' );
+assertion( is_array( $klass::diagnose() )
+    && $klass::diagnose()['oauth_step_up_required_for_diagnostic'] === false,
+    'OAuth read-only diagnosis works without mutation step-up' );
+assertion( is_wp_error( $klass::can_remote_attest() ),
+    'without Step-Up mutation owner approval still denied' );
 $GLOBALS['scope'] = true;
+
+// P1: failed persistence never creates a success audit event.
+$GLOBALS['options'] = array();
+$GLOBALS['events'] = array();
+$GLOBALS['scope'] = true;
+$GLOBALS['persist_fail'] = true;
+$before_events = count( $GLOBALS['events'] );
+$failed_save = $klass::attest( $payload );
+assertion( is_wp_error( $failed_save ) && count( $GLOBALS['events'] ) === $before_events,
+    'failed option persistence cannot record a successful owner review in Audit' );
+$GLOBALS['persist_fail'] = false;
+
+// P1: signed receipt may persist, but never authorizes anything unless the
+// durable audit and its signed commit marker both complete.
+$GLOBALS['audit_fail'] = true;
+$failed_audit = $klass::attest( $payload );
+assertion( is_wp_error( $failed_audit ), 'post-persist audit failure surfaced' );
+$unconfirmed = $GLOBALS['options'][ $klass::OPTION ];
+assertion( $klass::page_intent_status( $klass::review() )['state'] === 'OWNER_INTENT_AUDIT_UNCONFIRMED',
+    'incomplete audit visibly blocks receipt' );
+assertion( is_wp_error( $klass::claim( $GLOBALS['plan'], array(
+    'owner_intent_sha256' => $unconfirmed['receipt_sha256'] ) ) ),
+    'saved but unaudited receipt cannot be claimed' );
+$GLOBALS['audit_fail'] = false;
+$GLOBALS['marker_fail'] = true;
+$marker_failed = $klass::attest( $payload );
+assertion( is_wp_error( $marker_failed )
+    && 'OWNER_INTENT_AUDIT_UNCONFIRMED' === $klass::page_intent_status( $klass::review() )['state'],
+    'audit marker persistence failure cannot produce an executable receipt' );
+$GLOBALS['marker_fail'] = false;
+$next = $klass::attest( $payload );
+assertion( is_array( $next ), 'fresh approval after uncertain previous attempt' );
+$initial_expiry = $next['expires_at'];
+$again = $klass::attest( $payload );
+assertion( is_array( $again ) && !empty( $again['reused_existing_intent'] )
+    && $again['receipt_sha256'] === $next['receipt_sha256']
+    && $again['expires_at'] === $initial_expiry,
+    'same confirmed owner review idempotent without silently extending TTL' );
+// An unrelated identity cannot access read-only owner diagnostic.
+$GLOBALS['client'] = false;
+assertion( is_wp_error( $klass::can_remote_diagnose() ), 'untrusted client cannot access diagnostic' );
+$GLOBALS['client'] = true;
+$GLOBALS['environment'] = 'production';
+assertion( is_wp_error( $klass::can_remote_diagnose() ), 'production cannot use staging owner diagnostic' );
+$GLOBALS['environment'] = 'staging';
 
 echo "STAGING_WRITE_OWNER_INTENT: PASS (hermetic fixture)\n";
