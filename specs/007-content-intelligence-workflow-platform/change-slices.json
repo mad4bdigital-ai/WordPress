@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
   "reviewed_base_sha": "4fea0bd09f58bb189b91bd9bd51db7a84a099b70",
-  "changed_file_count": 93,
+  "changed_file_count": 94,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2292,10 +2292,11 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-local-owner-preview-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-one-step-review-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-checkpoint-resume-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-standalone-contract.py"
       ]
     }
   ],
-  "changed_paths_sha256": "1ebdc29cb835c4957fc8142348a57b5dbb1fc91bbf4dfd5839964e379fcc24c5",
+  "changed_paths_sha256": "2ed736d11cd9a2858b7ddee7be80e38696b6e59fbb2acef401241112b98283c6",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
