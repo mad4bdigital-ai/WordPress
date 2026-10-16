@@ -323,6 +323,35 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         );
     }
 
+    /** Browser failure handoff: request evidence before vendor settings changes. */
+    public static function native_first_diagnostic_handoff( array $request ) {
+        $task = (string) ( $request['task'] ?? '' );
+        $patterns = array(
+            'frontend_js' => '/wp is not defined|script[ -]?order|javascript|جافاسكريبت|ترتيب السكربت/ui',
+            'ajax_filters' => '/ajax|filters? (?:fails?|broken)|jetsmartfilters|الفلاتر|فلتر|نتائج التصفية/ui',
+            'visual_builder' => '/elementor|visual builder|المنتور|محرر الصفحات/ui',
+            'dynamic_content' => '/jetengine|dynamic content|المحتوى الديناميكي/ui',
+            'multilingual' => '/wpml|hreflang|translation error|الترجمة/ui',
+            'seo' => '/rank math|seo (?:error|broken)|canonical issue|السيو/ui',
+            'forms' => '/fluent ?forms|form submission|captcha|النماذج/ui',
+            'performance' => '/litespeed|page speed|core web vitals|الكاش|الاداء/ui',
+            'integration' => '/mcp adapter|plugin update failure|provider mismatch|تحديث الاضافات/ui',
+        );
+        $family = '';
+        foreach ( $patterns as $key => $pattern )
+            if ( '' !== $task && preg_match( $pattern, $task ) ) { $family = $key; break; }
+        if ( '' === $family ) return null;
+        return array(
+            'state' => 'INDEPENDENT_BROWSER_EVIDENCE_REQUIRED',
+            'issue_family_hint' => $family,
+            'diagnostic_ability' => 'mad4b/root-cause-remediation-plan',
+            'requires_baseline_bypass_and_restored_comparison' => true,
+            'native_provider_first' => true,
+            'new_standalone_plugin_is_not_default_remediation' => true,
+            'automatic_mutation_allowed' => false,
+        );
+    }
+
     public static function discover( $input = array() ) {
         return self::resolve( $input, false );
     }
@@ -360,6 +389,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         if ( empty( $sources['names'] ) ) return array(
             'contract' => self::CONTRACT, 'state' => 'NO_REGISTERED_MATCH',
             'selected' => null, 'candidate_count' => 0,
+            'native_first_diagnostic' => self::native_first_diagnostic_handoff( $request ),
             // A zero-result capability lookup is not proof every alternative
             // workflow is absent. This is an independent, non-authorizing
             // diagnostic resolver; NEVER trigger an unknown mutation.
@@ -487,6 +517,7 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
             'alternate_recovery_routes' => $recovery,
             'transport_options' => $transport_options,
             'selection_strategy' => 'live_registered_ability_metadata_schema_pinned_canonical_lane',
+            'native_first_diagnostic' => self::native_first_diagnostic_handoff( $request ),
             'fallback_policy' => array(
                 'read_transport_failure' => 'rediscover_and_prepare_fresh_receipt',
                 'mutation_transport_failure' => 'no_blind_retry_query_independent_readback',
