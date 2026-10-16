@@ -5,6 +5,7 @@ $GLOBALS['registered_actions'] = array();
 function add_action( $hook, $callback, $priority = 10 ) { $GLOBALS['registered_actions'][] = $hook; }
 function wp_register_ability( $name, $args ) { $GLOBALS['registered_abilities'][ $name ] = $args; }
 function wp_has_ability( $name ) { return isset( $GLOBALS['registered_abilities'][ $name ] ); }
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 class WP_Error {
     public $code;
     public function __construct( $code, $message ) { $this->code = $code; }
@@ -16,6 +17,7 @@ class MAD4B_SCP_Policy {
 function expect_true( $condition, $label ) {
     if ( ! $condition ) { fwrite( STDERR, "FAIL: {$label}\n" ); exit(1); }
 }
+require dirname(__DIR__) . '/includes/class-mad4b-scp-remediation-coverage.php';
 require dirname(__DIR__) . '/includes/class-mad4b-scp-root-cause-resolver.php';
 MAD4B_SCP_Root_Cause_Resolver::boot();
 MAD4B_SCP_Root_Cause_Resolver::register_ability();

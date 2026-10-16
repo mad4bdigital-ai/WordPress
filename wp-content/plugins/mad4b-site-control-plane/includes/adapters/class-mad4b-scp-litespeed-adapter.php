@@ -49,26 +49,74 @@ final class MAD4B_SCP_LiteSpeed_Adapter extends MAD4B_SCP_Adapter_Base {
             'purge_all', $admin, null, 'admin', false, true, true );
     }
 
+    /**
+     * Bounded, non-sensitive keys verified against LiteSpeed Base constants.
+     * Consult the public 'litespeed_conf' filter, never private WP options.
+     */
+    public static function optimization_slug_map() {
+        return array(
+            'js_combine' => 'optm-js_comb',
+            'js_combine_external_inline' => 'optm-js_comb_ext_inl',
+            'js_minify' => 'optm-js_min',
+            'js_defer' => 'optm-js_defer',
+            'js_excludes' => 'optm-js_exc',
+            'js_defer_excludes' => 'optm-js_defer_exc',
+            'js_delay_includes' => 'optm-js_delay_inc',
+            'guest_mode_js_excludes' => 'optm-gm_js_exc',
+            'guest_optimization' => 'guest_optm',
+            'optimize_guest_only' => 'optm-guest_only',
+        );
+    }
+
     public function get_optimization_settings() {
         if ( ! $this->is_available() ) return $this->unavailable_error();
-        // These documented provider hooks are an observed integration surface,
-        // NOT proof of a settings read/write API or of the values in the DB.
-        return array(
-            'state' => 'CAPABILITY_GAP',
+        $base = array(
             'provider' => 'litespeed',
             'provider_version' => $this->runtime_version(),
-            'documented_native_hooks' => array( 'litespeed_can_optm',
-                'litespeed_optimize_js_excludes', 'litespeed_optm_js_defer_exc',
-                'litespeed_optm_gm_js_exc', 'litespeed_optm_uri_exc' ),
-            'settings_to_inspect' => array( 'JS Combine', 'Load JS Deferred',
-                'JS Excludes', 'JS Deferred/Delayed Excludes',
-                'Guest Mode', 'Guest Optimization' ),
-            'setting_values_read' => false,
-            'missing_operation' => 'provider_verified_optimization_settings_read',
-            'reason' => 'no_verified_public_settings_getter_for_this_runtime',
-            'native_first' => true,
+            'api_reference' => 'https://docs.litespeedtech.com/lscache/lscwp/api/',
+            'documented_native_read_hook' => 'litespeed_conf',
+            'documented_native_write_hooks' => array( 'litespeed_save_conf', 'litespeed_update_confs' ),
+            'write_contract_certified' => false,
             'mutation_performed' => false,
         );
+        // A plugin constant is not enough: the actual vendor getter must be
+        // bound in the live WordPress request, or the observation is invalid.
+        if ( ! function_exists( 'has_filter' ) || false === has_filter( 'litespeed_conf' )
+            || ! function_exists( 'apply_filters' ) )
+            return array_merge( $base, array(
+                'state' => 'CAPABILITY_GAP',
+                'setting_values_read' => false,
+                'reason' => 'official_litespeed_conf_filter_not_observed',
+            ) );
+        $settings = array();
+        foreach ( self::optimization_slug_map() as $name => $slug ) {
+            $value = apply_filters( 'litespeed_conf', $slug );
+            // Reject unexpected schemas; never truncate silently, particularly
+            // since the readback digest is a future CAS planning input.
+            if ( is_array( $value ) ) {
+                if ( count( $value ) > 64 ) return new WP_Error(
+                    'mad4b_litespeed_setting_value_oversized', 'A bounded settings snapshot could not be read.' );
+                foreach ( $value as $item )
+                    if ( ! is_string( $item ) || strlen( $item ) > 512 )
+                        return new WP_Error( 'mad4b_litespeed_setting_invalid',
+                            'LiteSpeed setting contains an unbounded non-scalar item.' );
+            } elseif ( ! is_bool( $value ) && ! is_int( $value ) && ! is_string( $value ) )
+                return new WP_Error( 'mad4b_litespeed_setting_invalid',
+                    'LiteSpeed setting type is not supported by bounded diagnostics.' );
+            $settings[ $name ] = array( 'slug' => $slug, 'value' => $value );
+        }
+        $encoded = function_exists( 'wp_json_encode' )
+            ? wp_json_encode( $settings ) : json_encode( $settings );
+        if ( false === $encoded ) return new WP_Error(
+            'mad4b_litespeed_snapshot_encode_failed', 'LiteSpeed setting snapshot could not be hashed.' );
+        return array_merge( $base, array(
+            'state' => 'NATIVE_SETTINGS_READ_OBSERVED',
+            'setting_values_read' => true,
+            'settings' => $settings,
+            'snapshot_sha256' => hash( 'sha256', $encoded ),
+            'snapshot_scope' => 'current_request_vendor_filter_not_browser_effective_runtime',
+            'independent_browser_verification_required' => true,
+        ) );
     }
 
     public function diagnose_script_order( $input = array() ) {
