@@ -602,6 +602,9 @@ jobs:
               'mad4b_site_operation_lock_held',
               'mad4b_previous_operation_needs_reconciliation',
               'mad4b_operation_readback_required',
+              # A concurrent loser may fail its signed reservation readback;
+              # that is safe DENIAL, not permission to execute twice.
+              'mad4b_operation_reservation_unverified',
           } for x in records), records
           print('PARALLEL_WPDB_OPERATION_RESERVATION_PASS',records)
           PY
