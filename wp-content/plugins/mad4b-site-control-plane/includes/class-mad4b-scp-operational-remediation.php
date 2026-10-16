@@ -370,7 +370,9 @@ final class MAD4B_SCP_Operational_Remediation {
 		$meta = $ability->get_meta();
 		return is_array( $meta )
 			&& isset( $meta['annotations']['readonly'] ) && true === $meta['annotations']['readonly']
-			&& isset( $meta['mcp']['surface'] ) && 'read' === $meta['mcp']['surface'];
+			&& isset( $meta['mcp']['surface'] ) && 'read' === $meta['mcp']['surface']
+			&& method_exists( $ability, 'check_permissions' )
+			&& true === $ability->check_permissions( array() );
 	}
 
 	/** One safe handoff, selected from canonical already-collected gate evidence. */

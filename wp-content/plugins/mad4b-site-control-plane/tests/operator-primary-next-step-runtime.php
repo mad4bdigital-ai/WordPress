@@ -6,7 +6,11 @@ class Stub_Registered_Ability {
     public function get_meta() { return array(
         'annotations' => array( 'readonly' => $this->read ),
         'mcp' => array( 'surface' => $this->read ? 'read' : 'write' ) ); }
+    public function check_permissions( $input = null ) {
+        return $this->read && !empty($GLOBALS['allow_read']);
+    }
 }
+$GLOBALS['allow_read'] = true;
 function wp_get_ability( $name ) {
     if ( 'mad4b/browser-acceptance-result' === $name ) return new Stub_Registered_Ability( true );
     if ( 'mad4b/unsafe-write' === $name ) return new Stub_Registered_Ability( false );
@@ -39,6 +43,11 @@ $unknown = $path; $unknown['readback_ability'] = 'mad4b/not-registered';
 verify_step($c::primary_next_step(true,array(),array(array(
     'gate_id'=>'ajax_parity', 'paths'=>array($unknown))),false,false,false),
     'READBACK_CONTRACT_UNVERIFIED','mad4b/operation-route-discover','unmounted readback rejected');
+$GLOBALS['allow_read'] = false;
+verify_step($c::primary_next_step(true,array(),$items,false,false,false),
+    'READBACK_CONTRACT_UNVERIFIED','mad4b/operation-route-discover',
+    'readonly metadata alone insufficient when permission callback denies');
+$GLOBALS['allow_read'] = true;
 $x=$c::primary_next_step(true,array(),$items,false,false,false);
 if (($x['focus_gate']??'')!=='ajax_parity' || ($x['focus_action_id']??'')!=='restore_filters')
     {fwrite(STDERR,'FAILED dynamic primary route identity'."\n");exit(1);}

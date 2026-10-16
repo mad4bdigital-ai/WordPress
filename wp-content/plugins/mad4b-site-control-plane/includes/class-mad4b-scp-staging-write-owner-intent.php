@@ -125,6 +125,26 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             && MAD4B_SCP_Governed_Runtime_Gates::raw_sql_breakglass_enabled() ) return false;
         return true;
     }
+    /**
+     * Cross-transport diagnostics only. This fingerprint never replaces the
+     * complete mutable plan SHA or its exact CAS at apply time.
+     */
+    public static function canonical_scope_sha256( array $plan ) {
+        $scope = array( 'contract' => 'mad4b.owner-read-scope.v1' );
+        foreach ( array( 'site_uuid', 'site_profile_revision', 'site_profile_digest',
+            'source_commit_sha', 'build_fingerprint', 'package_manifest_digest',
+            'artifact_identity', 'exact_grant_plan_sha256' ) as $key )
+            $scope[ $key ] = isset( $plan[ $key ] ) && is_scalar( $plan[ $key ] )
+                ? (string) $plan[ $key ] : '';
+        $write = isset( $plan['write_reconciliation'] ) && is_array( $plan['write_reconciliation'] )
+            ? $plan['write_reconciliation'] : array();
+        foreach ( array( 'write_inventory_fingerprint', 'grant_rows_fingerprint' ) as $key )
+            $scope[ $key ] = isset( $write[ $key ] ) && is_string( $write[ $key ] )
+                ? $write[ $key ] : '';
+        $json = wp_json_encode( $scope, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
+    }
+
     public static function digest( array $plan ) {
         $bound = array( 'contract'=>'mad4b.staging-write-owner-intent.v1', 'operation'=>'mad4b/staging-write-authority-convergence-apply' );
         foreach ( array( 'plan_sha256', 'site_uuid', 'site_profile_revision', 'site_profile_digest',
@@ -234,11 +254,30 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             $identity[ $key ] = $plan[ $key ] ?? null;
         return array( 'contract'=>'mad4b.staging-write-owner-review.v1',
             'review_digest'=>self::digest( $plan ), 'plan'=>$identity,
+            'canonical_scope_sha256'=>self::canonical_scope_sha256( $plan ),
             'plan_evidence'=>self::evidence_snapshot( $plan ),
             'read_only'=>true, 'authorizing'=>false, 'mutation_performed'=>false,
             'decision_recorded'=>false,
         );
     }
+    private static function retire_expired_prior_intent( $previous ) {
+        if ( ! function_exists( 'delete_option' ) || ! is_array( $previous )
+            || ! isset( $previous['receipt_sha256'], $previous['expires'], $previous['owner'] )
+            || time() < (int) $previous['expires'] ) return false;
+        $receipt = (string) $previous['receipt_sha256'];
+        if ( ! preg_match( '/^[a-f0-9]{64}$/D', $receipt ) ) return false;
+        $signed = $previous;
+        unset( $signed['receipt_sha256'] );
+        $valid = self::signature( $signed );
+        if ( '' === $valid || ! hash_equals( $valid, $receipt ) ) return false;
+        // Never delete the append-only Audit or the operation-journal tombstone.
+        // This receipt is expired and has already been replaced by a newer
+        // same-owner signed record; its auxiliary marker is no longer useful.
+        delete_option( self::AUDIT_COMMIT_PREFIX . substr( $receipt, 0, 40 ) );
+        delete_option( 'mad4b_scp_owner_claim_' . substr( $receipt, 0, 40 ) );
+        return true;
+    }
+
     public static function attest( $input ) {
         $review = self::review();
         if ( is_wp_error( $review ) ) return $review;
@@ -256,10 +295,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'expires_at' => $existing['expires_at'],
             'reused_existing_intent' => true,
             'mutation_performed' => false );
+        $previous_record = get_option( self::OPTION, array() );
         try { $nonce = bin2hex( random_bytes( 16 ) ); }
         catch ( Throwable $exception ) { return new WP_Error( 'mad4b_owner_entropy_unavailable', 'Secure nonce unavailable.' ); }
         $record = array( 'owner'=>(int) get_current_user_id(), 'review_digest'=>$review['review_digest'],
             'plan_identity'=>is_array( $review['plan'] ) ? $review['plan'] : array(),
+            'canonical_scope_sha256'=>is_string( $review['canonical_scope_sha256'] ?? null )
+                ? $review['canonical_scope_sha256'] : '',
             'plan_evidence'=>isset( $review['plan_evidence'] ) && is_array( $review['plan_evidence'] )
                 ? $review['plan_evidence'] : array(),
             'review_channel'=>function_exists( 'is_admin' ) && is_admin()
@@ -284,6 +326,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         if ( ! self::mark_audit_committed( $record ) )
             return new WP_Error( 'mad4b_owner_audit_marker_failed',
                 'Owner audit recorded but durable completion marker is unavailable; do not retry blindly.' );
+        self::retire_expired_prior_intent( $previous_record );
         return array( 'state'=>'OWNER_INTENT_NOT_AUTHORITY', 'receipt_sha256'=>$record['receipt_sha256'],
             'expires_at'=>$record['expires'], 'mutation_performed'=>false );
     }
@@ -419,6 +462,13 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         }
         $legacy = $valid_record && ! $stored;
         $identity_drift = (bool) $changed;
+        $old_scope = $valid_record && is_array( $saved )
+            && is_string( $saved['canonical_scope_sha256'] ?? null )
+            ? $saved['canonical_scope_sha256'] : '';
+        $current_scope = $eligible ? (string) ( $review['canonical_scope_sha256'] ?? '' )
+            : ( $blocked_plan ? self::canonical_scope_sha256( $blocked_plan ) : '' );
+        $same_scope = '' !== $old_scope && '' !== $current_scope
+            && hash_equals( $old_scope, $current_scope );
         $digest_differs = $valid_record && $eligible
             && is_array( $saved ) && isset( $saved['review_digest'] )
             && ! hash_equals( (string) $saved['review_digest'], (string) $review['review_digest'] );
@@ -434,7 +484,15 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
         $exact_grants = null !== $count && $count > 0 && null !== $grants && $count === $grants;
         $binding_match = ! empty( $binding['match'] );
         $ready = is_array( $authority ) && ! empty( $authority['write_ready'] );
-        $next = ! $eligible ? 'repair_current_plan_blockers_then_review_fresh_plan'
+        $latest_operation = class_exists( 'MAD4B_SCP_Staging_Operation_Journal', false )
+            ? MAD4B_SCP_Staging_Operation_Journal::latest(
+                (string) ( $current['site_uuid'] ?? $stored['site_uuid'] ?? '' ) )
+            : array( 'state' => 'OPERATION_JOURNAL_NOT_AVAILABLE', 'read_only' => true );
+        $operation_uncertain = in_array( (string) ( $latest_operation['state'] ?? '' ),
+            array( 'EXECUTION_UNCERTAIN', 'RECOVERY_REQUIRED',
+                'OPERATION_LOCK_WITHOUT_INDEX', 'UNVERIFIED_OR_UNAVAILABLE' ), true );
+        $next = $operation_uncertain ? 'readback_write_runtime_binding_audit_do_not_replay'
+            : ( ! $eligible ? 'repair_current_plan_blockers_then_review_fresh_plan'
             : ( $identity_drift || $digest_differs || $evidence_changed || $legacy
                 ? 'compare_exact_owner_plan_fields_no_blind_retry'
                 : ( 'OWNER_INTENT_CURRENT' === $state['state']
@@ -442,16 +500,17 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                     : ( 'OWNER_INTENT_CLAIMED' === $state['state']
                         ? 'readback_write_runtime_binding_audit_do_not_replay'
                         : ( $ready ? 'verify_current_authority_and_stop'
-                            : 'obtain_explicit_fresh_owner_approval_for_exact_plan' ) ) ) );
+                            : 'obtain_explicit_fresh_owner_approval_for_exact_plan' ) ) ) ) );
         return array(
             'contract' => 'mad4b.staging-owner-transport-reconciliation.v1',
-            'state' => ! $eligible ? 'PLAN_BLOCKED'
+            'state' => $operation_uncertain ? 'OPERATION_REQUIRES_RECOVERY_READBACK'
+                : ( ! $eligible ? 'PLAN_BLOCKED'
                 : ( $identity_drift || $digest_differs || $evidence_changed ? 'OWNER_REVIEW_PLAN_DRIFT'
                 : ( $legacy ? 'LEGACY_RECEIPT_IDENTITY_UNAVAILABLE'
                 : ( 'OWNER_INTENT_CLAIMED' === $state['state'] && ! $ready
                     ? 'CLAIMED_EXECUTION_UNVERIFIED_DO_NOT_RETRY'
                     : ( $ready && $binding_match ? 'WRITE_RUNTIME_REPORTED_READY'
-                        : 'EXECUTION_NOT_CONFIRMED' ) ) ) ),
+                        : 'EXECUTION_NOT_CONFIRMED' ) ) ) ) ),
             'owner_intent_state' => $state['state'],
             'recorded_review_channel' => $valid_record && isset( $saved['review_channel'] )
                 ? (string) $saved['review_channel'] : 'unknown_legacy',
@@ -463,6 +522,10 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'recorded_evidence_unavailable' => $valid_record && ! $stored_evidence,
             'identity_drift' => $identity_drift,
             'review_digest_differs' => $digest_differs,
+            'canonical_scope_sha256_recorded' => $old_scope,
+            'canonical_scope_sha256_current' => $current_scope,
+            'canonical_scope_match_diagnostic_only' => $same_scope,
+            'canonical_scope_does_not_authorize_apply' => true,
             'stored_plan_sha256' => isset( $stored['plan_sha256'] ) ? (string) $stored['plan_sha256'] : '',
             'current_plan_sha256' => isset( $current['plan_sha256'] ) ? (string) $current['plan_sha256'] : '',
             'owner_intent_receipt_sha256' => 'OWNER_INTENT_CURRENT' === $state['state']
@@ -487,6 +550,7 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'current_binding_source_commit_sha' => isset( $binding['current_source_commit_sha'] )
                 ? (string) $binding['current_source_commit_sha'] : '',
             'evidence_scope' => 'same_request_read_only_not_independent_browser_or_release_certification',
+            'latest_operation' => $latest_operation,
             'oauth_step_up_required_for_diagnostic' => false,
             'oauth_step_up_still_required_for_apply' => true,
             'requested_plan_not_replayed' => true,

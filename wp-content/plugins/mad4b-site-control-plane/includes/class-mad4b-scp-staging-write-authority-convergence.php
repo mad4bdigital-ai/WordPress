@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-staging-operation-journal.php';
 
 /**
  * Exact, audited Staging-only convergence for governed Write authority.
@@ -508,17 +509,36 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 		}
 
 		self::$running = true;
+		$journal_plan = array();
+		$journal_reserved = false;
+		$journal_completed = false;
+		$operation_id = '';
 		try {
 			$plan = self::plan();
 			if ( is_wp_error( $plan ) ) return $plan;
 			if ( empty( $plan['ready_to_apply'] ) ) return new WP_Error( 'mad4b_staging_write_authority_plan_blocked', 'Governed Write convergence plan contains hard blockers.', array( 'blockers' => $plan['hard_blockers'] ) );
 			$match = self::match_expected_plan( $plan, $input );
 			if ( is_wp_error( $match ) ) return $match;
+			$prior_operation = MAD4B_SCP_Staging_Operation_Journal::inspect_plan( $plan );
+			if ( 'INVALID_PLAN_IDENTITY' === $prior_operation['state'] )
+				return new WP_Error( 'mad4b_staging_operation_identity_missing', 'Cannot derive stable operation identity.' );
+			if ( 'UNVERIFIED_OR_UNAVAILABLE' !== $prior_operation['state'] )
+				return new WP_Error( 'mad4b_staging_operation_prior_attempt',
+					'This exact operation may have executed. Read current bindings, audit and operation status before any new approval.',
+					array( 'operation' => $prior_operation ) );
 			if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) return new WP_Error( 'mad4b_staging_write_authority_audit_required', 'Ready append-only audit storage is required.' );
 			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Candidate_Binding' ) ) return new WP_Error( 'mad4b_staging_write_authority_candidate_binding_unavailable', 'Candidate-binding authority is unavailable.' );
 			if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) return new WP_Error( 'mad4b_staging_owner_intent_unavailable', 'Explicit owner intent required.' );
 			$owner_intent = self::authorize_reviewed_owner_intent( $plan, $input );
 			if ( is_wp_error( $owner_intent ) ) return $owner_intent;
+			// Durable cross-request reservation BEFORE the first governed side
+			// effect. A replayed Apply with a new signed Owner Review remains
+			// blocked even when the old owner receipt has been consumed.
+			$reservation = MAD4B_SCP_Staging_Operation_Journal::reserve( $plan );
+			if ( is_wp_error( $reservation ) ) return $reservation;
+			$journal_plan = $plan;
+			$journal_reserved = true;
+			$operation_id = (string) $reservation['operation_id'];
 
 			$reviewed_binding_status = isset( $plan['write_reconciliation']['candidate_binding'] ) && is_array( $plan['write_reconciliation']['candidate_binding'] )
 				? $plan['write_reconciliation']['candidate_binding']
@@ -528,6 +548,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			$intent = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-authorized', array(
 				'contract' => self::CONTRACT,
 				'plan_sha256' => $plan['plan_sha256'],
+				'operation_id' => $operation_id,
 				'source_commit_sha' => $plan['source_commit_sha'],
 				'build_fingerprint' => $plan['build_fingerprint'],
 				'package_manifest_digest' => $plan['package_manifest_digest'],
@@ -666,11 +687,19 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			if ( is_wp_error( $completion ) )
 				return self::fail_closed( 'postcondition_audit_failed', new WP_Error(
 					'mad4b_staging_write_postcondition_audit_failed', 'Durable completion audit failed; reconcile before retry.' ) );
+			if ( ! MAD4B_SCP_Staging_Operation_Journal::complete(
+				$journal_plan, (string) $confirmation['receipt_sha256'] ) )
+				return new WP_Error( 'mad4b_staging_operation_completion_unverified',
+					'Write verified but durable operation journal not verified; re-read status and audit before any new attempt.',
+					array( 'operation_id' => $operation_id ) );
+			$journal_completed = true;
 
 			return array(
 				'contract' => self::CONTRACT,
 				'state' => 'governed_staging_write_authority_ready',
 				'write_ready' => true,
+				'operation_id' => $operation_id,
+				'operation_status' => 'VERIFIED',
 				'verified_current_state' => true,
 				'confirmation_scope' => 'same_request_state_not_external_release',
 				'confirmation' => $confirmation,
@@ -687,6 +716,11 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				'production_mutation' => false,
 			);
 		} finally {
+			if ( $journal_reserved && ! $journal_completed ) {
+				// Crash/timeouts can still leave EXECUTION_UNCERTAIN. Both this
+				// state and RECOVERY_REQUIRED prohibit blind execution replay.
+				MAD4B_SCP_Staging_Operation_Journal::suspend( $journal_plan );
+			}
 			self::$running = false;
 		}
 	}
