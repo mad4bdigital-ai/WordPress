@@ -576,6 +576,38 @@ jobs:
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
 
+      - name: Prove site-operation reservation under parallel real DB requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/staging-operation-journal-wpdb-concurrency.php"
+          RUN="op-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}-${{ matrix.wordpress }}"
+          for GROUP in same different; do
+            php /tmp/wp-cli.phar eval-file "$TEST" setup "$RUN" "$GROUP" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+            OUT="/tmp/mad4b-operation-$GROUP"
+            mkdir -p "$OUT"
+            PIDS=()
+            for IDX in 0 1 2 3 4; do
+              php /tmp/wp-cli.phar eval-file "$TEST" worker "$RUN" "$GROUP" "$IDX" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > "$OUT/$IDX.json" &
+              PIDS+=("$!")
+            done
+            for PID in "${PIDS[@]}"; do wait "$PID"; done
+            python3 - "$OUT" <<'PY'
+          import json, pathlib, sys
+          files=sorted(pathlib.Path(sys.argv[1]).glob('*.json'))
+          records=[json.loads(p.read_text()) for p in files]
+          assert len(records)==5, records
+          assert sum(x['success'] for x in records)==1, records
+          assert all(x['success'] or x['code'] in {
+              'mad4b_site_operation_lock_held',
+              'mad4b_previous_operation_needs_reconciliation',
+              'mad4b_operation_readback_required',
+          } for x in records), records
+          print('PARALLEL_WPDB_OPERATION_RESERVATION_PASS',records)
+          PY
+            php /tmp/wp-cli.phar eval-file "$TEST" verify "$RUN" "$GROUP" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          done
+
       - name: Prove schema v13 migration contract
         shell: bash
         run: |

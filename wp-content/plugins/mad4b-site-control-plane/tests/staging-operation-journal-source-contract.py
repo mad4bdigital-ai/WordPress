@@ -10,9 +10,16 @@ workflow=(root.parents[2]/".github/workflows/feature-007-pre-staging-hybrid-audi
 assert "require_once __DIR__ . '/class-mad4b-scp-staging-operation-journal.php'" in converge
 apply=converge.split("public static function apply( $input ) {",1)[1].split("public static function evaluate_postconditions",1)[0]
 assert apply.index("self::match_expected_plan") < apply.index("inspect_plan( $plan )")
-assert apply.index("authorize_reviewed_owner_intent( $plan, $input )") < apply.index("::reserve( $plan )")
+assert apply.index("authorize_reviewed_owner_intent( $plan, $input, false )") < apply.index("::reserve( $plan )")
+assert apply.index("::reserve( $plan )") < apply.index("::claim( $plan, array(")
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::validate_claimable" in converge
 assert apply.index("::reserve( $plan )") < apply.index("MAD4B_SCP_Site_Profile_Write_Enablement::enable_write")
 assert apply.index("MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-verified'") < apply.index("::complete(")
+assert "owner_approved_initial_plan_sha256" in apply
+assert "verified_post_execution_plan_sha256" in apply
+assert "FINALIZATION_LOCK_HELD" in journal and "FINALIZATION_INCOMPLETE" in journal
+assert "if ( ! self::transition( $plan, 'FINALIZING'" in journal
+assert "return self::transition( $plan, 'VERIFIED' )" in journal
 assert "::suspend( $journal_plan )" in apply
 assert apply.count("'operation_id' => $operation_id") >= 4, 'Audit and result share one operation ID'
 assert "add_option( self::active_key( $plan['site_uuid'] )" in journal

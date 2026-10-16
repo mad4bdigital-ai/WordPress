@@ -18,11 +18,14 @@ function add_option( $key, $value, $unused = '', $autoload = false ) {
     return true;
 }
 function delete_option( $key ) {
+    if ( ! empty($GLOBALS['delete_fail']) ) return false;
     if ( ! isset( $GLOBALS['options'][$key] ) ) return false;
     unset( $GLOBALS['options'][$key] ); return true;
 }
 function update_option( $key, $value, $autoload = false ) {
-    if ( ! empty( $GLOBALS['block_updates'] ) ) return false;
+    if ( ! empty( $GLOBALS['block_updates'] )
+        || ( !empty($GLOBALS['block_verified_update']) && is_array($value)
+            && ($value['state'] ?? '') === 'VERIFIED' ) ) return false;
     $GLOBALS['options'][$key] = $value;
     return true;
 }
@@ -64,8 +67,11 @@ check_journal( is_wp_error($J::reserve($new)),
 $new['site_uuid'] = '11111111-2222-3333-4444-555555555555';
 check_journal( is_array($J::reserve($new)), 'different site may reserve independent operation' );
 check_journal( !$J::complete($new,'not-a-digest'), 'invalid postcondition receipt blocked' );
-check_journal( $J::complete($new,str_repeat('e',64)), 'independently supplied postcondition stores verified state' );
+check_journal( $J::complete($new,str_repeat('e',64),str_repeat('f',64)),
+    'independently supplied postcondition stores verified state and post-plan' );
 check_journal( $J::inspect_plan($new)['state'] === 'VERIFIED', 'verified state readback' );
+check_journal( $J::inspect_plan($new)['post_execution_plan_sha256'] === str_repeat('f',64),
+    'initial approval plan and post-execution plan explicitly linked' );
 $third = $new; $third['plan_sha256'] = str_repeat('8',64);
 check_journal( is_array($J::reserve($third)),
     'completed operation releases site lock for independently reviewed new plan' );
@@ -86,4 +92,52 @@ check_journal( $J::latest($site_other)['state'] === 'OPERATION_LOCK_WITHOUT_INDE
     'orphan atomic site lock is visible and denies blind retry' );
 $orphan = $plan; $orphan['site_uuid'] = $site_other;
 check_journal( is_wp_error($J::reserve($orphan)), 'orphan site lock blocks new plan safely' );
+// Failure injection 1: failure to delete the site lock must never
+// publish VERIFIED. All subsequent plans must remain blocked.
+$GLOBALS['options']=array(); $GLOBALS['delete_fail']=false;
+$a=$plan; $a['site_uuid']='33333333-2222-3333-4444-555555555555';
+check_journal(is_array($J::reserve($a)),'reserve failure-injection site');
+$GLOBALS['delete_fail']=true;
+check_journal(!$J::complete($a,str_repeat('d',64),str_repeat('e',64)),
+    'injected lock deletion failure surfaced');
+check_journal($J::inspect_plan($a)['state']==='FINALIZATION_LOCK_HELD',
+    'never claim success while a lock survives');
+$b=$a; $b['plan_sha256']=str_repeat('2',64);
+check_journal(is_wp_error($J::reserve($b)),'new operation blocked while release pending');
+$GLOBALS['delete_fail']=false;
+
+// Failure injection 2: lock released but persistence of VERIFIED fails.
+// An independent request must observe a FINALIZATION_INCOMPLETE blocker.
+$GLOBALS['options']=array();
+$a=$plan; $a['site_uuid']='44444444-2222-3333-4444-555555555555';
+check_journal(is_array($J::reserve($a)), 'reserve post-release persist failure');
+$GLOBALS['block_verified_update']=true;
+check_journal(!$J::complete($a,str_repeat('d',64),str_repeat('e',64)),
+    'injected final status persistence failure surfaced');
+check_journal($J::latest($a['site_uuid'])['state']==='FINALIZATION_INCOMPLETE',
+    'interrupted final commit cannot claim VERIFIED');
+$b=$a; $b['plan_sha256']=str_repeat('2',64);
+check_journal(is_wp_error($J::reserve($b)), 'new plan blocked by incomplete final record');
+$GLOBALS['block_verified_update']=false;
+
+// Failure injection 3: old VERIFIED row with an orphan lock must be visible.
+$GLOBALS['options']=array();
+$a=$plan; $a['site_uuid']='55555555-2222-3333-4444-555555555555';
+check_journal(is_array($J::reserve($a)), 'reserve legacy-lock case');
+check_journal($J::complete($a,str_repeat('d',64),str_repeat('e',64)), 'normal verify first');
+$GLOBALS['options'][$J::ACTIVE_PREFIX . substr(hash('sha256',$a['site_uuid']),0,32)]=$J::id($a);
+check_journal($J::latest($a['site_uuid'])['state']==='VERIFIED_LOCK_HELD',
+    'legacy VERIFIED record with retained lock is visibly inconsistent');
+$b=$a; $b['plan_sha256']=str_repeat('2',64);
+check_journal(is_wp_error($J::reserve($b)), 'legacy orphan lock blocks repeat');
+
+// Failure injection 4: no index after a reservation surfaces a recovery state.
+$GLOBALS['options']=array();
+$a=$plan; $a['site_uuid']='66666666-2222-3333-4444-555555555555';
+$GLOBALS['block_updates']=true;
+check_journal(is_wp_error($J::reserve($a)), 'missing operation index reports failure');
+check_journal($J::latest($a['site_uuid'])['state']==='OPERATION_LOCK_WITHOUT_INDEX',
+    'missing index retains evidence of active lock');
+$GLOBALS['block_updates']=false;
+
 echo "STAGING_OPERATION_JOURNAL_RUNTIME_PASS\n";
