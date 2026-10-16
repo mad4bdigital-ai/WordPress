@@ -71,6 +71,7 @@ final class MAD4B_SCP_Servers {
                 'mad4b/deployment-binding-setup-status', 'mad4b/deployment-binding-setup-plan',
                 'mad4b/deployment-binding-native-status', 'mad4b/deployment-binding-native-plan',
                 'mad4b/staging-write-owner-review',
+                'mad4b/staging-write-owner-reconciliation-diagnose',
                 'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),

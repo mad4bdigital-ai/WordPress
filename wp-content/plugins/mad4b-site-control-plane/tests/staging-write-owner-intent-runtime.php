@@ -12,6 +12,8 @@ function wp_nonce_field( $action ) { echo '<input type="hidden" name="_wpnonce" 
 function submit_button( $label ) { echo '<button>' . esc_html( $label ) . '</button>'; }
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function current_user_can( $c ) { return $GLOBALS['admin'] && 'manage_options' === $c; }
+function is_admin() { return ! empty( $GLOBALS['is_admin_request'] ); }
+function is_user_logged_in() { return true; }
 function get_current_user_id() { return $GLOBALS['user']; }
 function get_option( $k, $default = false ) { return isset( $GLOBALS['options'][$k] ) ? $GLOBALS['options'][$k] : $default; }
 function update_option( $k, $v, $autoload = false ) { $GLOBALS['options'][$k] = $v; return true; }
@@ -43,6 +45,11 @@ class MAD4B_SCP_Staging_Write_Authority_Convergence {
     const HANDSHAKE_ABILITY = 'mad4b/staging-write-convergence-handshake';
     const APPLY_ABILITY = 'mad4b/staging-write-authority-convergence-apply';
     static function plan() { return $GLOBALS['plan']; }
+    static function status() { return array( 'write_ready' => false,
+        'candidate_binding' => $GLOBALS['plan']['write_reconciliation']['candidate_binding'] ?? array(),
+        'write_plan' => $GLOBALS['plan']['write_reconciliation'] ?? array() ); }
+    static function plan_for_local_owner() { return isset( $GLOBALS['plan_local'] )
+        ? $GLOBALS['plan_local'] : $GLOBALS['plan']; }
 }
 function assertion( $okay, $label ) {
     if ( ! $okay ) { fwrite( STDERR, "FAIL: $label\n" ); exit( 1 ); }
@@ -65,6 +72,15 @@ $GLOBALS['plan'] = array(
     'build_fingerprint' => str_repeat( 'd', 64 ),
     'package_manifest_digest' => str_repeat( 'e', 64 ),
     'artifact_identity' => 'artifact-a',
+    'write_reconciliation' => array(
+        'write_tool_count' => 102, 'exact_grants_existing' => 102,
+        'exact_grants_missing_count' => 0, 'current_ready' => false,
+        'write_inventory_fingerprint' => str_repeat( '1', 64 ),
+        'grant_rows_fingerprint' => str_repeat( '2', 64 ),
+        'candidate_binding' => array( 'match' => false,
+            'stored_source_commit_sha' => str_repeat( '3', 40 ),
+            'current_source_commit_sha' => str_repeat( 'c', 40 ) ),
+    ),
 );
 // Verified owner OAuth step-up is independent of Write candidate freshness.
 class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID='https://chatgpt.com/oauth/client.json'; }
@@ -86,6 +102,33 @@ $payload = array( 'review_digest' => $review['review_digest'], 'confirmation' =>
 $record = $klass::attest( $payload );
 assertion( is_array( $record ) && 'OWNER_INTENT_NOT_AUTHORITY' === $record['state'], 'Owner intent not a mutation approval' );
 $receipt = $record['receipt_sha256'];
+$diagnostic = $klass::diagnose();
+assertion( is_array( $diagnostic ) && $diagnostic['owner_intent_state'] === 'OWNER_INTENT_CURRENT'
+    && !$diagnostic['identity_drift'] && !$diagnostic['review_digest_differs'],
+    'same plan across local/remote is a matched diagnostic, not a grant' );
+assertion( $diagnostic['read_only'] && !$diagnostic['mutation_performed']
+    && !$diagnostic['write_ready_readback'] && $diagnostic['grant_rows_existing'] === 102
+    && $diagnostic['registered_write_abilities'] === 102
+    && !$diagnostic['candidate_binding_match'],
+    '102/102 grants cannot certify candidate binding or effective writes' );
+$before_drift = $GLOBALS['plan'];
+$GLOBALS['plan']['source_commit_sha'] = str_repeat( 'f', 40 );
+$drift = $klass::diagnose();
+assertion( $drift['state'] === 'OWNER_REVIEW_PLAN_DRIFT'
+    && in_array( 'source_commit_sha', $drift['identity_fields_changed'], true )
+    && $drift['next_action'] === 'compare_exact_owner_plan_fields_no_blind_retry',
+    'different exact plan must fail closed, no blind apply' );
+$GLOBALS['plan'] = $before_drift;
+$GLOBALS['plan']['write_reconciliation']['grant_rows_fingerprint'] = str_repeat( 'f', 64 );
+$fingerprint_drift = $klass::diagnose();
+assertion( $fingerprint_drift['state'] === 'OWNER_REVIEW_PLAN_DRIFT'
+    && in_array( 'grant_rows_fingerprint',
+        $fingerprint_drift['non_authorizing_plan_evidence_fields_changed'], true ),
+    'grant inventory snapshot drift is diagnosed, never silently normalized' );
+$GLOBALS['plan'] = $before_drift;
+assertion( is_wp_error( $klass::diagnose( array( 'apply' => true ) ) ),
+    'diagnostic refuses mutation-like input' );
+
 $status = $klass::page_intent_status( $review );
 assertion( 'OWNER_INTENT_CURRENT' === $status['state'] && $receipt === $status['receipt_sha256'], 'fresh GET recognizes signed confirmation' );
 ob_start();
@@ -141,6 +184,10 @@ $claim = $klass::claim( $GLOBALS['plan'], array('owner_intent_sha256'=>$receipt)
 assertion( is_array( $claim ) && $claim['claimed_once'], 'Exact claim accepted once' );
 $claimed_view = $klass::page_intent_status( $klass::review() );
 assertion( 'OWNER_INTENT_CLAIMED' === $claimed_view['state'], 'claimed receipt has a distinct post-refresh status' );
+$claimed_diagnosis = $klass::diagnose();
+assertion( $claimed_diagnosis['state'] === 'CLAIMED_EXECUTION_UNVERIFIED_DO_NOT_RETRY'
+    && $claimed_diagnosis['next_action'] === 'readback_write_runtime_binding_audit_do_not_replay',
+    'claimed but unverified Write does not blindly repeat an MCP apply' );
 ob_start();
 $klass::page();
 $claimed_html = ob_get_clean();
@@ -162,5 +209,51 @@ assertion( is_wp_error( $klass::can_remote_attest() ), 'Unauthenticated subject 
 $GLOBALS['identity']=true;$GLOBALS['environment']='production';
 assertion( is_wp_error( $klass::can_remote_attest() ), 'Production remote owner attest denied' );
 $GLOBALS['environment']='staging';
+
+// Separate WordPress Admin and OAuth transports must agree on EXACT plan
+// identity. A local approval is never silently recast as a remote approval.
+$GLOBALS['is_admin_request'] = true;
+$GLOBALS['bearer'] = false;
+$GLOBALS['plan_local'] = $GLOBALS['plan'];
+$admin_review = $klass::review();
+assertion( is_array( $admin_review ), 'local admin review uses read-only preview' );
+$local_attest = $klass::attest( array(
+    'review_digest' => $admin_review['review_digest'], 'confirmation' => $klass::CONFIRM ) );
+assertion( is_array( $local_attest ), 'admin owner decision recorded' );
+$stored_admin = $GLOBALS['options'][ $klass::OPTION ];
+assertion( $stored_admin['review_channel'] === 'wp_admin', 'record signing remembers approval transport' );
+$GLOBALS['is_admin_request'] = false;
+$GLOBALS['bearer'] = true;
+$parity = $klass::diagnose();
+assertion( $parity['owner_intent_state'] === 'OWNER_INTENT_CURRENT'
+    && $parity['identity_fields_changed'] === array()
+    && $parity['stored_plan_sha256'] === $parity['current_plan_sha256'],
+    'identical admin and OAuth plans admit signed read-only parity' );
+$GLOBALS['plan']['plan_sha256'] = str_repeat( '9', 64 );
+$cross_transport_drift = $klass::diagnose();
+assertion( $cross_transport_drift['state'] === 'OWNER_REVIEW_PLAN_DRIFT'
+    && in_array( 'plan_sha256', $cross_transport_drift['identity_fields_changed'], true )
+    && $cross_transport_drift['recorded_review_channel'] === 'wp_admin',
+    'distinct exact remote plan exposed without substituting manual approval' );
+assertion( $cross_transport_drift['read_only']
+    && $cross_transport_drift['requested_plan_not_replayed'],
+    'mismatch cannot cause a retry or write' );
+$GLOBALS['plan']['plan_sha256'] = $GLOBALS['plan_local']['plan_sha256'];
+// Already-signed legacy receipts lacking a field-level identity must be
+// reported as unexplainable, not retroactively inferred from a digest.
+$legacy = $stored_admin;
+unset( $legacy['plan_identity'], $legacy['review_channel'], $legacy['receipt_sha256'] );
+$legacy['receipt_sha256'] = hash_hmac( 'sha256',
+    wp_json_encode( $legacy, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), wp_salt( 'auth' ) );
+$GLOBALS['options'][ $klass::OPTION ] = $legacy;
+$legacy_status = $klass::diagnose();
+assertion( $legacy_status['state'] === 'LEGACY_RECEIPT_IDENTITY_UNAVAILABLE'
+    && $legacy_status['recorded_receipt_legacy_identity_missing']
+    && !$legacy_status['identity_drift'],
+    'legacy receipt mismatch cannot invent fields' );
+$GLOBALS['options'][ $klass::OPTION ] = $stored_admin;
+$GLOBALS['scope'] = false;
+assertion( is_wp_error( $klass::diagnose() ), 'OAuth diagnostic requires owner step-up' );
+$GLOBALS['scope'] = true;
 
 echo "STAGING_WRITE_OWNER_INTENT: PASS (hermetic fixture)\n";

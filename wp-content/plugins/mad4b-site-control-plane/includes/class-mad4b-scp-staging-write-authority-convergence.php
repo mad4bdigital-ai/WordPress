@@ -335,6 +335,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
                         'manual_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
                         'manual_result' => 'short_lived_owner_intent_not_execution_authority',
                         'remote_review_ability' => 'mad4b/staging-write-owner-review',
+                        'remote_plan_parity_diagnostic' => 'mad4b/staging-write-owner-reconciliation-diagnose',
                         'remote_step_up_scope' => 'mad4b:authority:step-up',
                         'remote_apply_ability' => self::APPLY_ABILITY,
                         'remote_confirmation' => self::CONFIRMATION,

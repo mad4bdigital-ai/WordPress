@@ -62,6 +62,8 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
                 'mad4b/staging-write-owner-review', 'read', 'enrolled_owner', 'record_exact_owner_intent' ),
             self::row( 70, 'owner_intent', 'tools.php?page=mad4b-staging-write-owner-review',
                 'mad4b/staging-write-owner-attest', 'enrollment', 'wp_nonce_or_oauth_step_up', 'intent_is_not_execution_ticket' ),
+            self::row( 75, 'owner_plan_parity', 'tools.php?page=mad4b-staging-write-owner-review',
+                'mad4b/staging-write-owner-reconciliation-diagnose', 'read', 'exact_owner_oauth_step_up', 'compare_signed_local_receipt_and_remote_plan_before_any_retry' ),
             self::row( 80, 'write_plan', 'tools.php?page=mad4b-staging-write-owner-review',
                 'mad4b/staging-write-authority-convergence-handshake', 'read', 'enrolled_owner_oauth', 'review_exact_plan_and_explicit_confirmation' ),
             self::row( 90, 'write_execute', 'tools.php?page=mad4b-staging-write-owner-review',
