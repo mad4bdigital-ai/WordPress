@@ -13,6 +13,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const STATUS = 'mad4b/deployment-binding-native-status';
     const PLAN = 'mad4b/deployment-binding-native-plan';
     const READBACK = 'mad4b/deployment-binding-native-readback';
+    const PRODUCTION_STATUS = 'mad4b/deployment-binding-production-status';
     const HANDOFF = 'mad4b/deployment-binding-owner-handoff';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
@@ -62,6 +63,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             array( self::STATUS, 'status', $read_schema, true ),
             array( self::PLAN, 'plan', $read_schema, true ),
             array( self::READBACK, 'readback', $verify_schema, true ),
+            array( self::PRODUCTION_STATUS, 'production_status', $read_schema, true ),
             array( self::HANDOFF, 'handoff', $read_schema, true ),
             array( self::APPLY, 'apply', $write_schema, false ),
         ) as $ability ) {
@@ -209,6 +211,57 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'no_secret_exposed' => true, 'read_only' => true,
             'production_authorized' => false );
     }
+    /**
+     * Production is supported as an independently evaluated read-only host
+     * binding inspection.  Creating/changing a Production secret requires a
+     * separately approved Production release and is never a Staging POST,
+     * activation, auto-update, or ChatGPT owner-consent side effect.
+     */
+    public static function production_status( $input = array() ) {
+        if ( ! self::can_read() || ! is_array( $input ) || $input )
+            return self::error( 'production_read_denied' );
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+            return self::error( 'production_profile_unavailable' );
+        $site = MAD4B_SCP_Site_Profile::status();
+        $stored = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+        if ( ! is_array( $site ) || ! is_array( $stored )
+            || 'production' !== (string) ( $site['configured_environment'] ?? '' )
+            || 'production' !== (string) ( $site['wordpress_environment'] ?? '' )
+            || 'production' !== (string) ( $stored['environment'] ?? '' ) )
+            return self::error( 'production_exact_environment_required' );
+        $exact = ! empty( $site['origin_match'] )
+            && ! empty( $site['environment_match'] )
+            && empty( $site['mutation_pending_audit'] )
+            && hash_equals( (string) ( $site['site_uuid'] ?? '' ),
+                (string) ( $stored['site_uuid'] ?? '' ) )
+            && hash_equals( (string) ( $site['canonical_origin'] ?? '' ),
+                (string) ( $stored['canonical_origin'] ?? '' ) )
+            && (int) ( $site['revision'] ?? 0 ) === (int) ( $stored['revision'] ?? -1 ) ;
+        $stored_digest = (string) ( $stored['deployment_binding_digest'] ?? '' );
+        $observed_digest = (string) MAD4B_SCP_Site_Profile::deployment_binding_digest();
+        $verified = $exact
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $stored_digest )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $observed_digest )
+            && hash_equals( $stored_digest, $observed_digest );
+        $state = ! $exact ? 'PRODUCTION_PROFILE_IDENTITY_MISMATCH'
+            : ( '' === $stored_digest ? 'PRODUCTION_HOST_BINDING_NOT_ENROLLED'
+            : ( $verified ? 'PRODUCTION_HOST_BINDING_VERIFIED'
+                : 'PRODUCTION_HOST_BINDING_MISMATCH' ) );
+        return array(
+            'contract' => self::CONTRACT . '.production-read.v1',
+            'state' => $state, 'ready' => $verified,
+            'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
+            'profile_revision' => (int) ( $site['revision'] ?? 0 ),
+            'site_identity_preserved' => $exact,
+            'next_action' => $verified
+                ? 'separately_approved_production_readiness_review'
+                : 'independent_owner_approved_production_host_binding_release',
+            'secret_exposed' => false, 'host_path_exposed' => false,
+            'production_mutation_authorized' => false,
+            'staging_setup_available' => false, 'read_only' => true,
+            'mutation_performed' => false );
+    }
+
     /**
      * Explicit second-request acceptance. A successful apply is never itself
      * a deployment-binding certificate. Read original profile + host-secret
@@ -508,12 +561,31 @@ final class MAD4B_SCP_Deployment_Binding_Native {
         self::$wordpress_setup_nonce_verified = true;
         $result = self::wordpress_update_bootstrap();
         self::$wordpress_setup_nonce_verified = false;
-        $state = is_wp_error( $result ) ? 'blocked' :
-            ( 'EXISTING_BINDING_REUSED' === ( $result['state'] ?? '' ) ? 'reused' : 'new_readback_required' );
-        $code = is_wp_error( $result ) ? sanitize_key( $result->get_error_code() ) : '';
-        $args = array( 'mad4b_native_host_setup' => $state );
+        $result_state = is_array( $result ) ? (string) ( $result['state'] ?? '' ) : '';
+        if ( is_wp_error( $result ) ) {
+            $state = 'blocked';
+            $code = sanitize_key( $result->get_error_code() );
+        } elseif ( 'EXISTING_BINDING_REUSED' === $result_state ) {
+            $state = 'reused';
+            $code = '';
+        } elseif ( 'BOUND_NEW_REQUEST_READBACK_REQUIRED' === $result_state ) {
+            $state = 'new_readback_required';
+            $code = '';
+        } elseif ( 'POSTCOMMIT_RECONCILIATION_REQUIRED' === $result_state ) {
+            $state = 'reconciliation_required';
+            $code = 'postcommit_reconciliation_required';
+        } else {
+            // An unknown or partial result is never reported as success.
+            $state = 'blocked';
+            $code = 'unexpected_setup_result';
+        }
+        $args = array( 'page' => 'mad4b-operational-remediation',
+            'mad4b_native_host_setup' => $state );
         if ( '' !== $code ) $args['mad4b_setup_reason'] = $code;
-        wp_safe_redirect( add_query_arg( $args, admin_url( 'plugins.php' ) ) );
+        // A different HTTP GET renders fresh Site Profile + independent
+        // readback evidence; this response itself is never a certificate.
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) )
+            . '#mad4b-staging-deployment-identity' );
         exit;
     }
 

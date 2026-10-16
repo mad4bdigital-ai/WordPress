@@ -109,6 +109,19 @@ final class MAD4B_SCP_Operational_Remediation {
             . '</li></ol>';
         if ( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type() ) {
         echo '<h2 id="mad4b-staging-deployment-identity">' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
+        // Redirect query arguments are informational only. Readback below
+        // independently determines whether the operation actually worked.
+        $setup_result = isset( $_GET['mad4b_native_host_setup'] )
+            ? sanitize_key( wp_unslash( $_GET['mad4b_native_host_setup'] ) ) : '';
+        if ( in_array( $setup_result,
+            array( 'blocked', 'reconciliation_required', 'new_readback_required', 'reused' ), true ) ) {
+            $notice = 'blocked' === $setup_result || 'reconciliation_required' === $setup_result
+                ? 'The setup request was not certified. Review the current binding status and audit before retrying.'
+                : 'The setup request finished. Verify the independent binding readback shown below.';
+            echo '<div class="notice notice-info inline"><p>'
+                . esc_html__( $notice, 'mad4b-site-control-plane' )
+                . '</p></div>';
+        }
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false )
             ? MAD4B_SCP_Deployment_Binding_Setup::status() : new WP_Error( 'binding_setup_not_mounted' );
         if ( is_wp_error( $binding ) ) {
@@ -118,8 +131,20 @@ final class MAD4B_SCP_Operational_Remediation {
         } else {
             echo '<p><strong>' . esc_html__( 'Binding state', 'mad4b-site-control-plane' )
                 . ':</strong> <code>' . esc_html( (string) ( $binding['state'] ?? 'UNKNOWN' ) ) . '</code></p>';
-            if ( 'HOST_SECRET_NOT_CONFIGURED' === ( $binding['state'] ?? '' ) )
-                echo '<p>' . esc_html__( 'Action needed on hosting: create a protected secret outside public_html, include it in the existing Staging wp-config.php before wp-settings.php, then retry Setup Status. Never paste the secret into ChatGPT or store it in a WordPress option.', 'mad4b-site-control-plane' ) . '</p>';
+            if ( 'HOST_SECRET_NOT_CONFIGURED' === ( $binding['state'] ?? '' ) ) {
+                $native_alternative = class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false )
+                    ? MAD4B_SCP_Deployment_Binding_Native::status() : array();
+                if ( is_array( $native_alternative ) &&
+                    ( ! empty( $native_alternative['eligible'] )
+                      || 'ALREADY_HAS_PROFILE_BINDING' === ( $native_alternative['state'] ?? '' ) ) ) {
+                    echo '<p class="description">'
+                        . esc_html__( 'Legacy wp-config Host secret is not configured. This is not a blocker when the WordPress-native binding below is eligible or already verified; use its local setup/readback instead.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                } else {
+                    echo '<p>' . esc_html__( 'The legacy Host binding requires a separately protected host secret outside public_html and an independently approved configuration update. Never paste the secret into ChatGPT or save it in WordPress options.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                }
+            }
             if ( ! empty( $binding['ready_to_bind'] ) )
                 echo '<p>' . esc_html__( 'Hosting key detected. Use the exact Staging binding plan and separately approved owner apply through MCP, then verify Site Profile again.', 'mad4b-site-control-plane' ) . '</p>';
         }
@@ -135,12 +160,32 @@ final class MAD4B_SCP_Operational_Remediation {
                 . ':</strong> <code>' . esc_html( (string) ( $native_binding['state'] ?? 'UNKNOWN' ) )
                 . '</code></p>';
             if ( ! empty( $native_binding['eligible'] ) )
-                echo '<p>' . esc_html__( 'You can create and bind the Staging deployment key using one separately owner-approved MCP operation; SSH and editing wp-config.php are not required.', 'mad4b-site-control-plane' )
+                echo '<p>' . esc_html__( 'Use the WordPress administrator button below for one verified local setup, or use the separately owner-approved MCP plan/apply route. Neither option automatically grants Governed Write or needs SSH/wp-config edits.', 'mad4b-site-control-plane' )
                 . '</p><p><code>mad4b/deployment-binding-native-plan</code> → <code>mad4b/deployment-binding-native-apply</code></p>';
             else
                 echo '<p class="description">'
                     . esc_html__( 'This host cannot safely create a private file outside the webroot, or a binding already exists. Use the external protected-host setting instead; the system will not fall back to uploads or database storage.', 'mad4b-site-control-plane' )
                     . '</p>';
+            if ( 'ALREADY_HAS_PROFILE_BINDING' === ( $native_binding['state'] ?? '' ) ) {
+                $proof = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+                    'expected_site_uuid' => (string) ( $native_binding['site_uuid'] ?? '' ),
+                    'minimum_profile_revision' => (int) ( $native_binding['profile_revision'] ?? 0 ),
+                ) );
+                $proof_state = is_array( $proof )
+                    ? (string) ( $proof['state'] ?? 'BINDING_READBACK_INCOMPLETE' )
+                    : 'BINDING_READBACK_INCOMPLETE';
+                echo '<p><strong>' . esc_html__( 'Independent binding readback', 'mad4b-site-control-plane' )
+                    . ':</strong> <code>' . esc_html( $proof_state ) . '</code></p>';
+                if ( 'WORDPRESS_BINDING_READBACK_PASS' === $proof_state ) {
+                    echo '<p class="description">'
+                        . esc_html__( 'Host binding accepted on a separate request. Next: plan current Staging Governed Write convergence under its own owner approval; no grants are automatically changed.', 'mad4b-site-control-plane' )
+                        . ' <code>mad4b/staging-write-authority-convergence-handshake</code></p>';
+                } else {
+                    echo '<p class="description">'
+                        . esc_html__( 'Do not continue to Governed Write. Recheck host key, persisted Site Profile and the audit trail.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                }
+            }
             if ( ! empty( $native_binding['eligible'] ) && current_user_can( 'manage_options' )
                 && current_user_can( 'activate_plugins' ) ) {
                 echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
@@ -155,7 +200,19 @@ final class MAD4B_SCP_Operational_Remediation {
                 . '</p>';
         }
         } else {
-            echo '<p class="description">Production after update: inspect installed signed release, OAuth/MCP, database topology and audit. Native Staging binding and Staging Write recovery are unavailable here. Production corrections require independently approved release and policy gates.</p>';
+            echo '<h2 id="mad4b-production-deployment-identity">'
+            . esc_html__( 'Production deployment identity — verification only', 'mad4b-site-control-plane' )
+            . '</h2>';
+        $production_identity = class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false )
+            ? MAD4B_SCP_Deployment_Binding_Native::production_status() : new WP_Error( 'production_status_unavailable' );
+        $production_state = is_array( $production_identity )
+            ? (string) ( $production_identity['state'] ?? 'UNKNOWN' )
+            : 'PRODUCTION_STATUS_NOT_AVAILABLE';
+        echo '<p><strong>' . esc_html__( 'Production host binding', 'mad4b-site-control-plane' )
+            . ':</strong> <code>' . esc_html( $production_state ) . '</code></p>';
+        echo '<p class="description">'
+            . esc_html__( 'Production verification never provisions a host key or enables Write. Missing or mismatched binding requires a separately approved Production release, protected host configuration, fresh plan and independent readback; the Staging setup button cannot be used.', 'mad4b-site-control-plane' )
+            . '</p>';
         }
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
