@@ -33,3 +33,14 @@ Date: 2026-10-16. Scope: ETG and All Royal Egypt Staging. This document is a dev
 4. Resolve per-site Google provider status and explicitly approved source folder, verify legacy ownership before Context mutation.
 5. Browser-admin acceptance, WordPress/MCP/OAuth parity, performance comparison, and standalone Staging final certificate.
 6. Production stays a separate signed deployment-family, backup/restore/rollback and independently approved release project; sharing one Hostinger account is not a trust proof.
+
+
+## Additional ETG provider-certification drift closure — source follow-up
+
+- JetSmartFilters reversible behavioral probe on filter `16032` was reported verified and restored its original `tour_cities` value. Newly eligible `jetsmartfilters/update-filter-meta` raised eligible governed-write inventory from 102 to 103 while grants remained 102. This is an exact grant policy mismatch; **it is not an approval to create a grant**.
+- Added precisely `jetsmartfilters/update-filter-meta => jetsmartfilters` to the source-reviewed **Staging-only** reconciliation allowlist, with regression tests proving Production and unrelated provider operations remain denied.
+- Once this source is installed under a verified new exact package identity, run an independent **read-only** grant reconciliation plan. Only an exact single-provider missing-grant plan, current NHI owner approval, one-time claim and immutable audit may converge 103/103; a count alone is not sufficient.
+- Elementor `mad4b_elementor_widget_policy_denied` was reproduced as an intentional restriction: native `heading` was absent from the bounded settings policy. Added a probe-context-only plain-text `heading.title` exception with target-input binding; ordinary Heading mutation stays denied. Tests cover wrong target, HTML, overlong title, other setting keys, removed setting and post-probe denial. A live isolated reversible probe and rollback must still be certified on site.
+- Draft post `65969` is not to be deleted by source build or local tests. Trash and purge only after governed exact-target rollback/owner approval and independent readback. Template `23210` must remain unchanged.
+- Cached homepage/REST `HTTP 200` alongside internal homepage `HTTP 500` is **not** a passed browser acceptance test. Keep browser/AJAX render acceptance pending until a noncached end-to-end test correlates edge and origin request IDs.
+- Nothing here modifies the ETG runtime, grants, filters, Draft, browser, or Production. Packaging demonstrates source integrity, not live operational acceptance.

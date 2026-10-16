@@ -106,6 +106,11 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// Never include these wider administrative operations on Production.
 		if ( 'staging' === self::current_environment() ) {
 			$staging_reviewed = array(
+				// Only the exact reversible JetSmartFilters metadata writer.
+				// Its behavioral certificate makes it inventory-eligible, but a
+				// grant is never issued without a fresh source/profile/inventory
+				// bound plan, separate owner approval, one-time claim and audit.
+				'jetsmartfilters/update-filter-meta' => 'jetsmartfilters',
 				// WordPress-native candidate opt-in is an exact owner-approved
 				// administrative toggle, never a blanket wp_options update.
 				'mad4b/wordpress-native-candidate-opt-in-apply' => 'core',

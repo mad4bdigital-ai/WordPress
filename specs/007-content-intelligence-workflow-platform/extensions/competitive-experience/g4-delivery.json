@@ -96,7 +96,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
-      "sha256": "a211b1671fccd6a67c18d998f9d30e45dc7de2a50aec3acf69b2272c3271ba94"
+      "sha256": "f9c2e6eca859bffff0412eabf84026a4931709acb7536f882776625af0b7219b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-polylang-adapter.php",

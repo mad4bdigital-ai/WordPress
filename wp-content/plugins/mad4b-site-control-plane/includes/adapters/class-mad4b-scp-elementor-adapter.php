@@ -297,7 +297,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$remove = isset( $input['remove_settings'] ) && is_array( $input['remove_settings'] ) ? array_values( array_unique( array_map( 'strval', $input['remove_settings'] ) ) ) : array();
 		$target = $this->widget_target( $document['elements'], (string) $input['widget_id'] );
 		if ( is_wp_error( $target ) ) return $target;
-		$policy = $this->validate_settings_policy( $target['widget_type'], $settings, $remove );
+		$policy = $this->validate_settings_policy( $target['widget_type'], $settings, $remove, $input );
 		if ( is_wp_error( $policy ) ) return $policy;
 
 		$ids = array(); $errors = array(); $this->validate_elements( $document['elements'], $ids, $errors, 0 );
@@ -457,7 +457,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( is_wp_error( $target ) ) return $target;
 		$settings = isset( $input['settings'] ) && is_array( $input['settings'] ) ? $input['settings'] : array();
 		$remove = isset( $input['remove_settings'] ) && is_array( $input['remove_settings'] ) ? $input['remove_settings'] : array();
-		$policy = $this->validate_settings_policy( $target['widget_type'], $settings, $remove );
+		$policy = $this->validate_settings_policy( $target['widget_type'], $settings, $remove, $input );
 		if ( is_wp_error( $policy ) ) return $policy;
 		return array(
 			'target_type' => 'elementor-widget-settings',
@@ -847,8 +847,24 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		return isset( $policy[ $widget_type ] ) ? $policy[ $widget_type ] : array();
 	}
 
-	private function validate_settings_policy( $widget_type, array $settings, array $remove ) {
+	private function validate_settings_policy( $widget_type, array $settings, array $remove, $probe_input = null ) {
 		$allowed = $this->allowed_settings_for_widget( (string) $widget_type );
+		// The native Heading widget is permitted ONLY within the exact
+		// one-use behavioral probe. This does not allow ordinary content
+		// mutation after certification, even if the provider becomes ready.
+		if ( 'heading' === (string) $widget_type
+			&& is_array( $probe_input )
+			&& class_exists( 'MAD4B_SCP_Provider_Behavioral_Recertification', false )
+			&& MAD4B_SCP_Provider_Behavioral_Recertification::probe_context_allows(
+				'elementor', 'elementor/update-widget-settings', $probe_input ) ) {
+			$allowed = array( 'title' );
+			if ( $remove || count( $settings ) !== 1
+				|| ! isset( $settings['title'] ) || ! is_string( $settings['title'] )
+				|| strlen( $settings['title'] ) > 256
+				|| $settings['title'] !== strip_tags( $settings['title'] ) )
+				return new WP_Error( 'mad4b_elementor_heading_probe_policy_denied',
+					'Only one bounded plain-text Heading title is eligible during the exact behavioral probe.' );
+		}
 		if ( empty( $allowed ) ) return new WP_Error( 'mad4b_elementor_widget_policy_denied', 'This widget type is not allowlisted for bounded governed fallback mutation.' );
 		$remove = array_values( array_unique( array_map( 'strval', $remove ) ) );
 		foreach ( array_keys( $settings ) as $key ) {
