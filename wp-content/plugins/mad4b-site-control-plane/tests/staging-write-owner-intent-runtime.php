@@ -20,6 +20,10 @@ function is_admin() { return ! empty( $GLOBALS['is_admin_request'] ); }
 function is_user_logged_in() { return true; }
 function get_current_user_id() { return $GLOBALS['user']; }
 function get_option( $k, $default = false ) { return isset( $GLOBALS['options'][$k] ) ? $GLOBALS['options'][$k] : $default; }
+function delete_option( $k ) {
+    if ( ! array_key_exists( $k, $GLOBALS['options'] ) ) return false;
+    unset( $GLOBALS['options'][ $k ] ); return true;
+}
 function update_option( $k, $v, $autoload = false ) {
     if ( ! empty( $GLOBALS['persist_fail'] ) ) return false;
     $GLOBALS['options'][$k] = $v; return true;
@@ -114,6 +118,15 @@ assertion( $read_meta['permission_callback'][1] === 'can_remote_diagnose'
     && $write_meta['meta']['mcp']['chatgpt_direct_step_up'] === true,
     'metadata enforces OAuth read / Step-Up mutation separation' );
 $review = $klass::review();
+$scope = $klass::canonical_scope_sha256($GLOBALS['plan']);
+$variant = $GLOBALS['plan'];
+$variant['ready_to_apply'] = false;
+$variant['hard_blockers'] = array('temporary_gateway');
+assertion( $scope === $klass::canonical_scope_sha256($variant),
+    'volatile blocker changes do not alter canonical diagnostic scope' );
+$variant['site_profile_digest'] = str_repeat('1', 64);
+assertion( $scope !== $klass::canonical_scope_sha256($variant),
+    'meaningful site identity changes alter canonical diagnostic scope' );
 assertion( is_array( $review ), 'Staging owner review available' );
 $payload = array( 'review_digest' => $review['review_digest'], 'confirmation' => $klass::CONFIRM );
 $record = $klass::attest( $payload );
@@ -290,6 +303,26 @@ assertion( is_array( $klass::diagnose() )
 assertion( is_wp_error( $klass::can_remote_attest() ),
     'without Step-Up mutation owner approval still denied' );
 $GLOBALS['scope'] = true;
+
+// Expired previous owner markers are retired only after fresh success.
+$GLOBALS['options'] = array();
+$GLOBALS['events'] = array();
+$first = $klass::attest( $payload );
+assertion( is_array($first), 'initial previous marker created' );
+$prior = $GLOBALS['options'][$klass::OPTION];
+$prior['issued'] = time() - 800;
+$prior['expires'] = time() - 200;
+unset($prior['receipt_sha256']);
+$prior['receipt_sha256'] = hash_hmac( 'sha256',
+    wp_json_encode($prior, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+    wp_salt('auth') );
+$GLOBALS['options'][$klass::OPTION] = $prior;
+// Add matching old signed auxiliary state for cleanup.
+$old_key = $klass::AUDIT_COMMIT_PREFIX . substr($prior['receipt_sha256'],0,40);
+$GLOBALS['options'][$old_key] = array('receipt'=>$prior['receipt_sha256']);
+$refresh = $klass::attest( $payload );
+assertion( is_array($refresh) && !array_key_exists($old_key,$GLOBALS['options']),
+    'retire expired prior auxiliary marker without deleting append-only Audit' );
 
 // P1: failed persistence never creates a success audit event.
 $GLOBALS['options'] = array();
