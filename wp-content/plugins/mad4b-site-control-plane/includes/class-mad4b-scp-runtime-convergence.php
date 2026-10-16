@@ -739,6 +739,12 @@ final class MAD4B_SCP_Runtime_Convergence {
         $checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
         if ( ! is_array( $checkpoint ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
             return array( 'state'=>'CHECKPOINT_OR_POLICY_UNAVAILABLE', 'scheduled'=>false );
+        // An obsolete paused record is not a license to rerun ready phases.
+        // Keep it for independent historical checkpoint review.
+        $graph = self::status();
+        if ( is_array( $graph ) && 'ready' === ( $graph['state'] ?? '' ) )
+            return array( 'state'=>'ALREADY_CONVERGED_HISTORICAL_CHECKPOINT', 'scheduled'=>false,
+                'owner_write_granted'=>false, 'production_mutation'=>false );
         $target = is_array( $checkpoint['target_identity'] ?? null ) ? $checkpoint['target_identity'] : array();
         $current = self::current_identity();
         $same = self::automatic_identity_safe( $target )
@@ -753,21 +759,23 @@ final class MAD4B_SCP_Runtime_Convergence {
         $next['retry_policy'] = 'approved_safe_phase_opt_in_subject_to_slo_ticket';
         $next['updated_at'] = gmdate( 'c' );
         unset( $next['resume_blocker'] );
+        // Two-phase safe handoff: queue an inert Cron wakeup BEFORE allowing
+        // the checkpoint to become executable. A scheduling failure now leaves
+        // the previous paused checkpoint untouched; no rollback CAS is needed.
+        $scheduled = self::schedule_resume( self::maintenance_not_before() );
+        if ( ! $scheduled )
+            return array( 'state'=>'WP_CRON_NOT_SCHEDULED', 'scheduled'=>false,
+                'checkpoint_unchanged'=>true, 'owner_write_granted'=>false, 'production_mutation'=>false );
+        // A racing or failed CAS leaves an orphaned wakeup, never an executable
+        // checkpoint: Cron independently checks its pending-safe-phase fence
+        // and obtains a fresh SLO ticket before any work.
         $committed = self::automatic_checkpoint_cas( $checkpoint, $next );
         if ( is_wp_error( $committed ) || true !== $committed )
-            return array( 'state'=>'CHECKPOINT_CAS_FAILED', 'scheduled'=>false );
-        $scheduled = self::schedule_resume( self::maintenance_not_before() );
-        if ( ! $scheduled ) {
-            $parked = $next;
-            $parked['state'] = 'pending_manual_resume';
-            $parked['resume_blocker'] = 'wp_cron_unavailable_after_owner_opt_in';
-            $parked['automatic_retry_allowed'] = false;
-            $parked['updated_at'] = gmdate( 'c' );
-            self::automatic_checkpoint_cas( $next, $parked );
-        }
-        return array( 'state'=>$scheduled ? 'SAFE_PHASES_QUEUED_FOR_SLO_ADMISSION'
-            : 'WP_CRON_NOT_SCHEDULED', 'scheduled'=>(bool)$scheduled,
-            'owner_write_granted'=>false, 'production_mutation'=>false );
+            return array( 'state'=>'CHECKPOINT_CAS_FAILED', 'scheduled'=>true,
+                'checkpoint_activation_unverified'=>true,
+                'owner_write_granted'=>false, 'production_mutation'=>false );
+        return array( 'state'=>'SAFE_PHASES_QUEUED_FOR_SLO_ADMISSION',
+            'scheduled'=>true, 'owner_write_granted'=>false, 'production_mutation'=>false );
     }
 
 	public static function maybe_schedule_pending() {
@@ -1211,9 +1219,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$minimum = max( time() + 5, absint( $not_before ), self::maintenance_not_before() );
 		$next = wp_next_scheduled( self::CRON_HOOK );
 		if ( false !== $next && (int) $next >= $minimum ) return true;
-		if ( false !== $next && function_exists( 'wp_clear_scheduled_hook' ) ) wp_clear_scheduled_hook( self::CRON_HOOK );
+		// Preserve a previously queued event if scheduling the replacement fails.
+		// Clearing the entire hook first could silently lose the only recovery job.
 		$scheduled = wp_schedule_single_event( $minimum, self::CRON_HOOK, array(), true );
-		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) return true;
+		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) {
+			if ( false !== $next && (int) $next < $minimum && function_exists( 'wp_unschedule_event' ) )
+				wp_unschedule_event( (int) $next, self::CRON_HOOK, array(), true );
+			return true;
+		}
 		$next = wp_next_scheduled( self::CRON_HOOK );
 		return false !== $next && (int) $next >= $minimum;
 	}

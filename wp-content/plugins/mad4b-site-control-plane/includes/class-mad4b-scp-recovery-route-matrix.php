@@ -113,6 +113,12 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
                 || in_array( $item['stage'], array( 'discovery', 'runtime_release' ), true ) );
             $item['ability_registered'] = (bool) $registered;
             $item['remote_mount_verified'] = (bool) $is_mounted;
+            // Direct tools/list visibility and prepare/read-execute via the
+            // governed ChatGPT gateway are independent discovery surfaces.
+            $item['gateway_prepare_verified'] = null;
+            $item['gateway_execute_verified'] = null;
+            $item['gateway_verification_required'] = $registered && ! $is_mounted;
+            $item['direct_mount_evidence_only'] = true;
             $item['mounted_servers'] = $mounted_servers;
             $item['chatgpt_transport_mounted'] = in_array( 'mad4b-chatgpt', $mounted_servers, true );
             $item['remote_mount_inspection_available'] = $exposure_checked;
@@ -123,7 +129,7 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
             $item['state'] = ! $allowed_env ? 'NOT_APPLICABLE_TO_EXACT_ENVIRONMENT'
                 : ( '' === $name ? 'GOVERNED_EXECUTOR_NOT_IMPLEMENTED'
                 : ( ! $registered ? 'ABILITY_NOT_REGISTERED'
-                : ( ! $is_mounted ? 'REGISTERED_MCP_NOT_VERIFIED'
+                : ( ! $is_mounted ? 'DIRECT_MCP_NOT_VERIFIED_GATEWAY_UNTESTED'
                 : ( 'none' === $item['approval_gate'] ? 'DISCOVERED_READ_ROUTE'
                     : 'DISCOVERED_OWNER_OR_PROVIDER_GATE' ) ) ) );
             if ( $registered ) ++$found;

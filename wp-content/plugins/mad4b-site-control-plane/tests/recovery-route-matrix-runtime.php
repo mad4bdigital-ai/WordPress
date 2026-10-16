@@ -33,7 +33,7 @@ foreach($r['stages'] as $item){
   check(!isset($seen[$item['stage']]), 'unique stages');$seen[$item['stage']]=true;
   check($item['remote_authority_granted']===false && $item['execution_performed']===false, 'discovery not authorization');
   if('write_execute'===$item['stage'])
-    check($item['ability_registered'] && !$item['remote_mount_verified'] && 'REGISTERED_MCP_NOT_VERIFIED'===$item['state'], 'registered write not equivalent remote mount');
+    check($item['ability_registered'] && !$item['remote_mount_verified'] && 'DIRECT_MCP_NOT_VERIFIED_GATEWAY_UNTESTED'===$item['state'] && $item['gateway_verification_required'] && null===$item['gateway_prepare_verified'], 'registered write not equivalent remote mount');
   if('production_host_identity'===$item['stage'])
     check(!$item['environment_applicable'] && 'NOT_APPLICABLE_TO_EXACT_ENVIRONMENT'===$item['state'], 'production not invoked as staging');
 }
