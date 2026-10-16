@@ -1185,6 +1185,14 @@ final class MAD4B_SCP_Read_Consistency {
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_identity_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
 			: array();
+		$adapter_identity_ok = ! empty( $provider['identity_contract_ok'] );
+		$adapter_read_observation = ! $adapter_identity_ok
+			&& $adapter_available
+			&& class_exists( 'MAD4B_SCP_Dependency_Manager' )
+			&& method_exists( 'MAD4B_SCP_Dependency_Manager', 'adapter_read_runtime_observation' )
+			? MAD4B_SCP_Dependency_Manager::adapter_read_runtime_observation() : array();
+		$adapter_read_compatible = $adapter_identity_ok
+			|| ! empty( $adapter_read_observation['read_runtime_ready'] );
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
@@ -1193,7 +1201,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'profile_environment_match' => ! empty( $profile['environment_match'] ),
 			'profile_origin_match' => ! empty( $profile['origin_match'] ),
 			'adapter_available' => $adapter_available,
-			'adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'adapter_identity_ok' => $adapter_identity_ok,
+			'adapter_read_compatible' => $adapter_read_compatible,
 			'chatgpt_actual_registered' => ! empty( $chatgpt['registered'] ),
 		);
 		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'session_connection_identity' )
@@ -1206,7 +1215,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'environment' => isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '',
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 			'mcp_adapter_available' => $adapter_available,
-			'mcp_adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'mcp_adapter_identity_ok' => $adapter_identity_ok,
+			'mcp_adapter_read_compatible' => $adapter_read_compatible,
+			'mcp_adapter_exact_write_certification_deferred' => ! $adapter_identity_ok,
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
 			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,

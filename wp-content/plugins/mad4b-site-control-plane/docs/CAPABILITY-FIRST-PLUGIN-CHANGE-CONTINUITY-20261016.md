@@ -23,3 +23,8 @@ Regression: `tests/provider-version-neutral-read-runtime.php` on PHP 7.4 and 8.3
 ## Not included
 
 Automatic mutation across unknown plugin versions, automatic deployment, or retesting every plugin's write behavior in Production.
+
+
+## Session-safe MCP transport consistency
+
+The same read-continuity evidence is now used by session-safe read diagnostics, not just the Connection page. When an exact version-bound artifact certificate expires but the official MCP Adapter is present and trusted, the requested Site Profile matches, and the real ChatGPT MCP server is registered, a read-only diagnostics projection can remain ready. It explicitly reports whether the exact Adapter identity is still certified; mutation and write authorization never inherit this read status. Tests cover missing runtime, missing registration, Site Profile drift, and valid read-runtime provenance on PHP 7.4 and 8.3.
