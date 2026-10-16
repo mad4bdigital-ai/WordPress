@@ -322,6 +322,50 @@ final class MAD4B_SCP_Provider_Contracts {
 		return $result;
 	}
 
+	/**
+	 * Version-independent, observational provider discovery. A live read ability
+	 * is useful even when its vendor plugin changes version, but never implies
+	 * integrity certification, mutation eligibility, or an owner grant.
+	 * All providers share the same rules; unknown versions stay uncertified.
+	 */
+	public static function read_continuity_status( $provider, $available = null ) {
+		$provider = sanitize_key( (string) $provider );
+		$base = self::get( $provider );
+		$runtime_present = false !== $available;
+		$observed = array();
+		$missing = array();
+		$read_candidates = array();
+		if ( is_array( $base ) && ! empty( $base['native_abilities'] ) && is_array( $base['native_abilities'] ) ) {
+			foreach ( $base['native_abilities'] as $name ) {
+				$name = (string) $name;
+				// Only explicit read-shaped verbs can be considered discovery evidence.
+				// Never call the execute callback or infer read safety for writes.
+				$parts = explode( '/', $name );
+				$action = count( $parts ) > 1 ? (string) $parts[1] : '';
+				if ( ! preg_match( '/^(?:get|list|read|search|inspect|discover|status|validate|query|preview)(?:-|$)/', $action ) ) continue;
+				$read_candidates[] = $name;
+				if ( $runtime_present && function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) $observed[] = $name;
+				else $missing[] = $name;
+			}
+		}
+		$available_ability_api = function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' );
+		$discovery_eligible = $runtime_present && $available_ability_api;
+		return array(
+			'contract' => 'mad4b.provider-read-continuity.v1',
+			'provider' => $provider,
+			'discovery_eligible' => $discovery_eligible,
+			'read_ability_observed' => $discovery_eligible && ! empty( $observed ),
+			'observed_read_abilities' => array_values( $observed ),
+			'missing_read_abilities' => array_values( $missing ),
+			'known_read_candidates' => array_values( $read_candidates ),
+			'version_independent' => true,
+			'requires_runtime_recheck_on_plugin_change' => true,
+			'write_certified' => false,
+			'write_grants_created' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function runtime_identity_status( $provider, $available = null ) {
 		$base_contract = self::get( $provider );
 		if ( empty( $base_contract ) ) {
@@ -365,6 +409,7 @@ final class MAD4B_SCP_Provider_Contracts {
 			);
 		}
 
+		$read_continuity = self::read_continuity_status( $provider, $available );
 		$actual = self::installed_version( $provider );
 		$contract = self::contract_for_version( $provider, $actual );
 		$expected = isset( $contract['version'] ) ? (string) $contract['version'] : '';
@@ -384,6 +429,7 @@ final class MAD4B_SCP_Provider_Contracts {
 			'identity_contract_ok' => $version_ok && $manifest_present,
 			'runtime_integrity_verification_deferred' => true,
 			'mutation_certified' => false,
+			'read_continuity' => $read_continuity,
 		);
 	}
 
@@ -416,6 +462,7 @@ final class MAD4B_SCP_Provider_Contracts {
 			'contract_mode' => isset( $contract['contract_mode'] ) ? $contract['contract_mode'] : '',
 			'certification_authority' => isset( $contract['certification_authority'] ) ? $contract['certification_authority'] : 'repository_baseline',
 			'runtime_integrity' => self::integrity_status( $contract ),
+			'read_continuity' => self::read_continuity_status( $provider, $available ),
 		);
 		$candidate_attestation = self::candidate_attestation( $provider, $actual );
 		if ( ! empty( $candidate_attestation['known_candidate'] ) || ! empty( $candidate_attestation['candidate_policy_available'] ) ) $result['candidate_attestation'] = $candidate_attestation;

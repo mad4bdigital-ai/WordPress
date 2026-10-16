@@ -266,6 +266,11 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 				'risk' => isset( $row['risk'] ) ? (string) $row['risk'] : 'unknown',
 				'coverage_state' => isset( $row['coverage_state'] ) ? (string) $row['coverage_state'] : 'unknown',
 				'next_gate' => isset( $row['next_gate'] ) ? (string) $row['next_gate'] : 'risk_classification_required',
+				'capability_transition_mode' => 'runtime_discovery_not_version_lock',
+				'read_observation_action' => empty( $row['active'] ) ? 'wait_for_plugin_activation'
+					: ( 'L0_inventory' === $level ? 'inspect_runtime_capabilities' : 'revalidate_observed_read_contract' ),
+				'exact_write_recertification_required_on_contract_change' => true,
+				'version_change_blocks_unrelated_plugins' => false,
 				'promotion_approved' => false,
 				'write_authority_granted' => false,
 			);
@@ -286,6 +291,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'output_truncated' => count( $source ) > $offset + $limit,
 			'items' => $items,
 			'unknown_plugin_write_default' => 'deny',
+			'fleet_transition_policy' => 'capability_first_per_plugin_fail_closed_for_writes',
+			'refresh_after_plugin_change' => 'reinspect_only_affected_plugin_and_capability',
+			'version_is_diagnostic_not_global_read_gate' => true,
 			'authority_created' => false,
 			'mutation_performed' => false,
 			'auto_promotion' => false,
