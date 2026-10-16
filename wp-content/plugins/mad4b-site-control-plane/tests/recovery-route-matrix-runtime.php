@@ -22,7 +22,7 @@ function esc_html( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); }
 function is_wp_error( $x ) { return $x instanceof WP_Error; }
 class WP_Error { private $code; function __construct( $code, $message = '' ) { $this->code = $code; } function get_error_code(){ return $this->code; } }
 class MAD4B_SCP_Site_Profile { static function current_environment() { return $GLOBALS['profile_env']; } }
-class MAD4B_SCP_Servers { static function ability_is_mounted( $server, $ability ) { return !empty( $GLOBALS['mounted'][$ability]); } }
+class MAD4B_SCP_Servers { static function ability_is_mounted( $server, $ability ) { return !empty( $GLOBALS['mounted'][$ability]) && ( 'mad4b-read' === $server || 'mad4b-chatgpt' === $server ); } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-recovery-route-matrix.php';
 function check( $ok, $reason ) { if(!$ok){fwrite(STDERR,"FAIL ".$reason."\n");exit(1);} }
 $r=MAD4B_SCP_Recovery_Route_Matrix::inspect();

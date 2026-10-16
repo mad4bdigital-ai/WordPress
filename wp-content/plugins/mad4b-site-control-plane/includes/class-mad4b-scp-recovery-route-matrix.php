@@ -101,15 +101,20 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
             $registered = '' !== $name && function_exists( 'wp_has_ability' ) && wp_has_ability( $name );
             $exposure_checked = class_exists( 'MAD4B_SCP_Servers', false )
                 && method_exists( 'MAD4B_SCP_Servers', 'ability_is_mounted' );
-            $is_mounted = $registered && $exposure_checked
-                && ( MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-chatgpt', $name )
-                  || MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $name )
-                  || MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-enrollment', $name ) );
+            $mounted_servers = array();
+            if ( $registered && $exposure_checked ) {
+                foreach ( array( 'mad4b-chatgpt', 'mad4b-read', 'mad4b-write', 'mad4b-enrollment' ) as $server_id )
+                    if ( MAD4B_SCP_Servers::ability_is_mounted( $server_id, $name ) )
+                        $mounted_servers[] = $server_id;
+            }
+            $is_mounted = ! empty( $mounted_servers );
             $prod = 0 === strpos( $item['stage'], 'production_' );
             $allowed_env = $exact_env && ( $prod ? 'production' === $environment : 'staging' === $environment
                 || in_array( $item['stage'], array( 'discovery', 'runtime_release' ), true ) );
             $item['ability_registered'] = (bool) $registered;
             $item['remote_mount_verified'] = (bool) $is_mounted;
+            $item['mounted_servers'] = $mounted_servers;
+            $item['chatgpt_transport_mounted'] = in_array( 'mad4b-chatgpt', $mounted_servers, true );
             $item['remote_mount_inspection_available'] = $exposure_checked;
             $item['environment_applicable'] = $allowed_env;
             $item['wordpress_route_type'] = 'admin_navigation_only';
