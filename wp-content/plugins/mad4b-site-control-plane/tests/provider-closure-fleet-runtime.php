@@ -19,4 +19,8 @@ ensure( $v['auto_promotion'] === false && $v['mutation_performed'] === false, 'R
 $large = array('count'=>205,'items'=>array_fill(0,205,array('plugin_file'=>'x/x.php','support_level'=>'L0_inventory')));
 $bounded = MAD4B_SCP_Provider_Closure_Matrix::plugin_fleet_summary($large);
 ensure( $bounded['observed_count'] === 200 && $bounded['output_truncated'] === true, 'BOUNDED_OUTPUT' );
+$page = MAD4B_SCP_Provider_Closure_Matrix::plugin_fleet_summary($data, 1, 1);
+ensure( $page['observed_count'] === 1 && $page['offset'] === 1, 'PAGINATION_WINDOW' );
+ensure( $page['items'][0]['plugin_file'] === 'a/a.php', 'PAGINATION_STABLE_SOURCE_ORDER' );
+ensure( $page['next_offset'] === 2 && $page['output_truncated'] === true, 'PAGINATION_NEXT' );
 echo "PROVIDER_FLEET_RUNTIME_PASS\n";

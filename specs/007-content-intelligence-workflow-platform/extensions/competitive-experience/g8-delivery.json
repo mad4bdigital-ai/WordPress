@@ -115,8 +115,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
-      "sha256": "a08e43e0af93785e3985c4668a5fe5a2046b32933ca0ac6456286d18cbc25089",
-      "bytes": 120545
+      "sha256": "9233ad1c675a0dda19464d4e9e3e2ffc54b819916c5b0ad7bb2dfa8b45a8a01c",
+      "bytes": 127017
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",

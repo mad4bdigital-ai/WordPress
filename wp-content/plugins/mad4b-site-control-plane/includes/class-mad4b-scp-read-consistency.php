@@ -153,7 +153,7 @@ final class MAD4B_SCP_Read_Consistency {
 							'maxLength' => 64,
 						),
 						'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
-						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity' ), 'default' => 'full' ),
+						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity', 'triage' ), 'default' => 'full' ),
 						'budget_ms' => array(
 							'type' => 'integer',
 							'minimum' => 4000,
@@ -463,10 +463,11 @@ final class MAD4B_SCP_Read_Consistency {
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
-		// Keep full diagnostics as the default for compatibility, while allowing
-		// a low-cost identity-only probe when transport latency is high.
-		$scope = isset( $input['diagnostic_scope'] ) && 'identity' === (string) $input['diagnostic_scope']
-			? 'identity' : 'full';
+		// Full remains the legacy default. Explicit triage limits synchronous
+		// MCP read cost to identity + runtime, so optional provider and deep
+		// certification errors cannot terminate a simple operator diagnosis.
+		$requested_scope = isset( $input['diagnostic_scope'] ) ? (string) $input['diagnostic_scope'] : 'full';
+		$scope = in_array( $requested_scope, array( 'full', 'identity', 'triage' ), true ) ? $requested_scope : 'full';
 		$budget_ms = isset( $input['budget_ms'] )
 			? max( 4000, min( self::MAX_SESSION_SAFE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
@@ -498,7 +499,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$stop_reason = '';
 
 		foreach ( self::bundle_names() as $index => $bundle ) {
-			if ( 'identity' === $scope && 'identity' !== $bundle ) {
+			if ( 'full' !== $scope && ( 'identity' === $scope ? 'identity' !== $bundle : ! in_array( $bundle, array( 'identity', 'runtime' ), true ) ) ) {
 				$partial = true;
 				$sections[ $bundle ] = array(
 					'state' => 'deferred_scope', 'partial' => true,

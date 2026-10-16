@@ -39,6 +39,8 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 						'ability' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 160, 'pattern' => '^[A-Za-z0-9._/-]+$' ),
 						'provider' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 96, 'pattern' => '^[A-Za-z0-9._-]+$' ),
 						'include_plugin_fleet' => array( 'type' => 'boolean', 'default' => false ),
+						'plugin_fleet_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500, 'default' => 0 ),
+						'plugin_fleet_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 32 ),
 					),
 					'additionalProperties' => false,
 				),
@@ -58,6 +60,8 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$ability_filter = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
 		$provider_filter = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
 		$include_plugin_fleet = ! empty( $input['include_plugin_fleet'] );
+		$fleet_offset = isset( $input['plugin_fleet_offset'] ) ? max( 0, min( 500, (int) $input['plugin_fleet_offset'] ) ) : 0;
+		$fleet_limit = isset( $input['plugin_fleet_limit'] ) ? max( 1, min( 50, (int) $input['plugin_fleet_limit'] ) ) : 32;
 
 		$blocked = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'blocked_write_tools' )
 			? array_values( (array) MAD4B_SCP_Servers::blocked_write_tools() )
@@ -218,7 +222,7 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'plugin_fleet' => $include_plugin_fleet ? self::plugin_fleet_summary(
 				class_exists( 'MAD4B_SCP_Plugin_Discovery' ) && method_exists( 'MAD4B_SCP_Plugin_Discovery', 'provider_candidate_matrix' )
 					? MAD4B_SCP_Plugin_Discovery::provider_candidate_matrix() : array()
-			) : array( 'included' => false ),
+			, $fleet_offset, $fleet_limit ) : array( 'included' => false ),
 			'operational_state' => $action_required_count > 0 ? 'provider_closure_actions_pending' : 'provider_closure_operationally_clean',
 			'items' => $items,
 			'candidate_binding_match' => $candidate_binding_match,
@@ -239,14 +243,16 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 	 * Prevents an operator from mistaking 102 current grants for all vendors being
 	 * certified. Unknown/inactive/high-risk plugins remain fail-closed.
 	 */
-	public static function plugin_fleet_summary( $candidate_matrix ) {
+	public static function plugin_fleet_summary( $candidate_matrix, $offset = 0, $limit = 200 ) {
 		if ( ! is_array( $candidate_matrix ) || ! isset( $candidate_matrix['items'] ) || ! is_array( $candidate_matrix['items'] ) ) {
 			return array( 'included' => true, 'ready' => false, 'reason' => 'plugin_discovery_unavailable', 'mutation_performed' => false, 'authority_created' => false );
 		}
 		$items = array();
 		$level_counts = array( 'L0_inventory' => 0, 'L1_lifecycle' => 0, 'L2_read' => 0, 'L3_governed_write' => 0, 'L4_certified_governed' => 0 );
 		$source = $candidate_matrix['items'];
-		foreach ( array_slice( $source, 0, 200 ) as $row ) {
+		$offset = max( 0, min( 500, (int) $offset ) );
+		$limit = max( 1, min( 200, (int) $limit ) );
+		foreach ( array_slice( $source, $offset, $limit ) as $row ) {
 			if ( ! is_array( $row ) ) continue;
 			$plugin_file = isset( $row['plugin_file'] ) ? (string) $row['plugin_file'] : '';
 			$level = isset( $row['support_level'] ) ? (string) $row['support_level'] : 'L0_inventory';
@@ -272,8 +278,12 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'observed_count' => count( $items ),
 			'discovered_count' => isset( $candidate_matrix['count'] ) ? (int) $candidate_matrix['count'] : count( $source ),
 			'level_counts_observed' => $level_counts,
+			'level_counts_discovered' => isset( $candidate_matrix['counts'] ) && is_array( $candidate_matrix['counts'] ) ? $candidate_matrix['counts'] : array(),
+			'offset' => $offset,
+			'limit' => $limit,
+			'next_offset' => count( $source ) > $offset + $limit ? $offset + $limit : null,
 			'source_truncated' => ! empty( $candidate_matrix['truncated'] ),
-			'output_truncated' => count( $source ) > 200,
+			'output_truncated' => count( $source ) > $offset + $limit,
 			'items' => $items,
 			'unknown_plugin_write_default' => 'deny',
 			'authority_created' => false,
