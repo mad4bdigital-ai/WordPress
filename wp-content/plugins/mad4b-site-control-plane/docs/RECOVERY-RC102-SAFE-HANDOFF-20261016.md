@@ -44,3 +44,19 @@ Date: 2026-10-16. Scope: ETG and All Royal Egypt Staging. This document is a dev
 - Draft post `65969` is not to be deleted by source build or local tests. Trash and purge only after governed exact-target rollback/owner approval and independent readback. Template `23210` must remain unchanged.
 - Cached homepage/REST `HTTP 200` alongside internal homepage `HTTP 500` is **not** a passed browser acceptance test. Keep browser/AJAX render acceptance pending until a noncached end-to-end test correlates edge and origin request IDs.
 - Nothing here modifies the ETG runtime, grants, filters, Draft, browser, or Production. Packaging demonstrates source integrity, not live operational acceptance.
+
+### Fleet-wide provider discovery (candidate patch after `f6080e5895`)
+
+`mad4b/provider-closure-matrix` now accepts optional `include_plugin_fleet: true`.
+The default remains a light, backward-compatible 28-ability provider closure plan.
+With the flag, its bounded `plugin_fleet` segment includes at most 200 discovered
+plugin entries with active status, L0-L4 support level, risk, coverage state and
+exact next gate, plus a clear truncation marker. This complements rather than
+replaces exact per-ability provider behavior/rollback and owner approval.
+It is strictly read-only: the discovery does not promote plugins, issue grant
+rows, approve tickets, call native provider writers, or authorize Production.
+High-risk and inactive plugins stay fail-closed. Human-only WordPress approval
+requests must be completed through their actual admin owner decision surface.
+
+Hermetic regression: `tests/provider-closure-fleet-runtime.php` on PHP 7.4 + 8.3;
+source contract: `tests/provider-closure-matrix-contract.py`.
