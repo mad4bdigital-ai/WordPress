@@ -14,6 +14,7 @@ assert apply.index("authorize_reviewed_owner_intent( $plan, $input )") < apply.i
 assert apply.index("::reserve( $plan )") < apply.index("MAD4B_SCP_Site_Profile_Write_Enablement::enable_write")
 assert apply.index("MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-verified'") < apply.index("::complete(")
 assert "::suspend( $journal_plan )" in apply
+assert apply.count("'operation_id' => $operation_id") >= 4, 'Audit and result share one operation ID'
 assert "add_option( self::active_key( $plan['site_uuid'] )" in journal
 assert "delete_option( self::active_key( $plan['site_uuid'] ) )" in journal
 assert "function_exists( 'delete_option' )" in journal

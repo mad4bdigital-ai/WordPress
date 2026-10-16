@@ -621,6 +621,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 			$prepared = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-prepared', array(
 				'contract' => self::CONTRACT,
 				'state' => 'ready_for_final_candidate_binding',
+				'operation_id' => $operation_id,
 				'source_commit_sha' => $plan['source_commit_sha'],
 				'site_uuid' => $plan['site_uuid'],
 				'write_reconciled' => true,
@@ -657,6 +658,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 				$noop = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-noop', array(
 					'contract' => self::CONTRACT,
 					'state' => 'already_current',
+					'operation_id' => $operation_id,
 					'source_commit_sha' => $plan['source_commit_sha'],
 					'site_uuid' => $plan['site_uuid'],
 					'developer_authority_mutation' => false,
@@ -678,6 +680,7 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 						'Exact current Write authority cannot be independently verified.' ) );
 			$completion = MAD4B_SCP_Audit::record( 'mad4b/staging-write-authority-convergence-verified', array(
 				'contract' => self::CONTRACT, 'plan_sha256' => $plan['plan_sha256'],
+				'operation_id' => $operation_id,
 				'source_commit_sha' => $plan['source_commit_sha'], 'site_uuid' => $plan['site_uuid'],
 				'postcondition_receipt_sha256' => $confirmation['receipt_sha256'],
 				'candidate_binding_committed' => $binding_required && ! $binding_match_before,
