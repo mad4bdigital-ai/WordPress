@@ -474,6 +474,8 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-translation-brid
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
 MAD4B_SCP_Full_Content_Operations_Adapter::boot();
 MAD4B_SCP_Translation_Bridge_Adapter::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-root-cause-resolver.php';
+MAD4B_SCP_Root_Cause_Resolver::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 MAD4B_SCP_Adapter_Registry::boot_ability_registration();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
