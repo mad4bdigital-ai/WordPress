@@ -183,7 +183,7 @@ for marker in (
     "MAD4B_SCP_Live_Acceptance_Observer::build_provenance_identity_status()",
     "$checkpoint_identity_current",
     "self::skills_identity_matches( $checkpoint_identity, $current_identity )",
-    "'stale_build_checkpoint'",
+    "self::skills_checkpoint_resume_policy( $checkpoint, $checkpoint_identity_current, $lock_active )",
     "'checkpoint_identity_current' => $checkpoint_identity_current",
     "'checkpoint_identity' => $checkpoint_identity",
     "'current_identity' => $current_identity",
@@ -193,6 +193,18 @@ for marker in (
         raise SystemExit("managed Skills status lost exact-build checkpoint freshness: " + marker)
 if "&& $checkpoint_identity_current;" not in managed_skills_status:
     raise SystemExit("completed Skills checkpoint must not be ready unless it matches the current build")
+resume_policy = parity.split("public static function skills_checkpoint_resume_policy(",1)[1].split("public static function managed_skills_reconciliation_status(",1)[0]
+for marker in (
+    "'stale_build_checkpoint'",
+    "'awaiting_exact_resume'",
+    "&& $identity_current && $valid_id && $valid_stage",
+    "resume_same_operation_after_exact_authorization",
+    "'blind_retry_allowed' => false",
+    "'requires_fresh_exact_authorization' => true",
+):
+    if marker not in resume_policy:
+        raise SystemExit("managed Skills resume policy lost fail-closed exact-build verification: " + marker)
+
 
 for marker in (
     'private static function compare_and_swap_option(',

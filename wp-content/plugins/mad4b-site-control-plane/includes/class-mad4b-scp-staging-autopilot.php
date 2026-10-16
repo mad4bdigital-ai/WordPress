@@ -71,12 +71,17 @@ final class MAD4B_SCP_Staging_Autopilot {
 			&& ! empty( $site['same_origin_clone_protection'] );
 		$skills_checkpoint_current = ! empty( $job['ready'] ) && ! empty( $job['checkpoint_identity_current'] );
 		$has_job = isset( $job['state'] ) && is_string( $job['state'] );
-		$job_running = $has_job && 'running' === $job['state'];
+		$job_running = $has_job && 'running' === $job['state'] && ! empty( $job['checkpoint_identity_current'] );
+		$job_resumable = $has_job && 'awaiting_exact_resume' === $job['state']
+			&& ! empty( $job['checkpoint_identity_current'] )
+			&& ! empty( $job['resume_eligible_after_fresh_permission'] )
+			&& ! empty( $job['checkpoint']['operation_id'] );
+		$should_resume = $job_running || $job_resumable;
 		$steps = array();
 		$steps[] = array( 'id' => 'site_profile', 'state' => $environment_ready ? 'verified' : 'blocked', 'next_ability' => 'mad4b/site-profile-status', 'auto_execution' => false );
 		$steps[] = array( 'id' => 'deployment_binding', 'state' => $binding_ready ? 'verified' : 'blocked', 'next_ability' => 'mad4b/deployment-binding-status', 'auto_execution' => false );
-		$steps[] = array( 'id' => 'managed_skills', 'state' => $skills_checkpoint_current ? 'checkpoint_verified' : ( $job_running ? 'resume_existing_checkpoint' : 'needs_exact_reconciliation' ),
-			'next_ability' => $job_running ? 'mad4b/remote-operation-reconciliation-status' : 'mad4b/reconcile-managed-skills',
+		$steps[] = array( 'id' => 'managed_skills', 'state' => $skills_checkpoint_current ? 'checkpoint_verified' : ( $should_resume ? 'resume_existing_checkpoint' : 'needs_exact_reconciliation' ),
+			'next_ability' => $should_resume ? 'mad4b/remote-operation-reconciliation-status' : 'mad4b/reconcile-managed-skills',
 			'auto_execution' => false, 'existing_operation_id' => isset( $job['checkpoint']['operation_id'] ) ? (string) $job['checkpoint']['operation_id'] : '' );
 		$steps[] = array( 'id' => 'governed_write', 'state' => 'independent_exact_read_required',
 			'next_ability' => 'mad4b/staging-write-authority-convergence-handshake', 'owner_review_required' => true, 'auto_execution' => false );
@@ -88,7 +93,7 @@ final class MAD4B_SCP_Staging_Autopilot {
 		if ( $environment_ready ) $next = $binding_ready ? ( $skills_checkpoint_current ? 'governed_write' : 'managed_skills' ) : 'deployment_binding';
 		return array(
 			'contract' => 'mad4b.fast-onboarding-plan.v1',
-			'state' => ! $environment_ready ? 'site_profile_required' : ( ! $binding_ready ? 'deployment_binding_required' : ( $skills_checkpoint_current ? 'write_review_required' : ( $job_running ? 'existing_checkpoint_in_progress' : 'managed_skills_reconciliation_required' ) ) ),
+			'state' => ! $environment_ready ? 'site_profile_required' : ( ! $binding_ready ? 'deployment_binding_required' : ( $skills_checkpoint_current ? 'write_review_required' : ( $should_resume ? 'existing_checkpoint_awaiting_authorized_resume' : 'managed_skills_reconciliation_required' ) ) ),
 			'next_step' => $next, 'steps' => $steps,
 			'prefer_single_generation_fenced_read' => true,
 			'deep_diagnostic_policy' => 'opt_in_one_bundle_at_a_time',
@@ -121,6 +126,8 @@ final class MAD4B_SCP_Staging_Autopilot {
 				'operation_id' => isset( $job['checkpoint']['operation_id'] ) ? (string) $job['checkpoint']['operation_id'] : '',
 				'seed_cursor' => isset( $job['checkpoint']['seed_cursor'] ) ? (int) $job['checkpoint']['seed_cursor'] : null,
 				'lock_active' => ! empty( $job['lock']['active'] ),
+				'resume_eligible_after_fresh_permission' => ! empty( $job['resume_eligible_after_fresh_permission'] ),
+				'next_action' => isset( $job['next_action'] ) ? (string) $job['next_action'] : 'inspect_exact_checkpoint',
 			),
 			'incidents' => $incidents,
 			'execution_performed' => false, 'mutation_performed' => false,

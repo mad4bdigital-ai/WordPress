@@ -14,9 +14,18 @@ ensure_fast($a['next_step']==='governed_write' && !$a['automatic_approval'], 'ch
 ensure_fast($a['steps'][3]['owner_review_required'] && !$a['steps'][3]['auto_execution'], 'owner_gate_not_bypassed');
 ensure_fast(!$a['production_mutation'] && !$a['mutation_performed'], 'staging_safety');
 $b=MAD4B_SCP_Staging_Autopilot::fast_plan($site,array('ready'=>false,'state'=>'running',
-  'checkpoint'=>array('operation_id'=>'op-unique-1','seed_cursor'=>6)));
+  'checkpoint_identity_current'=>true, 'checkpoint'=>array('operation_id'=>'op-unique-1','seed_cursor'=>6)));
 ensure_fast($b['next_step']==='managed_skills' && $b['steps'][2]['state']==='resume_existing_checkpoint', 'resume_existing_checkpoint');
 ensure_fast($b['steps'][2]['existing_operation_id']==='op-unique-1', 'preserve_exact_operation');
+$b_paused=MAD4B_SCP_Staging_Autopilot::fast_plan($site,array('ready'=>false,'state'=>'awaiting_exact_resume',
+  'checkpoint_identity_current'=>true,'resume_eligible_after_fresh_permission'=>true,
+  'checkpoint'=>array('operation_id'=>'op-unique-1','seed_cursor'=>6)));
+ensure_fast($b_paused['steps'][2]['state']==='resume_existing_checkpoint'
+    && $b_paused['state']==='existing_checkpoint_awaiting_authorized_resume', 'between_batches_recovery');
+$b_foreign=MAD4B_SCP_Staging_Autopilot::fast_plan($site,array('ready'=>false,'state'=>'awaiting_exact_resume',
+  'checkpoint_identity_current'=>false,'resume_eligible_after_fresh_permission'=>true,
+  'checkpoint'=>array('operation_id'=>'op-unique-1','seed_cursor'=>6)));
+ensure_fast($b_foreign['steps'][2]['state']==='needs_exact_reconciliation', 'no_stale_build_resume');
 $c=MAD4B_SCP_Staging_Autopilot::fast_plan($site,array('state'=>'completed','ready'=>true,'checkpoint_identity_current'=>false));
 ensure_fast($c['next_step']==='managed_skills', 'stale_checkpoint_not_ready');
 $d=MAD4B_SCP_Staging_Autopilot::fast_plan(array_merge($site,array('deployment_binding_match'=>false)),$job);

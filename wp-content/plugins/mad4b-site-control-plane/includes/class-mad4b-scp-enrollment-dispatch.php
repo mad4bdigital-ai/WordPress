@@ -440,8 +440,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'stage' => isset( $checkpoint['stage'] ) ? sanitize_key( (string) $checkpoint['stage'] ) : '',
 				'seed_cursor' => isset( $checkpoint['seed_cursor'] ) ? (int) $checkpoint['seed_cursor'] : null,
 				'lock_active' => ! empty( $raw['lock']['active'] ),
+				'resume_eligible_after_fresh_permission' => ! empty( $raw['resume_eligible_after_fresh_permission'] ),
+				'normal_batch_pause' => ! empty( $raw['normal_batch_pause'] ),
 				'blind_retry_allowed' => false,
-				'next_action' => ! empty( $raw['ready'] ) ? 'none' : ( ! empty( $raw['lock']['active'] ) ? 'observe_same_operation' : 'replan_exact_candidate' ),
+				'next_action' => isset( $raw['next_action'] ) ? sanitize_key( (string) $raw['next_action'] ) : 'inspect_exact_checkpoint',
 				'read_only' => true, 'mutation_performed' => false,
 			);
 		} catch ( Throwable $error ) {
