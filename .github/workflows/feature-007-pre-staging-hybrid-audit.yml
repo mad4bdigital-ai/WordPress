@@ -618,6 +618,8 @@ jobs:
           assert all(x['success'] or x['code'] in {
               'mad4b_site_operation_lock_held',
               'mad4b_site_operation_lock_claim_unverified',
+              # Named database mutex contention is a fail-closed denial.
+              'mad4b_operation_mutex_busy',
               'mad4b_previous_operation_needs_reconciliation',
               'mad4b_operation_readback_required',
               # A concurrent loser may fail its signed reservation readback;

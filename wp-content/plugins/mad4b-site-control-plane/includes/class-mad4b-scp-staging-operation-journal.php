@@ -112,7 +112,51 @@ final class MAD4B_SCP_Staging_Operation_Journal {
         return '' === $id ? array( 'state' => 'INVALID_PLAN_IDENTITY', 'read_only' => true )
             : self::inspect_id( $id, strtolower( (string) $plan['site_uuid'] ) );
     }
+    /**
+     * Only one PHP request at a time may attempt a site's durable reservation.
+     *
+     * WordPress add_option() and readback do not prove this request won a
+     * concurrent unique-key race, especially when several requests share
+     * the same exact operation ID. Use the database's connection-scoped
+     * advisory lock only around the small reservation critical section.
+     *
+     * An unavailable live DB/mutex fails closed. A lost response is NEVER
+     * permission to replay the operation; the signed journal remains the
+     * durable, authoritative recovery evidence after mutex release.
+     */
     public static function reserve( array $plan ) {
+        $id = self::id( $plan );
+        if ( '' === $id )
+            return new WP_Error( 'mad4b_operation_plan_invalid', 'Exact operation identity required.' );
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) )
+            return self::reserve_under_site_mutex( $plan ); // Hermetic-only fixture.
+        if ( ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) )
+            return new WP_Error( 'mad4b_operation_mutex_unavailable', 'Live database mutex support is required.' );
+        $mutex = 'mad4b_op_' . substr( hash( 'sha256', strtolower( (string) $plan['site_uuid'] ) ), 0, 48 );
+        try {
+            $acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 2)', $mutex ) );
+        } catch ( Throwable $error ) {
+            return new WP_Error( 'mad4b_operation_mutex_unavailable', 'Site reservation mutex could not be acquired.' );
+        }
+        if ( '1' !== (string) $acquired )
+            return new WP_Error( 'mad4b_operation_mutex_busy',
+                'A concurrent site reservation may be in progress; inspect current journal before any retry.' );
+        try {
+            return self::reserve_under_site_mutex( $plan );
+        } finally {
+            // Connection-scoped, release does not delete the durable
+            // operation record nor authorize a second execution.
+            try {
+                $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $mutex ) );
+            } catch ( Throwable $error ) {
+                // The connection closing also releases its named lock. The
+                // journal may be uncertain: never infer execution success.
+            }
+        }
+    }
+
+    private static function reserve_under_site_mutex( array $plan ) {
         $id = self::id( $plan );
         if ( '' === $id ) return new WP_Error( 'mad4b_operation_plan_invalid', 'Exact operation identity required.' );
         $latest = self::latest( strtolower( $plan['site_uuid'] ) );

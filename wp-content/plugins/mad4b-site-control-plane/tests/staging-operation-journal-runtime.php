@@ -160,4 +160,56 @@ check_journal(!isset($GLOBALS['options'][$J::PREFIX.$J::id($a)]),
     'unowned lock must not create an immutable second operation');
 $GLOBALS['simulate_nominal_lock_success']=false;
 
+// Failure injection 6: live MySQL/MariaDB named-mutex admission must fail
+// closed on contention, then release the mutex after a successful reservation.
+class MAD4B_Test_Mutex_WPDB {
+    public $options = 'wp_options';
+    public $grant = false;
+    public $throw_acquire = false;
+    public $acquire_calls = 0;
+    public $release_calls = 0;
+    public function prepare( $sql, $arg ) {
+        return str_replace( '%s', "'" . str_replace( "'", "''", $arg ) . "'", $sql );
+    }
+    public function get_var( $sql ) {
+        if ( 0 === strpos( $sql, 'SELECT GET_LOCK(' ) ) {
+            ++$this->acquire_calls;
+            if ( $this->throw_acquire ) throw new RuntimeException( 'simulated database disconnect' );
+            return $this->grant ? '1' : '0';
+        }
+        if ( 0 === strpos( $sql, 'SELECT RELEASE_LOCK(' ) ) {
+            ++$this->release_calls;
+            return '1';
+        }
+        if ( 0 === strpos( $sql, 'SELECT option_value' ) ) {
+            if ( ! preg_match( "/option_name = '([^']+)'/", $sql, $matches ) ) return null;
+            return $GLOBALS['options'][ $matches[1] ] ?? null;
+        }
+        return null;
+    }
+}
+$GLOBALS['options'] = array();
+$wpdb = new MAD4B_Test_Mutex_WPDB();
+$a = $plan; $a['site_uuid'] = '88888888-2222-3333-4444-555555555555';
+$attempt = $J::reserve( $a );
+check_journal( is_wp_error( $attempt )
+    && 'mad4b_operation_mutex_busy' === $attempt->get_error_code()
+    && empty( $GLOBALS['options'] ),
+    'contended live DB mutex refuses all mutations' );
+$wpdb->grant = true;
+$attempt = $J::reserve( $a );
+check_journal( is_array( $attempt )
+    && $wpdb->acquire_calls === 2 && $wpdb->release_calls === 1,
+    'site mutex held across full reservation then released' );
+$attempt = $J::reserve( $a );
+check_journal( is_wp_error( $attempt ) && $wpdb->release_calls === 2,
+    'identical reservation cannot replay after mutex release' );
+$wpdb->throw_acquire = true;
+$b = $plan; $b['site_uuid'] = '99999999-8888-3333-4444-555555555555';
+$attempt = $J::reserve( $b );
+check_journal( is_wp_error( $attempt )
+    && 'mad4b_operation_mutex_unavailable' === $attempt->get_error_code(),
+    'DB failure cannot fall back to unsafe option claim' );
+unset( $wpdb );
+
 echo "STAGING_OPERATION_JOURNAL_RUNTIME_PASS\n";

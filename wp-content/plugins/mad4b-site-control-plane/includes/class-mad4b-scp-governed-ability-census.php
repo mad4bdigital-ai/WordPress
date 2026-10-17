@@ -36,6 +36,49 @@ final class MAD4B_SCP_Governed_Ability_Census {
         }
     }
 
+    /**
+     * Redacted, non-authorizing explanation of callback provenance rejection.
+     * Do not expose raw function arguments, paths or OAuth information.
+     */
+    private static function callback_probe( $callback ) {
+        $result = array(
+            'kind' => is_array( $callback ) ? 'array' : (
+                $callback instanceof Closure ? 'closure' : gettype( $callback ) ),
+            'trusted' => self::callback_is_ours( $callback ),
+        );
+        if ( is_array( $callback ) && 2 === count( $callback ) ) {
+            $class = is_object( $callback[0] ) ? get_class( $callback[0] ) : (
+                is_string( $callback[0] ) ? $callback[0] : '' );
+            $result['class_prefix_valid'] = 1 === preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D', $class );
+            $result['method_string'] = is_string( $callback[1] );
+            $result['callable'] = is_callable( $callback );
+            try {
+                $method = new ReflectionMethod( $callback[0], $callback[1] );
+                $file = realpath( (string) $method->getFileName() );
+                $root = realpath( __DIR__ );
+                $result['public'] = $method->isPublic();
+                $result['inside_includes'] = false !== $root && false !== $file
+                    && 0 === strpos( $file, $root . DIRECTORY_SEPARATOR );
+                $result['defined_in_plugin_root'] = false !== $root && false !== $file
+                    && 0 === strpos( $file, dirname( $root ) . DIRECTORY_SEPARATOR );
+            } catch ( Throwable $error ) {
+                $result['reflection_exception'] = get_class( $error );
+            }
+        }
+        if ( $callback instanceof Closure ) {
+            try {
+                $reflection = new ReflectionFunction( $callback );
+                $file = realpath( (string) $reflection->getFileName() );
+                $root = realpath( __DIR__ );
+                $result['inside_includes'] = false !== $root && false !== $file
+                    && 0 === strpos( $file, $root . DIRECTORY_SEPARATOR );
+            } catch ( Throwable $error ) {
+                $result['reflection_exception'] = get_class( $error );
+            }
+        }
+        return $result;
+    }
+
     private static function callback_is_ours( $callback ) {
         return '' !== self::callback_identity( $callback );
     }
@@ -184,16 +227,20 @@ final class MAD4B_SCP_Governed_Ability_Census {
         $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
             ? $meta['annotations'] : array();
         $callbacks = array();
+        $callback_profiles = array();
         if ( is_object( $ability ) && class_exists( 'WP_Ability', false )
             && $ability instanceof WP_Ability ) {
             foreach ( array( 'execute_callback', 'permission_callback' ) as $property_name ) {
                 try {
                     $property = new ReflectionProperty( 'WP_Ability', $property_name );
                     $property->setAccessible( true );
-                    $callbacks[ $property_name ] = self::callback_is_ours(
-                        $property->getValue( $ability ) );
+                    $callback = $property->getValue( $ability );
+                    $callbacks[ $property_name ] = self::callback_is_ours( $callback );
+                    $callback_profiles[ $property_name ] = self::callback_probe( $callback );
                 } catch ( Throwable $error ) {
                     $callbacks[ $property_name ] = false;
+                    $callback_profiles[ $property_name ] = array(
+                        'kind' => 'unavailable', 'reflection_exception' => get_class( $error ) );
                 }
             }
         }
@@ -210,6 +257,8 @@ final class MAD4B_SCP_Governed_Ability_Census {
             'production_allowed_true' => true === ( $mcp['production_allowed'] ?? null ),
             'readonly_false' => false === ( $annotations['readonly'] ?? null ),
             'callback_provenance' => $callbacks,
+            'callback_profiles' => $callback_profiles,
+            'ability_class_is_exact_core' => is_object( $ability ) && get_class( $ability ) === 'WP_Ability',
             'structural_discovery' => isset( self::structural_step_up()[ (string) $name ] ),
         );
     }
