@@ -304,6 +304,90 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		);
 	}
 
+	/**
+	 * Safe owner handoff through an existing, working ChatGPT MCP tool.
+	 *
+	 * The Full Authority handshake remains a read-only discovery endpoint.
+	 * Surface the independent WRITE-ONLY plan, never reuse the Full Authority
+	 * plan hash, never grant Developer or Breakglass, and never claim an owner
+	 * receipt. This avoids requiring a second dynamic client projection just
+	 * to retrieve the exact owner-reviewed Write plan.
+	 */
+	private static function write_only_handoff( $expected_generation = '' ) {
+		$base = array(
+			'contract' => 'mad4b.staging-write-only-owner-handoff.v1',
+			'authority_scope' => 'governed_staging_write_only',
+			'authority_effect' => 'none',
+			'developer_authority_requested' => false,
+			'developer_breakglass_requested' => false,
+			'production_mutation_allowed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
+			|| ! method_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence', 'handshake' ) )
+			return $base + array( 'state' => 'unavailable',
+				'blocker' => 'write_only_handshake_not_registered' );
+		try {
+			$read = MAD4B_SCP_Staging_Write_Authority_Convergence::handshake();
+		} catch ( Throwable $error ) {
+			return $base + array( 'state' => 'read_failed', 'blocker' => 'write_only_read_exception' );
+		}
+		if ( is_wp_error( $read ) ) return $base + array(
+			'state' => 'read_failed',
+			'blocker' => sanitize_key( (string) $read->get_error_code() ),
+		);
+		if ( ! is_array( $read ) || empty( $read['runtime_generation'] ) )
+			return $base + array( 'state' => 'read_failed', 'blocker' => 'write_only_generation_missing' );
+		$generation = strtolower( (string) $read['runtime_generation'] );
+		if ( '' !== $expected_generation && ! hash_equals( strtolower( (string) $expected_generation ), $generation ) )
+			return $base + array( 'state' => 'stale_generation',
+				'blocker' => 'runtime_generation_changed_during_handoff',
+				'client_action' => 'request_new_handshake_without_reusing_plan' );
+		$exact = isset( $read['exact_apply'] ) && is_array( $read['exact_apply'] )
+			? $read['exact_apply'] : array();
+		$source = (string) ( $exact['expected_source_commit_sha'] ?? '' );
+		$review = (string) ( $exact['owner_review_digest'] ?? '' );
+		$plan = (string) ( $exact['expected_plan_sha256'] ?? '' );
+		if ( ! preg_match( '/^[a-f0-9]{40}$/D', $source )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', $review )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', $plan )
+			|| 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== ( $exact['confirmation'] ?? '' ) )
+			return $base + array( 'state' => 'read_failed',
+				'blocker' => 'write_only_plan_incomplete' );
+		$intent_state = 'UNAVAILABLE';
+		$expires = 0;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' )
+			&& method_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'page_intent_status' ) ) {
+			try {
+				$intent = MAD4B_SCP_Staging_Write_Owner_Intent::page_intent_status(
+					array( 'review_digest' => $review ) );
+				if ( is_array( $intent ) ) {
+					$intent_state = sanitize_key( (string) ( $intent['state'] ?? 'UNAVAILABLE' ) );
+					$expires = max( 0, (int) ( $intent['expires_at'] ?? 0 ) );
+				}
+			} catch ( Throwable $error ) {
+				$intent_state = 'owner_intent_read_failed';
+			}
+		}
+		return $base + array(
+			'state' => ! empty( $read['already_current'] ) ? 'already_current'
+				: ( ! empty( $read['ready_to_apply'] ) ? 'awaiting_exact_write_only_apply' : 'blocked' ),
+			'ready_to_apply' => ! empty( $read['ready_to_apply'] ),
+			'owner_review_state' => $intent_state,
+			'owner_review_expires_at' => $expires,
+			'owner_review_current' => 'owner_intent_current' === $intent_state,
+			'exact_apply' => $exact,
+			'apply_ability' => 'mad4b/staging-write-authority-convergence-apply',
+			'blockers' => isset( $read['hard_blockers'] ) && is_array( $read['hard_blockers'] )
+				? array_slice( array_map( 'sanitize_key', $read['hard_blockers'] ), 0, 12 ) : array(),
+			'client_action' => ! empty( $read['ready_to_apply'] )
+				? 'invoke_exact_write_only_apply_with_authenticated_owner_step_up'
+				: 'repair_write_only_plan_blockers',
+		);
+	}
+
 	public static function handshake() {
 		$access = self::can_access();
 		if ( is_wp_error( $access ) || ! $access ) return $access;
@@ -394,6 +478,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake',
 					'deep_status_direct_projection' => false,
 					'deep_plan_direct_projection' => false,
+					'write_only_handoff' => self::write_only_handoff( (string) ( $after['runtime_generation'] ?? '' ) ),
 					'deep_reads_available_via_governed_dispatch' => true,
 				);
 			},
