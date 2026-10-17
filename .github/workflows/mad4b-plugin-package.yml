@@ -49,9 +49,11 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-plugin-package.php"
           php -l "$root/includes/class-mad4b-scp-plugin-transaction.php"
           php -l "$root/includes/class-mad4b-scp-security-diagnostics.php"
+          php -l "$root/includes/class-mad4b-scp-security-provider-evidence.php"
           php -l "$root/tests/security-operational-providers-runtime.php"
           php "$root/tests/security-operational-providers-runtime.php"
           php "$root/tests/security-diagnostics-runtime.php"
+          php "$root/tests/security-provider-evidence-runtime.php"
           python3 -m json.tool "$root/config/security-operational-providers.json" > /dev/null
 
       - name: Verify general-distribution package contract
