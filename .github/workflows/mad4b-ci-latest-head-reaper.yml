@@ -1,0 +1,40 @@
+name: MAD4B Superseded PR Run Reaper
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Open PR number; only same-repository PRs can be processed"
+        type: number
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+concurrency:
+  group: mad4b-superseded-pr-reaper-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Cancel superseded PR checks without touching the current head
+    runs-on: ubuntu-latest
+    steps:
+      # Always use trusted default-branch code; never check out the untrusted PR head.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Reaper offline contract tests
+        run: python3 -m unittest discover -s .github/scripts/tests -p 'test_ci_latest_head_reaper.py'
+
+      - name: Cancel strictly stale PR workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        run: python3 .github/scripts/mad4b_ci_latest_head_reaper.py --pr-number "$PR_NUMBER" --apply
