@@ -10,8 +10,10 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
     const OPTION = 'mad4b_scp_native_cron_smoke_v1';
     const LOCK = 'mad4b_scp_native_cron_smoke_lock_v1';
     const HOOK = 'mad4b_scp_native_cron_smoke_execute';
+    const STALE_SECONDS = 1800;
     public static function boot() {
         add_action( 'admin_post_mad4b_native_cron_smoke_queue', array( __CLASS__, 'enqueue_from_admin' ) );
+        add_action( 'admin_post_mad4b_native_cron_smoke_reconcile', array( __CLASS__, 'reconcile_from_admin' ) );
         add_action( self::HOOK, array( __CLASS__, 'run' ), 10, 1 );
     }
     public static function staging() {
@@ -23,16 +25,81 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             && function_exists( 'wp_next_scheduled' )
             && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON );
     }
+    private static function stale_job( $job ) {
+        if ( ! is_array( $job ) || ! in_array( (string) ( $job['state'] ?? '' ),
+            array( 'queued', 'running' ), true ) ) return false;
+        $queued = strtotime( (string) ( $job['queued_at'] ?? '' ) );
+        return false !== $queued && $queued > 0 && time() - $queued >= self::STALE_SECONDS;
+    }
     public static function status() {
         $stored = get_option( self::OPTION, array() );
+        $job = is_array( $stored ) ? $stored : array();
+        $id = (string) ( $job['job_id'] ?? '' );
+        $lock = get_option( self::LOCK, '' );
+        $lock_matches = is_string( $lock ) && '' !== $id && hash_equals( $lock, $id );
+        $stale = self::stale_job( $job ) && $lock_matches;
+        $scheduled = $stale && function_exists( 'wp_next_scheduled' )
+            ? wp_next_scheduled( self::HOOK, array( $id ) ) : false;
         return array( 'contract' => 'mad4b.native-wpcron-acceptance-status.v1',
             'mode' => 'wp_cron', 'wp_cron_available' => self::available(),
             'browser_automation' => false, 'signed_browser_acceptance' => false,
             'release_ready' => false, 'authorizing' => false, 'read_only' => true,
-            'job' => is_array( $stored ) ? array_intersect_key( $stored, array_flip(
+            'stale_lock_detected' => $stale,
+            'manual_reconciliation_eligible' => $stale && false === $scheduled,
+            'manual_reconciliation_required' => $stale,
+            'blind_retry_allowed' => false, 'recovery_performed' => false,
+            'job' => array_intersect_key( $job, array_flip(
                 array( 'job_id', 'state', 'queued_at', 'checked_at', 'http_status', 'elapsed_ms',
                     'error_code', 'source', 'checked_epoch', 'source_commit_sha',
-                    'site_origin_sha256', 'preference_revision' ) ) ) : array() );
+                    'site_origin_sha256', 'preference_revision' ) ) );
+    }
+
+    /** Explicit local administrator reconciliation; never requeues a stale job. */
+    public static function reconcile_stale( $expected_job_id ) {
+        if ( ! self::staging() || ! current_user_can( 'manage_options' ) )
+            return new WP_Error( 'mad4b_native_cron_recovery_denied', 'Staging administrator required.' );
+        $id = (string) $expected_job_id;
+        if ( ! preg_match( '/^[a-f0-9-]{36}$/D', $id ) )
+            return new WP_Error( 'mad4b_native_cron_recovery_identity_invalid', 'Exact job ID required.' );
+        $job = get_option( self::OPTION, array() );
+        $locked = get_option( self::LOCK, '' );
+        if ( ! self::stale_job( $job )
+            || ! is_string( $locked ) || ! hash_equals( $locked, $id )
+            || ! hash_equals( (string) ( $job['job_id'] ?? '' ), $id ) )
+            return new WP_Error( 'mad4b_native_cron_recovery_not_stale', 'Stale exact locked job required.' );
+        if ( ! function_exists( 'wp_next_scheduled' )
+            || false !== wp_next_scheduled( self::HOOK, array( $id ) ) )
+            return new WP_Error( 'mad4b_native_cron_recovery_event_pending', 'A scheduled event still exists; inspect WP-Cron before recovery.' );
+        $job['state'] = 'abandoned_after_owner_review';
+        $job['checked_at'] = gmdate( 'c' );
+        $job['checked_epoch'] = time();
+        $job['error_code'] = 'stale_or_interrupted_readonly_smoke';
+        if ( ! update_option( self::OPTION, $job, false )
+            || ! hash_equals( $id, (string) get_option( self::LOCK, '' ) )
+            || ! delete_option( self::LOCK ) )
+            return new WP_Error( 'mad4b_native_cron_recovery_writeback_unverified',
+                'Job was marked abandoned but lock readback failed; do not retry.' );
+        return array( 'state' => 'abandoned_after_owner_review',
+            'original_job_id' => $id, 'new_job_enqueued' => false,
+            'lock_released' => '' === (string) get_option( self::LOCK, '' ),
+            'authorizing' => false, 'browser_signed' => false );
+    }
+
+    public static function reconcile_from_admin() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) )
+            wp_die( 'POST required.', '', array( 'response' => 405 ) );
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Administrator required.', '', array( 'response' => 403 ) );
+        check_admin_referer( 'mad4b_native_cron_smoke_reconcile', 'mad4b_native_cron_nonce' );
+        $id = isset( $_POST['expected_job_id'] ) && is_string( $_POST['expected_job_id'] )
+            ? sanitize_text_field( wp_unslash( $_POST['expected_job_id'] ) ) : '';
+        $result = self::reconcile_stale( $id );
+        if ( is_wp_error( $result ) )
+            wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 409 ) );
+        wp_safe_redirect( add_query_arg( array(
+            'page' => MAD4B_SCP_Browser_Acceptance_Admin_UI::PAGE_SLUG,
+        ), admin_url( 'admin.php' ) ) );
+        exit;
     }
     public static function enqueue_from_admin() {
         if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) )
@@ -172,6 +239,17 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
         echo '<p>Runs one owner-requested, read-only same-site HTTP check. It does not execute JavaScript or certify Browser Acceptance.</p>';
         echo '<p>Availability: <strong>' . esc_html( $s['wp_cron_available'] ? 'ready' : 'blocked' )
             . '</strong>; latest state: <code>' . esc_html( (string) ( $s['job']['state'] ?? 'not_queued' ) ) . '</code></p>';
+        if ( ! empty( $s['manual_reconciliation_required'] ) ) {
+            echo '<p>Stale WP-Cron job detected. No automatic replay or release certification is allowed.</p>';
+            if ( ! empty( $s['manual_reconciliation_eligible'] ) ) {
+                echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                echo '<input type="hidden" name="action" value="mad4b_native_cron_smoke_reconcile">';
+                echo '<input type="hidden" name="expected_job_id" value="' . esc_attr( (string) ( $s['job']['job_id'] ?? '' ) ) . '">';
+                wp_nonce_field( 'mad4b_native_cron_smoke_reconcile', 'mad4b_native_cron_nonce' );
+                submit_button( 'Reconcile stale read-only smoke (no replay)' );
+                echo '</form>';
+            }
+        }
         if ( ! $s['wp_cron_available']
             || ! in_array( (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ),
                 array( 'wp_cron', 'native_hybrid' ), true ) ) return;
