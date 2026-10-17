@@ -40,6 +40,22 @@ jobs:
           php "$root/tests/dependency-mcp-adapter-integrity-runtime.php"
           python3 "$root/tests/dependency-certified-runtime-contract.py"
 
+      - name: Verify optional security operational providers
+        shell: bash
+        run: |
+          set -euo pipefail
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -l "$root/includes/class-mad4b-scp-official-security-packages.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-package.php"
+          php -l "$root/includes/class-mad4b-scp-plugin-transaction.php"
+          php -l "$root/includes/class-mad4b-scp-security-diagnostics.php"
+          php -l "$root/includes/class-mad4b-scp-security-provider-evidence.php"
+          php -l "$root/tests/security-operational-providers-runtime.php"
+          php "$root/tests/security-operational-providers-runtime.php"
+          php "$root/tests/security-diagnostics-runtime.php"
+          php "$root/tests/security-provider-evidence-runtime.php"
+          python3 -m json.tool "$root/config/security-operational-providers.json" > /dev/null
+
       - name: Verify general-distribution package contract
         shell: bash
         run: |

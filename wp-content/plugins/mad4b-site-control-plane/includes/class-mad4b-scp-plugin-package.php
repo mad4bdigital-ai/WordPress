@@ -83,6 +83,12 @@ final class MAD4B_SCP_Plugin_Package {
 
 	public static function plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
+        // Optional security plugins reuse this same governed package-plan ability.
+        $security_id = sanitize_key( (string) ( $input['provider_id'] ?? '' ) );
+        if ( 0 === strpos( $security_id, 'security-' ) ) {
+            require_once __DIR__ . '/class-mad4b-scp-official-security-packages.php';
+            return MAD4B_SCP_Official_Security_Packages::plan( $input );
+        }
 		$provider = isset( $input['provider_id'] ) ? sanitize_key( (string) $input['provider_id'] ) : '';
 		$component = isset( $input['component'] ) ? sanitize_key( (string) $input['component'] ) : '';
 		$source = isset( $input['source'] ) ? sanitize_key( (string) $input['source'] ) : 'auto_certified';
@@ -182,6 +188,12 @@ final class MAD4B_SCP_Plugin_Package {
 
 	public static function apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
+        // Reuse the existing high-impact OAuth/Write ability for official security packages.
+        $security_id = sanitize_key( (string) ( $input['provider_id'] ?? '' ) );
+        if ( 0 === strpos( $security_id, 'security-' ) ) {
+            require_once __DIR__ . '/class-mad4b-scp-official-security-packages.php';
+            return MAD4B_SCP_Official_Security_Packages::apply( $input );
+        }
 		$expected_plan = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_plan ) ) return new WP_Error( 'mad4b_plugin_package_plan_digest_required', 'expected_plan_sha256 from a reviewed plugin package plan is required.' );
 
@@ -688,8 +700,9 @@ final class MAD4B_SCP_Plugin_Package {
 			'properties' => array(
 				'provider_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 80 ),
 				'component' => array( 'type' => 'string', 'maxLength' => 80, 'default' => '' ),
-				'source' => array( 'type' => 'string', 'enum' => array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer', 'certified_repository_archive', 'certified_local_archive' ), 'default' => 'auto_certified' ),
+				'source' => array( 'type' => 'string', 'enum' => array( 'auto_certified', 'certified_upstream_release', 'wordpress_update_offer', 'certified_repository_archive', 'certified_local_archive', 'wordpress_org' ), 'default' => 'auto_certified' ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+                'activate_after_install' => array( 'type' => 'boolean', 'default' => false ),
 			),
 			'required' => array( 'provider_id', 'reason' ),
 			'additionalProperties' => false,
