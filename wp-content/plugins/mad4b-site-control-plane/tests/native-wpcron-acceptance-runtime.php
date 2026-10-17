@@ -18,7 +18,7 @@ function wp_generate_uuid4(){return 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';}
 function wp_schedule_single_event($when,$hook,$args=[],$error=false){
  $GLOBALS['calls']++;$GLOBALS['scheduled']=[$when,$hook,$args];return true;
 }
-function wp_next_scheduled($hook,$args=[]) {return false;}
+function wp_next_scheduled($hook,$args=[]) {return !empty($GLOBALS['cron_event_pending']) ? time()+60 : false;}
 function home_url($path='/'){return 'https://staging.example.test/';}
 function site_url($path='/'){return 'https://staging.example.test/';}
 function wp_parse_url($url,$part){return parse_url($url,$part);}
@@ -78,4 +78,26 @@ ok($done['job']['state']==='smoke_observed' && $done['job']['http_status']===200
  !isset($GLOBALS['opts'][$c::LOCK]),'redacted readback and lock release');
 ok($GLOBALS['http'][1]['redirection']===0 && $GLOBALS['http'][1]['timeout']===10 &&
  $GLOBALS['http'][1]['limit_response_size']===4096,'bounded wordpress safe http');
+// Interrupted read-only jobs need explicit, identity-bound recovery, not replay.
+$id='aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+$GLOBALS['opts'][$c::OPTION]=array_merge(
+ MAD4B_SCP_Native_Hybrid_Acceptance::current_identity(),[
+  'job_id'=>$id,'state'=>'queued','queued_at'=>gmdate('c',time()-1900)]);
+$GLOBALS['opts'][$c::LOCK]=$id;
+$stale=$c::status();
+ok($stale['stale_lock_detected']===true && $stale['manual_reconciliation_eligible']===true
+ && $stale['blind_retry_allowed']===false,'stale lock identified without replay');
+ok(is_wp_error($c::reconcile_stale('bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb')),
+ 'stale lock cannot be removed using wrong identity');
+$GLOBALS['cron_event_pending']=true;
+ok(is_wp_error($c::reconcile_stale($id)), 'still-scheduled event cannot be reconciled blindly');
+$GLOBALS['cron_event_pending']=false;
+$GLOBALS['env']='production';
+ok(is_wp_error($c::reconcile_stale($id)),'Production stale job repair denied');
+$GLOBALS['env']='staging';
+$result=$c::reconcile_stale($id);
+ok(is_array($result) && $result['lock_released']===true
+ && $result['new_job_enqueued']===false && $GLOBALS['calls']===1
+ && $c::status()['job']['state']==='abandoned_after_owner_review',
+ 'exact stale lock reconciled without scheduling any new request');
 echo "NATIVE_WPCRON_ACCEPTANCE_PASS\n";
