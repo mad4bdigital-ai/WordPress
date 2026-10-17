@@ -53,7 +53,7 @@ final class MAD4B_SCP_Security_Diagnostics {
             'mad4b/security-provider-evidence' => array( 'Security Provider Evidence (read only)', 'provider_evidence',
                 array( 'type' => 'object', 'properties' => array(
                     'provider_id' => array( 'type' => 'string',
-                        'enum' => array( 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ) ),
+                        'enum' => array( 'all', 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ) ),
                     'period' => array( 'type' => 'string', 'enum' => array( '24h', '7d' ), 'default' => '24h' ),
                     'surface' => array( 'type' => 'string',
                         'enum' => array( 'core', 'plugins', 'themes' ), 'default' => 'plugins' ),
@@ -142,12 +142,14 @@ final class MAD4B_SCP_Security_Diagnostics {
         $provider = $input['provider_id'];
         $period = isset( $input['period'] ) ? $input['period'] : '24h';
         $surface = isset( $input['surface'] ) ? $input['surface'] : 'plugins';
-        if ( ! in_array( $provider, array( 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ), true )
+        if ( ! in_array( $provider, array( 'all', 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ), true )
             || ! in_array( $period, array( '24h', '7d' ), true )
             || ! in_array( $surface, array( 'core', 'plugins', 'themes' ), true ) )
             return self::error( 'provider_evidence_input_invalid' );
         if ( ! class_exists( 'MAD4B_SCP_Security_Provider_Evidence', false ) )
             require_once __DIR__ . '/class-mad4b-scp-security-provider-evidence.php';
+        if ( 'all' === $provider )
+            return MAD4B_SCP_Security_Provider_Evidence::collect_all( $period, $surface );
         return MAD4B_SCP_Security_Provider_Evidence::collect( $provider, $period, $surface );
     }
 
