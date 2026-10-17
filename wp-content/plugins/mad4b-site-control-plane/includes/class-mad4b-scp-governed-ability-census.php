@@ -67,6 +67,30 @@ final class MAD4B_SCP_Governed_Ability_Census {
     }
 
     /**
+     * Security-sensitive enumeration needs the *registered* objects, not a
+     * result filtered by unrelated plugins through WordPress 7.1 discovery
+     * filters. Core explicitly supports raw registry inspection for this
+     * purpose. Named wp_get_ability() identity is checked for every result.
+     */
+    private static function registered_snapshot() {
+        if ( class_exists( 'WP_Abilities_Registry', false )
+            && method_exists( 'WP_Abilities_Registry', 'get_instance' ) ) {
+            try {
+                $registry = WP_Abilities_Registry::get_instance();
+                if ( is_object( $registry ) && method_exists( $registry, 'get_all_registered' ) ) {
+                    $registered = $registry->get_all_registered();
+                    return is_array( $registered ) ? $registered : array();
+                }
+            } catch ( Throwable $error ) {
+                return array();
+            }
+        }
+        // Minimal hermetic and pre-6.9 partial integration fallback.
+        return function_exists( 'wp_get_abilities' ) && is_array( wp_get_abilities() )
+            ? wp_get_abilities() : array();
+    }
+
+    /**
      * The same registry loop classifies Staging broker targets separately from
      * direct-only, independently governed host/runtime gate controls. A direct
      * tool does not automatically qualify for generic enrollment dispatch.
@@ -75,8 +99,8 @@ final class MAD4B_SCP_Governed_Ability_Census {
         // tools/list materialization happens before OAuth and Site Profile
         // authority convergence. Metadata discovery must not be a grant.
         // The enrollment broker rechecks exact Staging identity separately.
-        if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' ) ) return array();
-        $registry = wp_get_abilities();
+        if ( ! function_exists( 'wp_get_ability' ) ) return array();
+        $registry = self::registered_snapshot();
         if ( ! is_array( $registry ) ) return array();
         $result = array();
         $first_party_candidates = 0;
@@ -177,8 +201,7 @@ final class MAD4B_SCP_Governed_Ability_Census {
         }
         return array(
             'registered' => is_object( $ability ),
-            'registry_count' => function_exists( 'wp_get_abilities' )
-                ? count( (array) wp_get_abilities() ) : -1,
+            'registry_count' => count( self::registered_snapshot() ),
             'ability_is_wp_ability' => is_object( $ability )
                 && class_exists( 'WP_Ability', false ) && $ability instanceof WP_Ability,
             'surface_enrollment' => 'enrollment' === ( $mcp['surface'] ?? null ),
