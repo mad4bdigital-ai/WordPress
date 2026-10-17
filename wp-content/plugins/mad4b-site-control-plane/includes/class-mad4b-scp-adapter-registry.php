@@ -117,7 +117,11 @@ final class MAD4B_SCP_Adapter_Registry {
 					'plugin_file' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 191 ),
 					'dimension' => array( 'type' => 'string', 'enum' => array( 'inventory', 'read', 'write', 'rollback' ) ),
 					'ability' => array( 'type' => 'string', 'maxLength' => 191 ),
-					'expected_graph_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}
+					'expected_graph_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				),
+				'required' => array( 'plugin_file', 'dimension' ),
+			)
+		);
 		$this->register_registry_ability( 'mad4b/functional-gap-runtime-evidence', 'Functional Gap Runtime Evidence', 'functional_gap_runtime_evidence', 'Collect exact read-only runtime provider evidence and compare it with build-embedded repository evidence without shell, SQL, remote requests or authority changes.' );
 		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation, provider contracts and adapter coverage evidence.' );
 		foreach ( $this->adapters as $adapter ) $adapter->register_abilities();
