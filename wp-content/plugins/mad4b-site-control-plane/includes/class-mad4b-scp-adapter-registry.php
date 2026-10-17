@@ -47,10 +47,33 @@ final class MAD4B_SCP_Adapter_Registry {
 		return $found;
 	}
 
+	/**
+	 * Registration policy is checked independently of discovery. Newly bundled
+	 * adapters are visible to inventory but NOT mounted until source-reviewed.
+	 * No WordPress filter or option can expand this root-of-trust list.
+	 */
+	public static function approved_bundled_adapter_classes() {
+		$file = __DIR__ . '/../config/adapter-registration-policy.json';
+		if ( ! is_readable( $file ) ) return array();
+		$raw = file_get_contents( $file );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $data )
+			|| ( $data['contract'] ?? '' ) !== 'mad4b.adapter-registration-policy.v1'
+			|| ! isset( $data['approved_classes'] ) || ! is_array( $data['approved_classes'] ) )
+			return array();
+		$available = array_fill_keys( self::bundled_adapter_classes(), true );
+		$approved = array();
+		foreach ( $data['approved_classes'] as $class ) {
+			if ( ! is_string( $class ) || ! isset( $available[ $class ] ) ) continue;
+			$approved[ $class ] = true;
+		}
+		return array_keys( $approved );
+	}
+
 	public function register_defaults() {
 		if ( $this->defaults_registered ) return;
 		$this->defaults_registered = true;
-		foreach ( self::bundled_adapter_classes() as $class ) $this->register( new $class() );
+		foreach ( self::approved_bundled_adapter_classes() as $class ) $this->register( new $class() );
 		// Explicit external registration still requires a reviewed Adapter_Base
 		// contract. No automatic loading or permission broadening occurs here.
 		do_action( 'mad4b_scp_register_adapters', $this );
