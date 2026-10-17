@@ -167,6 +167,7 @@ mcp_check(!is_wp_error($hybrid_read)
     && $hybrid_read['result']['permission_checked'] === true
     && count($GLOBALS['mcp_calls']) === $before_local,
     'Local fallback executes via registered Ability with no remote request');
+$GLOBALS['mcp_tools'][0]['inputSchema'] = $schema;
 $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
     'peer_id'=>'test-peer', 'arguments'=>array('q'=>'test')));
 mcp_check(is_wp_error($native_denied)
