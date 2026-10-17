@@ -65,6 +65,11 @@ checkit($s['staging_acceptance_ready']===true
  && $s['release_ready']===false,'dynamic core frontend scope passes with unrequested filters not blocking');
 $s=$c::functional_status(['scope'=>'server']);
 checkit($s['staging_acceptance_ready']===true,'server-only scope passes');
+$s=$c::functional_status(['scope'=>'full']);
+checkit(!$s['staging_acceptance_ready']
+  && in_array('filter_interaction_not_verified',$s['blocking_reasons'],true)
+  && 'PENDING'===$s['scope_statuses']['filter_interaction'],
+  'full scope cannot pass while visible filters remain untested');
 $s=$c::functional_status(['scope'=>'filters']);
 checkit(!$s['staging_acceptance_ready']
  && in_array('filter_interaction_not_verified',$s['blocking_reasons'],true),
