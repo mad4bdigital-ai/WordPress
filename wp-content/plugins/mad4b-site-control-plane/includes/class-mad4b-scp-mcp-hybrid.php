@@ -67,7 +67,7 @@ final class MAD4B_SCP_MCP_Hybrid {
     private static function valid_ability( $id ) {
         return is_string( $id ) && (bool) preg_match( '~^[a-z0-9_-]{1,64}/[a-z0-9._/-]{1,191}$~D', $id );
     }
-    private static function is_plain_https( $url ) {
+    private static function is_plain_https( $url, $check_network = true ) {
         if ( ! is_string( $url ) || strlen( $url ) > 1024 || false !== strpos( $url, '#' ) ) return false;
         $parts = parse_url( $url );
         if ( ! is_array( $parts ) || strtolower( (string) ( $parts['scheme'] ?? '' ) ) !== 'https'
@@ -76,7 +76,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         $host = strtolower( (string) $parts['host'] );
         if ( ! preg_match( '/^(?=.{4,253}$)[a-z0-9.-]+\\.[a-z]{2,}$/D', $host ) || false !== strpos( $host, '..' )
             || 'localhost' === $host || filter_var( $host, FILTER_VALIDATE_IP ) ) return false;
-        if ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) return false;
+        if ( $check_network && ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) ) return false;
         return true;
     }
     private static function canonical( $value ) {
@@ -113,7 +113,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         $rows = array();
         foreach ( $json['peers'] as $peer ) {
             if ( ! is_array( $peer ) || ! self::valid_id( $peer['id'] ?? null )
-                || ! self::is_plain_https( $peer['endpoint'] ?? null )
+                || ! self::is_plain_https( $peer['endpoint'] ?? null, false )
                 || ! isset( $peer['bindings'] ) || ! is_array( $peer['bindings'] )
                 || count( $peer['bindings'] ) > self::MAX_TOOLS || isset( $rows[$peer['id']] ) ) return self::$manifest;
             $bindings = array();
