@@ -117,10 +117,14 @@ echo "Capability-local provider health: PASS\n";
 // Capability-first, provider-neutral matrix: hermetic observations only.
 // These are real provider identifiers from provider-capability-contracts.json,
 // NOT claims that their live installations are currently certified.
-$provider_ids = array(
-	'jetengine', 'jetsmartfilters', 'bit_pi', 'rank_math', 'elementor',
-	'google_drive_context', 'litespeed', 'polylang', 'woocommerce', 'wp-import-export'
-);
+$catalog_raw = file_get_contents( dirname( __DIR__ ) . '/config/provider-capability-contracts.json' );
+$catalog = json_decode( $catalog_raw, true );
+$check( is_array( $catalog ) && isset( $catalog['providers'] ) && is_array( $catalog['providers'] ),
+	'Dynamic provider catalog unavailable or invalid.' );
+$provider_ids = array_keys( $catalog['providers'] );
+sort( $provider_ids, SORT_STRING );
+$check( count( $provider_ids ) >= 10 && count( $provider_ids ) <= 64,
+	'Dynamic provider inventory out of expected bounded range.', $provider_ids );
 foreach ( $provider_ids as $pid ) {
 	$runtime_drift = array( 'provider' => $pid, 'status' => 'version_drift', 'runtime_contract_ok' => false );
 	$fixture = array(
@@ -237,4 +241,4 @@ $check( false === $foreign_cert_health['capability_scope']
 	&& 'invalid_or_foreign' === $foreign_cert_health['capability_first']['evidence_state'],
 	'Foreign certification entered runtime mutation eligibility.', $foreign_cert_health );
 
-echo "Capability-first provider matrix: PASS (10 providers, version drift, scoped read, owner gate and corrupt evidence)\n";
+echo "Capability-first provider matrix: PASS (" . count( $provider_ids ) . " discovered providers, version drift, scoped read, owner gate and corrupt evidence)\n";
