@@ -78,4 +78,60 @@ graph_ok( $c::build_capability_graph( $coverage, $plugins, $long )['complete'] =
     'Oversized ability registry scan must report partial' );
 graph_ok( $graph['unknown_plugin_write_allowed'] === false
     && $graph['automatic_write_registration'] === false, 'No authority from discovery' );
+// Validate each dimension against exact registered and certified evidence.
+$capable = $coverage;
+$capable['plugins'][1]['adapter_write_abilities'] = array( 'core-provider/update-item' );
+$capable['plugins'][1]['adapter_reversible_contracts'] = array(
+    'core-provider/update-item' => 'mad4b.rollback.provider-item.v1'
+);
+$capable['plugins'][1]['provider_certification_ok'] = true;
+$capable_abilities = array_merge( $abilities, array( 'core-provider/update-item' ) );
+$g = $c::build_capability_graph( $capable, $plugins, $capable_abilities );
+$read = $c::plan_from_graph( $g, array( 'plugin_file'=>'core-provider/main.php',
+    'dimension'=>'read', 'ability'=>'core-provider/read-status', 'expected_graph_sha256'=>$g['graph_sha256'] ) );
+graph_ok( $read['state'] === 'READ_CONTRACT_AVAILABLE_AUTHORIZATION_REQUIRED'
+    && $read['dispatcher'] === 'mad4b/read-execute'
+    && $read['execute_ability_from_graph'] === false, 'Read contract routes through audited dispatcher only' );
+$write = $c::plan_from_graph( $g, array( 'plugin_file'=>'core-provider/main.php',
+    'dimension'=>'write', 'ability'=>'core-provider/update-item' ) );
+graph_ok( $write['state'] === 'GOVERNED_WRITE_PATH_DEFINED_AUTHORIZATION_REQUIRED'
+    && $write['dispatcher'] === 'mad4b/write-execute'
+    && $write['mutation_performed'] === false
+    && in_array('exact_owner_approval', $write['required_gates'], true),
+    'Write dimension never grants or executes and still requires separate one-time owner approval' );
+$undo = $c::plan_from_graph( $g, array( 'plugin_file'=>'core-provider/main.php',
+    'dimension'=>'rollback', 'ability'=>'core-provider/update-item' ) );
+graph_ok( $undo['state'] === 'RECORDED_REVERSIBLE_OPERATION_REQUIRED'
+    && $undo['dispatcher'] === 'mad4b/mutation-undo'
+    && $undo['rollback_contract'] === 'mad4b.rollback.provider-item.v1',
+    'Rollback requires recorded journal and reviewed reversible contract' );
+$unknown = $c::plan_from_graph( $g, array( 'plugin_file'=>'new-vendor/main.php',
+    'dimension'=>'write', 'ability'=>'new-vendor/delete-all' ) );
+graph_ok( $unknown['state'] === 'REVIEWED_ADAPTER_UNAVAILABLE'
+    && $unknown['dispatcher'] === '', 'Discovered unknown provider ability cannot be executed' );
+$uncertified = $capable;
+$uncertified['plugins'][1]['provider_certification_ok'] = false;
+$uncertified_graph = $c::build_capability_graph($uncertified,$plugins,$capable_abilities);
+$denied = $c::plan_from_graph($uncertified_graph,array('plugin_file'=>'core-provider/main.php',
+    'dimension'=>'write', 'ability'=>'core-provider/update-item'));
+graph_ok($denied['state'] === 'WRITE_BEHAVIOR_NOT_CERTIFIED',
+    'Provider versions are not automatically certified from discovery' );
+$stale = $c::plan_from_graph( $g, array('plugin_file'=>'core-provider/main.php',
+    'dimension'=>'write', 'ability'=>'core-provider/update-item',
+    'expected_graph_sha256'=>str_repeat('0',64)));
+graph_ok($stale['state'] === 'DISCOVERY_SNAPSHOT_CHANGED',
+    'Graph snapshot drift is rejected before route selection' );
+$partial_plan = $c::plan_from_graph( $partial, array('plugin_file'=>'core-provider/main.php',
+    'dimension'=>'read', 'ability'=>'core-provider/read-status'));
+graph_ok($partial_plan['state'] === 'DISCOVERY_PARTIAL',
+    'Partial inventory cannot yield operational route' );
+$special_read = $c::plan_from_graph( $extras, array('plugin_file'=>'site-mu.php',
+    'dimension'=>'read', 'ability'=>'site-mu/status'));
+graph_ok($special_read['state'] === 'INVENTORY_ONLY_PACKAGE',
+    'Must-use and drop-in plugins cannot inherit regular adapter authority' );
+$inventory = $c::plan_from_graph( $extras, array('plugin_file'=>'object-cache.php',
+    'dimension'=>'inventory'));
+graph_ok($inventory['state'] === 'INVENTORY_OBSERVED'
+    && $inventory['non_authorizing'] === true,
+    'Special plugins remain observable without side effects' );
 echo "DYNAMIC_ADAPTER_CAPABILITY_GRAPH: PASS (read-only, deterministic)\n";
