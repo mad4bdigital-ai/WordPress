@@ -113,3 +113,92 @@ $capability_evidence['provider_id'] = 'another-provider';
 $foreign = MAD4B_SCP_Provider_Health_View::normalize( $drift, array( 'version_drift' ), array(), $capability_evidence );
 $check( ! $foreign['capability_scope'] && 'UNKNOWN' === $foreign['health_state'], 'Foreign provider evidence admitted.', $foreign );
 echo "Capability-local provider health: PASS\n";
+
+// Capability-first, provider-neutral matrix: hermetic observations only.
+// These are real provider identifiers from provider-capability-contracts.json,
+// NOT claims that their live installations are currently certified.
+$provider_ids = array(
+	'jetengine', 'jetsmartfilters', 'bit_pi', 'rank_math', 'elementor',
+	'google_drive_context', 'litespeed', 'polylang', 'woocommerce', 'wp-import-export'
+);
+foreach ( $provider_ids as $pid ) {
+	$runtime_drift = array( 'provider' => $pid, 'status' => 'version_drift', 'runtime_contract_ok' => false );
+	$fixture = array(
+		'contract' => 'mad4b.provider-capability-certification-result.v1',
+		'provider_id' => $pid,
+		'capabilities' => array(
+			'read.sample' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true, 'write_eligible' => false ),
+			'write.uncertified' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => false, 'write_eligible' => false ),
+			'latent.absent' => array( 'surface_exposed' => false, 'structural_compatible' => false, 'read_eligible' => false ),
+		),
+	);
+	$projection = MAD4B_SCP_Provider_Health_View::normalize( $runtime_drift, array( 'version_drift' ), array(), $fixture );
+	$capability = $projection['capability_first'];
+	$check( 'mad4b.capability-first-provider-health.v1' === $capability['contract']
+		&& $pid === $capability['provider_id'], 'Wrong provider binding on capability-first projection.', $capability );
+	$check( 'observed' === $capability['evidence_state']
+		&& 'PARTIAL' === $capability['read_state']
+		&& array( 'read.sample' ) === $capability['compatible_read_capabilities'],
+		'Version drift blocked safe read-only capability observation or hid partial inventory.', $capability );
+	$check( 'READ_COMPATIBLE' === $capability['capabilities']['read.sample']['state']
+		&& 'UNKNOWN' === $capability['capabilities']['write.uncertified']['state']
+		&& false === $capability['capabilities']['write.uncertified']['mutation_authorized'],
+		'Capabilities not isolated by their actual observed behavior.', $capability );
+	$check( false === $capability['mutation_authorized']
+		&& false === $capability['owner_gate_bypassed']
+		&& false === $capability['write_grants_created']
+		&& false === $projection['runtime_contract_mutation_eligible'],
+		'Read compatibility or version drift widened the mutation boundary.', $projection );
+	$check( true === $capability['runtime_version_drift']
+		&& false === $capability['provider_version_pin_required_for_read_observation'],
+		'Exact provider version pin still used as read gate.', $capability );
+}
+$fixture = array(
+	'contract' => 'mad4b.provider-capability-certification-result.v1',
+	'provider_id' => 'jetengine',
+	'capabilities' => array(
+		'read.sample' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true ),
+	),
+);
+$runtime = array( 'provider' => 'jetengine', 'status' => 'unavailable', 'runtime_contract_ok' => false );
+$gone = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine', $runtime, $fixture );
+$check( 'UNKNOWN' === $gone['read_state']
+	&& empty( $gone['compatible_read_capabilities'] ),
+	'Absent provider was declared read-compatible.', $gone );
+$fixture['provider_id'] = 'rank_math';
+$foreign = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => 'version_drift' ), $fixture );
+$check( 'invalid_or_foreign' === $foreign['evidence_state']
+	&& 'UNKNOWN' === $foreign['read_state'],
+	'Cross-provider certification evidence was accepted.', $foreign );
+$fixture['provider_id'] = 'jetengine';
+$fixture['capabilities']['read.sample']['read_eligible'] = 1; // never treat untyped truthy data as certificate.
+$untyped = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => 'version_drift' ), $fixture );
+$check( 'UNKNOWN' === $untyped['read_state'],
+	'Untyped input was promoted to read compatibility.', $untyped );
+$fixture['capabilities']['read.sample']['read_eligible'] = true;
+$fixture['capabilities']['incomplete'] = array( 'surface_exposed' => true ); // missing structural evidence
+$partial_evidence = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => 'version_drift' ), $fixture );
+$check( 'partial_invalid' === $partial_evidence['evidence_state']
+	&& 'PARTIAL_UNVERIFIED' === $partial_evidence['read_state'],
+	'Invalid partial evidence was misrepresented as complete.', $partial_evidence );
+$too_many = array();
+for ( $n = 0; $n < 65; $n++ ) {
+	$too_many[ 'fixture.' . $n ] = array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true );
+}
+$fixture['capabilities'] = $too_many;
+$overflow = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => 'version_drift' ), $fixture );
+$check( 'invalid_or_foreign' === $overflow['evidence_state'] && empty( $overflow['capabilities'] ),
+	'Unbounded capability inventory was accepted.', $overflow );
+$fixture['capabilities'] = array(
+	'write.sample' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'write_eligible' => true ),
+);
+$write = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => 'certified', 'runtime_contract_ok' => true ), $fixture );
+$check( 'WRITE_CANDIDATE_UNAUTHORIZED' === $write['capabilities']['write.sample']['state']
+	&& false === $write['mutation_authorized'] && false === $write['capabilities']['write.sample']['mutation_authorized'],
+	'Reported write eligibility was silently treated as authorization.', $write );
+echo "Capability-first provider matrix: PASS (10 providers, version drift, scoped read, owner gate and corrupt evidence)\n";
