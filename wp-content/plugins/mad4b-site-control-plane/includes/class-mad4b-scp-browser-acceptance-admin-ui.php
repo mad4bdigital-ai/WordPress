@@ -198,18 +198,18 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		echo '<section class="mad4b-scp-panel" aria-label="' . esc_attr__( 'Browser setup progress', 'mad4b-site-control-plane' ) . '">';
 		echo '<h2>' . esc_html__( 'Browser setup: your next step', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( 0 === $valid_count ) {
-			echo '<p><strong>' . esc_html__( '1. A WordPress acceptance adapter is missing.', 'mad4b-site-control-plane' ) . '</strong> ';
-			echo esc_html__( 'Register a reviewed site adapter first. External Browser API credentials alone cannot repair this.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><strong>' . esc_html__( '1. Independent signed-browser adapter is not registered.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo esc_html__( 'Native Hybrid local checks are available after opt-in; independent signed Browser Acceptance needs a reviewed adapter.', 'mad4b-site-control-plane' ) . '</p>';
 		} elseif ( empty( $operator_status['preference_valid'] ) ) {
-			echo '<p><strong>' . esc_html__( '2. Saved browser preference needs correction.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo '<p><strong>' . esc_html__( '2. Saved execution preference needs correction.', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html__( 'Choose a currently registered provider and save an exact new revision below.', 'mad4b-site-control-plane' ) . '</p>';
 		} else {
-			echo '<p><strong>' . esc_html__( '3. Verify external browser execution and receipt.', 'mad4b-site-control-plane' ) . '</strong> ';
-			echo esc_html__( 'WordPress cannot verify an external runner solely from these preferences. A signed browser result is required.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><strong>' . esc_html__( '3. Check local evidence; independent signed browser certification is optional.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo esc_html__( 'Native observations are local only. Signed external evidence is still needed only for independent Browser Acceptance certification.', 'mad4b-site-control-plane' ) . '</p>';
 		}
 		echo '<p>' . esc_html__( 'No secret is accepted on this page. Saving the native mode with opt-in queues only one read-only WordPress HTTP smoke; browser checks run when you request them in this admin session.', 'mad4b-site-control-plane' ) . '</p></section>';
 		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'A legacy operator preference has no revision. Re-save it before browser execution.', 'mad4b-site-control-plane' ) . '</p></div>';
-		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Default provider/profile preference is discovered automatically. Execution still requires a registered semantic provider and external browser credentials.</p>';
+		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Native Hybrid is the initial non-authorizing default. Save owner opt-in before local browser or WP-Cron checks run.</p>';
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) && MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'preference_saved', $choice['configuration_revision'] ) )
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -246,7 +246,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		}
 		echo '<h2>' . esc_html__( '1. WordPress test provider registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p><strong>' . esc_html( (string) $valid_count ) . '</strong> ' . esc_html__( 'valid site-specific providers. Installing a reviewed provider adapter is required for signed browser acceptance plans.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No WordPress Browser Acceptance provider is registered. Tests cannot run yet; entering external API keys cannot resolve this missing adapter.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No independent signed-browser adapter is registered. Native Hybrid local checks do not require one.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( $registered ) {
 			echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Contract</th><th>State</th></tr></thead><tbody>';
 			foreach ( array_slice( $registered, 0, 32 ) as $item ) {
@@ -255,7 +255,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			}
 			echo '</tbody></table>';
 		}
-		echo '<h2>' . esc_html__( '2. Select site test provider and external browser runner', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<h2>' . esc_html__( '2. Select execution mode and optional site provider', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="mad4b_browser_setup_save">';
 		wp_nonce_field( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
@@ -267,24 +267,24 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			$id = (string) $site_provider['provider_id'];
 			echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['site_provider_id'], $id, false ) . '>' . esc_html( $id ) . '</option>';
 		}
-		echo '</select><p class="description">Only installed and valid providers can produce signed test plans; choosing a name never registers one.</p></td></tr><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Managed browser service', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
+		echo '</select><p class="description">Only installed and valid providers can produce signed test plans; choosing a name never registers one.</p></td></tr><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Browser test execution mode', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
 		$options = array( 'native_hybrid' => 'Native Hybrid (WP-Cron + my admin browser, recommended)',
             'auto' => 'Auto (external scheduler)', 'wp_cron' => 'WP-Cron native HTTP smoke (no browser)' );
 		foreach ( self::managed_executors() as $id => $details ) $options[ $id ] = $details[0];
 		foreach ( $options as $id => $label ) echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['executor'], $id, false ) . '>' . esc_html( $label ) . '</option>';
-		echo '</select><p class="description">' . esc_html__( 'Operator preference only; the external browser scheduler must still be set up independently.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '</select><p class="description">' . esc_html__( 'Native Hybrid uses this administrator browser with WP-Cron where available. External services are optional for independent attestations.', 'mad4b-site-control-plane' ) . '</p>';
         echo '<label><input type="checkbox" name="opt_in_external_runner" value="yes"> '
-            . esc_html__( 'I opt in to this execution mode. Native modes queue at most one read-only same-site WP-Cron check (when available). Browser checks require my explicit click; no secrets are submitted.', 'mad4b-site-control-plane' )
+            . esc_html__( 'I opt in to this execution mode. Native mode queues one bounded WP-Cron check when available and automatically runs one passive browser check when I open this page. Interactive filter tests require my separate click; no secrets are submitted.', 'mad4b-site-control-plane' )
             . '</label></td></tr>';
 		echo '<tr><th><label for="mad4b-browser-profile">' . esc_html__( 'Acceptance profile ID', 'mad4b-site-control-plane' ) . '</label></th><td>';
 		echo '<input class="regular-text" id="mad4b-browser-profile" name="profile_id" maxlength="64" pattern="[a-z0-9][a-z0-9._-]{0,63}" value="' . esc_attr( $choice['profile_id'] ) . '" autocomplete="off">';
 		echo '<p class="description">' . esc_html__( 'Optional bounded ID supplied by the site-specific acceptance provider. Not a URL, password or script.', 'mad4b-site-control-plane' ) . '</p></td></tr></tbody></table>';
 		submit_button( __( 'Save operator preference', 'mad4b-site-control-plane' ) );
 		echo '</form>';
-		echo '<h2>' . esc_html__( '3. Provision credentials OUTSIDE WordPress', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'The external browser runner or GitHub Actions secrets must provide these variable names. Credentials are not accepted/stored here, and provider connectivity cannot be certified from this page.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<h2>' . esc_html__( '3. Optional external provider credentials', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'No credentials are required for Native Hybrid. Only select an external runner if independently signed unattended browser results are needed; keep its secrets outside WordPress.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div data-mad4b-browser-runner-fields aria-live="polite">';
-        echo '<p data-mad4b-browser-runner-auto>' . esc_html__( 'Choose a managed runner above to display its exact external credential requirements.', 'mad4b-site-control-plane' ) . '</p>';
+        echo '<p data-mad4b-browser-runner-auto>' . esc_html__( 'Native modes do not require provider credentials. Choose an external runner to see its credential names.', 'mad4b-site-control-plane' ) . '</p>';
         foreach ( self::managed_executors() as $id => $details ) {
             echo '<section data-mad4b-browser-runner="' . esc_attr( $id ) . '" hidden><h3>' . esc_html( $details[0] ) . '</h3>';
             echo '<p>' . esc_html__( 'Provision these names only in the external runner or its approved secrets store:', 'mad4b-site-control-plane' ) . '</p><ul>';
