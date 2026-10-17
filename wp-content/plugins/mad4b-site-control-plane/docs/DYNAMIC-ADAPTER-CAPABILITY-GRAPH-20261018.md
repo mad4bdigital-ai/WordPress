@@ -50,3 +50,52 @@ The one inert CI failure-evidence adapter is policy-reviewed and housed inside t
 ### Explicit release restrictions
 
 Do not infer `release_ready` from this source-level capability matrix. All new-head CI and WordPress runtime E2E must pass. ETG/ARE Staging require actual live read graph evidence, behaviorally certified Elementor/JetSmartFilters and other active providers, reversible canary and owner-signed exact plan. Production stays unchanged.
+
+## Owner-pinned External PHP Adapters and native MCP endpoints
+
+An external PHP Adapter is **not the same thing** as a plugin's **existing native MCP endpoint**. Native MCP endpoints should be discovered and reviewed *before* duplicating their operations with custom PHP. The official WordPress MCP Adapter also exposes WordPress Abilities via its default/custom MCP servers; an Ability already registered locally must be reused through its existing WordPress authorization layer rather than blindly proxied back into the same site.
+
+### External PHP Adapter admission
+
+This PR now supports third-party PHP subclasses of `MAD4B_SCP_Adapter_Base` **without copying their source into MAD4B**:
+
+- Operator supplies `MAD4B_SCP_EXTERNAL_ADAPTER_MANIFEST_PATH` and `MAD4B_SCP_EXTERNAL_ADAPTER_MANIFEST_SHA256` as protected, pre-plugin-bootstrap configuration constants, never through request inputs, WordPress options, filters, plugin-controlled paths or MCP tool payloads.
+- The JSON manifest must live **outside WordPress content, plugin and MU-plugin directories**. The pinned SHA-256 must exactly match the whole manifest. The manifest is deployed independently of the external plugin, e.g. by the owner/operator in a filesystem location not writable by plugins.
+- Each declaration binds the actual PHP class to an exact active plugin basename, exact relative PHP source file SHA-256, adapter id, exact declared read/content/admin/write ability names and exact reversible-contract map.
+- The external plugin must already have loaded its own class; MAD4B never runs external files by scanning directories or accepting a class string supplied by a remote client. Registration is opt-in through the existing `mad4b_scp_register_adapters` hook.
+- A change in the external plugin's code, declared abilities, expected plugin activation or reversible contract denies the registration until an operator independently reviews, pins and deploys a new manifest. A successful admission grants no OAuth scope, WordPress capability, approval ticket, write authority, provider certification, or MCP transport bypass.
+
+Example operator-reviewed manifest (illustrative; the 64-hex values must be actual computed digests):
+
+```json
+{
+  "contract": "mad4b.external-adapter-trust.v1",
+  "adapters": [{
+    "class": "MyVendor\\\\SiteAdapter",
+    "adapter_id": "my-vendor",
+    "plugin_basename": "my-vendor/my-vendor.php",
+    "source_relpath": "my-vendor/includes/class-site-adapter.php",
+    "source_sha256": "<actual sha256 of the php source>",
+    "abilities": {"read": ["my-vendor/status"], "content": [], "admin": []},
+    "reversible_contracts": {}
+  }]
+}
+```
+
+Owner controls the protected file and its pinned manifest digest, which allows adding/removing reviewed sources without edits to MAD4B PHP. Review explicitly **does not** turn an arbitrary third-party PHP extension into a reviewed native MCP endpoint.
+
+### Native MCP endpoint acceptance: three cases
+
+1. **WordPress-local Abilities + official MCP Adapter**: use the existing locally registered Ability and its `permission_callback` through the canonical governed wrapper. Do not make a same-site HTTP round trip or duplicate an adapter.
+2. **Plugin-owned MCP endpoint on the WordPress origin**: surface the route as an observed candidate. After explicit endpoint identity verification, perform scoped MCP `initialize` and `tools/list` through a separately authorized client; record tool schema, annotations, protocol version, auth audience, origin and deterministic fingerprint. An endpoint route or plugin filename alone is not certification.
+3. **Provider-owned remote MCP service**: same review, plus operator-pinned HTTPS origin and path, provider-specific least-privilege OAuth, DNS/IP and redirect restrictions, independent rate limits and audit receipts. Never reuse the site's owner bearer token as a provider credential.
+
+Provider selection is native-first only **after** positive independent trust/contract evidence. Until then the legacy provider MCP path isolation and foreign peer mutation guards remain intact, rather than creating an undocumented parallel Write plane.
+
+Required MCP transport states: `DETECTED_UNVERIFIED`, `TRANSPORT_AUTHENTICATED`, `CATALOG_SNAPSHOT_REVIEWED`, `READ_CERTIFIED`, `WRITE_BEHAVIOR_CERTIFIED`, `GOVERNED_EXECUTION_ELIGIBLE`, with an explicit `SUSPENDED_ON_DRIFT` state whenever route, principal, schemas or code changes. The current PR does **not** implement independent network MCP negotiation or remote tool execution and must not be represented as live native MCP certification.
+
+### Distinguish integration from authorization
+
+A native MCP `tools/call` is an **execution API**, not an approval. Any bridge to it requires separately bound per-tool owner approval, exact target/arguments, verified provider subject, current-state CAS, local operation journal, bounded receipt, independent readback and a feasible restoration/compensation plan. If a native tool is inherently non-reversible, label and gate it as such instead of inventing rollback support.
+
+This is specifically relevant to the already-declared transport descriptors for JetEngine, Fluent Forms, Elementor, ElementsKit, Hostinger AI Assistant, WP-Media and WordPress MCP Adapter default server. Descriptor presence indicates a reviewed *pattern* or isolation interest, **not** a confirmed live endpoint or functional tool list.
