@@ -18,7 +18,7 @@ The server-owned catalog is `config/security-operational-providers.json`. Initia
 
 ## Operational observation
 
-The existing `mad4b/security-posture` Read surface exposes `operational_security_providers` with five catalog entries: installed main-file identity, version, site/network activation, and explicitly **unverified** telemetry/enforcement. This is a WordPress-core plugin-state readback, not an undocumented Wordfence/WPVulnerability API or proof of malware detection. Read capabilities can be added later only when the provider officially exposes them and MAD4B can observe them safely.
+The existing `mad4b/security-site-posture` Read surface exposes `operational_security_providers` with five catalog entries: installed main-file identity, version, site/network activation, and explicitly **unverified** telemetry/enforcement. This is a WordPress-core plugin-state readback, not an undocumented Wordfence/WPVulnerability API or proof of malware detection. Read capabilities can be added later only when the provider officially exposes them and MAD4B can observe them safely.
 
 ## Important boundaries
 
