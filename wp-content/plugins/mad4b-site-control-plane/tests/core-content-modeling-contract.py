@@ -76,7 +76,9 @@ assert "BREAKGLASS" not in src.upper()
 assert "production" not in src.lower(), "generic content adapter must remain tenant/environment-neutral"
 
 assert "class-mad4b-scp-core-content-modeling-adapter.php" in reg
-assert "MAD4B_SCP_Core_Content_Modeling_Adapter" in reg
+assert "approved_bundled_adapter_classes" in reg
+import json
+assert "MAD4B_SCP_Core_Content_Modeling_Adapter" in json.loads((root / "config/adapter-registration-policy.json").read_text("utf-8"))["approved_classes"]
 
 assert "registered_adapter_write_candidates" in srv
 assert "array( 'content', 'admin', 'write' )" in srv
