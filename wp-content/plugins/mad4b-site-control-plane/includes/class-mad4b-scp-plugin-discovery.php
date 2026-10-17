@@ -219,9 +219,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 					'adapter_id' => '', 'adapter_registered' => false,
 					'coverage_state' => 'inventory_only',
 					'package_kind' => $kind,
+					'requires_plugins' => (string) ( $metadata['RequiresPlugins'] ?? '' ),
 					'adapter_read_abilities' => array(),
 				);
-				$headers[ $file ] = $metadata;
 				++$special_count;
 			}
 		}
@@ -242,7 +242,10 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$slug = self::dependency_slug( $file );
 			$header = isset( $headers[ $file ] ) && is_array( $headers[ $file ] ) ? $headers[ $file ] : array();
 			$dependencies = array();
-			foreach ( explode( ',', (string) ( $header['RequiresPlugins'] ?? '' ) ) as $dependency ) {
+			$raw_dependencies = 'standard' === (string) ( $plugin['package_kind'] ?? 'standard' )
+				? (string) ( $header['RequiresPlugins'] ?? '' )
+				: (string) ( $plugin['requires_plugins'] ?? '' );
+			foreach ( explode( ',', $raw_dependencies ) as $dependency ) {
 				$dependency = sanitize_key( trim( $dependency ) );
 				if ( '' !== $dependency && $dependency !== $slug ) $dependencies[ $dependency ] = true;
 			}
@@ -294,7 +297,10 @@ final class MAD4B_SCP_Plugin_Discovery {
 			);
 		}
 		usort( $rows, static function ( $a, $b ) {
-			return strcmp( $a['plugin_file'], $b['plugin_file'] );
+			return strcmp(
+				$a['plugin_file'] . "\0" . $a['package_kind'],
+				$b['plugin_file'] . "\0" . $b['package_kind']
+			);
 		} );
 		$complete = ! empty( $registry_available )
 			&& empty( $coverage['truncated'] )
