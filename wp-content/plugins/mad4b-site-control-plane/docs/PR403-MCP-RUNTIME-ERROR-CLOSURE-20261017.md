@@ -1,4 +1,4 @@
-# PR #403 — MCP runtime failures: two Staging sites
+# PR #403 â€” MCP runtime failures: two Staging sites
 
 Scope: Egypt Tour Gates and All Royal Egypt (Staging). Read-only analysis and non-authorizing transport guidance.
 
@@ -23,3 +23,10 @@ Scope: Egypt Tour Gates and All Royal Egypt (Staging). Read-only analysis and no
 Session-safe Diagnostics now publishes explicit client-side single-flight advisory metadata and disallows blind mutation retries. The plugin cannot enforce scheduling of independent MCP tool invocations initiated by an external client. This is a non-authorizing interface contract, not evidence that the host-level concurrency issue is repaired.
 
 Expected acceptance: request-per-site serial read probes on both sites after deployment; verify scoped owner receipt and current candidate; separately test bounded concurrency through the host with logs before claiming the transport issue closed.
+## Post-deployment finding and remediation
+
+Both sites installed exact source `4a5523a340d77e4e7528b5f2f3ebe6e9055fbfa9` with current MCP Adapter `0.7.0`, healthy session-safe diagnostics, and old write candidate binding `1edf2a13`. Subsequent **serial** invocations of the wide Full Staging Authority handshake failed as opaque host errors on both sites, and a direct, schema-pinned invocation of the independent Write-only convergence handshake also failed on ETG. The lightweight owner-review read via `prepare` + `read-execute` previously passed on **both** sites.
+
+The Full Authority projector called a **second** generation-fenced Write-only handshake synchronously (`write_only_handoff`); this duplicated plan computation, snapshot work, and response projection. The exact cause of each opaque host failure has not been proven by host traces, but this is unnecessary work on a latency-sensitive MCP surface.
+
+The new Full Authority transport guidance **does not run** the nested Write-only handshake and never returns fabricated, cached, or outdated exact plan or owner consent. To obtain a current Write-only plan, use the independently protected `mad4b/staging-write-owner-review` via dynamic one-ability `prepare` and signed `read-execute`. Use fresh site-specific OAuth owner step-up for any eventual mutation. The separate Write-only plan, its digest, and review receipt remain the sources of truth. This is a deliberate change to the compact read contract, not a permission change. Do not claim live repair before installing the new head and repeating serial calls.
