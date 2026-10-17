@@ -31,6 +31,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         $required = 'candidates' === $kind ? array() : array( 'peer_id' );
         if ( 'plan' === $kind ) $required = array( 'ability' );
         if ( 'call' === $kind ) $required = array( 'peer_id', 'ability', 'expected_catalog_sha256' );
+        if ( 'hybrid_read' === $kind ) $required = array( 'ability' );
         return array( 'type' => 'object', 'properties' => $properties, 'required' => $required,
             'additionalProperties' => false );
     }
@@ -41,12 +42,14 @@ final class MAD4B_SCP_MCP_Hybrid {
             'mad4b/native-mcp-catalog' => array( 'read_catalog', 'Observe an exact owner-pinned native MCP peer tools/list catalog.' ),
             'mad4b/native-mcp-hybrid-plan' => array( 'hybrid_plan', 'Plan native MCP versus reviewed WordPress Ability or PHP Adapter per capability.' ),
             'mad4b/native-mcp-read-call' => array( 'read_tool', 'Call a reviewed native MCP read tool with an exact catalog fingerprint.' ),
+            'mad4b/native-mcp-hybrid-read' => array( 'execute_hybrid_read', 'Execute a reviewed native MCP read or a separately reviewed registered WordPress read Ability, without mutation fallback retries.' ),
         );
         foreach ( $definitions as $name => $details ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
             $kind = 'mad4b/native-mcp-candidates' === $name ? 'candidates'
                 : ( 'mad4b/native-mcp-catalog' === $name ? 'catalog'
-                    : ( 'mad4b/native-mcp-hybrid-plan' === $name ? 'plan' : 'call' ) );
+                    : ( 'mad4b/native-mcp-hybrid-plan' === $name ? 'plan' :
+                        ( 'mad4b/native-mcp-hybrid-read' === $name ? 'hybrid_read' : 'call' ) ) );
             wp_register_ability( $name, array(
                 'label' => ucwords( str_replace( array( '/', '-' ), ' ', $name ) ),
                 'description' => $details[1],
@@ -399,6 +402,49 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ! empty( $native['unavailable_reason'] ) ) $plan['native_unavailable_reason'] = $native['unavailable_reason'];
         return $plan;
     }
+    /**
+     * Hybrid read dispatcher: choose once; never retry after native execution
+     * failure, and never invoke a local Ability unless an approved Adapter
+     * independently declares exactly that registered read Ability.
+     */
+    public static function execute_hybrid_read( $input = array() ) {
+        $input = is_array( $input ) ? $input : array();
+        $ability = (string) ( $input['ability'] ?? '' );
+        $arguments = $input['arguments'] ?? array();
+        $peer_id = (string) ( $input['peer_id'] ?? '' );
+        if ( ! self::valid_ability( $ability ) || ! is_array( $arguments )
+            || strlen( (string) wp_json_encode( $arguments ) ) > 8192 )
+            return new WP_Error( 'mad4b_hybrid_read_invalid', 'Exact reviewed read Ability and bounded JSON arguments required.' );
+        $plan = self::hybrid_plan( array( 'peer_id' => $peer_id,
+            'ability' => $ability, 'dimension' => 'read' ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        $selected = (string) ( $plan['selected'] ?? '' );
+        if ( 'native_mcp' === $selected ) {
+            $expected = (string) ( $input['expected_catalog_sha256'] ?? '' );
+            if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected )
+                || ! hash_equals( $expected, (string) ( $plan['catalog_sha256'] ?? '' ) ) )
+                return new WP_Error( 'mad4b_hybrid_read_snapshot_unacknowledged',
+                    'Native read requires client-acknowledged exact catalog fingerprint.' );
+            // No fallback after invoking a remote tool: partial effects are
+            // unknown even if its response is a transport error.
+            return self::read_tool( array( 'peer_id' => $peer_id, 'ability' => $ability,
+                'expected_catalog_sha256' => $expected, 'arguments' => $arguments ) );
+        }
+        if ( 'reviewed_adapter' !== $selected || ! function_exists( 'wp_get_ability' ) )
+            return new WP_Error( 'mad4b_hybrid_no_eligible_read', 'Neither an approved native read nor registered reviewed adapter read was available.' );
+        $local = wp_get_ability( $ability );
+        if ( ! is_object( $local ) || ! method_exists( $local, 'execute' ) )
+            return new WP_Error( 'mad4b_hybrid_local_disappeared', 'Reviewed local Ability disappeared before dispatch.' );
+        // WP_Ability::execute validates input/output and independently checks
+        // permission_callback. Never call an Adapter method directly.
+        $value = $local->execute( $arguments );
+        if ( is_wp_error( $value ) ) return $value;
+        return array( 'contract' => self::CONTRACT . '.read-execution.v1',
+            'ability' => $ability, 'selected' => 'reviewed_adapter', 'result' => $value,
+            'native_execution_performed' => false, 'write_authority_created' => false,
+            'mutation_intended' => false );
+    }
+
     /**
      * Reviewed read-only tools/call. A remote annotation is not enough:
      * exact owner-pinned tool schema, read contract and positive readonly
