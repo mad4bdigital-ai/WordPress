@@ -173,10 +173,15 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'contract' => MAD4B_SCP_Governed_Ability_Census::CONTRACT,
 				'ability' => $name,
 				'owner_intent_only' => ! empty( $candidate['owner_intent_only'] ),
+                'broker_dispatch_policy' => (string) $candidate['broker_dispatch_policy'],
+                'callback_pair_digest' => (string) $candidate['callback_pair_digest'],
 				'first_party_callback_source' => (string) $candidate['source'],
 			);
 			$operations[ $id ] = array(
 				'operation_id' => $id, 'feature_id' => 'dynamic_core_enrollment',
+                'broker_dispatch_policy' => (string) $candidate['broker_dispatch_policy'],
+                'callback_pair_digest' => (string) $candidate['callback_pair_digest'],
+                'owner_intent_only' => ! empty( $candidate['owner_intent_only'] ),
 				'remote_ability' => $name, 'provider' => 'core',
 				'authority_surface' => 'mad4b-enrollment',
 				'remote_mode' => 'verified_first_party_oauth_step_up',
@@ -209,6 +214,17 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			return new WP_Error( 'mad4b_enrollment_dispatch_operation_unknown', 'Governed enrollment operation is not present in the current catalog.' );
 		}
 		$row = $verified_first_party ? $dynamic[ $operation_id ] : $catalog[ $operation_id ];
+        // A first-party callback is not sufficient authority: the broker
+        // accepts only explicit, owner-reviewed, Staging-only declarations.
+        // Other privileged operations keep their dedicated dispatch lane.
+        if ( $verified_first_party && (
+            'owner_attestation_v1' !== ( $row['broker_dispatch_policy'] ?? '' )
+            || empty( $row['owner_intent_only'] )
+            || empty( $row['callback_pair_digest'] )
+            || empty( $row['human_decision_required'] ) ) ) {
+            return new WP_Error( 'mad4b_enrollment_dispatch_policy_not_reviewed',
+                'Dynamic broker operation has no reviewed owner-attestation policy.' );
+        }
 		$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
 		$enrollment_abilities = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 		$owner_convergence = self::owner_staging_write_convergence( $operation_id, $row );
@@ -224,7 +240,9 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		}
 		$ability = self::target_ability( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
-		if ( $verified_first_party && $ability_name !== (string) $dynamic[ $operation_id ]['remote_ability'] ) {
+		if ( $verified_first_party && ( $ability_name !== (string) $dynamic[ $operation_id ]['remote_ability']
+            || ! hash_equals( (string) $dynamic[ $operation_id ]['callback_pair_digest'],
+                (string) $row['callback_pair_digest'] ) ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_verified_candidate_drift', 'Verified first-party enrollment registration changed.' );
 		}
 		if ( $owner_convergence ) {
