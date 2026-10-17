@@ -29,6 +29,8 @@ registration_assert( in_array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', $appro
 registration_assert( array_values( array_diff( $approved, $discovered ) ) === array(),
     'Policy cannot register classes that are absent/unbundled' );
 $registry->register_defaults();
+registration_assert( in_array( 'mad4b/plugin-capability-graph', $registry->ability_names( 'read' ), true ),
+    'Registered plugin capability graph is discoverable via canonical read inventory' );
 registration_assert( $registry->get( 'core-content-modeling' ) !== null
     || $registry->get( 'content-modeling' ) !== null,
     'Known bundled functional adapter registered' );
