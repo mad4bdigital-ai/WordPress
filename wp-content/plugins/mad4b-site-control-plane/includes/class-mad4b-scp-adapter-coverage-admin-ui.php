@@ -32,16 +32,28 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'You do not have permission to inspect adapter coverage.', 'mad4b-site-control-plane' ) );
-		$snapshot = self::snapshot();
 		$tabs = array(
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
 			'installed' => __( 'Installed Plugins', 'mad4b-site-control-plane' ),
 			'priority' => __( 'Priority Coverage', 'mad4b-site-control-plane' ),
 			'functional' => __( 'Functional Gaps', 'mad4b-site-control-plane' ),
+			'mcp-routes' => __( 'MCP Routes', 'mad4b-site-control-plane' ),
 			'requests' => __( 'Support Requests', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
+		if ( 'mcp-routes' === $tab ) {
+			// This explicit discovery view must not run expensive plugin-tree
+			// coverage scans or provider MCP network calls on a regular GET.
+			MAD4B_SCP_Admin_Experience::styles();
+			echo '<div class="wrap mad4b-scp-admin-page"><h1>MAD4B Provider MCP Routes</h1>';
+			MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
+			require_once __DIR__ . '/class-mad4b-scp-provider-mcp-path-review.php';
+			MAD4B_SCP_Provider_MCP_Path_Review::render();
+			echo '</div>';
+			return;
+		}
+		$snapshot = self::snapshot();
 
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Adapter Coverage', 'mad4b-site-control-plane' ) . '</h1>';

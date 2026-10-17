@@ -31,7 +31,11 @@ final class MAD4B_SCP_OAuth_Subject_User_Bridge {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
-		if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment' ), true ) ) return $result;
+		// All four OAuth-protected MCP resources must use the *same verified*
+        // enrolled WordPress subject. An unmapped Developer request must never
+        // fall back to a compatibility administrator or carry another user.
+        if ( ! in_array( $route, array( '/mcp/mad4b-chatgpt', '/mcp/mad4b-enrollment',
+            '/mcp/mad4b-developer', '/mcp/mad4b-developer-breakglass' ), true ) ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $result;
 		$profile_ready = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$portable_ready = class_exists( 'MAD4B_SCP_Portable_Readonly_Connection' ) && MAD4B_SCP_Portable_Readonly_Connection::effective();

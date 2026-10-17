@@ -48,7 +48,12 @@ native_hotpath_expect( ! defined( 'MAD4B_SCP_SCHEMA_REPAIR_EXECUTED' ),
 // network, WordPress install, cron dispatch or persistent mutation.
 $GLOBALS['mad4b_activation_result'] = array( 'scheduled' => true, 'state' => 'pending_safe_phases' );
 $GLOBALS['mad4b_seed_bootstrap_calls'] = 0;
-function is_wp_error( $x ) { return false; }
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message = '' ) { $this->code = $code; }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $x ) { return $x instanceof WP_Error; }
 function get_option( $key, $default = false ) { return $default; }
 function update_option( $key, $value, $autoload = false ) { return true; }
 function add_option( $key, $value, $deprecated = '', $autoload = false ) { return true; }

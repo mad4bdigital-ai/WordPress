@@ -15,6 +15,22 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 	const ABILITY = 'mad4b/staging-write-grant-reconciliation-plan';
 
 	private static $booted = false;
+	// Narrow, request-scoped WordPress administrator preview; never inherited
+	// by an OAuth REST client or grant reconciliation apply operation.
+	private static $local_owner_preview = false;
+
+	public static function plan_for_local_owner() {
+		if ( self::$local_owner_preview
+			|| ! function_exists( 'is_admin' ) || ! is_admin()
+			|| ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in()
+			|| ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+			|| ! MAD4B_SCP_Staging_Write_Owner_Intent::owner() )
+			return new WP_Error( 'mad4b_grant_local_preview_denied', 'Explicit Staging owner administrator session required.' );
+		self::$local_owner_preview = true;
+		try { return self::plan(); }
+		finally { self::$local_owner_preview = false; }
+	}
+
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
@@ -52,10 +68,20 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 
 	public static function can_plan( $input = null ) {
 		if ( ! current_user_can( 'manage_options' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_admin_required', 'Administrator capability is required.' );
-		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return new WP_Error( 'mad4b_grant_reconcile_plan_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( ! self::$local_owner_preview
+			&& ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) )
+			return new WP_Error( 'mad4b_grant_reconcile_plan_bearer_required', 'Verified OAuth bearer identity is required.' );
+		if ( self::$local_owner_preview && (
+			! function_exists( 'is_admin' ) || ! is_admin()
+			|| ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in()
+			|| ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+			|| ! MAD4B_SCP_Staging_Write_Owner_Intent::owner() ) )
+			return new WP_Error( 'mad4b_grant_local_preview_denied', 'Explicit Staging owner required.' );
 		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::configured() ) return new WP_Error( 'mad4b_grant_reconcile_plan_profile_missing', 'An enrolled Site Profile is required.' );
 		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
 		if ( ! in_array( $environment, array( 'staging', 'production' ), true ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_environment_denied', 'Grant reconciliation planning is limited to Staging or Production.' );
+		if ( self::$local_owner_preview && 'staging' !== $environment )
+			return new WP_Error( 'mad4b_grant_local_preview_staging_only', 'Local owner preview is Staging-only.' );
 		if ( ! MAD4B_SCP_Site_Profile::origin_enrolled() || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return new WP_Error( 'mad4b_grant_reconcile_plan_profile_not_exact', 'Current origin and URLs must exactly match the enrolled Site Profile.' );
 		if ( ! MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_grant_reconcile_plan_write_disabled', 'Governed write must already be enabled.' );
 		if ( 'https' !== strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_SCHEME ) ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_https_required', 'Remote Write Authority planning requires HTTPS.' );
@@ -77,6 +103,20 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 	}
 
 	private static function current_agent() {
+		if ( self::$local_owner_preview ) {
+			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' )
+				|| ! method_exists( 'MAD4B_SCP_Agent_Registry', 'get_agent_by_slug' ) )
+				return new WP_Error( 'mad4b_grant_local_preview_registry_missing', 'Governed agent registry is unavailable.' );
+			$agent = MAD4B_SCP_Agent_Registry::get_agent_by_slug( 'chatgpt-governed-write' );
+			if ( ! is_array( $agent )
+				|| 'chatgpt-governed-write' !== (string) ( $agent['slug'] ?? '' )
+				|| 'enabled' !== (string) ( $agent['status'] ?? '' )
+				|| 'staging' !== (string) ( $agent['environment'] ?? '' )
+				|| (int) ( $agent['wp_user_id'] ?? 0 ) !== get_current_user_id()
+				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+				return new WP_Error( 'mad4b_grant_local_preview_agent_not_exact', 'No exact enabled Staging governed agent for this enrolled owner.' );
+			return $agent;
+		}
 		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_identity_unavailable', 'Governance identity components are unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;

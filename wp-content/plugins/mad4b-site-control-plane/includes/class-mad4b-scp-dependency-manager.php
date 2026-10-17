@@ -76,6 +76,17 @@ final class MAD4B_SCP_Dependency_Manager {
 		$runtime_from_official_plugin = ! empty( $runtime_provenance['runtime_from_official_plugin'] );
 		$runtime_contract_ok = ! empty( $runtime_contract['runtime_contract_ok'] );
 		$runtime_certified = $runtime_contract_ok && $runtime_from_official_plugin;
+		// Read discovery is an observational lane, not an exact release approval.
+		// An official loaded Adapter with WordPress Abilities available must not
+		// make the entire Control Plane unusable solely due to a version change.
+		$read_runtime_ready = self::adapter_read_runtime_ready( array(
+			'installed' => $installed,
+			'plugin_identity_ambiguous' => $plugin_identity_ambiguous,
+			'runtime_loaded' => $runtime_loaded,
+			'runtime_from_official_plugin' => $runtime_from_official_plugin,
+			'abilities_api_available' => function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' ),
+			'network_unsupported' => $network_control_plane || $network_mcp_adapter,
+		) );
 		$version_match = '' !== $expected_version && '' !== $installed_version && hash_equals( $expected_version, $installed_version );
 		$bundle = self::bundled_archive_status( $bootstrap_sha );
 		$installed_integrity = $installed ? self::installed_mcp_adapter_integrity( $installed_certified, $mcp_plugin_file ) : array(
@@ -120,6 +131,18 @@ final class MAD4B_SCP_Dependency_Manager {
 		elseif ( ! $runtime_from_official_plugin ) $hard_blockers[] = 'mcp_adapter_runtime_provenance_mismatch';
 		elseif ( ! $runtime_contract_ok ) $hard_blockers[] = 'mcp_adapter_runtime_not_certified';
 
+		// Keep strict blockers for write/mutation certification. Report a
+		// separate read lane so version drift does not become a site-wide outage.
+		$adapter_certification_blockers = array_values( array_filter( $hard_blockers, static function ( $code ) {
+			return 0 === strpos( (string) $code, 'mcp_adapter_' );
+		} ) );
+		$read_blockers = array_values( array_filter( $hard_blockers, static function ( $code ) {
+			return 0 !== strpos( (string) $code, 'mcp_adapter_' );
+		} ) );
+		if ( ! $read_runtime_ready ) $read_blockers[] = 'mcp_adapter_read_runtime_unavailable';
+		$read_blockers = array_values( array_unique( $read_blockers ) );
+		$read_ready = empty( $read_blockers );
+
 		$oauth_enabled = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$key_policy = class_exists( 'MAD4B_SCP_Local_OAuth_Key_Path_Policy' ) ? MAD4B_SCP_Local_OAuth_Key_Path_Policy::status() : array();
 		$optional = array(
@@ -143,7 +166,12 @@ final class MAD4B_SCP_Dependency_Manager {
 		return array(
 			'contract' => self::CONTRACT,
 			'ready' => empty( $hard_blockers ),
-			'state' => empty( $hard_blockers ) ? ( empty( $optional_blockers ) ? 'ready' : 'ready_with_optional_gaps' ) : 'blocked',
+			'state' => empty( $hard_blockers ) ? ( empty( $optional_blockers ) ? 'ready' : 'ready_with_optional_gaps' ) : ( $read_ready ? 'read_compatible_write_certification_required' : 'blocked' ),
+			'read_ready' => $read_ready,
+			'read_blockers' => $read_blockers,
+			'write_certification_ready' => empty( $hard_blockers ),
+			'adapter_certification_blockers' => $adapter_certification_blockers,
+			'adapter_transition_policy' => 'capabilities_read_first_exact_integrity_for_write',
 			'hard_blockers' => $hard_blockers,
 			'optional_blockers' => $optional_blockers,
 			'core' => $core,
@@ -167,6 +195,9 @@ final class MAD4B_SCP_Dependency_Manager {
 				'runtime_loaded' => $runtime_loaded,
 				'runtime_contract_ok' => $runtime_contract_ok,
 				'runtime_certified' => $runtime_certified,
+				'read_runtime_ready' => $read_runtime_ready,
+				'read_discovery_stays_available_during_version_drift' => $read_runtime_ready,
+				'write_mutation_requires_exact_certification' => true,
 				'runtime_from_official_plugin' => $runtime_from_official_plugin,
 				'runtime_source' => isset( $runtime_provenance['runtime_source'] ) ? (string) $runtime_provenance['runtime_source'] : '',
 				'loading_mode' => $active ? 'active_plugin' : ( $runtime_certified ? 'certified_loaded_runtime' : 'inactive_plugin' ),
@@ -193,6 +224,53 @@ final class MAD4B_SCP_Dependency_Manager {
 		);
 	}
 
+	/**
+	 * Pure capability-first gate: installed version is deliberately absent.
+	 * Runtime provenance and WP Abilities must be observed on each request.
+	 * Does not grant any mutations or bypass the certified integrity baseline.
+	 */
+	/**
+	 * Observe the active official Adapter source without trusting a version
+	 * string or hashing its bundled release. Request scoped, non-authorizing.
+	 */
+	public static function adapter_read_runtime_observation() {
+		$plugins = self::plugins();
+		$identity = self::resolve_mcp_plugin_file( $plugins );
+		$plugin_file = isset( $identity['plugin_file'] ) ? (string) $identity['plugin_file'] : '';
+		$provenance = ! empty( $identity['ambiguous'] ) ? array() : self::mcp_runtime_provenance( $plugin_file );
+		$installed = '' !== $plugin_file && isset( $plugins[ $plugin_file ] );
+		$network_unsupported = function_exists( 'is_multisite' ) && is_multisite()
+			&& ( function_exists( 'is_plugin_active_for_network' )
+				&& ( is_plugin_active_for_network( $plugin_file ) || ( defined( 'MAD4B_SCP_FILE' )
+					&& is_plugin_active_for_network( plugin_basename( MAD4B_SCP_FILE ) ) ) ) );
+		$evidence = array(
+			'installed' => $installed,
+			'plugin_identity_ambiguous' => ! empty( $identity['ambiguous'] ),
+			'runtime_loaded' => ! empty( $provenance['runtime_class_loaded'] ),
+			'runtime_from_official_plugin' => ! empty( $provenance['runtime_from_official_plugin'] ),
+			'abilities_api_available' => function_exists( 'wp_register_ability' ) && function_exists( 'wp_has_ability' ),
+			'network_unsupported' => $network_unsupported,
+		);
+		return array(
+			'contract' => 'mad4b.adapter-read-runtime-observation.v1',
+			'read_runtime_ready' => self::adapter_read_runtime_ready( $evidence ),
+			'evidence' => $evidence,
+			'version_gate' => false,
+			'write_certified' => false,
+			'mutation_performed' => false,
+		);
+	}
+
+	public static function adapter_read_runtime_ready( $observed ) {
+		$observed = is_array( $observed ) ? $observed : array();
+		return ! empty( $observed['installed'] )
+			&& empty( $observed['plugin_identity_ambiguous'] )
+			&& ! empty( $observed['runtime_loaded'] )
+			&& ! empty( $observed['runtime_from_official_plugin'] )
+			&& ! empty( $observed['abilities_api_available'] )
+			&& empty( $observed['network_unsupported'] );
+	}
+
 	public static function admin_notice() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( (string) $_GET['page'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only notice routing.
@@ -208,7 +286,8 @@ final class MAD4B_SCP_Dependency_Manager {
 		$status = self::status();
 		if ( ! empty( $status['ready'] ) ) return;
 		$mcp = isset( $status['mcp_adapter'] ) && is_array( $status['mcp_adapter'] ) ? $status['mcp_adapter'] : array();
-		echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'MAD4B Site Control Plane dependency check is blocked.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( implode( ', ', isset( $status['hard_blockers'] ) ? $status['hard_blockers'] : array() ) ) . '</p>';
+		$read_only_degraded = ! empty( $status['read_ready'] );
+		echo '<div class="notice ' . ( $read_only_degraded ? 'notice-warning' : 'notice-error' ) . '"><p><strong>' . esc_html__( $read_only_degraded ? 'MAD4B reading remains available; adapter writes need recertification.' : 'MAD4B Site Control Plane dependency check is blocked.', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( implode( ', ', isset( $status['hard_blockers'] ) ? $status['hard_blockers'] : array() ) ) . '</p>';
 		if ( ! empty( $mcp['bundled_archive']['integrity_match'] ) ) {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:0 0 10px">';
 			wp_nonce_field( self::NONCE );

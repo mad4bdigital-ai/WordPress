@@ -341,6 +341,29 @@ mad4b_assert( false === strpos( wp_json_encode( $blocked ), 'DO_NOT_DISCLOSE' ) 
 mad4b_assert( 1 === $sensitive_target->calls && 1 === $skills->calls, 'bounded target invocation count drifted' );
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $skills;
 
+// An exception after a child entered its fence must be a bounded uncertain
+// outcome, not an opaque MCP host exception or permission to blindly retry.
+$throwing_target = new MAD4B_Test_Ability(
+    mad4b_test_meta(), $schema,
+    static function () { throw new RuntimeException( 'secret_after_possible_checkpoint' ); }
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $throwing_target;
+$throw_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'managed_skills_reconciliation' ) );
+$throw_input = $execute_input;
+$throw_input['expected_registration_digest'] = $throw_info['registration_digest'];
+$throw_input['expected_dispatch_policy_digest'] = $throw_info['dispatch_policy_digest'];
+$throw_input['expected_input_schema_sha256'] = $throw_info['input_schema_sha256'];
+$uncertain = MAD4B_SCP_Enrollment_Dispatch::execute( $throw_input );
+mad4b_assert( is_array( $uncertain ) && true === $uncertain['reconciliation_required']
+    && false === $uncertain['blind_retry_allowed']
+    && 'mad4b_enrollment_child_internal_exception' === $uncertain['target_error_code'],
+    'throwing child must produce typed fail-closed managed Skills envelope' );
+mad4b_assert( null === $uncertain['mutation_performed'] && 1 === $throwing_target->calls
+    && false === strpos( wp_json_encode( $uncertain ), 'secret_after_possible_checkpoint' ),
+    'uncertain child error leaked a secret or fabricated completion' );
+mad4b_assert( false === MAD4B_SCP_Execution_Fence::$pending, 'uncertain child left a dangling fence' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::SKILLS ] = $skills;
+
 $bad = $execute_input;
 $bad['expected_registration_digest'] = str_repeat( 'f', 64 );
 $denied = MAD4B_SCP_Enrollment_Dispatch::execute( $bad );
@@ -423,6 +446,33 @@ $owner_result = MAD4B_SCP_Enrollment_Dispatch::execute( $owner_input );
 mad4b_assert( 1 === $owner->calls && true === $owner_result['human_decision_required']
     && 'exact_plan_confirmed' === $owner_result['result']['state'],
     'owner convergence did not preserve governed execution and human decision' );
+
+// Owner-gated child exceptions stay uncertain and retain the human gate.
+$owner_thrower = new MAD4B_Test_Ability(
+    mad4b_test_meta( array(
+        'chatgpt_direct_step_up' => true,
+        'exact_chatgpt_client_required' => true,
+        'mad4b_staging_write_authority_convergence' => 'mad4b.staging-write-authority-convergence.v1',
+    ) ), $schema,
+    static function () { throw new RuntimeException( 'owner_private_internal_error' ); }
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner_thrower;
+$owner_throw_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) );
+$owner_throw_input = $owner_input;
+$owner_throw_input['expected_registration_digest'] = $owner_throw_info['registration_digest'];
+$owner_throw_input['expected_dispatch_policy_digest'] = $owner_throw_info['dispatch_policy_digest'];
+$owner_throw_input['expected_input_schema_sha256'] = $owner_throw_info['input_schema_sha256'];
+$owner_uncertain = MAD4B_SCP_Enrollment_Dispatch::execute( $owner_throw_input );
+mad4b_assert( is_array( $owner_uncertain )
+    && $owner_uncertain['state'] === 'child_outcome_uncertain_reconciliation_required'
+    && $owner_uncertain['human_decision_required']
+    && $owner_uncertain['reconciliation_required']
+    && ! $owner_uncertain['blind_retry_allowed']
+    && null === $owner_uncertain['mutation_performed'],
+    'owner child exception must fail closed with no inferred approval' );
+mad4b_assert( false === strpos( wp_json_encode( $owner_uncertain ), 'owner_private_internal_error' ),
+    'owner child exception leaked details' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner;
 
 // Metadata and catalog are both independently required. A spoofed or downgraded
 // operation, missing client binding, or lost OAuth step-up must fail closed.

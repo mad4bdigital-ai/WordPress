@@ -52,6 +52,11 @@ $expected = array(
     'media/remote-import-apply' => 'media',
 );
 $allowed = $c::allowed_ability_providers();
+verify_grants( ( $allowed['jetsmartfilters/update-filter-meta'] ?? '' ) === 'jetsmartfilters',
+    'Exact reversible JetSmartFilters metadata writer must be source-reviewed on Staging.' );
+verify_grants( !isset( $allowed['jetsmartfilters/delete-filter'] )
+    && !isset( $allowed['elementor/update-widget-settings'] ),
+    'A certified provider must not confer arbitrary extra write grants.' );
 // Native build admission and optional self-certified installation must each
 // have an exact, Staging-only reviewed provider pair. This allowlist test
 // does not approve either operation or create any grant.
@@ -84,6 +89,8 @@ verify_grants( $allowed === array_replace( $allowed, array() )
     'Provider policy remains finite and unique.' );
 $GLOBALS['test_env'] = 'production';
 $production = $c::allowed_ability_providers();
+verify_grants( !isset( $production['jetsmartfilters/update-filter-meta'] ),
+    'The newly certified JetSmartFilters writer cannot expand Production grants.' );
 foreach ( $expected as $ability => $provider ) {
     verify_grants( !isset( $production[ $ability ] ),
         'New Staging-reviewed mutation cannot be included in Production: ' . $ability );

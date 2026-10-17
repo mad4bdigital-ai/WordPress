@@ -38,6 +38,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 					'properties' => array(
 						'ability' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 160, 'pattern' => '^[A-Za-z0-9._/-]+$' ),
 						'provider' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 96, 'pattern' => '^[A-Za-z0-9._-]+$' ),
+						'include_plugin_fleet' => array( 'type' => 'boolean', 'default' => false ),
+						'plugin_fleet_offset' => array( 'type' => 'integer', 'minimum' => 0, 'maximum' => 500, 'default' => 0 ),
+						'plugin_fleet_limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50, 'default' => 32 ),
 					),
 					'additionalProperties' => false,
 				),
@@ -56,6 +59,9 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 		$input = is_array( $input ) ? $input : array();
 		$ability_filter = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
 		$provider_filter = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
+		$include_plugin_fleet = ! empty( $input['include_plugin_fleet'] );
+		$fleet_offset = isset( $input['plugin_fleet_offset'] ) ? max( 0, min( 500, (int) $input['plugin_fleet_offset'] ) ) : 0;
+		$fleet_limit = isset( $input['plugin_fleet_limit'] ) ? max( 1, min( 50, (int) $input['plugin_fleet_limit'] ) ) : 32;
 
 		$blocked = class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'blocked_write_tools' )
 			? array_values( (array) MAD4B_SCP_Servers::blocked_write_tools() )
@@ -213,6 +219,10 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'unresolved_applicability_count' => isset( $applicability_counts['unresolved'] ) ? (int) $applicability_counts['unresolved'] : 0,
 			'operational_action_required_count' => $action_required_count,
 			'owner_review_required_count' => $owner_review_required_count,
+			'plugin_fleet' => $include_plugin_fleet ? self::plugin_fleet_summary(
+				class_exists( 'MAD4B_SCP_Plugin_Discovery' ) && method_exists( 'MAD4B_SCP_Plugin_Discovery', 'provider_candidate_matrix' )
+					? MAD4B_SCP_Plugin_Discovery::provider_candidate_matrix() : array()
+			, $fleet_offset, $fleet_limit ) : array( 'included' => false ),
 			'operational_state' => $action_required_count > 0 ? 'provider_closure_actions_pending' : 'provider_closure_operationally_clean',
 			'items' => $items,
 			'candidate_binding_match' => $candidate_binding_match,
@@ -225,6 +235,68 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'write_authority_reconciliation_required' => ! $write_authority_ready,
 			'write_authority_recovery_action' => ! $write_authority_ready ? 'reconcile_exact_staging_write_authority_then_refresh_provider_closure_matrix' : '',
 			'principle' => 'observe_live_gate_then_correlate_capability_truth_then_require_exact_evidence_before_activation',
+		);
+	}
+
+	/**
+	 * Optional bounded whole-plugin inventory. This is a plan, NEVER a promotion.
+	 * Prevents an operator from mistaking 102 current grants for all vendors being
+	 * certified. Unknown/inactive/high-risk plugins remain fail-closed.
+	 */
+	public static function plugin_fleet_summary( $candidate_matrix, $offset = 0, $limit = 200 ) {
+		if ( ! is_array( $candidate_matrix ) || ! isset( $candidate_matrix['items'] ) || ! is_array( $candidate_matrix['items'] ) ) {
+			return array( 'included' => true, 'ready' => false, 'reason' => 'plugin_discovery_unavailable', 'mutation_performed' => false, 'authority_created' => false );
+		}
+		$items = array();
+		$level_counts = array( 'L0_inventory' => 0, 'L1_lifecycle' => 0, 'L2_read' => 0, 'L3_governed_write' => 0, 'L4_certified_governed' => 0 );
+		$source = $candidate_matrix['items'];
+		$offset = max( 0, min( 500, (int) $offset ) );
+		$limit = max( 1, min( 200, (int) $limit ) );
+		foreach ( array_slice( $source, $offset, $limit ) as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$plugin_file = isset( $row['plugin_file'] ) ? (string) $row['plugin_file'] : '';
+			$level = isset( $row['support_level'] ) ? (string) $row['support_level'] : 'L0_inventory';
+			if ( '' === $plugin_file ) continue;
+			if ( ! array_key_exists( $level, $level_counts ) ) $level = 'L0_inventory';
+			++$level_counts[ $level ];
+			$items[] = array(
+				'plugin_file' => $plugin_file,
+				'active' => ! empty( $row['active'] ),
+				'support_level' => $level,
+				'risk' => isset( $row['risk'] ) ? (string) $row['risk'] : 'unknown',
+				'coverage_state' => isset( $row['coverage_state'] ) ? (string) $row['coverage_state'] : 'unknown',
+				'next_gate' => isset( $row['next_gate'] ) ? (string) $row['next_gate'] : 'risk_classification_required',
+				'capability_transition_mode' => 'runtime_discovery_not_version_lock',
+				'read_observation_action' => empty( $row['active'] ) ? 'wait_for_plugin_activation'
+					: ( 'L0_inventory' === $level ? 'inspect_runtime_capabilities' : 'revalidate_observed_read_contract' ),
+				'exact_write_recertification_required_on_contract_change' => true,
+				'version_change_blocks_unrelated_plugins' => false,
+				'promotion_approved' => false,
+				'write_authority_granted' => false,
+			);
+		}
+		usort( $items, static function ( $a, $b ) { return strcmp( $a['plugin_file'], $b['plugin_file'] ); } );
+		return array(
+			'contract' => 'mad4b.provider-fleet-summary.v1',
+			'included' => true,
+			'ready' => true,
+			'observed_count' => count( $items ),
+			'discovered_count' => isset( $candidate_matrix['count'] ) ? (int) $candidate_matrix['count'] : count( $source ),
+			'level_counts_observed' => $level_counts,
+			'level_counts_discovered' => isset( $candidate_matrix['counts'] ) && is_array( $candidate_matrix['counts'] ) ? $candidate_matrix['counts'] : array(),
+			'offset' => $offset,
+			'limit' => $limit,
+			'next_offset' => count( $source ) > $offset + $limit ? $offset + $limit : null,
+			'source_truncated' => ! empty( $candidate_matrix['truncated'] ),
+			'output_truncated' => count( $source ) > $offset + $limit,
+			'items' => $items,
+			'unknown_plugin_write_default' => 'deny',
+			'fleet_transition_policy' => 'capability_first_per_plugin_fail_closed_for_writes',
+			'refresh_after_plugin_change' => 'reinspect_only_affected_plugin_and_capability',
+			'version_is_diagnostic_not_global_read_gate' => true,
+			'authority_created' => false,
+			'mutation_performed' => false,
+			'auto_promotion' => false,
 		);
 	}
 

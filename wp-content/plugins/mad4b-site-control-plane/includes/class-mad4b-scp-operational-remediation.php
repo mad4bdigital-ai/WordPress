@@ -18,6 +18,8 @@ final class MAD4B_SCP_Operational_Remediation {
 	const MAX_ACTIONS = 256;
 
 	public static function boot() {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
 		// Reuse the canonical read-only remediation/operation catalog as the
 		// parent for an extensible, separately governed MCP workflow bridge.
 		if ( ! class_exists( 'MAD4B_SCP_Manual_Workflow_Bridge', false ) )
@@ -39,6 +41,9 @@ final class MAD4B_SCP_Operational_Remediation {
         if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operator-journeys.php';
         MAD4B_SCP_Operator_Journeys::boot();
+        if ( ! class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-recovery-route-matrix.php';
+        MAD4B_SCP_Recovery_Route_Matrix::boot();
         if ( ! class_exists( 'MAD4B_SCP_Operational_Acceptance_Evidence', false ) )
             require_once __DIR__ . '/class-mad4b-scp-operational-acceptance-evidence.php';
         MAD4B_SCP_Operational_Acceptance_Evidence::boot();
@@ -89,18 +94,48 @@ final class MAD4B_SCP_Operational_Remediation {
 		echo '<div class="wrap"><h1>' . esc_html__( 'Operational Remediation', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Observed diagnostic only. Provider installation, host commands, Browser execution, Brand approval, WordPress writes and release acceptance require separate governed steps.', 'mad4b-site-control-plane' ) . '</p>';
         $items = is_array( $view['work_items'] ?? null ) ? $view['work_items'] : array();
+        $next = is_array( $view['primary_next_step'] ?? null ) ? $view['primary_next_step'] : array();
+        if ( $next ) {
+            echo '<div class="notice notice-info inline" role="status"><p><strong>Recommended next step:</strong> <code>'
+                . esc_html( (string) ( $next['state'] ?? 'UNAVAILABLE' ) ) . '</code></p><p>'
+                . esc_html( (string) ( $next['why'] ?? '' ) ) . '</p>';
+            if ( ! empty( $next['focus_gate'] ) ) echo '<p><strong>First open gate:</strong> <code>'
+                . esc_html( (string) $next['focus_gate'] ) . '</code></p>';
+            if ( ! empty( $next['next_ability'] ) ) echo '<p><strong>Read/plan tool:</strong> <code>'
+                . esc_html( (string) $next['next_ability'] ) . '</code></p>';
+            echo '<p class="description">No automatic changes; any mutation requires a fresh exact plan and approval.</p></div>';
+        }
         echo '<div class="notice notice-info inline"><p><strong>'
             . esc_html__( 'Operator summary', 'mad4b-site-control-plane' )
             . '</strong></p><p>' . esc_html(
                 sprintf( __( '%d unresolved tasks. This page is a read-only guide, not a release or approval.', 'mad4b-site-control-plane' ), count( $items ) )
             ) . '</p></div>';
+        if ( ! class_exists( 'MAD4B_SCP_Staging_Recovery_Center', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-staging-recovery-center.php';
+        MAD4B_SCP_Staging_Recovery_Center::render();
+        if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) )
+            MAD4B_SCP_Runtime_Recovery_Workspace::render();
         echo '<h2>' . esc_html__( 'Complete a recovery task', 'mad4b-site-control-plane' ) . '</h2>';
         echo '<ol><li>' . esc_html__( 'Discover the required operation and identify its owner.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Check prerequisites and plan the exact change.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Review the plan, then authorize only its governed executor.', 'mad4b-site-control-plane' )
             . '</li><li>' . esc_html__( 'Verify the new state independently; retry or roll back on failure.', 'mad4b-site-control-plane' )
             . '</li></ol>';
-        echo '<h2>' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
+        if ( function_exists( 'wp_get_environment_type' ) && 'staging' === wp_get_environment_type() ) {
+        echo '<h2 id="mad4b-staging-deployment-identity">' . esc_html__( 'Staging deployment identity setup', 'mad4b-site-control-plane' ) . '</h2>';
+        // Redirect query arguments are informational only. Readback below
+        // independently determines whether the operation actually worked.
+        $setup_result = isset( $_GET['mad4b_native_host_setup'] )
+            ? sanitize_key( wp_unslash( $_GET['mad4b_native_host_setup'] ) ) : '';
+        if ( in_array( $setup_result,
+            array( 'blocked', 'reconciliation_required', 'new_readback_required', 'reused' ), true ) ) {
+            $notice = 'blocked' === $setup_result || 'reconciliation_required' === $setup_result
+                ? 'The setup request was not certified. Review the current binding status and audit before retrying.'
+                : 'The setup request finished. Verify the independent binding readback shown below.';
+            echo '<div class="notice notice-info inline"><p>'
+                . esc_html__( $notice, 'mad4b-site-control-plane' )
+                . '</p></div>';
+        }
         $binding = class_exists( 'MAD4B_SCP_Deployment_Binding_Setup', false )
             ? MAD4B_SCP_Deployment_Binding_Setup::status() : new WP_Error( 'binding_setup_not_mounted' );
         if ( is_wp_error( $binding ) ) {
@@ -110,8 +145,20 @@ final class MAD4B_SCP_Operational_Remediation {
         } else {
             echo '<p><strong>' . esc_html__( 'Binding state', 'mad4b-site-control-plane' )
                 . ':</strong> <code>' . esc_html( (string) ( $binding['state'] ?? 'UNKNOWN' ) ) . '</code></p>';
-            if ( 'HOST_SECRET_NOT_CONFIGURED' === ( $binding['state'] ?? '' ) )
-                echo '<p>' . esc_html__( 'Action needed on hosting: create a protected secret outside public_html, include it in the existing Staging wp-config.php before wp-settings.php, then retry Setup Status. Never paste the secret into ChatGPT or store it in a WordPress option.', 'mad4b-site-control-plane' ) . '</p>';
+            if ( 'HOST_SECRET_NOT_CONFIGURED' === ( $binding['state'] ?? '' ) ) {
+                $native_alternative = class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false )
+                    ? MAD4B_SCP_Deployment_Binding_Native::status() : array();
+                if ( is_array( $native_alternative ) &&
+                    ( ! empty( $native_alternative['eligible'] )
+                      || 'ALREADY_HAS_PROFILE_BINDING' === ( $native_alternative['state'] ?? '' ) ) ) {
+                    echo '<p class="description">'
+                        . esc_html__( 'Legacy wp-config Host secret is not configured. This is not a blocker when the WordPress-native binding below is eligible or already verified; use its local setup/readback instead.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                } else {
+                    echo '<p>' . esc_html__( 'The legacy Host binding requires a separately protected host secret outside public_html and an independently approved configuration update. Never paste the secret into ChatGPT or save it in WordPress options.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                }
+            }
             if ( ! empty( $binding['ready_to_bind'] ) )
                 echo '<p>' . esc_html__( 'Hosting key detected. Use the exact Staging binding plan and separately approved owner apply through MCP, then verify Site Profile again.', 'mad4b-site-control-plane' ) . '</p>';
         }
@@ -127,16 +174,62 @@ final class MAD4B_SCP_Operational_Remediation {
                 . ':</strong> <code>' . esc_html( (string) ( $native_binding['state'] ?? 'UNKNOWN' ) )
                 . '</code></p>';
             if ( ! empty( $native_binding['eligible'] ) )
-                echo '<p>' . esc_html__( 'You can create and bind the Staging deployment key using one separately owner-approved MCP operation; SSH and editing wp-config.php are not required.', 'mad4b-site-control-plane' )
+                echo '<p>' . esc_html__( 'Use the WordPress administrator button below for one verified local setup, or use the separately owner-approved MCP plan/apply route. Neither option automatically grants Governed Write or needs SSH/wp-config edits.', 'mad4b-site-control-plane' )
                 . '</p><p><code>mad4b/deployment-binding-native-plan</code> → <code>mad4b/deployment-binding-native-apply</code></p>';
             else
                 echo '<p class="description">'
                     . esc_html__( 'This host cannot safely create a private file outside the webroot, or a binding already exists. Use the external protected-host setting instead; the system will not fall back to uploads or database storage.', 'mad4b-site-control-plane' )
                     . '</p>';
+            if ( 'ALREADY_HAS_PROFILE_BINDING' === ( $native_binding['state'] ?? '' ) ) {
+                $proof = MAD4B_SCP_Deployment_Binding_Native::readback( array(
+                    'expected_site_uuid' => (string) ( $native_binding['site_uuid'] ?? '' ),
+                    'minimum_profile_revision' => (int) ( $native_binding['profile_revision'] ?? 0 ),
+                ) );
+                $proof_state = is_array( $proof )
+                    ? (string) ( $proof['state'] ?? 'BINDING_READBACK_INCOMPLETE' )
+                    : 'BINDING_READBACK_INCOMPLETE';
+                echo '<p><strong>' . esc_html__( 'Independent binding readback', 'mad4b-site-control-plane' )
+                    . ':</strong> <code>' . esc_html( $proof_state ) . '</code></p>';
+                if ( 'WORDPRESS_BINDING_READBACK_PASS' === $proof_state ) {
+                    echo '<p class="description">'
+                        . esc_html__( 'Host binding accepted on a separate request. Next: plan current Staging Governed Write convergence under its own owner approval; no grants are automatically changed.', 'mad4b-site-control-plane' )
+                        . ' <code>mad4b/staging-write-authority-convergence-handshake</code></p>';
+                } else {
+                    echo '<p class="description">'
+                        . esc_html__( 'Do not continue to Governed Write. Recheck host key, persisted Site Profile and the audit trail.', 'mad4b-site-control-plane' )
+                        . '</p>';
+                }
+            }
+            if ( ! empty( $native_binding['eligible'] ) && current_user_can( 'manage_options' )
+                && current_user_can( 'activate_plugins' ) ) {
+                echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+                    . '<input type="hidden" name="action" value="mad4b_complete_staging_host_setup">'
+                    . wp_nonce_field( 'mad4b_complete_staging_host_setup_v1', '_wpnonce', false, false )
+                    . '<button type="submit" class="button button-primary">'
+                    . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+                    . '</button></form>';
+            }
             echo '<p class="description">'
                 . esc_html__( 'A host-local key resists database-only cloning, but is not an independently issued Host attestation or crash-recovery certificate.', 'mad4b-site-control-plane' )
                 . '</p>';
         }
+        } else {
+            echo '<h2 id="mad4b-production-deployment-identity">'
+            . esc_html__( 'Production deployment identity — verification only', 'mad4b-site-control-plane' )
+            . '</h2>';
+        $production_identity = class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false )
+            ? MAD4B_SCP_Deployment_Binding_Native::production_status() : new WP_Error( 'production_status_unavailable' );
+        $production_state = is_array( $production_identity )
+            ? (string) ( $production_identity['state'] ?? 'UNKNOWN' )
+            : 'PRODUCTION_STATUS_NOT_AVAILABLE';
+        echo '<p><strong>' . esc_html__( 'Production host binding', 'mad4b-site-control-plane' )
+            . ':</strong> <code>' . esc_html( $production_state ) . '</code></p>';
+        echo '<p class="description">'
+            . esc_html__( 'Production verification never provisions a host key or enables Write. Missing or mismatched binding requires a separately approved Production release, protected host configuration, fresh plan and independent readback; the Staging setup button cannot be used.', 'mad4b-site-control-plane' )
+            . '</p>';
+        }
+        if ( class_exists( 'MAD4B_SCP_Recovery_Route_Matrix', false ) )
+            MAD4B_SCP_Recovery_Route_Matrix::render_admin();
         echo '<h2>' . esc_html__( 'Host-free WordPress rehearsal', 'mad4b-site-control-plane' ) . '</h2>';
         $native = class_exists( 'MAD4B_SCP_Native_Recovery', false )
             ? MAD4B_SCP_Native_Recovery::status() : new WP_Error( 'native_recovery_not_mounted' );
@@ -266,6 +359,90 @@ final class MAD4B_SCP_Operational_Remediation {
 				),
 			) );
 		}
+	}
+
+	/** A declared readback is not sufficient without registered readonly metadata. */
+	public static function verified_readback_ability( $name ) {
+		if ( ! is_string( $name ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}\/[a-z][a-z0-9_-]{0,95}$/D', $name )
+			|| ! function_exists( 'wp_get_ability' ) ) return false;
+		$ability = wp_get_ability( $name );
+		if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) return false;
+		$meta = $ability->get_meta();
+		return is_array( $meta )
+			&& isset( $meta['annotations']['readonly'] ) && true === $meta['annotations']['readonly']
+			&& isset( $meta['mcp']['surface'] ) && 'read' === $meta['mcp']['surface']
+			&& method_exists( $ability, 'check_permissions' )
+			&& true === $ability->check_permissions( array() );
+	}
+
+	/** One safe handoff, selected from canonical already-collected gate evidence. */
+	public static function primary_next_step( $integrity, array $issues, array $items, $native_ready, $live_requested, $live_ready ) {
+		$common = array( 'read_only' => true, 'automatic_execution_allowed' => false,
+			'owner_approval_created' => false, 'mutation_performed' => false,
+			'no_blind_retry' => true, 'independent_readback_required' => true );
+		if ( ! $integrity || $issues )
+			return array_merge( $common, array(
+				'state' => 'DIAGNOSTIC_INTEGRITY_FIRST',
+				'why' => 'One or more source, site, or plan integrity checks are unresolved.',
+				'next_ability' => 'mad4b/staging-certification-status',
+				'focus_gate' => '',
+				'blockers' => array_slice( array_values( $issues ), 0, 12 ),
+			) );
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) || empty( $item['gate_id'] ) ) continue;
+			$paths = isset( $item['paths'] ) && is_array( $item['paths'] ) ? $item['paths'] : array();
+			foreach ( $paths as $path ) {
+				if ( ! is_array( $path ) ) continue;
+				$action = isset( $path['action_id'] ) && is_string( $path['action_id'] )
+					? $path['action_id'] : '';
+				if ( ! preg_match( '/^[a-z][a-z0-9_]{0,95}$/D', $action ) ) continue;
+				// No effectful tool is ever a next step. Its registered existence
+				// is only a hint for a separate exact plan and human decision.
+				$declared_readback = ! empty( $path['readback_registered'] )
+					&& is_string( $path['readback_ability'] ?? null )
+					? (string) $path['readback_ability'] : '';
+				$readback = self::verified_readback_ability( $declared_readback )
+					? $declared_readback : '';
+				if ( '' !== $declared_readback && '' === $readback ) return array_merge(
+					$common, array(
+						'state' => 'READBACK_CONTRACT_UNVERIFIED',
+						'why' => 'Declared readback is missing registered readonly metadata; do not execute or repeat a write.',
+						'next_ability' => 'mad4b/operation-route-discover',
+						'focus_gate' => (string) $item['gate_id'],
+						'focus_action_id' => $action,
+						'approval_required_if_mutation' => true,
+					) );
+				return array_merge( $common, array(
+					'state' => $readback ? 'VERIFY_CURRENT_GATE_BEFORE_APPROVAL' :
+						( ! empty( $path['apply_registered'] ) ? 'PREPARE_EXACT_GOVERNED_REVIEW'
+						: 'DISCOVER_EXISTING_NATIVE_CAPABILITY' ),
+					'why' => $readback
+						? 'Read the current gate after prior or uncertain execution before approving any repeat.'
+						: 'Inspect an existing governed route; no new standalone plugin or automatic mutation.',
+					'next_ability' => $readback ?: ( ! empty( $path['apply_registered'] )
+                        ? 'mad4b/operational-remediation-prepare' : 'mad4b/operation-route-discover' ),
+					'focus_gate' => (string) $item['gate_id'],
+					'focus_action_id' => $action,
+					'approval_required_if_mutation' => true,
+				) );
+			}
+			return array_merge( $common, array(
+				'state' => 'CAPABILITY_GAP', 'why' => 'Blocked gate has no declared remediation route.',
+				'next_ability' => 'mad4b/operation-route-discover',
+				'focus_gate' => (string) $item['gate_id'] ) );
+		}
+		if ( ! $native_ready ) return array_merge( $common, array(
+			'state' => 'VERIFY_NATIVE_STAGING_READINESS',
+			'why' => 'No canonical blocked gate is listed but staging readiness is still unverified.',
+			'next_ability' => 'mad4b/staging-certification-status', 'focus_gate' => '' ) );
+		if ( $live_requested && ! $live_ready ) return array_merge( $common, array(
+			'state' => 'EXTERNAL_BROWSER_ACCEPTANCE_REQUIRED',
+			'why' => 'Staging gates alone do not certify frontend behavior or release acceptance.',
+			'next_ability' => 'mad4b/browser-acceptance-plan', 'focus_gate' => '' ) );
+		return array_merge( $common, array(
+			'state' => 'GATES_OBSERVED_READY_NOT_RELEASE_CERTIFIED',
+			'why' => 'Readiness is not a deployment certificate; independent acceptance is still required.',
+			'next_ability' => 'mad4b/operational-acceptance-evidence', 'focus_gate' => '' ) );
 	}
 
 	/** Two independent observations. Disagreement is explicitly blocked. */
@@ -425,6 +602,9 @@ final class MAD4B_SCP_Operational_Remediation {
 			'readiness_domains' => $domains,
 			'blocking_gates' => array_keys( $blocked ),
 			'work_items' => $items,
+			'primary_next_step' => self::primary_next_step( $verified, $issues, $items,
+                ! empty( $native['ready'] ) && ! empty( $plan['current_ready'] ),
+                $live_requested, $live_ready ),
 			'plan_integrity_blockers' => $issues,
 			'reverify_ability' => 'mad4b/staging-convergence-verify',
 			'prepare_ability' => self::PREPARE_ABILITY,

@@ -134,7 +134,7 @@ final class MAD4B_SCP_Runtime_Recovery_Workspace {
 		$show = class_exists( 'MAD4B_SCP_Admin_Experience', false )
 			&& 'show' === MAD4B_SCP_Admin_Experience::query_string( 'recovery', '', 8 );
 		if ( ! $show ) {
-			$url = MAD4B_SCP_Admin_Workspace::link( 'mad4b-operator-control-center', array( 'recovery' => 'show' ) );
+			$url = MAD4B_SCP_Admin_Workspace::link( 'mad4b-operational-remediation', array( 'recovery' => 'show' ) );
 			echo '<p>' . esc_html__( 'Inspect the current Site Profile, Skills, Write, Providers and Host prerequisites only when you need a detailed recovery plan.', 'mad4b-site-control-plane' ) . '</p>';
 			if ( $url ) echo '<a class="button button-secondary" href="' . esc_url( $url ) . '">' . esc_html__( 'Inspect current recovery plan', 'mad4b-site-control-plane' ) . '</a>';
 			echo '</section>';

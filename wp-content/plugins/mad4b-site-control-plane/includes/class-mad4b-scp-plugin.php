@@ -23,6 +23,15 @@ final class MAD4B_SCP_Plugin {
 			$crypto = is_wp_error( $profile_id ) ? $profile_id : MAD4B_SCP_Crypto_Profile::provision_for_lifecycle( $profile_id );
 			if ( is_wp_error( $crypto ) ) self::$schema_error = $crypto;
 		}
+		// Locally authenticated WordPress activation may establish a
+		// previously enrolled exact host identity once. Missing Site Profiles
+		// and clones remain blocked; no remote grants are enabled. This runs
+		// only after schema, audit and crypto preparation succeeded.
+		if ( ! is_wp_error( self::$schema_error ) ) {
+			if ( ! class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false ) )
+				require_once __DIR__ . '/class-mad4b-scp-deployment-binding-native.php';
+			MAD4B_SCP_Deployment_Binding_Native::activation_bootstrap();
+		}
 		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) ) {
 			MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' );
 		}

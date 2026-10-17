@@ -81,7 +81,7 @@ try {
 
   await page.locator('#mad4b-live-authority').waitFor({ state: 'visible' });
   const heading = (await page.locator('h1').textContent()) || '';
-  assert(heading.includes('Authorize read access'), 'OAuth read-consent heading missing.', { heading });
+  assert(heading.includes(params.get('scope').includes('mad4b:authority:step-up') ? 'Authorize governed MCP access' : 'Authorize read access'), 'OAuth consent heading does not match requested scopes.', { heading, scopes: params.get('scope') });
 
   const bodyText = (await page.locator('body').innerText()) || '';
   assert(!bodyText.includes('Signed in WordPress user:'), 'Raw numeric WordPress user identity leaked into primary UI.');
@@ -94,6 +94,8 @@ try {
   const scriptNonce = await page.locator('script[nonce]').evaluate(el => el.nonce);
   assert(scriptNonce === nonceMatch[1], 'Rendered script nonce does not match CSP nonce.', { scriptNonce, csp });
   assert(csp.includes("connect-src 'self'"), 'Consent CSP lost same-origin connect boundary.', { csp });
+  const callbackOrigin = new URL(params.get('redirect_uri')).origin;
+  assert(csp.includes("form-action 'self' " + callbackOrigin), 'Registered OAuth redirect origin missing from consent CSP.', { csp, callbackOrigin });
 
   const { response: ajaxResponse, json } = await Promise.race([
     firstProjection,

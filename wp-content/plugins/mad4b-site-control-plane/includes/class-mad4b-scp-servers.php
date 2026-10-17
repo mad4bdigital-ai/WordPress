@@ -2,6 +2,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
+require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -51,7 +52,7 @@ final class MAD4B_SCP_Servers {
 		$governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status', 'mad4b/staging-convergence-plan', 'mad4b/staging-write-candidate-binding-plan' ) : array();
 		$map = array(
 			'mad4b-read' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
+				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/site-autopilot-fast-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/security-site-posture', 'mad4b/security-provider-evidence', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
@@ -66,17 +67,21 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives', 'mad4b/context-source-onboarding-preflight',
-                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys',
+                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys', 'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/admin-surface-coverage', 'mad4b/admin-adapter-blueprint', 'mad4b/admin-control-census', 'mad4b/operational-acceptance-evidence',
+                'mad4b/operational-remediation-status', 'mad4b/operational-remediation-prepare',
+                'mad4b/root-cause-remediation-plan',
                 'mad4b/deployment-binding-setup-status', 'mad4b/deployment-binding-setup-plan',
                 'mad4b/deployment-binding-native-status', 'mad4b/deployment-binding-native-plan',
                 'mad4b/staging-write-owner-review',
+                'mad4b/staging-write-owner-reconciliation-diagnose',
                 'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
 			'mad4b-chatgpt' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status',
+				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/site-autopilot-fast-status',
 				'mad4b/session-safe-diagnostics',
+                'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/staging-write-owner-review',
 				'mad4b/full-staging-authority-handshake',
 				'mad4b/runtime-gates-handshake',
@@ -414,35 +419,20 @@ final class MAD4B_SCP_Servers {
 	 * ChatGPT CIMD bearer + dedicated step-up scope.
 	 */
 	public static function chatgpt_reviewed_direct_step_up_tools() {
-		$candidates = array();
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $candidates[] = MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $candidates[] = MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_catalog_tools' ) ) {
-			$candidates = array_merge( $candidates, MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools() );
-		}
-
-		$tools = array();
-		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
-			if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			$ability = wp_get_ability( $ability_name );
-			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
-			$meta = $ability->get_meta();
-			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
-			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( empty( $mcp['chatgpt_direct_step_up'] )
-				|| empty( $mcp['exact_chatgpt_client_required'] )
-				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
-				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
-			$tools[] = $ability_name;
-		}
-		// Preserve candidate priority: narrow governed Write, Full Staging,
-		// bootstrap self-update and governed runtime gates are retained before optional semantic projections
-		// if the bounded MCP catalog budget requires degradation.
+		// One dynamic loop replaces per-feature candidate lists. Registered
+		// metadata alone is never sufficient: the census checks both callbacks
+		// originate in this installed plugin before allowing optional exposure.
+		$candidates = MAD4B_SCP_Governed_Ability_Census::structural_step_up()
+			+ MAD4B_SCP_Governed_Ability_Census::direct_only();
+		$tools = array_keys( $candidates );
+		usort( $tools, static function ( $a, $b ) use ( $candidates ) {
+			$left = ! empty( $candidates[ $a ]['owner_intent_only'] ) ? 0 : 1;
+			$right = ! empty( $candidates[ $b ]['owner_intent_only'] ) ? 0 : 1;
+			return $left === $right ? strcmp( $a, $b ) : ( $left < $right ? -1 : 1 );
+		} );
+		// Owner intent receives priority under the bounded optional MCP catalog.
+		// All other ordering is stable; direct-only controls are never routed into
+		// the Staging Enrollment broker by the dynamic operation census.
         // The two approval bootstrap mutations are reviewed OPTIONAL direct
         // step-ups, not unguarded required tools. Catalog serialization now
         // requires the same exact ChatGPT authority-step-up bearer used for
@@ -462,6 +452,12 @@ final class MAD4B_SCP_Servers {
      * enrolled, current-authority Staging. An MCP tool is never an approval.
      */
     private static function chatgpt_approval_bootstrap_tools() {
+        // Do not materialize an underlying Write schema merely because a
+        // fresh Staging Site Profile still lacks its host binding. Dynamic
+        // Skills and the generic ChatGPT catalog forbid that exposure.
+        // Use the compact governed write dispatcher for ticket planning,
+        // or the explicit WordPress admin POST for a local first binding.
+        // An untrusted tools/list is never the approval authority.
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
             || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
             || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
@@ -987,7 +983,6 @@ final class MAD4B_SCP_Servers {
 		$this->create( $adapter, 'mad4b-developer-breakglass', 'MAD4B Developer Breakglass MCP', 'Exceptional non-Production Developer Agent recovery plane. Disabled by default and separately gated from normal developer execution.', $developer_breakglass_tools, array( __CLASS__, 'can_developer_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-developer-breakglass', $target_server_id ) );
 		$this->create( $adapter, 'mad4b-breakglass', 'MAD4B Breakglass MCP', 'Exceptional recovery surface. Disabled unless explicitly enabled by the database-backed governed runtime gate policy.', $breakglass_tools, array( __CLASS__, 'can_breakglass_transport' ), $transport, $error_handler, $observability, self::should_materialize_server_tools( 'mad4b-breakglass', $target_server_id ) );
 	}
-
 	private function create( $adapter, $id, $name, $description, array $tools, $permission, $transport, $error_handler, $observability, $materialized = true ) {
 		$preflight = null;
 		$requested_tools = $tools;

@@ -34,7 +34,16 @@ plugin = root/'wp-content/plugins/mad4b-site-control-plane'
 convergence = (plugin/'includes/class-mad4b-scp-staging-write-authority-convergence.php').read_text()
 owner = (plugin/'includes/class-mad4b-scp-staging-write-owner-intent.php').read_text()
 assert "'owner_intent_sha256' => array(" in convergence
-assert "MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, $input )" in convergence
+# A read-only owner preflight precedes reservation; one-shot claim follows.
+assert "self::authorize_reviewed_owner_intent( $plan, $input, false )" in convergence
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::validate_claimable( $plan, $proof )" in convergence
+assert convergence.index("self::authorize_reviewed_owner_intent( $plan, $input, false )") < convergence.index("::reserve( $plan )")
+assert convergence.index("::reserve( $plan )") < convergence.index("MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, array(")
+
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, array(" in convergence
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest()" in convergence
+assert "MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(" in convergence
+assert "'mad4b_staging_owner_proof_ambiguous'" in convergence
 assert "self::review()" in owner and "hash_equals(" in owner and "hash_hmac(" in owner
 assert "add_option( $claim_key" in owner
 print('STAGING_OWNER_RELEASE_GATE: PASS (contract only; '+publish_state+')')

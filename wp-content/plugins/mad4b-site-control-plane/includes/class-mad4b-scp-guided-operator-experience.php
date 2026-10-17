@@ -27,6 +27,12 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		$provider = isset( $operational['provider_closure'] ) && is_array( $operational['provider_closure'] ) ? $operational['provider_closure'] : array();
 		$write = isset( $operational['write_authority'] ) && is_array( $operational['write_authority'] ) ? $operational['write_authority'] : array();
 		$site_ready = isset( $profile['authority_ready'] ) && true === $profile['authority_ready'];
+		// Deployment Binding is an independent exact-origin clone-protection gate.
+		// Its absence never invalidates existing read/write grants, but must be
+		// visible BEFORE OAuth/Skills/Provider onboarding.
+		$deployment_observed = array_key_exists( 'deployment_binding_configured', $profile )
+			&& is_bool( $profile['deployment_binding_configured'] );
+		$deployment_ready = $deployment_observed && true === $profile['deployment_binding_configured'];
 		$has_site = isset( $profile['authority_ready'] );
 		$skills_ready = true === ( isset( $skills['ready'] ) ? $skills['ready'] : null )
 			&& true === ( isset( $skills['build_identity_current'] ) ? $skills['build_identity_current'] : null );
@@ -45,6 +51,10 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 				__( 'Confirm the exact origin, environment and deployment identity.', 'mad4b-site-control-plane' ),
 				$site_ready ? 'OBSERVED_READY' : ( $has_site ? 'NEEDS_ACTION' : 'NOT_CHECKED' ),
 				'mad4b-control-plane-site-profile', array(), 'site_administrator', 'mad4b/site-profile-status', 10 ),
+			self::step( 'deployment', __( 'Verify Deployment Binding', 'mad4b-site-control-plane' ),
+				__( 'Confirm independent Staging host identity and clone protection before continuing. A ready Site Profile alone is not a binding receipt.', 'mad4b-site-control-plane' ),
+				! $site_ready ? 'WAITING_FOR_SITE' : ( $deployment_ready ? 'OBSERVED_READY' : ( $deployment_observed ? 'EXTERNAL_ACTION' : 'NOT_CHECKED' ) ),
+				'mad4b-control-plane-site-profile', array(), 'host_operator', 'mad4b/deployment-binding-status', 12 ),
 			self::step( 'connection', __( 'Connect and verify ChatGPT', 'mad4b-site-control-plane' ),
 				__( 'Complete OAuth consent and verify an external read. A configured profile alone is not certification.', 'mad4b-site-control-plane' ),
 				$site_ready ? 'NOT_CHECKED' : 'WAITING_FOR_SITE',
@@ -72,12 +82,6 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		if ( $uncertain ) array_unshift( $steps, self::step( 'recovery', __( 'Resolve an uncertain previous change', 'mad4b-site-control-plane' ),
 			__( 'Review the last receipt and independently read back the affected object before any retry.', 'mad4b-site-control-plane' ),
 			'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'mutations' ), 'governed_operator', 'mad4b/mutation-status', 0 ) );
-		if ( $site_ready && isset( $profile['deployment_binding_configured'] )
-			&& false === $profile['deployment_binding_configured'] ) {
-			$steps[] = self::step( 'deployment', __( 'Review independent deployment identity', 'mad4b-site-control-plane' ),
-				__( 'Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants.', 'mad4b-site-control-plane' ),
-				'EXTERNAL_ACTION', 'mad4b-control-plane-site-profile', array(), 'host_operator', 'mad4b/site-profile-status', 65 );
-		}
 		if ( $host_blocked ) $steps[] = self::step( 'host', __( 'Review isolated developer execution', 'mad4b-site-control-plane' ),
 			__( 'Host sandbox prerequisites require an authorized external operator. Existing safe lanes remain usable.', 'mad4b-site-control-plane' ),
 			'EXTERNAL_ACTION', 'mad4b-control-plane-connection', array( 'tab' => 'isolation' ), 'host_operator', 'mad4b/developer-host-capabilities', 60 );
@@ -96,6 +100,9 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		$next = null;
 		foreach ( $steps as $step ) {
 			if ( 'NEEDS_ACTION' === $step['state'] ) { $next = $step['id']; break; }
+		}
+		if ( null === $next ) {
+			foreach ( $steps as $step ) if ( 'deployment' === $step['id'] && 'EXTERNAL_ACTION' === $step['state'] ) { $next = 'deployment'; break; }
 		}
 		if ( null === $next ) {
 			foreach ( $steps as $step ) if ( 'NOT_CHECKED' === $step['state'] ) { $next = $step['id']; break; }
@@ -127,8 +134,12 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			echo '<p>' . esc_html__( 'Current operator evidence is incomplete or untrusted. Reopen Runtime Components before taking action.', 'mad4b-site-control-plane' ) . '</p></section>';
 			return;
 		}
-		echo '<ol class="mad4b-guided-steps">';
+		// Show the single next action first. Keep the remaining lifecycle
+		// discoverable in one collapsible area instead of a wall of controls.
+		echo '<ul class="mad4b-guided-steps">';
+		$deferred = array();
 		foreach ( $model['steps'] as $step ) {
+			if ( $step['id'] !== $model['next_step'] ) { $deferred[] = $step; continue; }
 			$url = MAD4B_SCP_Admin_Workspace::link( $step['route'], $step['query'] );
 			if ( '' === $url ) continue;
 			$is_next = $step['id'] === $model['next_step'];
@@ -148,6 +159,18 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			echo '<a class="button ' . ( $is_next ? 'button-primary' : 'button-secondary' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $is_next ? __( 'Continue with this step', 'mad4b-site-control-plane' ) : __( 'Open this step', 'mad4b-site-control-plane' ) ) . '</a>';
 			echo '</li>';
 		}
-		echo '</ol></section>';
+		echo '</ul>';
+		if ( $deferred ) {
+			echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'Show the remaining setup, provider and approval steps', 'mad4b-site-control-plane' ) . '</summary><ol>';
+			foreach ( $deferred as $step ) {
+				$url = MAD4B_SCP_Admin_Workspace::link( $step['route'], $step['query'] );
+				if ( '' === $url ) continue;
+				echo '<li><strong>' . esc_html( $step['title'] ) . '</strong> <code>' . esc_html( $step['state'] ) . '</code> ' . esc_html( $step['summary'] ) . ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Open', 'mad4b-site-control-plane' ) . '</a></li>';
+			}
+			echo '</ol></details>';
+		}
+		echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'When an MCP diagnostic fails internally', 'mad4b-site-control-plane' ) . '</summary>';
+		echo '<p>' . esc_html__( 'Use one session-safe diagnostic read with triage scope. If it fails or is partial, read the snapshot header, then request one generation-bound diagnostic bundle at a time. Do not retry an uncertain write or treat HTTP 500 loopback or a 403 browser challenge as acceptance.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<code>mad4b/session-safe-diagnostics</code> &rarr; <code>mad4b/read-snapshot-header</code> &rarr; <code>mad4b/read-diagnostic-bundle</code></details></section>';
 	}
 }

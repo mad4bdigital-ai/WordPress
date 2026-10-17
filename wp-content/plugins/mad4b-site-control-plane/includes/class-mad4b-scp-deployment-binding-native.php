@@ -13,11 +13,15 @@ final class MAD4B_SCP_Deployment_Binding_Native {
     const STATUS = 'mad4b/deployment-binding-native-status';
     const PLAN = 'mad4b/deployment-binding-native-plan';
     const READBACK = 'mad4b/deployment-binding-native-readback';
+    const PRODUCTION_STATUS = 'mad4b/deployment-binding-production-status';
     const HANDOFF = 'mad4b/deployment-binding-owner-handoff';
     const APPLY = 'mad4b/deployment-binding-native-apply';
     const CONFIRM = 'CREATE HOST-LOCAL STAGING BINDING';
+    const WP_SETUP_ACTION = 'mad4b_complete_staging_host_setup';
+    const WP_SETUP_NONCE = 'mad4b_complete_staging_host_setup_v1';
     const FILENAME = 'binding.key';
     private static $request_marker = '';
+    private static $wordpress_setup_nonce_verified = false;
 
     private static function request_marker() {
         if ( '' === self::$request_marker ) self::$request_marker = bin2hex( random_bytes( 16 ) );
@@ -26,6 +30,9 @@ final class MAD4B_SCP_Deployment_Binding_Native {
 
     public static function boot() {
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
+        // Local WordPress plugin update does not run register_activation_hook.
+        // The explicit authenticated continuation is available after ZIP/Update Now.
+        add_action( 'admin_post_' . self::WP_SETUP_ACTION, array( __CLASS__, 'handle_wordpress_setup' ) );
     }
     public static function register_abilities() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
@@ -56,6 +63,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             array( self::STATUS, 'status', $read_schema, true ),
             array( self::PLAN, 'plan', $read_schema, true ),
             array( self::READBACK, 'readback', $verify_schema, true ),
+            array( self::PRODUCTION_STATUS, 'production_status', $read_schema, true ),
             array( self::HANDOFF, 'handoff', $read_schema, true ),
             array( self::APPLY, 'apply', $write_schema, false ),
         ) as $ability ) {
@@ -203,6 +211,57 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'no_secret_exposed' => true, 'read_only' => true,
             'production_authorized' => false );
     }
+    /**
+     * Production is supported as an independently evaluated read-only host
+     * binding inspection.  Creating/changing a Production secret requires a
+     * separately approved Production release and is never a Staging POST,
+     * activation, auto-update, or ChatGPT owner-consent side effect.
+     */
+    public static function production_status( $input = array() ) {
+        if ( ! self::can_read() || ! is_array( $input ) || $input )
+            return self::error( 'production_read_denied' );
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+            return self::error( 'production_profile_unavailable' );
+        $site = MAD4B_SCP_Site_Profile::status();
+        $stored = get_option( MAD4B_SCP_Site_Profile::OPTION, null );
+        if ( ! is_array( $site ) || ! is_array( $stored )
+            || 'production' !== (string) ( $site['configured_environment'] ?? '' )
+            || 'production' !== (string) ( $site['wordpress_environment'] ?? '' )
+            || 'production' !== (string) ( $stored['environment'] ?? '' ) )
+            return self::error( 'production_exact_environment_required' );
+        $exact = ! empty( $site['origin_match'] )
+            && ! empty( $site['environment_match'] )
+            && empty( $site['mutation_pending_audit'] )
+            && hash_equals( (string) ( $site['site_uuid'] ?? '' ),
+                (string) ( $stored['site_uuid'] ?? '' ) )
+            && hash_equals( (string) ( $site['canonical_origin'] ?? '' ),
+                (string) ( $stored['canonical_origin'] ?? '' ) )
+            && (int) ( $site['revision'] ?? 0 ) === (int) ( $stored['revision'] ?? -1 ) ;
+        $stored_digest = (string) ( $stored['deployment_binding_digest'] ?? '' );
+        $observed_digest = (string) MAD4B_SCP_Site_Profile::deployment_binding_digest();
+        $verified = $exact
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $stored_digest )
+            && 1 === preg_match( '/^[a-f0-9]{64}$/D', $observed_digest )
+            && hash_equals( $stored_digest, $observed_digest );
+        $state = ! $exact ? 'PRODUCTION_PROFILE_IDENTITY_MISMATCH'
+            : ( '' === $stored_digest ? 'PRODUCTION_HOST_BINDING_NOT_ENROLLED'
+            : ( $verified ? 'PRODUCTION_HOST_BINDING_VERIFIED'
+                : 'PRODUCTION_HOST_BINDING_MISMATCH' ) );
+        return array(
+            'contract' => self::CONTRACT . '.production-read.v1',
+            'state' => $state, 'ready' => $verified,
+            'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
+            'profile_revision' => (int) ( $site['revision'] ?? 0 ),
+            'site_identity_preserved' => $exact,
+            'next_action' => $verified
+                ? 'separately_approved_production_readiness_review'
+                : 'independent_owner_approved_production_host_binding_release',
+            'secret_exposed' => false, 'host_path_exposed' => false,
+            'production_mutation_authorized' => false,
+            'staging_setup_available' => false, 'read_only' => true,
+            'mutation_performed' => false );
+    }
+
     /**
      * Explicit second-request acceptance. A successful apply is never itself
      * a deployment-binding certificate. Read original profile + host-secret
@@ -440,6 +499,176 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             return self::error( 'recheck_failed' );
         $snap = self::profile_snapshot();
         if ( is_wp_error( $snap ) ) return $snap;
+        return self::commit_new_binding( $snap, 'mad4b/deployment-binding-native-enrolled', false );
+    }
+
+    /**
+     * WordPress activation is a privileged, locally authenticated lifecycle.
+     * This is NOT a new remote write ability. It does not issue an approval
+     * ticket, enable governed Write or repair a cloned/mismatched host.
+     */
+    public static function activation_bootstrap() {
+        $activation_hook = defined( 'MAD4B_SCP_FILE' ) && function_exists( 'plugin_basename' )
+            ? 'activate_' . plugin_basename( MAD4B_SCP_FILE ) : '';
+        $trusted = '' !== $activation_hook
+            && function_exists( 'current_filter' )
+            && current_filter() === $activation_hook
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'activate_plugins' )
+            && current_user_can( 'manage_options' )
+            && !( defined( 'WP_CLI' ) && WP_CLI )
+            && !( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() )
+            && !( function_exists( 'wp_doing_cron' ) && wp_doing_cron() );
+        if ( ! $trusted ) return self::error( 'activation_context_required' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-activated' );
+    }
+
+    /**
+     * Called only AFTER nonce-verified WordPress Site Profile save and
+     * persisted readback. Initial plugin activation may precede enrollment.
+     * Never expose this as a WordPress Ability or general-purpose GET action.
+     */
+    public static function profile_save_bootstrap() {
+        $hook = function_exists( 'current_filter' ) ? current_filter() : '';
+        $trusted = class_exists( 'MAD4B_SCP_Site_Profile_Admin' )
+            && in_array( $hook, array(
+                'admin_post_' . MAD4B_SCP_Site_Profile_Admin::ACTION_SAVE,
+                'wp_ajax_' . MAD4B_SCP_Site_Profile_Admin::ACTION_SAVE,
+                'admin_post_' . MAD4B_SCP_Site_Profile_Admin::ACTION_AUTOPILOT,
+            ), true )
+            && 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'manage_options' )
+            && current_user_can( 'activate_plugins' )
+            && !( defined( 'WP_CLI' ) && WP_CLI );
+        if ( ! $trusted ) return self::error( 'profile_setup_context_required' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-profile-enrolled' );
+    }
+
+    /**
+     * One POST from WordPress Plugins -> Complete Staging Setup.
+     * A safe alternative to deactivation/reactivation after WP-native upgrades.
+     * Never creates a remote ticket or grants Governed Write.
+     */
+    public static function handle_wordpress_setup() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) || ! function_exists( 'is_admin' )
+            || ! is_admin() || ! function_exists( 'current_user_can' )
+            || ! current_user_can( 'manage_options' ) || ! current_user_can( 'activate_plugins' ) )
+            wp_die( 'Authenticated plugin setup POST required.', '', array( 'response' => 403 ) );
+        check_admin_referer( self::WP_SETUP_NONCE );
+        self::$wordpress_setup_nonce_verified = true;
+        $result = self::wordpress_update_bootstrap();
+        self::$wordpress_setup_nonce_verified = false;
+        $result_state = is_array( $result ) ? (string) ( $result['state'] ?? '' ) : '';
+        if ( is_wp_error( $result ) ) {
+            $state = 'blocked';
+            $code = sanitize_key( $result->get_error_code() );
+        } elseif ( 'EXISTING_BINDING_REUSED' === $result_state ) {
+            $state = 'reused';
+            $code = '';
+        } elseif ( 'BOUND_NEW_REQUEST_READBACK_REQUIRED' === $result_state ) {
+            $state = 'new_readback_required';
+            $code = '';
+        } elseif ( 'POSTCOMMIT_RECONCILIATION_REQUIRED' === $result_state ) {
+            $state = 'reconciliation_required';
+            $code = 'postcommit_reconciliation_required';
+        } else {
+            // An unknown or partial result is never reported as success.
+            $state = 'blocked';
+            $code = 'unexpected_setup_result';
+        }
+        $args = array( 'page' => 'mad4b-operational-remediation',
+            'mad4b_native_host_setup' => $state );
+        if ( '' !== $code ) $args['mad4b_setup_reason'] = $code;
+        // A different HTTP GET renders fresh Site Profile + independent
+        // readback evidence; this response itself is never a certificate.
+        wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) )
+            . '#mad4b-staging-deployment-identity' );
+        exit;
+    }
+
+    /**
+     * Called only from the POST+nonce-verified WordPress Admin route; never
+     * from update transient, a normal GET, background cron or remote MCP.
+     */
+    private static function wordpress_update_bootstrap() {
+        $hook = function_exists( 'current_filter' ) ? current_filter() : '';
+        $trusted = self::$wordpress_setup_nonce_verified
+            && 'admin_post_' . self::WP_SETUP_ACTION === $hook
+            && 'POST' === ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            && function_exists( 'is_admin' ) && is_admin()
+            && function_exists( 'current_user_can' )
+            && current_user_can( 'manage_options' )
+            && current_user_can( 'activate_plugins' )
+            && !( defined( 'WP_CLI' ) && WP_CLI )
+            && !( function_exists( 'wp_doing_cron' ) && wp_doing_cron() );
+        if ( ! $trusted ) return self::error( 'wordpress_update_context_required' );
+        // The installed ZIP itself must be byte-consistent with provenance
+        // before a new host identity may be established after an update.
+        if ( ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer' )
+            || ! method_exists( 'MAD4B_SCP_Live_Acceptance_Observer', 'build_provenance_status' ) )
+            return self::error( 'wordpress_update_provenance_unavailable' );
+        $identity = MAD4B_SCP_Live_Acceptance_Observer::build_provenance_status();
+        if ( ! is_array( $identity ) || empty( $identity['runtime_manifest_match'] )
+            || ! empty( $identity['stale'] ) || ! empty( $identity['mismatch'] )
+            || 1 !== preg_match( '/^[a-f0-9]{40}$/D', (string) ( $identity['source_commit_sha'] ?? '' ) ) )
+            return self::error( 'wordpress_update_provenance_unverified' );
+        return self::bootstrap_from_verified_lifecycle( 'mad4b/deployment-binding-native-wordpress-updated' );
+    }
+
+    /** Rendering and status reads are non-authorizing: no hidden repair on GET. */
+    public static function wordpress_setup_action_link( $links ) {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin()
+            || ! function_exists( 'current_user_can' )
+            || ! current_user_can( 'manage_options' )
+            || ! current_user_can( 'activate_plugins' ) )
+            return $links;
+        $status = self::status();
+        if ( ! is_array( $status )
+            || 'READY_FOR_OWNER_APPROVAL' !== ( $status['state'] ?? '' )
+            || empty( $status['eligible'] ) ) return $links;
+        // WordPress core owns a surrounding Plugins bulk-action form.
+        // Never inject a nested POST form into the row, even on a full-boot
+        // non-passive request. The full remediation page owns the POST+nonce.
+        $links['mad4b_host_setup'] = '<a href="' . esc_url( admin_url(
+            'admin.php?page=mad4b-operational-remediation#mad4b-staging-deployment-identity' ) )
+            . '">' . esc_html__( 'Complete Staging host setup', 'mad4b-site-control-plane' )
+            . '</a>';
+        return $links;
+    }
+
+    private static function bootstrap_from_verified_lifecycle( $audit_action ) {
+        // The Profile must already be enrolled. A copied database alone is
+        // insufficient: foreign origin/host key, old keys or a non-private
+        // filesystem location always block rather than mint a new identity.
+        $state = self::status();
+        if ( is_wp_error( $state ) ) return $state;
+        if ( 'ALREADY_HAS_PROFILE_BINDING' === ( $state['state'] ?? '' ) ) {
+            return array( 'state' => 'EXISTING_BINDING_REUSED',
+                'read_only' => true, 'mutation_performed' => false );
+        }
+        if ( 'READY_FOR_OWNER_APPROVAL' !== ( $state['state'] ?? '' )
+            || empty( $state['eligible'] ) )
+            return self::error( 'activation_host_state_blocked' );
+        $plan = self::plan();
+        if ( is_wp_error( $plan ) || empty( $plan['eligible'] ) )
+            return self::error( 'activation_plan_blocked' );
+        $snap = self::profile_snapshot();
+        if ( is_wp_error( $snap ) ) return $snap;
+        // Re-evaluate the exact immutable plan after the snapshot read,
+        // so no host path or Site Profile change can be silently adopted.
+        $recheck = self::plan();
+        if ( is_wp_error( $recheck )
+            || ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ),
+                (string) ( $recheck['plan_sha256'] ?? '' ) ) )
+            return self::error( 'activation_plan_drift' );
+        return self::commit_new_binding( $snap, $audit_action, true );
+    }
+
+    /** One auditable, compensating implementation shared by ticket and activation paths. */
+    private static function commit_new_binding( array $snap, $audit_action, $activation ) {
         $key = self::provision( $snap['location'] );
         if ( is_wp_error( $key ) ) return $key;
         $before = $snap['stored'];
@@ -450,10 +679,10 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             hash( 'sha256', self::request_marker() );
         $after['updated_at'] = gmdate( 'c' );
         $committed = MAD4B_SCP_Site_Profile::commit_record_with_audit(
-            $before, $after, 'mad4b/deployment-binding-native-enrolled',
+            $before, $after, $audit_action,
             array( 'site_uuid' => $before['site_uuid'], 'host_file_outside_webroot' => true,
                 'no_plaintext_logged' => true, 'identity_preserved' => true,
-                'staging_only' => true ), 'mad4b_native_deployment_binding' );
+                'staging_only' => true, 'activation_bootstrap' => $activation ), 'mad4b_native_deployment_binding' );
         if ( is_wp_error( $committed ) ) {
             self::rollback( $snap['location'], $key );
             return $committed;
@@ -485,6 +714,7 @@ final class MAD4B_SCP_Deployment_Binding_Native {
             'plaintext_secret_returned' => false,
             'secret_written_to_wordpress_database' => false,
             'production_mutation' => false,
+            'activation_bootstrap' => $activation,
             'next_readback' => self::READBACK,
             'new_request_readback_input' => array(
                 'expected_site_uuid' => (string) $before['site_uuid'],

@@ -30,6 +30,8 @@ final class MAD4B_SCP_Acceptance_Runner {
 		if ( $plan['profile_id'] !== $this->clean_id( isset( $evidence['profile_id'] ) ? $evidence['profile_id'] : '' ) ) return $this->blocked_from_plan( $plan, array( 'provider_evidence_profile_mismatch' ) );
 		$evidence_digest = isset( $evidence['plan_digest'] ) ? strtolower( (string) $evidence['plan_digest'] ) : '';
 		if ( '' !== (string) $plan['plan_digest'] && ! hash_equals( (string) $plan['plan_digest'], $evidence_digest ) ) return $this->blocked_from_plan( $plan, array( 'provider_evidence_plan_mismatch' ) );
+		// The requested suite comes from the trusted plan, not provider evidence.
+		$evidence['requested_suite'] = $plan['suite'];
 		$result = $this->reducer->reduce( $evidence );
 		return array(
 			'contract' => self::CONTRACT,
@@ -79,7 +81,7 @@ final class MAD4B_SCP_Acceptance_Runner {
 			'suite' => isset( $plan['suite'] ) ? $plan['suite'] : 'semantic',
 			'plan_digest' => isset( $plan['plan_digest'] ) ? $plan['plan_digest'] : '',
 			'provider_evidence' => array(),
-			'result' => $this->reducer->reduce( $evidence ),
+			'result' => $this->reducer->reduce( array_merge( $evidence, array( 'requested_suite' => (string) ( $plan['suite'] ?? 'unknown' ) ) ) ),
 			'authority' => $this->authority(),
 			'effects' => $this->effects(),
 			'authorizing' => false,

@@ -123,7 +123,7 @@ $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION] = array(
 );
 $original = $GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION];
 MAD4B_SCP_Deployment_Binding_Native::register_abilities();
-bn_assert( count( $GLOBALS['abilities'] ) === 5, 'status, plan, apply, handoff and exact post-apply readback' );
+bn_assert( count( $GLOBALS['abilities'] ) === 6, 'Staging status/plan/apply/handoff/readback and read-only Production status' );
 // The one-time approval ticket is minted AFTER approval-plan validates the
 // target schema. Requiring the ticket inside that schema is a cycle; runtime
 // apply still denies requests lacking the real ticket.
@@ -272,7 +272,30 @@ bn_assert( MAD4B_SCP_Deployment_Binding_Native::private_location($original['site
 $_SERVER['DOCUMENT_ROOT'] = $root;
 MAD4B_SCP_Site_Profile::$env = 'production';
 bn_assert( MAD4B_SCP_Deployment_Binding_Native::status()['state'] === 'SAFE_LOCATION_UNAVAILABLE',
-    'Production fail closed even if host-local key exists' );
+    'Production cannot use Staging status or provisioning' );
+$GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION]['environment'] = 'production';
+$production = MAD4B_SCP_Deployment_Binding_Native::production_status();
+bn_assert( $production['state'] === 'PRODUCTION_HOST_BINDING_VERIFIED'
+    && $production['ready'] && !$production['production_mutation_authorized']
+    && !$production['mutation_performed']
+    && MAD4B_SCP_Site_Profile::$commits === 1,
+    'read-only Production safely recognizes matching pre-existing host key with no mutation' );
+$GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION]['deployment_binding_digest'] = str_repeat( '0', 64 );
+$production_mismatch = MAD4B_SCP_Deployment_Binding_Native::production_status();
+bn_assert( $production_mismatch['state'] === 'PRODUCTION_HOST_BINDING_MISMATCH'
+    && !$production_mismatch['ready'] && !$production_mismatch['production_mutation_authorized'],
+    'Production must fail closed on mismatched independent host binding' );
+$GLOBALS['options'][MAD4B_SCP_Site_Profile::OPTION]['deployment_binding_digest'] = '';
+$production_missing = MAD4B_SCP_Deployment_Binding_Native::production_status();
+bn_assert( $production_missing['state'] === 'PRODUCTION_HOST_BINDING_NOT_ENROLLED'
+    && !$production_missing['ready'] && !$production_missing['production_mutation_authorized'],
+    'Production cannot auto-enroll an otherwise configured host secret' );
+$GLOBALS['admin'] = false;
+bn_assert( is_wp_error( MAD4B_SCP_Deployment_Binding_Native::production_status() ),
+    'Production read diagnostic requires actual administrator capability' );
+$GLOBALS['admin'] = true;
+bn_assert( MAD4B_SCP_Site_Profile::$commits === 1,
+    'Production inspection and all errors must not mutate Site Profile' );
 @unlink($location['file']); @rmdir($location['dir']); @unlink($root.'/wp-load.php');
 @rmdir($root); @rmdir($base);
 echo "mad4b.site-control-plane.deployment-binding-native.runtime.v1: PASS\n";
