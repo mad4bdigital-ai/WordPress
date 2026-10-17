@@ -265,6 +265,17 @@ final class MAD4B_SCP_Plugin_Discovery {
 				? array_values( array_filter( $declared, static function ( $name ) use ( $registered_set ) {
 					return isset( $registered_set[ $name ] );
 				} ) ) : array();
+			$writes = isset( $plugin['adapter_write_abilities'] ) && is_array( $plugin['adapter_write_abilities'] )
+				? array_values( array_unique( array_filter( $plugin['adapter_write_abilities'], 'is_string' ) ) ) : array();
+			sort( $writes, SORT_STRING );
+			$registered_writes = ( ! empty( $plugin['active'] ) && ! empty( $plugin['adapter_registered'] )
+				&& ! empty( $plugin['adapter_runtime_available'] ) )
+				? array_values( array_filter( $writes, static function ( $name ) use ( $registered_set ) {
+					return isset( $registered_set[ $name ] );
+				} ) ) : array();
+			$reversible = isset( $plugin['adapter_reversible_contracts'] ) && is_array( $plugin['adapter_reversible_contracts'] )
+				? $plugin['adapter_reversible_contracts'] : array();
+			ksort( $reversible, SORT_STRING );
 			$namespace_candidates = isset( $namespaces[ $slug ] ) ? array_keys( $namespaces[ $slug ] ) : array();
 			sort( $namespace_candidates, SORT_STRING );
 			$unreviewed = array_values( array_diff( $namespace_candidates, $declared ) );
@@ -282,6 +293,12 @@ final class MAD4B_SCP_Plugin_Discovery {
 				'provider_certification_ok' => ! empty( $plugin['provider_certification_ok'] ),
 				'declared_adapter_read_abilities' => $declared,
 				'registered_adapter_read_abilities' => $mounted,
+				'declared_adapter_write_abilities' => $writes,
+				'registered_adapter_write_abilities' => $registered_writes,
+				'reversible_contracts' => $reversible,
+				'adapter_registered' => ! empty( $plugin['adapter_registered'] ),
+				'adapter_runtime_available' => ! empty( $plugin['adapter_runtime_available'] ),
+				'side_channel_blocker' => (string) ( $plugin['side_channel_blocker'] ?? '' ),
 				'unreviewed_namespace_candidates' => array_slice( $unreviewed, 0, 48 ),
 				'unreviewed_namespace_candidates_count' => count( $unreviewed ),
 				'declared_dependencies' => $dependency_rows,
@@ -636,6 +653,15 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$read_abilities = isset( $declared_abilities['read'] ) && is_array( $declared_abilities['read'] ) ? array_values( array_filter( $declared_abilities['read'], 'is_string' ) ) : array();
 		$read_abilities = array_values( array_unique( $read_abilities ) );
 		sort( $read_abilities, SORT_STRING );
+		$write_abilities = array();
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
+			if ( ! empty( $declared_abilities[ $surface ] ) && is_array( $declared_abilities[ $surface ] ) )
+				$write_abilities = array_merge( $write_abilities, array_filter( $declared_abilities[ $surface ], 'is_string' ) );
+		}
+		$write_abilities = array_values( array_unique( $write_abilities ) );
+		sort( $write_abilities, SORT_STRING );
+		$rollback_abilities = is_array( $reversible ) ? $reversible : array();
+		ksort( $rollback_abilities, SORT_STRING );
 		return array(
 			'plugin_file' => $plugin_file,
 			'slug' => self::plugin_slug( $plugin_file ),
@@ -650,6 +676,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
 			'adapter_read_ability_count' => count( $read_abilities ),
 			'adapter_read_abilities' => array_slice( $read_abilities, 0, 128 ),
+			'adapter_write_abilities' => array_slice( $write_abilities, 0, 128 ),
+			'adapter_reversible_contracts' => array_slice( $rollback_abilities, 0, 128, true ),
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,
