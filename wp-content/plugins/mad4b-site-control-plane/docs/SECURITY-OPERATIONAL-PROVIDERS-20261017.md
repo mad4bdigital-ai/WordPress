@@ -16,6 +16,10 @@ The server-owned catalog is `config/security-operational-providers.json`. Initia
 
 `security-activity-log`, `security-wpvulnerability`, `security-query-monitor`, `security-plugin-check` share the same flow using the catalog IDs.
 
+## Operational observation
+
+The existing `mad4b/security-posture` Read surface exposes `operational_security_providers` with five catalog entries: installed main-file identity, version, site/network activation, and explicitly **unverified** telemetry/enforcement. This is a WordPress-core plugin-state readback, not an undocumented Wordfence/WPVulnerability API or proof of malware detection. Read capabilities can be added later only when the provider officially exposes them and MAD4B can observe them safely.
+
 ## Important boundaries
 
 - Download only the reviewed WordPress.org slug and an HTTPS package URL under `downloads.wordpress.org/plugin/` derived from the official directory API. No client-supplied URLs, local archives, shell, file manager or arbitrary plugins.
