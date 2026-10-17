@@ -35,5 +35,8 @@ registration_assert( $registry->get( 'core-content-modeling' ) !== null
 $all = $registry->all();
 $first = reset( $all );
 registration_assert( ! $registry->register( $first ), 'Duplicate adapter ID cannot silently override' );
-registration_assert( $registry->get( 'unreviewed' ) === null, 'Unreviewed class never auto-mounted' );
+registration_assert( ! $registry->register( new Unreviewed_Third_Party_Adapter() ),
+    'Unreviewed external Adapter_Base subclass denied even via legacy hook' );
+registration_assert( $registry->get( 'unreviewed' ) === null,
+    'Unreviewed class cannot auto-mount or register directly' );
 echo "DYNAMIC_ADAPTER_REGISTRATION_POLICY: PASS (no implicit mutation grant)\n";
