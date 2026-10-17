@@ -48,6 +48,24 @@ graph_ok( $graph['graph_sha256'] !== $c::build_capability_graph( $changed, $plug
 $partial = $c::build_capability_graph( $coverage, $plugins, $abilities, false );
 graph_ok( $partial['complete'] === false && $partial['state'] === 'DISCOVERY_PARTIAL',
     'Unavailable ability registry cannot certify a complete graph' );
+// Special WordPress plugin sources are complete inventory components, not
+// ordinary plugin packages and must not acquire lifecycle/write operations.
+$extras = $c::build_capability_graph(
+    $coverage, $plugins, $abilities, true,
+    array( 'site-mu.php' => array( 'Version'=>'1.0.0', 'RequiresPlugins'=>'new-vendor' ) ),
+    array( 'object-cache.php' => array( 'Version'=>'2.0.0' ) )
+);
+graph_ok( $extras['installed_plugin_count'] === 5
+    && $extras['must_use_and_dropin_count'] === 2
+    && $extras['complete'] === true,
+    'MU and drop-in sources included without hardcoded vendor identities' );
+$kinds = array();
+foreach ( $extras['items'] as $row ) $kinds[ $row['slug'] ] = $row['package_kind'];
+graph_ok( $kinds['site-mu'] === 'must_use' && $kinds['object-cache'] === 'dropin',
+    'Special plugin kinds are distinct from standard packages' );
+graph_ok( $extras['automatic_write_registration'] === false
+    && $extras['unknown_plugin_write_allowed'] === false,
+    'Special plugin discovery never registers mutations' );
 $long = array_fill( 0, 2001, 'new-vendor/read-status' );
 graph_ok( $c::build_capability_graph( $coverage, $plugins, $long )['complete'] === false,
     'Oversized ability registry scan must report partial' );
