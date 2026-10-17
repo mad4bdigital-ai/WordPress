@@ -27,6 +27,20 @@ class WP_Error {
     public function __construct( $code, $message ) { $this->code = $code; }
 }
 class MAD4B_SCP_Security_Diagnostics { public static function can_read() { return true; } }
+class MAD4B_SCP_Site_Profile {
+    public static function site_uuid() { return 'registered-staging-site-uuid'; }
+    public static function current_environment() { return 'staging'; }
+}
+class MAD4B_SCP_Admin_Route_Registry {
+    public static $routes = array();
+    public static function register( $slug, $cap ) {
+        self::$routes[ $slug ] = $cap;
+        return true;
+    }
+    public static function schedule_submenu( $callback, $priority ) {
+        $GLOBALS['actions']['admin_menu'][] = array( 'callback' => $callback, 'priority' => $priority );
+    }
+}
 class MAD4B_SCP_Audit {
     public static function record( $ability, $summary, $status ) {
         $GLOBALS['audit_rows'][] = compact( 'ability', 'summary', 'status' );
@@ -45,6 +59,8 @@ function ok( $state, $description ) { if ( ! $state ) { fwrite( STDERR, "FAIL: $
 MAD4B_SCP_Security_Forensics::boot();
 MAD4B_SCP_Security_Forensics::boot();
 ok( count( $GLOBALS['actions']['activated_plugin'] ) === 1, 'idempotent hooks' );
+ok( MAD4B_SCP_Admin_Route_Registry::$routes['mad4b-control-plane-security'] === 'manage_options', 'uses central route registry' );
+ok( $GLOBALS['actions']['admin_menu'][0]['priority'] >= 20, 'parent menu order respected' );
 MAD4B_SCP_Security_Forensics::register_abilities();
 ok( count( $GLOBALS['abilities'] ) === 8, 'exactly eight read/plan abilities' );
 foreach ( $GLOBALS['abilities'] as $ability => $config ) {
@@ -57,12 +73,18 @@ ok( is_wp_error( $bad ), 'reject traversal scope' );
 $scan = MAD4B_SCP_Security_Forensics::integrity_scan( array( 'scope' => 'uploads' ) );
 ok( $scan['site_clean_certified'] === false && $scan['baseline_approved'] === false, 'no premature certification' );
 ok( $scan['coverage_complete'] === false && $scan['file_changes_certified'] === false, 'no false completeness' );
+ok( $scan['site_id'] === 'registered-staging-site-uuid' && $scan['environment'] === 'staging', 'governed site scope and environment' );
 ok( $scan['files'][0]['classification'] === 'suspicious_placement_unconfirmed', 'PHP in uploads triage' );
 $link = $root . '/wp-content/uploads/pivot';
 if ( @symlink( sys_get_temp_dir(), $link ) ) {
     $scan = MAD4B_SCP_Security_Forensics::integrity_scan( array( 'scope' => 'uploads' ) );
     ok( strpos( json_encode( $scan ), '"kind":"symlink_unfollowed"' ) !== false, 'never follow symbolic links' );
 }
+file_put_contents( $root . '/wp-config.php', '<?php define("DB_PASSWORD", "DO_NOT_READ_ME");' );
+$root_scan = MAD4B_SCP_Security_Forensics::integrity_scan( array( 'scope' => 'root' ) );
+ok( strpos( json_encode( $root_scan ), 'wp-config.php' ) === false, 'no secret configuration path or digest read' );
+ok( $root_scan['coverage'] === 'partial', 'excluded secrets yield honest partial coverage' );
+unlink( $root . '/wp-config.php' );
 $guardian = MAD4B_SCP_Security_Forensics::plugin_guardian();
 ok( $guardian['confirmed_malicious'] === false && $guardian['trusted_package_verification'] === 'not_configured', 'unknown plugin never auto-malicious' );
 MAD4B_SCP_Security_Forensics::activated( 'plugin-editor-pro/plugin-editor-pro.php', false );
@@ -80,7 +102,10 @@ ok( count( $events['events'] ) === 2, 'query bounded Audit v2 envelope' );
 ok( ! isset( $events['events'][0]['summary'] ), 'no raw audit summary leak' );
 $plan = MAD4B_SCP_Security_Forensics::quarantine_plan();
 ok( $plan['apply_ability_registered'] === false, 'quarantine always plan-only' );
-ok( MAD4B_SCP_Security_Forensics::status()['release_ready'] === false, 'not release certified' );
+$security_status = MAD4B_SCP_Security_Forensics::status();
+ok( $security_status['release_ready'] === false, 'not release certified' );
+ok( $security_status['capability_discovery']['capability_presence_authorizes'] === false, 'discovery does not authorize' );
+ok( $security_status['capability_discovery']['version_pin_required'] === false, 'no exact provider version pin' );
 unlink( $root . '/wp-content/uploads/2026/10/fixture.php' );
 rmdir( $root . '/wp-content/uploads/2026/10' );
 rmdir( $root . '/wp-content/uploads/2026' );
