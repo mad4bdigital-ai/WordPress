@@ -116,6 +116,11 @@ final class MAD4B_SCP_Native_Hybrid_Acceptance {
         foreach ( array( 'source_commit_sha', 'site_origin_sha256', 'preference_revision' ) as $field ) {
             if ( $identity[ $field ] !== (string) ( $job[ $field ] ?? '' ) ) $server = false;
         }
+        // Verify live WPML link relationships only for the explicit WPML task.
+        // REST response success and hreflang marker count are NOT translation parity.
+        $wpml = 'wpml' === $requested ? self::native_wpml_parity_readback()
+            : array( 'verified' => false, 'checked_pairs' => 0, 'evidence' => 'not_requested' );
+        $base['wpml_linkage_evidence'] = $wpml;
         $base['frontend_functional_ready'] = $frontend;
         $base['filter_functional_ready'] = $filter;
         $base['server_http_ready'] = $server;
@@ -123,7 +128,7 @@ final class MAD4B_SCP_Native_Hybrid_Acceptance {
             'server_http' => $server ? 'PASS' : 'PENDING',
             'frontend_public' => $frontend ? 'PASS' : 'PENDING',
             'filter_interaction' => ! $filter_required ? 'NOT_APPLICABLE' : ( $filter ? 'PASS' : 'PENDING' ),
-            'wpml_translation_parity' => 'NOT_TESTED',
+            'wpml_translation_parity' => ! empty( $wpml['verified'] ) ? 'PASS' : 'NOT_TESTED',
             'independent_browser' => 'NOT_REQUIRED_FOR_FUNCTIONAL_ACCEPTANCE',
         );
         $base['requested_scope'] = $requested;
@@ -140,6 +145,85 @@ final class MAD4B_SCP_Native_Hybrid_Acceptance {
         $base['staging_acceptance_ready'] = empty( $base['blocking_reasons'] );
         $base['state'] = $base['staging_acceptance_ready'] ? 'ready' : 'pending';
         return $base;
+    }
+
+    /**
+     * Bounded, same-runtime read-only verification of native WPML translation
+     * relationships. A successful WPML REST endpoint or hreflang tag cannot
+     * substitute for checking reciprocal language IDs, TRID and permalinks.
+     * This is sampled link parity, NOT all-content/SEO/browser certification.
+     */
+    private static function native_wpml_parity_readback() {
+        $pending = array( 'verified' => false, 'checked_pairs' => 0,
+            'evidence' => 'wpml_native_links_not_verified',
+            'sitewide_translation_content_parity' => false, 'authorizing' => false );
+        if ( ! ( defined( 'ICL_SITEPRESS_VERSION' ) || class_exists( 'SitePress', false ) )
+            || ! function_exists( 'get_posts' ) || ! function_exists( 'get_post_type' )
+            || ! function_exists( 'get_post_status' ) || ! function_exists( 'get_permalink' )
+            || ! function_exists( 'has_filter' ) || ! function_exists( 'apply_filters' ) ) return $pending;
+        foreach ( array( 'wpml_element_trid','wpml_element_language_details',
+            'wpml_get_element_translations' ) as $hook ) {
+            if ( false === has_filter( $hook ) ) return $pending;
+        }
+        // Discover actual public post types, including installed CPTs, from WP.
+        // WPML-translatable types are appended only when its registered filter says yes.
+        $types = array( 'post', 'page' );
+        if ( function_exists( 'get_post_types' ) && false !== has_filter( 'wpml_is_translated_post_type' ) ) {
+            $registered = get_post_types( array( 'public' => true ), 'names' );
+            if ( is_array( $registered ) ) {
+                foreach ( array_slice( $registered, 0, 24 ) as $type ) {
+                    if ( is_string( $type ) && preg_match( '/^[a-z][a-z0-9_]{0,31}$/D', $type )
+                        && true === apply_filters( 'wpml_is_translated_post_type', false, $type ) )
+                        $types[] = $type;
+                }
+            }
+        }
+        $types = array_slice( array_values( array_unique( $types ) ), 0, 12 );
+        // No caller-supplied post IDs, URL, SQL or mutation; bounded public posts.
+        $posts = get_posts( array(
+            'post_type' => $types, 'post_status' => 'publish',
+            'numberposts' => 40, 'no_found_rows' => true, 'fields' => 'ids',
+            'orderby' => 'ID', 'order' => 'DESC', 'suppress_filters' => true,
+        ) );
+        if ( ! is_array( $posts ) ) return $pending;
+        foreach ( array_slice( $posts, 0, 40 ) as $id ) {
+            $id = (int) $id;
+            if ( $id < 1 ) continue;
+            $type = (string) get_post_type( $id );
+            if ( ! in_array( $type, $types, true ) ) continue;
+            $element = 'post_' . $type;
+            $trid = apply_filters( 'wpml_element_trid', null, $id, $element );
+            if ( ! is_numeric( $trid ) || (int) $trid < 1 ) continue;
+            $links = apply_filters( 'wpml_get_element_translations', null, (int) $trid, $element );
+            if ( ! is_array( $links ) || count( $links ) < 2 || count( $links ) > 32 ) continue;
+            $languages = array(); $urls = array(); $verified_members = 0;
+            foreach ( $links as $lang => $link ) {
+                if ( ! is_string( $lang ) || ! preg_match( '/^[a-z]{2,3}(?:-[a-z]{2,4})?$/iD', $lang )
+                    || ! is_object( $link ) || ! isset( $link->element_id ) ) break;
+                $translated_id = (int) $link->element_id;
+                if ( $translated_id < 1 || (string) get_post_type( $translated_id ) !== $type
+                    || 'publish' !== get_post_status( $translated_id ) ) break;
+                $details = apply_filters( 'wpml_element_language_details', null,
+                    array( 'element_id' => $translated_id, 'element_type' => $type ) );
+                if ( ! is_object( $details ) || ! isset( $details->trid, $details->language_code )
+                    || (int) $details->trid !== (int) $trid
+                    || (string) $details->language_code !== $lang ) break;
+                $permalink = get_permalink( $translated_id );
+                if ( ! is_string( $permalink ) || 0 !== strpos( $permalink, 'https://' )
+                    || isset( $urls[ $permalink ] ) || isset( $languages[ $lang ] ) ) break;
+                $urls[ $permalink ] = true; $languages[ $lang ] = true;
+                $verified_members++;
+            }
+            if ( $verified_members >= 2 && $verified_members === count( $links )
+                && in_array( $id, array_map( static function ( $link ) {
+                    return is_object( $link ) && isset( $link->element_id ) ? (int) $link->element_id : -1;
+                }, $links ), true ) ) {
+                return array( 'verified' => true, 'checked_pairs' => 1,
+                    'evidence' => 'live_wpml_native_reciprocal_links_and_https_permalinks',
+                    'sitewide_translation_content_parity' => false, 'authorizing' => false );
+            }
+        }
+        return $pending;
     }
 
     public static function enqueue() {

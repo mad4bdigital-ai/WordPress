@@ -50,3 +50,21 @@ Plugins may ADD a named task scope with declared *existing* Staging gate depende
 | SIMP-010 | Independent signed browser and Production release | SEPARATE, NOT CLAIMED |
 
 Scope note: This review addresses shared readiness and acceptance decisions across the plugin and classifies cross-domain gates. It does not claim every plugin action is certified or that an observed DOM provides full JavaScript/AJAX/WPML parity. No Write/Production grant or live site mutation occurred.
+
+
+## 2026-10-17 — Exact task-scope transport, WPML, and Provider acceptance repair
+
+Source-only follow-up on PR #403. No installation, merge or Production mutation.
+
+- The read-only `mad4b/staging-certification-status` Ability now accepts `task_scope` (bounded lower-case identifier). The actual requested core scope is passed through to Native Hybrid. Both full and compact responses expose `requested_task_scope` and `requested_scope_readiness`; an unknown scope is explicitly blocked. The global Full Release projection remains independent and unchanged.
+- WPML-specific acceptance now performs bounded, **live read-only** verification of a linked translation group through WPML's registered TRID/language/translation filters. It checks published IDs, consistent TRID and language identity, and distinct HTTPS permalinks. It discovers public translatable CPTs when supported. A REST status response, hreflang count, or DOM marker alone never passes it. This is **sampled translation-link parity** only; it is not full multilingual content/SEO parity or independent browser attestation. Missing WPML hooks, incomplete groups, and mismatches remain pending.
+- Additional Provider scopes registered with `mad4b_scp_staging_functional_scope_dependencies` distinguish `dependencies_ready` from `functional_acceptance_passed`. A list-style legacy declaration is still discoverable but **never ready by Gates alone**. To pass, a Provider declares `gates` and `acceptance: {provider_id,profile_id,suite}`. Only an explicitly requested custom scope runs the existing validated read-only Acceptance Core. The verdict, plan digest, scope/provider/profile identity, semantic evidence, and non-authorizing properties must all pass; no acceptance means pending.
+- Existing **Governed Write, full release, rollback, approval, and Production isolation** gates are unchanged. The source retains exact build/site/operator validation and 30-minute native observation freshness. Provider acceptance is current same-site execution, not an external or signed remote receipt.
+
+### Targeted regression coverage
+
+`tests/staging-scope-dynamic-runtime.php`: reserved names, unknown gates, dependency-only never passing, unrequested Provider never executed, exact provider identity, missing semantic assertions, and blocked prerequisites.
+
+`tests/native-functional-freshness-runtime.php`: original freshness and environment checks plus real WPML-hook reciprocal-link PASS and mismatched TRID DENY.
+
+Validation and deployment status must be determined from the new commit's CI and later Staging readback. Previous green workflows on a different commit are not automatically inherited. No live site acceptance or package installation is claimed here.

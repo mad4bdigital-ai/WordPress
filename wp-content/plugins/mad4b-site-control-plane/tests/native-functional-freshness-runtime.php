@@ -2,6 +2,23 @@
 define('ABSPATH',__DIR__.'/');
 $GLOBALS['env']='staging';$GLOBALS['owner']=true;$GLOBALS['sha']=str_repeat('a',40);
 $GLOBALS['source_ok']=true;$GLOBALS['pref']=str_repeat('b',32);$GLOBALS['items']=[];
+$GLOBALS['wpml_enabled']=false;$GLOBALS['wpml_mismatch']=false;
+define('ICL_SITEPRESS_VERSION','4.7.0');
+function has_filter($hook){return $GLOBALS['wpml_enabled'] ? 1 : false;}
+function get_posts($args){return [101];}
+function get_post_type($id){return 'page';}
+function get_post_status($id){return 'publish';}
+function get_permalink($id){return $id===101 ? 'https://staging.example.test/en/about' : 'https://staging.example.test/ar/about';}
+function apply_filters($hook,$value,...$args){
+ if(!$GLOBALS['wpml_enabled'])return $value;
+ if($hook==='wpml_element_trid')return 17;
+ if($hook==='wpml_get_element_translations')return [
+  'en'=>(object)['element_id'=>101], 'ar'=>(object)['element_id'=>202]];
+ if($hook==='wpml_element_language_details')return (object)[
+  'trid'=>$GLOBALS['wpml_mismatch']?99:17,
+  'language_code'=>$args[0]['element_id']===101?'en':'ar'];
+ return $value;
+}
 function add_action($a,$b,$c=10,$d=1){}
 function current_user_can($x){return $GLOBALS['owner'];}
 function get_option($k,$fallback=false){return $GLOBALS['items'][$k]??$fallback;}
@@ -56,6 +73,19 @@ $s=$c::functional_status(['scope'=>'wpml']);
 checkit(!$s['staging_acceptance_ready']
  && in_array('wpml_translation_parity_not_verified',$s['blocking_reasons'],true),
  'WPML parity cannot be inferred from marker count');
+$GLOBALS['wpml_enabled']=true;
+$s=$c::functional_status(['scope'=>'wpml']);
+checkit($s['staging_acceptance_ready']===true
+ && $s['scope_statuses']['wpml_translation_parity']==='PASS'
+ && $s['wpml_linkage_evidence']['sitewide_translation_content_parity']===false,
+ 'native reciprocal translation links and HTTPS permalinks prove bounded WPML link parity only');
+$GLOBALS['wpml_mismatch']=true;
+$s=$c::functional_status(['scope'=>'wpml']);
+checkit(!$s['staging_acceptance_ready']
+ && in_array('wpml_translation_parity_not_verified',$s['blocking_reasons'],true),
+ 'wrong WPML TRID or language response invalidates parity');
+$GLOBALS['wpml_mismatch']=false;
+$GLOBALS['wpml_enabled']=false;
 $GLOBALS['cron_job']['checked_epoch']=time()-2000;
 $s=$c::functional_status(['scope'=>'frontend']);
 checkit($s['staging_acceptance_ready'] && !$s['server_http_ready'],
