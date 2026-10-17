@@ -23,13 +23,46 @@ final class MAD4B_SCP_Adapter_Registry {
 		add_action( 'wp_abilities_api_init', array( $registry, 'register_abilities' ), 20 );
 	}
 
+	/**
+	 * Discover *already loaded, bundled* adapter classes by type and origin.
+	 * The trusted plugin bootstrap controls includes. Never scan third-party
+	 * directories or autoload unreviewed PHP on a read request.
+	 */
+	public static function bundled_adapter_classes() {
+		$root = realpath( __DIR__ . '/adapters' );
+		if ( false === $root || ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ) return array();
+		$found = array();
+		foreach ( get_declared_classes() as $name ) {
+			if ( ! is_subclass_of( $name, 'MAD4B_SCP_Adapter_Base', false ) ) continue;
+			$reflection = new ReflectionClass( $name );
+			if ( $reflection->isAbstract() || ! $reflection->isInstantiable() ) continue;
+			$file = $reflection->getFileName();
+			$real = is_string( $file ) ? realpath( $file ) : false;
+			if ( false === $real || 0 !== strpos( $real, $root . DIRECTORY_SEPARATOR ) ) continue;
+			$constructor = $reflection->getConstructor();
+			if ( $constructor && $constructor->getNumberOfRequiredParameters() > 0 ) continue;
+			$found[] = $name;
+		}
+		sort( $found, SORT_STRING );
+		return $found;
+	}
+
 	public function register_defaults() {
-		if ( $this->defaults_registered ) return; $this->defaults_registered = true;
-		$classes = array( 'MAD4B_SCP_ACI01_Read_Adapter', 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Dynamic_Content_Adapter', 'MAD4B_SCP_Dynamic_Recovery_Adapter', 'MAD4B_SCP_Context_Adapter', 'MAD4B_SCP_Elementor_Adapter', 'MAD4B_SCP_JetEngine_Adapter', 'MAD4B_SCP_JetSmartFilters_Adapter', 'MAD4B_SCP_BitFlows_Adapter', 'MAD4B_SCP_Media_Adapter', 'MAD4B_SCP_Remote_Media_Adapter', 'MAD4B_SCP_SEO_Adapter', 'MAD4B_SCP_WooCommerce_Adapter', 'MAD4B_SCP_Polylang_Adapter', 'MAD4B_SCP_LiteSpeed_Adapter', 'MAD4B_SCP_JetFormBuilder_Adapter', 'MAD4B_SCP_FluentForms_Adapter', 'MAD4B_SCP_WP_Import_Export_Adapter' );
-		foreach ( $classes as $class ) if ( class_exists( $class ) ) $this->register( new $class() );
+		if ( $this->defaults_registered ) return;
+		$this->defaults_registered = true;
+		foreach ( self::bundled_adapter_classes() as $class ) $this->register( new $class() );
+		// Explicit external registration still requires a reviewed Adapter_Base
+		// contract. No automatic loading or permission broadening occurs here.
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}
-	public function register( $adapter ) { if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false; $this->adapters[ $adapter->id() ] = $adapter; return true; }
+	public function register( $adapter ) {
+		if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
+		$id = $adapter->id();
+		if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id ) ) return false;
+		if ( isset( $this->adapters[ $id ] ) ) return false; // Reject silent collisions/overrides.
+		$this->adapters[ $id ] = $adapter;
+		return true;
+	}
 	public function get( $id ) { return isset( $this->adapters[ $id ] ) ? $this->adapters[ $id ] : null; }
 	public function all() { return $this->adapters; }
 	public function register_categories() {
@@ -45,6 +78,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		$this->register_registry_ability( 'mad4b/provider-functional-coverage', 'Provider Functional Coverage', 'provider_functional_coverage', 'Show capability-level provider coverage, status-only candidates, safety blockers and next safe actions.' );
 		$this->register_registry_ability( 'mad4b/provider-contract-discovery', 'Provider Contract Discovery', 'provider_contract_discovery', 'List active providers whose exact functional contract is not yet captured, including required evidence, safe read scope, prohibited scope and next action.' );
 		$this->register_registry_ability( 'mad4b/provider-candidate-matrix', 'Provider Candidate Matrix', 'provider_candidate_matrix', 'Classify every installed plugin into deterministic L0-L4 governed support levels from runtime evidence without creating authority or mutation.' );
+		$this->register_registry_ability( 'mad4b/plugin-capability-graph', 'Plugin Capability Graph', 'plugin_capability_graph', 'Inventory dynamically discovered installed plugins, declared adapter reads, registered abilities and dependencies with fail-closed unreviewed capability proposals.' );
 		$this->register_registry_ability( 'mad4b/functional-gap-runtime-evidence', 'Functional Gap Runtime Evidence', 'functional_gap_runtime_evidence', 'Collect exact read-only runtime provider evidence and compare it with build-embedded repository evidence without shell, SQL, remote requests or authority changes.' );
 		$this->register_registry_ability( 'mad4b/runtime-self-test', 'Runtime Self Test', 'runtime_self_test', 'Verify registered abilities, MCP dependency, custom-server isolation, provider contracts and adapter coverage evidence.' );
 		foreach ( $this->adapters as $adapter ) $adapter->register_abilities();
@@ -87,6 +121,12 @@ final class MAD4B_SCP_Adapter_Registry {
 	public function provider_contract_discovery() {
 		return class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::contract_discovery_report() : array( 'contract' => 'mad4b.provider-contract-discovery.v1', 'read_only' => true, 'items' => array(), 'count' => 0, 'error' => 'plugin_discovery_unavailable' );
 	}
+	public function plugin_capability_graph() {
+		return class_exists( 'MAD4B_SCP_Plugin_Discovery' )
+			? MAD4B_SCP_Plugin_Discovery::capability_graph()
+			: array( 'contract' => 'mad4b.plugin-capability-graph.v1', 'read_only' => true,
+				'complete' => false, 'state' => 'plugin_discovery_unavailable', 'items' => array() );
+	}
 	public function provider_candidate_matrix() {
 		return class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::provider_candidate_matrix() : array( 'contract' => 'mad4b.provider-candidate-matrix.v1', 'read_only' => true, 'items' => array(), 'count' => 0, 'error' => 'plugin_discovery_unavailable' );
 	}
@@ -106,7 +146,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
 			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo',
 			'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
+			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/plugin-capability-graph', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
 			'mad4b/skills-list', 'mad4b/skill-get', 'mad4b/skills-export-status', 'mad4b/skills-runtime-certification',
 		);
 	}
