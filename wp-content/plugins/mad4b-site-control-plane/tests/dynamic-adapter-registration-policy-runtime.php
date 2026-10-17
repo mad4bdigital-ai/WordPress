@@ -2,6 +2,7 @@
 /** Hermetic policy isolation: only bundled, reviewed Adapter_Base subclasses. */
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class MAD4B_SCP_Provider_Compatibility_Certification {}
+function add_action( $hook, $callback = null, $priority = 10, $args = 1 ) { return true; }
 function do_action( $hook, $value = null ) { return null; }
 function registration_assert( $ok, $why ) {
     if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $why . "\n" ); exit( 1 ); }
