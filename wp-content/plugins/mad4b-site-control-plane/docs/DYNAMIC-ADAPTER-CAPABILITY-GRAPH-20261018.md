@@ -29,3 +29,24 @@
 
 ## Explicitly excluded
 No activation/deactivation, file changes, schema mutations, arbitrary REST invocation, imported vendor code, auto-authority, Developer, Breakglass or Production modifications.
+
+## Governed functional route planning
+
+The new `mad4b/plugin-capability-route-plan` read ability takes an exact `plugin_file`, a `dimension` (`inventory`, `read`, `write`, `rollback`), an optional exact declared `ability`, and optional `expected_graph_sha256`. It returns the relevant existing governed dispatcher and its **remaining** security gates. It never executes the callback, grants access, or considers a capability certificate to be an owner approval.
+
+- Inventory: regular plugins, network-active plugins, MU plugins, and drop-ins; special packages are inventory-only.
+- Read: exact declared and registered read ability, active dependency graph, available adapter source, stable snapshot and per-ability WordPress/OAuth permission checks.
+- Write: exact reviewed registered write ability, eligible governed adapter state, provider behavioral certification, no unreviewed parallel MCP path, then existing write execution requires step-up OAuth, exact grant, owner one-time approval, CAS, audit and rollback.
+- Rollback: reviewed reversible contract for the original operation, existing mutation journal/receipt, exact-before-state, current-state CAS, independent owner approval and verified compensation. This planner cannot undo without the existing recorded transaction and authorized dispatcher.
+- Unknown plugin: safe inventory and namespace candidates. No guessed callbacks, vendor routes, version checks, provider auth or write path.
+- Capability graph hash mismatch, partial scans, missing dependencies, inactive runtime, provider drift, unsafe parallel MCP, unreviewed ability and plugin class identity collisions all deny the operational plan with explicit reason codes.
+
+### Source approval and legacy hooks
+
+Existing 18 default built-in adapters are listed in `default_classes` and loaded without PHP class list hardcoding. Existing first-party hook-based adapters (ETG, Native Provider Bridge, Acceptance Target, provider canary, runtime components, diagnostics, repository families, etc.) are separately source-reviewed in `approved_classes`. Reflection verifies the loaded class's real file is inside the bundled adapter directory before *any* registration. The reviewed names are cached independently from class-load timing. New third-party adapters need a separately reviewed typed source binding, not just an `Adapter_Base` subclass or a WordPress action.
+
+The one inert CI failure-evidence adapter is policy-reviewed and housed inside the bundle but is **not loaded by regular runtime bootstrap** and registers **no public Ability**. It is used exclusively to preserve the real governed mutation-failure/undo regression.
+
+### Explicit release restrictions
+
+Do not infer `release_ready` from this source-level capability matrix. All new-head CI and WordPress runtime E2E must pass. ETG/ARE Staging require actual live read graph evidence, behaviorally certified Elementor/JetSmartFilters and other active providers, reversible canary and owner-signed exact plan. Production stays unchanged.
