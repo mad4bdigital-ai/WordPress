@@ -260,7 +260,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 				? $plugin['adapter_read_abilities'] : array();
 			$declared = array_values( array_unique( array_filter( $declared, 'is_string' ) ) );
 			sort( $declared, SORT_STRING );
-			$mounted = ( ! empty( $plugin['active'] ) && ! empty( $plugin['adapter_registered'] ) )
+			$mounted = ( ! empty( $plugin['active'] ) && ! empty( $plugin['adapter_registered'] )
+				&& ! empty( $plugin['adapter_runtime_available'] ) )
 				? array_values( array_filter( $declared, static function ( $name ) use ( $registered_set ) {
 					return isset( $registered_set[ $name ] );
 				} ) ) : array();
