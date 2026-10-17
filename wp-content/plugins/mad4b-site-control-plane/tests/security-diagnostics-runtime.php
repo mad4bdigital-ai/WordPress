@@ -142,7 +142,7 @@ try {
     $GLOBALS['enrolled'] = false;
     $check( is_wp_error( MAD4B_SCP_Security_Diagnostics::file_integrity( array( 'target' => 'index.php' ) ) ),
         'Site enrollment bypassed' );
-    echo "PASS security diagnostics: registered 4 read abilities; bounded file/DB samples, no leaks, strict scope, integrity comparison, revocation and enrollment\n";
+    echo "PASS security diagnostics: registered 5 read abilities; bounded file/DB samples, no leaks, strict scope, integrity comparison, revocation and enrollment\n";
 } finally {
     foreach ( array( 'index.php', 'wp-content/uploads/suspect.php',
         'wp-content/uploads/normal.js', 'wp-content/uploads/remote.js' ) as $file ) @unlink( $base . '/' . $file );
