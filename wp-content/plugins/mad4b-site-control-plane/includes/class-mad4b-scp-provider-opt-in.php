@@ -125,7 +125,9 @@ final class MAD4B_SCP_Provider_Opt_In {
                 || empty( $browser['external_runner_connected'] ) ) {
                 $items[] = self::row( 'browser_runner', 'Browser Acceptance Runner', 'UNVERIFIED',
                     'mad4b-browser-acceptance',
-                    'Select an external runner, provision its credentials outside WordPress, and verify signed browser evidence.',
+                    'wp_cron' === $executor
+                        ? 'WP-Cron smoke needs no external credentials; save the owner opt-in, then queue one native HTTP check. Browser JS acceptance stays pending.'
+                        : 'Select an external runner, provision its credentials outside WordPress, and verify signed browser evidence.',
                     $selected );
             }
         }

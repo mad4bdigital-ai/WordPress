@@ -1,0 +1,145 @@
+<?php
+/**
+ * Optional owner-triggered WP-Cron HTTP / WordPress smoke.
+ *
+ * This is NOT browser automation, JS parity or a signed Browser Acceptance
+ * result. It never calls mutating plugin abilities or grants authority.
+ */
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+final class MAD4B_SCP_Native_Cron_Acceptance {
+    const OPTION = 'mad4b_scp_native_cron_smoke_v1';
+    const LOCK = 'mad4b_scp_native_cron_smoke_lock_v1';
+    const HOOK = 'mad4b_scp_native_cron_smoke_execute';
+    public static function boot() {
+        add_action( 'admin_post_mad4b_native_cron_smoke_queue', array( __CLASS__, 'enqueue_from_admin' ) );
+        add_action( self::HOOK, array( __CLASS__, 'run' ), 10, 1 );
+    }
+    public static function staging() {
+        return class_exists( 'MAD4B_SCP_Environment' )
+            && 'staging' === MAD4B_SCP_Environment::effective();
+    }
+    public static function available() {
+        return self::staging() && function_exists( 'wp_schedule_single_event' )
+            && function_exists( 'wp_next_scheduled' )
+            && ! ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON );
+    }
+    public static function status() {
+        $stored = get_option( self::OPTION, array() );
+        return array( 'contract' => 'mad4b.native-wpcron-acceptance-status.v1',
+            'mode' => 'wp_cron', 'wp_cron_available' => self::available(),
+            'browser_automation' => false, 'signed_browser_acceptance' => false,
+            'release_ready' => false, 'authorizing' => false, 'read_only' => true,
+            'job' => is_array( $stored ) ? array_intersect_key( $stored, array_flip(
+                array( 'job_id', 'state', 'queued_at', 'checked_at', 'http_status', 'elapsed_ms',
+                    'error_code', 'source' ) ) ) : array() );
+    }
+    public static function enqueue_from_admin() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) )
+            wp_die( 'POST required.', '', array( 'response' => 405 ) );
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Administrator required.', '', array( 'response' => 403 ) );
+        check_admin_referer( 'mad4b_native_cron_smoke_queue', 'mad4b_native_cron_nonce' );
+        $result = self::enqueue();
+        if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 409 ) );
+        wp_safe_redirect( add_query_arg( array( 'page' => MAD4B_SCP_Browser_Acceptance_Admin_UI::PAGE_SLUG ),
+            admin_url( 'admin.php' ) ) );
+        exit;
+    }
+    public static function enqueue() {
+        if ( ! current_user_can( 'manage_options' ) || ! self::available() )
+            return new WP_Error( 'mad4b_native_cron_unavailable', 'Only an administrator on supported Staging may queue WP-Cron smoke.' );
+        if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' )
+            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_cron_optin_required', 'Save the WP-Cron runner preference with owner opt-in first.' );
+        if ( ! function_exists( 'add_option' ) || ! function_exists( 'wp_generate_uuid4' ) )
+            return new WP_Error( 'mad4b_native_cron_job_unavailable', 'Native job primitives unavailable.' );
+        $id = wp_generate_uuid4();
+        if ( ! is_string( $id ) || ! preg_match( '/^[a-f0-9-]{36}$/D', $id ) )
+            return new WP_Error( 'mad4b_native_cron_identity_unavailable', 'Secure job identifier unavailable.' );
+        // Fail closed on old or ambiguous in-flight state; never blind retry.
+        if ( ! add_option( self::LOCK, $id, '', false ) )
+            return new WP_Error( 'mad4b_native_cron_job_pending', 'Another smoke is pending; review the prior result before queueing another.' );
+        $job = array( 'job_id' => $id, 'state' => 'queued', 'queued_at' => gmdate( 'c' ),
+            'source' => 'owner_explicit_wp_cron', 'browser_signed' => false );
+        if ( ! update_option( self::OPTION, $job, false ) && get_option( self::OPTION, array() ) !== $job ) {
+            delete_option( self::LOCK );
+            return new WP_Error( 'mad4b_native_cron_store_failed', 'Smoke job persistence could not be verified.' );
+        }
+        $scheduled = wp_schedule_single_event( time() + 10, self::HOOK, array( $id ), true );
+        if ( is_wp_error( $scheduled ) || true !== $scheduled ) {
+            $job['state'] = 'schedule_failed';
+            $job['error_code'] = 'wp_cron_schedule_failed';
+            update_option( self::OPTION, $job, false );
+            delete_option( self::LOCK );
+            return new WP_Error( 'mad4b_native_cron_schedule_failed', 'WP-Cron could not schedule a native smoke.' );
+        }
+        return self::status();
+    }
+    public static function run( $id ) {
+        $job = get_option( self::OPTION, array() );
+        if ( ! is_array( $job ) || 'queued' !== (string) ( $job['state'] ?? '' )
+            || ! is_string( $id ) || ! hash_equals( (string) ( $job['job_id'] ?? '' ), $id )
+            || ! hash_equals( (string) get_option( self::LOCK, '' ), $id )
+            || ! self::staging() ) return;
+        if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' )
+            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) ) {
+            $job['state'] = 'cancelled_preference_changed';
+            $job['checked_at'] = gmdate( 'c' );
+            update_option( self::OPTION, $job, false );
+            delete_option( self::LOCK );
+            return;
+        }
+        $job['state'] = 'running';
+        update_option( self::OPTION, $job, false );
+        // Explicitly allow no redirects, user cookies, non-GET methods,
+        // external hosts or arbitrary operator-input URLs.
+        $home = home_url( '/' );
+        $site = site_url( '/' );
+        $home_host = wp_parse_url( $home, PHP_URL_HOST );
+        $site_host = wp_parse_url( $site, PHP_URL_HOST );
+        if ( ! is_string( $home_host ) || ! hash_equals( strtolower( $home_host ), strtolower( (string) $site_host ) )
+            || 'https' !== wp_parse_url( $home, PHP_URL_SCHEME ) ) {
+            $job['state'] = 'blocked';
+            $job['error_code'] = 'site_origin_not_exact_https';
+        } elseif ( ! function_exists( 'wp_safe_remote_get' ) ) {
+            $job['state'] = 'blocked';
+            $job['error_code'] = 'wordpress_http_api_unavailable';
+        } else {
+            $start = microtime( true );
+            $response = wp_safe_remote_get( $home, array(
+                'timeout' => 10, 'redirection' => 0,
+                'sslverify' => true, 'reject_unsafe_urls' => true,
+                'limit_response_size' => 4096, 'blocking' => true ) );
+            $job['elapsed_ms'] = round( ( microtime( true ) - $start ) * 1000, 2 );
+            if ( is_wp_error( $response ) ) {
+                $job['state'] = 'failed';
+                $job['error_code'] = 'wordpress_http_request_failed';
+            } else {
+                $code = (int) wp_remote_retrieve_response_code( $response );
+                $job['http_status'] = $code;
+                $job['state'] = 200 === $code ? 'smoke_observed' : 'http_unexpected';
+                // No response body, cookies, SQL, credentials or acceptance claim persisted.
+            }
+        }
+        $job['checked_at'] = gmdate( 'c' );
+        $job['browser_signed'] = false;
+        update_option( self::OPTION, $job, false );
+        delete_option( self::LOCK );
+    }
+    public static function render() {
+        if ( ! current_user_can( 'manage_options' ) ) return;
+        $s = self::status();
+        echo '<h2>4. WordPress-native WP-Cron smoke (no external runner)</h2>';
+        echo '<p>Runs one owner-requested, read-only same-site HTTP check. It does not execute JavaScript or certify Browser Acceptance.</p>';
+        echo '<p>Availability: <strong>' . esc_html( $s['wp_cron_available'] ? 'ready' : 'blocked' )
+            . '</strong>; latest state: <code>' . esc_html( (string) ( $s['job']['state'] ?? 'not_queued' ) ) . '</code></p>';
+        if ( ! $s['wp_cron_available']
+            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) ) return;
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        echo '<input type="hidden" name="action" value="mad4b_native_cron_smoke_queue">';
+        wp_nonce_field( 'mad4b_native_cron_smoke_queue', 'mad4b_native_cron_nonce' );
+        submit_button( 'Queue one WP-Cron HTTP smoke (read-only)' );
+        echo '</form>';
+    }
+}
+MAD4B_SCP_Native_Cron_Acceptance::boot();

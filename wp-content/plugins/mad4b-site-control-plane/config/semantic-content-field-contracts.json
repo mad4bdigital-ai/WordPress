@@ -501,6 +501,14 @@
         "operation_input.expected_plan_sha256",
         "operation_input.confirmation"
       ]
+    },
+    "jetsmartfilters/update-filter-meta": {
+      "provider": "jetsmartfilters",
+      "mode": "keyed_value",
+      "selector_path": "meta_key",
+      "value_path": "value",
+      "brand_key_regex": "",
+      "operational_key_regex": "^_query_var$"
     }
   }
 }

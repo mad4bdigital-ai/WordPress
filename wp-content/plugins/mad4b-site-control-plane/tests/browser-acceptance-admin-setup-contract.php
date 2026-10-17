@@ -11,7 +11,7 @@ $defaults=$c::public_selection();
 check_browser( $defaults['preference_valid'] === true && $defaults['preference_source'] === 'default_observed' &&
   preg_match( '/^[a-f0-9]{32}$/D', $defaults['configuration_revision'] ), 'pristine site uses read-only observed default without manual preference save' );
 check_browser( count($c::managed_executors()) === 4, 'catalog' );
-foreach (array('auto','cloudflare','browserbase','browserless','steel') as $p) check_browser( !is_wp_error($c::normalize(array('executor'=>$p,'profile_id'=>'s-1'))), 'valid executor' );
+foreach (array('auto','wp_cron','cloudflare','browserbase','browserless','steel') as $p) check_browser( !is_wp_error($c::normalize(array('executor'=>$p,'profile_id'=>'s-1'))), 'valid executor' );
 foreach (array(
 array('executor'=>'bad','profile_id'=>''),
 array('executor'=>array('auto'),'profile_id'=>''),
@@ -23,7 +23,7 @@ array('executor'=>'auto','profile_id'=>str_repeat('x',65))
 ) as $bad) check_browser( is_wp_error($c::normalize($bad)), 'denied unsafe input' );
 $browser_source = file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acceptance-admin-ui.php');
 check_browser( strpos( $browser_source, "opt_in_external_runner" ) !== false
-    && strpos( $browser_source, "I opt in to configuring" ) !== false,
+    && strpos( $browser_source, "I opt in to this execution mode" ) !== false,
     'external runner requires explicit opt-in on the saved choice' );
 check_browser( strpos( $browser_source, 'data-mad4b-browser-runner' ) !== false
     && strpos( $browser_source, 'Provision these names only in the external runner' ) !== false,

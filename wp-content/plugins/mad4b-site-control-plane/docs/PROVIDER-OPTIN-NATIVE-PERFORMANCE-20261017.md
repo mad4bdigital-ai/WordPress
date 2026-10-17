@@ -44,3 +44,12 @@ Changes:
 | QA-003 | BLOCKED on trusted runner | Browser Acceptance signed E2E and replay protection |
 
 Release decision: Draft PR / source-only. No claim of full staging performance acceptance or external Browser certification yet.
+
+## WordPress native WP-Cron mode (source only)
+An explicit owner opt-in in the existing Browser Acceptance page selects WP-Cron mode and queues one read-only, exact same-host HTTPS smoke in Staging. No external credentials, JavaScript engine, arbitrary URLs, HTTP redirects or response bodies. Signed browser evidence and JS/AJAX parity remain unverified. The scheduler may require normal WP-Cron traffic. No automatic Production changes.
+
+## Provider behavioral recertification planning
+The outer approval provider for mad4b/provider-behavioral-recertify is core, regardless of whether the nested tested provider is elementor or jetsmartfilters. The planner now defaults the canonical core mount if omitted and refuses an explicitly wrong outer provider without silently changing assertions. Nested provider semantics are classified using the exact target ability: Elementor text remains brand-bearing; JetSmartFilters existing _query_var is operational; unknown fields/providers remain review-required.
+This is source-only. Live staging approvals, disposable test targets and rollback have NOT been executed and must not be marked accepted.
+
+Tasks: CRON-001/002, RECERT-001/002 source implemented CI pending; RECERT-003 live acceptance pending independently approved Staging.

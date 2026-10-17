@@ -29,6 +29,11 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 	public static function classify( $ability_name, $input ) {
 		$ability_name = trim( (string) $ability_name );
 		$input = is_array( $input ) ? $input : array();
+		// The governed behavioral wrapper's content semantics belong to the
+		// nested *registered* provider ability, not to the core wrapper itself.
+		// Delegation is read-only and never excuses brand-bearing test text.
+		if ( 'mad4b/provider-behavioral-recertify' === $ability_name )
+			return self::classify_behavioral_probe( $input );
 		$catalog = self::catalog();
 		$contracts = isset( $catalog['abilities'] ) && is_array( $catalog['abilities'] ) ? $catalog['abilities'] : array();
 		$row = isset( $contracts[ $ability_name ] ) && is_array( $contracts[ $ability_name ] ) ? $contracts[ $ability_name ] : array();
@@ -100,6 +105,31 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 			'provider_semantic_contract',
 			$row
 		);
+	}
+
+	/** Preserve exact nested semantics; unknown providers stay review-required. */
+	private static function classify_behavioral_probe( array $input ) {
+		$ability = isset( $input['target_ability'] ) && is_string( $input['target_ability'] )
+			? trim( $input['target_ability'] ) : '';
+		$provider = isset( $input['provider_id'] ) && is_string( $input['provider_id'] )
+			? sanitize_key( $input['provider_id'] ) : '';
+		$nested = isset( $input['target_input'] ) && is_array( $input['target_input'] ) ? $input['target_input'] : null;
+		if ( '' === $ability || 'mad4b/provider-behavioral-recertify' === $ability
+			|| ! is_array( $nested ) || '' === $provider )
+			return self::result( 'mad4b/provider-behavioral-recertify', 'core', false, array(),
+				array( 'target_input.invalid_or_missing_target_contract' ), 'behavioral_target_invalid', array() );
+		$target = self::classify( $ability, $nested );
+		$known = ! empty( $target['field_contract_known'] )
+			&& $provider === (string) ( $target['provider_id'] ?? '' );
+		$matched = array_map( static function ( $path ) { return 'target_input.' . $path; },
+			(array) ( $target['matched_fields'] ?? array() ) );
+		$fallback = array_map( static function ( $path ) { return 'target_input.' . $path; },
+			(array) ( $target['fallback_evidence_fields'] ?? array() ) );
+		if ( ! $known ) $fallback[] = 'target_input.unregistered_or_provider_mismatch';
+		return self::result( 'mad4b/provider-behavioral-recertify', 'core', $known, $matched,
+			$fallback, 'governed_nested_provider_semantics',
+			array( 'target_ability' => $ability, 'target_provider' => $provider,
+				'target_contract_sha256' => (string) ( $target['contract_sha256'] ?? '' ) ) );
 	}
 
 	private static function result( $ability_name, $provider, $known, array $matched, array $fallback, $source, array $row ) {

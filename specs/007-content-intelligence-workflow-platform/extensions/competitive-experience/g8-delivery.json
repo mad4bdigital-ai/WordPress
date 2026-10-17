@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "31880e24a4667e7e6682781ff4afc21e1f27005dfd83bc697be98e819f020bf6",
-      "bytes": 50158
+      "sha256": "e152e6cc3395fa979149862b2d00ce63a3d75187f016af1252d6c854e052f5ab",
+      "bytes": 50242
     }
   ],
   "test_paths": [
@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "b1c39c36d82d4e23be55cfec4b29f04993c7f2368aae440a7bf935a1ca848ed6",
-      "bytes": 52349
+      "sha256": "01866be1eae985dd12761aeffd131212d59240d2762100037ad064e499a8ba03",
+      "bytes": 52966
     }
   ],
   "repository_foundations": [
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",
