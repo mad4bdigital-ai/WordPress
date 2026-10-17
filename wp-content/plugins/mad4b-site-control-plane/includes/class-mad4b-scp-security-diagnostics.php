@@ -50,6 +50,14 @@ final class MAD4B_SCP_Security_Diagnostics {
             'pattern' => '^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$' );
         $definitions = array(
             'mad4b/security-site-posture' => array( 'Security Site Posture (read only)', 'posture', $empty ),
+            'mad4b/security-provider-evidence' => array( 'Security Provider Evidence (read only)', 'provider_evidence',
+                array( 'type' => 'object', 'properties' => array(
+                    'provider_id' => array( 'type' => 'string',
+                        'enum' => array( 'all', 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ) ),
+                    'period' => array( 'type' => 'string', 'enum' => array( '24h', '7d' ), 'default' => '24h' ),
+                    'surface' => array( 'type' => 'string',
+                        'enum' => array( 'core', 'plugins', 'themes' ), 'default' => 'plugins' ),
+                ), 'required' => array( 'provider_id' ), 'additionalProperties' => false ) ),
             'mad4b/security-file-indicators' => array( 'Security File Indicator Sample (read only)', 'file_indicators',
                 array( 'type' => 'object', 'properties' => array(
                     'scope' => array( 'type' => 'string',
@@ -128,9 +136,28 @@ final class MAD4B_SCP_Security_Diagnostics {
         );
     }
 
+    public static function provider_evidence( $input = array() ) {
+        $valid = self::input( $input, array( 'provider_id', 'period', 'surface' ), 'provider_id' );
+        if ( is_wp_error( $valid ) ) return $valid;
+        $provider = $input['provider_id'];
+        $period = isset( $input['period'] ) ? $input['period'] : '24h';
+        $surface = isset( $input['surface'] ) ? $input['surface'] : 'plugins';
+        if ( ! in_array( $provider, array( 'all', 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ), true )
+            || ! in_array( $period, array( '24h', '7d' ), true )
+            || ! in_array( $surface, array( 'core', 'plugins', 'themes' ), true ) )
+            return self::error( 'provider_evidence_input_invalid' );
+        if ( ! class_exists( 'MAD4B_SCP_Security_Provider_Evidence', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-security-provider-evidence.php';
+        if ( 'all' === $provider )
+            return MAD4B_SCP_Security_Provider_Evidence::collect_all( $period, $surface );
+        return MAD4B_SCP_Security_Provider_Evidence::collect( $provider, $period, $surface );
+    }
+
     public static function posture( $input = array() ) {
         $valid = self::input( $input, array() );
         if ( is_wp_error( $valid ) ) return $valid;
+        if ( ! class_exists( 'MAD4B_SCP_Official_Security_Packages', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-official-security-packages.php';
         $plugins = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
         $updates = function_exists( 'get_site_transient' ) ? get_site_transient( 'update_plugins' ) : false;
         $update_count = is_object( $updates ) && isset( $updates->response ) && is_array( $updates->response )
@@ -144,6 +171,7 @@ final class MAD4B_SCP_Security_Diagnostics {
             'debug_display_enabled' => defined( 'WP_DEBUG_DISPLAY' ) && true === WP_DEBUG_DISPLAY,
             'active_plugin_count' => is_array( $plugins ) ? count( $plugins ) : null,
             'plugin_updates_reported' => $update_count,
+            'operational_security_providers' => MAD4B_SCP_Official_Security_Packages::inventory(),
             'core_checksum_verified' => false,
             'filesystem_full_coverage' => false,
             'database_full_coverage' => false,
