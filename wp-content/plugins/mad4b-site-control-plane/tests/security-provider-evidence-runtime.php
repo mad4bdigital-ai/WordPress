@@ -167,4 +167,8 @@ $expect( $get( $wordfence )['reason'] === 'optional_companion_read_failed', 'com
 $expect( empty( array_filter( $GLOBALS['invocations'], static function( $x ) {
     return is_array( $x ) && isset( $x['method'] ) && $x['method'] !== 'GET';
 } ) ), 'never POST/execute arbitrary REST' );
+$combined = MAD4B_SCP_Security_Provider_Evidence::collect_all();
+$expect( $combined['coverage']['expected'] === 3, 'combined coverage declares three providers' );
+$expect( isset( $combined['providers']['security-wordfence'] ), 'combined Wordfence observation' );
+$expect( !$combined['site_clean_certified'], 'combined report not a clean certificate' );
 echo "SECURITY_PROVIDER_EVIDENCE_RUNTIME: PASS ($checks checks)\n";
