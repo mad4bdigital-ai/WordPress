@@ -86,8 +86,8 @@ final class MAD4B_SCP_Governed_Ability_Census {
             }
         }
         // Minimal hermetic and pre-6.9 partial integration fallback.
-        return function_exists( 'wp_get_abilities' ) && is_array( wp_get_abilities() )
-            ? wp_get_abilities() : array();
+        $filtered = function_exists( 'wp_get_abilities' ) ? wp_get_abilities() : array();
+        return is_array( $filtered ) ? $filtered : array();
     }
 
     /**
