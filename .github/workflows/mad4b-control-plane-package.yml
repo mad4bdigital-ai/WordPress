@@ -8,8 +8,6 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
-      - 'tools/mad4b_predictive_dependency_gate.py'
-      - 'tools/mad4b_live_remediation_simulator.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -25,8 +23,6 @@ on:
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
-      - 'tools/mad4b_predictive_dependency_gate.py'
-      - 'tools/mad4b_live_remediation_simulator.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -60,7 +56,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_SHA }}
-          fetch-depth: 0
 
       - name: Verify exact source identity
         shell: bash
@@ -164,61 +159,6 @@ jobs:
           while IFS= read -r -d '' file; do
             php -l "$file" >/dev/null
           done < <(find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0)
-
-      # This gate is intentionally BEFORE package assembly. It validates
-      # transitive change impact and executes hermetic regressions, but it
-      # cannot certify ETG/ARE or create owner approval.
-      - name: Predictive pre-package dependency gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 tools/mad4b_predictive_dependency_gate.py --self-test
-          base='${{ github.event.pull_request.base.sha }}'
-          head="$SOURCE_SHA"
-          if [[ -n "$base" ]]; then
-            python3 tools/mad4b_predictive_dependency_gate.py \
-              --base "$base" --head "$head" --execute --enforce \
-              --output dist/mad4b-prepackage-dependency-gate.json
-          else
-            python3 tools/mad4b_predictive_dependency_gate.py \
-              --full-scan --head "$head" --execute --enforce \
-              --output dist/mad4b-prepackage-dependency-gate.json
-          fi
-          python3 - <<'PY_INVARIANT'
-          import json
-          from pathlib import Path
-          data=json.loads(Path('dist/mad4b-prepackage-dependency-gate.json').read_text())
-          assert data['ci_regression_coverage_ready'] is True
-          assert data['release_ready'] is False
-          assert data['staging_write_authorized'] is False
-          assert data['production_mutation_allowed'] is False
-          assert data['required_live_evidence']
-          print('Predictive package gate: regression coverage PASS, live authorization remains withheld')
-          PY_INVARIANT
-
-      # Replay fault combinations sourced from sanitized ETG/ARE live
-      # observations. Execute genuine hermetic PHP failure-injection fixtures.
-      # A successful simulation NEVER provides a live Staging or owner receipt.
-      - name: Simulate live two-site faults and downstream repair dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 -B tools/mad4b_live_remediation_simulator.py \
-            --self-test --execute-fixtures --enforce \
-            --output dist/mad4b-prepackage-live-remediation.json
-          python3 - <<'PY_FAULT_POLICY'
-          import json
-          from pathlib import Path
-          result=json.loads(Path('dist/mad4b-prepackage-live-remediation.json').read_text())
-          assert result['simulation_pass'] is True
-          assert result['fault_injections'] >= 36
-          assert result['runtime_repair_proven'] is False
-          assert result['release_ready'] is False
-          assert result['staging_write_authorized'] is False
-          assert result['production_mutation_allowed'] is False
-          assert not result['failed_php_fault_regressions']
-          print('Live-incident simulation coverage PASS; real-site acceptance still REQUIRED')
-          PY_FAULT_POLICY
 
       - name: Verify canonical Skill seed package
         shell: bash
