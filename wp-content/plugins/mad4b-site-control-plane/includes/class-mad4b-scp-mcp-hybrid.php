@@ -28,8 +28,8 @@ final class MAD4B_SCP_MCP_Hybrid {
             'expected_catalog_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
             'arguments' => array( 'type' => 'object', 'additionalProperties' => true ),
         );
-        $required = array( 'peer_id' );
-        if ( 'plan' === $kind ) $required[] = 'ability';
+        $required = 'candidates' === $kind ? array() : array( 'peer_id' );
+        if ( 'plan' === $kind ) $required = array( 'ability' );
         if ( 'call' === $kind ) $required = array( 'peer_id', 'ability', 'expected_catalog_sha256' );
         return array( 'type' => 'object', 'properties' => $properties, 'required' => $required,
             'additionalProperties' => false );
@@ -37,14 +37,16 @@ final class MAD4B_SCP_MCP_Hybrid {
     public static function register_abilities() {
         if ( ! function_exists( 'wp_register_ability' ) ) return;
         $definitions = array(
+            'mad4b/native-mcp-candidates' => array( 'candidate_inventory', 'Observe local provider MCP route candidates without credentials, HTTP requests or auto-admission.' ),
             'mad4b/native-mcp-catalog' => array( 'read_catalog', 'Observe an exact owner-pinned native MCP peer tools/list catalog.' ),
             'mad4b/native-mcp-hybrid-plan' => array( 'hybrid_plan', 'Plan native MCP versus reviewed WordPress Ability or PHP Adapter per capability.' ),
             'mad4b/native-mcp-read-call' => array( 'read_tool', 'Call a reviewed native MCP read tool with an exact catalog fingerprint.' ),
         );
         foreach ( $definitions as $name => $details ) {
             if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
-            $kind = 'mad4b/native-mcp-catalog' === $name ? 'catalog' :
-                ( 'mad4b/native-mcp-hybrid-plan' === $name ? 'plan' : 'call' );
+            $kind = 'mad4b/native-mcp-candidates' === $name ? 'candidates'
+                : ( 'mad4b/native-mcp-catalog' === $name ? 'catalog'
+                    : ( 'mad4b/native-mcp-hybrid-plan' === $name ? 'plan' : 'call' ) );
             wp_register_ability( $name, array(
                 'label' => ucwords( str_replace( array( '/', '-' ), ' ', $name ) ),
                 'description' => $details[1],
@@ -453,6 +455,41 @@ final class MAD4B_SCP_MCP_Hybrid {
             'write_authority_created' => false, 'mutation_intended' => false );
     }
 
+    public static function candidate_inventory( $input = array() ) {
+        unset( $input );
+        $pinned = array_keys( self::manifest() );
+        $known = array();
+        if ( class_exists( 'MAD4B_SCP_Provider_Transport_Registry', false ) ) {
+            foreach ( MAD4B_SCP_Provider_Transport_Registry::descriptors() as $row ) {
+                if ( ! is_array( $row ) || empty( $row['provider_id'] ) ) continue;
+                $known[] = array(
+                    'provider_id' => (string) $row['provider_id'],
+                    'transport_kind' => (string) ( $row['kind'] ?? '' ),
+                    'state' => 'DECLARED_PATTERN_UNVERIFIED',
+                    'pattern_count' => count( $row['routes'] ?? array() ),
+                    'requires_independent_native_probe' => true,
+                );
+            }
+        }
+        $foreign = array();
+        $runtime_ready = false;
+        if ( class_exists( 'MAD4B_SCP_MCP_Peer_Governance', false )
+            && function_exists( 'did_action' ) && did_action( 'wp_loaded' ) > 0 ) {
+            $observed = MAD4B_SCP_MCP_Peer_Governance::foreign_transport_inventory();
+            if ( is_array( $observed ) && ! empty( $observed['inventory_ready'] ) ) {
+                $foreign = array_slice( $observed['foreign_routes'] ?? array(), 0, 100 );
+                $runtime_ready = true;
+            }
+        }
+        return array( 'contract' => self::CONTRACT . '.candidates.v1',
+            'pinned_peer_ids' => $pinned, 'pinned_count' => count( $pinned ),
+            'source_reviewed_provider_patterns' => $known,
+            'observed_unreviewed_rest_routes' => $foreign,
+            'runtime_rest_inventory_ready' => $runtime_ready,
+            'catalog_protocol_probe_performed' => false,
+            'unverified_candidate_auto_authorized' => false,
+            'write_authority_created' => false, 'mutation_performed' => false );
+    }
     public static function read_catalog( $input = array() ) {
         $input = is_array( $input ) ? $input : array();
         return self::catalog( (string) ( $input['peer_id'] ?? '' ) );
