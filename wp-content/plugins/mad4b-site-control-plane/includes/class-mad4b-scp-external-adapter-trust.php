@@ -56,7 +56,8 @@ final class MAD4B_SCP_External_Adapter_Trust {
         return is_string( $value ) && strlen( $value ) <= 191
             && preg_match( '~^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$~D', $value )
             && false === strpos( $value, '..' )
-            && false === strpos( $value, '/./' );
+            && false === strpos( $value, '/./' )
+            && false === strpos( $value, '//' );
     }
 
     private static function sorted_contract( $value ) {
@@ -104,7 +105,9 @@ final class MAD4B_SCP_External_Adapter_Trust {
         if ( ! in_array( $row['plugin_basename'], $active, true )
             && ! array_key_exists( $row['plugin_basename'], $network ) ) return false;
         try {
-            if ( self::sorted_contract( $adapter->ability_names() ) !== self::sorted_contract( $row['abilities'] ) ) return false;
+            $declared = self::sorted_contract( $adapter->ability_names() );
+            $approved = self::sorted_contract( $row['abilities'] );
+            if ( null === $declared || null === $approved || $declared !== $approved ) return false;
             $actual_rollback = $adapter->reversible_contracts();
             if ( ! is_array( $actual_rollback ) ) return false;
             $expected_rollback = $row['reversible_contracts'];
