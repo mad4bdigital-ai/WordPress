@@ -61,6 +61,23 @@ jobs:
             | sort -z \
             | xargs -0 -n1 php -l
 
+      - name: Automatic provider opt-in and Browser owner consent (PHP 7.4)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-functional-freshness-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-scope-dynamic-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/native-hybrid-acceptance.js
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-recertification-planning-semantics-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.js
+
       - name: Generic discovery PHP 7.4 runtime fixtures
         shell: bash
         run: |
@@ -600,6 +617,9 @@ jobs:
           assert sum(x['success'] for x in records)==1, records
           assert all(x['success'] or x['code'] in {
               'mad4b_site_operation_lock_held',
+              'mad4b_site_operation_lock_claim_unverified',
+              # Named database mutex contention is a fail-closed denial.
+              'mad4b_operation_mutex_busy',
               'mad4b_previous_operation_needs_reconciliation',
               'mad4b_operation_readback_required',
               # A concurrent loser may fail its signed reservation readback;
@@ -911,6 +931,17 @@ jobs:
         run: |
           set -euo pipefail
           ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-native-cron-acceptance.php"
+          php -l "$ROOT/includes/class-mad4b-scp-semantic-content-field-contracts.php"
+          php -l "$ROOT/includes/class-mad4b-scp-staging-write-planning-guard.php"
+          php "$ROOT/tests/native-wpcron-acceptance-runtime.php"
+          php -l "$ROOT/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+          php "$ROOT/tests/native-hybrid-acceptance-runtime.php"
+          php "$ROOT/tests/native-functional-freshness-runtime.php"
+          php "$ROOT/tests/staging-scope-dynamic-runtime.php"
+          php "$ROOT/tests/acceptance-core-contract.php"
+          node --check "$ROOT/assets/native-hybrid-acceptance.js"
+          php "$ROOT/tests/provider-recertification-planning-semantics-runtime.php"
           for file in \
             includes/class-mad4b-scp-capability-search-index.php \
             includes/class-mad4b-scp-recovery-route-resolver.php \

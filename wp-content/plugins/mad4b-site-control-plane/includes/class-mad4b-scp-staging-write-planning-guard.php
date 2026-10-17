@@ -132,6 +132,19 @@ final class MAD4B_SCP_Staging_Write_Planning_Guard {
 	public static function canonicalize_remote_plan_input( $input ) {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_remote_plan_input_invalid', 'Remote approval planning requires an object input.' );
 		$target_ability = isset( $input['ability'] ) ? trim( (string) $input['ability'] ) : '';
+		if ( 'mad4b/provider-behavioral-recertify' === $target_ability ) {
+			$expected = class_exists( 'MAD4B_SCP_Servers' )
+				? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $target_ability ) : null;
+			if ( 'core' !== $expected ) return new WP_Error( 'mad4b_remote_plan_recertification_unmounted',
+				'Behavioral recertification requires the reviewed core mount on mad4b-write.' );
+			$declared = isset( $input['provider'] ) ? sanitize_key( (string) $input['provider'] ) : '';
+			if ( '' !== $declared && 'core' !== $declared )
+				return new WP_Error( 'mad4b_remote_plan_provider_mismatch',
+					'Use core as approval provider; the tested plugin belongs inside input.provider_id.',
+					array( 'expected_provider' => 'core', 'target_provider_field' => 'input.provider_id' ) );
+			$input['provider'] = 'core';
+			return $input;
+		}
 		if ( self::UNDO_ABILITY !== $target_ability ) return $input;
 		$operation_input = isset( $input['input'] ) && is_array( $input['input'] ) ? $input['input'] : array();
 		$canonical = self::canonicalize_undo_authorization_input( $operation_input );

@@ -120,6 +120,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 							'type' => 'tool',
 							'surface' => 'enrollment',
 							'chatgpt_direct_step_up' => true,
+                            'generic_remote_admin' => false,
+                            'production_mutation_allowed' => false,
 							'exact_chatgpt_client_required' => true,
 							'bootstrap_only' => true,
 							'normal_write_authority_required' => false,

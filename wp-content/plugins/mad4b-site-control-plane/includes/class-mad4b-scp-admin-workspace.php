@@ -95,6 +95,8 @@ final class MAD4B_SCP_Admin_Workspace {
 			if ( '' !== $url ) echo '<a href="' . esc_url( $url ) . '">' . esc_html( $shortcut[3] ) . '</a>';
 		}
 		echo '</nav>';
+		if ( class_exists( 'MAD4B_SCP_Provider_Opt_In', false ) )
+			MAD4B_SCP_Provider_Opt_In::render( $page );
 		// The status is shared across every registered MAD4B admin screen.
 		// Do not infer live remote OAuth consent from this local browser request.
 		if ( class_exists( 'MAD4B_SCP_AI_Approval' ) && method_exists( 'MAD4B_SCP_AI_Approval', 'render_admin_status' ) )

@@ -334,9 +334,10 @@ assert "MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID" in full
 chatgpt_map = servers.split("'mad4b-chatgpt' => array_merge(", 1)[1].split("'mad4b-enrollment' =>", 1)[0]
 assert "MAD4B_SCP_Full_Staging_Authority::chatgpt_read_tools()" not in chatgpt_map
 reviewed_helper = servers.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
-assert "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY" in reviewed_helper
-assert "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY" in reviewed_helper
-assert "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY" in reviewed_helper
+assert "MAD4B_SCP_Governed_Ability_Census::structural_step_up()" in reviewed_helper
+assert "owner_intent_only" in reviewed_helper
+assert "self::chatgpt_approval_bootstrap_tools()" in reviewed_helper
+assert "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY" not in reviewed_helper
 
 chatgpt_base = servers.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
 chatgpt_tools = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]

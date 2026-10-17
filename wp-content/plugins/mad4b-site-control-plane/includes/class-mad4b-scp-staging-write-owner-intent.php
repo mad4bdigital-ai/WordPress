@@ -72,7 +72,8 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
                 'mcp' => array( 'public'=>false, 'type'=>'tool', 'surface'=>'enrollment',
                     'chatgpt_direct_step_up'=>true, 'exact_chatgpt_client_required'=>true,
                     'generic_remote_admin'=>false, 'production_mutation_allowed'=>false,
-                    'owner_intent_only'=>true, 'breakglass_allowed'=>false ),
+                    'owner_intent_only'=>true, 'governed_enrollment_broker'=>true,
+                    'broker_dispatch_policy'=>'owner_attestation_v1', 'breakglass_allowed'=>false ),
                 'annotations' => array( 'readonly'=>false, 'destructive'=>false, 'idempotent'=>false ),
             ),
         ) );

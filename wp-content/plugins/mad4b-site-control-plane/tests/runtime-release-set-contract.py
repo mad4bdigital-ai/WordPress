@@ -427,7 +427,7 @@ require("MAD4B_SCP_Policy::can_mutate()" not in bootstrap_permission, "runtime r
 catalog_projection = runtime.split("public static function chatgpt_step_up_tools", 1)[1].split("public static function bootstrap_apply", 1)[0]
 require("verified_bearer" not in catalog_projection, "runtime release-set catalog projection must remain bearer-independent")
 require("can_bootstrap_apply" not in catalog_projection, "runtime release-set catalog projection must not execute request-time authorization")
-require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
+require("MAD4B_SCP_Governed_Ability_Census::structural_step_up()" in servers, "ChatGPT reviewed direct step-up catalog must use bounded structural first-party discovery")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
 require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
 # Match the actual ordered expression across formatting changes; retain

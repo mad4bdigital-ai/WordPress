@@ -35,6 +35,23 @@ final class MAD4B_SCP_Staging_Operation_Journal {
     private static function active_key( $site_uuid ) {
         return self::ACTIVE_PREFIX . substr( hash( 'sha256', strtolower( $site_uuid ) ), 0, 32 );
     }
+    private static function authoritative_site_lock_matches( $site_uuid, $id ) {
+        global $wpdb;
+        $name = self::active_key( $site_uuid );
+        // Live WordPress always supplies wpdb; in the minimal hermetic fixture
+        // without a DB use its explicitly modeled option store.
+        if ( is_object( $wpdb ) && isset( $wpdb->options ) ) {
+            if ( ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) )
+                return false;
+            $value = $wpdb->get_var( $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                $name
+            ) );
+        } else {
+            $value = get_option( $name, '' );
+        }
+        return is_string( $value ) && hash_equals( $id, $value );
+    }
     private static function latest_key( $site_uuid ) {
         return self::LATEST . '_' . substr( hash( 'sha256', strtolower( $site_uuid ) ), 0, 32 );
     }
@@ -95,7 +112,51 @@ final class MAD4B_SCP_Staging_Operation_Journal {
         return '' === $id ? array( 'state' => 'INVALID_PLAN_IDENTITY', 'read_only' => true )
             : self::inspect_id( $id, strtolower( (string) $plan['site_uuid'] ) );
     }
+    /**
+     * Only one PHP request at a time may attempt a site's durable reservation.
+     *
+     * WordPress add_option() and readback do not prove this request won a
+     * concurrent unique-key race, especially when several requests share
+     * the same exact operation ID. Use the database's connection-scoped
+     * advisory lock only around the small reservation critical section.
+     *
+     * An unavailable live DB/mutex fails closed. A lost response is NEVER
+     * permission to replay the operation; the signed journal remains the
+     * durable, authoritative recovery evidence after mutex release.
+     */
     public static function reserve( array $plan ) {
+        $id = self::id( $plan );
+        if ( '' === $id )
+            return new WP_Error( 'mad4b_operation_plan_invalid', 'Exact operation identity required.' );
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) )
+            return self::reserve_under_site_mutex( $plan ); // Hermetic-only fixture.
+        if ( ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) )
+            return new WP_Error( 'mad4b_operation_mutex_unavailable', 'Live database mutex support is required.' );
+        $mutex = 'mad4b_op_' . substr( hash( 'sha256', strtolower( (string) $plan['site_uuid'] ) ), 0, 48 );
+        try {
+            $acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 2)', $mutex ) );
+        } catch ( Throwable $error ) {
+            return new WP_Error( 'mad4b_operation_mutex_unavailable', 'Site reservation mutex could not be acquired.' );
+        }
+        if ( '1' !== (string) $acquired )
+            return new WP_Error( 'mad4b_operation_mutex_busy',
+                'A concurrent site reservation may be in progress; inspect current journal before any retry.' );
+        try {
+            return self::reserve_under_site_mutex( $plan );
+        } finally {
+            // Connection-scoped, release does not delete the durable
+            // operation record nor authorize a second execution.
+            try {
+                $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $mutex ) );
+            } catch ( Throwable $error ) {
+                // The connection closing also releases its named lock. The
+                // journal may be uncertain: never infer execution success.
+            }
+        }
+    }
+
+    private static function reserve_under_site_mutex( array $plan ) {
         $id = self::id( $plan );
         if ( '' === $id ) return new WP_Error( 'mad4b_operation_plan_invalid', 'Exact operation identity required.' );
         $latest = self::latest( strtolower( $plan['site_uuid'] ) );
@@ -116,6 +177,14 @@ final class MAD4B_SCP_Staging_Operation_Journal {
             return new WP_Error( 'mad4b_site_operation_lock_held',
                 'A site operation is in progress or requires recovery; do not submit another Apply.',
                 array( 'last_operation' => self::latest( strtolower( $plan['site_uuid'] ) ) ) );
+        // WordPress add_option() can report a nominal success under a concurrent
+        // unique-key race. Verify actual ownership against the authoritative
+        // wp_options row BEFORE creating the immutable operation tombstone.
+        // Reading via get_option() alone is insufficient with object caching.
+        if ( ! self::authoritative_site_lock_matches( $plan['site_uuid'], $id ) )
+            return new WP_Error( 'mad4b_site_operation_lock_claim_unverified',
+                'The site lock belongs to another concurrent operation or could not be verified. No operation record was created.',
+                array( 'operation_id' => $id ) );
         $record = array( 'contract' => self::CONTRACT, 'operation_id' => $id,
             'plan_sha256' => strtolower( $plan['plan_sha256'] ),
             'site_uuid' => strtolower( $plan['site_uuid'] ),

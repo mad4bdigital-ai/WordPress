@@ -53,8 +53,49 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		// MAD4B never forces QM_Collectors::process() or changes Query Monitor lifecycle.
 		add_filter( 'qm/outputter/html', array( __CLASS__, 'capture_processed_http_profile' ), PHP_INT_MAX, 2 );
 		add_action( 'admin_init', array( __CLASS__, 'maybe_enable_db_attribution' ), 1 );
+		add_action( 'plugins_loaded', array( __CLASS__, 'maybe_capture_native_wpdb_queries' ), 0 );
 	}
 
+
+    /**
+     * Native WordPress DB attribution on an *existing, exact, signed* Staging
+     * frontend browser probe only. Ordinary public views pay no option read,
+     * no SAVEQUERIES overhead and no query hook. The original wpdb object is
+     * reused; no DB drop-in, database schema, cache policy or SQL mutation.
+     */
+    public static function maybe_capture_native_wpdb_queries() {
+        global $wpdb;
+        // This first check must be cheap: it runs on every plugin request.
+        if ( empty( $_GET['mad4b_frontend_probe'] )
+            || ! is_string( $_GET['mad4b_frontend_probe'] )
+            || ! preg_match( '/^[a-f0-9-]{36}$/D', strtolower( trim( $_GET['mad4b_frontend_probe'] ) ) )
+            || ( function_exists( 'is_admin' ) && is_admin() )
+            || ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+            || ( defined( 'DOING_CRON' ) && DOING_CRON )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+            || 'staging' !== MAD4B_SCP_Site_Profile::current_environment()
+            || ! class_exists( 'MAD4B_SCP_Live_Acceptance_Observer', false )
+            || ! MAD4B_SCP_Live_Acceptance_Observer::staging_capture_allowed()
+            || '' === self::request_frontend_probe_hash()
+            || ! is_object( $wpdb ) || ! property_exists( $wpdb, 'save_queries' ) ) return false;
+        if ( ! empty( $wpdb->save_queries ) ) return true;
+        $wpdb->save_queries = true;
+        // Bounded sample: stop collecting after at most 400 DB requests to
+        // avoid turning a slow page into an unbounded memory diagnostic.
+        add_filter( 'query', array( __CLASS__, 'limit_native_wpdb_query_capture' ), PHP_INT_MAX, 1 );
+        return true;
+    }
+
+    public static function limit_native_wpdb_query_capture( $sql ) {
+        global $wpdb;
+        if ( is_object( $wpdb ) && property_exists( $wpdb, 'save_queries' )
+            && isset( $wpdb->queries ) && is_array( $wpdb->queries )
+            && count( $wpdb->queries ) >= 400 ) {
+            $wpdb->save_queries = false;
+            remove_filter( 'query', array( __CLASS__, __FUNCTION__ ), PHP_INT_MAX );
+        }
+        return $sql;
+    }
 
 	public static function db_attribution_status() {
 		$dropin = defined( 'WP_CONTENT_DIR' ) ? trailingslashit( WP_CONTENT_DIR ) . 'db.php' : '';
@@ -270,6 +311,13 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 
 		$class = self::request_class();
 		$acceptance_canary = self::request_acceptance_canary_kind();
+        // Ordinary Staging frontend traffic must not write an ever-growing
+        // telemetry option on every uncached page. Keep one in eight bounded,
+        // deterministic request-local samples. Every exact signed acceptance
+        // probe is captured regardless of sampling.
+        if ( 'frontend' === $class && '' === self::request_frontend_probe_hash()
+            && ! self::passive_frontend_should_sample( self::request_sample_id() ) ) return;
+
 
 		// Ordinary Site Health, provider REST, third-party admin/AJAX and generic
 		// WP-Cron stay zero-touch. Only an exact signed acceptance probe may opt
@@ -759,6 +807,12 @@ final class MAD4B_SCP_Query_Monitor_Evidence_Bridge {
 		$profile['duplicate_groups'] = array_slice( $duplicates, 0, 12 );
 		return $profile;
 	}
+
+    /** @internal Pure sampling gate; no storage, user identity or extra SQL. */
+    public static function passive_frontend_should_sample( $sample_id ) {
+        return is_string( $sample_id ) && preg_match( '/^[a-f0-9]{64}$/D', $sample_id )
+            && ( hexdec( substr( $sample_id, 0, 2 ) ) % 8 === 0 );
+    }
 
 	private static function request_sample_id() {
 		if ( '' !== self::$request_sample_id ) return self::$request_sample_id;

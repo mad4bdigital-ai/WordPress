@@ -19,11 +19,11 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 	public static function normalize( $input ) {
 		if ( ! is_array( $input ) || array_diff( array_keys( $input ), array( 'executor', 'profile_id', 'site_provider_id', 'configuration_revision' ) ) )
 			return new WP_Error( 'mad4b_browser_setup_unexpected_fields', 'Secret, script, URL and unsupported fields are not accepted.' );
-		$executor = isset( $input['executor'] ) ? $input['executor'] : 'auto';
+		$executor = isset( $input['executor'] ) ? $input['executor'] : 'native_hybrid';
 		$profile = isset( $input['profile_id'] ) ? $input['profile_id'] : '';
 		$site_provider = isset( $input['site_provider_id'] ) ? $input['site_provider_id'] : '';
-		if ( ! is_string( $executor ) || ! in_array( $executor, array_merge( array( 'auto' ), array_keys( self::managed_executors() ) ), true ) )
-			return new WP_Error( 'mad4b_browser_setup_invalid_executor', 'Only allowlisted external browser providers are supported.' );
+		if ( ! is_string( $executor ) || ! in_array( $executor, array_merge( array( 'auto', 'wp_cron', 'native_hybrid' ), array_keys( self::managed_executors() ) ), true ) )
+			return new WP_Error( 'mad4b_browser_setup_invalid_executor', 'Only allowlisted external browser services and WordPress-native modes are supported.' );
 		if ( ! is_string( $profile ) || strlen( $profile ) > 64 || ( '' !== $profile && ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $profile ) ) )
 			return new WP_Error( 'mad4b_browser_setup_invalid_profile', 'Invalid site-specific acceptance profile ID.' );
 		if ( ! is_string( $site_provider ) || strlen( $site_provider ) > 64 || ( '' !== $site_provider && ! preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $site_provider ) ) )
@@ -38,7 +38,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		$stored = get_option( self::OPTION, array() );
 		$known = is_array( $stored ) ? array_intersect_key( $stored, array_flip( array( 'executor', 'profile_id', 'site_provider_id', 'configuration_revision' ) ) ) : array();
 		$valid = self::normalize( $known );
-		return is_wp_error( $valid ) ? array( 'executor' => 'auto', 'profile_id' => '', 'site_provider_id' => '', 'configuration_revision' => '' ) : $valid;
+		return is_wp_error( $valid ) ? array( 'executor' => 'native_hybrid', 'profile_id' => '', 'site_provider_id' => '', 'configuration_revision' => '' ) : $valid;
 	}
 
 	/** Check the raw persisted operator selection, not the UI's display fallback. */
@@ -141,7 +141,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.', '', array( 'response' => 403 ) );
 		check_admin_referer( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
-		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'site_provider_id', 'expected_configuration_revision', 'submit' ) ) )
+		if ( ! is_array( $_POST ) || array_diff( array_keys( $_POST ), array( 'action', 'mad4b_browser_nonce', '_wp_http_referer', 'executor', 'profile_id', 'site_provider_id', 'expected_configuration_revision', 'opt_in_external_runner', 'submit' ) ) )
 			wp_die( 'Unsupported or secret-bearing request fields are forbidden.', '', array( 'response' => 400 ) );
 		$stored = get_option( self::OPTION, false );
 		$expected = isset( $_POST['expected_configuration_revision'] ) && is_string( $_POST['expected_configuration_revision'] )
@@ -154,15 +154,31 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			'site_provider_id' => isset( $_POST['site_provider_id'] ) ? wp_unslash( $_POST['site_provider_id'] ) : '',
 		) );
 		if ( is_wp_error( $value ) ) wp_die( esc_html( $value->get_error_message() ), '', array( 'response' => 400 ) );
-		// A fresh unique revision on every save prevents silent A→B→A reuse.
+		// A fresh unique revision on every save prevents silent Aâ†’Bâ†’A reuse.
 		try { $value['configuration_revision'] = bin2hex( random_bytes( 16 ) ); }
 		catch ( Throwable $error ) { wp_die( 'Secure configuration revision generation failed.', '', array( 'response' => 503 ) ); }
-		$persisted = self::persist_if_unchanged( $stored, $value );
+		if ( 'auto' !== $value['executor'] && (
+            ! isset( $_POST['opt_in_external_runner'] ) ||
+            'yes' !== $_POST['opt_in_external_runner'] ) )
+            wp_die( 'Explicit execution-mode opt-in is required. No external runner secrets are accepted.', '', array( 'response' => 400 ) );
+        if ( 'wp_cron' === $value['executor'] &&
+            ( ! class_exists( 'MAD4B_SCP_Native_Cron_Acceptance', false )
+                || ! MAD4B_SCP_Native_Cron_Acceptance::available() ) )
+            wp_die( 'Native WP-Cron is not available for Staging; the preference was not saved.', '', array( 'response' => 409 ) );
+        $persisted = self::persist_if_unchanged( $stored, $value );
 		if ( is_wp_error( $persisted ) ) wp_die(
 			esc_html( $persisted->get_error_message() ), '', array(
 				'response' => 'mad4b_browser_setup_concurrent_change' === $persisted->get_error_code() ? 409 : 503,
 			)
 		);
+        // Only an explicit, nonce-protected *owner save* queues a smoke.
+        // No schedule is started from reads, discovery, page loads or OAuth.
+        if ( 'wp_cron' === $value['executor'] || (
+            'native_hybrid' === $value['executor'] && MAD4B_SCP_Native_Cron_Acceptance::available() ) ) {
+            $queued = MAD4B_SCP_Native_Cron_Acceptance::enqueue();
+            if ( is_wp_error( $queued ) && 'mad4b_native_cron_job_pending' !== $queued->get_error_code() )
+                wp_die( 'The preference was saved, but the native smoke could not be queued. Review WP-Cron status.', '', array( 'response' => 409 ) );
+        }
 		$receipt = MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE_SLUG, 'preference_saved', $value['configuration_revision'] );
 		wp_safe_redirect( add_query_arg( 'mad4b_notice_receipt', $receipt, admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ), 303 );
 		exit;
@@ -178,22 +194,22 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		$discovery = isset( $observed['site_discovery'] ) && is_array( $observed['site_discovery'] ) ? $observed['site_discovery'] : array();
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) ) MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'Browser Acceptance Setup', 'mad4b-site-control-plane' ) . '</h1>';
-		echo '<p>' . esc_html__( 'There are TWO independent provider types: a site-specific WordPress acceptance provider that signs plans/reduces evidence; and an external browser execution service. Saving a preference neither registers a WordPress provider nor configures credentials.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p>' . esc_html__( 'There are two independent modes: a WordPress-native WP-Cron HTTP smoke for basic diagnostics, or a separately trusted external browser for JavaScript parity and signed Browser Acceptance. Selecting WP-Cron never certifies browser parity.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<section class="mad4b-scp-panel" aria-label="' . esc_attr__( 'Browser setup progress', 'mad4b-site-control-plane' ) . '">';
 		echo '<h2>' . esc_html__( 'Browser setup: your next step', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( 0 === $valid_count ) {
-			echo '<p><strong>' . esc_html__( '1. A WordPress acceptance adapter is missing.', 'mad4b-site-control-plane' ) . '</strong> ';
-			echo esc_html__( 'Register a reviewed site adapter first. External Browser API credentials alone cannot repair this.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><strong>' . esc_html__( '1. Independent signed-browser adapter is not registered.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo esc_html__( 'Native Hybrid local checks are available after opt-in; independent signed Browser Acceptance needs a reviewed adapter.', 'mad4b-site-control-plane' ) . '</p>';
 		} elseif ( empty( $operator_status['preference_valid'] ) ) {
-			echo '<p><strong>' . esc_html__( '2. Saved browser preference needs correction.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo '<p><strong>' . esc_html__( '2. Saved execution preference needs correction.', 'mad4b-site-control-plane' ) . '</strong> ';
 			echo esc_html__( 'Choose a currently registered provider and save an exact new revision below.', 'mad4b-site-control-plane' ) . '</p>';
 		} else {
-			echo '<p><strong>' . esc_html__( '3. Verify external browser execution and receipt.', 'mad4b-site-control-plane' ) . '</strong> ';
-			echo esc_html__( 'WordPress cannot verify an external runner solely from these preferences. A signed browser result is required.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p><strong>' . esc_html__( '3. Check local evidence; independent signed browser certification is optional.', 'mad4b-site-control-plane' ) . '</strong> ';
+			echo esc_html__( 'Native observations are local only. Signed external evidence is still needed only for independent Browser Acceptance certification.', 'mad4b-site-control-plane' ) . '</p>';
 		}
-		echo '<p>' . esc_html__( 'No secret is accepted on this page, and no test runs merely by saving preferences.', 'mad4b-site-control-plane' ) . '</p></section>';
+		echo '<p>' . esc_html__( 'No secret is accepted on this page. Saving the native mode with opt-in queues only one read-only WordPress HTTP smoke; browser checks run when you request them in this admin session.', 'mad4b-site-control-plane' ) . '</p></section>';
 		if ( empty( $operator_status['configuration_revision'] ) ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'A legacy operator preference has no revision. Re-save it before browser execution.', 'mad4b-site-control-plane' ) . '</p></div>';
-		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Default provider/profile preference is discovered automatically. Execution still requires a registered semantic provider and external browser credentials.</p>';
+		if ( 'default_observed' === ( $operator_status['preference_source'] ?? '' ) ) echo '<p>Native Hybrid is the initial non-authorizing default. Save owner opt-in before local browser or WP-Cron checks run.</p>';
 		if ( empty( $operator_status['preference_valid'] ) ) echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Stored browser selection is invalid. Browser acceptance and queued browser execution are blocked until this administrator re-saves an approved site provider, profile and executor preference.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( class_exists( 'MAD4B_SCP_Admin_Experience' ) && MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'preference_saved', $choice['configuration_revision'] ) )
 			echo '<div class="notice notice-success"><p>' . esc_html__( 'Preference saved; execution and browser acceptance remain separately unverified.', 'mad4b-site-control-plane' ) . '</p></div>';
@@ -208,7 +224,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			echo '<div class="notice notice-warning inline"><p>' . esc_html( $reasons ) . '</p></div>';
 		}
 		if ( $unmapped ) {
-			echo '<p><strong>Unmapped plugins — no inferred browser execution authority:</strong> ';
+			echo '<p><strong>Unmapped plugins â€” no inferred browser execution authority:</strong> ';
 			foreach ( array_slice( $unmapped, 0, 128 ) as $slug ) echo '<code>' . esc_html( (string) $slug ) . '</code> ';
 			echo '</p>';
 		}
@@ -230,7 +246,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 		}
 		echo '<h2>' . esc_html__( '1. WordPress test provider registry', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p><strong>' . esc_html( (string) $valid_count ) . '</strong> ' . esc_html__( 'valid site-specific providers. Installing a reviewed provider adapter is required for signed browser acceptance plans.', 'mad4b-site-control-plane' ) . '</p>';
-		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No WordPress Browser Acceptance provider is registered. Tests cannot run yet; entering external API keys cannot resolve this missing adapter.', 'mad4b-site-control-plane' ) . '</p></div>';
+		if ( 0 === $valid_count ) echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No independent signed-browser adapter is registered. Native Hybrid local checks do not require one.', 'mad4b-site-control-plane' ) . '</p></div>';
 		if ( $registered ) {
 			echo '<table class="widefat striped"><thead><tr><th>Provider</th><th>Contract</th><th>State</th></tr></thead><tbody>';
 			foreach ( array_slice( $registered, 0, 32 ) as $item ) {
@@ -239,7 +255,7 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			}
 			echo '</tbody></table>';
 		}
-		echo '<h2>' . esc_html__( '2. Select site test provider and external browser runner', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<h2>' . esc_html__( '2. Select execution mode and optional site provider', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 		echo '<input type="hidden" name="action" value="mad4b_browser_setup_save">';
 		wp_nonce_field( 'mad4b_browser_setup_save', 'mad4b_browser_nonce' );
@@ -251,27 +267,35 @@ final class MAD4B_SCP_Browser_Acceptance_Admin_UI {
 			$id = (string) $site_provider['provider_id'];
 			echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['site_provider_id'], $id, false ) . '>' . esc_html( $id ) . '</option>';
 		}
-		echo '</select><p class="description">Only installed and valid providers can produce signed test plans; choosing a name never registers one.</p></td></tr><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Managed browser service', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
-		$options = array( 'auto' => 'Auto (external scheduler)' );
+		echo '</select><p class="description">Only installed and valid providers can produce signed test plans; choosing a name never registers one.</p></td></tr><tr><th><label for="mad4b-browser-executor">' . esc_html__( 'Browser test execution mode', 'mad4b-site-control-plane' ) . '</label></th><td><select id="mad4b-browser-executor" name="executor">';
+		$options = array( 'native_hybrid' => 'Native Hybrid (WP-Cron + my admin browser, recommended)',
+            'auto' => 'Auto (external scheduler)', 'wp_cron' => 'WP-Cron native HTTP smoke (no browser)' );
 		foreach ( self::managed_executors() as $id => $details ) $options[ $id ] = $details[0];
 		foreach ( $options as $id => $label ) echo '<option value="' . esc_attr( $id ) . '" ' . selected( $choice['executor'], $id, false ) . '>' . esc_html( $label ) . '</option>';
-		echo '</select><p class="description">' . esc_html__( 'Operator preference only; the external browser scheduler must still be set up independently.', 'mad4b-site-control-plane' ) . '</p></td></tr>';
+		echo '</select><p class="description">' . esc_html__( 'Native Hybrid uses this administrator browser with WP-Cron where available. External services are optional for independent attestations.', 'mad4b-site-control-plane' ) . '</p>';
+        echo '<label><input type="checkbox" name="opt_in_external_runner" value="yes"> '
+            . esc_html__( 'I opt in to this execution mode. Native mode queues one bounded WP-Cron check when available and automatically runs one passive browser check when I open this page. Interactive filter tests require my separate click; no secrets are submitted.', 'mad4b-site-control-plane' )
+            . '</label></td></tr>';
 		echo '<tr><th><label for="mad4b-browser-profile">' . esc_html__( 'Acceptance profile ID', 'mad4b-site-control-plane' ) . '</label></th><td>';
 		echo '<input class="regular-text" id="mad4b-browser-profile" name="profile_id" maxlength="64" pattern="[a-z0-9][a-z0-9._-]{0,63}" value="' . esc_attr( $choice['profile_id'] ) . '" autocomplete="off">';
 		echo '<p class="description">' . esc_html__( 'Optional bounded ID supplied by the site-specific acceptance provider. Not a URL, password or script.', 'mad4b-site-control-plane' ) . '</p></td></tr></tbody></table>';
 		submit_button( __( 'Save operator preference', 'mad4b-site-control-plane' ) );
 		echo '</form>';
-		echo '<h2>' . esc_html__( '3. Provision credentials OUTSIDE WordPress', 'mad4b-site-control-plane' ) . '</h2>';
-		echo '<p>' . esc_html__( 'The external browser runner or GitHub Actions secrets must provide these variable names. Credentials are not accepted/stored here, and provider connectivity cannot be certified from this page.', 'mad4b-site-control-plane' ) . '</p>';
-		echo '<table class="widefat striped"><thead><tr><th>External runner</th><th>Required secret/environment names</th><th>Status</th></tr></thead><tbody>';
-		foreach ( self::managed_executors() as $details ) {
-			echo '<tr><td>' . esc_html( $details[0] ) . '</td><td>';
-			foreach ( $details[1] as $env ) echo '<code>' . esc_html( $env ) . '</code> ';
-			echo '</td><td>Not verified by WordPress</td></tr>';
-		}
-		echo '</tbody></table>';
-		echo '<p><a href="https://github.com/mad4bdigital-ai/WordPress/blob/c1e4d4665770a453bf9fa4b1b7f22d99e0c1104d/docs/MAD4B-MANAGED-BROWSER-PROVIDERS.md" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Provider setup guide and external execution contract', 'mad4b-site-control-plane' ) . '</a></p>';
+		echo '<h2>' . esc_html__( '3. Optional external provider credentials', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'No credentials are required for Native Hybrid. Only select an external runner if independently signed unattended browser results are needed; keep its secrets outside WordPress.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div data-mad4b-browser-runner-fields aria-live="polite">';
+        echo '<p data-mad4b-browser-runner-auto>' . esc_html__( 'Native modes do not require provider credentials. Choose an external runner to see its credential names.', 'mad4b-site-control-plane' ) . '</p>';
+        foreach ( self::managed_executors() as $id => $details ) {
+            echo '<section data-mad4b-browser-runner="' . esc_attr( $id ) . '" hidden><h3>' . esc_html( $details[0] ) . '</h3>';
+            echo '<p>' . esc_html__( 'Provision these names only in the external runner or its approved secrets store:', 'mad4b-site-control-plane' ) . '</p><ul>';
+            foreach ( $details[1] as $env ) echo '<li><code>' . esc_html( $env ) . '</code></li>';
+            echo '</ul><p>' . esc_html__( 'Connection and signed evidence remain unverified until independently checked.', 'mad4b-site-control-plane' ) . '</p></section>';
+        }
+        echo '</div>';
+        echo '<p><a href="https://github.com/mad4bdigital-ai/WordPress/blob/c1e4d4665770a453bf9fa4b1b7f22d99e0c1104d/docs/MAD4B-MANAGED-BROWSER-PROVIDERS.md" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Provider setup guide and external execution contract', 'mad4b-site-control-plane' ) . '</a></p>';
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'Release gate stays BLOCKED until a valid WordPress adapter provides a signed plan, the external runner performs real browser work, and independent evidence is verified. This setup form does not authorize tests or production writes.', 'mad4b-site-control-plane' ) . '</p></div></div>';
+		if ( class_exists( 'MAD4B_SCP_Native_Cron_Acceptance', false ) ) MAD4B_SCP_Native_Cron_Acceptance::render();
+		if ( class_exists( 'MAD4B_SCP_Native_Hybrid_Acceptance', false ) ) MAD4B_SCP_Native_Hybrid_Acceptance::render();
 	}
 }
 
