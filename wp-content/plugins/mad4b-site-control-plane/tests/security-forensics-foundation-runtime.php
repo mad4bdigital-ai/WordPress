@@ -46,7 +46,7 @@ MAD4B_SCP_Security_Forensics::boot();
 MAD4B_SCP_Security_Forensics::boot();
 ok( count( $GLOBALS['actions']['activated_plugin'] ) === 1, 'idempotent hooks' );
 MAD4B_SCP_Security_Forensics::register_abilities();
-ok( count( $GLOBALS['abilities'] ) === 7, 'exactly seven read/plan abilities' );
+ok( count( $GLOBALS['abilities'] ) === 8, 'exactly eight read/plan abilities' );
 foreach ( $GLOBALS['abilities'] as $ability => $config ) {
     ok( $config['meta']['mcp']['non_authorizing'] === true, 'no authorizing ability' );
     ok( $config['meta']['annotations']['destructive'] === false, 'no destructive ability' );
@@ -63,6 +63,8 @@ if ( @symlink( sys_get_temp_dir(), $link ) ) {
     $scan = MAD4B_SCP_Security_Forensics::integrity_scan( array( 'scope' => 'uploads' ) );
     ok( strpos( json_encode( $scan ), '"kind":"symlink_unfollowed"' ) !== false, 'never follow symbolic links' );
 }
+$guardian = MAD4B_SCP_Security_Forensics::plugin_guardian();
+ok( $guardian['confirmed_malicious'] === false && $guardian['trusted_package_verification'] === 'not_configured', 'unknown plugin never auto-malicious' );
 MAD4B_SCP_Security_Forensics::activated( 'plugin-editor-pro/plugin-editor-pro.php', false );
 MAD4B_SCP_Security_Forensics::role_changed( 11, 'administrator' );
 MAD4B_SCP_Security_Forensics::setting_changed( 'siteurl', 'SECRET_BEFORE', 'SECRET_AFTER' );
