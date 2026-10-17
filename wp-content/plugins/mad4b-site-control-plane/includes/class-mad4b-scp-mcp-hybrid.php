@@ -258,6 +258,10 @@ final class MAD4B_SCP_MCP_Hybrid {
         $peer = $peers[$peer_id];
         $session = self::negotiate( $peer );
         if ( is_wp_error( $session ) ) return $session;
+        return self::catalog_in_session( $peer, $session );
+    }
+    private static function catalog_in_session( array $peer, array $session ) {
+        $peer_id = $peer['id'];
         $result = array(); $cursor = ''; $seen = array(); $done = false;
         for ( $page = 0; $page < self::MAX_PAGES; ++$page ) {
             $params = '' === $cursor ? array() : array( 'cursor' => $cursor );
@@ -409,7 +413,9 @@ final class MAD4B_SCP_MCP_Hybrid {
         $binding = $peers[$peer_id]['bindings'][$ability];
         if ( 'read' !== $binding['dimension'] || empty( $binding['read_execution_reviewed'] ) )
             return new WP_Error( 'mad4b_native_read_not_certified', 'Native MCP tool has no explicit read-execution certification.' );
-        $catalog = self::catalog( $peer_id );
+        $session = self::negotiate( $peers[$peer_id] );
+        if ( is_wp_error( $session ) ) return $session;
+        $catalog = self::catalog_in_session( $peers[$peer_id], $session );
         if ( is_wp_error( $catalog ) ) return $catalog;
         if ( ! hash_equals( $expected, (string) $catalog['capability_snapshot_sha256'] ) )
             return new WP_Error( 'mad4b_native_read_catalog_drift', 'Native catalog changed since review; execute nothing.' );
@@ -424,10 +430,8 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( true !== ( $annotations['readOnlyHint'] ?? null )
             || true === ( $annotations['destructiveHint'] ?? null ) )
             return new WP_Error( 'mad4b_native_read_annotation_missing', 'Remote tool did not affirm non-destructive read-only behavior.' );
-        // The second negotiation provides an independent current invocation
-        // session; legacy session tokens never survive between HTTP requests.
-        $session = self::negotiate( $peers[$peer_id] );
-        if ( is_wp_error( $session ) ) return $session;
+        // Invoke on the very same negotiated MCP session as the verified
+        // tools/list snapshot; never substitute a stale session from a prior request.
         $reply = self::rpc( $peers[$peer_id], 'tools/call',
             array( 'name' => $binding['tool'], 'arguments' => $arguments ),
             $session['version'], $session['session'] );
