@@ -236,7 +236,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         // means the peer may speak legacy MCP.
         $fallback = false;
         if ( is_wp_error( $modern ) ) {
-            $fallback = in_array( $modern->get_error_code(), array( 'mad4b_mcp_peer_http_400', 'mad4b_mcp_peer_http_404', 'mad4b_mcp_peer_http_405', 'mad4b_mcp_peer_http_426' ), true );
+            $fallback = in_array( $modern->get_error_code(), array( 'mad4b_mcp_peer_http_404', 'mad4b_mcp_peer_http_405', 'mad4b_mcp_peer_http_426' ), true );
         } else {
             $error = $modern['wire']['error'] ?? array();
             $fallback = is_array( $error ) && in_array( (int) ( $error['code'] ?? 0 ), array( -32601, -32001 ), true );
