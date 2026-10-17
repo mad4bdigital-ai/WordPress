@@ -482,6 +482,10 @@ jobs:
           php "$P/tests/staging-operation-journal-runtime.php"
           python3 "$P/tests/staging-operation-journal-source-contract.py"
           php "$P/tests/staging-write-owner-intent-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-authority.php"
+          php "$P/tests/staging-write-owner-grant-local-preview-runtime.php"
+          php "$P/tests/staging-write-grant-canonical-order-runtime.php"
 
       - name: MAD4B-specific pre-Staging audit
         shell: bash
@@ -788,6 +792,10 @@ jobs:
           php "$P/tests/staging-operation-journal-runtime.php"
           python3 "$P/tests/staging-operation-journal-source-contract.py"
           php "$P/tests/staging-write-owner-intent-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-authority.php"
+          php "$P/tests/staging-write-owner-grant-local-preview-runtime.php"
+          php "$P/tests/staging-write-grant-canonical-order-runtime.php"
           php "$P/tests/operator-primary-next-step-runtime.php"
           php "$P/tests/native-first-root-cause-runtime.php"
           php "$P/tests/cross-provider-remediation-runtime.php"
