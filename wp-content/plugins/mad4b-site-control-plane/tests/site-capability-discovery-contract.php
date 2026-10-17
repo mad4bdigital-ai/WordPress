@@ -36,6 +36,9 @@ $providers = array( 'etg-dfsb' => array(
 $c = 'MAD4B_SCP_Site_Capability_Discovery';
 $observed = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $observed['discovery_complete'] === true, 'complete bounded inventory' );
+expect_site( $observed['read_inventory_state'] === 'observed' && $observed['read_inventory_observed'] === true
+  && $observed['read_inventory_non_authorizing'] === true && $observed['read_compatibility_certified'] === false,
+  'read inventory never issues certification or authorization' );
 expect_site( $observed['certification_issued'] === false && $observed['authorizing'] === false, 'discovery cannot authorize or certify' );
 expect_site( $observed['provider_matches'][0]['recognized'] === true, 'provider declarative plugin signal matched' );
 $cpt_provider = array( 'cpt-adapter' => array( 'descriptor' => array( 'recognition' => array(
@@ -64,6 +67,10 @@ expect_site( $theme_changed['snapshot_sha256'] !== $observed['snapshot_sha256'],
 $GLOBALS['site_theme_version'] = '';
 $theme_unknown = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( ! $theme_unknown['discovery_complete'] && in_array( 'theme_version_evidence_unavailable', $theme_unknown['blocking_reasons'], true ), 'theme without version cannot authorize browser plan' );
+expect_site( $theme_unknown['read_inventory_state'] === 'observed_without_version_attestation'
+  && $theme_unknown['read_inventory_observed'] === true
+  && $theme_unknown['certification_issued'] === false,
+  'unknown theme version preserves safe diagnostic inventory without promotion' );
 $GLOBALS['site_theme_version'] = '1.0.0';
 $GLOBALS['site_plugin_versions']['etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php'] = '2.0.0';
 $upgrade = $c::observe( 'https://staging.egypttourgates.com', $providers );
@@ -72,6 +79,11 @@ $GLOBALS['site_plugin_versions']['etg-dynamic-filter-seo-bridge/etg-dynamic-filt
 $unverifiable = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $unverifiable['discovery_complete'] === false &&
   in_array( 'plugin_version_evidence_unavailable', $unverifiable['blocking_reasons'], true ), 'unverified plugin version cannot certify discovery' );
+expect_site( $unverifiable['read_inventory_state'] === 'observed_without_version_attestation'
+  && $unverifiable['read_inventory_observed'] === true
+  && $unverifiable['read_inventory_blockers'] === array()
+  && $unverifiable['read_inventory_non_authorizing'] === true,
+  'missing version headers must not hide benign read inventory' );
 $GLOBALS['site_plugin_versions'] = array();
 $unmapped = $c::observe( 'https://staging.allroyalegypt.com', array() );
 expect_site( count( $unmapped['unmapped_plugins'] ) === 2 && count( $unmapped['provider_matches'] ) === 0, 'no arbitrary provider selected by hostname' );
@@ -81,12 +93,17 @@ expect_site( $changed['snapshot_sha256'] !== $observed['snapshot_sha256'], 'inve
 $GLOBALS['site_plugins'] = array( '../plugin.php' );
 $traversal = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( ! $traversal['discovery_complete'] && in_array( 'plugin_basename_invalid', $traversal['blocking_reasons'], true ), 'relative plugin path denied before metadata read' );
+expect_site( $traversal['read_inventory_state'] === 'partial_or_unavailable'
+  && $traversal['read_inventory_observed'] === false,
+  'unsafe plugin path must not pass read observation' );
 $GLOBALS['site_plugins'] = array( 'unsafe/path/traversal.php' );
 $invalid = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $invalid['discovery_complete'] === false && in_array( 'plugin_basename_invalid', $invalid['blocking_reasons'], true ), 'unsafe plugin basename denied' );
 $GLOBALS['site_plugins'] = array_fill( 0, 129, 'repeated/main.php' );
 $over = $c::observe( 'https://staging.egypttourgates.com', $providers );
 expect_site( $over['discovery_complete'] === false && in_array( 'plugin_inventory_invalid_or_overflow', $over['blocking_reasons'], true ), 'oversized inventory cannot silently truncate' );
+expect_site( $over['read_inventory_observed'] === false,
+  'oversized inventory must not be observed as complete' );
 $GLOBALS['site_plugins'] = array( 'etg-dynamic-filter-seo-bridge/main.php' );
 $GLOBALS['site_network_plugins'] = array( 'network-addon/main.php' => 10 );
 $network = $c::observe( 'https://staging.egypttourgates.com', $providers );
@@ -102,5 +119,7 @@ expect_site( $tax['discovery_complete'] === false && in_array( 'taxonomy_invento
 $GLOBALS['site_taxonomies'] = array( 'category' );
 $origin = $c::observe( 'http://localhost:8080', $providers );
 expect_site( $origin['discovery_complete'] === false && in_array( 'site_origin_invalid', $origin['blocking_reasons'], true ), 'non-TLS origin denied' );
+expect_site( $origin['read_inventory_observed'] === false,
+  'invalid site identity cannot be accepted by read observation' );
 
 echo "MAD4B_SITE_CAPABILITY_DISCOVERY: PASS\n";

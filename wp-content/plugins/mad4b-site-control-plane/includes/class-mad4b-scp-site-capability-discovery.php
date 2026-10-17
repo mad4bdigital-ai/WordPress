@@ -149,6 +149,14 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 		}
 		$unmapped = array_values( array_diff( $plugin_ids, array_keys( $mapped ) ) );
 		$complete = ! $blockers;
+		// Read-side observation must not disappear solely because an installed
+		// provider omitted optional version headers. Keep discovery_complete and
+		// its write/certification consumers fail-closed and unchanged.
+		$read_blockers = array_values( array_diff( $blockers, array(
+			'plugin_version_evidence_unavailable', 'theme_version_evidence_unavailable',
+		) ) );
+		$read_inventory_state = $read_blockers ? 'partial_or_unavailable'
+			: ( ! $version_evidence_complete || ! $theme_valid ? 'observed_without_version_attestation' : 'observed' );
 		$source = array(
 			'origin' => $origin,
 			'plugins' => $plugin_ids,
@@ -161,6 +169,11 @@ final class MAD4B_SCP_Site_Capability_Discovery {
 		return array(
 			'contract' => self::CONTRACT, 'read_only' => true, 'authorizing' => false,
 			'discovery_complete' => $complete, 'certification_issued' => false,
+			'read_inventory_state' => $read_inventory_state,
+			'read_inventory_observed' => ! $read_blockers,
+			'read_inventory_blockers' => $read_blockers,
+			'read_inventory_non_authorizing' => true,
+			'read_compatibility_certified' => false,
 			'origin' => $origin, 'snapshot_sha256' => hash( 'sha256', wp_json_encode( $source ) ),
 			'plugins' => $plugin_ids, 'plugin_versions' => $plugin_versions,
 			'plugin_versions_complete' => $version_evidence_complete && ! in_array( 'plugin_basename_invalid', $blockers, true ),
