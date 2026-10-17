@@ -33,6 +33,14 @@ class WP_Error{
  private $c; public function __construct($c,$m=''){$this->c=$c;}
  public function get_error_code(){return $this->c;}
 }
+class MAD4B_SCP_Native_Hybrid_Acceptance {
+ public static function current_identity(){return [
+  'source_commit_sha'=>str_repeat('a',40),
+  'site_origin_sha256'=>hash('sha256','https://staging.example.test/'),
+  'preference_revision'=>str_repeat('a',32),
+  'build_manifest_current'=>true
+ ];}
+}
 class MAD4B_SCP_Environment {
  public static function effective(){return $GLOBALS['env'];}
 }

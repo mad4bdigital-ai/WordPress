@@ -169,6 +169,11 @@ final class MAD4B_SCP_Staging_Certification {
 			return self::wp_import_export_remediation( $provider_inventory );
 		} );
 
+		$functional = self::safe_read( 'native_functional_acceptance', static function () {
+            return class_exists( 'MAD4B_SCP_Native_Hybrid_Acceptance', false )
+                ? MAD4B_SCP_Native_Hybrid_Acceptance::functional_status()
+                : array( 'staging_acceptance_ready' => false, 'blocking_reasons' => array( 'native_hybrid_unavailable' ) );
+        } );
 		$gates = array(
 			'exact_build' => self::gate( ! empty( $provenance['runtime_manifest_match'] ), 'runtime_build_provenance', $provenance, 'package' ),
 			'safe_boot' => self::gate( ! empty( $connection['connection_certified'] ) || ! empty( $connection['ready'] ), 'connection_runtime', $connection, 'runtime' ),
@@ -203,6 +208,9 @@ final class MAD4B_SCP_Staging_Certification {
 			'wp_import_export_exact_artifact' => self::gate( ! empty( $wp_import_export['ready'] ), 'wp_import_export_exact_artifact', $wp_import_export, 'provider_operator' ),
 		);
 
+		// Optional integration and independent attestation gates do not
+        // universally block a user-requested functional Staging workflow.
+        $scoped = self::scoped_readiness( $gates, $functional );
 		$blocking = array();
 		foreach ( $gates as $name => $gate ) {
 			if ( empty( $gate['ready'] ) ) $blocking[] = $name;
@@ -221,6 +229,8 @@ final class MAD4B_SCP_Staging_Certification {
 				'state' => empty( $blocking ) ? 'ready' : 'pending_or_blocked',
 				'blocking_gates' => $blocking,
 				'gates' => $compact_gates,
+				'scope_readiness' => $scoped,
+				'staging_functional_acceptance' => $functional,
 				'build' => array(
 					'version' => isset( $provenance['version'] ) ? (string) $provenance['version'] : '',
 					'source_commit_sha' => isset( $provenance['source_commit_sha'] ) ? (string) $provenance['source_commit_sha'] : '',
@@ -257,6 +267,8 @@ final class MAD4B_SCP_Staging_Certification {
 			'state' => empty( $blocking ) ? 'ready' : 'pending_or_blocked',
 			'blocking_gates' => $blocking,
 			'gates' => $gates,
+			'scope_readiness' => $scoped,
+			'staging_functional_acceptance' => $functional,
 			'write_authority_reconciliation_plan' => $reconciliation,
 			'provider_certification_inventory' => $provider_inventory,
 			'wp_import_export_remediation' => $wp_import_export,
@@ -766,6 +778,8 @@ final class MAD4B_SCP_Staging_Certification {
 				'readback_ability' => 'mad4b/browser-acceptance-capabilities',
 				'trusted_external_agent_required' => true,
 				'signed_receipt_required' => true,
+				'applies_to_scopes' => array( 'independent_browser_release', 'full_release' ),
+				'not_required_for' => array( 'staging_functional', 'governed_write', 'managed_skills' ),
 			) );
 		}
 		if ( in_array( 'performance_budget', $blocking, true ) ) {
@@ -1561,6 +1575,58 @@ final class MAD4B_SCP_Staging_Certification {
 		$canonical['canonical_coverage_source'] = 'MAD4B_SCP_Context_Authority::brand_core_coverage';
 		return $canonical;
 	}
+
+    /** Read-only, task-scoped readiness; never a Production/Write gate. */
+    private static function scoped_readiness( array $gates, $functional ) {
+        $sets = array(
+            'staging_functional' => array( 'exact_build', 'safe_boot' ),
+            'governed_write' => array( 'exact_build', 'safe_boot', 'write_authority', 'write_runtime' ),
+            'managed_skills' => array( 'exact_build', 'skills_runtime' ),
+            'frontend_performance' => array( 'exact_build', 'performance_budget', 'query_monitor_db_attribution' ),
+            'content_authoring' => array( 'exact_build', 'context_authority', 'brand_core_context_coverage' ),
+            'google_drive' => array( 'google_provider_connection', 'managed_google_broker' ),
+            'import_export' => array( 'wp_import_export_exact_artifact' ),
+            'independent_browser_release' => array( 'exact_build', 'browser_runtime' ),
+            'full_release' => array_keys( $gates ),
+        );
+                // Plugins can ADD their exact known-gate scope, but cannot replace
+        // or remove built-in gates. Unknown gate names remain blocked rather
+        // than silently becoming a passing empty dependency set.
+        $additional = function_exists( 'apply_filters' )
+            ? apply_filters( 'mad4b_scp_staging_functional_scope_dependencies', array() ) : array();
+        if ( is_array( $additional ) ) {
+            foreach ( array_slice( $additional, 0, 32, true ) as $name => $requirements ) {
+                if ( ! is_string( $name ) || ! preg_match( '/^[a-z][a-z0-9_]{0,47}$/D', $name )
+                    || isset( $sets[ $name ] ) || ! is_array( $requirements )
+                    || ! $requirements || count( $requirements ) > 24 ) continue;
+                $valid = true; $required = array( 'exact_build', 'safe_boot' );
+                foreach ( $requirements as $gate ) {
+                    if ( ! is_string( $gate ) || ! isset( $gates[ $gate ] ) ) { $valid = false; break; }
+                    $required[] = $gate;
+                }
+                if ( $valid ) $sets[ $name ] = array_values( array_unique( $required ) );
+            }
+        }
+        $out = array();
+foreach ( $sets as $name => $required ) {
+            $missing = array();
+            foreach ( $required as $gate )
+                if ( ! isset( $gates[ $gate ] ) || empty( $gates[ $gate ]['ready'] ) )
+                    $missing[] = $gate;
+            if ( 'staging_functional' === $name
+                && ( ! is_array( $functional ) || empty( $functional['staging_acceptance_ready'] ) ) )
+                $missing[] = 'native_hybrid_functional_evidence';
+            $out[ $name ] = array(
+                'ready' => empty( $missing ),
+                'state' => empty( $missing ) ? 'ready' : 'pending',
+                'required_gates' => $required,
+                'blocking_gates' => $missing,
+                'irrelevant_gates' => array_values( array_diff( array_keys( $gates ), $required ) ),
+                'authorizing' => false, 'production_activation_authorized' => false,
+            );
+        }
+        return $out;
+    }
 
 	private static function browser_status() {
 		if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Core' ) ) return array( 'ready' => false, 'blockers' => array( 'browser_acceptance_core_unavailable' ) );

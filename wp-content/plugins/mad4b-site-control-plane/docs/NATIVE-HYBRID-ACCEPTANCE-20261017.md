@@ -27,3 +27,6 @@ NH-006 local PHP/browser tests: PASS locally / CI PENDING.
 NH-007 Staging install and acceptance: NOT STARTED.
 NH-008 independent signed browser certification: NOT VERIFIED.
 NH-009 site-specific SQL remediation: NOT VERIFIED.
+
+## Dynamic task-scoped functional acceptance
+Native Hybrid now derives staging_acceptance_ready from the specific requested function, current package, site origin, saved owner revision and freshness of observations. An unrelated Google or independent browser gate does not cause frontend functional failure. It never grants Write or Production permission; independent browser evidence is still required only for the separate independent-browser-release scope. Details: OPERATIONAL-SCOPE-READINESS-20261017.md.

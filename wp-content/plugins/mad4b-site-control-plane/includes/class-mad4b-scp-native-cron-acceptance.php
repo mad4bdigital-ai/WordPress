@@ -31,7 +31,8 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             'release_ready' => false, 'authorizing' => false, 'read_only' => true,
             'job' => is_array( $stored ) ? array_intersect_key( $stored, array_flip(
                 array( 'job_id', 'state', 'queued_at', 'checked_at', 'http_status', 'elapsed_ms',
-                    'error_code', 'source' ) ) ) : array() );
+                    'error_code', 'source', 'checked_epoch', 'source_commit_sha',
+                    'site_origin_sha256', 'preference_revision' ) ) ) : array() );
     }
     public static function enqueue_from_admin() {
         if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) )
@@ -62,11 +63,20 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
         $id = wp_generate_uuid4();
         if ( ! is_string( $id ) || ! preg_match( '/^[a-f0-9-]{36}$/D', $id ) )
             return new WP_Error( 'mad4b_native_cron_identity_unavailable', 'Secure job identifier unavailable.' );
+        $identity = class_exists( 'MAD4B_SCP_Native_Hybrid_Acceptance', false )
+            ? MAD4B_SCP_Native_Hybrid_Acceptance::current_identity() : array();
+        if ( empty( $identity['build_manifest_current'] )
+            || empty( $identity['source_commit_sha'] )
+            || empty( $identity['site_origin_sha256'] )
+            || empty( $identity['preference_revision'] ) )
+            return new WP_Error( 'mad4b_native_cron_identity_unavailable',
+                'Exact Staging origin, build manifest and saved owner revision are required.' );
         // Fail closed on old or ambiguous in-flight state; never blind retry.
         if ( ! add_option( self::LOCK, $id, '', false ) )
             return new WP_Error( 'mad4b_native_cron_job_pending', 'Another smoke is pending; review the prior result before queueing another.' );
-        $job = array( 'job_id' => $id, 'state' => 'queued', 'queued_at' => gmdate( 'c' ),
-            'source' => 'owner_explicit_wp_cron', 'browser_signed' => false );
+        $job = array_merge( $identity,
+            array( 'job_id' => $id, 'state' => 'queued', 'queued_at' => gmdate( 'c' ),
+            'source' => 'owner_explicit_wp_cron', 'browser_signed' => false ) );
         if ( ! update_option( self::OPTION, $job, false ) && get_option( self::OPTION, array() ) !== $job ) {
             delete_option( self::LOCK );
             return new WP_Error( 'mad4b_native_cron_store_failed', 'Smoke job persistence could not be verified.' );
@@ -104,6 +114,19 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             delete_option( self::LOCK );
             return;
         }
+        $identity = class_exists( 'MAD4B_SCP_Native_Hybrid_Acceptance', false )
+            ? MAD4B_SCP_Native_Hybrid_Acceptance::current_identity() : array();
+        $same = ! empty( $identity['build_manifest_current'] );
+        foreach ( array( 'source_commit_sha', 'site_origin_sha256', 'preference_revision' ) as $field )
+            if ( empty( $identity[ $field ] ) || ! hash_equals( (string) ( $job[ $field ] ?? '' ), (string) $identity[ $field ] ) )
+                $same = false;
+        if ( ! $same ) {
+            $job['state'] = 'cancelled_build_site_or_optin_changed';
+            $job['checked_at'] = gmdate( 'c' );
+            update_option( self::OPTION, $job, false );
+            delete_option( self::LOCK );
+            return;
+        }
         $job['state'] = 'running';
         update_option( self::OPTION, $job, false );
         // Explicitly allow no redirects, user cookies, non-GET methods,
@@ -137,6 +160,7 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             }
         }
         $job['checked_at'] = gmdate( 'c' );
+        $job['checked_epoch'] = time();
         $job['browser_signed'] = false;
         update_option( self::OPTION, $job, false );
         delete_option( self::LOCK );

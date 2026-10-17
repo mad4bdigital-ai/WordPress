@@ -68,6 +68,9 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-functional-freshness-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-scope-dynamic-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php
           node --check wp-content/plugins/mad4b-site-control-plane/assets/native-hybrid-acceptance.js
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-recertification-planning-semantics-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php
@@ -932,6 +935,9 @@ jobs:
           php "$ROOT/tests/native-wpcron-acceptance-runtime.php"
           php -l "$ROOT/includes/class-mad4b-scp-native-hybrid-acceptance.php"
           php "$ROOT/tests/native-hybrid-acceptance-runtime.php"
+          php "$ROOT/tests/native-functional-freshness-runtime.php"
+          php "$ROOT/tests/staging-scope-dynamic-runtime.php"
+          php "$ROOT/tests/acceptance-core-contract.php"
           node --check "$ROOT/assets/native-hybrid-acceptance.js"
           php "$ROOT/tests/provider-recertification-planning-semantics-runtime.php"
           for file in \

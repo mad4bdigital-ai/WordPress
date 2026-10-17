@@ -63,4 +63,9 @@ require_hybrid(!is_wp_error($x)&&$x['verdict']==='INCOMPLETE','observed JS excep
 $bad=$sample;$bad['filter_ajax_observed']=false;
 $x=$c::normalize($bad);
 require_hybrid($x['filter_parity']==='not_independently_verified','filter flag cannot assert parity');
+require_hybrid($x['frontend_functional_ready']===true && $x['filter_functional_ready']===false,'missing AJAX cannot invalidate independent frontend DOM while filter remains incomplete');
+$good=$c::normalize($sample);
+require_hybrid($good['frontend_functional_ready'] && $good['filter_functional_ready']
+ && !$good['staging_acceptance_ready'] && !$good['release_ready'],
+ 'scoped local subtest can PASS but global decision must check Cron, build and consent');
 echo "NATIVE_HYBRID_ACCEPTANCE_RUNTIME_PASS\n";
