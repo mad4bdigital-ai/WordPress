@@ -99,7 +99,7 @@ enrollment_candidates = servers.split("private static function chatgpt_enrollmen
 assert "MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools()" in enrollment_candidates, "write-only authority primitives must not fall through generic enrollment dispatch"
 
 direct_step_up = servers.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
-assert "MAD4B_SCP_Governed_Ability_Census::eligible()" in direct_step_up
+assert "MAD4B_SCP_Governed_Ability_Census::structural_step_up()" in direct_step_up
 
 direct_read = servers.split("public static function chatgpt_direct_read_transport_tools()", 1)[1].split("public static function chatgpt_dispatch_transport_tools()", 1)[0]
 assert "MAD4B_SCP_Staging_Write_Authority_Convergence::chatgpt_read_tools()" not in direct_read, "write convergence read surfaces must remain behind governed dispatch to preserve the direct tool budget"
