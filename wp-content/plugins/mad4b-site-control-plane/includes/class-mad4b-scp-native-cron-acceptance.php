@@ -27,7 +27,7 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
     }
     private static function stale_job( $job ) {
         if ( ! is_array( $job ) || ! in_array( (string) ( $job['state'] ?? '' ),
-            array( 'queued', 'running' ), true ) ) return false;
+            array( 'queued', 'running', 'abandoned_after_owner_review' ), true ) ) return false;
         $queued = strtotime( (string) ( $job['queued_at'] ?? '' ) );
         return false !== $queued && $queued > 0 && time() - $queued >= self::STALE_SECONDS;
     }
@@ -74,7 +74,8 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
         $job['checked_at'] = gmdate( 'c' );
         $job['checked_epoch'] = time();
         $job['error_code'] = 'stale_or_interrupted_readonly_smoke';
-        if ( ! update_option( self::OPTION, $job, false )
+        if ( ( ! update_option( self::OPTION, $job, false )
+                && get_option( self::OPTION, array() ) !== $job )
             || ! hash_equals( $id, (string) get_option( self::LOCK, '' ) )
             || ! delete_option( self::LOCK ) )
             return new WP_Error( 'mad4b_native_cron_recovery_writeback_unverified',
