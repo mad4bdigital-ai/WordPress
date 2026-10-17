@@ -196,7 +196,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$registered_set = array();
 		foreach ( $registered_names as $name ) {
 			if ( ! is_string( $name )
-				|| ! preg_match( '/^[a-z0-9_-]{1,64}\\/[a-z0-9._\\/-]{1,191}$/D', $name ) ) continue;
+				|| ! preg_match( '~^[a-z0-9_-]{1,64}/[a-z0-9._/-]{1,191}$~D', $name ) ) continue;
 			$registered_set[ $name ] = true;
 			$parts = explode( '/', $name, 2 );
 			$namespaces[ $parts[0] ][ $name ] = true;
