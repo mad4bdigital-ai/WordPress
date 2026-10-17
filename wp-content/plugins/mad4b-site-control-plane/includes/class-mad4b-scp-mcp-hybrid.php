@@ -315,8 +315,12 @@ final class MAD4B_SCP_MCP_Hybrid {
             'fallback' => array(), 'non_authorizing' => true, 'mutation_performed' => false );
         if ( ! self::valid_ability( $ability ) || ! in_array( $dimension, array( 'read', 'write' ), true ) ) return $result;
         $binding = $native['bindings'][$ability] ?? null;
-        if ( ! empty( $native['complete'] ) && is_array( $binding )
-            && ( $binding['dimension'] ?? '' ) === $dimension
+        if ( 'write' === $dimension && is_array( $binding )
+            && ( $binding['state'] ?? '' ) === 'MCP_SCHEMA_REVIEWED' )
+            $result['native_write_candidate'] = true;
+        if ( 'read' === $dimension && ! empty( $native['complete'] )
+            && is_array( $binding ) && ! empty( $binding['read_execution_reviewed'] )
+            && ( $binding['dimension'] ?? '' ) === 'read'
             && ( $binding['state'] ?? '' ) === 'MCP_SCHEMA_REVIEWED' ) {
             $result['selected'] = 'native_mcp';
             $result['state'] = 'NATIVE_MCP_REVIEWED_AUTHORIZATION_REQUIRED';
@@ -349,9 +353,11 @@ final class MAD4B_SCP_MCP_Hybrid {
         $peer_id = (string) ( $input['peer_id'] ?? '' );
         $ability = (string) ( $input['ability'] ?? '' );
         $dimension = (string) ( $input['dimension'] ?? 'read' );
-        if ( ! isset( self::manifest()[$peer_id] ) || ! self::valid_ability( $ability ) )
-            return new WP_Error( 'mad4b_mcp_hybrid_request_invalid', 'Exact pinned peer and ability are required.' );
-        $native = self::catalog( $peer_id );
+        if ( ! self::valid_ability( $ability ) || ! in_array( $dimension, array( 'read', 'write' ), true ) )
+            return new WP_Error( 'mad4b_mcp_hybrid_request_invalid', 'Exact semantic Ability and dimension are required.' );
+        $peers = self::manifest();
+        $native = ! empty( $peer_id ) && isset( $peers[$peer_id] )
+            ? self::catalog( $peer_id ) : new WP_Error( 'mad4b_mcp_peer_not_pinned', 'No owner-pinned native peer configured.' );
         if ( is_wp_error( $native ) ) $native = array( 'complete' => false, 'bindings' => array(), 'peer_id' => $peer_id,
             'unavailable_reason' => $native->get_error_code() );
         $local = array();
