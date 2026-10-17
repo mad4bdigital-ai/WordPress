@@ -167,6 +167,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$coverage = self::coverage();
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$headers = get_plugins();
+		$mu_plugins = function_exists( 'get_mu_plugins' ) ? get_mu_plugins() : array();
+		$dropins = function_exists( 'get_dropins' ) ? get_dropins() : array();
 		$abilities_ready = function_exists( 'wp_get_abilities' )
 			&& ( ! function_exists( 'did_action' ) || did_action( 'wp_abilities_api_init' ) > 0 );
 		$registered = $abilities_ready ? wp_get_abilities() : null;
@@ -174,7 +176,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			is_array( $coverage ) ? $coverage : array(),
 			is_array( $headers ) ? $headers : array(),
 			is_array( $registered ) ? array_keys( $registered ) : array(),
-			is_array( $registered )
+			is_array( $registered ),
+			is_array( $mu_plugins ) ? $mu_plugins : array(),
+			is_array( $dropins ) ? $dropins : array()
 		);
 	}
 
@@ -183,7 +187,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 	 * execute callbacks, register abilities, grant access, or touch plugin data.
 	 */
 	public static function build_capability_graph(
-		array $coverage, array $headers, array $registered_names, $registry_available = true
+		array $coverage, array $headers, array $registered_names, $registry_available = true,
+		array $mu_plugins = array(), array $dropins = array()
 	) {
 		$ability_count = count( $registered_names );
 		$registered_names = array_slice( $registered_names, 0, 2000 );
@@ -198,6 +203,28 @@ final class MAD4B_SCP_Plugin_Discovery {
 		}
 		$plugins = isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] )
 			? array_slice( $coverage['plugins'], 0, self::MAX_PLUGINS ) : array();
+		// WordPress core enumerates must-use plugins and drop-ins separately.
+		// Treat these as inventory-only: never infer plugin lifecycle or writes.
+		$special_count = 0;
+		foreach ( array( 'must_use' => $mu_plugins, 'dropin' => $dropins ) as $kind => $extras ) {
+			ksort( $extras, SORT_STRING );
+			foreach ( $extras as $filename => $metadata ) {
+				if ( count( $plugins ) >= self::MAX_PLUGINS ) break;
+				$file = self::normalize_plugin_file( $filename );
+				if ( '' === $file || ! is_array( $metadata ) ) continue;
+				$plugins[] = array(
+					'plugin_file' => $file,
+					'version' => (string) ( $metadata['Version'] ?? '' ),
+					'active' => true, 'family' => $kind,
+					'adapter_id' => '', 'adapter_registered' => false,
+					'coverage_state' => 'inventory_only',
+					'package_kind' => $kind,
+					'adapter_read_abilities' => array(),
+				);
+				$headers[ $file ] = $metadata;
+				++$special_count;
+			}
+		}
 		$known_slugs = array();
 		$active_slugs = array();
 		foreach ( $plugins as $p ) {
@@ -241,6 +268,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$unreviewed_count += count( $unreviewed );
 			$rows[] = array(
 				'plugin_file' => $file,
+				'package_kind' => (string) ( $plugin['package_kind'] ?? 'standard' ),
 				'slug' => $slug,
 				'version' => (string) ( $plugin['version'] ?? '' ),
 				'active' => ! empty( $plugin['active'] ),
@@ -270,7 +298,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 		} );
 		$complete = ! empty( $registry_available )
 			&& empty( $coverage['truncated'] )
-			&& count( $registered_names ) === $ability_count;
+			&& count( $registered_names ) === $ability_count
+			&& ( count( $plugins ) < self::MAX_PLUGINS
+				|| $special_count === count( $mu_plugins ) + count( $dropins ) );
 		$identity = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return array(
 			'contract' => 'mad4b.plugin-capability-graph.v1',
@@ -278,6 +308,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'complete' => $complete,
 			'state' => $complete ? 'DISCOVERY_COMPLETE' : 'DISCOVERY_PARTIAL',
 			'installed_plugin_count' => count( $rows ),
+			'must_use_and_dropin_count' => $special_count,
 			'registered_adapter_read_count' => $registered_read_count,
 			'unreviewed_namespace_candidate_count' => $unreviewed_count,
 			'ability_registry_available' => (bool) $registry_available,
