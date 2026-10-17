@@ -32,6 +32,41 @@ final class MAD4B_SCP_Official_Security_Packages {
             'deployment' => sanitize_key( (string) ( $row['deployment'] ?? '' ) ) );
     }
 
+    /**
+     * Site-local observation for the existing Security Diagnostics read surface.
+     * Provider activation is not evidence that the plugin is configured or healthy.
+     */
+    public static function inventory() {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        $installed = get_plugins();
+        $list = array();
+        foreach ( array_keys( self::registry() ) as $id ) {
+            $row = self::provider( $id );
+            if ( ! $row ) continue;
+            $found = isset( $installed[ $row['plugin_file'] ] );
+            $folder_present = $found;
+            foreach ( array_keys( $installed ) as $file ) {
+                if ( 0 === strpos( $file, $row['slug'] . '/' ) ) $folder_present = true;
+            }
+            $list[] = array(
+                'provider_id' => $id,
+                'slug' => $row['slug'],
+                'role' => $row['role'],
+                'deployment' => $row['deployment'],
+                'installed' => $found,
+                'identity_ambiguous' => $folder_present && ! $found,
+                'version' => $found ? (string) ( $installed[ $row['plugin_file'] ]['Version'] ?? '' ) : '',
+                'site_active' => $found && is_plugin_active( $row['plugin_file'] ),
+                'network_active' => $found && function_exists( 'is_plugin_active_for_network' )
+                    && is_plugin_active_for_network( $row['plugin_file'] ),
+                'operational_verified' => false,
+                'security_enforcement_certified' => false,
+                'telemetry_read_capability_certified' => false,
+            );
+        }
+        return array( 'read_only' => true, 'site_local' => true, 'providers' => $list );
+    }
+
     private static function official_package( $slug, $url ) {
         if ( ! is_string( $url ) || ! function_exists( 'wp_parse_url' ) ) return false;
         $parts = wp_parse_url( $url );
