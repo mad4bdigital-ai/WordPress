@@ -612,6 +612,7 @@ jobs:
           assert sum(x['success'] for x in records)==1, records
           assert all(x['success'] or x['code'] in {
               'mad4b_site_operation_lock_held',
+              'mad4b_site_operation_lock_claim_unverified',
               'mad4b_previous_operation_needs_reconciliation',
               'mad4b_operation_readback_required',
               # A concurrent loser may fail its signed reservation readback;

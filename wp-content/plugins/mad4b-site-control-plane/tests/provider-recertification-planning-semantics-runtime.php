@@ -13,7 +13,16 @@ class WP_Error{
 }
 class MAD4B_SCP_Servers{
  public static function provider_for_ability($server,$ability){
-  return $server==='mad4b-write'&&$ability==='mad4b/provider-behavioral-recertify'?'core':null;
+  if ($server!=='mad4b-write') return null;
+  $mounts=[
+    'mad4b/provider-behavioral-recertify'=>'core',
+    'elementor/update-widget-settings'=>'elementor',
+    'jetsmartfilters/update-filter-meta'=>'jetsmartfilters',
+    'jetengine/update-post-meta'=>'jetengine',
+    'woocommerce/update-product'=>'woocommerce',
+    'seo/update-meta'=>'seo',
+  ];
+  return $mounts[$ability]??null;
  }
 }
 function ck($v,$why){if(!$v){fwrite(STDERR,'FAIL '.$why."\n");exit(1);}}
@@ -56,4 +65,22 @@ ck($x['review_required']===true && !$x['mutation_classification_ready'],
 $x=$a::classify('mad4b/provider-behavioral-recertify',['provider_id'=>'core','target_ability'=>'mad4b/provider-behavioral-recertify','target_input'=>[]]);
 ck($x['review_required']===true && !$x['mutation_classification_ready'],
  'recursive wrapper cannot bypass semantic classification');
+$multi=[
+  ['provider_id'=>'jetengine','target_ability'=>'jetengine/update-post-meta',
+    'target_input'=>['post_id'=>2,'meta_key'=>'public_label','value'=>'Example']],
+  ['provider_id'=>'woocommerce','target_ability'=>'woocommerce/update-product',
+    'target_input'=>['product_id'=>123,'name'=>'Sample product']],
+  ['provider_id'=>'seo','target_ability'=>'seo/update-meta',
+    'target_input'=>['post_id'=>99,'meta_key'=>'title','value'=>'Draft title']],
+];
+foreach($multi as $case){
+ $x=$a::classify('mad4b/provider-behavioral-recertify',$case);
+ ck($x['field_contract_known']===true && $x['provider_id']==='core',
+    'mounted provider contract covers other plugins: '.$case['provider_id']);
+}
+$extra=['provider_id'=>'seo','target_ability'=>'unmounted/undefined',
+ 'target_input'=>['post_id'=>5,'value'=>'unknown']];
+$x=$a::classify('mad4b/provider-behavioral-recertify',$extra);
+ck(!$x['field_contract_known'] && $x['review_required'] && !$x['mutation_classification_ready'],
+    'unmounted plugin ability is never trusted by a semantic catalog');
 echo "PROVIDER_RECERTIFICATION_PLANNING_SEMANTICS_PASS\n";

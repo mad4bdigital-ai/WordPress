@@ -53,3 +53,11 @@ The outer approval provider for mad4b/provider-behavioral-recertify is core, reg
 This is source-only. Live staging approvals, disposable test targets and rollback have NOT been executed and must not be marked accepted.
 
 Tasks: CRON-001/002, RECERT-001/002 source implemented CI pending; RECERT-003 live acceptance pending independently approved Staging.
+
+## Branch-wide security review — 2026-10-17 follow-up
+
+The source head 1edaff7b37ba96d1673d144ee2150654b80c14f0 failed the real MariaDB 11.8 parallel isolated journal test: two distinct signed operation tombstones were observed for one site. This is a P0 release blocker, not a cosmetic flaky test. The candidate fix adds a direct DB readback of the site-scoped lock after add_option reports success and before a signed operation tombstone is created, denying any false-positive WordPress options claim. The CI matrix now explicitly accepts this new fail-closed loser code but retains count == 1 and exactly one successful worker. An isolated regression injects nominal add_option success while the lock belongs to someone else. This is only a candidate correction until repeated MariaDB CI proves it.
+
+Generalized provider behavioral recertification now requires: mounted mad4b-write target ability + matching mounted provider + known exact semantic contract + consistent nested provider_id, not just a JSON field contract. Added matrix cases for Elementor, JetSmartFilters, JetEngine, WooCommerce and SEO, with unknown/unmounted abilities failing closed. This is classification protection only; it does not create a behavioral test ticket, grant authority or call the providers.
+
+No merge, production change, site deployment, new Provider credentials, or live plugin mutation is authorized by this source correction.

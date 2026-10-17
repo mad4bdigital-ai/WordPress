@@ -13,6 +13,13 @@ function get_option( $name, $default = false ) {
     return array_key_exists( $name, $GLOBALS['options'] ) ? $GLOBALS['options'][$name] : $default;
 }
 function add_option( $key, $value, $unused = '', $autoload = false ) {
+    // Simulate a concurrent add_option that reports success even though the
+    // actual wp_options lock belongs to a different site operation.
+    if ( !empty($GLOBALS['simulate_nominal_lock_success'])
+        && 0===strpos($key,'mad4b_scp_staging_operation_active_v1_') ) {
+        $GLOBALS['options'][$key]=str_repeat('f',64);
+        return true;
+    }
     if ( isset( $GLOBALS['options'][$key] ) ) return false;
     $GLOBALS['options'][$key] = $value;
     return true;
@@ -139,5 +146,18 @@ check_journal(is_wp_error($J::reserve($a)), 'missing operation index reports fai
 check_journal($J::latest($a['site_uuid'])['state']==='OPERATION_LOCK_WITHOUT_INDEX',
     'missing index retains evidence of active lock');
 $GLOBALS['block_updates']=false;
+
+// Failure injection 5: a nominal add_option success without DB lock ownership
+// may never create a second distinct operation tombstone.
+$GLOBALS['options']=array();
+$a=$plan; $a['site_uuid']='77777777-2222-3333-4444-555555555555';
+$GLOBALS['simulate_nominal_lock_success']=true;
+$attempt=$J::reserve($a);
+check_journal(is_wp_error($attempt)
+    && $attempt->get_error_code()==='mad4b_site_operation_lock_claim_unverified',
+    'false positive lock claim must fail closed before journal append');
+check_journal(!isset($GLOBALS['options'][$J::PREFIX.$J::id($a)]),
+    'unowned lock must not create an immutable second operation');
+$GLOBALS['simulate_nominal_lock_success']=false;
 
 echo "STAGING_OPERATION_JOURNAL_RUNTIME_PASS\n";

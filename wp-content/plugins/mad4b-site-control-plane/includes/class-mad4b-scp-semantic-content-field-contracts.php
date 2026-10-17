@@ -118,14 +118,20 @@ final class MAD4B_SCP_Semantic_Content_Field_Contracts {
 			|| ! is_array( $nested ) || '' === $provider )
 			return self::result( 'mad4b/provider-behavioral-recertify', 'core', false, array(),
 				array( 'target_input.invalid_or_missing_target_contract' ), 'behavioral_target_invalid', array() );
+		// A semantic rule describes field meaning, not execution authority.
+		// Require an exact live write mount for every tested plugin.
+		$mounted = class_exists( 'MAD4B_SCP_Servers' )
+			? MAD4B_SCP_Servers::provider_for_ability( 'mad4b-write', $ability ) : null;
+		$mounted = is_string( $mounted ) ? sanitize_key( $mounted ) : '';
 		$target = self::classify( $ability, $nested );
-		$known = ! empty( $target['field_contract_known'] )
+		$known = '' !== $mounted && $mounted === $provider
+			&& ! empty( $target['field_contract_known'] )
 			&& $provider === (string) ( $target['provider_id'] ?? '' );
 		$matched = array_map( static function ( $path ) { return 'target_input.' . $path; },
 			(array) ( $target['matched_fields'] ?? array() ) );
 		$fallback = array_map( static function ( $path ) { return 'target_input.' . $path; },
 			(array) ( $target['fallback_evidence_fields'] ?? array() ) );
-		if ( ! $known ) $fallback[] = 'target_input.unregistered_or_provider_mismatch';
+		if ( ! $known ) $fallback[] = 'target_input.unmounted_or_provider_semantics_mismatch';
 		return self::result( 'mad4b/provider-behavioral-recertify', 'core', $known, $matched,
 			$fallback, 'governed_nested_provider_semantics',
 			array( 'target_ability' => $ability, 'target_provider' => $provider,

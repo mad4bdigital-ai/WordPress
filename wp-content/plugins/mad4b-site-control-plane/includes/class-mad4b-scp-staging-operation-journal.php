@@ -35,6 +35,23 @@ final class MAD4B_SCP_Staging_Operation_Journal {
     private static function active_key( $site_uuid ) {
         return self::ACTIVE_PREFIX . substr( hash( 'sha256', strtolower( $site_uuid ) ), 0, 32 );
     }
+    private static function authoritative_site_lock_matches( $site_uuid, $id ) {
+        global $wpdb;
+        $name = self::active_key( $site_uuid );
+        // Live WordPress always supplies wpdb; in the minimal hermetic fixture
+        // without a DB use its explicitly modeled option store.
+        if ( is_object( $wpdb ) && isset( $wpdb->options ) ) {
+            if ( ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) )
+                return false;
+            $value = $wpdb->get_var( $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                $name
+            ) );
+        } else {
+            $value = get_option( $name, '' );
+        }
+        return is_string( $value ) && hash_equals( $id, $value );
+    }
     private static function latest_key( $site_uuid ) {
         return self::LATEST . '_' . substr( hash( 'sha256', strtolower( $site_uuid ) ), 0, 32 );
     }
@@ -116,6 +133,14 @@ final class MAD4B_SCP_Staging_Operation_Journal {
             return new WP_Error( 'mad4b_site_operation_lock_held',
                 'A site operation is in progress or requires recovery; do not submit another Apply.',
                 array( 'last_operation' => self::latest( strtolower( $plan['site_uuid'] ) ) ) );
+        // WordPress add_option() can report a nominal success under a concurrent
+        // unique-key race. Verify actual ownership against the authoritative
+        // wp_options row BEFORE creating the immutable operation tombstone.
+        // Reading via get_option() alone is insufficient with object caching.
+        if ( ! self::authoritative_site_lock_matches( $plan['site_uuid'], $id ) )
+            return new WP_Error( 'mad4b_site_operation_lock_claim_unverified',
+                'The site lock belongs to another concurrent operation or could not be verified. No operation record was created.',
+                array( 'operation_id' => $id ) );
         $record = array( 'contract' => self::CONTRACT, 'operation_id' => $id,
             'plan_sha256' => strtolower( $plan['plan_sha256'] ),
             'site_uuid' => strtolower( $plan['site_uuid'] ),
