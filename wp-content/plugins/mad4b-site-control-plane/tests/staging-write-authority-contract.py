@@ -555,9 +555,8 @@ if "$base = self::chatgpt_base_tools();" not in chatgpt_transport or "array_merg
     raise SystemExit('dynamic ChatGPT projection no longer composes on top of the required base catalog')
 for marker in (
     'public static function chatgpt_reviewed_direct_step_up_tools()',
-    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
-    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
-    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
+    'MAD4B_SCP_Governed_Ability_Census::eligible()',
+    'owner_intent_only',
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
     '$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );',
     '$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );',
@@ -815,10 +814,9 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "public static function chatgpt_reviewed_direct_step_up_tools()",
-    "MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY",
-    "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
-    "MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY",
-    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
+    "MAD4B_SCP_Governed_Ability_Census::eligible()",
+    "owner_intent_only",
+    "class-mad4b-scp-governed-ability-census.php",
     "public static function chatgpt_dispatch_transport_tools()",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
     "$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );",
@@ -1474,5 +1472,11 @@ _mad4b_subprocess.run([
 _mad4b_subprocess.run([
     "php",
     str(_mad4b_tests / "write-dispatch-nested-transport-runtime.php"),
+], check=True)
+# Registry-driven owner Step-up must remain covered by the normal CI path;
+# registering metadata must never equal trusted provenance or authority.
+_mad4b_subprocess.run([
+    "php",
+    str(_mad4b_tests / "dynamic-first-party-enrollment-runtime.php"),
 ], check=True)
 

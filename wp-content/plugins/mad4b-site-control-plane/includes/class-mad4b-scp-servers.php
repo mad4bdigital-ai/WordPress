@@ -2,6 +2,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
+require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -418,35 +419,20 @@ final class MAD4B_SCP_Servers {
 	 * ChatGPT CIMD bearer + dedicated step-up scope.
 	 */
 	public static function chatgpt_reviewed_direct_step_up_tools() {
-		$candidates = array();
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) $candidates[] = MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' ) ) $candidates[] = MAD4B_SCP_ChatGPT_Tool_Projection::APPLY_ABILITY;
-		if ( class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'chatgpt_direct_step_up_catalog_tools' ) ) {
-			$candidates = array_merge( $candidates, MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools() );
-		}
-
-		$tools = array();
-		foreach ( array_values( array_unique( array_map( 'strval', $candidates ) ) ) as $ability_name ) {
-			if ( '' === $ability_name || ! function_exists( 'wp_has_ability' ) || ! function_exists( 'wp_get_ability' ) || ! wp_has_ability( $ability_name ) ) continue;
-			$ability = wp_get_ability( $ability_name );
-			if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
-			$meta = $ability->get_meta();
-			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
-			$annotations = isset( $meta['annotations'] ) && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
-			if ( empty( $mcp['chatgpt_direct_step_up'] )
-				|| empty( $mcp['exact_chatgpt_client_required'] )
-				|| 'enrollment' !== ( isset( $mcp['surface'] ) ? (string) $mcp['surface'] : '' )
-				|| ! array_key_exists( 'readonly', $annotations ) || false !== $annotations['readonly'] ) continue;
-			$tools[] = $ability_name;
-		}
-		// Preserve candidate priority: narrow governed Write, Full Staging,
-		// bootstrap self-update and governed runtime gates are retained before optional semantic projections
-		// if the bounded MCP catalog budget requires degradation.
+		// One dynamic loop replaces per-feature candidate lists. Registered
+		// metadata alone is never sufficient: the census checks both callbacks
+		// originate in this installed plugin before allowing optional exposure.
+		$candidates = MAD4B_SCP_Governed_Ability_Census::eligible()
+			+ MAD4B_SCP_Governed_Ability_Census::direct_only();
+		$tools = array_keys( $candidates );
+		usort( $tools, static function ( $a, $b ) use ( $candidates ) {
+			$left = ! empty( $candidates[ $a ]['owner_intent_only'] ) ? 0 : 1;
+			$right = ! empty( $candidates[ $b ]['owner_intent_only'] ) ? 0 : 1;
+			return $left === $right ? strcmp( $a, $b ) : ( $left < $right ? -1 : 1 );
+		} );
+		// Owner intent receives priority under the bounded optional MCP catalog.
+		// All other ordering is stable; direct-only controls are never routed into
+		// the Staging Enrollment broker by the dynamic operation census.
         // The two approval bootstrap mutations are reviewed OPTIONAL direct
         // step-ups, not unguarded required tools. Catalog serialization now
         // requires the same exact ChatGPT authority-step-up bearer used for
