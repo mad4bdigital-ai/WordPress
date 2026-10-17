@@ -30,6 +30,11 @@ $graph = $c::build_capability_graph( $coverage, $plugins, $abilities );
 graph_ok( $graph['complete'] === true && $graph['installed_plugin_count'] === 3,
     'Unlimited vendors from installed inventory without vendor-specific code' );
 $rows = array(); foreach ( $graph['items'] as $row ) $rows[ $row['slug'] ] = $row;
+graph_ok( $graph['functional_dimension_counts']['inventory_observed'] === 3
+    && $graph['functional_dimension_counts']['active_reviewed_adapter'] === 1
+    && $graph['functional_dimension_counts']['read_contract_registered'] === 1
+    && $graph['functional_dimension_counts']['write_behavior_certified'] === 0,
+    'Dimension matrix distinguishes live registered reads from write authorization' );
 graph_ok( $rows['new-vendor']['unreviewed_namespace_candidates_count'] === 2
     && $rows['new-vendor']['executable_from_graph'] === false
     && $rows['new-vendor']['write_auto_enabled'] === false,
@@ -62,6 +67,8 @@ $extras = $c::build_capability_graph(
     array( 'site-mu.php' => array( 'Version'=>'1.0.0', 'RequiresPlugins'=>'new-vendor' ) ),
     array( 'object-cache.php' => array( 'Version'=>'2.0.0' ) )
 );
+graph_ok( $extras['functional_dimension_counts']['inventory_only'] === 2,
+    'Must-use and drop-in coverage remains inventory-only' );
 graph_ok( $extras['installed_plugin_count'] === 5
     && $extras['must_use_and_dropin_count'] === 2
     && $extras['complete'] === true,
