@@ -11,6 +11,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	private static $ability_hooks_bound = false;
 	private $adapters = array();
 	private $defaults_registered = false;
+	private static $approved_bundled_cache = null;
 
 	public static function instance() { if ( ! self::$instance ) self::$instance = new self(); return self::$instance; }
 	public static function boot_ability_registration() {
@@ -53,6 +54,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	 * No WordPress filter or option can expand this root-of-trust list.
 	 */
 	public static function approved_bundled_adapter_classes() {
+		if ( null !== self::$approved_bundled_cache ) return self::$approved_bundled_cache;
 		$file = __DIR__ . '/../config/adapter-registration-policy.json';
 		if ( ! is_readable( $file ) ) return array();
 		$raw = file_get_contents( $file );
@@ -67,7 +69,8 @@ final class MAD4B_SCP_Adapter_Registry {
 			if ( ! is_string( $class ) || ! isset( $available[ $class ] ) ) continue;
 			$approved[ $class ] = true;
 		}
-		return array_keys( $approved );
+		self::$approved_bundled_cache = array_keys( $approved );
+		return self::$approved_bundled_cache;
 	}
 
 	public function register_defaults() {
