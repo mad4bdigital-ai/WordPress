@@ -297,6 +297,11 @@ final class MAD4B_SCP_MCP_Hybrid {
                 'state' => !$tool ? 'MCP_TOOL_MISSING' : ( $matched ? 'MCP_SCHEMA_REVIEWED' : 'MCP_SCHEMA_DRIFT' ),
                 'schema_sha256' => $binding['schema_sha256'],
                 'read_execution_reviewed' => $binding['read_execution_reviewed'],
+                'read_execution_eligible' => $matched
+                    && 'read' === $binding['dimension']
+                    && ! empty( $binding['read_execution_reviewed'] )
+                    && true === ( $tool['annotations']['readOnlyHint'] ?? null )
+                    && true !== ( $tool['annotations']['destructiveHint'] ?? null ),
             );
         }
         return array(
@@ -319,7 +324,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             && ( $binding['state'] ?? '' ) === 'MCP_SCHEMA_REVIEWED' )
             $result['native_write_candidate'] = true;
         if ( 'read' === $dimension && ! empty( $native['complete'] )
-            && is_array( $binding ) && ! empty( $binding['read_execution_reviewed'] )
+            && is_array( $binding ) && ! empty( $binding['read_execution_eligible'] )
             && ( $binding['dimension'] ?? '' ) === 'read'
             && ( $binding['state'] ?? '' ) === 'MCP_SCHEMA_REVIEWED' ) {
             $result['selected'] = 'native_mcp';
