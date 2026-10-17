@@ -345,6 +345,131 @@ final class MAD4B_SCP_Plugin_Discovery {
 		);
 	}
 
+	/**
+	 * Plan a capability route from exact discovery evidence. Planning is purely
+	 * declarative: authorization and execution always stay in the existing
+	 * audited read/write/undo dispatchers, never in this graph.
+	 */
+	public static function route_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		return self::plan_from_graph( self::capability_graph(), $input );
+	}
+
+	public static function plan_from_graph( array $graph, array $input ) {
+		$file = isset( $input['plugin_file'] ) && is_string( $input['plugin_file'] )
+			? self::normalize_plugin_file( $input['plugin_file'] ) : '';
+		$ability = isset( $input['ability'] ) && is_string( $input['ability'] )
+			? trim( $input['ability'] ) : '';
+		$dimension = isset( $input['dimension'] ) && is_string( $input['dimension'] )
+			? sanitize_key( $input['dimension'] ) : '';
+		$expected = isset( $input['expected_graph_sha256'] ) && is_string( $input['expected_graph_sha256'] )
+			? strtolower( $input['expected_graph_sha256'] ) : '';
+		$result = array(
+			'contract' => 'mad4b.plugin-capability-route-plan.v1',
+			'plugin_file' => $file, 'ability' => $ability, 'dimension' => $dimension,
+			'graph_sha256' => (string) ( $graph['graph_sha256'] ?? '' ),
+			'state' => 'INVALID_REQUEST',
+			'non_authorizing' => true, 'read_only' => true,
+			'execute_ability_from_graph' => false, 'mutation_performed' => false,
+			'grant_created' => false, 'owner_approval_reused' => false,
+			'dispatcher' => '', 'required_gates' => array(),
+		);
+		if ( ! in_array( $dimension, array( 'inventory', 'read', 'write', 'rollback' ), true )
+			|| '' === $file || strlen( $file ) > 191
+			|| false !== strpos( $file, '..' ) || 0 === strpos( $file, '/' )
+			|| ( 'inventory' !== $dimension && ( '' === $ability || strlen( $ability ) > 191 ) ) )
+			return $result;
+		if ( ! empty( $expected ) && ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', $result['graph_sha256'] )
+			|| ! hash_equals( $result['graph_sha256'], $expected ) ) ) {
+			$result['state'] = 'DISCOVERY_SNAPSHOT_CHANGED';
+			return $result;
+		}
+		if ( empty( $graph['complete'] ) ) {
+			$result['state'] = 'DISCOVERY_PARTIAL';
+			return $result;
+		}
+		$matches = array();
+		foreach ( isset( $graph['items'] ) && is_array( $graph['items'] ) ? $graph['items'] : array() as $row ) {
+			if ( ! is_array( $row ) || (string) ( $row['plugin_file'] ?? '' ) !== $file ) continue;
+			$matches[] = $row;
+		}
+		if ( count( $matches ) !== 1 ) {
+			$result['state'] = count( $matches ) ? 'PLUGIN_IDENTITY_AMBIGUOUS' : 'PLUGIN_NOT_FOUND';
+			return $result;
+		}
+		$row = $matches[0];
+		$result['package_kind'] = (string) ( $row['package_kind'] ?? 'standard' );
+		$result['installed_version'] = (string) ( $row['version'] ?? '' );
+		$result['adapter_id'] = (string) ( $row['adapter_id'] ?? '' );
+		$result['coverage_state'] = (string) ( $row['coverage_state'] ?? '' );
+		if ( 'inventory' === $dimension ) {
+			$result['state'] = 'INVENTORY_OBSERVED';
+			$result['dispatcher'] = 'mad4b/plugin-capability-graph';
+			return $result;
+		}
+		if ( 'standard' !== $result['package_kind'] ) {
+			$result['state'] = 'INVENTORY_ONLY_PACKAGE';
+			return $result;
+		}
+		if ( empty( $row['active'] ) ) { $result['state'] = 'PLUGIN_INACTIVE'; return $result; }
+		if ( ! empty( $row['dependency_gap'] ) ) { $result['state'] = 'DEPENDENCY_NOT_READY'; return $result; }
+		if ( empty( $row['adapter_registered'] ) || empty( $row['adapter_runtime_available'] ) ) {
+			$result['state'] = 'REVIEWED_ADAPTER_UNAVAILABLE';
+			return $result;
+		}
+		$read = isset( $row['declared_adapter_read_abilities'] ) && is_array( $row['declared_adapter_read_abilities'] )
+			? $row['declared_adapter_read_abilities'] : array();
+		$write = isset( $row['declared_adapter_write_abilities'] ) && is_array( $row['declared_adapter_write_abilities'] )
+			? $row['declared_adapter_write_abilities'] : array();
+		$declared = 'read' === $dimension ? $read : $write;
+		if ( ! in_array( $ability, $declared, true ) ) {
+			$result['state'] = 'ABILITY_UNREVIEWED';
+			return $result;
+		}
+		$mounted = isset( $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] )
+			&& is_array( $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] )
+			? $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] : array();
+		if ( ! in_array( $ability, $mounted, true ) ) {
+			$result['state'] = 'ABILITY_NOT_REGISTERED';
+			return $result;
+		}
+		if ( 'read' === $dimension ) {
+			$result['state'] = 'READ_CONTRACT_AVAILABLE_AUTHORIZATION_REQUIRED';
+			$result['dispatcher'] = 'mad4b/read-execute';
+			$result['required_gates'] = array( 'registered_wp_ability_permission_callback', 'oauth_read_scope', 'transport_read_authority' );
+			return $result;
+		}
+		if ( ! empty( $row['side_channel_blocker'] ) ) {
+			$result['state'] = 'PARALLEL_TRANSPORT_UNREVIEWED';
+			return $result;
+		}
+		if ( empty( $row['provider_certification_ok'] ) ) {
+			$result['state'] = 'WRITE_BEHAVIOR_NOT_CERTIFIED';
+			return $result;
+		}
+		if ( 'rollback' === $dimension ) {
+			$contracts = isset( $row['reversible_contracts'] ) && is_array( $row['reversible_contracts'] )
+				? $row['reversible_contracts'] : array();
+			if ( ! isset( $contracts[ $ability ] ) || ! is_string( $contracts[ $ability ] )
+				|| ! preg_match( '/^mad4b\\.rollback\\.[a-z0-9._-]+\\.v[0-9]+$/D', $contracts[ $ability ] ) ) {
+				$result['state'] = 'ROLLBACK_CONTRACT_UNAVAILABLE';
+				return $result;
+			}
+			$result['rollback_contract'] = $contracts[ $ability ];
+			$result['state'] = 'RECORDED_REVERSIBLE_OPERATION_REQUIRED';
+			$result['dispatcher'] = 'mad4b/mutation-undo';
+			$result['required_gates'] = array( 'recorded_operation_id', 'before_state_receipt', 'current_state_cas',
+				'exact_owner_approval', 'governed_write_grant', 'audit_and_rollback_verification' );
+			return $result;
+		}
+		$result['state'] = 'GOVERNED_WRITE_PATH_DEFINED_AUTHORIZATION_REQUIRED';
+		$result['dispatcher'] = 'mad4b/write-execute';
+		$result['required_gates'] = array( 'provider_capability_contract', 'exact_owner_approval',
+			'governed_write_grant', 'oauth_step_up', 'current_state_cas', 'journal_and_rollback_evidence' );
+		return $result;
+	}
+
 	public static function functional_coverage_report() {
 		$coverage = self::coverage();
 		$items = array();
