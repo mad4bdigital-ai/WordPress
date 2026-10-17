@@ -61,6 +61,16 @@ jobs:
             | sort -z \
             | xargs -0 -n1 php -l
 
+      - name: Automatic provider opt-in and Browser owner consent (PHP 7.4)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.js
+
       - name: Generic discovery PHP 7.4 runtime fixtures
         shell: bash
         run: |

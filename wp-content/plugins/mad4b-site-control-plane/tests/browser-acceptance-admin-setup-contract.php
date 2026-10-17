@@ -21,6 +21,13 @@ array('executor'=>'auto','profile_id'=>'','javascript'=>'alert(1)'),
 array('executor'=>'auto','profile_id'=>'','site_provider_id'=>'https://unsafe.test'),
 array('executor'=>'auto','profile_id'=>str_repeat('x',65))
 ) as $bad) check_browser( is_wp_error($c::normalize($bad)), 'denied unsafe input' );
+$browser_source = file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acceptance-admin-ui.php');
+check_browser( strpos( $browser_source, "opt_in_external_runner" ) !== false
+    && strpos( $browser_source, "I opt in to configuring" ) !== false,
+    'external runner requires explicit opt-in on the saved choice' );
+check_browser( strpos( $browser_source, 'data-mad4b-browser-runner' ) !== false
+    && strpos( $browser_source, 'Provision these names only in the external runner' ) !== false,
+    'dynamic external requirements guide without accepting secrets' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'steel','profile_id'=>'site-1','secret'=>'never-expose');
 $pref=$c::public_selection();
 check_browser( $pref['executor']==='steel' && !isset($pref['secret']), 'credential redaction' );

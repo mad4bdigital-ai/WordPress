@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "e803db9a31d39c8207639baed4b587d7c0b2fc24bd71ad6fde8a8b2581a592c7",
-      "bytes": 50081
+      "sha256": "31880e24a4667e7e6682781ff4afc21e1f27005dfd83bc697be98e819f020bf6",
+      "bytes": 50158
     }
   ],
   "test_paths": [
@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "a1a8c4e0e25162eac8bcd7adf4fc72e43b927ba8b26ce36f9b81eecde3777fd3",
-      "bytes": 51703
+      "sha256": "b1c39c36d82d4e23be55cfec4b29f04993c7f2368aae440a7bf935a1ca848ed6",
+      "bytes": 52349
     }
   ],
   "repository_foundations": [
