@@ -110,6 +110,7 @@ Implementation: `includes/class-mad4b-scp-mcp-hybrid.php`. Registered read-only 
 | `mad4b/native-mcp-catalog` | Owner-pinned HTTP peer: negotiate protocol, perform bounded paginated native `tools/list`, fingerprint schemas and compare each reviewed binding |
 | `mad4b/native-mcp-hybrid-plan` | Select the eligible reviewed native read, otherwise a registered and reviewed local WP/adapter Ability per exact semantic capability; reports unavailable native reasons |
 | `mad4b/native-mcp-read-call` | Actual owner-reviewed, explicitly read-only native `tools/call` with expected catalog fingerprint and existing MAD4B read permission callback |
+| `mad4b/native-mcp-hybrid-read` | Dynamically dispatch exact read capability to reviewed native MCP or registered approved WordPress Ability through its standard `execute()` permission and schema validation, without retrying remote execution after a failure |
 
 Modern `2026-07-28`: stateless `server/discover`, request `_meta`, `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` headers. Legacy `2025-11-25` / `2025-06-18` / `2025-03-26`: `initialize` + `notifications/initialized`, session id and `tools/list`. Only explicit method/version incompatibility triggers downgrade. Tool lists are bounded by four pages/256 tools, JSON or bounded SSE, and refuse duplicate names, cursor loops, malformed result envelopes, HTTP redirects and unexpected versions. Each read executes in the same negotiated session as its exact catalog verification.
 
@@ -151,6 +152,8 @@ Replace all examples with independently verified details. This deliberately does
 - When native read is missing, unreviewed, not read-only, a protocol cannot be negotiated, or no peer was configured, a separately source-reviewed and currently registered local WordPress Ability/Adapter may be selected for the **same** requested ability. Never attempt a fallback by guessing a similar name.
 - Native Write tools are **candidates only**. No direct `tools/call` for mutation is exposed. Reviewed existing local Write/Undo paths continue to require live certification, owner approval, write grants, operation receipts and state-safe rollback. A native Write implementation needs an equivalent provider-specific before/after/restore contract, not merely a tool schema.
 - Read call responses that report error or interactive input-required cannot be automatically retried or silently reclassified as success.
+- For native hybrid reads, the caller must acknowledge the exact current catalog SHA-256 before invocation. Local fallback can execute without a native peer: it must have a separate registered approved Adapter, and WordPress `WP_Ability::execute()` must still validate the input and enforce its own permission callback.
+- The MCP hybrid execution wrapper **never retries** a failed native call as a local call: unknown partial side effects must not be duplicated.
 - Unknown endpoints stay visible as candidates, not executable. Existing peer isolation/fail-closed Write governance is not bypassed.
 
 ### CI and release proof
