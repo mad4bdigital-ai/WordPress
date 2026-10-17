@@ -130,7 +130,16 @@ final class MAD4B_SCP_Adapter_Registry {
 			$items[] = $status;
 			if ( ! empty( $status['reversible_contracts'] ) ) ++$reversible;
 		}
-		return array( 'adapters' => $items, 'count' => count( $items ), 'reversible_adapter_count' => $reversible );
+		$discovered = self::bundled_adapter_classes();
+		$approved = self::approved_bundled_adapter_classes();
+		$pending_review = array_values( array_diff( $discovered, $approved ) );
+		return array( 'adapters' => $items, 'count' => count( $items ),
+			'reversible_adapter_count' => $reversible,
+			'bundled_class_discovery_count' => count( $discovered ),
+			'approved_class_count' => count( $approved ),
+			'unreviewed_bundled_candidates' => $pending_review,
+			'new_candidate_write_enabled' => false,
+			'registration_policy' => 'source_reviewed_manifest_only' );
 	}
 	public function plugin_coverage() {
 		return class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array( 'contract' => 'mad4b.plugin-adapter-discovery.v1', 'discovery_only' => true, 'error' => 'plugin_discovery_unavailable' );
