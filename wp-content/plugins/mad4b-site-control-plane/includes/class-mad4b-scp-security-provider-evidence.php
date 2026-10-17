@@ -117,6 +117,32 @@ final class MAD4B_SCP_Security_Provider_Evidence {
         // vulnerabilities[]. Never expose vendor descriptions, CVE links or slugs.
         if ( array_keys( $data ) !== range( 0, count( $data ) - 1 ) && ! empty( $data ) )
             return self::unavailable( $provider, 'provider_payload_unrecognized', $route );
+        // Official WPVulnerability core route is a FLAT list of vulnerability
+        // records, whereas plugins/themes return components with nested
+        // vulnerabilities[]. Normalize separately; never infer a component per
+        // core vulnerability or accept a changed shape as zero findings.
+        if ( 'core' === $surface ) {
+            $reported = count( $data );
+            foreach ( array_slice( $data, 0, self::MAX_SCANNED_COMPONENTS ) as $entry ) {
+                if ( ! is_array( $entry ) || ! array_key_exists( 'version', $entry ) )
+                    return self::unavailable( $provider, 'provider_payload_unrecognized', $route );
+            }
+            return array(
+                'contract' => self::CONTRACT, 'provider_id' => $provider,
+                'state' => 'observed', 'source' => 'provider_local_rest',
+                'surface' => 'core',
+                'affected_components' => $reported > 0 ? 1 : 0,
+                'components_reported' => 1,
+                'vulnerabilities_reported' => min( $reported, self::MAX_SCANNED_COMPONENTS ),
+                'component_samples' => array(),
+                'truncated' => $reported > self::MAX_SCANNED_COMPONENTS,
+                'aggregation_complete' => $reported <= self::MAX_SCANNED_COMPONENTS,
+                'underlying_provider_network_possible' => true,
+                'read_only' => true, 'complete' => false,
+                'site_clean_certified' => false, 'enforcement_verified' => false,
+                'personal_data_returned' => false,
+            );
+        }
         $affected = 0;
         $vulnerabilities = 0;
         $samples = array();
