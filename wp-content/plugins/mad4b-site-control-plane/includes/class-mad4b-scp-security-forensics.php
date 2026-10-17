@@ -43,7 +43,7 @@ final class MAD4B_SCP_Security_Forensics {
     private static function base( $surface ) {
         return array(
             'contract' => self::CONTRACT, 'surface' => $surface,
-            'site_id' => function_exists( 'get_current_blog_id' ) ? (string) get_current_blog_id() : 'unknown',
+            'site_id' => class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::site_uuid() ? MAD4B_SCP_Site_Profile::site_uuid() : 'unbound',
             'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown',
             'request_id' => function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : '',
             'evidence_id' => null, 'read_only' => true,
@@ -85,7 +85,7 @@ final class MAD4B_SCP_Security_Forensics {
             'authorization' => 'unverified',
             'host_ip' => null,
             'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown',
-            'site_id' => function_exists( 'get_current_blog_id' ) ? (string) get_current_blog_id() : 'unknown',
+            'site_id' => class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::site_uuid() ? MAD4B_SCP_Site_Profile::site_uuid() : 'unbound',
             'source_hook' => 'wordpress_core',
             'external_evidence_retained' => false
         );
