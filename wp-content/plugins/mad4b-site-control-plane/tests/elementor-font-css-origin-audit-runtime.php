@@ -35,15 +35,27 @@ $css = '@font-face{src:url("https://production.example.org/assets/real.woff2")} 
     . '@font-face{src:url("https://staging.example.org/assets/local.woff")}';
 file_put_contents( $file, $css );
 $before = hash_file( 'sha256', $file );
+// Regression: the real ETG issue lives in elementor/google-fonts/css,
+// NOT only in elementor/css.
+$font_dir = $GLOBALS['uploads'] . '/elementor/google-fonts/css';
+if ( ! mkdir( $font_dir, 0700, true ) ) die( 'Unable to set up font CSS fixture' );
+$font_file = $font_dir . '/cairo.css';
+file_put_contents( $font_file, '@font-face{src:url("https://production.example.org/wp-content/uploads/elementor/google-fonts/fonts/cairo-real.woff2")} '
+    . '@font-face{src:url(https://staging.example.org/assets/other.woff2)}' );
+$font_before = hash_file( 'sha256', $font_file );
 require dirname( __DIR__ ) . '/includes/adapters/class-mad4b-scp-elementor-adapter.php';
 $a = new MAD4B_SCP_Elementor_Adapter();
 $read = $a->font_css_origin_audit( array( 'production_host' => 'production.example.org' ) );
 font_assert( is_array( $read ) && $read['scan_complete'] === true
-    && $read['production_font_references'] === 1 && $read['font_references'] === 2,
-    'Exact production host font reference found without counting Staging font' );
+    && $read['production_font_references'] === 2 && $read['font_references'] === 4
+    && $read['files_scanned'] === 2
+    && in_array( 'google-fonts/css', $read['directories_scanned'], true ),
+    'Both Elementor CSS roots scanned without counting Staging font origins' );
 font_assert( $read['read_only'] === true && $read['mutation_performed'] === false
     && $read['regeneration_authorized'] === false, 'Scan does not authorize repair' );
-font_assert( hash_file( 'sha256', $file ) === $before, 'CSS file unchanged' );
+font_assert( hash_file( 'sha256', $file ) === $before
+    && hash_file( 'sha256', $font_file ) === $font_before,
+    'Both generated CSS files unchanged' );
 $bad = $a->font_css_origin_audit( array( 'production_host' => 'staging.example.org' ) );
 font_assert( is_wp_error( $bad ) && $bad->get_error_code() === 'mad4b_elementor_font_css_origin_invalid',
     'Production and Staging origin must differ' );
@@ -62,6 +74,14 @@ $limited = $a->font_css_origin_audit( array( 'production_host' => 'production.ex
 font_assert( $limited['scan_complete'] === false
     && $limited['state'] === 'INCOMPLETE_SCAN', 'Oversized CSS scan does not claim clean state' );
 unlink( $file );
+$nested_only = $a->font_css_origin_audit( array( 'production_host' => 'production.example.org' ) );
+font_assert( $nested_only['scan_complete'] === true
+    && $nested_only['production_font_references'] === 1
+    && $nested_only['files_scanned'] === 1,
+    'Google Fonts CSS alone must be audited when regular Elementor CSS is empty' );
+unlink( $font_file );
+rmdir( $font_dir );
+rmdir( dirname( $font_dir ) );
 rmdir( $dir );
 rmdir( dirname( $dir ) );
 rmdir( $GLOBALS['uploads'] );

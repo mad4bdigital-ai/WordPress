@@ -93,6 +93,18 @@ $mismatch=$agent_method->invoke(null);
 check_preview(is_wp_error($mismatch)
     && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
     'different OAuth subject agent denied even with same slug and owner');
+$GLOBALS['resolved_agent']['id']=42;
+$GLOBALS['resolved_agent']['public_id']='different-public-agent';
+$mismatch=$agent_method->invoke(null);
+check_preview(is_wp_error($mismatch)
+    && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
+    'same ID but different OAuth public agent identity denied');
+$GLOBALS['resolved_agent']['public_id']='agent-42';
+$GLOBALS['resolved_agent']['status']='disabled';
+$mismatch=$agent_method->invoke(null);
+check_preview(is_wp_error($mismatch)
+    && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
+    'disabled OAuth-resolved agent denied');
 unset($GLOBALS['resolved_agent']);
 $remote_agent=$agent_method->invoke(null);
 check_preview(is_array($remote_agent) && $remote_agent===$local_agent,

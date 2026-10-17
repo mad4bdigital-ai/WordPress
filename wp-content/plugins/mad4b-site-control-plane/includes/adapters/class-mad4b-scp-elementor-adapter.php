@@ -216,20 +216,38 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		// WordPress read-only upload-dir discovery: never create a directory.
 		$uploads = function_exists( 'wp_get_upload_dir' ) ? wp_get_upload_dir() : wp_upload_dir( null, false );
 		$basedir = is_array( $uploads ) ? (string) ( $uploads['basedir'] ?? '' ) : '';
-		$directory = '' !== $basedir ? realpath( $basedir . '/elementor/css' ) : false;
-		if ( false === $directory || ! is_dir( $directory ) )
+		// Inspect the dedicated generated Google Fonts CSS first; it contains
+		// the absolute production font URLs seen on ETG Staging. Stay read-only.
+		$elementor_root = '' !== $basedir ? realpath( $basedir . '/elementor' ) : false;
+		$directories = array();
+		if ( false !== $elementor_root && is_dir( $elementor_root ) ) {
+			foreach ( array( 'google-fonts/css', 'css' ) as $relative ) {
+				$directory = realpath( $elementor_root . '/' . $relative );
+				if ( false === $directory || ! is_dir( $directory )
+					|| 0 !== strpos( $directory, $elementor_root . DIRECTORY_SEPARATOR ) ) continue;
+				$directories[ $relative ] = $directory;
+			}
+		}
+		if ( empty( $directories ) )
 			return array( 'state' => 'CSS_DIRECTORY_UNAVAILABLE', 'read_only' => true,
 				'production_font_references' => null, 'scan_complete' => false, 'mutation_performed' => false );
-		$paths = glob( $directory . '/*.css' );
-		if ( ! is_array( $paths ) ) $paths = array();
-		sort( $paths, SORT_STRING );
-		$complete = count( $paths ) <= 48;
+		$paths = array();
+		$complete = true;
+		foreach ( $directories as $relative => $directory ) {
+			$found = glob( $directory . '/*.css' );
+			if ( ! is_array( $found ) ) { $complete = false; continue; }
+			sort( $found, SORT_STRING );
+			foreach ( $found as $path )
+				$paths[] = array( 'path' => $path, 'directory' => $directory,
+					'source_directory' => $relative );
+		}
+		$complete = $complete && count( $paths ) <= 48;
 		$files = array();
 		$total = 0;
 		$font_total = 0;
-		foreach ( array_slice( $paths, 0, 48 ) as $path ) {
-			$real = realpath( $path );
-			if ( false === $real || 0 !== strpos( $real, $directory . DIRECTORY_SEPARATOR )
+		foreach ( array_slice( $paths, 0, 48 ) as $entry ) {
+			$real = realpath( $entry['path'] );
+			if ( false === $real || 0 !== strpos( $real, $entry['directory'] . DIRECTORY_SEPARATOR )
 				|| ! is_file( $real ) || ! is_readable( $real )
 				|| filesize( $real ) > 262144 ) { $complete = false; continue; }
 			$css = file_get_contents( $real );
@@ -249,7 +267,8 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			}
 			$font_total += $fonts;
 			$total += $leaks;
-			$files[] = array( 'file' => basename( $real ), 'font_urls' => $fonts,
+			$files[] = array( 'file' => basename( $real ),
+				'source_directory' => $entry['source_directory'], 'font_urls' => $fonts,
 				'production_font_urls' => $leaks, 'css_sha256' => hash( 'sha256', $css ) );
 		}
 		return array(
@@ -258,6 +277,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			'production_host' => $production_host,
 			'staging_host' => $staging_host,
 			'files_scanned' => count( $files ),
+			'directories_scanned' => array_keys( $directories ),
 			'font_references' => $font_total,
 			'production_font_references' => $total,
 			'files' => $files,
