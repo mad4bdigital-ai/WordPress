@@ -67,6 +67,11 @@ final class MAD4B_SCP_Official_Security_Packages {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
         $plugins = get_plugins();
         $installed = isset( $plugins[ $row['plugin_file'] ] );
+        // Never install into an already occupied plugin directory, even if
+        // the reviewed main file has changed between releases.
+        foreach ( array_keys( $plugins ) as $file ) {
+            if ( 0 === strpos( $file, $row['slug'] . '/' ) ) $installed = true;
+        }
         $active = $installed && is_plugin_active( $row['plugin_file'] );
         $requested_active = ! empty( $input['activate_after_install'] );
         $blockers = array();
@@ -115,7 +120,8 @@ final class MAD4B_SCP_Official_Security_Packages {
         $input = is_array( $input ) ? $input : array();
         // Do not rely on a tool dispatcher as the only authorization boundary.
         $permission = MAD4B_SCP_Plugin_Package::can_apply( $input );
-        if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
+        if ( is_wp_error( $permission ) ) return $permission;
+        if ( true !== $permission ) return new WP_Error( 'mad4b_security_write_denied', 'Governed Write approval is required.' );
         $expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
         if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
             return new WP_Error( 'mad4b_security_exact_plan_required', 'A reviewed exact-plan digest is required.' );
