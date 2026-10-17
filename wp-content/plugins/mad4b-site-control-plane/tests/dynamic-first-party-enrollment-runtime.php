@@ -84,6 +84,16 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php'
 
 MAD4B_SCP_Staging_Write_Owner_Intent::register_ability();
 $owner = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
+// Unrelated plugin registrations must not globally disable MAD4B discovery.
+for ( $n = 0; $n < MAD4B_SCP_Governed_Ability_Census::MAX_ABILITIES + 20; ++$n ) {
+    $name = 'unrelated/plugin-' . $n;
+    $GLOBALS['registered'][ $name ] = new WP_Ability( $name, array() );
+}
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::eligible()[ $owner ] ),
+    'Unrelated WordPress abilities unexpectedly blocked owner discovery' );
+foreach ( array_keys( $GLOBALS['registered'] ) as $name ) {
+    if ( 0 === strpos( $name, 'unrelated/' ) ) unset( $GLOBALS['registered'][ $name ] );
+}
 $pre = MAD4B_SCP_Governed_Ability_Census::eligible();
 mad4b_check( isset( $pre[ $owner ] ), 'registered core owner ability not detected' );
 mad4b_check( $pre[ $owner ]['owner_intent_only'], 'owner intent not classified correctly' );
@@ -97,6 +107,19 @@ mad4b_check( $entry['operation_id'] === $pre[ $owner ]['operation_id'],
 $info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
 mad4b_check( ! is_wp_error( $info ) && $info['remote_ability'] === $owner,
     'info did not resolve exact registered ability' );
+// Swapping two *trusted* plugin callbacks must invalidate the registration
+// identity even when the ability name, metadata and schema remain unchanged.
+$original = $GLOBALS['registered'][ $owner ];
+$GLOBALS['registered'][ $owner ] = new WP_Ability( $owner, array(
+    'meta' => $original->get_meta(), 'input_schema' => $original->get_input_schema(),
+    'execute_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'diagnose' ),
+    'permission_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ),
+) );
+$changed = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
+mad4b_check( ! is_wp_error( $changed ) && ! hash_equals(
+    (string) $info['registration_digest'], (string) $changed['registration_digest'] ),
+    'First-party callback replacement did not invalidate the enrollment registration digest' );
+$GLOBALS['registered'][ $owner ] = $original;
 $input = array( 'operation_id' => $entry['operation_id'] );
 mad4b_check( true === MAD4B_SCP_Enrollment_Dispatch::can_execute( $input ),
     'verified owner session was not admitted into target permission path' );
@@ -142,6 +165,18 @@ MAD4B_SCP_Site_Profile::$env = 'staging';
 unset( $GLOBALS['registered'][ $direct_name ] );
 $schema = $GLOBALS['registered'][ $owner ]->get_input_schema();
 $meta = $GLOBALS['registered'][ $owner ]->get_meta();
+// Generic direct Step-up exposure is not permission to use Enrollment broker.
+$bad = $meta;
+unset( $bad['mcp']['governed_enrollment_broker'] );
+$GLOBALS['registered'][ $owner ] = new WP_Ability( $owner, array(
+    'meta' => $bad, 'input_schema' => $schema,
+    'execute_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'attest' ),
+    'permission_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ),
+) );
+mad4b_check( '' === MAD4B_SCP_Governed_Ability_Census::operation_id_for( $owner ),
+    'Unreviewed direct Step-up leaked into the generic Enrollment broker' );
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::structural_step_up()[ $owner ] ),
+    'Safe structural discovery was incorrectly coupled to broker eligibility' );
 $bad = $meta;
 $bad['mcp']['production_mutation_allowed'] = true;
 $GLOBALS['registered'][ $owner ] = new WP_Ability( $owner, array(
