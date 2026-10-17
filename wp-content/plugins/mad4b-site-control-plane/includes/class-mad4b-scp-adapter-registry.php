@@ -40,8 +40,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			$file = $reflection->getFileName();
 			$real = is_string( $file ) ? realpath( $file ) : false;
 			if ( false === $real || 0 !== strpos( $real, $root . DIRECTORY_SEPARATOR ) ) continue;
-			$constructor = $reflection->getConstructor();
-			if ( $constructor && $constructor->getNumberOfRequiredParameters() > 0 ) continue;
+			// Parameterized adapters are reviewed and registered by trusted hooks only.
 			$found[] = $name;
 		}
 		sort( $found, SORT_STRING );
@@ -73,10 +72,29 @@ final class MAD4B_SCP_Adapter_Registry {
 		return self::$approved_bundled_cache;
 	}
 
+	public static function default_bundled_adapter_classes() {
+		$file = __DIR__ . '/../config/adapter-registration-policy.json';
+		if ( ! is_readable( $file ) ) return array();
+		$raw = file_get_contents( $file );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : null;
+		if ( ! is_array( $data ) || ! isset( $data['default_classes'] )
+			|| ! is_array( $data['default_classes'] ) ) return array();
+		$approved = array_fill_keys( self::approved_bundled_adapter_classes(), true );
+		$out = array();
+		foreach ( $data['default_classes'] as $class ) {
+			if ( ! is_string( $class ) || ! isset( $approved[ $class ] ) ) continue;
+			$reflection = new ReflectionClass( $class );
+			$constructor = $reflection->getConstructor();
+			if ( $constructor && $constructor->getNumberOfRequiredParameters() > 0 ) continue;
+			$out[$class] = true;
+		}
+		return array_keys( $out );
+	}
+
 	public function register_defaults() {
 		if ( $this->defaults_registered ) return;
 		$this->defaults_registered = true;
-		foreach ( self::approved_bundled_adapter_classes() as $class ) $this->register( new $class() );
+		foreach ( self::default_bundled_adapter_classes() as $class ) $this->register( new $class() );
 		// Legacy hook may propose adapters but cannot mount unreviewed classes.
 		// Separate source-reviewed registration policy controls all providers.
 		do_action( 'mad4b_scp_register_adapters', $this );
