@@ -239,7 +239,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			$leaks = 0;
 			$fonts = 0;
 			foreach ( $matches[1] as $raw ) {
-				$url = trim( $raw, " \\t\\n\\r\\0\\x0B'\\\"" );
+				$url = trim( trim( $raw ), "'\"" );
 				$parts = wp_parse_url( $url );
 				if ( ! is_array( $parts ) || empty( $parts['path'] )
 					|| ! preg_match( '/\\.(woff2?|ttf|otf|eot)$/i', (string) $parts['path'] ) ) continue;
