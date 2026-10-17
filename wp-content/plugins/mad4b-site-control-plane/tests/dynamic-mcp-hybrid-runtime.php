@@ -25,6 +25,8 @@ function wp_safe_remote_post( $url, $args ) {
     $session = 'legacy' === $revision ? 'test-session' : '';
     if ( $method === 'server/discover' && 'legacy' === $revision )
         return array( 'status'=>404, 'headers'=>array( 'content-type'=>'application/json' ), 'body'=>'{}' );
+    if ( $method === 'server/discover' && 'bad_request' === $revision )
+        return array( 'status'=>400, 'headers'=>array( 'content-type'=>'application/json' ), 'body'=>'{}' );
     if ( $method === 'server/discover' ) {
         $result = array( 'supportedVersions'=>array('2026-07-28'), 'capabilities'=>array('tools'=>new stdClass()) );
     } elseif ( $method === 'initialize' ) {
@@ -43,6 +45,9 @@ function wp_safe_remote_post( $url, $args ) {
         $result = array( 'content' => array( array('type'=>'text', 'text'=>'SAFE_DATA') ), 'isError'=>false );
     } else return new WP_Error( 'unexpected_call', 'unknown method' );
     $wire = array( 'jsonrpc'=>'2.0', 'id'=>$json['id'], 'result'=>$result );
+    if ( ! empty($GLOBALS['mcp_sse']) )
+        return array( 'status'=>200, 'headers'=>array('content-type'=>'text/event-stream','mcp-session-id'=>$session),
+            'body'=>"event: message\ndata: ".json_encode($wire)."\n\n" );
     return array( 'status'=>200, 'headers'=>array('content-type'=>'application/json', 'mcp-session-id'=>$session), 'body'=>json_encode($wire) );
 }
 function wp_remote_retrieve_response_code( $response ) { return $response['status']; }
@@ -115,5 +120,29 @@ mcp_check( ! is_wp_error($legacy) && $legacy['protocol']==='2025-11-25'
     && in_array('initialize',$GLOBALS['mcp_calls'],true)
     && in_array('notifications/initialized',$GLOBALS['mcp_calls'],true),
     'Legacy initialize/initialized plus tools/list fallback supported' );
+$before_calls = count($GLOBALS['mcp_calls']);
+$candidates = $hybrid::candidate_inventory();
+mcp_check( $candidates['pinned_count'] === 1 && $candidates['catalog_protocol_probe_performed'] === false
+    && count($GLOBALS['mcp_calls']) === $before_calls,
+    'Candidate discovery is independent from network probing' );
+$readonly_local = array('demo/offline'=>array('registered'=>true,'reviewed'=>true,'dimension'=>'read','source'=>'adapter'));
+$route = $hybrid::hybrid_plan_from_evidence(array('complete'=>false,'bindings'=>array()),$readonly_local,'demo/offline','read');
+mcp_check( $route['selected'] === 'reviewed_adapter',
+    'Hybrid fallback survives unavailable MCP endpoint' );
+$GLOBALS['mcp_sse'] = true;
+$GLOBALS['mcp_revision'] = 'modern';
+$sse = $hybrid::catalog('test-peer');
+mcp_check( ! is_wp_error($sse) && $sse['tool_count'] === 2,
+    'Bounded Streamable HTTP event-stream responses are decoded' );
+$GLOBALS['mcp_sse'] = false;
+$GLOBALS['mcp_revision'] = 'bad_request';
+$bad = $hybrid::catalog('test-peer');
+mcp_check( is_wp_error($bad) && $bad->get_error_code() === 'mad4b_mcp_protocol_uncertain',
+    'Ambiguous modern bad-request cannot trigger unsafe legacy downgrade' );
+$GLOBALS['mcp_revision'] = 'modern';
+$GLOBALS['mcp_tools'][0]['inputSchema']['properties']['q']['type'] = 'integer';
+$drift = $hybrid::catalog('test-peer');
+mcp_check( ! is_wp_error($drift) && $drift['bindings']['demo/inspect']['state'] === 'MCP_SCHEMA_DRIFT',
+    'Remote native tool schema drift is detected without execution' );
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";
