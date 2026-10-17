@@ -1,0 +1,47 @@
+{
+  "contract": "mad4b.live-staging-incident-snapshot.v1",
+  "scope": "sanitized_operator_observation_not_authorization",
+  "observation_date": "2026-10-17",
+  "observations_are_not_a_replay_of_the_remote_mcp_host": true,
+  "sites": [
+    {
+      "site_key": "egypt-tour-gates",
+      "environment": "staging",
+      "last_confirmed_head": "0ba16b32a67ce3d9f6578a39dab676f01fd302a5",
+      "fresh_read_state": "success",
+      "fresh_read_evidence": "mad4b/session-safe-diagnostics read at 2026-10-17T20:14:06Z",
+      "owner_receipt": "expired",
+      "candidate_binding_matches": false,
+      "runtime_adapter": "0.7.0",
+      "latest_confirmed_write_authority": "blocked_current_drift",
+      "observed_request_elapsed_ms": 1616,
+      "observed_diagnostic_elapsed_ms": 65,
+      "unattributed_host_wait_ms": null,
+      "known_faults": [
+        "owner-intent expired (previous exact read)",
+        "candidate bound to 1edf2a13 historical source",
+        "Elementor closure matrix request has intermittently failed after ~34s",
+        "remote tool errors intermittent"
+      ]
+    },
+    {
+      "site_key": "all-royal-egypt",
+      "environment": "staging",
+      "last_confirmed_head": "0ba16b32a67ce3d9f6578a39dab676f01fd302a5",
+      "fresh_read_state": "host_internal_error",
+      "fresh_read_evidence": "mad4b/session-safe-diagnostics and site-profile call failed internally on 2026-10-17; source and blocked binding last confirmed earlier",
+      "owner_receipt": "unknown",
+      "candidate_binding_matches": null,
+      "runtime_adapter": "0.7.0",
+      "latest_confirmed_write_authority": "historical_blocked_current_drift_unreverified",
+      "observed_request_elapsed_ms": null,
+      "observed_diagnostic_elapsed_ms": null,
+      "unattributed_host_wait_ms": null,
+      "known_faults": [
+        "opaque MCP host error on read-only call",
+        "historic candidate binding drift; no new verification from failed call",
+        "owner intent cannot be inferred from unavailable live read"
+      ]
+    }
+  ]
+}
