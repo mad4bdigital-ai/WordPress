@@ -103,4 +103,40 @@ $extra=['provider_id'=>'seo','target_ability'=>'unmounted/undefined',
 $x=$a::classify('mad4b/provider-behavioral-recertify',$extra);
 ck(!$x['field_contract_known'] && $x['review_required'] && !$x['mutation_classification_ready'],
     'uncatalogued ability is never trusted by a semantic contract');
+
+// Assert planning and execution use one server-resolved target identity.
+// Only the one-time ticket envelope is excluded; the mutation input is exact.
+function apply_filters($name,$value,...$args){return $value;}
+require dirname(__DIR__).'/includes/class-mad4b-scp-staging-write-authority.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-resource-constraint-set.php';
+require dirname(__DIR__).'/includes/class-mad4b-scp-authorization-target-fingerprint.php';
+$fp='MAD4B_SCP_Authorization_Target_Fingerprint';
+$authority='MAD4B_SCP_Staging_Write_Authority';
+$ability='mad4b/provider-behavioral-recertify';
+$agent=['id'=>7,'public_id'=>'aaaabbbb-cccc-dddd-eeee-111122223333'];
+$planned=$g::canonicalize_remote_plan_input($base);
+$plan_input=$authority::authorization_input($planned['input'],$ability);
+$plan_target=$fp::fingerprint($ability,'core',$plan_input,$agent,['planning'=>true]);
+ck(is_string($plan_target) && preg_match('/^[a-f0-9]{64}$/D',$plan_target),
+ 'planning uses a server-resolved SHA256 target');
+$execution_input=$planned['input'];
+$execution_input['_mad4b_approval_ticket_id']='11111111-2222-4333-8444-555555555555';
+$execution_target=$fp::fingerprint($ability,'core',
+ $authority::authorization_input($execution_input,$ability),$agent,['mutation'=>true]);
+ck(hash_equals($plan_target,$execution_target),
+ 'exact same mutation target remains identical after ticket envelope stripping');
+$swapped=$planned['input'];
+$swapped['target_input']['settings']['background_color']='#ABCDEF';
+$other_target=$fp::fingerprint($ability,'core',
+ $authority::authorization_input($swapped,$ability),$agent,['mutation'=>true]);
+ck($other_target!==$plan_target,
+ 'changed target input cannot reuse an approved fingerprint');
+$other_provider=$fp::fingerprint($ability,'elementor',$plan_input,$agent,['mutation'=>true]);
+ck($other_provider!==$plan_target,'core wrapper and plugin provider are distinct identities');
+$reordered=$planned['input'];
+$reordered=array_reverse($reordered,true);
+$reordered_target=$fp::fingerprint($ability,'core',
+ $authority::authorization_input($reordered,$ability),$agent,['mutation'=>true]);
+ck(hash_equals($plan_target,$reordered_target),
+ 'equivalent associative field ordering does not cause spurious target drift');
 echo "PROVIDER_RECERTIFICATION_PLANNING_SEMANTICS_PASS\n";
