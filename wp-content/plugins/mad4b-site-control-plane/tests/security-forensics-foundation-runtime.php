@@ -7,6 +7,9 @@ error_reporting( E_ALL );
 $root = sys_get_temp_dir() . '/mad4b-security-fixture-' . bin2hex( random_bytes( 5 ) );
 mkdir( $root . '/wp-content/uploads/2026/10', 0700, true );
 mkdir( $root . '/wp-content/plugins', 0700, true );
+mkdir( $root . '/custom-plugins/example', 0700, true );
+file_put_contents( $root . '/custom-plugins/example/example.php', '<?php // harmless plugin' );
+define( 'WP_PLUGIN_DIR', $root . '/custom-plugins' );
 file_put_contents( $root . '/wp-content/uploads/2026/10/fixture.php', '<?php echo "fixture";' );
 define( 'ABSPATH', $root . '/' );
 $GLOBALS['actions'] = array();
@@ -16,6 +19,8 @@ function add_action( $hook, $cb, $priority = 10, $args = 1 ) { $GLOBALS['actions
 function current_user_can( $cap ) { return 'manage_options' === $cap; }
 function get_current_user_id() { return 5; }
 function is_admin() { return true; }
+function get_option( $name, $fallback = null ) { return 'active_plugins' === $name ? array( 'example/example.php' ) : $fallback; }
+function get_site_option( $name, $fallback = null ) { return 'active_sitewide_plugins' === $name ? array() : $fallback; }
 function wp_get_environment_type() { return 'staging'; }
 function get_current_blog_id() { return 17; }
 function wp_generate_uuid4() { return 'fixture-request'; }
@@ -87,6 +92,10 @@ ok( $root_scan['coverage'] === 'partial', 'excluded secrets yield honest partial
 unlink( $root . '/wp-config.php' );
 $guardian = MAD4B_SCP_Security_Forensics::plugin_guardian();
 ok( $guardian['confirmed_malicious'] === false && $guardian['trusted_package_verification'] === 'not_configured', 'unknown plugin never auto-malicious' );
+ok( $guardian['active_references_count'] === 1 && $guardian['missing_references_asserted'] === true,
+    'registered WordPress custom plugin directory observed' );
+ok( count( $guardian['active_missing_references'] ) === 0,
+    'do not falsely report missing custom plugin' );
 MAD4B_SCP_Security_Forensics::activated( 'plugin-editor-pro/plugin-editor-pro.php', false );
 MAD4B_SCP_Security_Forensics::role_changed( 11, 'administrator' );
 MAD4B_SCP_Security_Forensics::setting_changed( 'siteurl', 'SECRET_BEFORE', 'SECRET_AFTER' );
@@ -112,6 +121,9 @@ rmdir( $root . '/wp-content/uploads/2026' );
 if ( file_exists( $link ) || is_link( $link ) ) unlink( $link );
 rmdir( $root . '/wp-content/uploads' );
 rmdir( $root . '/wp-content/plugins' );
+unlink( $root . '/custom-plugins/example/example.php' );
+rmdir( $root . '/custom-plugins/example' );
+rmdir( $root . '/custom-plugins' );
 rmdir( $root . '/wp-content' );
 rmdir( $root );
 echo "SECURITY_FORENSICS_FOUNDATION: PASS (PHP hooks, read abilities, path denial, no destructive grants)\n";
