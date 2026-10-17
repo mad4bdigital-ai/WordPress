@@ -165,6 +165,11 @@ $gone = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine', $runtime,
 $check( 'UNKNOWN' === $gone['read_state']
 	&& empty( $gone['compatible_read_capabilities'] ),
 	'Absent provider was declared read-compatible.', $gone );
+$unknown_runtime = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
+	array( 'status' => '', 'runtime_contract_ok' => false ), $fixture );
+$check( 'UNKNOWN' === $unknown_runtime['read_state']
+	&& empty( $unknown_runtime['compatible_read_capabilities'] ),
+	'Unknown provider runtime was promoted to compatible read.', $unknown_runtime );
 $fixture['provider_id'] = 'rank_math';
 $foreign = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
 	array( 'status' => 'version_drift' ), $fixture );
