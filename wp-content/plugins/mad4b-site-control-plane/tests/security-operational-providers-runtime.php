@@ -15,6 +15,8 @@ $GLOBALS['installed'] = array();
 $GLOBALS['activate_allowed'] = false;
 $GLOBALS['permission'] = false;
 $GLOBALS['download_calls'] = 0;
+$GLOBALS['download_ok'] = false;
+$GLOBALS['activated'] = false;
 $GLOBALS['audit_calls'] = 0;
 class WP_Error {
     private $code;
@@ -28,11 +30,28 @@ function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function get_bloginfo( $key ) { return '7.1'; }
 function current_user_can( $key ) { return true; }
 function get_plugins() { return $GLOBALS['installed']; }
-function is_plugin_active( $file ) { return false; }
+function is_plugin_active( $file ) { return ! empty( $GLOBALS['activated'] ); }
 function plugins_api( $action, $args ) { return $GLOBALS['official']; }
 function download_url( $url, $timeout = 0 ) {
     ++$GLOBALS['download_calls'];
-    return new WP_Error( 'offline_by_fixture' );
+    if ( empty( $GLOBALS['download_ok'] ) ) return new WP_Error( 'offline_by_fixture' );
+    $path = tempnam( sys_get_temp_dir(), 'mad4b-provider-archive-' );
+    file_put_contents( $path, 'a harmless test archive, not a real plugin' );
+    return $path;
+}
+function wp_clean_plugins_cache( $clear_update_cache = true ) {}
+function activate_plugin( $file, $redirect = '', $network_wide = false, $silent = false ) {
+    $GLOBALS['activated'] = true;
+    return null;
+}
+class Automatic_Upgrader_Skin {}
+class Plugin_Upgrader {
+    public function __construct( $skin ) {}
+    public function install( $path, $options = array() ) {
+        if ( ! empty( $options['overwrite_package'] ) ) throw new RuntimeException( 'unsafe overwrite requested' );
+        $GLOBALS['installed']['wordfence/wordfence.php'] = array( 'Version' => '8.0.1' );
+        return true;
+    }
 }
 class MAD4B_SCP_Site_Profile {
     public static function environment_allowed( $envs, $cap ) { return true; }
@@ -87,6 +106,19 @@ try {
     $result = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
     $assert( is_wp_error( $result ) && $result->get_error_code() === 'offline_by_fixture', 'official download through core when exactly authorized' );
     $assert( $GLOBALS['audit_calls'] === 1 && $GLOBALS['download_calls'] === 1, 'one audit intent and one native download attempt' );
+    $GLOBALS['download_ok'] = true;
+    $result = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
+    $assert( is_array( $result ) && $result['installed'] && ! $result['active'], 'native WordPress install without implicit activation' );
+    $assert( $result['security_enforcement_certified'] === false && $result['operational_verified'] === false, 'no fake protection certification' );
+    $assert( strlen( $result['download_sha256'] ) === 64 && $GLOBALS['audit_calls'] === 3, 'downloaded artifact hash and final audit' );
+    $blocked = MAD4B_SCP_Official_Security_Packages::plan( $input );
+    $assert( ! $blocked['eligible'], 'subsequent install blocked for already installed plugin' );
+    $GLOBALS['installed'] = array();
+    $GLOBALS['activated'] = false;
+    $activePlan = MAD4B_SCP_Official_Security_Packages::plan( $activeInput );
+    $activated = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $activeInput, array( 'expected_plan_sha256' => $activePlan['plan_sha256'] ) ) );
+    $assert( is_array( $activated ) && $activated['active'], 'opt-in allowlisted site activation after install' );
+    $assert( $GLOBALS['audit_calls'] === 5 && $GLOBALS['download_calls'] === 3, 'one governed audit pair per successful install' );
     echo "SECURITY_OPERATIONAL_PROVIDERS_RUNTIME: PASS ($checks checks)\n";
 } finally {
     @unlink( $dir . '/wp-admin/includes/plugin.php' );
