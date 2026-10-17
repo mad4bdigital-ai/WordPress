@@ -144,5 +144,33 @@ $GLOBALS['mcp_tools'][0]['inputSchema']['properties']['q']['type'] = 'integer';
 $drift = $hybrid::catalog('test-peer');
 mcp_check( ! is_wp_error($drift) && $drift['bindings']['demo/inspect']['state'] === 'MCP_SCHEMA_DRIFT',
     'Remote native tool schema drift is detected without execution' );
+// Simulate an exact previously source-reviewed local adapter. The real
+// runtime uses WP_Ability::execute, which enforces validation and permissions.
+final class MAD4B_Test_Hybrid_Adapter {
+    public function ability_names() { return array('read'=>array('demo/offline')); }
+}
+final class MAD4B_Test_Hybrid_Ability {
+    public function execute( $args ) { return array('ok'=>true,'permission_checked'=>true,'query'=>$args['q'] ?? ''); }
+}
+final class MAD4B_SCP_Adapter_Registry {
+    public static function instance() { return new self(); }
+    public function all() { return array( new MAD4B_Test_Hybrid_Adapter() ); }
+}
+function wp_get_ability( $name ) {
+    return 'demo/offline' === $name ? new MAD4B_Test_Hybrid_Ability() : null;
+}
+$before_local = count($GLOBALS['mcp_calls']);
+$hybrid_read = $hybrid::execute_hybrid_read(array('ability'=>'demo/offline',
+    'arguments'=>array('q'=>'fallback'), 'peer_id'=>''));
+mcp_check(!is_wp_error($hybrid_read)
+    && $hybrid_read['selected'] === 'reviewed_adapter'
+    && $hybrid_read['result']['permission_checked'] === true
+    && count($GLOBALS['mcp_calls']) === $before_local,
+    'Local fallback executes via registered Ability with no remote request');
+$native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
+    'peer_id'=>'test-peer', 'arguments'=>array('q'=>'test')));
+mcp_check(is_wp_error($native_denied)
+    && $native_denied->get_error_code() === 'mad4b_hybrid_read_snapshot_unacknowledged',
+    'Hybrid read does not trigger native call without client-acknowledged catalog hash');
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";
