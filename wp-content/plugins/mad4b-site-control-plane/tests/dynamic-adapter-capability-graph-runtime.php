@@ -17,7 +17,8 @@ $coverage = array( 'truncated' => false, 'plugins' => array(
         'active' => true, 'family' => 'unknown', 'coverage_state' => 'adapter_required',
         'adapter_registered' => false, 'adapter_read_abilities' => array() ),
     array( 'plugin_file' => 'core-provider/main.php', 'version' => '1.0.0',
-        'active' => true, 'adapter_registered' => true, 'adapter_id' => 'core-provider',
+        'active' => true, 'adapter_registered' => true,
+        'adapter_runtime_available' => true, 'adapter_id' => 'core-provider',
         'provider_certification_ok' => false,
         'adapter_read_abilities' => array( 'core-provider/read-status' ) ),
     array( 'plugin_file' => 'another/main.php', 'version' => '1.0.0',
@@ -35,6 +36,12 @@ graph_ok( $rows['new-vendor']['unreviewed_namespace_candidates_count'] === 2
     'Arbitrary namespaced write-like ability is only a passive candidate' );
 graph_ok( $rows['core-provider']['registered_adapter_read_abilities'] === array( 'core-provider/read-status' ),
     'Already reviewed read ability is recognized from runtime registry' );
+$not_loaded = $coverage; $not_loaded['plugins'][1]['adapter_runtime_available'] = false;
+$missing_runtime = $c::build_capability_graph( $not_loaded, $plugins, $abilities );
+$unavailable = array();
+foreach ( $missing_runtime['items'] as $row ) $unavailable[ $row['slug'] ] = $row;
+graph_ok( $unavailable['core-provider']['registered_adapter_read_abilities'] === array(),
+    'Declared but runtime-unavailable adapter is never mislabeled as operational' );
 graph_ok( $rows['new-vendor']['dependency_gap'] === true
     && count( $rows['new-vendor']['declared_dependencies'] ) === 2,
     'Dependency inventory dynamically classifies active and missing plugin slugs' );
