@@ -74,12 +74,15 @@ final class MAD4B_SCP_Adapter_Registry {
 		if ( $this->defaults_registered ) return;
 		$this->defaults_registered = true;
 		foreach ( self::approved_bundled_adapter_classes() as $class ) $this->register( new $class() );
-		// Explicit external registration still requires a reviewed Adapter_Base
-		// contract. No automatic loading or permission broadening occurs here.
+		// Legacy hook may propose adapters but cannot mount unreviewed classes.
+		// Separate source-reviewed registration policy controls all providers.
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}
 	public function register( $adapter ) {
 		if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
+		// Adapter_Base inheritance alone is not authority. Third-party hooks
+		// and new bundled classes cannot silently register executable abilities.
+		if ( ! in_array( get_class( $adapter ), self::approved_bundled_adapter_classes(), true ) ) return false;
 		$id = $adapter->id();
 		if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id ) ) return false;
 		if ( isset( $this->adapters[ $id ] ) ) return false; // Reject silent collisions/overrides.
