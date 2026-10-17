@@ -121,7 +121,8 @@ final class MAD4B_SCP_Official_Security_Packages {
         // Do not rely on a tool dispatcher as the only authorization boundary.
         $permission = MAD4B_SCP_Plugin_Package::can_apply( $input );
         if ( is_wp_error( $permission ) ) return $permission;
-        if ( true !== $permission ) return new WP_Error( 'mad4b_security_write_denied', 'Governed Write approval is required.' );
+        if ( true !== $permission && ( ! is_array( $permission ) || empty( $permission['allowed'] ) ) )
+            return new WP_Error( 'mad4b_security_write_denied', 'Governed Write approval is required.' );
         $expected = strtolower( trim( (string) ( $input['expected_plan_sha256'] ?? '' ) ) );
         if ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
             return new WP_Error( 'mad4b_security_exact_plan_required', 'A reviewed exact-plan digest is required.' );
