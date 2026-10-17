@@ -43,7 +43,8 @@
     "MAD4B_SCP_JetEngine_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter",
-    "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter"
+    "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter",
+    "MAD4B_CI_Failure_Evidence_Adapter"
   ],
   "unknown_plugin_mutation": "deny",
   "unknown_plugin_discovery": "read_only",
@@ -92,5 +93,9 @@
     "MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter"
   ],
-  "hook_contract": "hooks_may_register_only_exact_reviewed_trusted_bundle_classes"
+  "hook_contract": "hooks_may_register_only_exact_reviewed_trusted_bundle_classes",
+  "test_only_source_classes": [
+    "MAD4B_CI_Failure_Evidence_Adapter"
+  ],
+  "test_only_mode": "not_loaded_by_runtime_bootstrap_not_a_public_ability"
 }
