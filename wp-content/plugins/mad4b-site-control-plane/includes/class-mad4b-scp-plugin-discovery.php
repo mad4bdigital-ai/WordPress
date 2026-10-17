@@ -150,6 +150,137 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return $counts;
 	}
 
+	/**
+	 * Dynamic, non-executing plugin capability graph.
+	 * WordPress itself supplies plugin headers and the registered ability set;
+	 * no vendor version, slug, route or method whitelist is embedded here.
+	 * A matching namespace is merely a CANDIDATE, never proof of ownership,
+	 * safety or permission to invoke an ability.
+	 */
+	public static function capability_graph() {
+		$coverage = self::coverage();
+		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$headers = get_plugins();
+		$registered = function_exists( 'wp_get_abilities' ) ? wp_get_abilities() : null;
+		return self::build_capability_graph(
+			is_array( $coverage ) ? $coverage : array(),
+			is_array( $headers ) ? $headers : array(),
+			is_array( $registered ) ? array_keys( $registered ) : array(),
+			is_array( $registered )
+		);
+	}
+
+	/**
+	 * Pure projection suitable for deterministic negative fixtures. Does not
+	 * execute callbacks, register abilities, grant access, or touch plugin data.
+	 */
+	public static function build_capability_graph(
+		array $coverage, array $headers, array $registered_names, $registry_available = true
+	) {
+		$ability_count = count( $registered_names );
+		$registered_names = array_slice( $registered_names, 0, 2000 );
+		$namespaces = array();
+		$registered_set = array();
+		foreach ( $registered_names as $name ) {
+			if ( ! is_string( $name )
+				|| ! preg_match( '/^[a-z0-9_-]{1,64}\\/[a-z0-9._\\/-]{1,191}$/D', $name ) ) continue;
+			$registered_set[ $name ] = true;
+			$parts = explode( '/', $name, 2 );
+			$namespaces[ $parts[0] ][ $name ] = true;
+		}
+		$plugins = isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] )
+			? array_slice( $coverage['plugins'], 0, self::MAX_PLUGINS ) : array();
+		$known_slugs = array();
+		$active_slugs = array();
+		foreach ( $plugins as $p ) {
+			if ( ! is_array( $p ) || empty( $p['plugin_file'] ) ) continue;
+			$slug = self::plugin_slug( $p['plugin_file'] );
+			$known_slugs[ $slug ] = true;
+			if ( ! empty( $p['active'] ) ) $active_slugs[ $slug ] = true;
+		}
+		$rows = array();
+		$registered_read_count = 0;
+		$unreviewed_count = 0;
+		foreach ( $plugins as $plugin ) {
+			if ( ! is_array( $plugin ) || empty( $plugin['plugin_file'] ) ) continue;
+			$file = self::normalize_plugin_file( $plugin['plugin_file'] );
+			$slug = self::plugin_slug( $file );
+			$header = isset( $headers[ $file ] ) && is_array( $headers[ $file ] ) ? $headers[ $file ] : array();
+			$dependencies = array();
+			foreach ( explode( ',', (string) ( $header['RequiresPlugins'] ?? '' ) ) as $dependency ) {
+				$dependency = sanitize_key( trim( $dependency ) );
+				if ( '' !== $dependency && $dependency !== $slug ) $dependencies[ $dependency ] = true;
+			}
+			$dependency_rows = array();
+			ksort( $dependencies, SORT_STRING );
+			foreach ( $dependencies as $dependency => $_ ) $dependency_rows[] = array(
+				'slug' => $dependency,
+				'installed' => isset( $known_slugs[ $dependency ] ),
+				'active' => isset( $active_slugs[ $dependency ] ),
+			);
+			$declared = isset( $plugin['adapter_read_abilities'] ) && is_array( $plugin['adapter_read_abilities'] )
+				? $plugin['adapter_read_abilities'] : array();
+			$declared = array_values( array_unique( array_filter( $declared, 'is_string' ) ) );
+			sort( $declared, SORT_STRING );
+			$mounted = array_values( array_filter( $declared, static function ( $name ) use ( $registered_set ) {
+				return isset( $registered_set[ $name ] );
+			} ) );
+			$namespace_candidates = isset( $namespaces[ $slug ] ) ? array_keys( $namespaces[ $slug ] ) : array();
+			sort( $namespace_candidates, SORT_STRING );
+			$unreviewed = array_values( array_diff( $namespace_candidates, $declared ) );
+			$registered_read_count += count( $mounted );
+			$unreviewed_count += count( $unreviewed );
+			$rows[] = array(
+				'plugin_file' => $file,
+				'slug' => $slug,
+				'version' => (string) ( $plugin['version'] ?? '' ),
+				'active' => ! empty( $plugin['active'] ),
+				'family' => (string) ( $plugin['family'] ?? 'unknown' ),
+				'adapter_id' => (string) ( $plugin['adapter_id'] ?? '' ),
+				'coverage_state' => (string) ( $plugin['coverage_state'] ?? 'adapter_required' ),
+				'provider_certification_ok' => ! empty( $plugin['provider_certification_ok'] ),
+				'declared_adapter_read_abilities' => $declared,
+				'registered_adapter_read_abilities' => $mounted,
+				'unreviewed_namespace_candidates' => array_slice( $unreviewed, 0, 48 ),
+				'unreviewed_namespace_candidates_count' => count( $unreviewed ),
+				'declared_dependencies' => $dependency_rows,
+				'dependency_gap' => (bool) count( array_filter( $dependency_rows, static function ( $d ) {
+					return ! $d['active'];
+				} ) ),
+				'executable_from_graph' => false,
+				'write_auto_enabled' => false,
+				'next_step' => empty( $plugin['adapter_registered'] )
+					? 'review_vendor_contract_and_register_separately'
+					: ( ! empty( $plugin['provider_certification_ok'] )
+						? 'use_existing_governed_ability_with_its_own_permission_gate'
+						: 'inspect_behavioral_contract_and_certification_before_mutation' ),
+			);
+		}
+		usort( $rows, static function ( $a, $b ) {
+			return strcmp( $a['plugin_file'], $b['plugin_file'] );
+		} );
+		$complete = ! empty( $registry_available )
+			&& empty( $coverage['truncated'] )
+			&& count( $registered_names ) === $ability_count;
+		$identity = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return array(
+			'contract' => 'mad4b.plugin-capability-graph.v1',
+			'non_authorizing' => true, 'read_only' => true,
+			'complete' => $complete,
+			'state' => $complete ? 'DISCOVERY_COMPLETE' : 'DISCOVERY_PARTIAL',
+			'installed_plugin_count' => count( $rows ),
+			'registered_adapter_read_count' => $registered_read_count,
+			'unreviewed_namespace_candidate_count' => $unreviewed_count,
+			'ability_registry_available' => (bool) $registry_available,
+			'registered_ability_count' => $ability_count,
+			'graph_sha256' => is_string( $identity ) ? hash( 'sha256', $identity ) : '',
+			'items' => $rows,
+			'executes_plugin_abilities' => false,
+			'automatic_write_registration' => false,
+			'unknown_plugin_write_allowed' => false,
+		);
+	}
+
 	public static function functional_coverage_report() {
 		$coverage = self::coverage();
 		$items = array();
@@ -456,6 +587,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$declared_abilities = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$declared_abilities = is_array( $declared_abilities ) ? $declared_abilities : array();
 		$read_abilities = isset( $declared_abilities['read'] ) && is_array( $declared_abilities['read'] ) ? array_values( array_filter( $declared_abilities['read'], 'is_string' ) ) : array();
+		$read_abilities = array_values( array_unique( $read_abilities ) );
+		sort( $read_abilities, SORT_STRING );
 		return array(
 			'plugin_file' => $plugin_file,
 			'slug' => self::plugin_slug( $plugin_file ),
@@ -469,6 +602,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'adapter_registered' => is_object( $adapter ),
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
 			'adapter_read_ability_count' => count( $read_abilities ),
+			'adapter_read_abilities' => array_slice( $read_abilities, 0, 128 ),
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,
