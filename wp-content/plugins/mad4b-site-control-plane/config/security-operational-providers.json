@@ -1,0 +1,36 @@
+{
+  "contract": "mad4b.security-operational-providers.v1",
+  "description": "Optional official WordPress.org security/diagnostic plugins; no implicit install, activation, or authority.",
+  "providers": {
+    "security-wordfence": {
+      "slug": "wordfence",
+      "main_file": "wordfence/wordfence.php",
+      "role": "malware-firewall",
+      "deployment": "staging-first"
+    },
+    "security-wpvulnerability": {
+      "slug": "wpvulnerability",
+      "main_file": "wpvulnerability/wpvulnerability.php",
+      "role": "vulnerability-intelligence",
+      "deployment": "staging-first"
+    },
+    "security-activity-log": {
+      "slug": "aryo-activity-log",
+      "main_file": "aryo-activity-log/aryo-activity-log.php",
+      "role": "activity-audit",
+      "deployment": "staging-first"
+    },
+    "security-query-monitor": {
+      "slug": "query-monitor",
+      "main_file": "query-monitor/query-monitor.php",
+      "role": "runtime-diagnostics",
+      "deployment": "diagnostic-only"
+    },
+    "security-plugin-check": {
+      "slug": "plugin-check",
+      "main_file": "plugin-check/plugin-check.php",
+      "role": "plugin-quality",
+      "deployment": "development-staging-only"
+    }
+  }
+}
