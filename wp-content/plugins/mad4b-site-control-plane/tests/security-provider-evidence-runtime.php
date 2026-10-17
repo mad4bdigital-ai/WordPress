@@ -105,6 +105,23 @@ $expect( MAD4B_SCP_Security_Provider_Evidence::collect( $activity, '90d' )['stat
 $GLOBALS['abilities']['activity-log/detect-suspicious-events'] = new StubAbility( new WP_Error( 'forbidden' ) );
 $expect( $get( $activity )['reason'] === 'native_suspicious_read_denied_or_invalid', 'ability denial observed' );
 
+$GLOBALS['routes']['/wpvulnerability/v1/core'] = array( 'GET' );
+$GLOBALS['responses']['/wpvulnerability/v1/core'] = new StubRestResponse( 200, array(
+    array( 'version' => '6.8', 'severity' => 'high', 'cwe' => array( array( 'secret' => 'do-not-export' ) ) ),
+    array( 'version' => '6.8', 'severity' => 'medium', 'source' => array( array( 'secret' => 'hidden' ) ) ),
+) );
+$core = MAD4B_SCP_Security_Provider_Evidence::collect( $vuln, '24h', 'core' );
+$expect( $core['state'] === 'observed' && $core['vulnerabilities_reported'] === 2,
+    'flat official core vulnerabilities normalized' );
+$expect( $core['affected_components'] === 1 && $core['components_reported'] === 1,
+    'one WordPress core component not two distinct components' );
+$expect( false === strpos( json_encode( $core ), 'do-not-export' ),
+    'raw core vulnerability details redacted' );
+$GLOBALS['responses']['/wpvulnerability/v1/core'] = new StubRestResponse( 200, array(
+    array( 'vulnerabilities' => array() ),
+) );
+$expect( MAD4B_SCP_Security_Provider_Evidence::collect( $vuln, '24h', 'core' )['reason']
+    === 'provider_payload_unrecognized', 'core cannot be interpreted as nested components' );
 $expect( $get( $vuln )['reason'] === 'provider_route_not_registered', 'route absence blocked' );
 $GLOBALS['routes']['/wpvulnerability/v1/plugins'] = array( 'GET' );
 $GLOBALS['responses']['/wpvulnerability/v1/plugins'] = new StubRestResponse( 403, array() );
