@@ -1423,6 +1423,20 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		return $args;
 	}
 
+	/**
+	 * Canonical order for exact grant-plan evidence, independent of database
+	 * row arrival order, registry iteration, or WordPress/MCP entry point.
+	 * Never discard rows: a duplicate or deny remains visible to fail-closed gates.
+	 */
+	public static function canonical_plan_rows( array $rows ) {
+		usort( $rows, static function ( $a, $b ) {
+			$left = wp_json_encode( $a, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$right = wp_json_encode( $b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			return strcmp( (string) $left, (string) $right );
+		} );
+		return $rows;
+	}
+
 	public static function reconciliation_plan() {
 		$status = self::base_status();
 		$tools = self::write_tools();
@@ -1607,6 +1621,16 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			}
 		}
 
+		// A semantic change changes the exact fingerprint; list ordering alone
+		// must not invalidate a signed owner plan between two read transports.
+		$rows = self::canonical_plan_rows( $rows );
+		$missing = self::canonical_plan_rows( $missing );
+		$stale = self::canonical_plan_rows( $stale );
+		$unreviewed_stale = self::canonical_plan_rows( $unreviewed_stale );
+		$duplicates = self::canonical_plan_rows( $duplicates );
+		$broad_environment = self::canonical_plan_rows( $broad_environment );
+		sort( $subject_preflight_blockers, SORT_STRING );
+
 		$registry_counts = is_array( $agent ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array();
 		$global_wildcards = isset( $registry_counts['wildcard_grants'] ) ? (int) $registry_counts['wildcard_grants'] : 0;
 		$duplicate_excess = 0;
@@ -1642,6 +1666,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'sanitize_key',
 			array_merge( $current_readiness_blockers, $subject_preflight_blockers )
 		) ) ) );
+		sort( $current_readiness_blockers, SORT_STRING );
 
 		return array(
 			'contract' => 'mad4b.governed-write-authority-reconciliation-plan.v2',
