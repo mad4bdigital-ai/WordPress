@@ -12,6 +12,7 @@ final class MAD4B_SCP_Security_Provider_Evidence {
     const CONTRACT = 'mad4b.security-provider-evidence.v1';
     const MAX_FINDINGS = 10;
     const MAX_COMPONENTS = 15;
+    const MAX_SCANNED_COMPONENTS = 250;
 
     private static function unavailable( $provider, $reason, $source = '' ) {
         return array(
@@ -120,7 +121,7 @@ final class MAD4B_SCP_Security_Provider_Evidence {
         $vulnerabilities = 0;
         $samples = array();
         $processed = 0;
-        foreach ( $data as $component ) {
+        foreach ( array_slice( $data, 0, self::MAX_SCANNED_COMPONENTS ) as $component ) {
             if ( ! is_array( $component ) || ! isset( $component['vulnerabilities'] )
                 || ! is_array( $component['vulnerabilities'] ) )
                 return self::unavailable( $provider, 'provider_payload_unrecognized', $route );
@@ -135,9 +136,11 @@ final class MAD4B_SCP_Security_Provider_Evidence {
             'contract' => self::CONTRACT, 'provider_id' => $provider,
             'state' => 'observed', 'source' => 'provider_local_rest',
             'surface' => $surface, 'affected_components' => $affected,
+            'components_reported' => count( $data ),
             'vulnerabilities_reported' => $vulnerabilities,
             'component_samples' => $samples,
-            'truncated' => $affected > self::MAX_COMPONENTS,
+            'truncated' => count( $data ) > self::MAX_COMPONENTS,
+            'aggregation_complete' => count( $data ) <= self::MAX_SCANNED_COMPONENTS,
             'underlying_provider_network_possible' => true,
             'read_only' => true, 'complete' => false,
             'site_clean_certified' => false, 'enforcement_verified' => false,
