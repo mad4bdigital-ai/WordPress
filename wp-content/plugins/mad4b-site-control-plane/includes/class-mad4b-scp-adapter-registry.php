@@ -33,7 +33,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		if ( false === $root || ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ) return array();
 		$found = array();
 		foreach ( get_declared_classes() as $name ) {
-			if ( ! is_subclass_of( $name, 'MAD4B_SCP_Adapter_Base', false ) ) continue;
+			if ( ! is_subclass_of( $name, 'MAD4B_SCP_Adapter_Base', true ) ) continue;
 			$reflection = new ReflectionClass( $name );
 			if ( $reflection->isAbstract() || ! $reflection->isInstantiable() ) continue;
 			$file = $reflection->getFileName();
