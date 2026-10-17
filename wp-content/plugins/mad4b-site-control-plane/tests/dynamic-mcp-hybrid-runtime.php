@@ -92,8 +92,9 @@ mcp_check( $route['selected'] === 'reviewed_adapter' && $route['state'] === 'LOC
 $route = $hybrid::hybrid_plan_from_evidence($catalog,$local,'demo/inspect','read');
 mcp_check( $route['selected'] === 'native_mcp', 'Reviewed native tool preferred when available' );
 $route = $hybrid::hybrid_plan_from_evidence($catalog,array(),'demo/delete','write');
-mcp_check( $route['selected'] === 'native_mcp' && $route['write_execution_allowed_by_plan'] === false,
-    'Write is not executed or authorized by discovery' );
+mcp_check( $route['selected'] === '' && ! empty($route['native_write_candidate'])
+    && $route['write_execution_allowed_by_plan'] === false,
+    'Native Write is discoverable but not dispatchable without a governed executor' );
 $route = $hybrid::hybrid_plan_from_evidence($catalog,array(),'demo/missing','read');
 mcp_check( $route['selected'] === '', 'Unknown tool never auto-enrolled' );
 $denied = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
