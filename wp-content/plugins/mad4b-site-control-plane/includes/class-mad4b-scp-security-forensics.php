@@ -265,42 +265,67 @@ final class MAD4B_SCP_Security_Forensics {
     public static function plugin_guardian( $input = array() ) {
         if ( ! self::allowed() || ! self::validate_input( $input ) )
             return new WP_Error( 'mad4b_security_guardian_denied', 'Read denied.' );
-        $active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
+        $active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : null;
+        $network = function_exists( 'get_site_option' ) ? get_site_option( 'active_sitewide_plugins', array() ) : null;
+        $inventory_complete = is_array( $active ) && count( $active ) <= 100
+            && is_array( $network ) && count( $network ) <= 100;
         if ( ! is_array( $active ) ) $active = array();
-        $active = array_values( array_filter( $active, 'is_string' ) );
-        $active = array_slice( $active, 0, 100 );
-        $network = function_exists( 'get_site_option' ) ? get_site_option( 'active_sitewide_plugins', array() ) : array();
-        if ( is_array( $network ) ) $active = array_values( array_unique( array_merge( $active, array_keys( $network ) ) ) );
+        if ( ! is_array( $network ) ) $network = array();
+        $active = array_values( array_unique( array_merge(
+            array_values( array_filter( array_slice( $active, 0, 100 ), 'is_string' ) ),
+            array_keys( array_slice( $network, 0, 100 ) )
+        ) ) );
+        if ( count( $active ) > 100 ) {
+            $inventory_complete = false;
+            $active = array_slice( $active, 0, 100 );
+        }
         $root = realpath( ABSPATH );
-        $plugin_root = $root ? $root . '/wp-content/plugins' : '';
-        $disk = array(); $coverage = 'unavailable';
-        if ( $plugin_root && ! is_link( $plugin_root ) && is_dir( $plugin_root ) ) {
+        $configured_root = defined( 'WP_PLUGIN_DIR' ) && is_string( WP_PLUGIN_DIR )
+            ? WP_PLUGIN_DIR : ( $root ? $root . '/wp-content/plugins' : '' );
+        // A configured directory may legitimately differ from wp-content/plugins.
+        // Restrict this site-local read to the enrolled WordPress tree, and do
+        // not follow directory symlinks or create false "missing" findings.
+        $plugin_root = $configured_root ? realpath( $configured_root ) : false;
+        $readable_root = $root && $plugin_root && ! is_link( $configured_root )
+            && ( $plugin_root === $root || 0 === strpos( $plugin_root, $root . DIRECTORY_SEPARATOR ) )
+            && is_dir( $plugin_root ) && is_readable( $plugin_root );
+        $disk = array(); $coverage = 'unavailable'; $missing = array();
+        if ( $readable_root ) {
             $entries = @scandir( $plugin_root );
             if ( is_array( $entries ) ) {
-                $coverage = count( $entries ) > 102 ? 'partial' : 'bounded_directory_names';
+                $coverage = count( $entries ) > 102 || ! $inventory_complete
+                    ? 'partial' : 'bounded_directory_names';
                 foreach ( $entries as $entry ) {
                     if ( '.' === $entry || '..' === $entry ) continue;
                     if ( count( $disk ) >= 100 ) { $coverage = 'partial'; break; }
-                    $entry_path = $plugin_root . '/' . $entry;
+                    $entry_path = $plugin_root . DIRECTORY_SEPARATOR . $entry;
                     if ( is_link( $entry_path ) ) { $disk[] = array( 'entry' => $entry, 'type' => 'symlink_unfollowed' ); continue; }
                     if ( is_dir( $entry_path ) ) $disk[] = array( 'entry' => $entry, 'type' => 'directory' );
                     elseif ( is_file( $entry_path ) && 'php' === strtolower( pathinfo( $entry, PATHINFO_EXTENSION ) ) )
                         $disk[] = array( 'entry' => $entry, 'type' => 'root_plugin_candidate' );
                 }
+                foreach ( $active as $plugin ) {
+                    // Native plugin basename shape, not an arbitrary relative path.
+                    if ( ! preg_match( '/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)?\.php$/D', $plugin )
+                        || false !== strpos( $plugin, '..' ) ) {
+                        $coverage = 'partial'; continue;
+                    }
+                    $file = $plugin_root . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $plugin );
+                    if ( is_link( dirname( $file ) ) || is_link( $file ) ) {
+                        $coverage = 'partial'; continue;
+                    }
+                    if ( ! is_file( $file ) || ! is_readable( $file ) )
+                        $missing[] = array( 'plugin' => self::safe_slug( $plugin ),
+                            'finding' => 'active_reference_missing_or_unreadable' );
+                }
             }
-        }
-        $missing = array();
-        foreach ( $active as $plugin ) {
-            if ( false !== strpos( $plugin, '..' ) || 0 === strpos( $plugin, '/' ) || false !== strpos( $plugin, '\\' ) ) continue;
-            $file = $plugin_root . '/' . $plugin;
-            if ( ! is_file( $file ) || is_link( $file ) )
-                $missing[] = array( 'plugin' => self::safe_slug( $plugin ), 'finding' => 'active_reference_missing_or_unreadable' );
         }
         return self::base( 'plugin_guardian' ) + array(
             'active_references_count' => count( $active ),
             'filesystem_entries' => $disk,
             'active_missing_references' => $missing,
             'coverage' => $coverage,
+            'missing_references_asserted' => 'unavailable' !== $coverage,
             'classification' => 'unknown_until_package_provenance_verified',
             'confirmed_malicious' => false,
             'trusted_package_verification' => 'not_configured',
