@@ -438,7 +438,7 @@ for marker in [
 
 semantic_projection = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for marker in [
-    "MAD4B_SCP_Governed_Ability_Census::eligible()",
+    "MAD4B_SCP_Governed_Ability_Census::structural_step_up()",
     "public static function chatgpt_reviewed_direct_step_up_tools()",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
 ]:
