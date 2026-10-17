@@ -422,7 +422,7 @@ final class MAD4B_SCP_Servers {
 		// One dynamic loop replaces per-feature candidate lists. Registered
 		// metadata alone is never sufficient: the census checks both callbacks
 		// originate in this installed plugin before allowing optional exposure.
-		$candidates = MAD4B_SCP_Governed_Ability_Census::eligible()
+		$candidates = MAD4B_SCP_Governed_Ability_Census::structural_step_up()
 			+ MAD4B_SCP_Governed_Ability_Census::direct_only();
 		$tools = array_keys( $candidates );
 		usort( $tools, static function ( $a, $b ) use ( $candidates ) {
