@@ -12,41 +12,58 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Governed_Ability_Census {
     const CONTRACT = 'mad4b.governed-ability-census.v1';
+    // Limit *first-party matches*, not all WordPress abilities registered by
+    // unrelated plugins. A large third-party registry is not a MAD4B outage.
     const MAX_ABILITIES = 2048;
+    const MAX_FIRST_PARTY_CANDIDATES = 256;
 
-    private static function callback_is_ours( $callback ) {
+    /** Return stable, installation-path-independent first-party callback identity. */
+    private static function callback_identity( $callback ) {
         if ( ! is_array( $callback ) || 2 !== count( $callback )
             || ! is_string( $callback[1] )
             || ! preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D',
                 is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0] ) )
-            return false;
+            return '';
         try {
             $method = new ReflectionMethod( $callback[0], $callback[1] );
-            if ( ! $method->isPublic() ) return false;
+            if ( ! $method->isPublic() || ! is_callable( $callback ) ) return '';
             $file = realpath( (string) $method->getFileName() );
             $root = realpath( __DIR__ );
-            return false !== $file && false !== $root
-                && 0 === strpos( $file, $root . DIRECTORY_SEPARATOR );
+            if ( false === $file || false === $root
+                || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR ) ) return '';
+            return $method->getDeclaringClass()->getName() . '::' . $method->getName()
+                . '@' . str_replace( DIRECTORY_SEPARATOR, '/', substr( $file, strlen( $root ) + 1 ) );
         } catch ( Throwable $error ) {
-            return false;
+            return '';
         }
     }
 
-    private static function trusted_callback_pair( $ability ) {
-        // WordPress 6.9+ exposes these callback properties as protected, not as
-        // public getters. Read-only Reflection is used solely for provenance;
-        // never invoke either callback during discovery or preparation.
-        if ( ! class_exists( 'WP_Ability', false ) || ! ( $ability instanceof WP_Ability ) ) return false;
+    private static function callback_is_ours( $callback ) {
+        return '' !== self::callback_identity( $callback );
+    }
+
+    private static function callback_pair_digest( $ability ) {
+        if ( ! class_exists( 'WP_Ability', false ) || ! ( $ability instanceof WP_Ability ) ) return '';
+        $identities = array();
         try {
             foreach ( array( 'execute_callback', 'permission_callback' ) as $property_name ) {
                 $property = new ReflectionProperty( 'WP_Ability', $property_name );
                 $property->setAccessible( true );
-                if ( ! self::callback_is_ours( $property->getValue( $ability ) ) ) return false;
+                $identity = self::callback_identity( $property->getValue( $ability ) );
+                if ( '' === $identity ) return '';
+                $identities[ $property_name ] = $identity;
             }
         } catch ( Throwable $error ) {
-            return false;
+            return '';
         }
-        return true;
+        $encoded = function_exists( 'wp_json_encode' )
+            ? wp_json_encode( $identities, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+            : json_encode( $identities );
+        return is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+    }
+
+    private static function trusted_callback_pair( $ability ) {
+        return '' !== self::callback_pair_digest( $ability );
     }
 
     /**
@@ -60,14 +77,19 @@ final class MAD4B_SCP_Governed_Ability_Census {
         // The enrollment broker rechecks exact Staging identity separately.
         if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' ) ) return array();
         $registry = wp_get_abilities();
-        if ( ! is_array( $registry ) || count( $registry ) > self::MAX_ABILITIES ) return array();
+        if ( ! is_array( $registry ) ) return array();
         $result = array();
+        $first_party_candidates = 0;
         foreach ( $registry as $key => $ability ) {
             if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) ) continue;
             $name = method_exists( $ability, 'get_name' )
                 ? (string) $ability->get_name() : ( is_string( $key ) ? $key : '' );
-            if ( ! preg_match( '#^mad4b/[a-z][a-z0-9-]{2,159}$#D', $name )
-                || wp_get_ability( $name ) !== $ability ) continue;
+            if ( ! preg_match( '#^mad4b/[a-z][a-z0-9-]{2,159}$#D', $name ) ) continue;
+            ++$first_party_candidates;
+            // Too many MAD4B candidates is an integrity anomaly, not a reason
+            // to start admitting arbitrary callbacks. Fail closed.
+            if ( $first_party_candidates > self::MAX_FIRST_PARTY_CANDIDATES ) return array();
+            if ( wp_get_ability( $name ) !== $ability ) continue;
             $meta = $ability->get_meta();
             $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
             $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
@@ -79,31 +101,43 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 || false !== ( $annotations['readonly'] ?? null )
                 || ! method_exists( $ability, 'execute' )
                 || ! method_exists( $ability, 'get_input_schema' ) ) continue;
-            if ( 'staging' === $mode ) {
+            if ( 'staging' === $mode || 'projection' === $mode ) {
                 if ( false !== ( $mcp['production_mutation_allowed'] ?? null )
                     || true === ( $mcp['production_allowed'] ?? false )
                     || true === ( $mcp['direct_only_excluded_from_staging_broker'] ?? false ) ) continue;
+                // Structural MCP presentation can include reviewed direct
+                // step-ups. The generic Enrollment broker requires independent,
+                // explicit first-party owner-review opt-in. No metadata-only
+                // inference can waive a human decision.
+                if ( 'staging' === $mode
+                    && ( true !== ( $mcp['governed_enrollment_broker'] ?? null )
+                        || 'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )
+                        || true !== ( $mcp['owner_intent_only'] ?? null ) ) ) continue;
             } else {
                 if ( true !== ( $mcp['direct_only_excluded_from_staging_broker'] ?? null )
                     || true !== ( $mcp['production_allowed'] ?? null )
                     || true !== ( $mcp['generic_raw_sql_breakglass_configuration'] ?? null ) ) continue;
             }
-            if ( ! self::trusted_callback_pair( $ability ) ) continue;
+            $callback_digest = self::callback_pair_digest( $ability );
+            if ( '' === $callback_digest ) continue;
             $result[ $name ] = array(
                 'ability_name' => $name,
                 'operation_id' => 'core_step_up_' . substr( str_replace( '-', '_', substr( str_replace( '/', '_', $name ), 0, 48 ) ), 0, 48 )
                     . '_' . substr( hash( 'sha256', $name ), 0, 12 ),
                 'owner_intent_only' => true === ( $mcp['owner_intent_only'] ?? null ),
+                'broker_dispatch_policy' => 'staging' === $mode
+                    ? (string) ( $mcp['broker_dispatch_policy'] ?? '' ) : '',
+                'callback_pair_digest' => $callback_digest,
                 'source' => 'verified_first_party_php_callbacks',
                 'authority_effect' => 'none',
-                'execution_lane' => 'staging' === $mode ? 'staging_enrollment' : 'direct_only',
+                'execution_lane' => 'staging' === $mode ? 'staging_enrollment' : ( 'projection' === $mode ? 'structural_projection' : 'direct_only' ),
             );
         }
         ksort( $result, SORT_STRING );
         return $result;
     }
 
-    public static function structural_step_up() { return self::scan( 'staging' ); }
+    public static function structural_step_up() { return self::scan( 'projection' ); }
 
     public static function eligible() {
         if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
