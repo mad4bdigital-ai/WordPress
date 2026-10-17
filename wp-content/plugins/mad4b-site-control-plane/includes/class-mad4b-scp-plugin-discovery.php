@@ -157,11 +157,19 @@ final class MAD4B_SCP_Plugin_Discovery {
 	 * A matching namespace is merely a CANDIDATE, never proof of ownership,
 	 * safety or permission to invoke an ability.
 	 */
+	private static function dependency_slug( $file ) {
+		$parts = explode( '/', self::normalize_plugin_file( $file ) );
+		$component = isset( $parts[1] ) ? $parts[0] : pathinfo( $parts[0], PATHINFO_FILENAME );
+		return sanitize_key( $component );
+	}
+
 	public static function capability_graph() {
 		$coverage = self::coverage();
 		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		$headers = get_plugins();
-		$registered = function_exists( 'wp_get_abilities' ) ? wp_get_abilities() : null;
+		$abilities_ready = function_exists( 'wp_get_abilities' )
+			&& ( ! function_exists( 'did_action' ) || did_action( 'wp_abilities_api_init' ) > 0 );
+		$registered = $abilities_ready ? wp_get_abilities() : null;
 		return self::build_capability_graph(
 			is_array( $coverage ) ? $coverage : array(),
 			is_array( $headers ) ? $headers : array(),
@@ -194,7 +202,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$active_slugs = array();
 		foreach ( $plugins as $p ) {
 			if ( ! is_array( $p ) || empty( $p['plugin_file'] ) ) continue;
-			$slug = self::plugin_slug( $p['plugin_file'] );
+			$slug = self::dependency_slug( $p['plugin_file'] );
 			$known_slugs[ $slug ] = true;
 			if ( ! empty( $p['active'] ) ) $active_slugs[ $slug ] = true;
 		}
@@ -204,7 +212,7 @@ final class MAD4B_SCP_Plugin_Discovery {
 		foreach ( $plugins as $plugin ) {
 			if ( ! is_array( $plugin ) || empty( $plugin['plugin_file'] ) ) continue;
 			$file = self::normalize_plugin_file( $plugin['plugin_file'] );
-			$slug = self::plugin_slug( $file );
+			$slug = self::dependency_slug( $file );
 			$header = isset( $headers[ $file ] ) && is_array( $headers[ $file ] ) ? $headers[ $file ] : array();
 			$dependencies = array();
 			foreach ( explode( ',', (string) ( $header['RequiresPlugins'] ?? '' ) ) as $dependency ) {
