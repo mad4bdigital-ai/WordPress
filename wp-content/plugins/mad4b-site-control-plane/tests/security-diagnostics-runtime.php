@@ -79,7 +79,7 @@ try {
     MAD4B_SCP_Security_Diagnostics::boot();
     $check( $GLOBALS['hooks'] === array( array( 'wp_abilities_api_init', 44 ) ), 'Hook did not register' );
     MAD4B_SCP_Security_Diagnostics::register_abilities();
-    $names = array( 'mad4b/security-site-posture', 'mad4b/security-file-indicators',
+    $names = array( 'mad4b/security-site-posture', 'mad4b/security-provider-evidence', 'mad4b/security-file-indicators',
         'mad4b/security-file-integrity', 'mad4b/security-database-indicators' );
     foreach ( $names as $name ) {
         $check( isset( $GLOBALS['abilities'][ $name ] ), 'Ability missing: ' . $name );
@@ -90,6 +90,15 @@ try {
             'Ability grants unsafe access' );
     }
     $check( MAD4B_SCP_Security_Diagnostics::can_read(), 'Read scope unexpectedly denied' );
+    $provider_evidence = MAD4B_SCP_Security_Diagnostics::provider_evidence(
+        array( 'provider_id' => 'security-wordfence' ) );
+    $check( is_array( $provider_evidence ) && $provider_evidence['state'] === 'unavailable'
+        && !$provider_evidence['site_clean_certified'], 'Absent provider must fail closed' );
+    $check( is_wp_error( MAD4B_SCP_Security_Diagnostics::provider_evidence(
+        array( 'provider_id' => 'arbitrary-extension' ) ) ), 'Arbitrary provider admitted' );
+    $check( is_wp_error( MAD4B_SCP_Security_Diagnostics::provider_evidence(
+        array( 'provider_id' => 'security-wordfence', 'unsafe_path' => '/etc/passwd' ) ) ),
+        'Unreviewed provider input accepted' );
     $posture = MAD4B_SCP_Security_Diagnostics::posture();
     $check( is_array( $posture ) && !$posture['site_clean_certified']
         && !$posture['core_checksum_verified'] && !$posture['network_requests_performed'],
