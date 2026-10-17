@@ -555,7 +555,7 @@ if "$base = self::chatgpt_base_tools();" not in chatgpt_transport or "array_merg
     raise SystemExit('dynamic ChatGPT projection no longer composes on top of the required base catalog')
 for marker in (
     'public static function chatgpt_reviewed_direct_step_up_tools()',
-    'MAD4B_SCP_Governed_Ability_Census::eligible()',
+    'MAD4B_SCP_Governed_Ability_Census::structural_step_up()',
     'owner_intent_only',
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
     '$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );',
@@ -814,7 +814,7 @@ for marker in [
     "public static function external_write_tools()",
     "public static function chatgpt_full_catalog_candidates()",
     "public static function chatgpt_reviewed_direct_step_up_tools()",
-    "MAD4B_SCP_Governed_Ability_Census::eligible()",
+    "MAD4B_SCP_Governed_Ability_Census::structural_step_up()",
     "owner_intent_only",
     "class-mad4b-scp-governed-ability-census.php",
     "public static function chatgpt_dispatch_transport_tools()",
