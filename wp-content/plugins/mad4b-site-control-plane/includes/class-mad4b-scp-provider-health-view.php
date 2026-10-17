@@ -43,7 +43,7 @@ final class MAD4B_SCP_Provider_Health_View {
 	public static function capability_first( $provider, array $runtime, array $evidence = array() ) {
 		$provider = sanitize_key( (string) $provider );
 		$drift = in_array( (string) ( $runtime['status'] ?? '' ), array( 'version_drift', 'component_drift', 'component_identity_drift' ), true );
-		$available = ! in_array( (string) ( $runtime['status'] ?? '' ), array( 'unavailable', 'uncertified_provider', 'disabled' ), true );
+		$available = in_array( (string) ( $runtime['status'] ?? '' ), array( 'certified', 'version_drift', 'component_drift' ), true );
 		$result = array(
 			'contract' => 'mad4b.capability-first-provider-health.v1',
 			'provider_id' => $provider,
