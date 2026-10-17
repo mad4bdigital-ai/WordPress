@@ -131,6 +131,8 @@ final class MAD4B_SCP_Security_Diagnostics {
     public static function posture( $input = array() ) {
         $valid = self::input( $input, array() );
         if ( is_wp_error( $valid ) ) return $valid;
+        if ( ! class_exists( 'MAD4B_SCP_Official_Security_Packages', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-official-security-packages.php';
         $plugins = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
         $updates = function_exists( 'get_site_transient' ) ? get_site_transient( 'update_plugins' ) : false;
         $update_count = is_object( $updates ) && isset( $updates->response ) && is_array( $updates->response )
@@ -144,6 +146,7 @@ final class MAD4B_SCP_Security_Diagnostics {
             'debug_display_enabled' => defined( 'WP_DEBUG_DISPLAY' ) && true === WP_DEBUG_DISPLAY,
             'active_plugin_count' => is_array( $plugins ) ? count( $plugins ) : null,
             'plugin_updates_reported' => $update_count,
+            'operational_security_providers' => MAD4B_SCP_Official_Security_Packages::inventory(),
             'core_checksum_verified' => false,
             'filesystem_full_coverage' => false,
             'database_full_coverage' => false,
