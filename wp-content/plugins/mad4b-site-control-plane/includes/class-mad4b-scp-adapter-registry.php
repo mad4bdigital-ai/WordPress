@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/adapters/class-mad4b-scp-core-content-modeling-adapter.php';
 require_once __DIR__ . '/adapters/class-mad4b-scp-dynamic-content-adapter.php';
 require_once __DIR__ . '/adapters/class-mad4b-scp-dynamic-recovery-adapter.php';
+require_once __DIR__ . '/class-mad4b-scp-external-adapter-trust.php';
 
 final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
@@ -123,8 +124,10 @@ final class MAD4B_SCP_Adapter_Registry {
 		// Adapter_Base inheritance alone is not authority. Third-party hooks
 		// and new bundled classes cannot silently register executable abilities.
 		$class = get_class( $adapter );
-		if ( ! in_array( $class, self::approved_bundled_adapter_classes(), true )
-			|| ! self::is_trusted_bundled_class( $class ) ) return false;
+		$approved_bundled = in_array( $class, self::approved_bundled_adapter_classes(), true )
+			&& self::is_trusted_bundled_class( $class );
+		$approved_external = ! $approved_bundled && MAD4B_SCP_External_Adapter_Trust::allows( $adapter );
+		if ( ! $approved_bundled && ! $approved_external ) return false;
 		$id = $adapter->id();
 		if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id ) ) return false;
 		if ( isset( $this->adapters[ $id ] ) ) return false; // Reject silent collisions/overrides.
@@ -200,7 +203,8 @@ final class MAD4B_SCP_Adapter_Registry {
 			'approved_class_count' => count( $approved ),
 			'unreviewed_bundled_candidates' => $pending_review,
 			'new_candidate_write_enabled' => false,
-			'registration_policy' => 'source_reviewed_manifest_only' );
+			'registration_policy' => 'source_reviewed_bundled_or_owner_pinned_external',
+			'external_admission' => MAD4B_SCP_External_Adapter_Trust::status() );
 	}
 	public function plugin_coverage() {
 		return class_exists( 'MAD4B_SCP_Plugin_Discovery' ) ? MAD4B_SCP_Plugin_Discovery::coverage() : array( 'contract' => 'mad4b.plugin-adapter-discovery.v1', 'discovery_only' => true, 'error' => 'plugin_discovery_unavailable' );
