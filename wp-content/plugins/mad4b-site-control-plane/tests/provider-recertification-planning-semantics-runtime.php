@@ -25,6 +25,21 @@ class MAD4B_SCP_Servers{
   return $mounts[$ability]??null;
  }
 }
+class MAD4B_SCP_Provider_Compatibility_Certification {
+ public static function ability_status($provider,$ability) {
+  $catalog=[
+   'elementor/update-widget-settings'=>'elementor',
+   'jetsmartfilters/update-filter-meta'=>'jetsmartfilters',
+   'jetengine/update-post-meta'=>'jetengine',
+   'woocommerce/update-product'=>'woocommerce',
+   'seo/update-meta'=>'seo'
+  ];
+  if(!isset($catalog[$ability]) || $catalog[$ability]!==$provider) return [];
+  return ['provider'=>$provider,'risk'=>'bounded_write','reversible'=>true,
+   'structural_compatible'=>true,'write_eligible'=>false,
+   'activation_stage'=>'shadow'];
+ }
+}
 function ck($v,$why){if(!$v){fwrite(STDERR,'FAIL '.$why."\n");exit(1);}}
 require dirname(__DIR__).'/includes/class-mad4b-scp-semantic-content-field-contracts.php';
 require dirname(__DIR__).'/includes/class-mad4b-scp-staging-write-planning-guard.php';
@@ -78,9 +93,14 @@ foreach($multi as $case){
  ck($x['field_contract_known']===true && $x['provider_id']==='core',
     'mounted provider contract covers other plugins: '.$case['provider_id']);
 }
+$ineligible=['provider_id'=>'unknown','target_ability'=>'seo/update-meta',
+ 'target_input'=>['post_id'=>9,'meta_key'=>'title','value'=>'test']];
+$x=$a::classify('mad4b/provider-behavioral-recertify',$ineligible);
+ck(!$x['field_contract_known'] && $x['review_required'],
+ 'not catalogued provider fails even if a semantic rule exists');
 $extra=['provider_id'=>'seo','target_ability'=>'unmounted/undefined',
  'target_input'=>['post_id'=>5,'value'=>'unknown']];
 $x=$a::classify('mad4b/provider-behavioral-recertify',$extra);
 ck(!$x['field_contract_known'] && $x['review_required'] && !$x['mutation_classification_ready'],
-    'unmounted plugin ability is never trusted by a semantic catalog');
+    'uncatalogued ability is never trusted by a semantic contract');
 echo "PROVIDER_RECERTIFICATION_PLANNING_SEMANTICS_PASS\n";

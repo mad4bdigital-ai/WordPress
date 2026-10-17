@@ -61,3 +61,7 @@ The source head 1edaff7b37ba96d1673d144ee2150654b80c14f0 failed the real MariaDB
 Generalized provider behavioral recertification now requires: mounted mad4b-write target ability + matching mounted provider + known exact semantic contract + consistent nested provider_id, not just a JSON field contract. Added matrix cases for Elementor, JetSmartFilters, JetEngine, WooCommerce and SEO, with unknown/unmounted abilities failing closed. This is classification protection only; it does not create a behavioral test ticket, grant authority or call the providers.
 
 No merge, production change, site deployment, new Provider credentials, or live plugin mutation is authorized by this source correction.
+
+### Critical review correction: shadow recertification is not a mounted target
+
+Provider behavioral recertification intentionally requires the target to be ABSENT from normal mad4b-write. The review initially proposed validating that the nested target was already mounted, but deeper source review proved this would deadlock recertification. The corrected classifier queries the registered Provider Compatibility Certification ability status for exact provider + target; it requires a structurally compatible, reversible bounded_write capability in shadow stage, not already write-eligible, plus a matching exact field-semantic contract. Unknown/ineligible/mismatched targets remain review-blocked. No new provider grants or premature mounting occurs.
