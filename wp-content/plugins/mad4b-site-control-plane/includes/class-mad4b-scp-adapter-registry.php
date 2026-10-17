@@ -62,14 +62,32 @@ final class MAD4B_SCP_Adapter_Registry {
 			|| ( $data['contract'] ?? '' ) !== 'mad4b.adapter-registration-policy.v1'
 			|| ! isset( $data['approved_classes'] ) || ! is_array( $data['approved_classes'] ) )
 			return array();
-		$available = array_fill_keys( self::bundled_adapter_classes(), true );
+		// Cache the REVIEWED names, not the current class inventory: trusted
+		// adapter classes may be loaded later in the same request by WP-CLI/hooks.
 		$approved = array();
 		foreach ( $data['approved_classes'] as $class ) {
-			if ( ! is_string( $class ) || ! isset( $available[ $class ] ) ) continue;
+			if ( ! is_string( $class )
+				|| ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,127}$/D', $class ) ) continue;
 			$approved[ $class ] = true;
 		}
 		self::$approved_bundled_cache = array_keys( $approved );
 		return self::$approved_bundled_cache;
+	}
+
+	/**
+	 * Exact reviewed class identity AND trusted on-disk bundled source.
+	 * Does not autoload the class or infer permission from a namespace.
+	 */
+	private static function is_trusted_bundled_class( $class ) {
+		if ( ! is_string( $class ) || ! class_exists( $class, false )
+			|| ! is_subclass_of( $class, 'MAD4B_SCP_Adapter_Base', false ) ) return false;
+		$root = realpath( __DIR__ . '/adapters' );
+		if ( false === $root ) return false;
+		$reflection = new ReflectionClass( $class );
+		if ( $reflection->isAbstract() || ! $reflection->isInstantiable() ) return false;
+		$file = $reflection->getFileName();
+		$real = is_string( $file ) ? realpath( $file ) : false;
+		return false !== $real && 0 === strpos( $real, $root . DIRECTORY_SEPARATOR );
 	}
 
 	public static function default_bundled_adapter_classes() {
@@ -82,7 +100,8 @@ final class MAD4B_SCP_Adapter_Registry {
 		$approved = array_fill_keys( self::approved_bundled_adapter_classes(), true );
 		$out = array();
 		foreach ( $data['default_classes'] as $class ) {
-			if ( ! is_string( $class ) || ! isset( $approved[ $class ] ) ) continue;
+			if ( ! is_string( $class ) || ! isset( $approved[ $class ] )
+				|| ! self::is_trusted_bundled_class( $class ) ) continue;
 			$reflection = new ReflectionClass( $class );
 			$constructor = $reflection->getConstructor();
 			if ( $constructor && $constructor->getNumberOfRequiredParameters() > 0 ) continue;
@@ -103,7 +122,9 @@ final class MAD4B_SCP_Adapter_Registry {
 		if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
 		// Adapter_Base inheritance alone is not authority. Third-party hooks
 		// and new bundled classes cannot silently register executable abilities.
-		if ( ! in_array( get_class( $adapter ), self::approved_bundled_adapter_classes(), true ) ) return false;
+		$class = get_class( $adapter );
+		if ( ! in_array( $class, self::approved_bundled_adapter_classes(), true )
+			|| ! self::is_trusted_bundled_class( $class ) ) return false;
 		$id = $adapter->id();
 		if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id ) ) return false;
 		if ( isset( $this->adapters[ $id ] ) ) return false; // Reject silent collisions/overrides.
