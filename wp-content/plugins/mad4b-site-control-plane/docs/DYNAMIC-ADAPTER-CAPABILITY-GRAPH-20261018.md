@@ -99,3 +99,60 @@ Required MCP transport states: `DETECTED_UNVERIFIED`, `TRANSPORT_AUTHENTICATED`,
 A native MCP `tools/call` is an **execution API**, not an approval. Any bridge to it requires separately bound per-tool owner approval, exact target/arguments, verified provider subject, current-state CAS, local operation journal, bounded receipt, independent readback and a feasible restoration/compensation plan. If a native tool is inherently non-reversible, label and gate it as such instead of inventing rollback support.
 
 This is specifically relevant to the already-declared transport descriptors for JetEngine, Fluent Forms, Elementor, ElementsKit, Hostinger AI Assistant, WP-Media and WordPress MCP Adapter default server. Descriptor presence indicates a reviewed *pattern* or isolation interest, **not** a confirmed live endpoint or functional tool list.
+
+## Implemented native-MCP hybrid path in PR #415
+
+Implementation: `includes/class-mad4b-scp-mcp-hybrid.php`. Registered read-only Abilities:
+
+| Ability | Behavior |
+| --- | --- |
+| `mad4b/native-mcp-candidates` | Passive local provider route candidates, reviewed transport patterns, configured peer IDs; no external HTTP |
+| `mad4b/native-mcp-catalog` | Owner-pinned HTTP peer: negotiate protocol, perform bounded paginated native `tools/list`, fingerprint schemas and compare each reviewed binding |
+| `mad4b/native-mcp-hybrid-plan` | Select the eligible reviewed native read, otherwise a registered and reviewed local WP/adapter Ability per exact semantic capability; reports unavailable native reasons |
+| `mad4b/native-mcp-read-call` | Actual owner-reviewed, explicitly read-only native `tools/call` with expected catalog fingerprint and existing MAD4B read permission callback |
+
+Modern `2026-07-28`: stateless `server/discover`, request `_meta`, `MCP-Protocol-Version`, `Mcp-Method` and `Mcp-Name` headers. Legacy `2025-11-25` / `2025-06-18` / `2025-03-26`: `initialize` + `notifications/initialized`, session id and `tools/list`. Only explicit method/version incompatibility triggers downgrade. Tool lists are bounded by four pages/256 tools, JSON or bounded SSE, and refuse duplicate names, cursor loops, malformed result envelopes, HTTP redirects and unexpected versions. Each read executes in the same negotiated session as its exact catalog verification.
+
+### How an owner configures peers
+
+The operator provides two server-side constants **before WordPress plugins bootstrap**:
+
+- `MAD4B_SCP_MCP_PEER_MANIFEST_PATH` — a trusted JSON file outside the WordPress content/plugin/MU directories, writable only by the operator
+- `MAD4B_SCP_MCP_PEER_MANIFEST_SHA256` — 64-digit hex digest of **exact manifest bytes**
+- Optional `MAD4B_SCP_MCP_PEER_TOKENS` — an array keyed by reviewed peer ID containing separately provisioned provider-scoped bearer tokens (never the MAD4B site owner bearer)
+
+Manifest skeleton:
+
+```json
+{
+  "contract": "mad4b.mcp-hybrid.v1",
+  "peers": [{
+    "id": "example-native",
+    "endpoint": "https://reviewed-provider.example/mcp",
+    "bindings": [
+      {
+        "ability": "example/inspect",
+        "tool": "inspect",
+        "dimension": "read",
+        "schema_sha256": "actual-64-character-lowercase-sha256-of-canonical-inputSchema",
+        "read_execution_reviewed": true
+      }
+    ]
+  }]
+}
+```
+
+Replace all examples with independently verified details. This deliberately does not scrape tokens, infer a URL from a plugin name, or grant external network access to a discovered unknown endpoint. New peers and bindings require an operator manifest repin, but do **not** require modifications to MAD4B PHP. The provider's MCP server is used directly when certified; MAD4B never installs a second implementation of its existing tools.
+
+### Hybrid selection semantics
+
+- A listed tool without a matching **exact owner-pinned inputSchema SHA-256** is `MCP_SCHEMA_DRIFT`, not operational.
+- A tool marked read in a provider's self-description is not executable until **operator reviewed** `read_execution_reviewed=true` and live `annotations.readOnlyHint=true`, without a destructive hint.
+- When native read is missing, unreviewed, not read-only, a protocol cannot be negotiated, or no peer was configured, a separately source-reviewed and currently registered local WordPress Ability/Adapter may be selected for the **same** requested ability. Never attempt a fallback by guessing a similar name.
+- Native Write tools are **candidates only**. No direct `tools/call` for mutation is exposed. Reviewed existing local Write/Undo paths continue to require live certification, owner approval, write grants, operation receipts and state-safe rollback. A native Write implementation needs an equivalent provider-specific before/after/restore contract, not merely a tool schema.
+- Read call responses that report error or interactive input-required cannot be automatically retried or silently reclassified as success.
+- Unknown endpoints stay visible as candidates, not executable. Existing peer isolation/fail-closed Write governance is not bypassed.
+
+### CI and release proof
+
+`tests/dynamic-mcp-hybrid-runtime.php` exercises mocked **HTTP-only** modern and legacy protocols, cursor pagination, SSE, catalog drift, genuine read call, denial of native Write, unpinned local fallback, and passive candidate discovery. The adapter coverage and Pre-Staging workflows run the fixture plus PHP lint. These tests do **not** replace real authenticated ETG/ARE Staging canaries or Production certification.
