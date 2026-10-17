@@ -57,7 +57,9 @@ jobs:
           php -l "$P/includes/class-mad4b-scp-adapter-registry.php"
           php -l "$P/includes/class-mad4b-scp-plugin-discovery.php"
           php "$P/tests/dynamic-adapter-registration-policy-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-external-adapter-trust.php"
           php "$P/tests/dynamic-adapter-capability-graph-runtime.php"
+          php "$P/tests/dynamic-external-adapter-trust-runtime.php"
 
       - name: Verify discovery and reversible adapter contracts
         shell: bash
