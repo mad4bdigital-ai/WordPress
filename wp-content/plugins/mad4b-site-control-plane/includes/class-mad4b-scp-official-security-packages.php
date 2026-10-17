@@ -37,7 +37,12 @@ final class MAD4B_SCP_Official_Security_Packages {
      * Provider activation is not evidence that the plugin is configured or healthy.
      */
     public static function inventory() {
-        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        $core_plugin_api = ABSPATH . 'wp-admin/includes/plugin.php';
+        if ( ! function_exists( 'get_plugins' ) && is_file( $core_plugin_api ) )
+            require_once $core_plugin_api;
+        if ( ! function_exists( 'get_plugins' ) || ! function_exists( 'is_plugin_active' ) )
+            return array( 'read_only' => true, 'site_local' => true,
+                'inventory_available' => false, 'providers' => array() );
         $installed = get_plugins();
         $list = array();
         foreach ( array_keys( self::registry() ) as $id ) {
@@ -64,7 +69,8 @@ final class MAD4B_SCP_Official_Security_Packages {
                 'telemetry_read_capability_certified' => false,
             );
         }
-        return array( 'read_only' => true, 'site_local' => true, 'providers' => $list );
+        return array( 'read_only' => true, 'site_local' => true,
+            'inventory_available' => true, 'providers' => $list );
     }
 
     private static function official_package( $slug, $url ) {
