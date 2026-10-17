@@ -15,6 +15,7 @@ $pages = array(
 	'mad4b-provider-connections' => array( 'MAD4B_SCP_Provider_Connections_Admin_UI', 'render', array( '' ) ),
 	'mad4b-operational-remediation' => array( 'MAD4B_SCP_Operational_Remediation', 'render_page', array( '' ) ),
 	'mad4b-control-plane' => array( 'MAD4B_SCP_Admin_UI', 'render_page', array( 'overview', 'tasks', 'controls', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ) ),
+	'mad4b-control-plane-security' => array( 'MAD4B_SCP_Security_Forensics', 'render', array( 'overview', 'file-integrity', 'activity-audit', 'plugin-guardian', 'threat-scanner', 'incidents', 'evidence-vault', 'policies' ) ),
 	'mad4b-control-plane-context' => array( 'MAD4B_SCP_Context_Admin_UI', 'render_page', array( 'overview', 'google-drive', 'sources', 'assets', 'quality', 'intelligence' ) ),
 	'mad4b-control-plane-connection' => array( 'MAD4B_SCP_Connection_Admin_UI', 'render_page', array( 'readiness', 'oauth', 'endpoints', 'isolation', 'certification' ) ),
 	'mad4b-control-plane-chatgpt' => array( 'MAD4B_SCP_ChatGPT_Connection_Admin_UI', 'render_page', array( '' ) ),
@@ -81,7 +82,7 @@ $probe_render = static function ( $slug, array $page, array $query ) use ( $rend
 };
 foreach ( $pages as $slug => $page ) {
 	foreach ( $page[2] as $tab ) {
-		$key = 'mad4b-search-intelligence' === $slug ? 'section' : ( 'mad4b-approval-decisions' === $slug ? 'view' : 'tab' );
+		$key = in_array( $slug, array( 'mad4b-search-intelligence', 'mad4b-control-plane-security' ), true ) ? 'section' : ( 'mad4b-approval-decisions' === $slug ? 'view' : 'tab' );
 		$probe_render( $slug, $page, array( $key => $tab ) );
 		$probe_render( $slug, $page, array_merge( $malformed, array( $key => $tab ) ) );
 	}
