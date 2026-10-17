@@ -156,6 +156,10 @@ final class MAD4B_SCP_MCP_Hybrid {
             'MCP-Protocol-Version' => $version,
             'Mcp-Method' => $method,
         );
+        if ( '2026-07-28' === $version && 'tools/call' === $method
+            && is_array( $params ) && is_string( $params['name'] ?? null )
+            && preg_match( '/^[A-Za-z0-9_.:-]{1,128}$/D', $params['name'] ) )
+            $headers['Mcp-Name'] = $params['name'];
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
         $token = self::peer_token( $peer['id'] );
         if ( '' !== $token ) $headers['Authorization'] = 'Bearer ' . $token;
@@ -438,6 +442,9 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( is_wp_error( $reply ) ) return $reply;
         if ( ! is_array( $reply['wire']['result'] ?? null ) )
             return new WP_Error( 'mad4b_native_read_call_failed', 'The MCP tool call produced no verified result.' );
+        if ( ( $reply['wire']['result']['resultType'] ?? 'complete' ) !== 'complete'
+            || ! empty( $reply['wire']['result']['isError'] ) )
+            return new WP_Error( 'mad4b_native_read_result_incomplete', 'MCP tool requires further interaction or returned an error; no automatic retries.' );
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
             'protocol' => $session['version'], 'catalog_sha256' => $expected,
