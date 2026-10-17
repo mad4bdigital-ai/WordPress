@@ -214,7 +214,11 @@ for marker in [
 ]:
     require(admin, marker, "pipeline admin settings")
 
-require(registry, "MAD4B_SCP_Dynamic_Content_Adapter", "adapter registry registration")
+require(registry, "approved_bundled_adapter_classes", "source-reviewed adapter registration mechanism")
+import json
+approved = json.loads((root / "config/adapter-registration-policy.json").read_text("utf-8"))["approved_classes"]
+if "MAD4B_SCP_Dynamic_Content_Adapter" not in approved:
+    raise SystemExit("dynamic content adapter missing from source-reviewed registration policy")
 require(plugin, "class-mad4b-scp-dynamic-content-pipeline.php", "pipeline bootstrap")
 require(plugin, "class-mad4b-scp-dynamic-content-pipeline-admin.php", "pipeline admin bootstrap")
 
