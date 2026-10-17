@@ -662,6 +662,11 @@ final class MAD4B_SCP_Read_Consistency {
 				'server_sequential_execution' => true,
 				'direct_parallel_fanout_required' => false,
 				'direct_composite_fanout_allowed' => false,
+				// Client-side advisory: WP cannot serialize independent remote calls.
+				'client_max_inflight_per_site_recommended' => 1,
+				'client_dispatch_policy' => 'serialize_per_site_and_use_generation_pinned_receipts',
+				'client_read_failure_action' => 'verify_generation_then_reprepare_read',
+				'blind_mutation_retry_allowed' => false,
 				'max_response_bytes' => self::MAX_SESSION_SAFE_REPORT_BYTES,
 			),
 			'client_action' => $partial ? 'inspect_partial_report_then_retry_missing_scope' : 'use_report_without_parallel_status_fanout',
