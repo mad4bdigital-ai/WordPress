@@ -205,6 +205,57 @@ final class MAD4B_SCP_Security_Forensics {
         );
     }
 
+    /**
+     * Two independent WordPress-native inventories: active registration vs disk.
+     * A directory or unknown package is NOT malware evidence. No update/checksum
+     * network traffic and no plugin activation. Deliberately bounded to 100.
+     */
+    public static function plugin_guardian( $input = array() ) {
+        if ( ! self::allowed() || ! self::validate_input( $input ) )
+            return new WP_Error( 'mad4b_security_guardian_denied', 'Read denied.' );
+        $active = function_exists( 'get_option' ) ? get_option( 'active_plugins', array() ) : array();
+        if ( ! is_array( $active ) ) $active = array();
+        $active = array_values( array_filter( $active, 'is_string' ) );
+        $active = array_slice( $active, 0, 100 );
+        $network = function_exists( 'get_site_option' ) ? get_site_option( 'active_sitewide_plugins', array() ) : array();
+        if ( is_array( $network ) ) $active = array_values( array_unique( array_merge( $active, array_keys( $network ) ) ) );
+        $root = realpath( ABSPATH );
+        $plugin_root = $root ? $root . '/wp-content/plugins' : '';
+        $disk = array(); $coverage = 'unavailable';
+        if ( $plugin_root && ! is_link( $plugin_root ) && is_dir( $plugin_root ) ) {
+            $entries = @scandir( $plugin_root );
+            if ( is_array( $entries ) ) {
+                $coverage = count( $entries ) > 102 ? 'partial' : 'bounded_directory_names';
+                foreach ( $entries as $entry ) {
+                    if ( '.' === $entry || '..' === $entry ) continue;
+                    if ( count( $disk ) >= 100 ) { $coverage = 'partial'; break; }
+                    $entry_path = $plugin_root . '/' . $entry;
+                    if ( is_link( $entry_path ) ) { $disk[] = array( 'entry' => $entry, 'type' => 'symlink_unfollowed' ); continue; }
+                    if ( is_dir( $entry_path ) ) $disk[] = array( 'entry' => $entry, 'type' => 'directory' );
+                    elseif ( is_file( $entry_path ) && 'php' === strtolower( pathinfo( $entry, PATHINFO_EXTENSION ) ) )
+                        $disk[] = array( 'entry' => $entry, 'type' => 'root_plugin_candidate' );
+                }
+            }
+        }
+        $missing = array();
+        foreach ( $active as $plugin ) {
+            if ( false !== strpos( $plugin, '..' ) || 0 === strpos( $plugin, '/' ) || false !== strpos( $plugin, '\\' ) ) continue;
+            $file = $plugin_root . '/' . $plugin;
+            if ( ! is_file( $file ) || is_link( $file ) )
+                $missing[] = array( 'plugin' => self::safe_slug( $plugin ), 'finding' => 'active_reference_missing_or_unreadable' );
+        }
+        return self::base( 'plugin_guardian' ) + array(
+            'active_references_count' => count( $active ),
+            'filesystem_entries' => $disk,
+            'active_missing_references' => $missing,
+            'coverage' => $coverage,
+            'classification' => 'unknown_until_package_provenance_verified',
+            'confirmed_malicious' => false,
+            'trusted_package_verification' => 'not_configured',
+            'mu_plugins_independently_sampled_by' => 'mad4b/security-integrity-scan'
+        );
+    }
+
     public static function events( $input = array() ) {
         if ( ! self::allowed() || ! self::validate_input( $input, array( 'limit' ) ) )
             return new WP_Error( 'mad4b_security_events_denied', 'Read denied.' );
@@ -262,6 +313,7 @@ final class MAD4B_SCP_Security_Forensics {
             'mad4b/security-status' => array( 'status', array() ),
             'mad4b/security-integrity-scan' => array( 'integrity_scan', array(
                 'scope' => array( 'type' => 'string', 'enum' => array( 'plugins', 'mu_plugins', 'themes', 'uploads', 'upgrade', 'root' ) ) ) ),
+            'mad4b/security-plugin-guardian' => array( 'plugin_guardian', array() ),
             'mad4b/security-events-query' => array( 'events', array( 'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => 50 ) ) ),
             'mad4b/security-incident-report' => array( 'incident', array() ),
             'mad4b/security-baseline-plan' => array( 'baseline_plan', array() ),
