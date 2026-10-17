@@ -96,8 +96,8 @@ $report = $get( $activity );
 $expect( $report['state'] === 'observed' && $report['events_total'] === 12, 'activity summary' );
 $expect( $report['findings'][0]['rule'] === 'new_admin', 'suspicious rules' );
 $expect( $report['channels']['rest'] === 7, 'allowed channel aggregation' );
-$expect( !str_contains( json_encode( $report ), 'sensitive-user' )
-    && !str_contains( json_encode( $report ), 'private@example.test' ), 'sensitive log data redacted' );
+$expect( false === strpos( json_encode( $report ), 'sensitive-user' )
+    && false === strpos( json_encode( $report ), 'private@example.test' ), 'sensitive log data redacted' );
 $expect( !$report['site_clean_certified'] && !$report['complete'], 'no false clean claim' );
 $denied = MAD4B_SCP_Security_Provider_Evidence::collect( $activity, '7d' );
 $expect( $denied['period'] === '7d', 'bounded date window' );
@@ -116,7 +116,7 @@ $GLOBALS['responses']['/wpvulnerability/v1/plugins'] = new StubRestResponse( 200
 $report = $get( $vuln );
 $expect( $report['state'] === 'observed' && $report['vulnerabilities_reported'] === 3, 'official vulnerable component aggregation' );
 $expect( $report['affected_components'] === 2, 'affected components' );
-$expect( !str_contains( json_encode( $report ), 'secret-plugin' ), 'plugin identity and details redacted' );
+$expect( false === strpos( json_encode( $report ), 'secret-plugin' ), 'plugin identity and details redacted' );
 $expect( !$report['site_clean_certified'] && $report['underlying_provider_network_possible'], 'not a clean attestation or direct fetch' );
 $last_call = end( $GLOBALS['invocations'] );
 $expect( $last_call['route'] === '/wpvulnerability/v1/plugins' && $last_call['method'] === 'GET', 'fixed local REST request only' );
@@ -133,7 +133,7 @@ $report = $get( $wordfence );
 $expect( $report['state'] === 'observed_unattested' && $report['issues_new'] === 2, 'companion issues count' );
 $expect( !$report['companion_behavior_certified'] && !$report['enforcement_verified'], 'third party untrusted until independently certified' );
 $expect( $report['firewall_reports_enabled'] === true && $report['scan_running'] === false, 'provider reports reflected not verified' );
-$expect( !str_contains( json_encode( $report ), '/private/config' ) && !str_contains( json_encode( $report ), 'private-key' ), 'companion secrets redacted' );
+$expect( false === strpos( json_encode( $report ), '/private/config' ) && false === strpos( json_encode( $report ), 'private-key' ), 'companion secrets redacted' );
 $GLOBALS['abilities']['wpcli-for-wordfence/issues-count'] = new StubAbility( new WP_Error( 'unauthorized' ) );
 $expect( $get( $wordfence )['reason'] === 'optional_companion_read_failed', 'companion permission denied' );
 $expect( empty( array_filter( $GLOBALS['invocations'], static function( $x ) {
