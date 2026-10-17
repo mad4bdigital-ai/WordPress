@@ -3,6 +3,8 @@
 $dir = sys_get_temp_dir() . '/mad4b-security-provider-fixture-' . getmypid();
 mkdir( $dir . '/wp-admin/includes', 0700, true );
 file_put_contents( $dir . '/wp-admin/includes/plugin.php', "<?php\n" );
+file_put_contents( $dir . '/wp-admin/includes/file.php', "<?php\n" );
+file_put_contents( $dir . '/wp-admin/includes/class-wp-upgrader.php', "<?php\n" );
 define( 'ABSPATH', $dir . '/' );
 $GLOBALS['official'] = (object) array(
     'slug' => 'wordfence', 'version' => '8.0.1',
@@ -88,5 +90,7 @@ try {
     echo "SECURITY_OPERATIONAL_PROVIDERS_RUNTIME: PASS ($checks checks)\n";
 } finally {
     @unlink( $dir . '/wp-admin/includes/plugin.php' );
+    @unlink( $dir . '/wp-admin/includes/file.php' );
+    @unlink( $dir . '/wp-admin/includes/class-wp-upgrader.php' );
     @rmdir( $dir . '/wp-admin/includes' ); @rmdir( $dir . '/wp-admin' ); @rmdir( $dir );
 }
