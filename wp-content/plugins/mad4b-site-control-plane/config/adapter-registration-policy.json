@@ -1,0 +1,29 @@
+{
+  "contract": "mad4b.adapter-registration-policy.v1",
+  "scope": "bundled_built_in_classes_only",
+  "default": "inventory_only_no_auto_registration",
+  "approval_model": "source_reviewed_manifest_no_runtime_self_enrollment",
+  "approved_classes": [
+    "MAD4B_SCP_ACI01_Read_Adapter",
+    "MAD4B_SCP_Core_Content_Modeling_Adapter",
+    "MAD4B_SCP_Dynamic_Content_Adapter",
+    "MAD4B_SCP_Dynamic_Recovery_Adapter",
+    "MAD4B_SCP_Context_Adapter",
+    "MAD4B_SCP_Elementor_Adapter",
+    "MAD4B_SCP_JetEngine_Adapter",
+    "MAD4B_SCP_JetSmartFilters_Adapter",
+    "MAD4B_SCP_BitFlows_Adapter",
+    "MAD4B_SCP_Media_Adapter",
+    "MAD4B_SCP_Remote_Media_Adapter",
+    "MAD4B_SCP_SEO_Adapter",
+    "MAD4B_SCP_WooCommerce_Adapter",
+    "MAD4B_SCP_Polylang_Adapter",
+    "MAD4B_SCP_LiteSpeed_Adapter",
+    "MAD4B_SCP_JetFormBuilder_Adapter",
+    "MAD4B_SCP_FluentForms_Adapter",
+    "MAD4B_SCP_WP_Import_Export_Adapter"
+  ],
+  "unknown_plugin_mutation": "deny",
+  "unknown_plugin_discovery": "read_only",
+  "new_adapter_without_review": "candidate_only"
+}
