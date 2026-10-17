@@ -81,7 +81,7 @@ try {
     $assert( MAD4B_SCP_Official_Security_Packages::plan( $activeInput )['eligible'], 'allowlisted activation preflight' );
     $assert( is_wp_error( MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) ) ), 'mutations denied without original grant' );
     $assert( $GLOBALS['audit_calls'] === 0 && $GLOBALS['download_calls'] === 0, 'no side effects without grant' );
-    $GLOBALS['permission'] = true;
+    $GLOBALS['permission'] = array( 'allowed' => true, 'reason_code' => 'preflight_allowed' );
     $assert( is_wp_error( MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => str_repeat( 'a', 64 ) ) ) ) ), 'stale plan rejected before effects' );
     $assert( $GLOBALS['audit_calls'] === 0 && $GLOBALS['download_calls'] === 0, 'stale plan did not create intent' );
     $result = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
