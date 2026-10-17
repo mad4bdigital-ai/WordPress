@@ -102,7 +102,12 @@ final class MAD4B_SCP_Native_Hybrid_Acceptance {
         // Presence of an installed filter is not intent to test it. Only an
         // explicitly requested interaction becomes a mandatory scope.
         $filter_required = 'filters' === $requested
-            || ( 'full' === $requested && $browser_fresh && ! empty( $browser['filter_attempted'] ) )
+            // Full acceptance cannot silently skip visible filter controls
+            // just because no one has clicked them yet. Frontend-only
+            // acceptance still treats unrequested interaction as optional.
+            || ( 'full' === $requested && $browser_fresh
+                && ( ! empty( $browser['filter_attempted'] )
+                    || (int) ( $browser['filter_controls'] ?? 0 ) > 0 ) )
             || ( 'frontend' === $requested && $browser_fresh && ! empty( $browser['filter_attempted'] ) );
         $filter = $browser_fresh && ! empty( $browser['filter_functional_ready'] );
         $cron = class_exists( 'MAD4B_SCP_Native_Cron_Acceptance', false )
