@@ -325,6 +325,32 @@ final class MAD4B_SCP_Plugin_Discovery {
 			&& count( $registered_names ) === $ability_count
 			&& ( count( $plugins ) < self::MAX_PLUGINS
 				|| $special_count === count( $mu_plugins ) + count( $dropins ) );
+		$dimensions = array(
+			'inventory_observed' => count( $rows ), 'inventory_only' => 0,
+			'active_reviewed_adapter' => 0, 'read_contract_registered' => 0,
+			'write_contract_registered' => 0, 'write_behavior_certified' => 0,
+			'reversible_contract_defined' => 0,
+			'missing_active_dependencies' => 0, 'unreviewed_capability_candidates' => 0,
+		);
+		foreach ( $rows as $row ) {
+			if ( 'standard' !== $row['package_kind'] ) ++$dimensions['inventory_only'];
+			if ( ! empty( $row['dependency_gap'] ) ) ++$dimensions['missing_active_dependencies'];
+			$dimensions['unreviewed_capability_candidates'] += (int) $row['unreviewed_namespace_candidates_count'];
+			if ( empty( $row['active'] ) || empty( $row['adapter_registered'] )
+				|| empty( $row['adapter_runtime_available'] ) ) continue;
+			++$dimensions['active_reviewed_adapter'];
+			if ( ! empty( $row['side_channel_blocker'] ) || ! empty( $row['dependency_gap'] )
+				|| 'excluded_high_risk' === $row['coverage_state'] ) continue;
+			if ( ! empty( $row['registered_adapter_read_abilities'] ) ) ++$dimensions['read_contract_registered'];
+			if ( ! empty( $row['registered_adapter_write_abilities'] )
+				&& in_array( $row['coverage_state'], array( 'supported_reversible', 'supported_governed' ), true ) ) {
+				++$dimensions['write_contract_registered'];
+				if ( ! empty( $row['provider_certification_ok'] ) ) {
+					++$dimensions['write_behavior_certified'];
+					if ( ! empty( $row['reversible_contracts'] ) ) ++$dimensions['reversible_contract_defined'];
+				}
+			}
+		}
 		$identity = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		return array(
 			'contract' => 'mad4b.plugin-capability-graph.v1',
@@ -335,6 +361,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'must_use_and_dropin_count' => $special_count,
 			'registered_adapter_read_count' => $registered_read_count,
 			'unreviewed_namespace_candidate_count' => $unreviewed_count,
+			'functional_dimension_counts' => $dimensions,
+			'count_semantics' => 'read/write registration and provider certification are not per-request authorization',
 			'ability_registry_available' => (bool) $registry_available,
 			'registered_ability_count' => $ability_count,
 			'graph_sha256' => is_string( $identity ) ? hash( 'sha256', $identity ) : '',
