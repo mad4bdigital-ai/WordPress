@@ -215,7 +215,7 @@ require("array_merge( $base, $dynamic )" in chatgpt_body, "dynamic projection mu
 for forbidden in ("self::external_write_tools()", "self::write_tools()", "$registry->ability_names( 'read' )"):
     require(forbidden not in chatgpt_body, f"dynamic composition wrapper rebuilt a broad catalog: {forbidden}")
 reviewed = SERVERS.split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[1].split("public static function is_chatgpt_direct_step_up_tool", 1)[0]
-for marker in ("MAD4B_SCP_Governed_Ability_Census::eligible()", "owner_intent_only", "self::chatgpt_approval_bootstrap_tools()"):
+for marker in ("MAD4B_SCP_Governed_Ability_Census::structural_step_up()", "owner_intent_only", "self::chatgpt_approval_bootstrap_tools()"):
     require(marker in reviewed, "reviewed step-up source missing: " + marker)
 for primitive in ("Site_Profile_Enrollment", "Site_Profile_Write_Enablement", "Staging_Write_Grant_Reconciliation", "Staging_Write_Candidate_Binding"):
     require("MAD4B_SCP_" + primitive + "::chatgpt_step_up_tools()" not in base_chatgpt_body, "internal primitive entered required base transport")
