@@ -213,6 +213,39 @@ final class MAD4B_SCP_Security_Provider_Evidence {
         );
     }
 
+    /**
+     * Composite on-demand view. No risk score or "clean" verdict is derived
+     * from partial or independently owned provider observations.
+     */
+    public static function collect_all( $period = '24h', $surface = 'plugins' ) {
+        $providers = array(
+            'security-wordfence', 'security-wpvulnerability', 'security-activity-log',
+        );
+        $rows = array();
+        $observed = 0;
+        $unavailable = 0;
+        $unattested = 0;
+        foreach ( $providers as $provider ) {
+            $row = self::collect( $provider, $period, $surface );
+            $rows[ $provider ] = $row;
+            if ( 'observed' === ( $row['state'] ?? '' ) ) ++$observed;
+            elseif ( 'observed_unattested' === ( $row['state'] ?? '' ) ) ++$unattested;
+            else ++$unavailable;
+        }
+        return array(
+            'contract' => self::CONTRACT,
+            'surface' => 'combined_security_provider_evidence',
+            'state' => $unavailable ? 'partial' : 'observed_partial',
+            'coverage' => array( 'expected' => count( $providers ),
+                'observed' => $observed, 'unattested' => $unattested,
+                'unavailable' => $unavailable ),
+            'providers' => $rows, 'read_only' => true,
+            'complete' => false, 'site_clean_certified' => false,
+            'enforcement_verified' => false, 'authorizing' => false,
+            'interpretation' => 'triage_only_no_clean_site_verdict',
+        );
+    }
+
     public static function collect( $provider, $period = '24h', $surface = 'plugins' ) {
         if ( ! in_array( $provider, array( 'security-wordfence', 'security-wpvulnerability', 'security-activity-log' ), true ) )
             return self::unavailable( $provider, 'provider_not_allowlisted' );
