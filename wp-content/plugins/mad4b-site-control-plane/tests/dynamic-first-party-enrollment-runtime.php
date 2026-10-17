@@ -33,9 +33,16 @@ class WP_Ability {
     }
 }
 $GLOBALS['registered'] = array();
+$GLOBALS['discovery_filter_hides_all'] = false;
+class WP_Abilities_Registry {
+    public static function get_instance() { return new self(); }
+    public function get_all_registered() { return $GLOBALS['registered']; }
+}
 function wp_has_ability( $name ) { return isset( $GLOBALS['registered'][ $name ] ); }
 function wp_get_ability( $name ) { return $GLOBALS['registered'][ $name ] ?? null; }
-function wp_get_abilities() { return $GLOBALS['registered']; }
+function wp_get_abilities() {
+    return $GLOBALS['discovery_filter_hides_all'] ? array() : $GLOBALS['registered'];
+}
 function wp_register_ability( $name, array $args ) {
     $GLOBALS['registered'][ $name ] = new WP_Ability( $name, $args );
     return $GLOBALS['registered'][ $name ];
@@ -91,6 +98,10 @@ for ( $n = 0; $n < MAD4B_SCP_Governed_Ability_Census::MAX_ABILITIES + 20; ++$n )
 }
 mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::eligible()[ $owner ] ),
     'Unrelated WordPress abilities unexpectedly blocked owner discovery' );
+$GLOBALS['discovery_filter_hides_all'] = true;
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::eligible()[ $owner ] ),
+    'WP 7.1 discovery-result filters improperly controlled owner broker admission' );
+$GLOBALS['discovery_filter_hides_all'] = false;
 foreach ( array_keys( $GLOBALS['registered'] ) as $name ) {
     if ( 0 === strpos( $name, 'unrelated/' ) ) unset( $GLOBALS['registered'][ $name ] );
 }
