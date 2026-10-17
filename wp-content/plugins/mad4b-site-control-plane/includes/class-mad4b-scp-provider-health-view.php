@@ -31,6 +31,86 @@ final class MAD4B_SCP_Provider_Health_View {
 		return self::normalize( $status, $violations, $diagnostic, $capabilities );
 	}
 
+	/**
+	 * Shared, non-authorizing capability-first read projection.
+	 *
+	 * Existing Provider Compatibility Certification remains the only source of
+	 * capability evidence. A changed plugin version never promotes a write grant,
+	 * and a missing/foreign/malformed certification never becomes a healthy read.
+	 * This small pure projection can be used by every existing provider without
+	 * an extra registry, provider version pin or runtime callback execution.
+	 */
+	public static function capability_first( $provider, array $runtime, array $evidence = array() ) {
+		$provider = sanitize_key( (string) $provider );
+		$drift = in_array( (string) ( $runtime['status'] ?? '' ), array( 'version_drift', 'component_drift', 'component_identity_drift' ), true );
+		$result = array(
+			'contract' => 'mad4b.capability-first-provider-health.v1',
+			'provider_id' => $provider,
+			'evidence_state' => 'unavailable',
+			'read_state' => 'UNKNOWN',
+			'runtime_version_drift' => $drift,
+			'capabilities' => array(),
+			'compatible_read_capabilities' => array(),
+			'isolated_capabilities' => array(),
+			'mutation_authorized' => false,
+			'write_grants_created' => false,
+			'owner_gate_bypassed' => false,
+			'capability_presence_authorizes' => false,
+			'provider_version_pin_required_for_read_observation' => false,
+			'governed_dispatch_required_for_mutation' => true,
+			'read_only' => true,
+			'authorizing' => false,
+		);
+		// Empty provider, unsupported contract, foreign evidence or excessive
+		// inventory: fail soft to UNKNOWN for observation and fail closed for write.
+		if ( '' === $provider || empty( $evidence ) ) return $result;
+		$valid = ( $evidence['contract'] ?? '' ) === 'mad4b.provider-capability-certification-result.v1'
+			&& ( $evidence['provider_id'] ?? '' ) === $provider
+			&& isset( $evidence['capabilities'] ) && is_array( $evidence['capabilities'] )
+			&& count( $evidence['capabilities'] ) <= 64;
+		if ( ! $valid ) {
+			$result['evidence_state'] = 'invalid_or_foreign';
+			return $result;
+		}
+		$result['evidence_state'] = 'observed';
+		$partial = false;
+		foreach ( $evidence['capabilities'] as $id => $row ) {
+			if ( ! is_string( $id ) || ! preg_match( '~^[a-zA-Z0-9_.\/-]{1,128}$~D', $id )
+				|| ! is_array( $row )
+				|| ! isset( $row['surface_exposed'], $row['structural_compatible'] )
+				|| ! is_bool( $row['surface_exposed'] ) || ! is_bool( $row['structural_compatible'] ) ) {
+				// Do not silently discard malformed members and claim full health.
+				$result['evidence_state'] = 'partial_invalid';
+				$partial = true;
+				continue;
+			}
+			$exposed = $row['surface_exposed'];
+			$structural = $row['structural_compatible'];
+			$read = $exposed && $structural && true === ( $row['read_eligible'] ?? false );
+			$write_claim = $exposed && $structural && true === ( $row['write_eligible'] ?? false );
+			$state = ! $exposed ? 'NOT_EXPOSED'
+				: ( ! $structural ? 'ISOLATED'
+					: ( $read ? 'READ_COMPATIBLE'
+						: ( $write_claim ? 'WRITE_CANDIDATE_UNAUTHORIZED' : 'UNKNOWN' ) ) );
+			$result['capabilities'][ $id ] = array(
+				'state' => $state,
+				'read_compatibility_observed' => $read,
+				'write_certification_claim_observed' => $write_claim,
+				'mutation_authorized' => false,
+				'authorization_rechecked' => false,
+				'read_permission_rechecked' => false,
+				'version_drift_requires_reobservation' => $drift,
+			);
+			if ( $read ) $result['compatible_read_capabilities'][] = $id;
+			elseif ( $exposed ) $result['isolated_capabilities'][] = $id;
+			if ( ! $exposed || ! $structural ) $partial = true;
+		}
+		$result['read_state'] = $result['compatible_read_capabilities']
+			? ( $partial ? 'PARTIAL' : 'OBSERVED_COMPATIBLE' ) : 'UNKNOWN';
+		if ( 'partial_invalid' === $result['evidence_state'] ) $result['read_state'] = 'PARTIAL_UNVERIFIED';
+		return $result;
+	}
+
 	public static function normalize( array $status, array $violations = array(), array $diagnostic = array(), array $capability_evidence = array() ) {
 		$provider = isset( $status['provider'] ) ? sanitize_key( (string) $status['provider'] ) : '';
 		$runtime_status = isset( $status['status'] ) ? sanitize_key( (string) $status['status'] ) : '';
@@ -103,6 +183,7 @@ final class MAD4B_SCP_Provider_Health_View {
 		return array(
 			'contract' => self::CONTRACT,
 			'provider' => $provider,
+			'capability_first' => self::capability_first( $provider, $status, $capability_evidence ),
 			'health_state' => $health,
 			'runtime_status' => $runtime_status,
 			'runtime_contract_mutation_eligible' => (bool) $runtime_ok && ( ! $capability_scope || empty( $isolated ) ),
