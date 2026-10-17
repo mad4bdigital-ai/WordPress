@@ -88,6 +88,7 @@ class MAD4B_Test_Untrusted {
 }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-staging-write-owner-intent.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-enrollment-dispatch.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-error-contract-registry.php';
 
 MAD4B_SCP_Staging_Write_Owner_Intent::register_ability();
 $owner = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
@@ -118,6 +119,43 @@ mad4b_check( $entry['operation_id'] === $pre[ $owner ]['operation_id'],
 $info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
 mad4b_check( ! is_wp_error( $info ) && $info['remote_ability'] === $owner,
     'info did not resolve exact registered ability' );
+// Real WordPress wraps each original MAD4B callable through audit and
+// execution-admission closures, rather than retaining the raw class method.
+$unwrapped = $GLOBALS['registered'][ $owner ];
+$original_meta = $unwrapped->get_meta();
+$wrapped = MAD4B_SCP_Error_Contract_Registry::wrap_ability_args( array(
+    'execute_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'attest' ),
+    'permission_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ),
+    'meta' => $original_meta,
+), $owner );
+$twice = MAD4B_SCP_Error_Contract_Registry::wrap_ability_args( $wrapped, $owner );
+$GLOBALS['registered'][ $owner ] = new WP_Ability( $owner, array(
+    'meta' => $twice['meta'], 'input_schema' => $unwrapped->get_input_schema(),
+    'execute_callback' => $twice['execute_callback'],
+    'permission_callback' => $twice['permission_callback'],
+) );
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::structural_step_up()[ $owner ] ),
+    'Genuine nested first-party registration wrappers disappeared from tools/list' );
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::eligible()[ $owner ] ),
+    'Nested audit wrappers incorrectly blocked reviewed owner Enrollment' );
+$wrapped_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
+mad4b_check( ! is_wp_error( $wrapped_info )
+    && $wrapped_info['registration_digest'] !== $info['registration_digest'],
+    'Wrapped callback chain was not bound into the registration digest' );
+$GLOBALS['registered'][ $owner ] = $unwrapped;
+// A malicious wrapper from a third-party or test directory cannot pass
+// merely because it captures a real first-party method.
+$external = static function ( $input = null ) use ( $unwrapped ) {
+    return array( 'not_authorized' => true );
+};
+$GLOBALS['registered'][ $owner ] = new WP_Ability( $owner, array(
+    'meta' => $original_meta, 'input_schema' => $unwrapped->get_input_schema(),
+    'execute_callback' => $external,
+    'permission_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ),
+) );
+mad4b_check( '' === MAD4B_SCP_Governed_Ability_Census::operation_id_for( $owner ),
+    'Untrusted third-party callback wrapper gained Enrollment admission' );
+$GLOBALS['registered'][ $owner ] = $unwrapped;
 // Swapping two *trusted* plugin callbacks must invalidate the registration
 // identity even when the ability name, metadata and schema remain unchanged.
 $original = $GLOBALS['registered'][ $owner ];

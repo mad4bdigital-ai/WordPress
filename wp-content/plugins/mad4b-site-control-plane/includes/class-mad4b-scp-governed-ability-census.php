@@ -15,8 +15,48 @@ final class MAD4B_SCP_Governed_Ability_Census {
     // Limit first-party candidates only, never the global WordPress registry.
     const MAX_ABILITIES = 2048;
 
-    /** Return stable, installation-path-independent first-party callback identity. */
-    private static function callback_identity( $callback ) {
+    /**
+     * Track the *full* first-party callback chain at registration. MAD4B's
+     * independent Authorization, Error-Contract and Execution-Fence filters
+     * wrap method callbacks into closures; rejecting closures entirely makes
+     * legitimately guarded abilities disappear from MCP tools/list.
+     *
+     * No callback is invoked here. A closure is accepted only if it is
+     * declared inside this installed plugin, scoped to a first-party MAD4B
+     * class, and encloses exactly one callable child that ultimately ends
+     * at a real first-party method. Arbitrary closures (including closures
+     * in third-party files that capture valid MAD4B methods) fail closed.
+     */
+    private static function callback_identity( $callback, $depth = 0 ) {
+        if ( $depth > 12 ) return '';
+        $root = realpath( __DIR__ );
+        if ( false === $root ) return '';
+        if ( $callback instanceof Closure ) {
+            try {
+                $reflection = new ReflectionFunction( $callback );
+                $file = realpath( (string) $reflection->getFileName() );
+                $scope = $reflection->getClosureScopeClass();
+                if ( false === $file || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR )
+                    || ! $scope || ! preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D', $scope->getName() ) )
+                    return '';
+                $children = array();
+                foreach ( $reflection->getStaticVariables() as $captured ) {
+                    if ( is_array( $captured ) && 2 === count( $captured ) && is_callable( $captured )
+                        || $captured instanceof Closure ) {
+                        $identity = self::callback_identity( $captured, $depth + 1 );
+                        if ( '' === $identity ) return '';
+                        $children[] = $identity;
+                    }
+                }
+                if ( 1 !== count( $children ) ) return '';
+                return $scope->getName() . '@'
+                    . str_replace( DIRECTORY_SEPARATOR, '/', substr( $file, strlen( $root ) + 1 ) )
+                    . ':' . $reflection->getStartLine() . '-' . $reflection->getEndLine()
+                    . '>' . $children[0];
+            } catch ( Throwable $error ) {
+                return '';
+            }
+        }
         if ( ! is_array( $callback ) || 2 !== count( $callback )
             || ! is_string( $callback[1] )
             || ! preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D',
@@ -26,57 +66,13 @@ final class MAD4B_SCP_Governed_Ability_Census {
             $method = new ReflectionMethod( $callback[0], $callback[1] );
             if ( ! $method->isPublic() || ! is_callable( $callback ) ) return '';
             $file = realpath( (string) $method->getFileName() );
-            $root = realpath( __DIR__ );
-            if ( false === $file || false === $root
+            if ( false === $file
                 || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR ) ) return '';
             return $method->getDeclaringClass()->getName() . '::' . $method->getName()
                 . '@' . str_replace( DIRECTORY_SEPARATOR, '/', substr( $file, strlen( $root ) + 1 ) );
         } catch ( Throwable $error ) {
             return '';
         }
-    }
-
-    /**
-     * Redacted, non-authorizing explanation of callback provenance rejection.
-     * Do not expose raw function arguments, paths or OAuth information.
-     */
-    private static function callback_probe( $callback ) {
-        $result = array(
-            'kind' => is_array( $callback ) ? 'array' : (
-                $callback instanceof Closure ? 'closure' : gettype( $callback ) ),
-            'trusted' => self::callback_is_ours( $callback ),
-        );
-        if ( is_array( $callback ) && 2 === count( $callback ) ) {
-            $class = is_object( $callback[0] ) ? get_class( $callback[0] ) : (
-                is_string( $callback[0] ) ? $callback[0] : '' );
-            $result['class_prefix_valid'] = 1 === preg_match( '/^MAD4B_SCP_[A-Za-z0-9_]+$/D', $class );
-            $result['method_string'] = is_string( $callback[1] );
-            $result['callable'] = is_callable( $callback );
-            try {
-                $method = new ReflectionMethod( $callback[0], $callback[1] );
-                $file = realpath( (string) $method->getFileName() );
-                $root = realpath( __DIR__ );
-                $result['public'] = $method->isPublic();
-                $result['inside_includes'] = false !== $root && false !== $file
-                    && 0 === strpos( $file, $root . DIRECTORY_SEPARATOR );
-                $result['defined_in_plugin_root'] = false !== $root && false !== $file
-                    && 0 === strpos( $file, dirname( $root ) . DIRECTORY_SEPARATOR );
-            } catch ( Throwable $error ) {
-                $result['reflection_exception'] = get_class( $error );
-            }
-        }
-        if ( $callback instanceof Closure ) {
-            try {
-                $reflection = new ReflectionFunction( $callback );
-                $file = realpath( (string) $reflection->getFileName() );
-                $root = realpath( __DIR__ );
-                $result['inside_includes'] = false !== $root && false !== $file
-                    && 0 === strpos( $file, $root . DIRECTORY_SEPARATOR );
-            } catch ( Throwable $error ) {
-                $result['reflection_exception'] = get_class( $error );
-            }
-        }
-        return $result;
     }
 
     private static function callback_is_ours( $callback ) {
