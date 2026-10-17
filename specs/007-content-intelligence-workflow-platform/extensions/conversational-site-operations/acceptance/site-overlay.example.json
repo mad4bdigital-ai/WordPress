@@ -1,0 +1,16 @@
+{
+  "contract": "mad4b.cso01.dynamic-acceptance.site-overlay.v1",
+  "profile_id": "large_catalog",
+  "scope": {
+    "site_uuid": "replace-with-enrolled-site-uuid",
+    "environment": "staging",
+    "blog_id": 1
+  },
+  "thresholds": {
+    "min_catalog_abilities": 6000
+  },
+  "additional_checks": [
+    "client_low_bandwidth_and_offline"
+  ],
+  "note": "Illustrative only. Not runtime evidence, site authorization or an acceptance receipt."
+}

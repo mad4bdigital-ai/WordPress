@@ -18,7 +18,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 	const CONFIG_OPTION = 'mad4b_scp_google_drive_oauth_config_v1';
 	const DEDICATED_CONFIG_OPTION = 'mad4b_scp_google_drive_dedicated_oauth_config_v1';
 	const TOKEN_OPTION = 'mad4b_scp_google_drive_oauth_token_v1';
+	const MANUAL_REVOCATION_AUDIT_OPTION = 'mad4b_scp_google_drive_manual_revocation_audit_v1';
 	const SCOPE_DIAGNOSTIC_OPTION = 'mad4b_scp_google_scope_diagnostic_v1';
+	const SCOPE_DIAGNOSTIC_RULE_REVISION = 2;
 	const SCOPE_DIAGNOSTIC_CONTRACT = 'mad4b.google-scope-rejection.v1';
 	const AUTH_MODE_OPTION = 'mad4b_scp_google_drive_auth_mode_v1';
 	const AUTH_MODE_CONTRACT = 'mad4b.google-drive-auth-mode.v1';
@@ -67,7 +69,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 	const MAX_SCAN_FILES = 500;
 	const MAX_SCAN_FOLDERS = 120;
-	const MAX_SCAN_WALL_SECONDS = 15;
+	const MAX_SCAN_WALL_SECONDS = 10;
 	const REFRESH_FAILURE_COOLDOWN_SECONDS = 60;
 	const MAX_TEXT_BYTES = 262144;
 	const MAX_BINARY_BYTES = 16777216;
@@ -510,7 +512,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$expires_at = $connected && isset( $token['expires_at'] ) ? (int) $token['expires_at'] : 0;
 		$access_token_present = $connected && ! empty( $token['access_token'] );
 		$access_token_valid = $access_token_present && $expires_at > time() + 90;
-		$refresh_required = $connected && ! $access_token_valid;
+		// A pending revoke is explicitly transport-disabled: never suggest
+		// refreshing a credential retained solely for safe remote revocation retry.
+		$refresh_required = $connected && ! $revocation_pending && ! $access_token_valid;
 		$refresh_failure_code = $connected && isset( $token['refresh_failure_code'] ) ? sanitize_key( (string) $token['refresh_failure_code'] ) : '';
 		$refresh_failure_provider_code = $connected && isset( $token['refresh_failure_provider_code'] ) ? sanitize_key( (string) $token['refresh_failure_provider_code'] ) : '';
 		$refresh_failure_http_status = $connected && isset( $token['refresh_failure_http_status'] ) ? absint( $token['refresh_failure_http_status'] ) : 0;
@@ -533,10 +537,13 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$blockers = self::connection_blockers( $credentials, $token );
 		$write_blockers = array();
 		if ( ! $write_available ) {
-			if ( $refresh_failed ) $write_blockers[] = 'google_drive_token_refresh_failed';
-			elseif ( ! self::scope_allows_write( $scope ) ) $write_blockers[] = 'google_drive_write_scope_not_granted';
-			elseif ( $revocation_pending ) $write_blockers[] = 'google_drive_revocation_pending';
+			// A locally disabled, pending revocation takes precedence over
+			// missing-scope/expired-token advice. Never ask the operator to
+			// widen grants or refresh while remote revocation is uncertain.
+			if ( $revocation_pending ) $write_blockers[] = 'google_drive_revocation_pending';
+			elseif ( $refresh_failed ) $write_blockers[] = 'google_drive_token_refresh_failed';
 			elseif ( ! $connected ) $write_blockers[] = 'google_drive_not_connected';
+			elseif ( ! self::scope_allows_write( $scope ) ) $write_blockers[] = 'google_drive_write_scope_not_granted';
 		}
 		return array(
 			'contract' => self::CONTRACT,
@@ -552,6 +559,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'token_unreadable' => $token_unreadable,
 			'revocation_error' => $revocation_pending && isset( $token['revocation_error'] ) ? sanitize_key( (string) $token['revocation_error'] ) : '',
 			'revocation_attempted_at' => $revocation_pending && isset( $token['revocation_attempted_at'] ) ? sanitize_text_field( (string) $token['revocation_attempted_at'] ) : '',
+			'revocation_attempts' => $revocation_pending ? self::safe_revocation_attempts( $token['revocation_attempts'] ?? array() ) : array(),
 			'scope' => $scope,
 			'account_email' => $connected && isset( $token['account_email'] ) ? sanitize_email( (string) $token['account_email'] ) : '',
 			'account_name' => $connected && isset( $token['account_name'] ) ? sanitize_text_field( (string) $token['account_name'] ) : '',
@@ -594,6 +602,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'token_unreadable' => ! empty( $status['token_unreadable'] ),
 			'revocation_error' => isset( $status['revocation_error'] ) ? (string) $status['revocation_error'] : '',
 			'revocation_attempted_at' => isset( $status['revocation_attempted_at'] ) ? (string) $status['revocation_attempted_at'] : '',
+			'revocation_attempts' => $status['revocation_attempts'] ?? array(),
 			'expires_at' => isset( $status['expires_at'] ) ? (int) $status['expires_at'] : 0,
 			'credential_fresh' => ! empty( $status['credential_fresh'] ),
 			'refresh_required' => ! empty( $status['refresh_required'] ),
@@ -950,6 +959,147 @@ final class MAD4B_SCP_Google_Drive_Context {
 	}
 
 
+	/**
+	 * Bounded Google revoke attempt. Only explicit Google HTTP 200 confirms
+	 * remote revocation. HTTP 400, network errors and timeouts are NOT proof
+	 * of termination, so callers preserve disabled/pending retry state.
+	 * Never return or log bearer tokens or provider response bodies.
+	 */
+	private static function safe_revocation_attempts( $attempts ) {
+		$safe = array();
+		if ( ! is_array( $attempts ) ) return $safe;
+		foreach ( array_slice( $attempts, 0, 2 ) as $attempt ) {
+			if ( ! is_array( $attempt ) || ! in_array( $attempt['credential_type'] ?? '', array( 'refresh', 'access' ), true ) ) continue;
+			$provider = $attempt['provider_error'] ?? '';
+			$safe[] = array(
+				'credential_type' => $attempt['credential_type'],
+				'http_status' => max( 0, min( 599, (int) ( $attempt['http_status'] ?? 0 ) ) ),
+				'provider_error' => in_array( $provider, array( 'invalid_token', 'invalid_request', 'invalid_client', 'unsupported_token_type', 'invalid_grant', 'temporarily_unavailable', 'server_error' ), true ) ? $provider : '',
+			);
+		}
+		return $safe;
+	}
+
+	private static function revoke_google_token_attempt( $token ) {
+		if ( '' === (string) $token ) return array( 'confirmed' => false, 'error' => 'google_revocation_token_missing' );
+		try {
+			$response = wp_remote_post( self::REVOKE_ENDPOINT, array(
+				'timeout' => 20,
+				'redirection' => 0,
+				'limit_response_size' => 4096,
+				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
+				'body' => array( 'token' => (string) $token ),
+			) );
+		} catch ( Throwable $error ) {
+			return array( 'confirmed' => false, 'error' => 'google_revocation_transport_exception' );
+		}
+		if ( is_wp_error( $response ) ) {
+			return array( 'confirmed' => false, 'error' => 'google_revocation_transport_' . sanitize_key( $response->get_error_code() ) );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		// Decode only a bounded OAuth error enum; never retain descriptions,
+		// response bodies, URLs or tokens in status or audit evidence.
+		$body = wp_remote_retrieve_body( $response );
+		$data = is_string( $body ) && strlen( $body ) <= 4096 ? json_decode( $body, true ) : null;
+		$provider = is_array( $data ) ? ( $data['error'] ?? '' ) : '';
+		$safe = self::safe_revocation_attempts( array( array( 'credential_type' => 'refresh', 'http_status' => $code, 'provider_error' => $provider ) ) );
+		return array(
+			'confirmed' => 200 === $code,
+			'error' => 200 === $code ? '' : 'google_revocation_http_' . $code,
+			'http_status' => $code,
+			'provider_error' => $safe[0]['provider_error'],
+		);
+	}
+
+    /**
+     * Manual Google Account recovery is NEVER Google API revocation proof.
+     * It is an explicit, audited operator attestation after removing access
+     * from Google Account > Third-party connections. No automatic HTTP 400
+     * success inference, no token exposure and no Production token deletion.
+     */
+    public static function manual_revocation_admission( $connection, $expected_attempted_at ) {
+        if ( ! is_array( $connection ) || empty( $connection['connected'] )
+            || empty( $connection['revocation_pending'] )
+            || ! empty( $connection['read_available'] ) || ! empty( $connection['write_available'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_not_pending',
+                'Only an already disabled pending Google grant can enter manual recovery.' );
+        $observed = (string) ( $connection['revocation_attempted_at'] ?? '' );
+        if ( '' === $observed || '' === (string) $expected_attempted_at
+            || ! hash_equals( $observed, (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_snapshot_changed',
+                'Google revocation state changed; refresh and review the latest attempts.' );
+        $attempts = self::safe_revocation_attempts( $connection['revocation_attempts'] ?? array() );
+        if ( 2 !== count( $attempts )
+            || 'refresh' !== ( $attempts[0]['credential_type'] ?? '' )
+            || 'access' !== ( $attempts[1]['credential_type'] ?? '' ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_attempts_insufficient',
+                'Both refresh and access token revoke attempts must be accounted for.' );
+        foreach ( $attempts as $item ) {
+            if ( 400 !== (int) ( $item['http_status'] ?? 0 )
+                || 'invalid_token' !== (string) ( $item['provider_error'] ?? '' ) )
+                return new WP_Error( 'mad4b_google_manual_revoke_provider_outcome_ineligible',
+                    'Manual cleanup requires two explicit invalid_token responses and separate Google Account verification.' );
+        }
+        return true;
+    }
+
+    public static function complete_manual_revocation_attestation( $expected_attempted_at, $confirmation ) {
+        if ( 'I VERIFIED GOOGLE ACCOUNT REMOVAL' !== (string) $confirmation )
+            return new WP_Error( 'mad4b_google_manual_revoke_explicit_attestation_required',
+                'Independent Google Account removal must be explicitly attested before local cleanup.' );
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile' ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_admin_required', 'Staging administrator required.' );
+        $site = MAD4B_SCP_Site_Profile::status();
+        if ( ! is_array( $site ) || 'staging' !== (string) ( $site['environment'] ?? '' )
+            || empty( $site['origin_match'] ) || empty( $site['environment_match'] )
+            || empty( $site['authority_ready'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_staging_required', 'Exact enrolled Staging site required.' );
+        $connection = self::connection_status();
+        $admission = self::manual_revocation_admission( $connection, $expected_attempted_at );
+        if ( is_wp_error( $admission ) ) return $admission;
+        $record = self::token_record();
+        if ( ! is_array( $record ) || empty( $record['revocation_pending'] )
+            || ! hash_equals( (string) ( $record['revocation_attempted_at'] ?? '' ),
+                (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_record_drift',
+                'Encrypted Google grant changed before local cleanup.' );
+        $audit = array(
+            'contract' => 'mad4b.google-manual-revocation-attestation.v1',
+            'site_uuid' => (string) ( $site['site_uuid'] ?? '' ),
+            'revocation_attempted_at' => (string) $expected_attempted_at,
+            'attested_at' => gmdate( 'c' ),
+            'operator_user_id' => function_exists( 'get_current_user_id' ) ? (int) get_current_user_id() : 0,
+            'google_account_removal_attested' => true,
+            'provider_api_revocation_confirmed' => false,
+            'recovery_method' => 'explicit_external_google_account_removal',
+            'revocation_attempts' => self::safe_revocation_attempts( $connection['revocation_attempts'] ?? array() ),
+        );
+        // Site-keyed integrity seal; never record plaintext tokens or their
+        // encrypted envelopes inside the durable operator attestation.
+        $audit['seal'] = hash_hmac( 'sha256', wp_json_encode( $audit ), wp_salt( 'auth' ) );
+        if ( ! self::write_option( self::MANUAL_REVOCATION_AUDIT_OPTION, $audit ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_audit_write_failed',
+                'No local token was deleted because manual attestation evidence could not be stored.' );
+        // Fail closed if the token option changed after the original admission.
+        $fresh = self::token_record();
+        if ( ! is_array( $fresh ) || empty( $fresh['revocation_pending'] )
+            || ! hash_equals( (string) ( $fresh['revocation_attempted_at'] ?? '' ),
+                (string) $expected_attempted_at ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_record_drift',
+                'Pending grant changed during manual cleanup. Retry from current state.' );
+        if ( ! self::delete_option_verified( self::TOKEN_OPTION ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_local_delete_failed',
+                'Manual attestation stored, but the old local token was not confirmed deleted.' );
+        $result = self::connection_status();
+        if ( ! empty( $result['connected'] ) || ! empty( $result['revocation_pending'] ) )
+            return new WP_Error( 'mad4b_google_manual_revoke_readback_mismatch',
+                'Local credential readback still reports the pending grant; reconnect remains blocked.' );
+        $result['manual_google_account_removal_attested'] = true;
+        $result['remote_revocation_confirmed'] = false;
+        return $result;
+    }
+
 	public static function disconnect() {
 		$stored = get_option( self::TOKEN_OPTION, array() );
 		$stored_present = is_array( $stored ) && self::CONTRACT === ( isset( $stored['contract'] ) ? (string) $stored['contract'] : '' );
@@ -971,22 +1121,23 @@ final class MAD4B_SCP_Google_Drive_Context {
 			return $status;
 		}
 
-		$response = wp_remote_post(
-			self::REVOKE_ENDPOINT,
-			array(
-				'timeout' => 20,
-				'redirection' => 0,
-				'headers' => array( 'Content-Type' => 'application/x-www-form-urlencoded' ),
-				'body' => array( 'token' => $token ),
-			)
-		);
-		$revocation_error = '';
-		$confirmed = false;
-		if ( is_wp_error( $response ) ) $revocation_error = sanitize_key( $response->get_error_code() );
-		else {
-			$status_code = (int) wp_remote_retrieve_response_code( $response );
-			$confirmed = 200 === $status_code;
-			if ( ! $confirmed ) $revocation_error = 'google_revocation_http_' . $status_code;
+		$attempt = self::revoke_google_token_attempt( $token );
+		$attempts = array( array_merge( $attempt, array( 'credential_type' => ! empty( $record['refresh_token'] ) ? 'refresh' : 'access' ) ) );
+		$confirmed = ! empty( $attempt['confirmed'] );
+		$revocation_error = (string) $attempt['error'];
+		$used_access_fallback = false;
+		// Google may reject a previously rotated or revoked REFRESH token
+		// with HTTP 400 while the separately issued access token can still
+		// revoke the same grant. Make one bounded second attempt only when
+		// its credential differs. Never interpret HTTP 400 as success.
+		$access_token = is_array( $record ) ? (string) ( $record['access_token'] ?? '' ) : '';
+		if ( ! $confirmed && 'google_revocation_http_400' === $revocation_error && '' !== $access_token && ! hash_equals( $token, $access_token ) ) {
+			$used_access_fallback = true;
+			$fallback = self::revoke_google_token_attempt( $access_token );
+			$attempts[] = array_merge( $fallback, array( 'credential_type' => 'access' ) );
+			$confirmed = ! empty( $fallback['confirmed'] );
+			if ( $confirmed ) $revocation_error = '';
+			else $revocation_error = (string) $fallback['error'];
 		}
 
 		if ( $confirmed ) {
@@ -995,12 +1146,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 			$status['remote_revocation_attempted'] = true;
 			$status['remote_revocation_confirmed'] = true;
 			$status['remote_revocation_error'] = '';
+			$status['revocation_attempts'] = self::safe_revocation_attempts( $attempts );
 			return $status;
 		}
 
 		$record['revocation_pending'] = true;
 		$record['revocation_error'] = $revocation_error ? $revocation_error : 'google_revocation_unconfirmed';
 		$record['revocation_attempted_at'] = gmdate( 'c' );
+		$record['revocation_attempts'] = self::safe_revocation_attempts( $attempts );
 		$sealed = self::seal_token_record( $record );
 		if ( is_wp_error( $sealed ) ) {
 			self::delete_option_verified( self::TOKEN_OPTION );
@@ -1017,6 +1170,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 				'revocation_pending' => true,
 				'revocation_error' => (string) $record['revocation_error'],
 				'revocation_attempted_at' => (string) $record['revocation_attempted_at'],
+				'revocation_attempts' => $record['revocation_attempts'],
 			)
 		);
 	}
@@ -2970,6 +3124,54 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return self::decode_json_response( $response, 'mad4b_google_drive_api_failed' );
 	}
 
+	/**
+	 * Refresh an EXISTING stored Google OAuth access token only. This never
+	 * starts consent, widens scopes, exposes tokens or revokes a grant.
+	 * Admitted solely by an authenticated native POST or the separately
+	 * owner-approved governed provider-connection remote ability.
+	 */
+	public static function refresh_existing_connection( $expected_grant_sha256 ) {
+		if ( ! is_string( $expected_grant_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/D', $expected_grant_sha256 ) )
+			return new WP_Error( 'mad4b_google_refresh_expected_identity_required', 'Exact encrypted grant identity required.' );
+		$before = self::connection_status();
+		if ( empty( $before['connected'] ) || ! empty( $before['revocation_pending'] ) || ! empty( $before['token_unreadable'] ) )
+			return new WP_Error( 'mad4b_google_refresh_not_allowed', 'No usable existing Google grant may be refreshed.' );
+		if ( ! empty( $before['reconnect_required'] ) )
+			return new WP_Error( 'mad4b_google_refresh_reauthorization_required', 'Google requires a new owner OAuth authorization, not a token refresh.' );
+		$actual = self::encrypted_grant_identity_sha256();
+		if ( is_wp_error( $actual ) || ! hash_equals( $actual, $expected_grant_sha256 ) )
+			return new WP_Error( 'mad4b_google_refresh_grant_changed', 'Google grant changed since the action was planned. Reload.' );
+		if ( empty( $before['refresh_required'] ) ) return array(
+			'contract' => 'mad4b.google-connection-refresh.v1', 'state' => 'already_fresh',
+			'credential_fresh' => ! empty( $before['credential_fresh'] ),
+			'provider_request_performed' => false, 'no_scope_widening' => true,
+		);
+		// Existing retry backoff and invalid_grant detection apply unchanged.
+		$access = self::access_token();
+		if ( is_wp_error( $access ) ) return $access;
+		// Never expose the access token in this return value or in audit records.
+		unset( $access );
+		$after = self::connection_status();
+		if ( empty( $after['credential_fresh'] ) || ! empty( $after['revocation_pending'] )
+			|| empty( $after['connected'] ) )
+			return new WP_Error( 'mad4b_google_refresh_readback_failed', 'Google refresh did not produce a fresh persisted connection.' );
+		return array( 'contract' => 'mad4b.google-connection-refresh.v1',
+			'state' => 'refreshed', 'credential_fresh' => true,
+			'provider_request_performed' => true, 'no_scope_widening' => true,
+			'new_request_readback_required' => true );
+	}
+
+	/** Hash encrypted-at-rest identity without leaking the saved credentials. */
+	public static function encrypted_grant_identity_sha256() {
+		$stored = get_option( self::TOKEN_OPTION, null );
+		if ( ! is_array( $stored ) || ! $stored )
+			return new WP_Error( 'mad4b_google_grant_identity_missing', 'No encrypted Google grant is stored.' );
+		$encoded = wp_json_encode( $stored, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $encoded ) )
+			return new WP_Error( 'mad4b_google_grant_identity_invalid', 'Encrypted Google grant identity cannot be verified.' );
+		return hash( 'sha256', $encoded );
+	}
+
 	private static function access_token() {
 		$record = self::token_record();
 		if ( ! is_array( $record ) || empty( $record['refresh_token'] ) ) return new WP_Error( 'mad4b_google_drive_not_connected', 'Google Drive is not connected.' );
@@ -3137,6 +3339,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 		$data['observed_at'] = time();
 		$data['expires_at'] = time() + 86400;
 		$data['error_code'] = sanitize_key( $error->get_error_code() );
+		$data['rule_revision'] = self::SCOPE_DIAGNOSTIC_RULE_REVISION;
 		$data['seal'] = hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) );
 		self::write_option( self::SCOPE_DIAGNOSTIC_OPTION, $data );
 	}
@@ -3147,7 +3350,8 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( ! is_array( $data ) || self::SCOPE_DIAGNOSTIC_CONTRACT !== ( $data['contract'] ?? '' ) || ! is_string( $data['seal'] ?? null ) || ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) return array();
 		$seal = $data['seal']; unset( $data['seal'] );
 		$grants = self::workspace_grants_status();
-		if ( ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
+		if ( ! isset( $data['rule_revision'] ) || self::SCOPE_DIAGNOSTIC_RULE_REVISION !== (int) $data['rule_revision']
+			|| ! hash_equals( hash_hmac( 'sha256', wp_json_encode( $data ), wp_salt( 'auth' ) ), $seal )
 			|| ( $data['site_uuid'] ?? '' ) !== MAD4B_SCP_Site_Profile::site_uuid()
 			|| ( $data['auth_mode'] ?? '' ) !== self::auth_mode()
 			|| ( $data['grant_sha256'] ?? '' ) !== $grants['grant_sha256']
@@ -3319,23 +3523,70 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return false;
 	}
 
+	/**
+	 * Separate Google OAuth permissions from the independent Source, rollback,
+	 * certification and MAD4B approval authorities. A grant may be healthy
+	 * while zero provider writes are eligible. This method is pure/read-only
+	 * and does not perform or persist OAuth refresh.
+	 */
+	public static function grant_operational_lifecycle( array $connection, array $counts ) {
+		$granted = ! empty( $connection['connected'] ) && ! empty( $connection['write_available'] );
+		$source_selected = (int) ( $counts['selected'] ?? 0 ) > 0;
+		$update_source = (int) ( $counts['update'] ?? 0 ) > 0;
+		$recreate_source = (int) ( $counts['recreate'] ?? 0 ) > 0;
+		return array(
+			'contract' => 'mad4b.google-grant-operational-lifecycle.v1',
+			'oauth' => array(
+				'state' => ! $granted ? 'grant_unavailable'
+					: ( ! empty( $connection['refresh_required'] ) ? 'refresh_on_next_provider_request' : 'healthy' ),
+				'write_grant_present' => $granted,
+				'reconnect_required' => ! empty( $connection['reconnect_required'] ),
+				'refresh_failed' => ! empty( $connection['refresh_failed'] ),
+			),
+			'context_source' => array(
+				'state' => ! $source_selected ? 'source_not_selected' : 'selected_policy_evaluation_required',
+				'selected_count' => (int) ( $counts['selected'] ?? 0 ),
+			),
+			'operations' => array(
+				'update' => array( 'source_policy_eligible' => $granted && $update_source,
+					'provider_certification_still_required' => true, 'one_time_approval_still_required' => true ),
+				'recreate' => array( 'source_policy_eligible' => $granted && $recreate_source,
+					'provider_certification_still_required' => true, 'rollback_receipt_still_required' => true ),
+				'create' => array( 'source_policy_eligible' => false,
+					'blocked_code' => 'mad4b_google_drive_create_rollback_not_certified',
+					'rollback_contract_certification_required' => true ),
+			),
+			'execution_authorized' => false,
+			'authority_widening' => false,
+		);
+	}
+
 	public static function write_capability_status() {
 		$status = self::connection_status();
+		$counts = class_exists( 'MAD4B_SCP_Context_Authority' ) ? array(
+			'selected' => count( MAD4B_SCP_Context_Authority::sources() ),
+			'create' => MAD4B_SCP_Context_Authority::writable_source_count( 'create' ),
+			'update' => MAD4B_SCP_Context_Authority::writable_source_count( 'update' ),
+			'recreate' => MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ),
+		) : array( 'selected' => 0, 'create' => 0, 'update' => 0, 'recreate' => 0 );
 		return array(
 			'contract' => 'mad4b.google-drive-write-capability.v1',
 			'connected' => ! empty( $status['connected'] ),
 			'read_available' => ! empty( $status['read_available'] ),
 			'write_available' => ! empty( $status['write_available'] ),
 			'access_mode' => isset( $status['access_mode'] ) ? (string) $status['access_mode'] : 'read_only',
-			'selected_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? count( MAD4B_SCP_Context_Authority::sources() ) : 0,
-			'create_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'create' ) : 0,
-			'update_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'update' ) : 0,
-			'recreate_source_count' => class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::writable_source_count( 'recreate' ) : 0,
+			'selected_source_count' => $counts['selected'],
+			'create_source_count' => $counts['create'],
+			'update_source_count' => $counts['update'],
+			'recreate_source_count' => $counts['recreate'],
 			'allowed_operations' => array( 'update', 'recreate' ),
 			'blocked_operations' => array( 'create' => 'mad4b_google_drive_create_rollback_not_certified' ),
 			'delete_supported' => false,
 			'trash_supported' => false,
-			'blockers' => ! empty( $status['write_available'] ) ? array() : array( 'google_drive_write_scope_not_granted' ),
+			'grant_operational_lifecycle' => self::grant_operational_lifecycle( $status, $counts ),
+			'blockers' => ! empty( $status['write_available'] ) ? array()
+				: ( isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] )
+					? array_values( $status['write_blockers'] ) : array( 'google_drive_write_unavailable' ) ),
 		);
 	}
 
@@ -3818,4 +4069,95 @@ final class MAD4B_SCP_Google_Drive_Context {
 		if ( delete_option( $name ) ) return true;
 		return false === get_option( $name, false );
 	}
+    /**
+     * Narrow, server-internal Google Docs transport for governed Business
+     * Activity profile fields. Reuses the existing encrypted Google OAuth
+     * lifecycle rather than creating another credential store or exposing
+     * bearer tokens through abilities or chat.
+     */
+    public static function activity_docs_request( $method, array $source, array $binding, $payload = null ) {
+        if ( ! current_user_can( 'manage_options' ) ||
+            ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+            ! MAD4B_SCP_Site_Profile::configured() ||
+            ! MAD4B_SCP_Site_Profile::origin_enrolled() ||
+            ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ||
+            ! isset( $binding['site_uuid'] ) ||
+            (string) $binding['site_uuid'] !== (string) MAD4B_SCP_Site_Profile::site_uuid() )
+            return new WP_Error( 'mad4b_activity_docs_site_authority_denied', 'Governed enrolled site administrator required.' );
+        if ( ! isset( $binding['profile']['activity_contract']['sync_targets'] ) ||
+            ! is_array( $binding['profile']['activity_contract']['sync_targets'] ) ||
+            ! isset( $source['source_ref'], $source['provider'], $source['purpose'], $source['resource_kind'] ) ||
+            'google_drive' !== $source['provider'] || 'record_data' !== $source['purpose'] ||
+            'drive_document' !== $source['resource_kind'] ||
+            ! is_string( $source['source_ref'] ) ||
+            ! preg_match( '/^[A-Za-z0-9_-]{8,180}$/D', $source['source_ref'] ) )
+            return new WP_Error( 'mad4b_activity_docs_source_invalid', 'Only exact configured record-data Google Docs sources can use this transport.' );
+        $allowed = false;
+        foreach ( $binding['profile']['activity_contract']['sync_targets'] as $target ) {
+            if ( ! is_array( $target ) || 'google_drive' !== ( $target['provider'] ?? '' ) ||
+                'record_data' !== ( $target['purpose'] ?? '' ) ||
+                'drive_document' !== ( $target['resource_kind'] ?? '' ) ) continue;
+            if ( 'entity_post_meta' === ( $target['resource_binding_mode'] ?? 'static' ) ) {
+                $meta_key = isset( $target['resource_binding_meta_key'] ) ? (string) $target['resource_binding_meta_key'] : '';
+                $entity = isset( $binding['entity_id'] ) ? (string) $binding['entity_id'] : '';
+                if ( ctype_digit( $entity ) && (int) $entity > 0 &&
+                    in_array( $meta_key, (array) $binding['profile']['meta_keys'], true ) &&
+                    current_user_can( 'edit_post', (int) $entity ) &&
+                    (string) get_post_meta( (int) $entity, $meta_key, true ) === $source['source_ref'] )
+                    $allowed = true;
+            } elseif ( isset( $target['source_ref'] ) && (string) $target['source_ref'] === $source['source_ref'] ) {
+                $allowed = true;
+            }
+        }
+        if ( ! $allowed )
+            return new WP_Error( 'mad4b_activity_docs_binding_mismatch', 'Google document ID is not bound to the current Activity profile.' );
+        $connection = self::connection_status();
+        if ( empty( $connection['read_available'] ) )
+            return new WP_Error( 'mad4b_activity_docs_read_scope_missing', 'Managed Google Drive read connection is unavailable.' );
+        $method = strtoupper( (string) $method );
+        if ( ! in_array( $method, array( 'GET', 'POST' ), true ) )
+            return new WP_Error( 'mad4b_activity_docs_method_denied', 'Only Google Docs GET or revision-bound batchUpdate is permitted.' );
+        if ( 'POST' === $method ) {
+            if ( empty( $connection['write_available'] ) )
+                return new WP_Error( 'mad4b_activity_docs_write_scope_missing', 'Managed Google Drive write scope is not granted.' );
+            if ( ! is_array( $payload ) || array_diff( array_keys( $payload ), array( 'requests', 'writeControl' ) ) ||
+                ! isset( $payload['writeControl']['requiredRevisionId'], $payload['requests'] ) ||
+                ! is_string( $payload['writeControl']['requiredRevisionId'] ) ||
+                ! preg_match( '/^[A-Za-z0-9._:-]{1,160}$/D', $payload['writeControl']['requiredRevisionId'] ) ||
+                ! is_array( $payload['requests'] ) || count( $payload['requests'] ) > 2 ||
+                count( $payload['requests'] ) < 1 )
+                return new WP_Error( 'mad4b_activity_docs_cas_required', 'Exact Docs requiredRevisionId and bounded paragraph updates are mandatory.' );
+            foreach ( $payload['requests'] as $request ) {
+                if ( ! is_array( $request ) || count( $request ) !== 1 )
+                    return new WP_Error( 'mad4b_activity_docs_request_invalid', 'Unapproved Google Docs operation.' );
+                $kind = (string) array_key_first( $request );
+                if ( ! in_array( $kind, array( 'insertText', 'deleteContentRange' ), true ) )
+                    return new WP_Error( 'mad4b_activity_docs_request_kind_denied', 'Only bounded named-field text edits are permitted.' );
+                if ( 'insertText' === $kind ) {
+                    $v = $request['insertText'];
+                    if ( ! is_array( $v ) || ! isset( $v['text'], $v['location']['index'] ) ||
+                        ! is_string( $v['text'] ) || strlen( $v['text'] ) > 4000 ||
+                        false !== strpos( $v['text'], "\n" ) ||
+                        ! is_int( $v['location']['index'] ) || $v['location']['index'] < 1 )
+                        return new WP_Error( 'mad4b_activity_docs_insert_invalid', 'Google Docs text insertion exceeds exact field bounds.' );
+                } else {
+                    $v = $request['deleteContentRange'];
+                    if ( ! is_array( $v ) || ! isset( $v['range']['startIndex'], $v['range']['endIndex'] ) ||
+                        ! is_int( $v['range']['startIndex'] ) || ! is_int( $v['range']['endIndex'] ) ||
+                        $v['range']['startIndex'] < 1 ||
+                        $v['range']['endIndex'] <= $v['range']['startIndex'] ||
+                        $v['range']['endIndex'] - $v['range']['startIndex'] > 4000 )
+                        return new WP_Error( 'mad4b_activity_docs_delete_invalid', 'Google Docs text removal exceeds exact field bounds.' );
+                }
+            }
+        }
+        $url = self::DOCS_API . '/documents/' . rawurlencode( $source['source_ref'] ) .
+            ( 'POST' === $method ? ':batchUpdate' : '' );
+        $body = 'POST' === $method ? wp_json_encode( $payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) : null;
+        if ( 'POST' === $method && ! is_string( $body ) )
+            return new WP_Error( 'mad4b_activity_docs_body_invalid', 'Bounded Docs patch could not be encoded.' );
+        return self::authorized_json_request( $method, $url, $body,
+            'POST' === $method ? 'application/json' : '', 'mad4b_activity_docs_provider_failed' );
+    }
+
 }

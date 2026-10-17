@@ -626,3 +626,7 @@ BITFLOW-001 The target Staging installed Bit Flows 1.29.0 artifact is certified 
 BITFLOW-002 Native/parallel privileged provider surfaces are explicitly proven absent, suppressed, federated read-only, or treated as blockers.
 VERTICAL-001 CRITICAL_KERNEL_VERTICAL_SLICE_VERIFIED is emitted only after the expanded hard-gate DAG is satisfied by linked exact-candidate evidence.
 VERTICAL-002 Production authorization remains independent and false unless separately granted.
+
+## Optional CSO01 — Conversation-native site operations extension
+
+The independent [CSO01 specification](extensions/conversational-site-operations/spec.md) expands the user-facing WordPress operating center through 27 requirement families and 26 independently denied/accepted use cases. It reuses existing Feature 007 identity, adapter certification, content, execution and quality contracts. Every form, plan, template and proposed ability is non-authorizing; the existing per-site policy and exact-bound execution fence remains the only write route. Secrets require first-party external HTTPS handoff; generic arbitrary SQL and undocumented plugin options remain unwritable. CSO01's 11 gates are optional OPEN future acceptance and do not make this parent release ready or blocked.

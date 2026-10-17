@@ -8,7 +8,7 @@ root = Path("wp-content/plugins/mad4b-site-control-plane")
 self_update = (root / "includes" / "class-mad4b-scp-self-update.php").read_text(encoding="utf-8")
 continuation = (root / "includes" / "class-mad4b-scp-post-update-continuation.php").read_text(encoding="utf-8")
 peer_governance = (root / "includes" / "class-mad4b-scp-mcp-peer-governance.php").read_text(encoding="utf-8")
-servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 grants = (root / "includes" / "class-mad4b-scp-staging-write-grant-reconciliation.php").read_text(encoding="utf-8")
 authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
@@ -128,10 +128,20 @@ for marker in (
     "public static function chatgpt_reviewed_direct_step_up_tools()",
     "MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
+    "$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );",
+    "$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );",
 ):
     if marker not in servers:
         raise SystemExit(f"bootstrap self-update stable registration invariant missing: {marker}")
+base = servers.split("public static function chatgpt_base_tools()", 1)[1].split("public static function chatgpt_tools()", 1)[0]
+for marker in (
+    "self::chatgpt_dispatch_transport_tools()",
+    "self::chatgpt_reviewed_direct_step_up_tools()",
+    "self::chatgpt_approval_bootstrap_tools()",
+    "in_array( $ability_name, $direct_mutation_transport, true )",
+):
+    if marker not in base:
+        raise SystemExit("bootstrap direct dispatch guard missing: " + marker)
 chatgpt_direct = servers.split("public static function chatgpt_tools()", 1)[1].split("private static function chatgpt_internal_enrollment_mutations()", 1)[0]
 for forbidden in (
     "'mad4b/site-profile-feature-reenroll'",
@@ -902,3 +912,41 @@ for command in (
     subprocess.run(command, check=True)
 
 print("mad4b.control-plane-self-update post-update bottleneck regressions: PASS")
+
+
+# Runtime self-update admission hardening regression.
+semantic_contracts = json.loads((root / "config" / "semantic-content-field-contracts.json").read_text(encoding="utf-8"))
+semantic_abilities = semantic_contracts.get("abilities") or {}
+expected_operational_contracts = {
+    "mad4b/control-plane-native-apply": {"reason", "expected_plan_sha256"},
+    "mad4b/control-plane-upload-apply": {
+        "version", "source_commit_sha", "archive_sha256", "build_fingerprint",
+        "package_manifest_digest", "size_bytes", "reason", "expected_plan_sha256", "package_base64",
+    },
+    "mad4b/control-plane-bootstrap-apply": {"reason", "expected_plan_sha256", "confirmation"},
+    "mad4b/runtime-release-set-apply": {"reason", "expected_plan_sha256", "confirmation"},
+    "mad4b/runtime-release-set-bootstrap-apply": {"reason", "expected_plan_sha256", "confirmation"},
+}
+for ability_name, expected_paths in expected_operational_contracts.items():
+    row = semantic_abilities.get(ability_name) or {}
+    if row.get("mode") != "exact_paths" or row.get("provider") != "core":
+        raise SystemExit(f"self-update semantic contract missing exact core classification: {ability_name}")
+    if row.get("brand_paths") not in ([], None):
+        raise SystemExit(f"self-update operational ability unexpectedly carries brand paths: {ability_name}")
+    operational_paths = set(row.get("operational_paths") or [])
+    if not expected_paths.issubset(operational_paths):
+        raise SystemExit(
+            f"self-update operational semantic paths incomplete: {ability_name} "
+            f"missing={sorted(expected_paths - operational_paths)}"
+        )
+
+admin_start = servers.find("'mad4b-admin' => array(")
+admin_end = servers.find("'mad4b-developer' =>", admin_start)
+if admin_start < 0 or admin_end < 0 or "'mad4b/runtime-release-set-apply'" not in servers[admin_start:admin_end]:
+    raise SystemExit("runtime release-set normal apply is not mounted on mad4b-admin")
+write_candidates_start = servers.find("private static function core_write_candidates()")
+write_candidates_end = servers.find("private static function registered_adapter_write_candidates()", write_candidates_start)
+if write_candidates_start < 0 or write_candidates_end < 0 or "'mad4b/runtime-release-set-apply'" not in servers[write_candidates_start:write_candidates_end]:
+    raise SystemExit("runtime release-set normal apply is missing from governed write candidates")
+if "current_execution_readiness()" not in self_update or "current governed write authority is ready" not in self_update:
+    raise SystemExit("wp-admin update notice does not re-check current write-authority truth before stale remediation guidance")

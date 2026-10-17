@@ -15,9 +15,9 @@ impact_policy = (wp / 'includes' / 'class-mad4b-scp-impact-policy.php').read_tex
 cert = (wp / 'includes' / 'class-mad4b-scp-write-runtime-certification.php').read_text(encoding='utf-8')
 live_truth = (wp / 'includes' / 'class-mad4b-scp-live-truth.php').read_text(encoding='utf-8')
 rest = (wp / 'includes' / 'class-mad4b-scp-rest-compatibility.php').read_text(encoding='utf-8')
-servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (wp / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 transport = (wp / 'includes' / 'class-mad4b-scp-transport-context.php').read_text(encoding='utf-8')
-auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8')
+auth = (wp / 'includes' / 'class-mad4b-scp-authorization.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-authority-health-projection.php').read_text(encoding='utf-8')
 plugin = (wp / 'includes' / 'class-mad4b-scp-plugin.php').read_text(encoding='utf-8')
 main = (wp / 'mad4b-site-control-plane.php').read_text(encoding='utf-8')
 exporter = (wp / 'includes' / 'class-mad4b-scp-skill-exporter.php').read_text(encoding='utf-8')
@@ -128,9 +128,9 @@ if not write.rstrip().endswith('}'):
     raise SystemExit('write authority file must end at the canonical class closing brace')
 
 augment_body = write.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
-dispatch_exclusion = "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;"
+dispatch_exclusion = "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;"
 if dispatch_exclusion not in augment_body:
-    raise SystemExit('bounded Enrollment and Developer dispatchers must remain outside governed-write augmentation')
+    raise SystemExit('bounded Enrollment, Developer and governed-write transport dispatchers must remain outside target mutation augmentation')
 if augment_body.find(dispatch_exclusion) > augment_body.find("self::APPROVAL_INPUT_KEY"):
     raise SystemExit('Dispatcher exclusions must run before normal write approval input augmentation')
 for marker in [
@@ -559,10 +559,17 @@ for marker in (
     'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
     'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
-    'array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )',
+    '$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );',
+    '$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );',
 ):
     if marker not in servers:
         raise SystemExit('reviewed direct ChatGPT step-up invariant missing: ' + marker)
+assert "private static function chatgpt_approval_bootstrap_tools()" in servers
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers
+assert "MAD4B_SCP_Staging_Write_Authority::effective()" in servers
+assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers
+assert "array( 'mad4b/approval-plan' )" in servers
+assert "'mad4b/approval-ai-decide'" in servers
 dispatcher_helper = servers.split('public static function chatgpt_dispatch_transport_tools()', 1)[1].split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[0]
 for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
     if dispatcher not in dispatcher_helper:
@@ -814,7 +821,8 @@ for marker in [
     "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
     "public static function chatgpt_dispatch_transport_tools()",
     "$step_up = self::chatgpt_reviewed_direct_step_up_tools();",
-    "array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )",
+    "$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );",
+    "$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );",
     "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'",
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "self::provider_for_ability( 'mad4b-write', $ability_name )",
@@ -1139,7 +1147,10 @@ for marker in [
     if marker not in authorize_mutation:
         raise SystemExit('central mutation authorization lost current write-drift gate: ' + marker)
 
-authority_status = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+authority_status_wrapper = auth.split("public static function authority_status()", 1)[1].split("public static function audit_remote_permission_denial", 1)[0]
+if "MAD4B_SCP_Authority_Health_Projection::authority_status()" not in authority_status_wrapper:
+    raise SystemExit("global authority status must delegate to its non-authorizing health projection")
+authority_status = (Path(__file__).resolve().parents[1] / "includes/class-mad4b-scp-authority-health-projection.php").read_text(encoding="utf-8")
 for marker in (
     "'status_scope' => 'global_policy_and_peer_governance_only'",
     "'per_ability_authorization_required' => true",

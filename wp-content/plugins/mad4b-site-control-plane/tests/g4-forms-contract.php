@@ -1,0 +1,30 @@
+<?php
+require __DIR__ . '/g4-domain-fixture.php';
+$facts = array( 'native_format'=>'provider_fields_v1', 'definition_available'=>true, 'serialization_contract'=>true, 'allowed_field_types'=>array('text','select','repeat','upload'), 'repeater_types'=>array('repeat'), 'upload_types'=>array('upload'), 'upload_policy_certified'=>false, 'field_contracts'=>array('title'=>g4_field('local_config'),'notify'=>g4_field('external_notification')) );
+$desired = array( 'native_format'=>'provider_fields_v1', 'fields'=>array( array('id'=>'group','type'=>'repeat','required'=>true,'children'=>array(array('id'=>'choice','type'=>'select','required'=>false,'choices'=>array('a','b')))) ), 'settings'=>array('title'=>'Request') );
+g4_valid('form_config',$desired,$facts);
+$bad=$desired; $bad['native_format']='foreign_fields_v1'; g4_deny('form_config',$bad,$facts,'form_serialization');
+$bad=$facts; $bad['definition_available']=false; g4_deny('form_config',$desired,$bad,'form_serialization');
+$bad=$desired; $bad['fields'][0]['children'][0]['id']='group'; g4_deny('form_config',$bad,$facts,'form_field_contract');
+$bad=$desired; $bad['fields'][0]['type']='text'; g4_deny('form_config',$bad,$facts,'form_repeater');
+$bad=$desired; $bad['fields'][0]['required']='false'; g4_deny('form_config',$bad,$facts,'form_field_contract');
+$bad=$desired; $bad['fields'][0]['children'][0]['choices']=array('a','a'); g4_deny('form_config',$bad,$facts,'form_choices');
+$bad=$desired; $bad['settings']['notify']='outside'; g4_deny('form_config',$bad,$facts,'field_effect_or_privacy');
+$bad=$desired; $bad['settings']['unknown']='x'; g4_deny('form_config',$bad,$facts,'field_authority');
+$bad=$desired; $bad['fields']=array(array('id'=>'attachment','type'=>'upload','required'=>false)); g4_deny('form_config',$bad,$facts,'form_upload_policy');
+$bad=$facts; $bad['field_contracts']['title']['authorized']=false; g4_deny('form_config',$desired,$bad,'field_authority');
+$bad=$desired; $bad['settings']['title']=str_repeat('x',201); g4_deny('form_config',$bad,$facts,'field_schema');
+$bad=$desired; $bad['settings']['title']='Bearer '.str_repeat('a',32); g4_deny('form_config',$bad,$facts,'secret_denied');
+$bad=$desired; $bad['callback']='unadmitted'; g4_deny('form_config',$bad,$facts,'fields_invalid');
+$entry = array('action'=>'preview','field_ids'=>array('email'),'limit'=>10,'cursor'=>'','masked'=>true);
+$authority = array('entries_available'=>true,'object_access'=>true,'consent_current'=>true,'field_access'=>array('email'=>array('authorized'=>true,'redaction_verified'=>true,'private_upload'=>false)),'explicit_action_review'=>true,'retention_eligible'=>true);
+g4_valid('form_submissions',$entry,$authority);
+foreach(array('entries_available','object_access','consent_current') as $key){$bad=$authority;$bad[$key]=false;g4_deny('form_submissions',$entry,$bad,'submission_authority_or_prerequisite');}
+$bad=$entry;$bad['masked']=false;g4_deny('form_submissions',$bad,$authority,'submission_preview_bound');
+$bad=$entry;$bad['limit']=51;g4_deny('form_submissions',$bad,$authority,'submission_preview_bound');
+$bad=$authority;$bad['field_access']['email']['redaction_verified']=false;g4_deny('form_submissions',$entry,$bad,'submission_field_authority');
+$bad=$authority;$bad['field_access']['email']['private_upload']=true;g4_deny('form_submissions',$entry,$bad,'submission_field_authority');
+$entry['action']='delete';$out=g4_valid('form_submissions',$entry,$authority);g4_assert($out['delete_is_irreversible'] && false===$out['execution_supported'],'Delete gained automatic undo or execution.');
+$bad=$authority;$bad['explicit_action_review']=false;g4_deny('form_submissions',$entry,$bad,'submission_action_review');
+$bad=$authority;$bad['retention_eligible']=false;g4_deny('form_submissions',$entry,$bad,'submission_action_review');
+g4_done('forms');

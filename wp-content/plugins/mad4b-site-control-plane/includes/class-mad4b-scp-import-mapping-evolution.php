@@ -1,0 +1,438 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+/**
+ * IMP10 Dynamic Mapping Mutation/Maturation — read-only Schema Drift plan.
+ * A proposed rename, type conversion or provider adapter never changes the
+ * approved field mapping. Only a subsequent governed Profile revision could.
+ */
+final class MAD4B_SCP_Import_Mapping_Evolution {
+    const CONTRACT = 'mad4b.import-mapping-evolution.v1';
+    private static function err( $code, $text ) {
+        return new WP_Error( $code, $text );
+    }
+    private static function digest( $data ) {
+        $json = wp_json_encode( $data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
+    }
+    private static function canonical( $name ) {
+        return preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $name ) );
+    }
+    private static function classify( $header, $policy ) {
+        if ( $header === $policy['identity_field'] ||
+            $header === ( isset( $policy['destination_identity_meta_key'] ) ?
+                $policy['destination_identity_meta_key'] : '' ) )
+            return 'identity_critical';
+        if ( in_array( $header, (array) $policy['price_fields'], true ) ||
+            $header === $policy['currency_field'] )
+            return 'commercial_critical';
+        if ( in_array( $header, array(
+            'period_start_field' => isset( $policy['period_start_field'] ) ?
+                $policy['period_start_field'] : '',
+            'period_end_field' => isset( $policy['period_end_field'] ) ?
+                $policy['period_end_field'] : ''
+        ), true ) ) return 'temporal_critical';
+        if ( 0 === strpos( $header, '_wpml_' ) ) return 'translation_critical';
+        if ( in_array( $header, (array) $policy['required_relationships'], true ) )
+            return 'relationship_critical';
+        if ( in_array( $header, (array) $policy['required_columns'], true ) )
+            return 'required_field';
+        return 'ordinary';
+    }
+    private static function type_profile( $rows, $field ) {
+        $seen = array( 'empty' => 0, 'number' => 0, 'iso_date' => 0,
+            'boolean' => 0, 'text' => 0, 'nested' => 0,
+            'php_serialized_untrusted' => 0 );
+        foreach ( array_slice( $rows, 0, 100 ) as $row ) {
+            $value = isset( $row[ $field ] ) ? $row[ $field ] : '';
+            if ( ! is_scalar( $value ) && null !== $value ) $kind = 'nested';
+            elseif ( '' === (string) $value ) $kind = 'empty';
+            elseif ( is_bool( $value ) ) $kind = 'boolean';
+            elseif ( preg_match( '/^(?:a|O|C):[0-9]+:/D', (string) $value ) )
+                $kind = 'php_serialized_untrusted';
+            elseif ( preg_match( '/^\\d{4}-\\d{2}-\\d{2}$/D', (string) $value ) )
+                $kind = 'iso_date';
+            elseif ( preg_match( '/^-?\\d+(?:\\.\\d+)?$/D', (string) $value ) )
+                $kind = 'number';
+            else $kind = 'text';
+            $seen[ $kind ]++;
+        }
+        return $seen;
+    }
+    private static function requirements( $risk ) {
+        if ( in_array( $risk, array( 'identity_critical',
+            'commercial_critical', 'translation_critical',
+            'temporal_critical', 'relationship_critical' ), true ) )
+            return array( 'exact_profile_revision_approval',
+                'human_domain_owner_review', 'staging_sample_and_negative_tests',
+                'independent_postwrite_provider_readback' );
+        return array( 'exact_profile_revision_approval',
+            'staging_sample_and_negative_tests', 'independent_postwrite_readback' );
+    }
+    public static function plan( $input = array() ) {
+        if ( ! is_array( $input ) || ! current_user_can( 'manage_options' ) )
+            return self::err( 'mad4b_mapping_plan_denied',
+                'An enrolled Staging administrator is required.' );
+        $slug = isset( $input['profile_slug'] ) ? (string) $input['profile_slug'] : '';
+        $sha = isset( $input['snapshot_sha256'] ) ?
+            (string) $input['snapshot_sha256'] : '';
+        $header_only = array_key_exists( 'observed_headers', $input );
+        $expected_authority = isset( $input['expected_profile_authority_sha256'] ) ?
+            (string) $input['expected_profile_authority_sha256'] : '';
+        if ( ! preg_match( '/^[a-z0-9_-]{2,48}$/D', $slug ) ||
+            array_diff( array_keys( $input ), array( 'profile_slug',
+                'snapshot_sha256', 'observed_headers',
+                'expected_profile_authority_sha256' ) ) ||
+            ( $header_only && ( '' !== $sha ||
+                ! preg_match( '/^[a-f0-9]{64}$/D', $expected_authority ) ) ) ||
+            ( !$header_only && ( ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) ||
+                '' !== $expected_authority ) ) )
+            return self::err( 'mad4b_mapping_plan_input_invalid',
+                'Use either exact immutable snapshot or observed header names bound to the Profile authority.' );
+        $loaded = null;
+        if ( !$header_only ) {
+            if ( ! class_exists( 'MAD4B_SCP_Activity_Import_Snapshot' ) )
+                return self::err( 'mad4b_mapping_snapshot_unavailable',
+                    'Encrypted Staging source facility unavailable.' );
+            $loaded = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot( $slug, $sha );
+            if ( is_wp_error( $loaded ) ) return $loaded;
+        }
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile( $slug );
+        if ( is_wp_error( $profile ) || empty( $profile['enabled'] ) )
+            return self::err( 'mad4b_mapping_profile_missing',
+                'Exact approved Profile is not active.' );
+        $contract = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        $policy = isset( $contract['validation'] ) ? $contract['validation'] : array();
+        if ( !$policy || empty( $policy['field_mapping'] ) )
+            return self::err( 'mad4b_mapping_policy_not_configured',
+                'Approved site-owned field mapping is required.' );
+        if ( ( $header_only && ! hash_equals(
+                (string) $profile['authority_sha256'], $expected_authority ) ) ||
+            ( !$header_only && (
+                (string) $loaded['receipt']['plan']['profile_revision'] !==
+                    (string) $profile['revision'] ||
+                ! hash_equals( (string) $loaded['receipt']['plan']['authority_sha256'],
+                    (string) $profile['authority_sha256'] ) ||
+                ! hash_equals( (string) $loaded['receipt']['plan']['policy_sha256'],
+                    MAD4B_SCP_Activity_Import_Authority::digest( $policy ) ) ) ) )
+            return self::err( 'mad4b_mapping_profile_drift',
+                'Exact Profile authority changed. A fresh mapping review is required.' );
+        $columns = $header_only ? $input['observed_headers'] :
+            $loaded['input']['headers'];
+        $rows = $header_only ? array() : $loaded['input']['rows'];
+        if ( ! is_array( $columns ) || !$columns || count( $columns ) > 80 ||
+            count( $columns ) !== count( array_unique( $columns ) ) )
+            return self::err( 'mad4b_mapping_headers_invalid',
+                'Source column identity is ambiguous or out of bounds.' );
+        foreach ( $columns as $column ) {
+            if ( ! is_string( $column ) ||
+                ! preg_match( '/^[A-Za-z_][A-Za-z0-9_]{0,120}$/D', $column ) )
+                return self::err( 'mad4b_mapping_header_unsupported',
+                    'A source column name must be a bounded valid identifier.' );
+        }
+        $mapped = $policy['field_mapping'];
+        $observed = array_fill_keys( $columns, true );
+        $missing = array_values( array_diff( array_keys( $mapped ), $columns ) );
+        $extra = array_values( array_diff( $columns, array_keys( $mapped ) ) );
+        $canonical = array();
+        foreach ( $extra as $col )
+            $canonical[ self::canonical( $col ) ][] = $col;
+        $suggestions = array();
+        $blocking = array();
+        $assigned = array();
+        foreach ( $missing as $old ) {
+            $risk = self::classify( $old, $policy );
+            $key = self::canonical( $old );
+            $candidates = isset( $canonical[ $key ] ) ?
+                $canonical[ $key ] : array();
+            if ( count( $candidates ) === 1 &&
+                ! isset( $assigned[ $candidates[0] ] ) ) {
+                $new = $candidates[0];
+                $assigned[ $new ] = true;
+                $suggestions[] = array(
+                    'change' => 'candidate_source_column_rename',
+                    'old_source_column' => $old,
+                    'proposed_source_column' => $new,
+                    'unchanged_destination' => $mapped[ $old ],
+                    'evidence' => 'normalized_header_name_match_only',
+                    'confidence_class' => 'lexical_candidate_not_semantic_proof',
+                    'risk' => $risk, 'requires' => self::requirements( $risk ),
+                    'transformation_auto_authorized' => false
+                );
+            } else {
+                $blocking[] = array( 'field' => $old,
+                    'issue' => $candidates ?
+                        'ambiguous_column_rename_candidates' : 'mapped_source_column_missing',
+                    'risk' => $risk, 'requires' => self::requirements( $risk ) );
+            }
+        }
+        $unused = array_values( array_filter( $extra,
+            static function( $column ) use ( $assigned ) {
+                return ! isset( $assigned[ $column ] );
+            } ) );
+        $unmapped = array();
+        foreach ( $unused as $col ) {
+            $unmapped[] = array( 'field' => $col,
+                'risk' => self::classify( $col, $policy ),
+                'type_observation' => self::type_profile( $rows, $col ),
+                'policy' => 'quarantine_until_explicit_profile_mapping' );
+        }
+        $typed_observations = array();
+        $type_conflicts = array();
+        if ( !$header_only ) {
+            foreach ( array_keys( $mapped ) as $field ) {
+                if ( ! isset( $observed[ $field ] ) ) continue;
+                $types = self::type_profile( $rows, $field );
+                $risk = self::classify( $field, $policy );
+                $typed_observations[] = array(
+                    'source_field' => $field,
+                    'risk' => $risk,
+                    'sample_size_bounded' => min( count( $rows ), 100 ),
+                    'counts_only' => $types
+                );
+                if ( $types['php_serialized_untrusted'] > 0 )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'serialized_source_requires_certified_typed_driver',
+                        'never_php_unserialize_from_untrusted_source' => true,
+                        'requires_human_review' => true );
+                if ( in_array( $field, (array) $policy['price_fields'], true ) &&
+                    ( $types['text'] > 0 || $types['nested'] > 0 ||
+                      $types['iso_date'] > 0 ) )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'commercial_price_semantic_type_drift',
+                        'requires_human_review' => true );
+                if ( ! empty( $policy['period_start_field'] ) &&
+                    in_array( $field, array( $policy['period_start_field'],
+                        $policy['period_end_field'] ), true ) &&
+                    ( $types['nested'] > 0 ||
+                      ( 'iso_date' === $policy['period_format'] &&
+                        $types['number'] > 0 ) ) )
+                    $type_conflicts[] = array(
+                        'source_field' => $field,
+                        'reason' => 'configured_interval_format_drift',
+                        'requires_human_review' => true );
+            }
+        }
+        $allowed_meta = array_fill_keys( (array) $profile['meta_keys'], true );
+        $invalid_destinations = array();
+        foreach ( $mapped as $source => $destination )
+            if ( ! isset( $allowed_meta[ $destination ] ) &&
+                0 !== strpos( $destination, '_wpml_import_' ) )
+                $invalid_destinations[] = array(
+                    'source_field' => $source,
+                    'destination_field' => $destination,
+                    'issue' => 'destination_no_longer_allowlisted' );
+        $critical_required = array();
+        foreach ( array_merge( (array) $policy['required_columns'],
+            array( $policy['identity_field'] ), (array) $policy['price_fields'],
+            (array) $policy['required_relationships'] ) as $col ) {
+            if ( ! isset( $observed[ $col ] ) ) $critical_required[ $col ] = true;
+        }
+        if ( ! empty( $policy['currency_field'] ) &&
+            ! isset( $observed[ $policy['currency_field'] ] ) )
+            $critical_required[ $policy['currency_field'] ] = true;
+        if ( ! empty( $policy['period_start_field'] ) &&
+            ( ! isset( $observed[ $policy['period_start_field'] ] ) ||
+              ! isset( $observed[ $policy['period_end_field'] ] ) ) )
+            $critical_required['date_interval'] = true;
+        $uncertified = array(
+            'google_sheets_multi_editor_cas',
+            'third_party_wp_all_import_transaction_fence',
+            'jetengine_cct_and_relation_adapter',
+            'wpml_complete_translation_link_readback',
+            'external_provider_compensating_rollback',
+            'approved_source_rights_and_brand_core'
+        );
+        $report = array(
+            'contract' => self::CONTRACT,
+            'profile_slug' => $slug, 'snapshot_sha256' => $sha,
+            'source_evidence_kind' => $header_only ?
+                'header_only_unstaged' : 'encrypted_exact_snapshot',
+            'header_only_is_not_accepted_import_data' => $header_only,
+            'profile_revision' => $profile['revision'],
+            'profile_authority_sha256' => $profile['authority_sha256'],
+            'policy_sha256' => MAD4B_SCP_Activity_Import_Authority::digest( $policy ),
+            'observed_header_sha256' => self::digest( $columns ),
+            'mapped_source_columns_missing' => $missing,
+            'rename_suggestions' => $suggestions,
+            'unmapped_source_columns' => $unmapped,
+            'sampled_mapped_column_type_counts' => $typed_observations,
+            'semantic_type_conflicts' => $type_conflicts,
+            'invalid_destinations' => $invalid_destinations,
+            'critical_columns_missing' => array_keys( $critical_required ),
+            'unresolved_conflicts' => $blocking,
+            'maturation' => array(
+                'stage' => 'drift_observed_only',
+                'future_stages' => array( 'proposal_reviewed',
+                    'migration_simulated', 'profile_revision_approved',
+                    'provider_readback_certified' ),
+                'current_approved_mapping_unchanged' => true,
+                'candidate_never_applied_automatically' => true
+            ),
+            'safe_to_reuse_old_mapping' => !$missing && !$invalid_destinations &&
+                !$critical_required && !$blocking && !$type_conflicts,
+            'requires_new_governed_profile_revision' =>
+                (bool) ( $missing || $invalid_destinations || $critical_required || $suggestions ),
+            'uncertified_provider_gates' => $uncertified,
+            'wpml_link_readback_ability' => 'mad4b/business-activity-import-wpml-readback',
+            'staging_manual_approval_required' => true,
+            'mapping_mutation_authorized' => false,
+            'third_party_write_authorized' => false,
+            'ready_for_production' => false,
+            'read_only' => true, 'mutation_performed' => false
+        );
+        $report['plan_sha256'] = self::digest( $report );
+        return $report;
+    }
+    /**
+     * Read-only what-if mutation simulation. Rejects unauthorized destinations,
+     * missing critical fields and stale source evidence, but does not save a
+     * profile or grant import/apply rights.
+     */
+    public static function simulate( $input = array() ) {
+        if ( ! is_array( $input ) || ! current_user_can( 'manage_options' ) ||
+            ! isset( $input['proposal_plan_sha256'], $input['candidate_validation'] ) ||
+            ! is_array( $input['candidate_validation'] ) ||
+            ! preg_match( '/^[a-f0-9]{64}$/D',
+                (string) $input['proposal_plan_sha256'] ) )
+            return self::err( 'mad4b_mapping_simulation_invalid',
+                'Exact drift plan and complete candidate validation contract required.' );
+        $plan_input = $input;
+        unset( $plan_input['candidate_validation'], $plan_input['proposal_plan_sha256'] );
+        $before = self::plan( $plan_input );
+        if ( is_wp_error( $before ) ) return $before;
+        if ( ! hash_equals( $before['plan_sha256'],
+            (string) $input['proposal_plan_sha256'] ) )
+            return self::err( 'mad4b_mapping_proposal_stale',
+                'A new exact source/Profile drift plan must be inspected.' );
+        $profile = MAD4B_SCP_Content_Experience_Profiles::profile(
+            $before['profile_slug'] );
+        if ( is_wp_error( $profile ) ) return $profile;
+        $contract = MAD4B_SCP_Activity_Import_Authority::profile_contract( $profile );
+        $current = $contract['validation'];
+        $candidate = MAD4B_SCP_Activity_Import_Authority::normalize(
+            $input['candidate_validation'], $profile['meta_keys'] );
+        if ( is_wp_error( $candidate ) ) return $candidate;
+        // A different destination identity registry is a NEW business
+        // identity strategy, never a trivial rename of source headers.
+        if ( $candidate['destination_identity_meta_key'] !==
+            $current['destination_identity_meta_key'] )
+            return self::err( 'mad4b_mapping_identity_registry_mutation_denied',
+                'Identity registry migrations require a separately approved driver.' );
+        if ( $candidate['identity_field'] !== $current['identity_field'] )
+            return self::err( 'mad4b_mapping_source_identity_migration_denied',
+                'Changing an external source ID is an identity migration, not a field rename.' );
+        if ( $current['require_complete_wpml_groups'] &&
+            ! $candidate['require_complete_wpml_groups'] )
+            return self::err( 'mad4b_mapping_wpml_safety_downgrade_denied',
+                'An import mapping cannot silently remove required WPML group completeness.' );
+        if ( $current['review_past_intervals'] &&
+            ! $candidate['review_past_intervals'] )
+            return self::err( 'mad4b_mapping_period_safety_downgrade_denied',
+                'Historical commercial interval review cannot be silently disabled.' );
+        if ( array_diff( (array) $current['wpml_languages'],
+            (array) $candidate['wpml_languages'] ) )
+            return self::err( 'mad4b_mapping_required_language_downgrade_denied',
+                'Existing approved languages require a separate governed decommission.' );
+        if ( array_diff( (array) $current['required_relationships'],
+            (array) $candidate['required_relationships'] ) )
+            return self::err( 'mad4b_mapping_relationship_downgrade_denied',
+                'Existing required relations cannot be removed by automatic schema maturation.' );
+        if ( 'review_monotonic' === $current['price_tier_policy'] &&
+            'review_monotonic' !== $candidate['price_tier_policy'] )
+            return self::err( 'mad4b_mapping_price_tier_safety_downgrade_denied',
+                'Commercial pricing comparison cannot be removed as a rename side effect.' );
+        if ( array_diff( (array) $current['allowed_currencies'],
+            (array) $candidate['allowed_currencies'] ) )
+            return self::err( 'mad4b_mapping_currency_removal_denied',
+                'Currency policy deletion requires separately approved commercial governance.' );
+        $alias_index = array();
+        foreach ( $before['rename_suggestions'] as $suggestion )
+            $alias_index[ $suggestion['old_source_column'] ] =
+                $suggestion['proposed_source_column'];
+        foreach ( $current['required_columns'] as $required ) {
+            if ( in_array( $required, $candidate['required_columns'], true ) )
+                continue;
+            if ( ! isset( $alias_index[ $required ] ) ||
+                ! in_array( $alias_index[ $required ],
+                    $candidate['required_columns'], true ) )
+                return self::err( 'mad4b_mapping_required_field_removed',
+                    'Required columns may only be renamed with an explicit unambiguous reviewed alias.' );
+        }
+        $columns = array();
+        if ( array_key_exists( 'observed_headers', $plan_input ) )
+            $columns = $plan_input['observed_headers'];
+        else {
+            $snapshot = MAD4B_SCP_Activity_Import_Snapshot::raw_snapshot(
+                $before['profile_slug'], $before['snapshot_sha256'] );
+            if ( is_wp_error( $snapshot ) ) return $snapshot;
+            $columns = $snapshot['input']['headers'];
+        }
+        $needed = array_merge(
+            array( $candidate['identity_field'] ),
+            $candidate['required_columns'], array_keys( $candidate['field_mapping'] ),
+            $candidate['price_fields'], $candidate['required_relationships'] );
+        if ( $candidate['currency_field'] )
+            $needed[] = $candidate['currency_field'];
+        if ( $candidate['period_start_field'] ) {
+            $needed[] = $candidate['period_start_field'];
+            $needed[] = $candidate['period_end_field'];
+        }
+        if ( $candidate['require_complete_wpml_groups'] ) {
+            $needed[] = '_wpml_import_translation_group';
+            $needed[] = '_wpml_import_language_code';
+        }
+        $missing = array_values( array_unique( array_diff( $needed, $columns ) ) );
+        $diff = array();
+        foreach ( $candidate as $field => $value ) {
+            if ( self::digest( $value ) !== self::digest( $current[ $field ] ) )
+                $diff[] = $field;
+        }
+        $critical = array_values( array_intersect( $diff, array(
+            'identity_field', 'field_mapping', 'price_fields',
+            'currency_field', 'allowed_currencies', 'wpml_languages',
+            'require_complete_wpml_groups', 'required_relationships',
+            'period_start_field', 'period_end_field', 'period_format',
+            'destination_identity_meta_key', 'required_columns',
+            'price_tier_policy', 'decimal_scale', 'review_past_intervals',
+            'max_rows'
+        ) ) );
+        $result = array(
+            'contract' => 'mad4b.import-mapping-migration-simulation.v1',
+            'profile_slug' => $before['profile_slug'],
+            'source_evidence_kind' => $before['source_evidence_kind'],
+            'observed_header_sha256' => $before['observed_header_sha256'],
+            'source_plan_sha256' => $before['plan_sha256'],
+            'current_profile_revision' => $before['profile_revision'],
+            'current_profile_authority_sha256' =>
+                $before['profile_authority_sha256'],
+            'old_validation_sha256' => $before['policy_sha256'],
+            'candidate_validation_sha256' => self::digest( $candidate ),
+            'candidate_validation_normalized' => true,
+            'changed_policy_fields' => $diff,
+            'high_impact_changes' => $critical,
+            'candidate_source_fields_missing' => $missing,
+            'schema_preview_passed' => !$missing,
+            'semantic_business_validation_completed' => false,
+            'existing_source_approvals_remain_valid_after_mutation' => false,
+            'candidate_profile_apply_authorized' => false,
+            'candidate_live_import_authorized' => false,
+            'requires_independent_provider_readback' => true,
+            'required_process' => array(
+                'review_domain_meaning_and_source_rights',
+                'test_proposed_mapping_against_staging_sample',
+                'prove_google_sheets_or_provider_cas_and_external_write_fences',
+                'archive_or_revalidate_old_snapshots',
+                'create_a_new_governed_profile_plan',
+                'apply_via_existing_profile_authority_only_after_explicit_approval',
+                'independently_verify_destination_wpml_and_jetengine'
+            ),
+            'read_only' => true, 'mutation_performed' => false
+        );
+        $result['simulation_sha256'] = self::digest( $result );
+        return $result;
+    }
+
+}

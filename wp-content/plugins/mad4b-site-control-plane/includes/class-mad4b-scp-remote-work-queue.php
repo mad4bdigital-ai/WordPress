@@ -30,7 +30,11 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				'production_policy' => 'deny',
 			),
 		);
-		return class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
+		$registered = class_exists( 'MAD4B_SCP_Search_Work_Operations' ) ? MAD4B_SCP_Search_Work_Operations::definitions( $base ) : $base;
+		$registered = class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+			? MAD4B_SCP_Assistant_Read_Work_Operations::definitions( $registered ) : $registered;
+		return class_exists( 'MAD4B_SCP_Standalone_Build_Control', false )
+			? MAD4B_SCP_Standalone_Build_Control::work_definitions( $registered ) : $registered;
 	}
 
 	private static function now() { return time(); }
@@ -181,6 +185,15 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		if ( ! isset( self::allowed_operations()[ $operation_id ] ) ) return new WP_Error( 'mad4b_remote_work_operation_not_allowed', 'Remote work operation is not registered.' );
 		$definition = self::allowed_operations()[ $operation_id ];
 		if ( isset( $definition['validate_payload'] ) && ! call_user_func( $definition['validate_payload'], $payload ) ) return new WP_Error( 'mad4b_remote_work_payload_invalid', 'Semantic work payload is outside its registered contract.' );
+		// Assistant jobs may request bounded discovery in Staging only, never
+		// issue grants, mutate providers or cross exact Site/Origin/Restore identity.
+		if ( 0 === strpos( $operation_id, 'assistant_' )
+			&& ( ! class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( $operation_id, $payload )
+				|| ! MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $payload, $expected_identity ) ) ) {
+			return new WP_Error( 'mad4b_remote_work_assistant_binding_invalid',
+				'Assistant read work requires matching Staging-only runtime, operation and restore identity.' );
+		}
 		foreach ( $expected_identity as $key => $value ) $expected_identity[ $key ] = strtolower( trim( (string) $value ) );
 		if ( ! self::identity_valid( $expected_identity ) ) return new WP_Error( 'mad4b_remote_work_identity_invalid', 'Remote work requires complete exact-build identity.' );
 		$ttl_seconds = max( 300, min( DAY_IN_SECONDS, (int) $ttl_seconds ) );
@@ -275,6 +288,19 @@ final class MAD4B_SCP_Remote_Work_Queue {
 		}
 	}
 
+	private static function assistant_job_binding_matches( array $job ) {
+		return class_exists( 'MAD4B_SCP_Assistant_Read_Work_Operations', false )
+			&& is_array( $job['payload'] ?? null ) && is_array( $job['expected_identity'] ?? null )
+			&& MAD4B_SCP_Assistant_Read_Work_Operations::validate_for_operation( $job['operation_id'], $job['payload'] )
+			&& MAD4B_SCP_Assistant_Read_Work_Operations::runtime_binding_matches( $job['payload'], $job['expected_identity'] );
+	}
+
+	private static function assistant_binding_error() {
+		return new WP_Error( 'mad4b_remote_work_assistant_binding_invalid',
+			'Assistant read work changed its exact Staging identity; cancel or reconcile before further execution.',
+			array( 'provider_entry_allowed' => false, 'reconciliation_required' => true, 'blind_retry_allowed' => false ) );
+	}
+
 	public static function claim( $job_id, $executor_id, $lease_seconds, array $current_identity ) {
 		$job_id = strtolower( trim( (string) $job_id ) );
 		$executor_id = sanitize_key( (string) $executor_id );
@@ -305,6 +331,8 @@ final class MAD4B_SCP_Remote_Work_Queue {
 				) );
 			}
 			if ( 'pending' !== $status ) return new WP_Error( 'mad4b_remote_work_job_not_claimable', 'Remote work job is not claimable in its current state.' );
+			if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
+				&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
 
 			$token = self::fresh_lease_token();
 			$job['status'] = 'claimed';
@@ -430,6 +458,8 @@ final class MAD4B_SCP_Remote_Work_Queue {
 					) );
 				}
 				if ( ! in_array( $current, array( 'not_entered', 'provider_entered' ), true ) ) return new WP_Error( 'mad4b_remote_work_provider_checkpoint_regression', 'Provider checkpoint cannot move backward.' );
+				if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
+					&& ! self::assistant_job_binding_matches( $job ) ) return self::assistant_binding_error();
 				$job['provider_checkpoint'] = 'provider_entered';
 				$job['provider_entry_at'] = '' !== (string) $job['provider_entry_at'] ? (string) $job['provider_entry_at'] : gmdate( 'c' );
 				$job['provider_side_effect_possible'] = true;
@@ -528,6 +558,16 @@ final class MAD4B_SCP_Remote_Work_Queue {
 			}
 			if ( ! hash_equals( (string) ( isset( $job['executor_id'] ) ? $job['executor_id'] : '' ), $executor_id ) ) return new WP_Error( 'mad4b_remote_work_executor_mismatch', 'Remote work executor does not own the active lease.' );
 			if ( ! hash_equals( (string) ( isset( $job['lease_token_sha256'] ) ? $job['lease_token_sha256'] : '' ), hash( 'sha256', $lease_token ) ) ) return new WP_Error( 'mad4b_remote_work_lease_mismatch', 'Remote work lease token does not match the active claim.' );
+			// An in-flight assistant result cannot be positively completed after
+			// Site/Origin/Restore drift. Preserve the existing verified no-effect
+			// reconciliation path so stale cancelled work can safely terminate.
+			if ( 0 === strpos( (string) ( $job['operation_id'] ?? '' ), 'assistant_' )
+				&& ! self::assistant_job_binding_matches( $job ) ) {
+				$verified_no_effect = $reconciling
+					&& 'no_effect' === ( $verified_result['provider_effect_state'] ?? null )
+					&& self::reconciliation_completion_valid( $verified_result, $job );
+				if ( ! $verified_no_effect ) return self::assistant_binding_error();
+			}
 			$resolved_no_effect = $reconciling && 'no_effect' === sanitize_key( isset( $verified_result['provider_effect_state'] ) ? (string) $verified_result['provider_effect_state'] : '' );
 			$job['status'] = $resolved_no_effect ? 'cancelled_no_effect' : 'completed';
 			$job['completed_at'] = gmdate( 'c' );

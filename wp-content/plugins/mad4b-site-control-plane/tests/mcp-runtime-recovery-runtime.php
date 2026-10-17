@@ -245,40 +245,35 @@ if ( in_array( $case, array( 'conflict_authorized', 'conflict_wrong_hash', 'conf
 	check_recovery( in_array( 'mad4b/mcp-mu-bootstrap-conflict-replaced', $GLOBALS['audit_events'] ?? array(), true ), 'explicit conflict recovery audit evidence missing' );
 	echo $case . ': PASS' . PHP_EOL; exit;
 }
+// Unknown MU bootstrap bytes belong to neither this Site nor this plugin.
+// Cron and convergence leases are not owner consent. Only a separately
+// confirmed admin replacement with an exact SHA may alter such a file.
 if ( 'auto_conflict_schedule' === $case ) {
-	MAD4B_SCP_MCP_Runtime_Recovery::maybe_schedule_conflict_recovery();
-	check_recovery( 1 === count( $GLOBALS['scheduled'] ), 'automatic conflict detector did not schedule background recovery' );
-	check_recovery( isset( $GLOBALS['scheduled'][ MAD4B_SCP_MCP_Runtime_Recovery::HOOK ] ), 'automatic conflict schedule used the wrong hook' );
-	check_recovery( (int) $GLOBALS['scheduled'][ MAD4B_SCP_MCP_Runtime_Recovery::HOOK ] <= time(), 'automatic conflict recovery was not immediately due for background spawning' );
-	check_recovery( '<?php // unknown pre-existing MU owner for automatic recovery' === file_get_contents( $destination ), 'scheduling mutated MU bytes synchronously' );
-	echo $case . ': PASS' . PHP_EOL; exit;
+    MAD4B_SCP_MCP_Runtime_Recovery::maybe_schedule_conflict_recovery();
+    check_recovery( empty( $GLOBALS['scheduled'] ), 'unknown MU file triggered unauthorized auto-repair schedule' );
+    check_recovery( '<?php // unknown pre-existing MU owner for automatic recovery' === file_get_contents( $destination ), 'scan mutated unknown MU file' );
+    echo $case . ': PASS' . PHP_EOL; exit;
 }
-if ( in_array( $case, array( 'cron_conflict_auto_recovery', 'cron_conflict_auto_backup_failed', 'convergence_conflict_auto_recovery', 'production_conflict_auto_denied' ), true ) ) {
-	$observed = hash_file( 'sha256', $destination );
-	$result = 'convergence_conflict_auto_recovery' === $case || 'production_conflict_auto_denied' === $case
-		? MAD4B_SCP_MCP_Runtime_Recovery::run( 'borrowed-convergence-lease' )
-		: MAD4B_SCP_MCP_Runtime_Recovery::run();
-	if ( 'cron_conflict_auto_backup_failed' === $case ) {
-		check_recovery( is_wp_error( $result ) && 'mu_bootstrap_conflict_backup_root_unavailable' === $result->get_error_code(), 'automatic recovery ignored protected-backup failure' );
-		check_recovery( $observed === hash_file( 'sha256', $destination ), 'automatic recovery mutated bytes after backup failure' );
-		echo $case . ': PASS' . PHP_EOL; exit;
-	}
-	if ( 'production_conflict_auto_denied' === $case ) {
-		check_recovery( is_wp_error( $result ) && 'mad4b_mcp_repair_profile_ineligible' === $result->get_error_code(), 'Production automatic conflict recovery was not denied' );
-		check_recovery( $observed === hash_file( 'sha256', $destination ), 'Production automatic conflict recovery mutated MU bytes' );
-		echo $case . ': PASS' . PHP_EOL; exit;
-	}
-	if ( is_wp_error( $result ) ) throw new RuntimeException( $case . ': automatic conflict recovery blocker=' . $result->get_error_code() );
-	check_recovery( ! empty( $result['automatic_conflict_recovery'] ) && empty( $result['explicit_conflict_recovery'] ), 'automatic conflict recovery did not complete as background recovery' );
-	check_recovery( 'automatic_staging_recovery' === ( $result['conflict_recovery_source'] ?? '' ), 'automatic conflict recovery source was not preserved' );
-	check_recovery( hash_file( 'sha256', $destination ) === hash_file( 'sha256', $source . '/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php' ), 'automatic conflict recovery did not install certified bytes' );
-	$backups = glob( $root . '-protected-backups/mcp-mu-bootstrap-conflict-*.bak' );
-	check_recovery( is_array( $backups ) && 1 === count( $backups ) && hash_file( 'sha256', $backups[0] ) === $observed, 'automatic conflict recovery backup missing or mismatched' );
-	$receipt = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::ownership_receipt_status( hash_file( 'sha256', $destination ) );
-	check_recovery( ! empty( $receipt['ready'] ) && 'automatic_staging_recovery' === ( $receipt['source'] ?? '' ), 'automatic conflict recovery did not persist automatic site-bound ownership' );
-	check_recovery( in_array( 'mad4b/mcp-mu-bootstrap-conflict-replaced', $GLOBALS['audit_events'] ?? array(), true ), 'automatic conflict recovery audit evidence missing' );
-	check_recovery( ! MAD4B_SCP_MCP_Runtime_Recovery::active(), 'automatic recovery privilege leaked beyond lifecycle' );
-	echo $case . ': PASS' . PHP_EOL; exit;
+if ( in_array( $case, array(
+    'cron_conflict_auto_recovery', 'cron_conflict_auto_backup_failed',
+    'convergence_conflict_auto_recovery', 'production_conflict_auto_denied'
+), true ) ) {
+    $observed = hash_file( 'sha256', $destination );
+    $result = in_array( $case, array( 'convergence_conflict_auto_recovery', 'production_conflict_auto_denied' ), true )
+        ? MAD4B_SCP_MCP_Runtime_Recovery::run( 'borrowed-convergence-lease' )
+        : MAD4B_SCP_MCP_Runtime_Recovery::run();
+    $expected = 'production_conflict_auto_denied' === $case
+        ? 'mad4b_mcp_repair_profile_ineligible' : 'unmanaged_mu_bootstrap_path_conflict';
+    check_recovery( is_wp_error( $result ) && $expected === $result->get_error_code(),
+        'unknown MU bytes were not rejected by the exact owner/Production gate' );
+    check_recovery( hash_equals( $observed, hash_file( 'sha256', $destination ) ),
+        'unowned MU file changed during denied background recovery' );
+    $backups = glob( $root . '-protected-backups/mcp-mu-bootstrap-conflict-*.bak' );
+    check_recovery( empty( $backups ), 'background recovery created an unauthorized conflict backup' );
+    $receipt = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::ownership_receipt_status( $observed );
+    check_recovery( empty( $receipt['ready'] ), 'failed background recovery forged ownership' );
+    check_recovery( ! MAD4B_SCP_MCP_Runtime_Recovery::active(), 'background recovery privilege leaked' );
+    echo $case . ': PASS' . PHP_EOL; exit;
 }
 if ( in_array( $case, array( 'update_schedule', 'renamed_update_schedule' ), true ) ) {
 	MAD4B_SCP_MCP_Runtime_Recovery::after_upgrade( null, array( 'type'=>'plugin', 'plugins'=>array( 'foreign/foreign.php' ) ) );

@@ -402,8 +402,16 @@ final class MAD4B_SCP_Context_Preflight {
 
 	private static function normalize_mutation_abilities( $abilities ) {
 		if ( ! is_array( $abilities ) ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_invalid', 'Allowed mutation abilities must be an array.' );
-		if ( count( $abilities ) > self::MAX_ALLOWED_MUTATION_ABILITIES ) return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Allowed mutation ability count exceeds the bounded limit.' );
 		$supported = self::brand_bearing_mutation_abilities();
+		$count = count( $abilities );
+		// Canonical managed Skills may protect the entire registered semantic
+		// catalog, which grows as governed Content Experience Profiles expand.
+		// Do not weaken the 20-entry cap for partial or custom over-limit lists:
+		// only the EXACT full live catalog can use this compatibility path.
+		$catalog_wide = $count > self::MAX_ALLOWED_MUTATION_ABILITIES;
+		if ( $catalog_wide && ( $count !== count( $supported ) || ! $supported ) ) {
+			return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Over-limit mutation abilities require the exact trusted semantic catalog.' );
+		}
 		$out = array();
 		foreach ( $abilities as $ability ) {
 			$ability = trim( (string) $ability );
@@ -412,6 +420,9 @@ final class MAD4B_SCP_Context_Preflight {
 		}
 		$out = array_values( array_unique( $out ) );
 		sort( $out, SORT_STRING );
+		if ( $catalog_wide && ( count( $out ) !== count( $supported ) || $out !== $supported ) ) {
+			return new WP_Error( 'mad4b_skill_context_mutation_abilities_limit', 'Over-limit mutation abilities must match the full current catalog without duplicates.' );
+		}
 		return $out;
 	}
 
@@ -545,6 +556,24 @@ final class MAD4B_SCP_Context_Preflight {
 	public static function mutation_context_guard( $ability_name, $input ) {
 		$ability_name = (string) $ability_name;
 		$input = is_array( $input ) ? $input : array();
+		// Approval planning creates a pending ticket, not content. Its audit
+		// "reason" and nested "input" are an envelope, not provider text.
+		// Enforce the exact TARGET's semantic/context contract instead of
+		// heuristically treating a long approval reason as brand copy.
+		// No privilege or approval is inferred here: the normal planner
+		// guard independently requires a mounted exact grant and candidate.
+		if ( 'mad4b/approval-plan' === $ability_name ) {
+			$target = isset( $input['ability'] ) && is_string( $input['ability'] )
+				? trim( $input['ability'] ) : '';
+			if ( '' === $target || 'mad4b/approval-plan' === $target
+				|| 'mad4b/database-raw-query' === $target
+				|| 0 === strpos( $target, 'mad4b/developer-breakglass-' )
+				|| ! isset( $input['input'] ) || ! is_array( $input['input'] ) ) {
+				return new WP_Error( 'mad4b_approval_plan_context_target_invalid',
+					'Approval planning requires one non-Breakglass target and exact object input.' );
+			}
+			return self::mutation_context_guard( $target, $input['input'] );
+		}
 		$requirement = self::content_mutation_requirement( $ability_name, $input );
 		if ( is_wp_error( $requirement ) ) return $requirement;
 		if ( ! empty( $requirement['review_required'] ) ) {

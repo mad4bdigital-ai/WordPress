@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
 
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
@@ -18,6 +19,7 @@ MAD4B_SCP_Site_Profile_Write_Enablement::boot();
 MAD4B_SCP_Staging_Write_Grant_Reconciliation::boot();
 
 final class MAD4B_SCP_Servers {
+	use MAD4B_SCP_Server_Write_Catalog;
 	private static $registrations = array();
 	private static $adapter_write_projection_cache = null;
 	private static $registered_adapter_write_candidates_cache = null;
@@ -41,13 +43,17 @@ final class MAD4B_SCP_Servers {
 		return array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 	}
 
-	public static function core_tools( $server_id ) {
+	/** Core declarations before dynamically mounted Admin tools are added. */
+	private static function declared_core_tools( $server_id ) {
+        $cso_read = in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true )
+            && class_exists( 'MAD4B_SCP_CSO01_Read_Foundation', false )
+            ? MAD4B_SCP_CSO01_Read_Foundation::read_ability_names() : array();
 		$governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status', 'mad4b/staging-convergence-plan', 'mad4b/staging-write-candidate-binding-plan' ) : array();
 		$map = array(
 			'mad4b-read' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
-				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
+				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
 				'mad4b/capability-trait-profile', 'mad4b/capability-trait-resolve', 'mad4b/provider-execution-binding', 'mad4b/provider-execution-binding-revalidate', 'mad4b/addon-registry-status',
 				'mad4b/data-processing-evaluate', 'mad4b/rights-record-plan', 'mad4b/data-processing-profile-plan', 'mad4b/rights-takedown-plan',
@@ -58,21 +64,38 @@ final class MAD4B_SCP_Servers {
 				'mad4b/scheduler-fair-rank', 'mad4b/scheduler-backlog-status',
 				'mad4b/operator-doctor', 'mad4b/operator-dead-letter-status', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
 				'mad4b/site-bootstrap-snapshot',
-				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
-			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status ),
+				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
+                'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives', 'mad4b/context-source-onboarding-preflight',
+                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys',
+                'mad4b/admin-surface-coverage', 'mad4b/admin-adapter-blueprint', 'mad4b/admin-control-census', 'mad4b/operational-acceptance-evidence',
+                'mad4b/deployment-binding-setup-status', 'mad4b/deployment-binding-setup-plan',
+                'mad4b/deployment-binding-native-status', 'mad4b/deployment-binding-native-plan',
+                'mad4b/staging-write-owner-review',
+                'mad4b/host-doctor', 'mad4b/host-operation-capabilities', 'mad4b/host-operation-plan',
+                'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
+			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
 			'mad4b-chatgpt' => array_merge( array(
 				'mad4b/site-info', 'mad4b/site-profile-status',
 				'mad4b/session-safe-diagnostics',
+                'mad4b/staging-write-owner-review',
 				'mad4b/full-staging-authority-handshake',
 				'mad4b/runtime-gates-handshake',
 				'mad4b/tool-discover', 'mad4b/tool-info', 'mad4b/read-execute',
 				'mad4b/write-discover', 'mad4b/write-info', 'mad4b/write-execute',
+                // Approval bootstrap cannot depend solely on the nested write
+                // dispatcher: some MCP hosts expose its fixed typed tools but
+                // do not admit the nested approval-plan result. Expose ONLY
+                // the two already-governed approval abilities directly.
+                // Transport_Context still forces them to mad4b-write; all
+                // exact NHI grants, OAuth scopes, budgets, candidate-bound
+                // ticket proof, AI delegation and execution claims still run.
+                'mad4b/approval-plan', 'mad4b/approval-ai-decide',
 				'mad4b/developer-discover', 'mad4b/developer-info', 'mad4b/developer-execute',
 				'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute',
-				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-apply',
-				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan',
-				'mad4b/operation-discover', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
-			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status ),
+				'mad4b/chatgpt-tool-projection-status', 'mad4b/chatgpt-tool-projection-discover', 'mad4b/chatgpt-tool-projection-plan', 'mad4b/chatgpt-tool-projection-recovery-plan', 'mad4b/chatgpt-tool-projection-apply', 'mad4b/frontend-origin-diagnostic',
+				'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
+				'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/provider-candidate-matrix', 'mad4b/production-certification-readonly-evidence', 'mad4b/production-certification-status', 'mad4b/production-certification-plan', 'mad4b/feature-007-workstream-certification-status', 'mad4b/governed-provider-plan-build', 'mad4b/governed-provider-plan-revalidate', 'mad4b/production-readiness-evaluate',
+			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'direct' ) : array(), $governed_status, $cso_read ),
 			'mad4b-enrollment' => array_values( array_unique( array_merge(
 				array(
 					'mad4b/site-info',
@@ -87,10 +110,11 @@ final class MAD4B_SCP_Servers {
 					'mad4b/staging-write-candidate-binding-audit',
 					'mad4b/runtime-convergence-apply',
 				),
-				class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
+				'mad4b-enrollment' === $server_id && class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) && method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'enrollment_abilities' )
 					? MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities()
 					: array(),
 				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
+                class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ? array( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY ) : array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()
@@ -102,9 +126,18 @@ final class MAD4B_SCP_Servers {
 				'mad4b/draft-plan', 'mad4b/draft-verify', 'mad4b/publication-verification-evaluate',
 			),
 			'mad4b-admin' => array(
+				'mad4b/standalone-build-request',
+                // WordPress-native build START is contributed solely by its
+                // registered first-party adapter, not by this fixed catalog.
+                // Bounded Staging bootstrap lane. Mounting
+                // does NOT grant execution: exact NHI grants, owner OAuth
+                // step-up, ticket, Site Profile and source/ZIP checks still apply.
+                'mad4b/wordpress-native-candidate-opt-in-apply',
+                'mad4b/wp-native-self-approve-install',
 				'mad4b/provider-deep-diagnostic',
-				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
+				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/control-plane-selected-head-apply', 'mad4b/runtime-release-set-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
 				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
+				'mad4b/recovery-preview', 'mad4b/agent-access-workspace', 'mad4b/consent-profile-status', 'mad4b/change-history-search', 'mad4b/agent-permission-plan', 'mad4b/agent-permission-apply',
 			),
 			'mad4b-developer' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( false ) : array(),
 			'mad4b-developer-breakglass' => class_exists( 'MAD4B_SCP_Developer_Runtime' ) ? MAD4B_SCP_Developer_Runtime::tool_names( true ) : array(),
@@ -112,6 +145,12 @@ final class MAD4B_SCP_Servers {
 		);
 		if ( 'mad4b-write' === $server_id ) return self::write_tools();
 		$tools = isset( $map[ $server_id ] ) ? $map[ $server_id ] : array();
+		// Mount only the resolver registration created by this plugin. Never
+		// widen meta.mcp.public for the default server or trust a name collision.
+		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {
+			$binding = MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status();
+			if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
+		}
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $tools = array_merge( $tools, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'read' ) );
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Context_Authority' )
@@ -122,30 +161,24 @@ final class MAD4B_SCP_Servers {
 		return array_values( array_unique( $tools ) );
 	}
 
-	private static function core_write_candidates() {
-		$candidates = array_merge(
-			array(
-				'mad4b/content-get-post', 'mad4b/content-update-post',
-				'mad4b/content-job-create', 'mad4b/content-job-transition', 'mad4b/content-job-cancel',
-				'mad4b/intent-registry-reconcile', 'mad4b/draft-apply', 'mad4b/data-processing-record-decision', 'mad4b/rights-record-apply', 'mad4b/data-processing-profile-apply', 'mad4b/data-processing-bound-decision-record', 'mad4b/rights-takedown-apply', 'mad4b/scheduler-backlog-enqueue', 'mad4b/scheduler-backlog-claim-next', 'mad4b/scheduler-backlog-heartbeat', 'mad4b/scheduler-backlog-complete', 'mad4b/scheduler-backlog-reconcile', 'mad4b/decommission-quiesce-apply', 'mad4b/decommission-resume-apply', 'mad4b/decommission-finalize-apply', 'mad4b/portability-import-quarantine-apply',
-			),
-			array(
-				'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/control-plane-upload-apply', 'mad4b/control-plane-native-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch', 'mad4b/database-update', 'mad4b/audit-tail',
-				'mad4b/mutation-get', 'mad4b/mutation-undo', 'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-			)
-		);
-		if ( class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $candidates = array_merge( $candidates, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'write' ) );
-		if ( class_exists( 'MAD4B_SCP_Context_Authority' )
-			&& function_exists( 'wp_has_ability' )
-			&& wp_has_ability( MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY ) ) {
-			$candidates[] = MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY;
+	public static function core_tools( $server_id ) {
+		$tools = self::declared_core_tools( $server_id );
+		if ( 'mad4b-admin' === $server_id
+			&& class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) {
+			// Dynamically declared Admin mutations must still be verified on the
+			// dedicated governed Write plane. The adapter's original execution
+			// callback, WordPress registration, provider/eligibility guard and
+			// authorization ticket remain authoritative; a name alone never mounts.
+			$registry = MAD4B_SCP_Adapter_Registry::instance();
+			$registry->register_defaults();
+			foreach ( $registry->ability_names( 'admin' ) as $candidate ) {
+				if ( self::registered_mutation_ability( $candidate )
+					&& self::is_external_write_candidate( $candidate )
+					&& self::ability_is_mounted( 'mad4b-write', $candidate ) )
+					$tools[] = (string) $candidate;
+			}
 		}
-		if ( class_exists( 'MAD4B_SCP_AI_Approval' )
-			&& function_exists( 'wp_has_ability' )
-			&& wp_has_ability( MAD4B_SCP_AI_Approval::ABILITY ) ) {
-			$candidates[] = MAD4B_SCP_AI_Approval::ABILITY;
-		}
-		return array_values( array_unique( $candidates ) );
+		return array_values( array_unique( $tools ) );
 	}
 
 	/**
@@ -159,35 +192,6 @@ final class MAD4B_SCP_Servers {
 		return function_exists( 'did_action' )
 			&& did_action( 'wp_abilities_api_init' ) > 0
 			&& ( ! function_exists( 'doing_action' ) || ! doing_action( 'wp_abilities_api_init' ) );
-	}
-
-	private static function registered_adapter_write_candidates() {
-		$cacheable = self::catalog_cacheable();
-		if ( $cacheable && is_array( self::$registered_adapter_write_candidates_cache ) ) return self::$registered_adapter_write_candidates_cache;
-		$result = array();
-		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
-		$registry = MAD4B_SCP_Adapter_Registry::instance();
-		$registry->register_defaults();
-		$surface_candidates = array_values( array_unique( array_merge(
-			$registry->ability_names( 'content' ),
-			$registry->ability_names( 'admin' ),
-			$registry->ability_names( 'write' )
-		) ) );
-		foreach ( $registry->all() as $adapter ) {
-			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
-			$map = $adapter->ability_names();
-			$provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
-			foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
-				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
-				foreach ( $abilities as $ability_name ) {
-					$ability_name = (string) $ability_name;
-					if ( in_array( $ability_name, $surface_candidates, true ) && self::registered_mutation_ability( $ability_name ) ) $result[ $ability_name ] = $provider;
-				}
-			}
-		}
-		ksort( $result, SORT_STRING );
-		if ( $cacheable ) self::$registered_adapter_write_candidates_cache = $result;
-		return $result;
 	}
 
 	/**
@@ -205,7 +209,15 @@ final class MAD4B_SCP_Servers {
 			$candidates = array_values( array_diff( $candidates, array( 'mad4b/approval-ai-decide' ) ) );
 		}
 		$projection = self::adapter_write_projection();
-		$candidates = array_merge( $candidates, $projection['eligible'] );
+		// Core candidates can also be advertised by a provider adapter. A
+		// provider-specific runtime/certification DENIAL must win even when that
+		// same Ability appears in the static core catalog; never mount it as
+		// effective Write or issue exact grants through the alternate path.
+		$blocked_provider_abilities = array_keys( $projection['blocked'] );
+		$candidates = array_values( array_diff(
+			array_merge( $candidates, $projection['eligible'] ),
+			$blocked_provider_abilities
+		) );
 		$write = array();
 		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
 			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
@@ -219,38 +231,13 @@ final class MAD4B_SCP_Servers {
 	 * of provider activation state; execution still requires the ability to be in
 	 * write_tools(), an exact NHI grant, and a one-time approval ticket.
 	 */
-	public static function external_write_tools() {
-		$cacheable = self::catalog_cacheable();
-		if ( $cacheable && is_array( self::$external_write_tools_cache ) ) return self::$external_write_tools_cache;
-		$candidates = self::core_write_candidates();
-		$candidates = array_merge( $candidates, array_keys( self::registered_adapter_write_candidates() ) );
-		$write = array();
-		foreach ( array_values( array_unique( $candidates ) ) as $ability_name ) {
-			if ( self::registered_mutation_ability( $ability_name ) ) $write[] = (string) $ability_name;
-		}
-		sort( $write, SORT_STRING );
-		$result = array_values( array_unique( array_diff( $write, array( 'mad4b/database-raw-query' ) ) ) );
-		if ( $cacheable ) self::$external_write_tools_cache = $result;
-		return $result;
-	}
+	public static function external_write_tools() { return self::catalog_external_write_tools(); }
 
 	public static function is_external_write_candidate( $ability_name ) {
 		return in_array( (string) $ability_name, self::external_write_tools(), true );
 	}
 
-	public static function blocked_write_tools() {
-		// Provider/runtime-certification diagnostics only. Core governance gates,
-		// such as Context AI standing-delegation eligibility, are enforced by
-		// write_tools()/authority status and must not be mislabeled as provider
-		// certification failures.
-		$projection = self::adapter_write_projection();
-		$blocked = array_values( $projection['blocked'] );
-
-		usort( $blocked, static function ( $a, $b ) {
-			return strcmp( isset( $a['ability'] ) ? $a['ability'] : '', isset( $b['ability'] ) ? $b['ability'] : '' );
-		} );
-		return $blocked;
-	}
+	public static function blocked_write_tools() { return self::catalog_blocked_write_tools(); }
 
 	/**
 	 * Core governance gates are distinct from provider/runtime certification.
@@ -360,116 +347,6 @@ final class MAD4B_SCP_Servers {
 		return true;
 	}
 
-	private static function adapter_write_projection() {
-		$result = array( 'eligible' => array(), 'blocked' => array() );
-		if ( ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $result;
-		// Runtime provider eligibility is intentionally more conservative than
-		// the immutable transport/catalog caches above. Isolation/certification can
-		// settle during rest_api_init, so never freeze this projection while REST
-		// registration is still in progress.
-		$cacheable = function_exists( 'did_action' )
-			&& did_action( 'wp_abilities_api_init' ) > 0
-			&& did_action( 'rest_api_init' ) > 0
-			&& ( ! function_exists( 'doing_action' ) || ( ! doing_action( 'wp_abilities_api_init' ) && ! doing_action( 'rest_api_init' ) ) );
-		if ( $cacheable && is_array( self::$adapter_write_projection_cache ) ) return self::$adapter_write_projection_cache;
-
-		$registry = MAD4B_SCP_Adapter_Registry::instance();
-		$registry->register_defaults();
-		foreach ( $registry->all() as $adapter ) {
-			if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'ability_names' ) ) continue;
-			$map = $adapter->ability_names();
-			$mutation_candidates = array();
-			// `write` is a dedicated adapter surface for mutations that must exist on
-			// mad4b-write but must not leak onto mad4b-content or mad4b-admin.
-			foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
-				$abilities = isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ? $map[ $surface ] : array();
-				foreach ( $abilities as $ability_name ) {
-					$ability_name = (string) $ability_name;
-					if ( self::registered_mutation_ability( $ability_name ) ) $mutation_candidates[] = $ability_name;
-				}
-			}
-			$mutation_candidates = array_values( array_unique( $mutation_candidates ) );
-			if ( empty( $mutation_candidates ) ) continue;
-
-			$status = method_exists( $adapter, 'status' ) ? $adapter->status() : array();
-			$requires_certification = ! empty( $status['mutation_requires_certification'] );
-			$certification = isset( $status['provider_certification'] ) && is_array( $status['provider_certification'] ) ? $status['provider_certification'] : array();
-			$provider = method_exists( $adapter, 'provider_key' ) ? sanitize_key( (string) $adapter->provider_key() ) : sanitize_key( (string) $adapter->id() );
-			$capability_cataloged = $requires_certification
-				&& class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' )
-				&& MAD4B_SCP_Provider_Compatibility_Certification::supports_provider( $provider );
-			$capability_projection = $capability_cataloged
-				? MAD4B_SCP_Provider_Compatibility_Certification::adapter_mount_projection( $provider, $adapter )
-				: array();
-			$capability_eligible = array();
-			$capability_blocked = array();
-			if ( $capability_cataloged ) {
-				foreach ( (array) ( $capability_projection['eligible'] ?? array() ) as $entry ) if ( ! empty( $entry['ability'] ) ) $capability_eligible[ (string) $entry['ability'] ] = $entry;
-				foreach ( (array) ( $capability_projection['blocked'] ?? array() ) as $entry ) if ( ! empty( $entry['ability'] ) ) $capability_blocked[ (string) $entry['ability'] ] = $entry;
-			}
-			$legacy_runtime_contract_ok = ! $requires_certification || ! empty( $certification['legacy_runtime_contract_ok'] ) || ! empty( $certification['runtime_contract_ok'] );
-
-			foreach ( $mutation_candidates as $ability_name ) {
-				if ( method_exists( $adapter, 'mutation_ability_runtime_eligibility' ) ) {
-					$runtime_eligibility = $adapter->mutation_ability_runtime_eligibility( $ability_name );
-					if ( true !== $runtime_eligibility ) {
-						$code = is_wp_error( $runtime_eligibility ) ? (string) $runtime_eligibility->get_error_code() : 'adapter_runtime_eligibility_unverified';
-						$result['blocked'][ $ability_name ] = array(
-							'ability' => $ability_name,
-							'provider' => $provider,
-							'reason' => 'adapter_runtime_capability_not_eligible',
-							'runtime_eligibility_code' => $code,
-							'violations' => array( $code ),
-						);
-						continue;
-					}
-				}
-				if ( ! $requires_certification ) {
-					$result['eligible'][] = $ability_name;
-					continue;
-				}
-				if ( $capability_cataloged ) {
-					if ( isset( $capability_eligible[ $ability_name ] ) ) {
-						$result['eligible'][] = $ability_name;
-						continue;
-					}
-					$entry = isset( $capability_blocked[ $ability_name ] ) ? $capability_blocked[ $ability_name ] : array();
-					$result['blocked'][ $ability_name ] = array(
-						'ability' => $ability_name,
-						'provider' => $provider,
-						'reason' => 'provider_capability_not_write_eligible',
-						'capability_id' => isset( $entry['capability_id'] ) ? (string) $entry['capability_id'] : '',
-						'certification_level' => isset( $entry['certification_level'] ) ? (string) $entry['certification_level'] : 'UNKNOWN',
-						'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
-						'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
-						'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
-						'violations' => array( 'capability_write_certification_required' ),
-					);
-					continue;
-				}
-				if ( $legacy_runtime_contract_ok ) {
-					$result['eligible'][] = $ability_name;
-					continue;
-				}
-				$violations = class_exists( 'MAD4B_SCP_Provider_Contracts' )
-					? MAD4B_SCP_Provider_Contracts::violations_for_status( $certification )
-					: array( 'certification_authority_unavailable' );
-				$result['blocked'][ $ability_name ] = array(
-					'ability' => $ability_name,
-					'provider' => $provider,
-					'reason' => 'provider_runtime_contract_not_certified',
-					'runtime_status' => isset( $certification['status'] ) ? (string) $certification['status'] : 'unknown',
-					'installed_version' => isset( $certification['installed_version'] ) ? (string) $certification['installed_version'] : '',
-					'certified_version' => isset( $certification['certified_version'] ) ? (string) $certification['certified_version'] : '',
-					'violations' => array_values( array_unique( array_map( 'strval', $violations ) ) ),
-				);
-			}
-		}
-		$result['eligible'] = array_values( array_unique( $result['eligible'] ) );
-		if ( $cacheable ) self::$adapter_write_projection_cache = $result;
-		return $result;
-	}
-
 	private static function chatgpt_unified_catalog_enabled() {
 		return class_exists( 'MAD4B_SCP_Site_Profile' )
 			&& MAD4B_SCP_Site_Profile::configured()
@@ -498,11 +375,15 @@ final class MAD4B_SCP_Servers {
 			'mad4b/plugin-package-plan',
 			'mad4b/plugin-remote-update-plan',
 			'mad4b/control-plane-upload-plan',
-			'mad4b/control-plane-native-plan',
+			'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan',
 			'mad4b/operation-discover',
 			'mad4b/provider-closure-matrix',
 			'mad4b/staging-write-candidate-binding-audit',
 		);
+		if ( class_exists( 'MAD4B_SCP_Deployment_Mode_Resolver' ) ) {
+			$binding = MAD4B_SCP_Deployment_Mode_Resolver::mcp_registration_status();
+			if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
+		}
 		// Keep the low-level grant-reconciliation plan behind governed discovery/read-execute.
 		// The direct catalog reserves one slot for dynamic schema-pinned projection; adding
 		// the write-only convergence apply must not consume that extensibility budget.
@@ -535,6 +416,7 @@ final class MAD4B_SCP_Servers {
 	public static function chatgpt_reviewed_direct_step_up_tools() {
 		$candidates = array();
 		if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Authority_Convergence::APPLY_ABILITY;
+		if ( class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ) $candidates[] = MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ) $candidates[] = MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Self_Update' ) ) $candidates[] = MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY;
 		if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ) $candidates[] = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
@@ -561,9 +443,94 @@ final class MAD4B_SCP_Servers {
 		// Preserve candidate priority: narrow governed Write, Full Staging,
 		// bootstrap self-update and governed runtime gates are retained before optional semantic projections
 		// if the bounded MCP catalog budget requires degradation.
-		$tools = array_values( array_unique( $tools ) );
-		return $tools;
-	}
+        // The two approval bootstrap mutations are reviewed OPTIONAL direct
+        // step-ups, not unguarded required tools. Catalog serialization now
+        // requires the same exact ChatGPT authority-step-up bearer used for
+        // all other privileged direct operations, and preflight can drop them
+        // without blocking the base connector if their DTO is unavailable.
+        $tools = array_values( array_unique( array_merge(
+            // Bootstrap pending tickets and gated decisions before optional
+            // enrollment convenience steps. The 36-tool MCP limit may
+            // exclude the last optional entries; never exclude the fixed
+            // read/write dispatcher transport to make room.
+            self::chatgpt_approval_bootstrap_tools(), $tools ) ) );
+        return $tools;
+    }
+
+    /**
+     * Expose only the original protected approval bootstrap operations on
+     * enrolled, current-authority Staging. An MCP tool is never an approval.
+     */
+    private static function chatgpt_approval_bootstrap_tools() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || 'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+            || ! class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            || ! MAD4B_SCP_Staging_Write_Authority::effective() )
+            return array();
+        $names = array( 'mad4b/approval-plan' );
+        if ( class_exists( 'MAD4B_SCP_AI_Approval' )
+            && MAD4B_SCP_AI_Approval::catalog_eligible() )
+            $names[] = 'mad4b/approval-ai-decide';
+        $result = array();
+        foreach ( $names as $ability_name ) {
+            if ( ! function_exists( 'wp_has_ability' )
+                || ! function_exists( 'wp_get_ability' )
+                || ! wp_has_ability( $ability_name )
+                || ! self::ability_is_mounted( 'mad4b-write', $ability_name ) )
+                continue;
+            $ability = wp_get_ability( $ability_name );
+            $meta = is_object( $ability ) && method_exists( $ability, 'get_meta' )
+                ? $ability->get_meta() : array();
+            $annotations = is_array( $meta ) && isset( $meta['annotations'] )
+                && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+            if ( array_key_exists( 'readonly', $annotations )
+                && false === $annotations['readonly'] )
+                $result[] = $ability_name;
+        }
+        return $result;
+    }
+
+    /**
+     * Only the two original, reviewed Staging approval bootstrap mutations are
+     * intentionally direct on ChatGPT. Their existence in tools/list is NOT a
+     * grant or an approval and never exempts an execution boundary. Any other
+     * direct write schema must remain a certification failure.
+     */
+    public static function verified_direct_approval_bootstrap_tool( $ability_name ) {
+        $ability_name = (string) $ability_name;
+        if ( ! in_array( $ability_name, array(
+            'mad4b/approval-plan', 'mad4b/approval-ai-decide',
+        ), true ) ) return false;
+        if ( ! in_array( $ability_name, self::chatgpt_approval_bootstrap_tools(), true )
+            || ! self::ability_is_mounted( 'mad4b-write', $ability_name )
+            || ! self::ability_is_mounted( 'mad4b-chatgpt', $ability_name )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence' )
+            || ! MAD4B_SCP_Execution_Fence::final_execution_wrapper_verified( $ability_name ) )
+            return false;
+        if ( ! function_exists( 'wp_get_ability' ) ) return false;
+        $ability = wp_get_ability( $ability_name );
+        if ( ! is_object( $ability ) || ! method_exists( $ability, 'get_meta' ) )
+            return false;
+        $meta = $ability->get_meta();
+        $mcp = is_array( $meta ) && isset( $meta['mcp'] )
+            && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && isset( $meta['annotations'] )
+            && is_array( $meta['annotations'] ) ? $meta['annotations'] : array();
+        return array_key_exists( 'readonly', $annotations )
+            && false === $annotations['readonly']
+            && ! empty( $mcp['mad4b_execution_boundary'] )
+            && class_exists( 'MAD4B_SCP_Authorization' )
+            && hash_equals(
+                MAD4B_SCP_Authorization::EXECUTION_BOUNDARY_CONTRACT,
+                (string) $mcp['mad4b_execution_boundary']
+            )
+            && ! empty( $mcp['mad4b_governed_write_authority'] )
+            && class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+            && hash_equals(
+                MAD4B_SCP_Staging_Write_Authority::CONTRACT,
+                (string) $mcp['mad4b_governed_write_authority']
+            );
+    }
 
 	public static function is_chatgpt_direct_step_up_tool( $ability_name ) {
 		return in_array( (string) $ability_name, self::chatgpt_reviewed_direct_step_up_tools(), true );
@@ -579,13 +546,14 @@ final class MAD4B_SCP_Servers {
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
 		$breakglass = self::core_tools( 'mad4b-breakglass' );
+		$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();
 
 		if ( ! self::chatgpt_unified_catalog_enabled() ) {
 			$runtime_gate_step_up = class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' )
 				? MAD4B_SCP_Governed_Runtime_Gates::chatgpt_step_up_tools()
 				: array();
-			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up );
-			$fallback_candidates = array_merge( $core, $runtime_gate_step_up );
+			$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap );
+			$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap );
 			$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) );
 			$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) );
 			$tools = array_values( array_unique( array_map( 'strval', $tools ) ) );
@@ -618,7 +586,8 @@ final class MAD4B_SCP_Servers {
 			$step_up
 		);
 		$candidates = array_merge( $core, $bootstrap );
-		$direct_mutation_transport = array_values( array_unique( array_merge( self::chatgpt_dispatch_transport_tools(), $step_up ) ) );
+		$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );
+		$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );
 		$direct_read_transport = self::chatgpt_direct_read_transport_tools();
 
 		$tools = array();
@@ -650,6 +619,31 @@ final class MAD4B_SCP_Servers {
 	 * dynamic projections. Dynamic projections are optional at MCP preflight and
 	 * never displace required transport tools.
 	 */
+	/**
+	 * Single optional-tool classification for real server registration,
+	 * official DTO preflight, refresh assertions and CI readback.
+	 * No bearer validation or authority grants are performed here.
+	 */
+	public static function chatgpt_materialization_optional_tools( array $requested_tools ) {
+		$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
+			? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array();
+		$reviewed = self::chatgpt_reviewed_direct_step_up_tools();
+		// Keep the only direct management tool for editing an oversized optional
+		// catalog reachable *when it is already enrolled and reviewed*. Otherwise
+		// a valid projection can crowd out the very demotion route needed to recover.
+		// Never promote its authority; registration and execution still enforce
+		// exact CIMD bearer, scoped OAuth step-up, Write mount and execution fence.
+		$management = array_values( array_intersect(
+			array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed
+		) );
+		return array_values( array_intersect(
+			array_values( array_unique( array_merge(
+				$management, $dynamic_optional, $reviewed
+			) ) ),
+			$requested_tools
+		) );
+	}
+
 	public static function chatgpt_tools() {
 		$base = self::chatgpt_base_tools();
 		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
@@ -764,6 +758,7 @@ final class MAD4B_SCP_Servers {
 		return null;
 	}
 
+
 	public static function provider_for_ability( $server_id, $ability_name ) {
 		$server_id = sanitize_key( (string) $server_id );
 		$ability_name = (string) $ability_name;
@@ -830,6 +825,12 @@ final class MAD4B_SCP_Servers {
 				}
 			}
 		}
+		// An original Content/Admin declaration cannot override the provider's
+		// effective Write denial. Keep discovery separate from mount eligibility.
+		if ( in_array( $server_id, array( 'mad4b-content', 'mad4b-admin' ), true )
+			&& self::registered_mutation_ability( $ability_name )
+			&& self::is_external_write_candidate( $ability_name )
+			&& ! in_array( $ability_name, self::write_tools(), true ) ) return $remember( null );
 		if ( in_array( $ability_name, self::core_tools( $server_id ), true ) ) return $remember( 'core' );
 		$surface = self::surface_for_server( $server_id );
 		if ( '' === $surface || ! class_exists( 'MAD4B_SCP_Adapter_Registry' ) ) return $remember( null );
@@ -928,6 +929,15 @@ final class MAD4B_SCP_Servers {
 		return '' === (string) $target_server_id || hash_equals( (string) $target_server_id, (string) $server_id );
 	}
 
+	private static function original_mutation_mount_tools( $server_id, array $tools ) {
+		if ( ! in_array( $server_id, array( 'mad4b-content', 'mad4b-admin' ), true ) ) return $tools;
+		$eligible_write = array_fill_keys( self::write_tools(), true );
+		return array_values( array_filter( $tools, static function ( $name ) use ( $eligible_write ) {
+			return ! self::registered_mutation_ability( $name )
+				|| ! self::is_external_write_candidate( $name ) || isset( $eligible_write[ $name ] );
+		} ) );
+	}
+
 	public function register_servers( $adapter ) {
 		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) { foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable', 'materialized' => false, 'tool_count' => 0 ); return; }
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
@@ -946,6 +956,7 @@ final class MAD4B_SCP_Servers {
 		$materialize = static function ( $server_id, $factory ) use ( $target_server_id ) {
 			if ( ! self::should_materialize_server_tools( $server_id, $target_server_id ) ) return array();
 			$tools = call_user_func( $factory );
+			if ( is_array( $tools ) ) $tools = self::original_mutation_mount_tools( $server_id, $tools );
 			return is_array( $tools ) ? array_values( array_unique( $tools ) ) : array();
 		};
 
@@ -993,15 +1004,8 @@ final class MAD4B_SCP_Servers {
 			return;
 		}
 		if ( 'mad4b-chatgpt' === $id && $materialized ) {
-			$dynamic_optional = class_exists( 'MAD4B_SCP_ChatGPT_Tool_Projection' )
-				? MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names()
-				: array();
-			$reviewed_optional = array_values( array_intersect(
-				// Persisted dynamic selections are explicit reviewed intent and therefore
-				// outrank convenience direct step-ups inside the optional catalog budget.
-				array_values( array_unique( array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() ) ) ),
-				$tools
-			) );
+			// Server registration and client/runtime checks must share this exact order.
+			$reviewed_optional = self::chatgpt_materialization_optional_tools( $tools );
 			$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $tools, $reviewed_optional );
 			// A failed required preflight admits a route-only server for bounded
 			// failure reporting. Do not rebuild known-invalid DTOs in the Adapter.

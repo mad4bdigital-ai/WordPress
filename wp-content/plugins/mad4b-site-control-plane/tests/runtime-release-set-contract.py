@@ -398,7 +398,7 @@ require("0 === strpos( strtolower( $plugin_file ), 'mcp-adapter/' )" in remote, 
 
 runtime = (INCLUDES / "class-mad4b-scp-runtime-release-set.php").read_text(encoding="utf-8")
 runtime_ui = (INCLUDES / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
-servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
+servers = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 projection = (INCLUDES / "class-mad4b-scp-chatgpt-tool-projection.php").read_text(encoding="utf-8")
 catalog_diag = (INCLUDES / "class-mad4b-scp-mcp-catalog-diagnostics.php").read_text(encoding="utf-8")
 for needle in (
@@ -430,7 +430,12 @@ require("can_bootstrap_apply" not in catalog_projection, "runtime release-set ca
 require("MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY" in servers, "ChatGPT reviewed direct step-up catalog omits runtime release-set bootstrap")
 require("MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools()" in servers, "ChatGPT enrollment candidates omit runtime release-set step-up projection")
 require("array_merge( $optional, $base_optional )" in projection, "explicit dynamic projections must outrank optional direct step-ups in plan budget")
-require("array_merge( $dynamic_optional, self::chatgpt_reviewed_direct_step_up_tools() )" in servers, "server materialization must preserve explicit dynamic projection priority")
+# Match the actual ordered expression across formatting changes; retain
+# exact reviewed-only management and mandatory dispatcher checks below.
+import re
+require(bool(re.search(r"array_merge\s*\(\s*\$management\s*,\s*\$dynamic_optional\s*,\s*\$reviewed", servers)), "materialization must reserve the reviewed demotion control before dynamic projection slots")
+require("$management = array_values( array_intersect(" in servers, "management reservation must be reviewed-only")
+require("array( 'mad4b/chatgpt-tool-projection-apply' ), $reviewed" in servers, "only the specific enrolled projection-management tool may reserve a slot")
 require("MAD4B_SCP_ChatGPT_Tool_Projection::projected_ability_names() : array(),\n\t\t\t\tMAD4B_SCP_Servers::chatgpt_reviewed_direct_step_up_tools()" in catalog_diag, "shared catalog diagnostics must preserve dynamic-first optional ordering")
 require("add_filter( 'plugin_action_links_'" not in runtime, "runtime release-set mutation must not be injected into the generic Plugins action row")
 plugin_links = runtime.split("public static function plugin_action_links( $links )", 1)[1].split("public static function handle_admin_apply()", 1)[0]
@@ -468,3 +473,33 @@ require("MAD4B_SCP_Runtime_Release_Set::boot();" in main, "runtime release-set c
 # implementation is merged. This implementation contract must not self-certify
 # release-critical workflow mutations.
 print("mad4b.runtime-release-set-contract.v1: PASS")
+
+
+# Normal runtime release-set execution must be mounted, but remains governed.
+servers_source = (INCLUDES / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+admin_start = servers_source.find("'mad4b-admin' => array(")
+admin_end = servers_source.find("'mad4b-developer' =>", admin_start)
+require(
+    admin_start >= 0
+    and admin_end > admin_start
+    and "'mad4b/runtime-release-set-apply'" in servers_source[admin_start:admin_end],
+    "normal runtime release-set apply must be mounted on the governed admin lane",
+)
+write_candidates_start = servers_source.find("private static function core_write_candidates()")
+write_candidates_end = servers_source.find("private static function registered_adapter_write_candidates()", write_candidates_start)
+require(
+    write_candidates_start >= 0
+    and write_candidates_end > write_candidates_start
+    and "'mad4b/runtime-release-set-apply'" in servers_source[write_candidates_start:write_candidates_end],
+    "runtime release-set apply must participate in exact governed-write inventory",
+)
+semantic_contracts = json.loads((CONFIG / "semantic-content-field-contracts.json").read_text(encoding="utf-8"))
+for ability_name in (
+    "mad4b/control-plane-native-apply",
+    "mad4b/control-plane-upload-apply",
+    "mad4b/runtime-release-set-apply",
+):
+    row = (semantic_contracts.get("abilities") or {}).get(ability_name) or {}
+    require(row.get("mode") == "exact_paths", f"operational semantic contract missing for {ability_name}")
+    require(not (row.get("brand_paths") or []), f"operational updater ability must not declare brand-bearing paths: {ability_name}")
+    require("reason" in (row.get("operational_paths") or []), f"operator reason must be explicitly operational for {ability_name}")

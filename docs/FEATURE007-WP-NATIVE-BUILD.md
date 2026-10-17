@@ -1,0 +1,420 @@
+# WordPress-native source worker — Feature 007 (Staging only)
+
+The feature introduces an optional **PHP/WordPress build worker**, separate from
+the existing external `standalone_source_build` runner. It is not enabled as
+the default release channel, does not execute downloaded source and does not
+authorize deployment.
+
+## Owner-delegated self-certification on Staging
+
+**New optional trust policy:** `site_self_certified_staging`. The enrolled
+Staging WordPress site is explicitly allowed to **accept its own local build
+checks as the evidence basis for a Staging install**. This eliminates the
+external Ed25519 signer and PHP 7.4/8.3 matrix *for this locally self-approved
+Staging lane*, but does not claim those tests ran or create a certificate for
+CI, master, Production or the conventional signed-candidate lane.
+
+The following are distinct, dynamically enrolled WordPress Abilities:
+
+- `mad4b/wp-native-build-start`: owner-approved exact-source ZIP packaging.
+- `mad4b/wp-native-build-simulate`: read-only package checks.
+- `mad4b/wp-native-self-approve-plan`: read-only, exact build/receipt
+  and existing governed WordPress updater preflight.
+- `mad4b/wp-native-self-approve-install`: **mutating** Staging-only action
+  with existing enrolled-owner permissions, OAuth authority step-up,
+  the exact self-approval Ability's ONE governed grant/ticket and execution claim, exact
+  plan SHA, explicit `INSTALL SELF APPROVED PACKAGE ON STAGING` confirmation
+  and append-only pre-install AND terminal outcome audit events.
+
+### Example MCP plan input
+
+```json
+{
+  "expected_head": "<40-character immutable GitHub commit SHA>",
+  "reason": "Owner delegates self-certification for this Staging-only install"
+}
+```
+
+Review the returned `eligible`, `plan_sha256`,
+`evidence_mode=site_self_certified_staging` and the explicit
+`independent_signature_present=false`,
+`native_php_matrix_executed=false`, `release_certified=false`.
+Only a locally completed `BUILT_UNVERIFIED` artifact with matching private
+SHA-256 ZIP bytes, canonical receipt, token-screening count, immutable job_id, Staging Site
+Profile and exact repository commit can become eligible. A source commit
+or passing simulated fixture alone is insufficient.
+
+For apply, send the same `expected_head` and `reason`, reviewed
+`expected_plan_sha256` and literal
+`confirmation="INSTALL SELF APPROVED PACKAGE ON STAGING"`, plus the
+governance-controlled approval ticket for the self-approval Ability as required by the central
+execution wrapper. The code copies the already-built private package into the
+**existing** `MAD4B_SCP_Self_Update::upload_apply` path. That path retains
+source re-resolution, archive/provenance verification, backup, maintenance
+lease, post-update readback and rollback. No new unsafe installer is created.
+
+**This is an explicit owner-accepted reduction in test independence, not a
+security certification.** Production rejects the action. GitHub Release
+verdicts, main/master branch protection and conventional signed release gates
+are not changed. The option to self-certify does NOT implicitly grant the
+self-approval Ability grant or automatically approve its one-time operation. New source
+Abilities become available on the live site only after an independently
+authorized bootstrap installs a package containing them.
+
+Source fixtures:
+
+```sh
+php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php
+php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-self-approval-runtime.php
+```
+
+These commands are test instructions and not claims that native PHP 7.4/8.3
+or Staging execution has already passed.
+
+### Lifecycle and first-install bootstrap
+
+1. Exact SHA is selected from GitHub, and a Staging owner with current OAuth
+   starts the existing governed `mad4b/wp-native-build-start` Ability.
+2. WordPress Cron fetches immutable blobs, records their identities and builds
+   a private `BUILT_UNVERIFIED` ZIP + canonical receipt.
+3. `wp-native-self-approve-plan` uses a **fresh DB-backed, twice-read**
+   `verified_snapshot`: `job_id`, Staging profile, source SHA, receipt,
+   archive hash, build fingerprint and exact file-token inventory. A changed
+   job requires an entirely new plan and new one-time ticket.
+4. The **single** owner-approved mutation is
+   `mad4b/wp-native-self-approve-install`. The MAD4B execution boundary
+   claims its one-time ticket BEFORE entering the handler; no nested upload
+   ticket is demanded. Direct PHP entry without that execution claim is denied.
+5. The handler audits `SELF_APPROVED_INSTALLING`, then hands the bounded
+   ZIP bytes to the existing verified Staging updater. It logs one of
+   `INSTALLED_VERIFIED`, `INSTALL_FAILED_RECONCILIATION_REQUIRED`, or
+   `INSTALL_OUTCOME_UNCERTAIN` after the updater returns. In uncertain cases
+   or terminal audit failure it returns a fail-closed reconciliation error
+   rather than an unsafe retry.
+6. Following update, a fresh MCP connection must verify installed SHA, renewed
+   candidate binding, readback, Managed Skills and normal Write Authority.
+   An old candidate binding must not be reused.
+
+**First-install constraint:** The currently installed Control Plane must have
+the Self-Approval Ability in its own code before it can invoke that Ability.
+For the very first activation, use the ALREADY-DEPLOYED governed Staging
+`wp-native-build-start` + `wp-native-build-export-chunk` and
+`control-plane-upload-plan/apply` with exact owner OAuth, plan SHA, one-time
+approval and archive verification; alternatively use the certified Selected
+HEAD install path. This is a one-time bootstrap, **not** an automatic bypass
+or hidden local plugin overwrite. Never run Self-Approval's new code before
+the live site confirms the Ability is registered.
+
+The present self-approval path is **Staging-only** and deliberately never
+satisfies Signed GitHub Release or Production gates. Native PHP 7.4/8.3,
+separate-process verification, installer E2E, rollback and schema checks are
+still recommended as real tests, even though a self-approved Staging install
+does not require an independent release signature.
+
+## WordPress-local acceptance simulation (non-authorizing)
+
+On Staging, the read-only `mad4b/wp-native-build-simulate` Ability provides a
+**local self-check** for an immutable `expected_head` after a governed native
+build reaches `BUILT_UNVERIFIED`. It reads the persisted build job and private
+workspace; it never changes WordPress data, installs the ZIP, executes downloaded
+PHP, generates a signer key, or signs a release receipt.
+
+It verifies only local observations:
+
+- Job/source SHA is an exact match to the current Staging Site Profile.
+- ZIP is a real private file within the bounded build size, and its actual
+  SHA-256 and byte length match the persisted job.
+- Private canonical receipt SHA-256 and exact source/package identity agree
+  with the observed ZIP and job.
+- The builder recorded PHP token screening for **every** `.php` source entry
+  (screening is not a PHP CLI runtime test).
+
+Example governed Read input:
+
+```json
+{"ability_name":"mad4b/wp-native-build-simulate","input":{"expected_head":"<40-character-immutable-SHA>"}}
+```
+
+The response is either `LOCAL_SELF_CHECKS_PASSED_UNTRUSTED` or
+`LOCAL_SELF_CHECKS_BLOCKED`. **Neither is a release PASS.** The required
+external G9 test, PHP 7.4 and PHP 8.3 native syntax matrix, isolated ZIP runtime
+integrity, independently verified source and Ed25519 signer all remain separate
+and explicitly `NOT_EXECUTED_BY_SIMULATOR` or
+`NOT_INDEPENDENTLY_VERIFIED`. The output always sets
+`release_certified=false`, `independent_signature_present=false`,
+`mutation_performed=false`, and `production_authorized=false`.
+
+This is useful to diagnose corrupted or stale files **entirely within
+WordPress** before paying for an independent release run. It cannot generate
+trusted evidence required by `control-plane-selected-head-plan`. A site that
+creates and signs its own release certificate cannot be its own independent
+attestor. Do not add `LOCAL_SELF_CHECKS_PASSED_UNTRUSTED` as an accepted
+Staging release evidence mode or weaken any existing publication/approval gate.
+
+Acceptance fixtures include rejected non-SHA inputs, tampered ZIP refusal,
+Production refusal, and a locally intact ZIP which remains untrusted.
+
+## Adoption decision and release gates
+
+WordPress-native build is the **preferred opt-in source packaging route for eligible
+Staging sites**. It is not the default automatic updater. The existing
+`mad4b/standalone-build-plan` discovers capability and selects the native route
+for **build-only** when all checks pass. Full `local-checks`, independent
+verification, signing and final distribution retain the separately trusted
+runner/attestor route. The fallback remains the external standalone builder.
+
+This is a source-level adoption policy, **not** evidence that a new plugin is
+installed, that real Staging cron executed, or that release certification passed.
+The evidence gates are: exact Staging identity; owner opt-in; PHP/native I/O
+readiness; pinned Git object verification; deterministic source package and
+canonical JSON/ZIP parity; independent native tests; separately signed CI-outage
+attestation; immutable release publication; governed staging install/readback/
+rollback. Each gate must be observed, never inferred from a queued CI job. The WP
+build status exposes the canonical receipt and digest, not approval. A
+separate attestor still validates real package bytes, native tests and
+independent signer key provenance.
+
+## Abilities
+
+- `mad4b/wp-native-build-capabilities`: read-only resource and security checks
+- `mad4b/wp-native-build-plan`: exact commit and Site Profile-bound plan
+- `mad4b/wp-native-build-start`: owner / OAuth step-up / central approval; opt-in
+- `mad4b/wp-native-build-status`: source download and build status
+- `mad4b/wp-native-build-export-chunk`: enrolled-owner-only, exact SHA and
+  bounded 8 KiB chunks; caller recomputes final archive SHA-256
+
+## Execution
+
+1. Enrolled Staging owner enables existing **WordPress-native candidate mode**.
+2. Discover capability, plan one immutable SHA, approve the exact start.
+3. WP-Cron fetches GitHub commit/tree objects from the pinned
+   `mad4bdigital-ai/WordPress` repository and the allowed
+   `wp-content/plugins/mad4b-site-control-plane` subtree.
+4. Fetch source blobs in bounded batches. Verify SHA-1 Git object identity,
+   declared sizes, paths and absence of symlinks/submodules.
+5. Store in a private workspace **outside webroot**. Re-check the Site Profile,
+   lease deadline and files during packaging. Parse PHP tokens without running
+   fetched code.
+6. Emit a deterministic ZIP with stored entries and embedded provenance,
+   plus `CANONICAL-PACKAGE-RECEIPT.json` matching the canonical receipt
+   fields and hashes. Check every Git blob again while writing the archive,
+   calculate SHA-256 and refuse over-budget archives.
+7. Mark **BUILT_UNVERIFIED**. Export remains owner-only. No install, GitHub
+   publication, signature or release acceptance occurs at this stage.
+
+Only the current trusted plugin's PHP runs; the new repository PHP files
+remain data until independent review, certification and governed installation.
+
+## Explicit restrictions
+
+- Staging only, single-site and opt-in. Production is always denied.
+- PHP `pack`/`crc32`, a PHP token parser and a private writable temporary directory are required. The canonical ZIP_STORED writer does not need ZipArchive.
+  When unavailable, `capabilities` reports blockers; do not enable `exec`,
+  `shell_exec`, arbitrary PHP eval or raw SQL as workarounds.
+- Requires outbound GitHub API HTTPS and functional WP-Cron. Network issues,
+  host rate limits, truncated trees and unsafe files fail closed.
+- `token_get_all(TOKEN_PARSE)` is only a preliminary PHP syntax screen; it
+  is **not** native PHP CLI lint, DB integration, browser testing, or rollback.
+- The PHP writer explicitly reproduces the canonical Python ZIP_STORED header,
+  ordering, file mode and timestamps. Golden-vector checks cover SHA-256 parity;
+  the **real exact-HEAD archive** must still be independently compared before
+  attestation. A trusted process executes native tests, verifies the build
+  receipt and signs source-bound CI-outage evidence before publication.
+- The existing `mad4b/control-plane-selected-head-plan/apply` still requires
+  a certified manifest, backup, approval, readback and rollback. The new
+  worker does not weaken any existing gate.
+- WP-Cron depends on traffic or a configured cron trigger. Operators can
+  check status; it is not proof of background completion.
+
+## Test
+
+```sh
+php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wp-native-build.php
+php wp-content/plugins/mad4b-site-control-plane/tests/wp-native-build-runtime.php
+php wp-content/plugins/mad4b-site-control-plane/tests/standalone-build-control-runtime.php
+```
+
+Acceptance for any exact PR head additionally requires live Staging run,
+canonical archive comparison, external attestation, install/readback and
+rollback evidence. **Source delivery alone is not runtime certification.**
+
+
+## G9 workflow fingerprint drift — mandatory paired updates
+
+The G9 verifier intentionally locks `.github/workflows/feature-007-spec-ci.yml`
+to exact SHA-256 and byte length recorded in `g9-delivery.json`. Any later
+workflow edit without the corresponding evidence change fails before PHP lint.
+
+When editing the workflow, use the **one-commit** guarded local command rather
+than publishing the workflow first and repinning afterward:
+
+```powershell
+$Sha = (Get-FileHash ".github/workflows/feature-007-spec-ci.yml" -Algorithm SHA256).Hash.ToLowerInvariant()
+python tools/mad4b_g9_integrity_repin.py --apply --commit-pair --reviewed-workflow-sha256 $Sha
+```
+
+Run from the feature repository root with the changed workflow still **uncommitted**
+and with no other staged changes. The script requires source-owner SHA review,
+checks every G9 evidence fingerprint, validates the workflow security contract,
+runs the full G9 delivery validator, and commits only the workflow and G9
+manifest together. It refuses other fingerprint drift, unknown branches,
+Production/main/master/release branches, unreviewed changes and dirty index.
+This does **not** claim CI, Staging acceptance, or release approval.
+
+For already committed workflow edits, the older `--apply` (without
+`--commit-pair`) remains a reviewed repair route:
+
+```powershell
+$Sha = (Get-FileHash ".github/workflows/feature-007-spec-ci.yml" -Algorithm SHA256).Hash.ToLowerInvariant()
+python tools/mad4b_g9_integrity_repin.py --apply --reviewed-workflow-sha256 $Sha
+git diff --check
+git add specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json
+git commit -m "fix(feature007): repin reviewed G9 workflow evidence"
+```
+
+That recovery is intentionally two commits and only for existing drift.
+**New workflow updates must use the paired path.** No build kit should
+silently modify pinned source or claim to certify a dirty checkout.
+
+
+## Dynamic governed Ability mount — no central name hardcoding
+
+The native build start operation is enrolled through the *existing*
+`MAD4B_SCP_Adapter_Registry` extension hook:
+
+1. An approved module's `boot()` subscribes to
+   `mad4b_scp_register_adapters` before `wp_abilities_api_init`.
+2. Its trusted `MAD4B_SCP_Adapter_Base` subclass declares an
+   `ability_names()` map of read/content/admin/write and a provider identity.
+3. `MAD4B_SCP_Servers` already discovers adapter-declared Admin names for the
+   Admin server, adapter-declared mutations for the governed Write server, and
+   the descriptor's provider for ChatGPT capability inspection.
+4. A runtime eligibility method rechecks Staging opt-in and resource
+   prerequisites before the mutation is mounted; actual execution still
+   requires site-bound write authority, enrolled owner OAuth Step-Up, exact
+   one-time approval, the original permission callback, and a runtime
+   source-bound plan. The adapter **never replaces** the original callback.
+5. A missing/uncertified provider is not auto-elevated. Production is excluded
+   by the native builder. Untrusted arbitrary WordPress Ability metadata is
+   insufficient to gain a mounted mutation.
+
+There is **no native-build ability name in the fixed `Servers` allowlists**.
+Adding another first-party operation requires implementing an adapter and its
+governance tests, but no central allowlist modification. General discovery is
+not permission delegation or an authorization bypass.
+
+The regression fixture `tests/wp-native-build-runtime.php` asserts
+idempotent adapter enrollment, Admin-only declaration, Staging admission,
+Production rejection, and absence of a static build name in Servers. The
+package workflow also PHP-lints the new adapter.
+
+Operational deployment remains separately gated: this source change does
+not update the installed Staging package until a certified exact-HEAD release
+is installed, read back, and independently accepted.
+
+## Exact owner confirmation evidence (Staging only)
+
+WordPress-native Cron source building remains a governed **Admin mutation**.
+It is **not** reclassified as a normal write or Developer operation to work
+around unsupported remote approval transports.
+
+There are two distinct forms of confirmation:
+
+1. **Documented owner intent**: `mad4b/wp-native-owner-confirmation-plan`
+   accepts the immutable `expected_head` and produces an exact review digest
+   for the current enrolled Staging Site Profile and `wp-native-build-plan`.
+   The exact owner review string is:
+   `BUILD UNVERIFIED STAGING SOURCE | <40-byte-hex-head> | <plan_sha256> | <site_uuid> | <review_sha256>`.
+   Only the currently logged-in and enrolled WordPress Staging owner can record
+   this string under **Tools → MAD4B Build Consent**. The form uses a WordPress
+   CSRF nonce, exact review comparison, a 10-minute expiry, persistence readback,
+   and a structured MAD4B audit event. A verified consent is exposed read-only
+   by `mad4b/wp-native-owner-confirmation-status` with `expected_head`.
+   It is invalidated by Site Profile revision/digest drift.
+2. **Actual execution authority**: OAuth identity, owner `manage_options`,
+   the dedicated `mad4b:authority:step-up` scope, an **exact one-time
+   governed mutation approval ticket** on the verified `mad4b-write` remote
+   server for target `mad4b/wp-native-build-start` (whose *semantic category*
+   remains `mad4b-admin`), and the canonical authorization and
+   execution claim are *still required*. A consent digest is never an OAuth
+   token, NHI grant, approval ticket, or permission to start WP-Cron. Only a
+   fully authorized `mad4b/wp-native-build-start` is allowed to schedule it.
+
+A ChatGPT message, even if it matches the exact phrase, is **not proof of
+the current WordPress owner's authenticated identity**. It can be used to
+populate the review intent, not to bypass the step-up, ticket or execution claim.
+The owner-consent route provides a genuine auditable local confirmation option
+when remote `mad4b-admin` approval planning is not mounted. Clients must
+return a precise `ADMIN_APPROVAL_TRANSPORT_UNAVAILABLE` status if that
+separate ticket-generation channel is absent, not silently retry a normal
+`mad4b-write` ticket or claim the job started.
+
+Native regressions: `tests/native-build-owner-consent-runtime.php` plus
+`tests/recovery-route-resolver-runtime.php`, both enrolled in source preflight,
+pre-Staging hybrid CI, and the package gate.
+
+### Remote one-time confirmation and delegated AI review
+
+The remote `mad4b/approval-plan` tool can create an exact pending ticket when
+`mad4b/write-info` confirms runtime eligibility. Set **server_id =
+mad4b-write**, not `mad4b-admin`; the latter is a semantic category and
+not the current ChatGPT write transport. Bind the ticket to:
+`ability=mad4b/wp-native-build-start`, `provider=core`, exact Staging
+agent, `expected_head`, `expected_plan_sha256`, and confirmation literal
+`BUILD UNVERIFIED STAGING SOURCE`. The ticket must be short-lived,
+single-use, scope-checked and Site Profile/build-bound.
+
+When the returned current policy says `approval_lane=ai_autonomous` and
+`ai_approval_eligible=true`, the optional `mad4b/approval-ai-decide`
+may review the exact payload digest and classification digest. It must refuse
+authorization if identity, exact policy, ticket state, provider, or scope
+fails; an owner-authenticated message itself never becomes an OAuth grant.
+`review_note` is operational approval metadata, not post content.
+The exact semantic field contract classifies only native-build proof fields
+while continuing to flag unknown nested `post_content` or other brand text.
+
+If remote ticket creation/AI review is unavailable, use the separate local
+owner-intent form and report `OWNER_INTENT_ATTESTED_EXECUTION_NOT_AUTHORIZED`
+until the original admin mutation execution boundary is satisfied. Do not
+create an admin ticket using an unsupported server or pretend consent ran Cron.
+
+### Safe native-build dispatcher admission and actionable repair
+
+The existing compact `mad4b/write-execute` transport now calls the
+first-party, **side-effect-free** native-build owner predicate before entering
+Replay Policy or nested target execution. This preflight is registered only
+for `mad4b/wp-native-build-start`; arbitrary third-party Ability permission
+callbacks must never be invoked speculatively. A denied preflight returns
+`mad4b_write_dispatch_target_admission_denied`, with a bounded
+`original_error_code` and `client_action`, while preserving
+`mutation_state=not_started`, `approval_ticket_consumed=false`, and
+`blind_retry_allowed=false`.
+
+Distinct live blockers now identify whether exact enrolled Staging, WordPress
+administrator, Site Profile enrollment, mutation policy, verified current
+OAuth bearer, required `mad4b:authority:step-up`, correct ChatGPT OAuth
+client, or canonical Authorization service is missing. **Nothing** here
+grants a new OAuth scope, issues a ticket, rewrites the user's role, uses a
+Development/Breakglass exception, or converts a remote Admin mutation into
+an ordinary WordPress write. A failed bearer/scope/client check requires a
+fresh user-controlled OAuth authorization, followed by a **new** exact
+Staging build plan and one-time ticket. An old approved ticket does not
+become reusable after expiration.
+
+The dispatcher cannot assert that a general target was not entered merely
+because a transport failed. Unknown results still require readback. The
+special preflight only proves this first-party target was blocked before
+worker scheduling when it returns its own denial.
+
+PHP fixtures:
+- `tests/wp-native-build-dispatch-admission-runtime.php` validates every
+  distinct owner/OAuth/Step-Up/Staging condition.
+- `tests/write-dispatch-scope-delegation-runtime.php` now validates
+  read-only native preflight and that unrelated providers are not sent
+  through the native owner predicate.
+- Existing exact-head build, owner-consent, and semantic approval
+  regressions remain mandatory.
+
+**Deployment admission:** Do not infer local consent alone admits a package.
+A completed WP-Cron ZIP is `BUILT_UNVERIFIED`; the Staging self-approval
+install lane is separately reviewed, and Production remains forbidden.

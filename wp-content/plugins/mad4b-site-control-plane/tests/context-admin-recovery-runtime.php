@@ -11,6 +11,7 @@ function esc_html( $value ) { return esc_attr( $value ); }
 function esc_html__( $text, $domain = '' ) { return esc_html( $text ); }
 function esc_url( $value ) { return esc_attr( $value ); }
 function wp_json_encode( $value ) { return json_encode( $value ); }
+function get_option( $key, $default = false ) { return $default; } // Isolated read-only WordPress option fixture.
 function admin_url( $path = '' ) { return 'https://fixture.test/wp-admin/' . $path; }
 function wp_nonce_field( $action ) { echo '<input name="_wpnonce" value="fixture">'; }
 function submit_button( $label, $style = '', $name = 'submit', $wrap = true ) { echo '<button type="submit">' . esc_html( $label ) . '</button>'; }
@@ -29,7 +30,7 @@ function wp_send_json_error( $data, $status = 200 ) { throw new JsonResult( fals
 function wp_send_json_success( $data ) { throw new JsonResult( true, $data ); }
 $GLOBALS['allowed'] = true; $GLOBALS['nonce_valid'] = true;
 final class MAD4B_SCP_Google_Drive_Context {
- const AUTH_MODE_MANAGED = 'managed_google'; const AUTH_MODE_DEDICATED = 'dedicated_google'; const AUTH_MODE_CUSTOM = 'custom_credentials';
+ const AUTH_MODE_MANAGED = 'managed_google'; const AUTH_MODE_DEDICATED = 'dedicated_google'; const AUTH_MODE_CUSTOM = 'custom_credentials'; const MANUAL_REVOCATION_AUDIT_OPTION = 'mad4b_test_google_manual_audit';
  static $mode = 'dedicated_google'; static $configured = true; static $connected = false; static $managed = true; static $dedicated = true;
  static function credentials_status() { return array( 'configured' => self::$configured, 'configured_by_constants' => true, 'client_id' => 'PUBLIC_ID', 'managed_redirect_uri' => 'https://fixture.test/managed', 'dedicated_redirect_uri' => 'https://fixture.test/dedicated', 'custom_redirect_uri' => 'https://fixture.test/custom' ); }
  static function connection_status() { return array( 'connected' => self::$connected, 'write_available' => self::$connected, 'read_available' => self::$connected, 'account_email' => '', 'revocation_pending' => false, 'token_unreadable' => false ); }
@@ -81,7 +82,13 @@ MAD4B_SCP_Google_Drive_Context::$mode = 'dedicated_google'; MAD4B_SCP_Google_Dri
 check( false === strpos( render( 'render_google_drive' ), 'class="mad4b-google-primary-signin-form"' ), 'Configured unrelated broker concealed missing Dedicated setup' );
 MAD4B_SCP_Google_Drive_Context::$dedicated = true;
 foreach ( array( 'first-source', 'second-source' ) as $id ) MAD4B_SCP_Context_Authority::$sources[ $id ] = array( 'source_id' => $id, 'label' => $id, 'external_root_id' => $id, 'mode' => 'governed', 'write_policy' => 'read_only', 'task_scope' => '', 'status' => 'active', 'asset_count' => 0, 'last_synced_at' => '' );
+// AJAX handlers require a POST. A missing method must fail closed; the
+// prior fixture accidentally tested the denial while expecting a successful save.
+$_SERVER['REQUEST_METHOD'] = 'GET';
 $_POST = array( 'source_id' => 'second-source', 'write_policy' => 'update_only' );
+try { MAD4B_SCP_Context_Admin_UI::handle_update_source_policy(); throw new RuntimeException( 'GET did not terminate' ); }
+catch ( JsonResult $response ) { check( ! $response->success && 'mad4b_context_post_required' === $response->data['code'], 'GET should remain denied' ); }
+$_SERVER['REQUEST_METHOD'] = 'POST';
 try { MAD4B_SCP_Context_Admin_UI::handle_update_source_policy(); throw new RuntimeException( 'AJAX did not terminate' ); } catch ( JsonResult $response ) {
  check( $response->success && $response->data['persistence_verified'], 'Source policy handler lost persisted readback' );
  $rendered = views( render( 'render_sources' ) );

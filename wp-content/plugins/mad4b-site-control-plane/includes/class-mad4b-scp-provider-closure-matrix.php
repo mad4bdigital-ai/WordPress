@@ -175,6 +175,10 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 				'next_action' => $closure['next_action'],
 				'evidence_required' => $closure['evidence_required'],
 				'owner_review_required' => $closure['owner_review_required'],
+				// A missing source and an unattested provider are independent
+				// blockers. Report both, in dependency order, rather than implying
+				// source enrollment alone authorizes the downstream write.
+				'prerequisite_chain' => self::prerequisite_chain( $runtime_eligibility_code, $selected ),
 				'auto_activation_allowed' => false,
 			);
 		}
@@ -321,6 +325,40 @@ final class MAD4B_SCP_Provider_Closure_Matrix {
 			'provider_adapter_ready' => ! empty( $family_state['adapter_ready'] ),
 			'provider_coverage_state' => isset( $family_state['coverage_state'] ) ? sanitize_key( (string) $family_state['coverage_state'] ) : '',
 		);
+	}
+
+	/**
+	 * Read-only dependency graph for governed provider activation. Each item
+	 * remains independently necessary: OAuth never grants source ownership,
+	 * artifact identity never grants behavioral evidence, and neither permits
+	 * create until compensation/rollback is certified.
+	 */
+	private static function prerequisite_chain( $runtime_code, array $selected ) {
+		$status = isset( $selected['status'] ) && is_array( $selected['status'] ) ? $selected['status'] : array();
+		$steps = array();
+		if ( ! empty( $status['artifact_authority_required'] ) || empty( $status['artifact_authority_bound'] ) ) {
+			$steps[] = array( 'gate' => 'artifact_identity', 'state' => 'blocked',
+				'evidence' => array( 'exact_package_identity', 'critical_file_hashes', 'runtime_artifact_fingerprint' ) );
+		}
+		$source_code = sanitize_key( (string) $runtime_code );
+		if ( in_array( $source_code, array( 'mad4b_context_source_required_for_write',
+			'mad4b_context_source_policy_blocks_write' ), true ) ) {
+			$steps[] = array( 'gate' => 'governed_context_source', 'state' => 'blocked',
+				'evidence' => array( 'site_bound_source_id', 'owner_evidence', 'source_write_policy' ) );
+		}
+		$behavioral = isset( $status['behavioral_evidence'] ) && is_array( $status['behavioral_evidence'] )
+			? $status['behavioral_evidence'] : array();
+		if ( ! empty( $status['risk'] ) && 'read' !== $status['risk']
+			&& ( empty( $behavioral['behavioral_verified'] )
+				|| ( ! empty( $status['reversible'] ) && empty( $behavioral['rollback_verified'] ) ) ) ) {
+			$steps[] = array( 'gate' => 'behavioral_and_rollback_evidence', 'state' => 'blocked',
+				'evidence' => array( 'bounded_canary', 'exact_readback', 'rollback_receipt' ) );
+		}
+		if ( 'mad4b_google_drive_create_rollback_not_certified' === $source_code ) {
+			$steps[] = array( 'gate' => 'drive_create_compensation', 'state' => 'blocked',
+				'evidence' => array( 'exact_created_file_identity', 'rollback_contract', 'compensation_readback' ) );
+		}
+		return $steps;
 	}
 
 	private static function closure_for( $ability, $surface_reason, array $selected, array $providers, $runtime_eligibility_code = '', array $surface_violations = array() ) {

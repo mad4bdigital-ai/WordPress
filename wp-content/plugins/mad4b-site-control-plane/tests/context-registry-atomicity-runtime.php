@@ -66,7 +66,39 @@ class MAD4B_SCP_Site_Profile {
 		);
 	}
 }
-
+// Local fixture: a bounded, verified Site/Brand scope is required before
+// any registry write. Do not bypass the production Integrity fence.
+final class MAD4B_SCP_Operational_Integrity {
+    public static $trusted = true;
+    public static $drift = false;
+    public static function capture() {
+        return self::$trusted
+            ? array( 'site_uuid' => '11111111-1111-4111-8111-111111111111',
+                'revision' => 7, 'brand_id' => 'ffffffffffffffffffffffffffffffff',
+                'scope_digest' => str_repeat('c',64) )
+            : new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture Site Profile binding absent.' );
+    }
+    public static function assert_unchanged( $checkpoint ) {
+        return ! self::$drift && self::$trusted
+            ? true : new WP_Error( 'mad4b_integrity_scope_changed', 'Trusted scope changed during registry mutation.' );
+    }
+}
+final class MAD4B_SCP_Operational_Scope_Guard {
+    public static function require_current() {
+        if ( ! MAD4B_SCP_Operational_Integrity::$trusted )
+            return new WP_Error( 'mad4b_integrity_scope_blocked', 'Fixture scope unavailable.' );
+        return array( 'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'brand_ref' => 'ffffffffffffffffffffffffffffffff',
+            'tenant_ref' => 'wp-site:11111111-1111-4111-8111-111111111111',
+            'blog_id' => 1, 'network_id' => 1, 'environment' => 'staging',
+            'deployment_mode' => 'wordpress_dedicated' );
+    }
+    public static function record_metadata_matches( $record, $scope ) {
+        foreach ( array( 'tenant_ref', 'blog_id', 'network_id', 'environment', 'deployment_mode' ) as $k )
+            if ( isset( $record[$k] ) && (string)$record[$k] !== (string)$scope[$k] ) return false;
+        return true;
+    }
+}
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_atomic_assert( $condition, $message, $context = null ) {
@@ -83,7 +115,7 @@ $source = array(
 	'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 	'source_id' => $source_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'provider' => 'google_drive',
 	'mode' => 'governed',
 	'external_root_id' => 'folder-fixture',
@@ -104,7 +136,7 @@ $asset = array(
 	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 	'asset_id' => $asset_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'source_id' => $source_id,
 	'source_mode' => 'governed',
 	'provider' => 'google_drive',
@@ -125,7 +157,7 @@ $asset = array(
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
 	'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => 'ffffffffffffffffffffffffffffffff',
 	'brand_name' => 'Fixture Brand',
 	'revision' => 1,
 	'status' => 'configured',
@@ -139,6 +171,17 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISIO
 
 $baseline_sources = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ];
 $baseline_assets = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ];
+mad4b_atomic_assert( isset( MAD4B_SCP_Context_Authority::sources()[ $source_id ] ),
+    'Trusted exact scoped source must be visible before testing atomic registry writes.' );
+
+// Denied scope must fail before acquiring a registry lock or modifying options.
+MAD4B_SCP_Operational_Integrity::$trusted = false;
+$denied_scope = MAD4B_SCP_Context_Authority::replace_source_assets( $source_id, array() );
+mad4b_atomic_assert( is_wp_error( $denied_scope )
+    && 'mad4b_integrity_scope_blocked' === $denied_scope->get_error_code(), 'Untrusted scope must be rejected.' );
+mad4b_atomic_assert( $baseline_assets === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ]
+    && $baseline_sources === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ], 'Denied scope cannot mutate registry.' );
+MAD4B_SCP_Operational_Integrity::$trusted = true;
 
 $GLOBALS['mad4b_fail_option'] = MAD4B_SCP_Context_Authority::SOURCES_OPTION;
 $failed_second_write = MAD4B_SCP_Context_Authority::replace_source_assets(
@@ -230,14 +273,25 @@ mad4b_atomic_assert( 'google_drive' === $source_events[0]['summary']['provider']
 $before_profile = $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ];
 $before_profile_revision = MAD4B_SCP_Context_Authority::registry_revision();
 MAD4B_SCP_Audit::$fail_append = true;
-$failed_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+// Exercise audit compensation AFTER satisfying the separately required
+// identity-preserving rename CAS. An omitted consent must fail earlier and
+// cannot be counted as an audit persistence/compensation test.
+$failed_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand', array(
+    'expected_brand_id' => (string) $before_profile['brand_id'],
+    'expected_revision' => (int) $before_profile['revision'],
+    'confirm_identity_preserving_rename' => true,
+) );
 mad4b_atomic_assert( is_wp_error( $failed_profile ), 'Brand Context Profile save must fail when append-only audit commit fails.', $failed_profile );
 mad4b_atomic_assert( 'mad4b_context_registry_audit_commit_failed' === $failed_profile->get_error_code(), 'Profile audit failure must expose compensated audit error.', $failed_profile->get_error_code() );
 mad4b_atomic_assert( $before_profile === $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ], 'Profile audit failure must restore exact prior Brand Context Profile.' );
 mad4b_atomic_assert( $before_profile_revision === MAD4B_SCP_Context_Authority::registry_revision(), 'Profile audit failure must restore pre-save registry revision.' );
 
 MAD4B_SCP_Audit::$fail_append = false;
-$saved_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand' );
+$saved_profile = MAD4B_SCP_Context_Authority::save_profile( 'Changed Fixture Brand', array(
+    'expected_brand_id' => (string) $before_profile['brand_id'],
+    'expected_revision' => (int) $before_profile['revision'],
+    'confirm_identity_preserving_rename' => true,
+) );
 mad4b_atomic_assert( ! is_wp_error( $saved_profile ), 'Healthy Brand Context Profile save must commit with audit evidence.', $saved_profile );
 mad4b_atomic_assert( $before_profile_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Healthy audited profile save must advance registry revision exactly once.' );
 $profile_events = array_values( array_filter( MAD4B_SCP_Audit::$events, static function ( $row ) { return 'mad4b/context-profile-save' === $row['ability']; } ) );

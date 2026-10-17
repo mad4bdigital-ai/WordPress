@@ -209,6 +209,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'warnings' => $warnings,
 			'pass' => empty( $hard ),
 			'can_write' => empty( $hard ),
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
+			'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'blueprint_qa', 'BLUEPRINT_QA', $payload, array(), 'evaluate Blueprint QA hard blockers' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -254,6 +257,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'content' => $content,
 			'section_count' => isset( $input['section_count'] ) ? max( 0, (int) $input['section_count'] ) : 0,
 			'can_write' => true,
+			'draft_only' => true,
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'publication_authorized' => false,
 		);
 		$result = self::append( $job_id, 'draft', 'WRITING', $payload, array(), 'append ArticleDraft from approved blueprint' );
 		if ( is_wp_error( $result ) ) return $result;
@@ -278,6 +284,21 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 			'editorial_qa' => array( 'stage' => 'EDITORIAL_QA', 'contract' => 'mad4b.editorial-qa.v1', 'input' => 'editorial_qa' ),
 			'seo_qa' => array( 'stage' => 'SEO', 'contract' => 'mad4b.seo-qa.v1', 'input' => 'seo_qa' ),
 		);
+		// Validate the full QA bundle before the first immutable Artifact
+		// append. Invalid second/third components must not leave a partial
+		// first-component write in the ContentJob journal.
+		foreach ( $definitions as $def ) {
+			$row = $input[ $def['input'] ] ?? null;
+			if ( ! is_array( $row ) )
+				return new WP_Error( 'mad4b_qa_component_required', 'QA component is required: ' . $def['input'] );
+			if ( count( $row ) > 128 || ( isset( $row['hard_blockers'] ) && ! is_array( $row['hard_blockers'] ) )
+				|| count( $row['hard_blockers'] ?? array() ) > 64 )
+				return new WP_Error( 'mad4b_qa_component_shape_invalid', 'QA component shape or blockers exceed budget.' );
+			foreach ( $row['hard_blockers'] ?? array() as $blocker ) {
+				if ( ! is_string( $blocker ) || ! preg_match( '/^[a-z0-9_.-]{1,120}$/D', $blocker ) )
+					return new WP_Error( 'mad4b_qa_blocker_invalid', 'QA blockers must be bounded typed reason codes.' );
+			}
+		}
 		$created = array();
 		$hard_blockers = array();
 		foreach ( $definitions as $type => $def ) {
@@ -293,6 +314,9 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 				'writer_profile_fingerprint' => $writer['writer_profile_fingerprint'],
 				'hard_blockers' => $component_hard,
 				'pass' => empty( $component_hard ),
+				'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+				'independent_review_certified' => false,
+				'publication_authorized' => false,
 			) );
 			$result = self::append( $job_id, $type, $def['stage'], $payload, array(), 'append typed QA evidence' );
 			if ( is_wp_error( $result ) ) return $result;
@@ -303,6 +327,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		}
 		$final = array(
 			'contract' => 'mad4b.final-qa.v1',
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
 			'draft_artifact_id' => $draft_id,
 			'writer_profile_id' => $writer['writer_profile_id'],
 			'writer_profile_version' => $writer['writer_profile_version'],
@@ -320,6 +346,8 @@ final class MAD4B_SCP_Content_Intelligence_Pipeline {
 		if ( is_wp_error( $link ) ) return $link;
 		return array(
 			'contract' => self::CONTRACT,
+			'quality_evidence_status' => 'NEEDS_INDEPENDENT_REVIEW',
+			'independent_review_certified' => false,
 			'qa_artifact_ids' => $created,
 			'final_qa_artifact_id' => $final_id,
 			'pass' => empty( $hard_blockers ),

@@ -42,6 +42,50 @@ for forbidden in ["describe_ability(", "get_input_schema(", "get_output_schema("
 for marker in ["bounded_metadata_only_relevance", "preparation_required", "schema_loaded", "authority_decision_deferred"]:
     assert marker in search_section, f'metadata-only search invariant missing: {marker}'
 
+
+# Read-only integration reuses the canonical scope, never grants a new dispatch
+# authority, and reports incomplete sources explicitly.
+for marker in [
+    'MAD4B_SCP_Ability_Catalog_Transport::current_authority_scope()',
+    'MAD4B_SCP_Capability_Search_Index::catalog',
+    'MAD4B_SCP_Capability_Search_Index::results',
+    "'coverage_state' =>",
+    "'skipped_count' =>",
+    "'catalog_cache_hit' =>",
+    "'results_cache_hit' =>",
+    'MAD4B_SCP_Capability_Dependency_Planner::inspect',
+    'MAD4B_SCP_Capability_Source_Inventory::inspect',
+    'MAD4B_SCP_Recovery_Route_Resolver::inspect',
+]:
+    assert marker in gateway, f'unified integration invariant missing: {marker}'
+for marker in [
+    'class-mad4b-scp-capability-search-index.php',
+    'class-mad4b-scp-capability-dependency-planner.php',
+    'class-mad4b-scp-capability-source-inventory.php',
+    'class-mad4b-scp-recovery-route-resolver.php',
+]:
+    assert marker in main, f'bootstrap dependency missing: {marker}'
+for marker in ['sources, search', 'async function dependencies', 'async function* searchPages']:
+    assert marker in client, f'unified client integration missing: {marker}'
+
+# Dynamic discovery is logically unbounded across pages, while each response
+# remains budgeted and only server-authorized metadata can be searched.
+for marker in [
+    'SEARCH_CURSOR_CONTRACT', 'SEARCH_CURSOR_TTL', 'encode_search_cursor',
+    'decode_search_cursor', "wp_salt( 'auth' )", 'search_cursor_scope',
+    'total_match_count', 'next_cursor', 'search_snapshot_sha256',
+    'page_offset', 'page_limit', 'has_more', 'facets_applied',
+    "array( 'any', 'all' )", "array( 'relevance', 'name' )",
+    "'ability_prefix'", "'category'", "'surface'", "'min_score'", "'browse'",
+]:
+    assert marker in gateway, f'missing bounded cursor/facet gateway feature: {marker}'
+assert "'category' => array( 'type' => 'string'" in projection, 'MCP projection discovery cannot accept category facet'
+assert "'ability_prefix' => array( 'type' => 'string'" in projection, 'MCP projection discovery cannot accept ability prefix'
+assert "'match_mode' => array( 'type' => 'string'" in projection, 'MCP projection discovery cannot accept advanced match mode'
+assert "'browse' => array( 'type' => 'boolean'" in projection, 'MCP projection discovery cannot browse full metadata registry'
+assert 'async function* searchPages' in client and 'async function* searchItems' in client, 'Client lacks cursor streaming without accumulation'
+assert 'Capability search snapshot changed' in client, 'Client does not reject search drift'
+
 schema_section = gateway.split("private static function schema_transport", 1)[1]
 for marker in ["schema_format", "'wire' === $format", "$prepared['item']['wire']", "$prepared['item']['source']", "mad4b_capability_gateway_schema_format_unavailable"]:
     assert marker in schema_section, f'format-aware schema resolution invariant missing: {marker}'

@@ -21,16 +21,29 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 		);
 	}
 
+	private static function error_redirect( $code ) {
+		$code = sanitize_key( (string) $code );
+		$cfg = MAD4B_SCP_Dynamic_Content_Pipeline::effective();
+		$binding = (string) ( $cfg['revision'] ?? '' ) . ':' . (string) ( $cfg['settings_sha256'] ?? '' );
+		wp_safe_redirect( add_query_arg( array(
+			'page' => self::PAGE,
+			'mad4b_pipeline_error' => $code,
+			'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt( self::PAGE, 'pipeline_error.' . $code, $binding ),
+		), admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
 	public static function save(){
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
 		if(!current_user_can('manage_options'))wp_die(esc_html__('Administrator capability is required.','mad4b-site-control-plane'));
 		check_admin_referer(self::ACTION);
 		$decoded=self::settings_input(wp_unslash($_POST));
 		if(!is_array($decoded)){
-			wp_safe_redirect(add_query_arg(array('page'=>self::PAGE,'mad4b_pipeline_error'=>'invalid_json'),admin_url('admin.php')));exit;
+			self::error_redirect( 'invalid_json' );
 		}
 		$result=MAD4B_SCP_Dynamic_Content_Pipeline::persist($decoded);
 		if(is_wp_error($result)){
-			wp_safe_redirect(add_query_arg(array('page'=>self::PAGE,'mad4b_pipeline_error'=>sanitize_key($result->get_error_code())),admin_url('admin.php')));exit;
+			self::error_redirect( $result->get_error_code() );
 		}
 		if(class_exists('MAD4B_SCP_Audit')) MAD4B_SCP_Audit::record('mad4b/dynamic-content-pipeline-settings-updated',array(
 			'settings_sha256'=>isset($result['settings_sha256'])?(string)$result['settings_sha256']:'',
@@ -61,11 +74,19 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 	public static function render(){
 		if(!current_user_can('manage_options'))wp_die(esc_html__('Administrator capability is required.','mad4b-site-control-plane'));
 		$cfg=MAD4B_SCP_Dynamic_Content_Pipeline::effective();
-		echo '<div class="wrap"><h1>'.esc_html__('Dynamic Content Pipeline','mad4b-site-control-plane').'</h1>';
+		MAD4B_SCP_Admin_Experience::styles();
+		echo '<div class="wrap mad4b-scp-admin-page"><h1>'.esc_html__('Dynamic Content Pipeline','mad4b-site-control-plane').'</h1>';
+		echo '<div class="mad4b-scp-panel"><h2>'.esc_html__('Validation prerequisites','mad4b-site-control-plane').'</h2><p>'.esc_html__('Source checks need approved context, SEO checks need a certified provider, and frontend checks need browser acceptance evidence. Selecting a stage does not complete these prerequisites.','mad4b-site-control-plane').'</p><p>';
+		foreach(array(
+			array('mad4b-control-plane-context',array('tab'=>'sources'),__('Review context sources','mad4b-site-control-plane')),
+			array('mad4b-adapter-coverage',array('tab'=>'functional'),__('Review provider certification','mad4b-site-control-plane')),
+			array('mad4b-control-plane-connection',array('tab'=>'certification'),__('Review browser acceptance','mad4b-site-control-plane')),
+		) as $handoff)echo '<a class="button button-secondary" href="'.esc_url(MAD4B_SCP_Admin_Workspace::link($handoff[0],$handoff[1])).'">'.esc_html($handoff[2]).'</a> ';
+		echo '</p></div>';
 		echo '<p>'.esc_html__('Stages are registered by trusted code. Settings control stage order, enablement, conditions and bounded policy values; settings cannot execute arbitrary PHP callbacks.','mad4b-site-control-plane').'</p>';
 		if(MAD4B_SCP_Admin_Experience::notice_verified(self::PAGE,'pipeline_saved',$cfg['revision'].':'.$cfg['settings_sha256']))echo '<div class="notice notice-success"><p>'.esc_html__('Pipeline settings saved and verified.','mad4b-site-control-plane').'</p></div>';
 		$error=sanitize_key(MAD4B_SCP_Admin_Experience::query_string('mad4b_pipeline_error'));
-		if($error)echo '<div class="notice notice-error"><p>'.esc_html__('Pipeline settings were not saved: ','mad4b-site-control-plane').esc_html($error).'</p></div>';
+		if($error && MAD4B_SCP_Admin_Experience::notice_verified(self::PAGE,'pipeline_error.'.$error,$cfg['revision'].':'.$cfg['settings_sha256']))echo '<div class="notice notice-error"><p>'.esc_html__('Pipeline settings were not saved: ','mad4b-site-control-plane').esc_html($error).'</p></div>';
 
 		echo '<h2>'.esc_html__('Registered stages','mad4b-site-control-plane').'</h2><form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
 		wp_nonce_field(self::ACTION);
@@ -94,7 +115,7 @@ final class MAD4B_SCP_Dynamic_Content_Pipeline_Admin {
 		echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
 		wp_nonce_field(self::ACTION);
 		echo '<input type="hidden" name="action" value="'.esc_attr(self::ACTION).'">';
-		echo '<textarea name="pipeline_json" rows="28" class="large-text code">'.esc_textarea(wp_json_encode($editable,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)).'</textarea>';
+		echo '<label for="mad4b-pipeline-policy">'.esc_html__('Pipeline policy JSON','mad4b-site-control-plane').'</label><textarea id="mad4b-pipeline-policy" name="pipeline_json" rows="28" class="large-text code">'.esc_textarea(wp_json_encode($editable,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)).'</textarea>';
 		submit_button(__('Save and verify pipeline','mad4b-site-control-plane'));
 		echo '</form></details>';
 		echo '<p><strong>'.esc_html__('Settings digest:','mad4b-site-control-plane').'</strong> <code>'.esc_html(isset($cfg['settings_sha256'])?$cfg['settings_sha256']:'').'</code></p></div>';

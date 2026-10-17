@@ -15,6 +15,8 @@ function add_option( $key, $value, $unused = '', $autoload = false ) { if ( isse
 function get_option( $key, $default = null ) { if ( 'mad4b_scp_staging_authority_baseline_v1' === $key ) return $GLOBALS['baseline_option'] ?? $default; return isset( $GLOBALS['wpdb']->value ) ? unserialize( $GLOBALS['wpdb']->value ) : $default; }
 function update_option( $key, $value, $autoload = null ) { if ( 'mad4b_scp_staging_authority_baseline_v1' !== $key ) throw new RuntimeException( 'Unexpected observed-authority option write' ); $GLOBALS['baseline_option'] = $value; return true; }
 function get_userdata( $id ) { return $id === 1 ? (object) array( 'ID' => 1 ) : false; }
+function get_current_user_id() { return empty( $GLOBALS['self_owner'] ) ? 0 : 1; }
+function current_user_can( $cap ) { return ! empty( $GLOBALS['self_owner'] ); }
 function user_can( $user, $capability ) { return ! $GLOBALS['actor_revoked']; }
 $GLOBALS['uuid'] = 0; $GLOBALS['actor_revoked'] = false;
 class FixtureDB {
@@ -36,7 +38,25 @@ final class MAD4B_SCP_Site_Profile {
 	public static function site_uuid() { return self::$uuid; }
 	public static function current_origin() { return 'https://staging.example.com'; }
 	public static function user_is_enrolled( $id ) { return $id === 1; }
+	public static function status() { return array( 'site_uuid' => self::$uuid, 'profile_digest' => self::profile_digest(), 'canonical_origin' => self::current_origin() ); }
 }
+final class MAD4B_SCP_WP_Native_Self_Approval { const APPLY = 'mad4b/wp-native-self-approve-install'; }
+final class MAD4B_SCP_Authorization {
+    public static function execution_callback_started( $ability ) {
+        return $ability === MAD4B_SCP_WP_Native_Self_Approval::APPLY && ! empty( $GLOBALS['self_claim'] );
+    }
+}
+final class MAD4B_SCP_OAuth_Resource_Bridge {
+    const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+    public static function verified_bearer_active() { return ! empty( $GLOBALS['self_oauth'] ); }
+    public static function verified_bearer_has_scope( $scope ) {
+        return $scope === self::AUTHORITY_STEP_UP_SCOPE && ! empty( $GLOBALS['self_scope'] );
+    }
+    public static function verified_bearer_client_is( $client ) {
+        return $client === MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID && ! empty( $GLOBALS['self_client'] );
+    }
+}
+final class MAD4B_SCP_Local_OAuth_Server { const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt'; }
 final class MAD4B_SCP_Runtime_Maintenance_Lease { public static $lost = false; public static function refresh( $token, $owner ) { return self::$lost || $token !== 'lease' ? new WP_Error( 'lease_lost' ) : true; } }
 final class MAD4B_SCP_Servers { public static function expected_server_ids() { return array( 'mad4b-chatgpt', 'mad4b-write' ); } }
 final class MAD4B_SCP_MCP_Peer_Governance { public static $tools = 'stable'; public static function status() { return array( 'inventory_ready' => true, 'blockers' => array(), 'transport_inventory_fingerprint' => hash( 'sha256', self::$tools ), 'foreign_transport_inventory' => array() ); } }
@@ -70,13 +90,14 @@ function check( $condition, $message ) { if ( ! $condition ) throw new RuntimeEx
 function setup_fixture() {
 	$GLOBALS['wpdb']->value = null; unset( $GLOBALS['baseline_option'] ); $GLOBALS['schema_changed'] = false; $GLOBALS['integrity_failed'] = false; $GLOBALS['wpdb']->reject_cas = false; $GLOBALS['actor_revoked'] = false;
 	MAD4B_SCP_Identity_Context::$cron = false; $GLOBALS['risk_changed'] = false; $GLOBALS['descriptor_throws'] = false;
+	$GLOBALS['self_claim'] = false; $GLOBALS['self_owner'] = true; $GLOBALS['self_oauth'] = true; $GLOBALS['self_scope'] = true; $GLOBALS['self_client'] = true;
 	MAD4B_SCP_Runtime_Maintenance_Lease::$lost = false; MAD4B_SCP_MCP_Peer_Governance::$tools = 'stable'; MAD4B_SCP_Site_Profile::$environment = 'staging'; MAD4B_SCP_Site_Profile::$revision = 2; MAD4B_SCP_Site_Profile::$uuid = 'site'; MAD4B_SCP_Audit::$fail_consumption = false; MAD4B_SCP_Skill_Runtime_Certification::$current = true; MAD4B_SCP_Staging_Write_Authority::$injected_drift = '';
 	$plan = array( 'eligible' => true, 'current_ready' => true, 'agent_present' => true, 'read_only' => true, 'agent_public_id' => 'agent', 'write_tool_count' => 2, 'exact_grants_existing' => 2, 'write_inventory_fingerprint' => str_repeat( 'e', 64 ), 'grant_rows_fingerprint' => str_repeat( 'f', 64 ), 'persisted_grant_records_fingerprint' => str_repeat( 'b', 64 ) );
 	foreach ( array( 'exact_grants_missing_count', 'stale_allow_grants_count', 'unreviewed_stale_allow_grants_count', 'broad_environment_grants_count', 'duplicate_exact_allow_grants_count', 'current_agent_wildcard_grants', 'global_registry_wildcard_grants' ) as $key ) $plan[ $key ] = 0;
 	MAD4B_SCP_Staging_Write_Authority::$plan = $plan;
 	$old = array( 'source_commit_sha' => str_repeat( '1', 40 ), 'build_fingerprint' => str_repeat( '2', 64 ), 'package_manifest_digest' => str_repeat( '3', 64 ), 'artifact_identity' => 'old-artifact' );
 	MAD4B_SCP_Live_Acceptance_Observer::$identity = $old;
-	$binding = array( 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
+	$binding = array( 'required' => true, 'stored_bound' => true, 'identity_completeness' => 'complete', 'match' => true ); foreach ( $old as $key => $value ) { $binding['stored_' . $key] = $value; $binding['current_' . $key] = $value; } MAD4B_SCP_Staging_Write_Authority::$binding = $binding;
 	return array( 'version' => '0.4.0-rc.88', 'source_commit_sha' => str_repeat( '4', 40 ), 'build_fingerprint' => str_repeat( '5', 64 ), 'package_manifest_digest' => str_repeat( '6', 64 ), 'artifact_identity' => 'new-artifact', 'archive_sha256' => str_repeat( '7', 64 ), 'release_verdict_success' => true, 'release_root_trust_verified' => true, 'published_from_master' => true, 'release_verdict_run_id' => 1 );
 }
 function prepare_fixture( array $target ) { return MAD4B_SCP_Post_Update_Continuation::prepare( $target, 'governed_native_release_pull', str_repeat( '8', 64 ), 'lease' ); }
@@ -152,6 +173,64 @@ foreach ( array( 'healthy', 'schema', 'risk', 'descriptor', 'expired', 'tampered
 }
 echo "Observed manual update convergence guards: PASS\n";
 
+// Read-only auto-reconciliation preflight is centrally classified and cannot
+// create authority.  Scenario discovery may grow independently, but only an
+// exact ZERO_DELTA observation is eligible for AUTO_REBIND.
+foreach ( array( 'healthy', 'baseline_missing', 'baseline_expired', 'production', 'skills_pending', 'active_permit', 'schema_changed', 'grant_drift', 'profile_drift', 'transport_drift', 'integrity_failed', 'package_identity_mismatch', 'untrusted_release' ) as $case ) {
+	$target = setup_fixture();
+	$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
+	check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Preflight baseline setup failed: ' . $case );
+	MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
+	MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
+	MAD4B_SCP_Connection_Identity_Resolver::$build_fingerprint = 'new';
+
+	if ( 'baseline_missing' === $case ) unset( $GLOBALS['baseline_option'] );
+	if ( 'baseline_expired' === $case ) $GLOBALS['baseline_option']['expires_at'] = time() - 1;
+	if ( 'production' === $case ) MAD4B_SCP_Site_Profile::$environment = 'production';
+	if ( 'skills_pending' === $case ) MAD4B_SCP_Skill_Runtime_Certification::$current = false;
+	if ( 'schema_changed' === $case ) $GLOBALS['schema_changed'] = true;
+	if ( 'grant_drift' === $case ) MAD4B_SCP_Staging_Write_Authority::$plan['persisted_grant_records_fingerprint'] = 'changed';
+	if ( 'profile_drift' === $case ) MAD4B_SCP_Site_Profile::$revision++;
+	if ( 'transport_drift' === $case ) MAD4B_SCP_MCP_Peer_Governance::$tools = 'changed';
+	if ( 'integrity_failed' === $case ) $GLOBALS['integrity_failed'] = true;
+	if ( 'package_identity_mismatch' === $case ) MAD4B_SCP_Live_Acceptance_Observer::$identity['source_commit_sha'] = str_repeat( '9', 40 );
+	if ( 'untrusted_release' === $case ) $target['release_root_trust_verified'] = false;
+	if ( 'active_permit' === $case ) {
+		$prepared = MAD4B_SCP_Post_Update_Continuation::prepare_observed_update( $target, 'lease' );
+		check( is_array( $prepared ) && ! empty( $prepared['active'] ), 'Active-permit preflight fixture did not prepare continuation.' );
+	}
+
+	$calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+	$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $target );
+	check( is_array( $preflight ) && empty( $preflight['mutation_performed'] ), 'Observed preflight must remain read-only: ' . $case );
+	check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls, 'Observed preflight reached candidate-binding primitive: ' . $case );
+	check( 'candidate_binding_only' === ( $preflight['mutation_class'] ?? '' ), 'Observed preflight widened mutation class: ' . $case );
+	check( 'zero_required' === ( $preflight['authority_delta'] ?? '' ), 'Observed preflight weakened zero-delta policy: ' . $case );
+	check( empty( $preflight['production_allowed'] ) && empty( $preflight['breakglass_allowed'] ), 'Observed preflight widened environment authority: ' . $case );
+	check( empty( $preflight['grant_mutation_allowed'] ) && empty( $preflight['subject_mutation_allowed'] ) && empty( $preflight['agent_mutation_allowed'] ), 'Observed preflight widened authority mutation scope: ' . $case );
+
+	$expected = array(
+		'healthy' => 'AUTO_REBIND',
+		'baseline_missing' => 'REVIEW_REQUIRED',
+		'baseline_expired' => 'REVIEW_REQUIRED',
+		'production' => 'HARD_BLOCK',
+		'skills_pending' => 'DEFER',
+		'active_permit' => 'DEFER',
+		'schema_changed' => 'REVIEW_REQUIRED',
+		'grant_drift' => 'HARD_BLOCK',
+		'profile_drift' => 'REVIEW_REQUIRED',
+		'transport_drift' => 'REVIEW_REQUIRED',
+		'integrity_failed' => 'HARD_BLOCK',
+		'package_identity_mismatch' => 'HARD_BLOCK',
+		'untrusted_release' => 'HARD_BLOCK',
+	);
+	check( $expected[ $case ] === ( $preflight['disposition'] ?? '' ), 'Unexpected observed reconciliation disposition: ' . $case . ' => ' . ( $preflight['disposition'] ?? 'missing' ) );
+	if ( 'skills_pending' === $case ) check( ! empty( $preflight['retryable'] ) && (int) $preflight['retry_after_seconds'] >= 5, 'Skill dependency defer must be bounded-retryable.' );
+	else check( empty( $preflight['retryable'] ), 'Non-transient preflight disposition unexpectedly became retryable: ' . $case );
+}
+echo "Observed reconciliation preflight matrix: PASS\n";
+
+
 // A subsequent background observation inherits only the consumed exact actor proof.
 foreach ( array( 'healthy', 'no_permit', 'tampered', 'actor', 'grant', 'transport', 'profile' ) as $case ) {
  $target = setup_fixture(); check( is_array( prepare_fixture( $target ) ), 'Prepare previous governed lifecycle' ); restart_fixture( $target );
@@ -202,3 +281,66 @@ foreach ( array( 'healthy', 'missing', 'expired', 'tampered', 'actor', 'grant', 
  check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls && null === $GLOBALS['wpdb']->value, 'Observation granted authority or created an update intent' );
 }
 echo "Periodic authority observation guards: PASS\n";
+
+// Exact owner-approved local candidate continuation: never a release verdict.
+foreach ( array( 'success', 'no_claim', 'no_oauth', 'no_scope', 'wrong_client',
+    'owner_revoked', 'foreign_channel', 'unsigned_regular_release', 'production',
+    'site_drift', 'permit_tampering' ) as $case ) {
+    $candidate = setup_fixture();
+    foreach ( array( 'release_verdict_success', 'release_root_trust_verified',
+        'published_from_master', 'release_verdict_run_id' ) as $field ) unset( $candidate[$field] );
+    $GLOBALS['self_claim'] = true;
+    if ( 'no_claim' === $case ) $GLOBALS['self_claim'] = false;
+    if ( 'no_oauth' === $case ) $GLOBALS['self_oauth'] = false;
+    if ( 'no_scope' === $case ) $GLOBALS['self_scope'] = false;
+    if ( 'wrong_client' === $case ) $GLOBALS['self_client'] = false;
+    if ( 'owner_revoked' === $case ) $GLOBALS['self_owner'] = false;
+    if ( 'production' === $case ) MAD4B_SCP_Site_Profile::$environment = 'production';
+    $lane = in_array( $case, array( 'foreign_channel', 'unsigned_regular_release' ), true )
+        ? 'governed_file_upload' : 'governed_staging_candidate_upload';
+    $p = MAD4B_SCP_Post_Update_Continuation::prepare( $candidate, $lane, str_repeat( '8', 64 ), 'lease' );
+    if ( in_array( $case, array( 'success', 'site_drift', 'permit_tampering' ), true ) ) {
+        check( is_array( $p ) && $p['release']['evidence_mode'] === 'site_self_certified_staging'
+            && empty( $p['release']['release_certified'] )
+            && empty( $p['release']['production_allowed'] )
+            && $p['release']['source_commit_sha'] === $candidate['source_commit_sha'],
+            'Owner-approved Staging package evidence must be immutable and never certified: ' . $case );
+        restart_fixture( $candidate );
+        if ( 'site_drift' === $case ) MAD4B_SCP_Site_Profile::$revision++;
+        if ( 'permit_tampering' === $case ) {
+            $tampered = unserialize( $GLOBALS['wpdb']->value );
+            $tampered['release']['source_commit_sha'] = str_repeat( '9', 40 );
+            $GLOBALS['wpdb']->value = serialize( $tampered );
+        }
+        $result = MAD4B_SCP_Post_Update_Continuation::evaluate_and_rebind( 'lease' );
+        if ( 'success' === $case ) {
+            check( ! is_wp_error( $result ) && $result['state'] === 'completed',
+                'Verified Staging self-certified candidate may carry forward zero-delta authority' );
+        } else {
+            check( MAD4B_SCP_Staging_Write_Authority::$binding['match'] === false,
+                'Tampering or drift must quarantine authority: ' . $case );
+        }
+    } else {
+        check( is_wp_error( $p ) && in_array( $p->get_error_code(),
+            array( 'mad4b_post_update_continuation_release_untrusted',
+                'mad4b_post_update_continuation_staging_only' ), true ),
+            'Untrusted release must fail closed: ' . $case );
+    }
+}
+echo "post-update owner Staging self-cert continuation: PASS\n";
+
+// Breakglass is process-global and is tested last so the fixture remains resettable.
+// Automatic reconciliation must hard-block before candidate-binding mutation.
+$target = setup_fixture();
+$baseline = MAD4B_SCP_Post_Update_Continuation::capture_ready_baseline( 'lease' );
+check( is_array( $baseline ) && 'OBSERVED' === $baseline['state'], 'Breakglass preflight baseline setup failed.' );
+MAD4B_SCP_Live_Acceptance_Observer::$identity = $target;
+MAD4B_SCP_Staging_Write_Authority::$binding['match'] = false;
+check( ! defined( 'MAD4B_MCP_BREAKGLASS_ENABLED' ), 'Breakglass fixture constant unexpectedly pre-defined.' );
+define( 'MAD4B_MCP_BREAKGLASS_ENABLED', true );
+$calls = MAD4B_SCP_Staging_Write_Authority::$calls;
+$preflight = MAD4B_SCP_Post_Update_Continuation::observed_reconciliation_preflight( $target );
+check( 'HARD_BLOCK' === ( $preflight['disposition'] ?? '' ), 'Breakglass must hard-block automatic reconciliation.' );
+check( in_array( 'breakglass_excluded', $preflight['reasons'] ?? array(), true ), 'Breakglass hard-block reason missing.' );
+check( $calls === MAD4B_SCP_Staging_Write_Authority::$calls && empty( $preflight['mutation_performed'] ), 'Breakglass preflight reached mutation.' );
+echo "Breakglass auto-reconciliation exclusion: PASS\n";

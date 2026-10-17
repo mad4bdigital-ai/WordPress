@@ -325,10 +325,67 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
       const {bytes} = await http(endpoint, async requestSignal => ({method: 'POST', headers: {...await headers({signal: requestSignal}), 'Content-Type': 'application/json'}, body: JSON.stringify({action, ...input}), credentials: credentialMode, redirect: 'error', cache: 'no-store'}), maxResponseBytes, signal);
       value = decode(bytes);
     }
-    if (value?.contract !== 'mad4b.unified-capability-gateway.v1') throw new CatalogError('Unsupported gateway contract');
+    // The stable dispatcher transports both its own envelope and exact,
+    // action-specific native contracts. Never accept an arbitrary provider
+    // contract for a different action.
+    const specialized = {
+      sources: 'mad4b.capability-source-inventory.v1',
+      dependencies: 'mad4b.capability-dependency-plan.v1',
+      recovery: 'mad4b.recovery-route-resolution.v1',
+    };
+    const allowed = ['mad4b.unified-capability-gateway.v1'];
+    if (Object.prototype.hasOwnProperty.call(specialized, action)) allowed.push(specialized[action]);
+    if (!allowed.includes(value?.contract)) throw new CatalogError('Unsupported gateway contract');
     return value;
   }
   async function search(task, {signal, ...options} = {}) { return gateway('search', {task, ...options}, {signal}); }
+  // Stream arbitrarily many ranked metadata results without accumulating every page
+  // or materializing all Ability schemas. Server cursors bind query, snapshot and identity.
+  async function* searchPages(task, {signal, ...options} = {}) {
+    const seen = new Set();
+    let cursor = null, snapshot = null, expectedOffset = null;
+    while (true) {
+      if (signal?.aborted) throw signal.reason ?? new CatalogError('Capability search cancelled');
+      const pageOptions = {...options};
+      if (cursor) { delete pageOptions.offset; pageOptions.cursor = cursor; }
+      const page = await search(task, {...pageOptions, signal});
+      if (!Array.isArray(page.items) || !Number.isInteger(page.count) ||
+          !Number.isInteger(page.total_match_count) || !Number.isInteger(page.page_offset) ||
+          page.count !== page.items.length || page.total_match_count < 0 ||
+          typeof page.search_snapshot_sha256 !== 'string' || !DIGEST.test(page.search_snapshot_sha256))
+        throw new CatalogError('Invalid paginated capability search response');
+      if (snapshot && snapshot !== page.search_snapshot_sha256)
+        throw new CatalogError('Capability search snapshot changed; restart search');
+      if (expectedOffset !== null && expectedOffset !== page.page_offset)
+        throw new CatalogError('Capability search skipped or repeated a page');
+      snapshot = page.search_snapshot_sha256;
+      expectedOffset = page.page_offset + page.count;
+      yield page;
+      const next = page.next_cursor;
+      if (next === null || next === undefined) {
+        if (expectedOffset !== page.total_match_count)
+          throw new CatalogError('Capability search ended before all results were returned');
+        return;
+      }
+      if (typeof next !== 'string' || !next || next.length > 2048 ||
+          seen.has(next) || expectedOffset >= page.total_match_count)
+        throw new CatalogError('Invalid or repeating capability search cursor');
+      seen.add(next);
+      cursor = next;
+    }
+  }
+  async function sources({signal, source_id} = {}) { return gateway('sources', source_id ? {source_id} : {}, {signal}); }
+  async function recovery(goal, {signal, expected_head, blockers = []} = {}) {
+    return gateway('recovery', {goal, ...(expected_head ? {expected_head} : {}), blockers}, {signal});
+  }
+  async function dependencies(operation, {signal, target_kind} = {}) {
+    if (typeof operation !== 'string' || !/^[a-z][a-z0-9._-]{1,119}$/.test(operation)) throw new CatalogError('Exact registered operation is required');
+    return gateway('dependencies', {operation, ...(target_kind ? {target_kind} : {})}, {signal});
+  }
+  async function* searchItems(task, options = {}) {
+    for await (const page of searchPages(task, options))
+      for (const item of page.items) yield item;
+  }
   async function prepare(abilityNames, options = {}) {
     const {client_capabilities: suppliedCapabilities = {}, signal, ...gatewayOptions} = options;
     const requestedParallel = Number.isInteger(suppliedCapabilities.max_parallel_schema_fetches)
@@ -387,5 +444,5 @@ export function createAbilityCatalogClient({ baseUrl, headers = async () => ({})
     if (execution.lane === 'enrollment' && operation?.ability_name === abilityName && DIGEST.test(operation.expected_registration_digest) && DIGEST.test(operation.expected_dispatch_policy_digest)) return callTool('mad4b-enrollment-execute', {operation_id: operation.operation_id, expected_registration_digest: operation.expected_registration_digest, expected_dispatch_policy_digest: operation.expected_dispatch_policy_digest, expected_input_schema_sha256: execution.input_schema_sha256, input}, {signal});
     throw new CatalogError('Use the original explicit authority route for this lane');
   }
-  return {negotiate, search, prepare, manifest, sync, readSchema, execute, transport};
+  return {negotiate, sources, search, searchPages, searchItems, recovery, dependencies, prepare, manifest, sync, readSchema, execute, transport};
 }

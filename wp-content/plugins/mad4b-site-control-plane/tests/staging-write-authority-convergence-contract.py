@@ -6,8 +6,8 @@ root = Path(__file__).resolve().parents[1]
 inc = root / "includes"
 
 write_only = (inc / "class-mad4b-scp-staging-write-authority-convergence.php").read_text(encoding="utf-8")
-servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
-parity = (inc / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8")
+servers = (inc / "class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
+parity = (inc / "class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
 runtime_build = (root / "MAD4B-RUNTIME-BUILD.txt").read_text(encoding="utf-8")
 readme = (root / "README.md").read_text(encoding="utf-8")
@@ -45,6 +45,15 @@ required = [
 ]
 for marker in required:
     assert marker in write_only, marker
+
+for marker in [
+    "MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan::plan()",
+    "'exact_grant_reconciliation_not_eligible'",
+    "'exact_grant_plan_eligible' => $grant_plan_eligible",
+    "'exact_grant_plan_blockers' => $grant_plan_blockers",
+]:
+    assert marker in write_only, f"broad convergence bypasses reviewed exact grant policy: {marker}"
+
 
 for forbidden in [
     "MAD4B_SCP_Developer_Authority::apply",

@@ -1,0 +1,831 @@
+<?php
+/**
+ * Optional Staging-only, PHP/WordPress-native source packaging worker.
+ *
+ * Source bytes are fetched from one immutable GitHub commit/tree and checked
+ * against each Git blob's identity. Nothing fetched is executed or installed.
+ * A local ZIP is BUILT_UNVERIFIED, never a release/CI certificate.
+ */
+if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-wp-native-build-worker.php';
+
+final class MAD4B_SCP_WP_Native_Build {
+    use MAD4B_SCP_WP_Native_Build_Worker;
+    const CONTRACT = 'mad4b.wp-native-source-build.v1';
+    const OPTION = 'mad4b_wp_native_source_build_v1';
+    const HOOK = 'mad4b_wp_native_source_build_tick';
+    const PREFIX = 'mad4b/wp-native-build-';
+    const CONFIRM = 'BUILD UNVERIFIED STAGING SOURCE';
+    const REPO = 'mad4bdigital-ai/WordPress';
+    const PLUGIN = 'wp-content/plugins/mad4b-site-control-plane';
+    const MAX_FILES = 3500;
+    const MAX_SOURCE_BYTES = 14680064;
+    const MAX_BLOB_BYTES = 1048576;
+    const MAX_ZIP_BYTES = 16777216;
+    // Upper bound, not a requirement: wall-clock and PHP limits can stop early.
+    const BATCH = 64;
+    const FETCH_WALL_SECONDS = 24;
+    const FETCH_CHECKPOINT_INTERVAL = 8;
+    // Six hours allows throttled Staging Cron to finish without treating a
+    // low-traffic site as a failed build. This is not an approval-ticket TTL.
+    const JOB_DEADLINE_SECONDS = 21600;
+
+    public static function boot() {
+        // Load self-approval before the adapter enumerates its capabilities.
+        if ( ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-wp-native-self-approval.php';
+        MAD4B_SCP_WP_Native_Self_Approval::boot();
+        // Human intent is recorded independently of OAuth grants and the
+        // existing one-time Admin approval ticket execution boundary.
+        if ( ! class_exists( 'MAD4B_SCP_Native_Build_Owner_Consent', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-native-build-owner-consent.php';
+        MAD4B_SCP_Native_Build_Owner_Consent::boot();
+        // Enroll in the existing adapter registry before the canonical Abilities
+        // lifecycle; the Servers class dynamically discovers the declared
+        // Admin mutation and its original governed Write execution lane.
+        add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_adapter' ), 10, 1 );
+        // Also enroll immediately when the registry was created before this
+        // module's boot order. Registration is idempotent by adapter id.
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false ) &&
+            method_exists( 'MAD4B_SCP_Adapter_Registry', 'instance' ) ) {
+            self::register_adapter( MAD4B_SCP_Adapter_Registry::instance() );
+        }
+        add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 38 );
+        add_action( self::HOOK, array( __CLASS__, 'tick' ) );
+    }
+
+    public static function register_adapter( $registry ) {
+        if ( ! class_exists( 'MAD4B_SCP_Adapter_Base', false ) ||
+            ! class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ||
+            ! $registry instanceof MAD4B_SCP_Adapter_Registry ) return;
+        require_once __DIR__ . '/adapters/class-mad4b-scp-wp-native-build-adapter.php';
+        $registry->register( new MAD4B_SCP_WP_Native_Build_Adapter() );
+    }
+
+    private static function schema( $properties = array(), $required = array() ) {
+        return array( 'type' => 'object', 'additionalProperties' => false,
+            'properties' => $properties, 'required' => $required );
+    }
+
+    public static function register_abilities() {
+        if ( ! function_exists( 'wp_register_ability' ) ) return;
+        $sha = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' );
+        $defs = array(
+            array( 'capabilities', 'Read bounded native build capabilities', 'capabilities', true, self::schema() ),
+            array( 'plan', 'Plan Staging native source package', 'plan', true,
+                self::schema( array( 'expected_head' => $sha ), array( 'expected_head' ) ) ),
+            array( 'status', 'Read native build status', 'status', true, self::schema() ),
+            array( 'simulate', 'Simulate local package checks without attestation', 'simulate', true,
+                self::schema( array( 'expected_head' => $sha ), array( 'expected_head' ) ) ),
+            array( 'export-chunk', 'Export owner-only bounded package chunk', 'export_chunk', true,
+                self::schema( array( 'expected_head' => $sha,
+                    'offset' => array( 'type' => 'integer', 'minimum' => 0 ) ),
+                    array( 'expected_head', 'offset' ) ) ),
+            array( 'start', 'Start opt-in Staging source package build', 'start', false,
+                self::schema( array( 'expected_head' => $sha,
+                    'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+                    'confirmation' => array( 'type' => 'string', 'enum' => array( self::CONFIRM ) ) ),
+                    array( 'expected_head', 'expected_plan_sha256', 'confirmation' ) ) ),
+        );
+        foreach ( $defs as $def ) {
+            $name = self::PREFIX . $def[0];
+            if ( function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ) continue;
+            wp_register_ability( $name, array(
+                'label' => $def[1], 'description' => 'Optional Staging-only PHP package worker; never runs downloaded source or certifies a release.',
+                'category' => $def[3] ? 'mad4b-read' : 'mad4b-admin',
+                'execute_callback' => array( __CLASS__, $def[2] ),
+                'permission_callback' => $def[3] ? array( 'MAD4B_SCP_Policy', 'can_read' ) : array( __CLASS__, 'can_start' ),
+                'input_schema' => $def[4],
+                'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
+                'meta' => array( 'public' => false, 'show_in_rest' => false,
+                    'mcp' => array( 'public' => false, 'type' => 'tool',
+                        'surface' => $def[3] ? 'read' : 'admin',
+                        'non_authorizing' => $def[3],
+                        'production_mutation_allowed' => false ),
+                    'annotations' => array( 'readonly' => $def[3],
+                        'destructive' => false, 'idempotent' => true ) ),
+            ) );
+        }
+    }
+
+    private static function site() {
+        return class_exists( 'MAD4B_SCP_Site_Profile' )
+            ? MAD4B_SCP_Site_Profile::status() : array();
+    }
+
+    private static function exact_staging() {
+        $s = self::site();
+        return is_array( $s ) && ( $s['environment'] ?? '' ) === 'staging'
+            && ( $s['configured_environment'] ?? '' ) === 'staging'
+            && ! empty( $s['authority_ready'] ) && ! empty( $s['origin_match'] )
+            && ! empty( $s['site_uuid'] ) && ! empty( $s['profile_digest'] )
+            && ! empty( $s['canonical_origin'] )
+            && function_exists( 'wp_get_environment_type' )
+            && 'staging' === wp_get_environment_type()
+            && class_exists( 'MAD4B_SCP_WordPress_Native_Opt_In' )
+            && MAD4B_SCP_WordPress_Native_Opt_In::enabled();
+    }
+
+    private static function private_root() {
+        $tmp = realpath( sys_get_temp_dir() );
+        $web = realpath( ABSPATH );
+        $document = ! empty( $_SERVER['DOCUMENT_ROOT'] )
+            ? realpath( $_SERVER['DOCUMENT_ROOT'] ) : false;
+        if ( ! $tmp || ! is_dir( $tmp ) || ! is_writable( $tmp ) ) return false;
+        foreach ( array( $web, $document ) as $root ) {
+            if ( $root && ( $tmp === $root ||
+                0 === strpos( $tmp, rtrim( $root, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR ) ) )
+                return false;
+        }
+        return $tmp;
+    }
+
+    public static function capabilities( $input = array() ) {
+        $root = self::private_root();
+        $checks = array(
+            'exact_staging_opt_in' => self::exact_staging(),
+            'php_native_zip_writer' => function_exists( 'pack' ) && function_exists( 'crc32' ),
+            'php_token_parser' => function_exists( 'token_get_all' ) && defined( 'TOKEN_PARSE' ),
+            'private_temp_outside_webroot' => false !== $root,
+            'safe_https_client' => function_exists( 'wp_safe_remote_get' ),
+            'wp_cron' => function_exists( 'wp_schedule_single_event' ),
+            'source_runtime_execution_supported' => false,
+            'independent_release_attestation_local' => false,
+        );
+        $blockers = array();
+        foreach ( $checks as $k => $ok ) {
+            if ( ! $ok && ! in_array( $k, array(
+                'source_runtime_execution_supported', 'independent_release_attestation_local' ), true ) )
+                $blockers[] = $k;
+        }
+        return array( 'contract' => self::CONTRACT . '.capabilities.v1',
+            'eligible' => empty( $blockers ), 'checks' => $checks,
+            'blockers' => $blockers, 'worker' => 'wordpress_php_cron',
+            'build_state_on_success' => 'BUILT_UNVERIFIED', 'github_ci_required' => false,
+            'external_native_tests_required' => true, 'independent_attestation_required' => true,
+            'production_authorized' => false, 'read_only' => true );
+    }
+
+    public static function plan( $input = array() ) {
+        $sha = $input['expected_head'] ?? '';
+        if ( ! is_array( $input ) || count( $input ) !== 1 ||
+            ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha ) )
+            return new WP_Error( 'mad4b_native_build_input', 'An exact commit SHA is required.' );
+        $cap = self::capabilities();
+        $site = self::site();
+        $binding = array( 'contract' => self::CONTRACT, 'head' => $sha,
+            'site_uuid' => $site['site_uuid'] ?? '', 'profile_digest' => $site['profile_digest'] ?? '',
+            'origin' => $site['canonical_origin'] ?? '' );
+        return array( 'contract' => self::CONTRACT . '.plan.v1',
+            'source_commit_sha' => $sha,
+            'plan_sha256' => hash( 'sha256', wp_json_encode( $binding ) ),
+            'eligible' => $cap['eligible'], 'blockers' => $cap['blockers'],
+            'execution' => 'wp_cron_bounded', 'source_executable_code_loaded' => false,
+            'build_only' => true, 'release_certified' => false,
+            'production_authorized' => false, 'authorizing' => false,
+            'owner_intent_ability' => class_exists( 'MAD4B_SCP_Native_Build_Owner_Consent' )
+                ? MAD4B_SCP_Native_Build_Owner_Consent::PLAN_ABILITY : '',
+            'owner_consent_is_not_oauth_or_execution_grant' => true,
+            'governed_admin_ticket_required_for_start' => true,
+            'remote_approval_target_ability' => self::PREFIX . 'start',
+            'semantic_ability_category' => 'mad4b-admin',
+            'remote_approval_server_id' => (
+                class_exists( 'MAD4B_SCP_Servers' ) &&
+                MAD4B_SCP_Servers::is_external_write_candidate( self::PREFIX . 'start' ) &&
+                MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', self::PREFIX . 'start' )
+            ) ? 'mad4b-write' : '',
+            'remote_approval_plan_ability' => 'mad4b/approval-plan',
+            'remote_approval_decision_ability' => 'mad4b/approval-ai-decide',
+            'remote_approval_does_not_bypass_owner_step_up' => true,
+            'owner_step_up_required_for_start' => true );
+    }
+
+    /**
+     * Side-effect-free admission predicate. It is deliberately safe for a
+     * trusted dispatcher to call *before* opening the replay/execute boundary:
+     * no ticket is claimed, no OAuth grant is minted and no job is scheduled.
+     */
+    public static function can_start( $input = array() ) {
+        if ( ! self::exact_staging() )
+            return new WP_Error( 'mad4b_native_staging_required',
+                'Native source builds require the exact enrolled Staging Site Profile.' );
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) )
+            return new WP_Error( 'mad4b_native_owner_admin_required',
+                'The authenticated WordPress user needs administrator capability.' );
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ||
+            ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return new WP_Error( 'mad4b_native_owner_enrollment_required',
+                'The current administrator is not the enrolled Staging owner.' );
+        if ( ! class_exists( 'MAD4B_SCP_Policy' ) || ! MAD4B_SCP_Policy::can_mutate() )
+            return new WP_Error( 'mad4b_native_mutation_policy_denied',
+                'The current Staging mutation policy does not permit native builds.' );
+        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
+            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() )
+            return new WP_Error( 'mad4b_native_owner_oauth_required',
+                'A verified current-request owner OAuth bearer is required.' );
+        if ( ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+                MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
+            return new WP_Error( 'mad4b_native_step_up_required',
+                'Reauthorize the enrolled owner with dedicated mad4b:authority:step-up OAuth scope.' );
+        if ( ! class_exists( 'MAD4B_SCP_Local_OAuth_Server' ) ||
+            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is(
+                MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID ) )
+            return new WP_Error( 'mad4b_native_oauth_client_mismatch',
+                'The verified OAuth bearer belongs to a different client.' );
+        if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
+            return new WP_Error( 'mad4b_native_execution_authority_unavailable',
+                'The canonical one-time approval and execution boundary is unavailable.' );
+        // Do not claim/consume a ticket here. The canonical Authorization
+        // wrapper is solely responsible for one-time execution admission.
+        return true;
+    }
+
+    private static function root_for( $sha ) {
+        $base = self::private_root();
+        $site = self::site();
+        return $base ? $base . DIRECTORY_SEPARATOR . 'mad4b-native-'
+            . substr( hash( 'sha256', ( $site['site_uuid'] ?? '' ) . ':' . $sha ), 0, 28 ) : false;
+    }
+
+    public static function start( $input = array() ) {
+        if ( ! is_array( $input ) ||
+            array_diff( array_keys( $input ), array( 'expected_head', 'expected_plan_sha256', 'confirmation' ) ) ||
+            ( $input['confirmation'] ?? '' ) !== self::CONFIRM )
+            return new WP_Error( 'mad4b_native_start_input', 'Exact opt-in confirmation required.' );
+        // Recheck local owner identity after the canonical execution boundary
+        // claims exactly one ticket for this start. Reject direct PHP callers.
+        $access = self::can_start( $input );
+        if ( is_wp_error( $access ) || true !== $access ) return $access;
+        if ( ! class_exists( 'MAD4B_SCP_Authorization' ) ||
+            ! method_exists( 'MAD4B_SCP_Authorization', 'execution_callback_started' ) ||
+            ! MAD4B_SCP_Authorization::execution_callback_started( self::PREFIX . 'start' ) )
+            return new WP_Error( 'mad4b_native_start_execution_claim_required',
+                'Native build requires its exact governed execution claim.' );
+        $plan = self::plan( array( 'expected_head' => $input['expected_head'] ?? '' ) );
+        if ( is_wp_error( $plan ) ) return $plan;
+        if ( ! hash_equals( $plan['plan_sha256'], (string) ( $input['expected_plan_sha256'] ?? '' ) ) ||
+            ! $plan['eligible'] ) return new WP_Error( 'mad4b_native_plan_stale', 'Plan changed or environment ineligible.' );
+        // Serialize admission across ALL source heads on this WordPress site.
+        // The existing SQL INSERT IGNORE mutex is fail-closed and releases by
+        // its exact owner token; a worker's per-source flock is insufficient.
+        if ( ! class_exists( 'MAD4B_SCP_Batch_Atomic_Mutex', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-batch-atomic-mutex.php';
+        $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'wp-native-build', 'begin' );
+        if ( is_wp_error( $lease ) )
+            return new WP_Error( 'mad4b_native_admission_locked',
+                'Atomic Staging build admission unavailable or held; reconcile the current reservation.' );
+        try {
+            $outcome = self::start_under_admission( $plan, $input );
+        } catch ( Throwable $error ) {
+            // A partial start must be reconciled before any write retry.
+            $outcome = new WP_Error( 'mad4b_native_admission_uncertain',
+                'Start encountered an internal error; inspect durable job state before retry.' );
+        } finally {
+            $unlocked = MAD4B_SCP_Batch_Atomic_Mutex::release( $lease );
+        }
+        if ( is_wp_error( $unlocked ) )
+            return new WP_Error( 'mad4b_native_admission_release_uncertain',
+                'Build admission owner release was not confirmed; independently reconcile before retry.' );
+        return $outcome;
+    }
+
+    /**
+     * Resume a strictly identical, deadline-expired partial build only after a
+     * fresh governed start ticket and current owner OAuth Step-Up. Nothing is
+     * resumed automatically or after a Site Profile / source-plan drift.
+     *
+     * A BLOCKED job's previous failure code is ambiguous; re-check the site
+     * identity, exact source, deadline and every verified file from disk.
+     */
+
+
+    private static function schedule() {
+        if ( ! function_exists( 'wp_schedule_single_event' ) ) return false;
+        // A pending event is already a valid scheduling outcome. Otherwise
+        // return the actual WordPress scheduler result; never silently report
+        // success after a failed or disabled cron dispatch.
+        if ( function_exists( 'wp_next_scheduled' ) && wp_next_scheduled( self::HOOK ) )
+            return true;
+        $result = wp_schedule_single_event( time() + 3, self::HOOK, array(), true );
+        return ! is_wp_error( $result ) && true === $result;
+    }
+
+    private static function github( $suffix, $limit = 2097152 ) {
+        $url = 'https://api.github.com/repos/' . self::REPO . '/' . $suffix;
+        $r = wp_safe_remote_get( $url, array( 'timeout' => 12, 'redirection' => 0,
+            'sslverify' => true, 'limit_response_size' => $limit + 1,
+            'headers' => array( 'Accept' => 'application/vnd.github+json',
+                'User-Agent' => 'MAD4B-WP-Native-Source-Builder' ) ) );
+        if ( is_wp_error( $r ) || (int) wp_remote_retrieve_response_code( $r ) !== 200 )
+            return new WP_Error( 'mad4b_native_github_unavailable', 'Exact GitHub object unavailable.' );
+        $body = wp_remote_retrieve_body( $r );
+        if ( ! is_string( $body ) || strlen( $body ) > $limit )
+            return new WP_Error( 'mad4b_native_github_oversize', 'GitHub response exceeded budget.' );
+        $json = json_decode( $body, true );
+        return is_array( $json ) ? $json :
+            new WP_Error( 'mad4b_native_github_invalid', 'Malformed GitHub JSON.' );
+    }
+
+
+    /**
+     * Reduce WordPress Cron wake-ups without raising the file/network trust
+     * boundary. Every Git blob is still fetched from the immutable SHA,
+     * checked against its tree identity, and written to the private workspace.
+     * Up to 64 blobs may be fetched per tick, but an explicit time budget
+     * bounds each invocation; progress is durably checkpointed every 8 files.
+     */
+    private static function fetch_time_budget() {
+        $php_seconds = (int) ini_get( 'max_execution_time' );
+        if ( $php_seconds > 0 )
+            return max( 2, min( self::FETCH_WALL_SECONDS, $php_seconds - 8 ) );
+        return self::FETCH_WALL_SECONDS;
+    }
+
+
+
+    /** Python canonical builder parity: sorted JSON keys and two-space indentation. */
+    private static function canonical_json( $data ) {
+        $walk = static function ( $value ) use ( &$walk ) {
+            if ( ! is_array( $value ) ) return $value;
+            $keys = array_keys( $value );
+            if ( $keys !== range( 0, count( $keys ) - 1 ) ) ksort( $value, SORT_STRING );
+            foreach ( $value as $key => $item ) $value[ $key ] = $walk( $item );
+            return $value;
+        };
+        $encoded = json_encode( $walk( $data ), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+        if ( ! is_string( $encoded ) )
+            return new WP_Error( 'mad4b_native_json_encode', 'Canonical JSON encoding failed.' );
+        return preg_replace_callback( '/^( +)/m', static function ( $m ) {
+            return str_repeat( ' ', (int) ( strlen( $m[1] ) / 2 ) );
+        }, $encoded ) . "\n";
+    }
+
+    /**
+     * Minimal deterministic ZIP_STORED writer reproducing Python's ZipInfo:
+     * 1980-01-01, UNIX 0644 regular files, no extras or comments.
+     * This never executes source, uses shell, or trusts a built package.
+     */
+    private static function canonical_archive( $root, array $entries,
+        $provenance_json, $target ) {
+        if ( ! is_string( $provenance_json ) || strlen( $provenance_json ) > 2097152 )
+            return new WP_Error( 'mad4b_native_provenance_oversize', 'Bounded provenance required.' );
+        $paths = array();
+        $expected = array();
+        foreach ( $entries as $e ) {
+            $paths[] = $e['path'];
+            $expected[ $e['path'] ] = $e;
+        }
+        $paths[] = 'MAD4B-BUILD-PROVENANCE.json';
+        sort( $paths, SORT_STRING );
+        $temp = $target . '.tmp';
+        if ( is_link( $target ) || is_link( $temp ) )
+            return new WP_Error( 'mad4b_native_zip_symlink', 'Unsafe ZIP output path.' );
+        $fp = @fopen( $temp, 'wb' );
+        if ( ! $fp ) return new WP_Error( 'mad4b_native_zip_io', 'Private ZIP cannot be written.' );
+        $central = '';
+        $offset = 0;
+        $count = 0;
+        $error = '';
+        foreach ( $paths as $path ) {
+            $name = 'mad4b-site-control-plane/' . $path;
+            $data = $path === 'MAD4B-BUILD-PROVENANCE.json'
+                ? $provenance_json : @file_get_contents( $root . $path );
+            if ( ! is_string( $data ) || strlen( $name ) > 65535 ) {
+                $error = 'bad_archive_source'; break;
+            }
+            $size = strlen( $data );
+            if ( $path !== 'MAD4B-BUILD-PROVENANCE.json' &&
+                ( ! isset( $expected[ $path ] ) ||
+                $size !== (int) $expected[ $path ]['bytes'] ||
+                ! hash_equals( (string) $expected[ $path ]['sha'],
+                    sha1( 'blob ' . $size . "\0" . $data ) ) ) ) {
+                $error = 'staged_source_changed_during_zip'; break;
+            }
+            $crc = (int) sprintf( '%u', crc32( $data ) );
+            $local = pack( 'VvvvvvVVVvv', 0x04034b50, 20, 0, 0, 0, 33,
+                $crc, $size, $size, strlen( $name ), 0 );
+            $header = $local . $name;
+            $bytes = strlen( $header ) + $size;
+            if ( $offset + $bytes > self::MAX_ZIP_BYTES ) {
+                $error = 'archive_budget_exceeded'; break;
+            }
+            if ( fwrite( $fp, $header ) !== strlen( $header ) ||
+                fwrite( $fp, $data ) !== $size ) {
+                $error = 'archive_write_failed'; break;
+            }
+            $central .= pack( 'VvvvvvvVVVvvvvvVV', 0x02014b50,
+                788, 20, 0, 0, 0, 33, $crc, $size, $size,
+                strlen( $name ), 0, 0, 0, 0, 0x81a40000, $offset ) . $name;
+            $offset += $bytes;
+            $count++;
+        }
+        if ( ! $error ) {
+            $end = pack( 'VvvvvVVv', 0x06054b50, 0, 0, $count, $count,
+                strlen( $central ), $offset, 0 );
+            if ( $offset + strlen( $central ) + strlen( $end ) > self::MAX_ZIP_BYTES ||
+                fwrite( $fp, $central . $end ) !== strlen( $central ) + strlen( $end ) )
+                $error = 'archive_directory_failed';
+        }
+        fclose( $fp );
+        if ( $error ) {
+            @unlink( $temp );
+            return new WP_Error( 'mad4b_native_zip_failed', $error );
+        }
+        if ( ! @rename( $temp, $target ) ) {
+            @unlink( $temp );
+            return new WP_Error( 'mad4b_native_zip_rename', 'Cannot publish private archive.' );
+        }
+        return true;
+    }
+
+    private static function git_blob_hash( $path ) {
+        $raw = file_get_contents( $path );
+        return is_string( $raw ) ? sha1( 'blob ' . strlen( $raw ) . "\0" . $raw ) : '';
+    }
+
+    /**
+     * Read the persisted job under its filesystem lock, bypassing the
+     * request-local WordPress option cache. A second get_option() alone is not
+     * a cross-process fresh read when a worker already cached old state.
+     */
+    private static function locked_job_read( $allow_missing = false ) {
+        global $wpdb;
+        if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) ||
+            ! is_string( $wpdb->options ) ||
+            ! preg_match( '/^[A-Za-z0-9_]+$/D', $wpdb->options ) ||
+            ! method_exists( $wpdb, 'get_var' ) || ! method_exists( $wpdb, 'prepare' ) ||
+            ! function_exists( 'maybe_unserialize' ) )
+            return new WP_Error( 'mad4b_native_job_db_unavailable',
+                'Current worker state cannot be read independently of cache.' );
+        try {
+            $sql = $wpdb->prepare(
+                "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+                self::OPTION );
+            $raw = $wpdb->get_var( $sql );
+        } catch ( Throwable $error ) {
+            return new WP_Error( 'mad4b_native_job_db_read_failed',
+                'Current worker state unavailable; no mutation attempted.' );
+        }
+        if ( null === $raw && $allow_missing ) return array();
+        if ( ! is_string( $raw ) )
+            return new WP_Error( 'mad4b_native_job_db_missing',
+                'Current worker state is missing from persistent storage.' );
+        $value = maybe_unserialize( $raw );
+        return is_array( $value ) ? $value :
+            new WP_Error( 'mad4b_native_job_db_invalid',
+                'Current worker state is not a valid record.' );
+    }
+
+    public static function tick() {
+        if ( ! self::exact_staging() ) return;
+        $observed = get_option( self::OPTION, array() );
+        if ( ! is_array( $observed ) || ! preg_match( '/^[a-f0-9]{40}$/D',
+            (string) ( $observed['head'] ?? '' ) ) ||
+            ! in_array( $observed['state'] ?? '',
+                array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) return;
+        $dir = self::root_for( $observed['head'] );
+        if ( ! $dir || ! is_dir( $dir ) || is_link( $dir ) ) return;
+        $fp = @fopen( $dir . '/.lock', 'c' );
+        if ( ! $fp ) return;
+        if ( ! flock( $fp, LOCK_EX | LOCK_NB ) ) { fclose( $fp ); return; }
+        try {
+            // The pre-lock read is ONLY used to locate the workspace. Workers
+            // must reload canonical state AFTER obtaining its per-source lock;
+            // otherwise a delayed worker can roll back another tick's cursor
+            // or execute work belonging to a superseding job.
+            $job = self::locked_job_read();
+            if ( is_wp_error( $job ) ) return;
+            if ( ! is_array( $job ) ||
+                ( $job['head'] ?? '' ) !== $observed['head'] ||
+                ( isset( $observed['job_id'] ) && ( $job['job_id'] ?? '' ) !== $observed['job_id'] ) ||
+                ! in_array( $job['state'] ?? '',
+                    array( 'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
+                // Another worker may have completed the persisted job while
+                // this request still held a stale WordPress option cache.
+                // Invalidate only the cache; do not save the superseded job.
+                if ( function_exists( 'wp_cache_delete' ) ) {
+                    wp_cache_delete( self::OPTION, 'options' );
+                    wp_cache_delete( 'alloptions', 'options' );
+                    wp_cache_delete( 'notoptions', 'options' );
+                }
+                return;
+            }
+            $site = self::site();
+            if ( ! self::exact_staging() ||
+                ( $site['site_uuid'] ?? '' ) !== ( $job['site_uuid'] ?? '' ) ||
+                ( $site['profile_digest'] ?? '' ) !== ( $job['profile_digest'] ?? '' ) ||
+                ( $site['canonical_origin'] ?? '' ) !== ( $job['origin'] ?? '' ) ||
+                time() > ( $job['expires_at'] ?? 0 ) ) {
+                $job['state'] = 'BLOCKED';
+                $job['blocker'] = 'site_binding_or_deadline_changed';
+                update_option( self::OPTION, $job, false );
+                return;
+            }
+            try {
+                if ( $job['state'] === 'DISCOVERING' ) $out = self::discover( $job );
+                elseif ( $job['state'] === 'FETCHING' ) $out = self::fetch_batch( $job, $dir );
+                else $out = self::package( $job, $dir );
+                if ( is_wp_error( $out ) ) {
+                    $job['state'] = 'BLOCKED';
+                    $job['blocker'] = $out->get_error_code();
+                }
+            } catch ( Throwable $error ) {
+                // No raw exception text, potentially secret URL, or source
+                // content is written to the MCP status or WordPress option.
+                $job['state'] = 'BLOCKED';
+                $job['blocker'] = 'native_worker_internal_exception';
+                $job['internal_exception_class'] = get_class( $error );
+            }
+            if ( in_array( $job['state'], array(
+                'DISCOVERING', 'FETCHING', 'PACKAGING' ), true ) ) {
+                if ( ! self::schedule() ) {
+                    $job['state'] = 'BLOCKED';
+                    $job['blocker'] = 'wp_cron_schedule_failed';
+                }
+            }
+            update_option( self::OPTION, $job, false );
+        } finally {
+            flock( $fp, LOCK_UN );
+            fclose( $fp );
+        }
+    }
+
+    public static function status( $input = array() ) {
+        $job = get_option( self::OPTION, array() );
+        if ( ! is_array( $job ) || ! isset( $job['head'] ) )
+            return array( 'contract' => self::CONTRACT . '.status.v1',
+                'state' => 'NOT_RUN', 'production_authorized' => false );
+        return array( 'contract' => self::CONTRACT . '.status.v1',
+            'state' => $job['state'], 'head' => $job['head'],
+            'files_total' => count( $job['entries'] ?? array() ),
+            'files_fetched' => $job['cursor'] ?? 0,
+            'deadline_expired' => isset( $job['expires_at'] ) && time() > (int) $job['expires_at'],
+            'resume_count' => $job['resume_count'] ?? 0,
+            'site_identity_matches_job' => ( $job['site_uuid'] ?? '' ) === ( self::site()['site_uuid'] ?? '' )
+                && ( $job['profile_digest'] ?? '' ) === ( self::site()['profile_digest'] ?? '' )
+                && ( $job['origin'] ?? '' ) === ( self::site()['canonical_origin'] ?? '' ),
+            'max_files_per_tick' => self::BATCH,
+            'last_fetch_count' => $job['last_fetch_count'] ?? 0,
+            'last_fetch_elapsed_ms' => $job['last_fetch_elapsed_ms'] ?? 0,
+            'fetch_tick_count' => $job['fetch_tick_count'] ?? 0,
+            'archive_sha256' => $job['archive_sha256'] ?? '',
+            'archive_bytes' => $job['archive_bytes'] ?? 0,
+            'build_fingerprint' => $job['build_fingerprint'] ?? '',
+            'package_manifest_digest' => $job['package_manifest_digest'] ?? '',
+            'canonical_receipt' => $job['canonical_receipt'] ?? array(),
+            'canonical_receipt_sha256' => $job['canonical_receipt_sha256'] ?? '',
+            'blocker' => $job['blocker'] ?? '',
+            'php_files_token_parsed' => $job['php_files_token_parsed'] ?? 0,
+            'php_token_parse_screening_only' => true,
+            'canonical_archive_format' => 'python_zipinfo_stored_unix_0644_v1',
+            'canonical_archive_parity_verified' => false,
+            'native_php_cli_tests_passed' => false,
+            'independent_attestation_verified' => false,
+            'release_certified' => false, 'production_authorized' => false,
+            'read_only' => true );
+    }
+
+
+    /**
+     * Owner-independent, read-only, source-bound LOCAL evidence simulation.
+     * Never executes fetched PHP, signs a receipt, or authorizes a release.
+     * All native version-matrix and independent-trust gates remain BLOCKED.
+     */
+    public static function simulate( $input = array() ) {
+        if ( ! is_array( $input ) || count( $input ) !== 1 ||
+            ! isset( $input['expected_head'] ) ||
+            ! is_string( $input['expected_head'] ) ||
+            ! preg_match( '/^[a-f0-9]{40}$/D', $input['expected_head'] ) )
+            return new WP_Error( 'mad4b_native_simulator_invalid_input',
+                'One exact immutable commit is required.' );
+        if ( ! self::exact_staging() )
+            return new WP_Error( 'mad4b_native_simulator_staging_only',
+                'Native simulation is restricted to enrolled Staging.' );
+        $job = self::locked_job_read( true );
+        if ( is_wp_error( $job ) ) return $job;
+        $sha = $input['expected_head'];
+        $site = self::site();
+        $identity_ok = is_array( $job ) && ( $job['head'] ?? '' ) === $sha
+            && ( $job['site_uuid'] ?? '' ) === ( $site['site_uuid'] ?? '' )
+            && ( $job['profile_digest'] ?? '' ) === ( $site['profile_digest'] ?? '' )
+            && ( $job['origin'] ?? '' ) === ( $site['canonical_origin'] ?? '' )
+            && ( $job['state'] ?? '' ) === 'BUILT_UNVERIFIED';
+        $checks = array(
+            'exact_job_site_binding' => $identity_ok ? 'LOCAL_PASS' : 'BLOCKED',
+            'archive_sha256_bytes' => 'BLOCKED',
+            'canonical_receipt_sha256_binding' => 'BLOCKED',
+            'php_token_screening_recorded' => 'BLOCKED',
+        );
+        if ( $identity_ok ) {
+            $dir = self::root_for( $sha );
+            $zip = $dir ? $dir . '/candidate.zip' : '';
+            $receipt_file = $dir ? $dir . '/CANONICAL-PACKAGE-RECEIPT.json' : '';
+            $size = (int) ( $job['archive_bytes'] ?? 0 );
+            $digest = (string) ( $job['archive_sha256'] ?? '' );
+            if ( $zip && $size > 0 && $size <= self::MAX_ZIP_BYTES
+                && preg_match( '/^[a-f0-9]{64}$/D', $digest )
+                && is_file( $zip ) && ! is_link( $zip )
+                && filesize( $zip ) === $size ) {
+                $actual = hash_file( 'sha256', $zip );
+                if ( is_string( $actual ) && hash_equals( $digest, $actual ) )
+                    $checks['archive_sha256_bytes'] = 'LOCAL_PASS';
+            }
+            $receipt_hash = (string) ( $job['canonical_receipt_sha256'] ?? '' );
+            if ( $receipt_file && is_file( $receipt_file ) && ! is_link( $receipt_file )
+                && filesize( $receipt_file ) > 0 && filesize( $receipt_file ) <= 65536
+                && preg_match( '/^[a-f0-9]{64}$/D', $receipt_hash ) ) {
+                $receipt_bytes = file_get_contents( $receipt_file );
+                if ( is_string( $receipt_bytes )
+                    && hash_equals( $receipt_hash, hash( 'sha256', $receipt_bytes ) ) ) {
+                    $receipt = json_decode( $receipt_bytes, true );
+                    if ( is_array( $receipt )
+                        && ( $receipt['source_commit_sha'] ?? '' ) === $sha
+                        && ( $receipt['archive_sha256'] ?? '' ) === $digest
+                        && ( $receipt['archive_bytes'] ?? -1 ) === $size
+                        && ( $receipt['build_fingerprint'] ?? '' ) === ( $job['build_fingerprint'] ?? '' )
+                        && ( $receipt['package_manifest_digest'] ?? '' ) === ( $job['package_manifest_digest'] ?? '' )
+                        && $checks['archive_sha256_bytes'] === 'LOCAL_PASS' )
+                        $checks['canonical_receipt_sha256_binding'] = 'LOCAL_PASS';
+                }
+            }
+            // A count alone cannot prove all fetched PHP files were screened.
+            $php_expected = 0;
+            foreach ( (array) ( $job['entries'] ?? array() ) as $entry ) {
+                if ( is_array( $entry ) && isset( $entry['path'] )
+                    && is_string( $entry['path'] )
+                    && substr( $entry['path'], -4 ) === '.php' )
+                    $php_expected++;
+            }
+            if ( $php_expected > 0
+                && (int) ( $job['php_files_token_parsed'] ?? 0 ) === $php_expected )
+                $checks['php_token_screening_recorded'] = 'LOCAL_PASS';
+        }
+        $all_local = ! in_array( 'BLOCKED', $checks, true );
+        return array(
+            'contract' => self::CONTRACT . '.simulation.v1',
+            'state' => $all_local ? 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' : 'LOCAL_SELF_CHECKS_BLOCKED',
+            'head' => $sha,
+            'local_checks' => $checks,
+            'external_gates' => array(
+                'g9_delivery_contract' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'php74_tree_syntax' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'php83_tree_syntax' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'canonical_package_receipt' => 'NOT_INDEPENDENTLY_VERIFIED',
+                'isolated_zip_runtime_integrity' => 'NOT_EXECUTED_BY_SIMULATOR',
+                'exact_source_verification' => 'NOT_INDEPENDENTLY_VERIFIED',
+            ),
+            'independent_signature_present' => false,
+            'independent_attestation_verified' => false,
+            'source_php_executed' => false,
+            'native_php_cli_tests_passed' => false,
+            'release_certified' => false,
+            'authorizing' => false,
+            'mutation_performed' => false,
+            'read_only' => true,
+            'production_authorized' => false,
+        );
+    }
+
+    /**
+     * Read the exact persistent build identity TWICE around local checks. This
+     * is a read-only immutable snapshot, not a certificate or mutation lease.
+     * job_id binds the source, site, archive, receipt and screen result.
+     */
+    public static function verified_snapshot( $sha ) {
+        if ( ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha )
+            || ! self::exact_staging() )
+            return new WP_Error( 'mad4b_native_snapshot_staging', 'Exact Staging source identity required.' );
+        $before = self::locked_job_read();
+        if ( is_wp_error( $before ) ) return $before;
+        if ( ! is_array( $before ) ||
+            ( $before['head'] ?? '' ) !== $sha ||
+            ( $before['state'] ?? '' ) !== 'BUILT_UNVERIFIED' ||
+            ! preg_match( '/^[a-f0-9]{32}$/D', (string) ( $before['job_id'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_native_snapshot_not_ready', 'Exact completed native job required.' );
+        $sim = self::simulate( array( 'expected_head' => $sha ) );
+        if ( is_wp_error( $sim ) ) return $sim;
+        if ( ( $sim['state'] ?? '' ) !== 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' )
+            return new WP_Error( 'mad4b_native_snapshot_checks_failed', 'Local build evidence failed.' );
+        $after = self::locked_job_read();
+        if ( is_wp_error( $after ) ) return $after;
+        $keys = array( 'job_id', 'head', 'state', 'site_uuid', 'profile_digest',
+            'origin', 'archive_sha256', 'archive_bytes', 'build_fingerprint',
+            'package_manifest_digest', 'canonical_receipt_sha256', 'version',
+            'php_files_token_parsed', 'entries' );
+        if ( ! is_array( $after ) )
+            return new WP_Error( 'mad4b_native_snapshot_missing', 'Fresh build record unavailable.' );
+        foreach ( $keys as $key ) {
+            if ( ! array_key_exists( $key, $before ) ||
+                ! array_key_exists( $key, $after ) ||
+                $before[ $key ] !== $after[ $key ] )
+                return new WP_Error( 'mad4b_native_snapshot_changed',
+                    'Build source, receipt, file inventory or job changed during verification.' );
+        }
+        $site = self::site();
+        if ( ( $after['site_uuid'] ?? '' ) !== ( $site['site_uuid'] ?? '' ) ||
+            ( $after['profile_digest'] ?? '' ) !== ( $site['profile_digest'] ?? '' ) ||
+            ( $after['origin'] ?? '' ) !== ( $site['canonical_origin'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_snapshot_site_drift', 'Enrolled Staging Site Profile changed.' );
+        $receipt = $after['canonical_receipt'] ?? null;
+        if ( ! is_array( $receipt ) ||
+            ( $receipt['source_commit_sha'] ?? '' ) !== $sha ||
+            ( $receipt['control_plane_version'] ?? '' ) !== ( $after['version'] ?? '' ) ||
+            ( $receipt['archive_sha256'] ?? '' ) !== ( $after['archive_sha256'] ?? '' ) ||
+            ( $receipt['archive_bytes'] ?? -1 ) !== ( $after['archive_bytes'] ?? -2 ) ||
+            ( $receipt['build_fingerprint'] ?? '' ) !== ( $after['build_fingerprint'] ?? '' ) ||
+            ( $receipt['package_manifest_digest'] ?? '' ) !== ( $after['package_manifest_digest'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_snapshot_receipt_mismatch', 'Canonical receipt and persisted job differ.' );
+        return array(
+            'job_id' => $after['job_id'],
+            'head' => $sha,
+            'state' => $after['state'],
+            'site_uuid' => $after['site_uuid'],
+            'profile_digest' => $after['profile_digest'],
+            'origin' => $after['origin'],
+            'version' => $after['version'],
+            'archive_sha256' => $after['archive_sha256'],
+            'archive_bytes' => (int) $after['archive_bytes'],
+            'build_fingerprint' => $after['build_fingerprint'],
+            'package_manifest_digest' => $after['package_manifest_digest'],
+            'canonical_receipt_sha256' => $after['canonical_receipt_sha256'],
+            'local_checks' => $sim['local_checks'],
+            'state_is_final' => true,
+            'external_release_certified' => false,
+        );
+    }
+
+    /**
+     * INTERNAL same-process handoff to governed Staging updater. Not an
+     * exposed Ability, URL, shell path, or plugin download endpoint.
+     * The WordPress owner and Site Profile checks remain mandatory.
+     */
+    public static function local_package_bytes( $sha ) {
+        if ( ! is_string( $sha ) || ! preg_match( '/^[a-f0-9]{40}$/D', $sha ) ||
+            ! self::exact_staging() || ! function_exists( 'current_user_can' ) ||
+            ! current_user_can( 'manage_options' ) ||
+            ! current_user_can( 'update_plugins' ) ||
+            ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return new WP_Error( 'mad4b_native_local_package_denied', 'Enrolled Staging owner required.' );
+        $sim = self::simulate( array( 'expected_head' => $sha ) );
+        if ( is_wp_error( $sim ) || ( $sim['state'] ?? '' ) !== 'LOCAL_SELF_CHECKS_PASSED_UNTRUSTED' )
+            return new WP_Error( 'mad4b_native_local_package_unverified', 'Local ZIP integrity was not confirmed.' );
+        $job = self::locked_job_read();
+        if ( is_wp_error( $job ) || ! is_array( $job ) ||
+            ( $job['head'] ?? '' ) !== $sha ||
+            ( $job['state'] ?? '' ) !== 'BUILT_UNVERIFIED' )
+            return new WP_Error( 'mad4b_native_local_package_state', 'Completed matching build required.' );
+        $dir = self::root_for( $sha );
+        $path = $dir ? $dir . '/candidate.zip' : '';
+        $size = (int) ( $job['archive_bytes'] ?? 0 );
+        $digest = (string) ( $job['archive_sha256'] ?? '' );
+        if ( ! $path || $size < 1 || $size > self::MAX_ZIP_BYTES ||
+            ! preg_match( '/^[a-f0-9]{64}$/D', $digest ) ||
+            ! is_file( $path ) || is_link( $path ) || filesize( $path ) !== $size )
+            return new WP_Error( 'mad4b_native_local_package_invalid', 'Private candidate ZIP unavailable.' );
+        $bytes = file_get_contents( $path );
+        if ( ! is_string( $bytes ) || strlen( $bytes ) !== $size ||
+            ! hash_equals( $digest, hash( 'sha256', $bytes ) ) )
+            return new WP_Error( 'mad4b_native_local_package_drift', 'Private package changed during read.' );
+        return $bytes;
+    }
+
+    public static function export_chunk( $input = array() ) {
+        if ( ! self::exact_staging() || ! function_exists( 'current_user_can' ) ||
+            ! current_user_can( 'manage_options' ) ||
+            ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
+            return new WP_Error( 'mad4b_native_export_denied', 'Staging owner required.' );
+        $job = get_option( self::OPTION, array() );
+        $offset = $input['offset'] ?? -1;
+        if ( ! is_array( $input ) || array_diff( array_keys( $input ),
+            array( 'expected_head', 'offset' ) ) ||
+            ! is_int( $offset ) || $offset < 0 ||
+            ( $job['state'] ?? '' ) !== 'BUILT_UNVERIFIED' ||
+            ( $input['expected_head'] ?? '' ) !== ( $job['head'] ?? '' ) )
+            return new WP_Error( 'mad4b_native_export_not_ready', 'Bound exact source ZIP required.' );
+        $dir = self::root_for( $job['head'] );
+        $path = $dir ? $dir . '/candidate.zip' : '';
+        if ( ! $path || ! is_file( $path ) || is_link( $path ) ||
+            filesize( $path ) !== ( $job['archive_bytes'] ?? -1 ) ||
+            ( 0 === $offset && ! hash_equals( (string) $job['archive_sha256'],
+                hash_file( 'sha256', $path ) ) ) )
+            return new WP_Error( 'mad4b_native_export_drift', 'Package integrity changed.' );
+        $size = filesize( $path );
+        if ( $offset > $size )
+            return new WP_Error( 'mad4b_native_offset_invalid', 'Offset outside package.' );
+        $fd = fopen( $path, 'rb' );
+        if ( ! $fd || fseek( $fd, $offset ) !== 0 )
+            return new WP_Error( 'mad4b_native_export_io', 'Package chunk unavailable.' );
+        $bytes = fread( $fd, min( 8192, $size - $offset ) );
+        fclose( $fd );
+        if ( ! is_string( $bytes ) )
+            return new WP_Error( 'mad4b_native_export_io', 'Package chunk unavailable.' );
+        return array( 'contract' => self::CONTRACT . '.export.v1',
+            'head' => $job['head'], 'offset' => $offset, 'bytes' => strlen( $bytes ),
+            'next_offset' => $offset + strlen( $bytes ), 'total_bytes' => $size,
+            'archive_sha256' => $job['archive_sha256'],
+            'data_base64' => base64_encode( $bytes ),
+            'build_state' => 'BUILT_UNVERIFIED', 'certified' => false,
+            'recipient_must_verify_full_archive_sha256' => true,
+            'production_authorized' => false );
+    }
+}

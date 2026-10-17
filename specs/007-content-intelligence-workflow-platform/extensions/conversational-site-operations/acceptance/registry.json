@@ -1,0 +1,437 @@
+{
+  "contract": "mad4b.cso01.dynamic-acceptance.registry.v1",
+  "status": "SPEC_ONLY_OPEN",
+  "release_authorizing": false,
+  "allow_site_override_disable": false,
+  "external_acceptance_required": true,
+  "acceptance_result_source": "independent_approved_verifier_only",
+  "allowed_evidence_types": [
+    "native_php",
+    "privacy_audit",
+    "provider_contract",
+    "performance",
+    "runtime_mcp",
+    "host_attestation",
+    "client_browser",
+    "independent_review",
+    "source_review"
+  ],
+  "required_provenance": [
+    "exact_head",
+    "artifact_sha256",
+    "site_uuid",
+    "environment",
+    "source_generation",
+    "observed_at",
+    "verifier_identity",
+    "signature_validation"
+  ],
+  "threshold_definitions": {
+    "min_catalog_abilities": {
+      "direction": "min",
+      "default": 1000,
+      "unit": "abilities"
+    },
+    "max_search_p95_ms": {
+      "direction": "max",
+      "default": 2000,
+      "unit": "ms"
+    },
+    "max_search_query_count": {
+      "direction": "max",
+      "default": 100,
+      "unit": "queries"
+    },
+    "max_search_peak_memory_mb": {
+      "direction": "max",
+      "default": 128,
+      "unit": "MiB"
+    },
+    "min_independent_sites": {
+      "direction": "min",
+      "default": 2,
+      "unit": "sites"
+    },
+    "min_php_versions": {
+      "direction": "min",
+      "default": 2,
+      "unit": "versions"
+    },
+    "min_accessibility_modes": {
+      "direction": "min",
+      "default": 2,
+      "unit": "modes"
+    }
+  },
+  "suites": [
+    {
+      "id": "CSO-A01",
+      "name": "schema_resilience",
+      "parent_gates": [
+        "CSO-G2"
+      ],
+      "depends_on": [],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "schema_invalid_vendor_types",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "schema_unicode_and_constraints",
+          "polarity": "positive",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "schema_sensitive_metadata_no_leak",
+          "polarity": "negative",
+          "evidence_type": "privacy_audit",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "schema_provider_midflight_change",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "schema_nested_adapter_conformance",
+          "polarity": "negative",
+          "evidence_type": "provider_contract",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A02",
+      "name": "discovery_at_scale",
+      "parent_gates": [
+        "CSO-G1",
+        "CSO-G9"
+      ],
+      "depends_on": [
+        "CSO-A01"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "discovery_catalog_search_recall",
+          "polarity": "positive",
+          "evidence_type": "performance",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "discovery_arabic_normalization_large_catalog",
+          "polarity": "positive",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "discovery_stable_pagination_and_generation",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "discovery_p95_memory_query_budget",
+          "polarity": "performance",
+          "evidence_type": "performance",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "discovery_multilingual_metadata_fuzz",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A03",
+      "name": "provider_lifecycle",
+      "parent_gates": [
+        "CSO-G1",
+        "CSO-G7"
+      ],
+      "depends_on": [
+        "CSO-A01"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "provider_missing_or_disabled",
+          "polarity": "negative",
+          "evidence_type": "provider_contract",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "provider_version_drift_and_revocation",
+          "polarity": "negative",
+          "evidence_type": "provider_contract",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "provider_deactivate_during_prepare",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "provider_exact_runtime_read_certification",
+          "polarity": "positive",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "provider_paid_feature_and_shadow_collision",
+          "polarity": "negative",
+          "evidence_type": "provider_contract",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A04",
+      "name": "identity_and_authority",
+      "parent_gates": [
+        "CSO-G1",
+        "CSO-G6"
+      ],
+      "depends_on": [
+        "CSO-A03"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "identity_actor_site_blog_replay_denial",
+          "polarity": "negative",
+          "evidence_type": "native_php",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "identity_staging_prod_host_binding",
+          "polarity": "negative",
+          "evidence_type": "host_attestation",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "identity_same_origin_clone_denial",
+          "polarity": "negative",
+          "evidence_type": "host_attestation",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "identity_revoked_session_freshness",
+          "polarity": "negative",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "identity_network_role_isolation",
+          "polarity": "negative",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A05",
+      "name": "client_experience",
+      "parent_gates": [
+        "CSO-G2",
+        "CSO-G9"
+      ],
+      "depends_on": [
+        "CSO-A01",
+        "CSO-A02"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "client_rtl_ltr_real_renderer",
+          "polarity": "positive",
+          "evidence_type": "client_browser",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "client_keyboard_screenreader_320px",
+          "polarity": "positive",
+          "evidence_type": "client_browser",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "client_save_disabled_no_mutation",
+          "polarity": "negative",
+          "evidence_type": "client_browser",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "client_expired_schema_recovery",
+          "polarity": "negative",
+          "evidence_type": "client_browser",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "client_low_bandwidth_and_offline",
+          "polarity": "negative",
+          "evidence_type": "client_browser",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A06",
+      "name": "independent_staging_read",
+      "parent_gates": [
+        "CSO-G8",
+        "CSO-G10"
+      ],
+      "depends_on": [
+        "CSO-A01",
+        "CSO-A03",
+        "CSO-A04",
+        "CSO-A05"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "staging_exact_artifact_provenance",
+          "polarity": "positive",
+          "evidence_type": "host_attestation",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "staging_seven_abilities_registered",
+          "polarity": "positive",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "staging_read_prepare_validate_no_save",
+          "polarity": "negative",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "staging_independent_result_readback",
+          "polarity": "positive",
+          "evidence_type": "independent_review",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "staging_browser_provider_parity",
+          "polarity": "positive",
+          "evidence_type": "client_browser",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    },
+    {
+      "id": "CSO-A07",
+      "name": "independent_generalization",
+      "parent_gates": [
+        "CSO-G6",
+        "CSO-G10"
+      ],
+      "depends_on": [
+        "CSO-A02",
+        "CSO-A03",
+        "CSO-A04",
+        "CSO-A05",
+        "CSO-A06"
+      ],
+      "status": "OPEN",
+      "claim_complete": false,
+      "authorizing": false,
+      "required": true,
+      "checks": [
+        {
+          "id": "generalization_two_independent_sites",
+          "polarity": "positive",
+          "evidence_type": "independent_review",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "generalization_vendor_and_version_variance",
+          "polarity": "negative",
+          "evidence_type": "provider_contract",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "generalization_multisite_tenant_isolation",
+          "polarity": "negative",
+          "evidence_type": "runtime_mcp",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "generalization_no_site_specific_code_paths",
+          "polarity": "negative",
+          "evidence_type": "source_review",
+          "required_by_default": true,
+          "accepted": false
+        },
+        {
+          "id": "generalization_third_site_canary",
+          "polarity": "positive",
+          "evidence_type": "independent_review",
+          "required_by_default": false,
+          "accepted": false
+        }
+      ]
+    }
+  ]
+}

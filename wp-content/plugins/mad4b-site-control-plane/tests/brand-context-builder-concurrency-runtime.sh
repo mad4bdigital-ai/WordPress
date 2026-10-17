@@ -21,11 +21,39 @@ if (!class_exists('MAD4B_SCP_Audit')) {
     public static function transaction_rolled_back(){}
   }
 }
+// Use the production physical writer/readback probe in this real-MariaDB test.
+// The WordPress CLI fixture deliberately skips plugin bootstrap, so all
+// dependencies used by the guarded write path must be explicitly loaded.
+require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php';
+require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-identifiers.php';
+final class MAD4B_SCP_Operational_Integrity {
+  public static function capture() {
+    return array('scope'=>array(
+      'tenant_ref'=>'test-tenant', 'site_uuid'=>MAD4B_SCP_Site_Profile::site_uuid(),
+      'brand_ref'=>'brand-lineage', 'blog_id'=>1, 'network_id'=>1,
+      'environment'=>'staging', 'deployment_mode'=>'staging',
+    ));
+  }
+  public static function assert_unchanged($checkpoint, $for_write = true) {
+    return self::capture()['scope'] === ($checkpoint['scope'] ?? array())
+      ? true : new WP_Error('brand_lineage_test_scope_changed');
+  }
+}
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php';
 require_once $root . '/wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-artifacts.php';
 
 $fail = static function($m){ fwrite(STDERR, "FAIL brand-context-builder-concurrency-runtime: $m\n"); exit(1); };
 $subject_key = hash('sha256', 'brand-context-subject|' . wp_generate_uuid4());
+$storage = MAD4B_SCP_Schema::transactional_storage_status(
+  array('content_jobs','content_job_events','audit_events','audit_heads'), true);
+if (empty($storage['ready']) || empty($storage['read_your_writes'])) {
+  fwrite(STDERR, 'CONTEXT_WRITER_PREFLIGHT: ' . wp_json_encode(array(
+    'blockers'=>$storage['blockers'] ?? array(),
+    'topology_blockers'=>$storage['database_topology']['blockers'] ?? array(),
+    'engines'=>$storage['engines'] ?? array(),
+  )) . "\\n");
+  exit(1);
+}
 $jobs = array();
 for ($i=0; $i<2; ++$i) {
   $j = MAD4B_SCP_Content_Jobs::create_job(array(

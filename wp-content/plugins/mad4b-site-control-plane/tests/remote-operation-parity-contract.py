@@ -1,10 +1,10 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8')
+parity = (root / 'includes' / 'class-mad4b-scp-remote-operation-parity.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 skills_lease = (root / 'includes' / 'class-mad4b-scp-managed-skills-lease.php').read_text(encoding='utf-8')
 dispatch = (root / 'includes' / 'class-mad4b-scp-enrollment-dispatch.php').read_text(encoding='utf-8')
-servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8')
+servers = (root / 'includes' / 'class-mad4b-scp-servers.php').read_text(encoding='utf-8') + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
 abilities = (root / 'includes' / 'class-mad4b-scp-abilities.php').read_text(encoding='utf-8')
 write_authority = (root / 'includes' / 'class-mad4b-scp-staging-write-authority.php').read_text(encoding='utf-8')
 oauth = (root / 'includes' / 'class-mad4b-scp-oauth-resource-bridge.php').read_text(encoding='utf-8')
@@ -330,6 +330,18 @@ required_dispatch_markers = [
     "PREG_SPLIT_NO_EMPTY",
     "self::query_matches( $query, $haystack )",
 ]
+# The compact Enrollment dispatcher must never call its nested mutation
+# directly: it requires the parent-bound, one-time child operation fence.
+for marker in (
+    "MAD4B_SCP_Execution_Fence::with_governed_child(",
+    "'mad4b_enrollment_dispatch_child_fence_unavailable'",
+    "'enrollment_dispatch'",
+):
+    if marker not in dispatch:
+        raise SystemExit("enrollment nested mutation lost governed child permit: " + marker)
+if "$result = $ability->execute( $params );" in dispatch:
+    raise SystemExit("enrollment dispatcher executes a nested mutation without a governed child fence")
+
 for marker in required_dispatch_markers:
     if marker not in dispatch:
         raise SystemExit(f'missing bounded enrollment dispatcher invariant: {marker}')
@@ -379,11 +391,11 @@ for marker in [
 augment = write_authority.split('public static function augment_write_ability', 1)[1].split('public static function reconciliation_plan', 1)[0]
 for marker in [
     "$mcp_surface = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';",
-    "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;",
+    "if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;",
 ]:
     if marker not in augment:
         raise SystemExit(f'Enrollment dispatcher is no longer isolated from governed-write augmentation: {marker}')
-guard_index = augment.find("if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch' ), true ) ) return $args;")
+guard_index = augment.find("if ( in_array( $mcp_surface, array( 'enrollment', 'developer-dispatch', 'write-dispatch' ), true ) ) return $args;")
 approval_index = augment.find("self::APPROVAL_INPUT_KEY")
 authority_index = augment.find("mad4b_governed_write_authority")
 if min(guard_index, approval_index, authority_index) < 0 or guard_index > approval_index or guard_index > authority_index:
@@ -541,5 +553,37 @@ for marker in [
 ]:
     if marker not in contract:
         raise SystemExit(f'remote parity contract missing policy section: {marker}')
+
+# The full onboarding chain must be discoverable with exact pre-registered
+# Abilities. Registration is metadata only and MUST NOT confer write grants.
+for operation_id, ability in {
+    'google_grant_health': 'context/google-drive-status',
+    'google_pending_revocation_recovery': 'mad4b/google-revocation-retry',
+    'brand_context_governed_source_registration': 'context/governed-source-upsert',
+    'brand_context_source_scan': 'context/source-scan-apply',
+    'brand_context_owner_review': 'context/remote-owner-review-apply',
+    'brand_core_publication_readiness': 'context/brand-core-coverage',
+    'content_post_intake_plan': 'mad4b/aci01-intake-preview',
+    'content_post_job_begin': 'mad4b/content-job-create',
+    'content_post_draft_creation': 'mad4b/content-create-post',
+    'content_post_publication_transition': 'mad4b/content-update-post',
+    'content_post_publication_verification': 'mad4b/content-get-post',
+}.items():
+    if f"'{operation_id}' => array(" not in parity:
+        raise SystemExit(f'governed lifecycle operation missing from dynamic discovery: {operation_id}')
+    if f"'remote_ability' => '{ability}'" not in parity:
+        raise SystemExit(f'governed lifecycle remote Ability not registered: {ability}')
+
+if "'site_administrator' === $role && $admin_read_only" not in parity:
+    raise SystemExit('staging admin read discovery exception not source-owned or explicit')
+for needle in [
+    "'mad4b-read' === (string) $row['authority_surface']",
+    "'deny' === (string) $row['production_policy']",
+    "'core' === (string) $row['trust_class']",
+    "'mad4b-core' === (string) $row['registrar_id']",
+    "external_registration_core_impersonation_denied",
+]:
+    if needle not in parity:
+        raise SystemExit(f'remote discovery safety guard regressed: {needle}')
 
 print('mad4b.remote-operation-parity.v1: PASS')

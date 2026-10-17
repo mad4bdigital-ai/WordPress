@@ -136,12 +136,19 @@ if ( is_string( $expected_tree ) && '' !== $expected_tree ) {
 	$check( $expected_tree === (string) ( $asset['build_identity']['tree_sha'] ?? '' ), 'ETG observer asset exact tree identity drifted.' );
 }
 
-$blocked = $dispatch_read( 'mad4b/browser-acceptance-plan', array(
+$unsupported_input = array(
 	'provider_id' => 'etg-dfsb',
 	'profile_id' => 'tours',
 	'url' => 'https://example.invalid',
-) );
-$check( ! is_wp_error( $blocked ), 'Browser Acceptance plan converted bounded rejection into a transport error.' );
+);
+$schema_rejection = rest_validate_value_from_schema(
+	$unsupported_input, wp_get_ability( 'mad4b/browser-acceptance-plan' )->get_input_schema(), 'browser_plan'
+);
+$check( is_wp_error( $schema_rejection ) && 'rest_additional_properties_forbidden' === $schema_rejection->get_error_code(),
+	'Arbitrary browser URL must be rejected by the registered strict input schema.' );
+// The domain guard independently rejects the same input before provider dispatch.
+$blocked = MAD4B_SCP_Browser_Acceptance_Core::plan( $unsupported_input );
+$check( ! is_wp_error( $blocked ), 'Domain guard must project a bounded unsupported-field rejection.' );
 $check( 'blocked' === (string) $blocked['state'], 'Arbitrary browser URL input did not fail closed.' );
 $check( in_array( 'unsupported_request_fields', (array) $blocked['blocking_reasons'], true ), 'Arbitrary browser URL rejection reason was not preserved.' );
 

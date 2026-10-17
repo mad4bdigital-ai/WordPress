@@ -169,7 +169,8 @@ ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'snapshot-only Produ
 resetx();
 $GLOBALS['opts'][MAD4B_SCP_Site_Profile::LEGACY_OPTION]=legacy();
 $s=MAD4B_SCP_Site_Profile::status();
-ok(!empty($s['reenrollment_required'])&&empty($s['oauth_enabled']),'legacy identity alone remains fail-closed');
+ok(empty($s['configured'])&&empty($s['authority_ready'])&&empty($s['oauth_enabled'])&&empty($s['write_enabled']), 'legacy identity alone remains fail-closed');
+ok(false===get_option(MAD4B_SCP_Site_Profile::OPTION,false),'legacy read cannot enroll or mutate a Site Profile');
 
 // Exact prior OAuth evidence restores read/OAuth continuity only.
 $GLOBALS['opts'][MAD4B_SCP_Upgrade_Continuity::PRIOR_OAUTH_OPTION]=snapshot();

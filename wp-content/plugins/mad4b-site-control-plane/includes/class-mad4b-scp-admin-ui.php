@@ -38,12 +38,16 @@ final class MAD4B_SCP_Admin_UI {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return new WP_Error( 'mad4b_admin_ui_capability_denied', 'Administrator capability is required to inspect control-plane governance.' );
 		}
+        // Goal discovery must remain usable when governance tables are
+        // unavailable; the task map is strictly read-only and static.
+        $section = sanitize_key( (string) $section );
+        if ( in_array( $section, array( 'tasks', 'controls' ), true ) ) return array(
+            'section' => $section, 'read_only' => true,
+            'release_certified' => false, 'mutation_performed' => false );
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::is_ready() ) {
 			return new WP_Error( 'mad4b_admin_ui_schema_unavailable', 'Governance schema is unavailable.' );
 		}
-
-		$section = sanitize_key( (string) $section );
-		if ( ! in_array( $section, array( 'overview', 'agents', 'approvals', 'mutations', 'audit' ), true ) ) $section = 'overview';
+		if ( ! in_array( $section, array( 'overview', 'agents', 'approvals', 'mutations', 'consent', 'history', 'audit' ), true ) ) $section = 'overview';
 		$t = MAD4B_SCP_Schema::tables();
 		$snapshot = array(
 			'section' => $section,
@@ -54,12 +58,23 @@ final class MAD4B_SCP_Admin_UI {
 			'mutations' => array(),
 			'audit_storage' => array(),
 			'audit_tail' => array(),
+			'recovery_preview' => null,
+			'consent_profile' => array(),
+			'change_history' => array(),
 			'runtime_self_test' => array( 'status' => 'deferred' ),
-			'mcp_peer_governance' => array( 'inventory_ready' => false, 'blockers' => array( 'deferred_to_connection_or_diagnostics_workspace' ) ),
+			'mcp_peer_governance' => array( 'inventory_ready' => false, 'state' => 'deferred', 'blockers' => array() ),
+			'staging_candidate_binding' => array(),
 		);
 
 		if ( 'overview' === $section ) {
 			$snapshot['authority'] = MAD4B_SCP_Authorization::authority_status();
+			// Avoid a second divergent peer scan; reuse the current-request result.
+			$snapshot['mcp_peer_governance'] = isset( $snapshot['authority']['mcp_peer_governance'] )
+				? $snapshot['authority']['mcp_peer_governance'] : $snapshot['mcp_peer_governance'];
+			// Read only, exact package identity, never grant reconciliation.
+			if ( class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+				&& method_exists( 'MAD4B_SCP_Staging_Write_Authority', 'candidate_binding_status' ) )
+				$snapshot['staging_candidate_binding'] = MAD4B_SCP_Staging_Write_Authority::candidate_binding_status();
 			$snapshot['audit_storage'] = MAD4B_SCP_Audit::storage_status();
 			// Deep adapter/provider self-tests and peer scans are intentionally not
 			// executed during ordinary dashboard render. Their dedicated workspaces
@@ -108,6 +123,20 @@ final class MAD4B_SCP_Admin_UI {
 			return $snapshot;
 		}
 
+		if ( 'consent' === $section ) {
+			$snapshot['consent_profile'] = class_exists( 'MAD4B_SCP_G2_Governance_Experience' )
+				? MAD4B_SCP_G2_Governance_Experience::consent_profile_status( array() )
+				: array();
+			return $snapshot;
+		}
+
+		if ( 'history' === $section ) {
+			$snapshot['change_history'] = class_exists( 'MAD4B_SCP_G2_Governance_Experience' )
+				? MAD4B_SCP_G2_Governance_Experience::change_history_search( array( 'limit' => self::EVIDENCE_LIMIT ) )
+				: array();
+			return $snapshot;
+		}
+
 		$snapshot['audit_storage'] = MAD4B_SCP_Audit::storage_status();
 		$snapshot['audit_tail'] = MAD4B_SCP_Audit::tail( self::EVIDENCE_LIMIT );
 		return $snapshot;
@@ -118,9 +147,13 @@ final class MAD4B_SCP_Admin_UI {
 
 		$tabs = array(
 			'overview' => __( 'Overview', 'mad4b-site-control-plane' ),
+			'controls' => __( 'Controls Coverage', 'mad4b-site-control-plane' ),
+            'tasks' => __( 'Tasks & Workflows', 'mad4b-site-control-plane' ),
 			'agents' => __( 'Agents & Access', 'mad4b-site-control-plane' ),
 			'approvals' => __( 'Approvals', 'mad4b-site-control-plane' ),
-			'mutations' => __( 'Mutations', 'mad4b-site-control-plane' ),
+			'mutations' => __( 'Mutations & Recovery', 'mad4b-site-control-plane' ),
+			'consent' => __( 'Consent & Clients', 'mad4b-site-control-plane' ),
+			'history' => __( 'Change History', 'mad4b-site-control-plane' ),
 			'audit' => __( 'Audit', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
@@ -128,7 +161,12 @@ final class MAD4B_SCP_Admin_UI {
 		$agent_public_id = isset( $_GET['agent'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'agent' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
 		if ( '' !== $agent_public_id && ! preg_match( '/^[A-Za-z0-9-]{36,64}$/', $agent_public_id ) ) $agent_public_id = '';
 
+		$mutation_id = isset( $_GET['mutation'] ) ? sanitize_text_field( MAD4B_SCP_Admin_Experience::query_string( 'mutation' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only inspection.
+		if ( '' !== $mutation_id && ! preg_match( '/^[A-Za-z0-9-]{36,64}$/', $mutation_id ) ) $mutation_id = '';
 		$snapshot = self::snapshot( $agent_public_id, $tab );
+		if ( ! is_wp_error( $snapshot ) && 'mutations' === $tab && '' !== $mutation_id && class_exists( 'MAD4B_SCP_G2_Governance_Experience' ) ) {
+			$snapshot['recovery_preview'] = MAD4B_SCP_G2_Governance_Experience::recovery_preview( array( 'mutation_id' => $mutation_id, 'reason' => '' ) );
+		}
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html__( 'MAD4B Control Plane', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p>' . esc_html__( 'Read-only governance and runtime evidence. This screen does not grant authority, approve tickets, execute mutations, or perform undo.', 'mad4b-site-control-plane' ) . '</p>';
@@ -137,23 +175,119 @@ final class MAD4B_SCP_Admin_UI {
 			return;
 		}
 
-		echo '<nav class="nav-tab-wrapper">';
-		foreach ( $tabs as $slug => $label ) {
-			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => $slug ), admin_url( 'admin.php' ) );
-			echo '<a class="nav-tab ' . ( $tab === $slug ? 'nav-tab-active' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
-		}
-		echo '</nav>';
+		MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 
 		if ( 'overview' === $tab ) self::render_overview( $snapshot );
+        if ( 'tasks' === $tab ) self::render_tasks();
+		if ( 'controls' === $tab ) self::render_controls();
 		if ( 'agents' === $tab ) self::render_agents( $snapshot, $agent_public_id );
 		if ( 'approvals' === $tab ) self::render_approvals( $snapshot['approvals'] );
-		if ( 'mutations' === $tab ) self::render_mutations( $snapshot['mutations'] );
+		if ( 'mutations' === $tab ) { self::render_mutations( $snapshot['mutations'] ); self::render_recovery_preview( $snapshot['recovery_preview'] ); }
+		if ( 'consent' === $tab ) self::render_consent( $snapshot['consent_profile'] );
+		if ( 'history' === $tab ) self::render_history( $snapshot['change_history'] );
 		if ( 'audit' === $tab ) self::render_audit( $snapshot );
 		echo '</div>';
 	}
 
+    private static function render_tasks() {
+        if ( ! class_exists( 'MAD4B_SCP_Operator_Journeys', false ) ) {
+            echo '<div class="notice notice-warning"><p>'
+                . esc_html__( 'The task index is not installed on this plugin version.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        $map = MAD4B_SCP_Operator_Journeys::discover();
+        if ( is_wp_error( $map ) || ! is_array( $map ) ) {
+            echo '<div class="notice notice-error"><p>'
+                . esc_html__( 'Unable to inspect task routes. Retry after checking site permissions.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+            return;
+        }
+        echo '<h2>' . esc_html__( 'What do you want to do?', 'mad4b-site-control-plane' ) . '</h2>';
+        echo '<p>' . esc_html__( 'Pick a goal. Follow the steps in order, checking the exact authority and result after each operation. These cards never approve or execute anything.', 'mad4b-site-control-plane' ) . '</p>';
+        foreach ( $map['journeys'] as $journey ) {
+            if ( ! is_array( $journey ) ) continue;
+            $missing = is_array( $journey['missing_abilities'] ?? null ) ? $journey['missing_abilities'] : array();
+            echo '<details style="max-width:1100px;margin:8px 0;padding:12px 16px;border:1px solid #c3c4c7;border-radius:4px">';
+            echo '<summary style="cursor:pointer"><strong>'
+                . esc_html( (string) ( $journey['label'] ?? '' ) ) . '</strong> — '
+                . esc_html( $missing ? __( 'Integration needed', 'mad4b-site-control-plane' )
+                    : __( 'Tools listed — not yet executed', 'mad4b-site-control-plane' ) )
+                . '</summary><ol>';
+            foreach ( $journey['steps'] as $step ) {
+                echo '<li>' . esc_html( ucfirst( str_replace( '_', ' ', (string) ( $step['label'] ?? '' ) ) ) )
+                    . ' <code dir="ltr">' . esc_html( (string) ( $step['ability_name'] ?? '' ) )
+                    . '</code> — ' . esc_html( ! empty( $step['mounted'] )
+                        ? __( 'Registered', 'mad4b-site-control-plane' )
+                        : __( 'Not registered', 'mad4b-site-control-plane' ) ) . '</li>';
+            }
+            echo '</ol><p class="description">' . esc_html( (string) ( $journey['user_guidance'] ?? '' ) )
+                . '</p></details>';
+        }
+        echo '<p class="description">'
+            . esc_html__( 'For unresolved Staging gates, open the Operational Remediation submenu. For actual writes, use the separately governed MCP ability.', 'mad4b-site-control-plane' )
+            . '</p>';
+    }
+
+	/**
+	 * Universal control directory of registration metadata, not an
+	 * arbitrary admin callback runner or proof of per-widget parity.
+	 */
+	private static function render_controls() {
+		if ( ! class_exists( 'MAD4B_SCP_Admin_Surface_Coverage' ) ) {
+			echo '<p>' . esc_html__( 'Control census adapter is not installed.', 'mad4b-site-control-plane' ) . '</p>';
+			return;
+		}
+		$kind = isset( $_GET['control_kind'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'control_kind' ) ) : 'abilities';
+		$allowed = MAD4B_SCP_Admin_Surface_Coverage::CONTROL_KINDS;
+		if ( ! in_array( $kind, $allowed, true ) ) $kind = 'abilities';
+		$offset = isset( $_GET['control_offset'] ) ? absint( MAD4B_SCP_Admin_Experience::query_string( 'control_offset', '0', 7 ) ) : 0;
+		$offset = min( 100000, $offset );
+		$limit = 50;
+		$state = MAD4B_SCP_Admin_Surface_Coverage::control_census( array(
+			'kind' => $kind, 'offset' => $offset, 'limit' => $limit ) );
+		echo '<h2>' . esc_html__( 'Registered Controls Directory', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Read-only registration inventory. A listed Ability or hook does not prove that a matching WordPress form/button exists, that MCP access is enabled, or that a write was tested. Independently certify UI control bindings and browser interactions.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<div class="mad4b-controls-kinds" role="navigation" aria-label="' . esc_attr__( 'Control registry kinds', 'mad4b-site-control-plane' ) . '">';
+		foreach ( $allowed as $type ) {
+			$url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'controls',
+				'control_kind' => $type, 'control_offset' => 0 ), admin_url( 'admin.php' ) );
+			echo '<a class="button ' . ( $kind === $type ? 'button-primary' : '' ) . '" href="' . esc_url( $url ) . '" style="margin:0 6px 6px 0">' . esc_html( ucwords( str_replace( '_', ' ', $type ) ) ) . '</a>';
+		}
+		echo '</div>';
+		if ( is_wp_error( $state ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html( $state->get_error_message() ) . '</p></div>';
+			return;
+		}
+		if ( empty( $state['registry_ready'] ) ) {
+			echo '<div class="notice notice-warning"><p>' . esc_html__( 'Control registry not loaded in this request. Do not treat missing observations as zero controls.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
+		echo '<p><strong>' . esc_html__( 'Registered in this category:', 'mad4b-site-control-plane' ) . '</strong> ' .
+			esc_html( (string) $state['total_count'] ) . ' · ' .
+			esc_html__( 'Rows in this page:', 'mad4b-site-control-plane' ) . ' ' .
+			esc_html( (string) $state['returned_count'] ) . '</p>';
+		echo '<table class="widefat striped"><thead><tr><th>' . esc_html__( 'Registered Control', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'Category', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'WordPress UI coverage', 'mad4b-site-control-plane' ) . '</th><th>' .
+			esc_html__( 'Evidence', 'mad4b-site-control-plane' ) . '</th></tr></thead><tbody>';
+		foreach ( $state['items'] as $item ) {
+			$entry = '<code>' . esc_html( $item['name'] ) . '</code>';
+			if ( 'pages' === $kind && ! empty( $item['admin_url'] ) ) $entry = '<a href="' . esc_url( $item['admin_url'] ) . '">' . $entry . '</a>';
+			echo '<tr><td>' . $entry . '</td><td>' . esc_html( $item['registered_kind'] ) . '</td><td>' .
+				esc_html( $item['wp_admin_ui_binding'] ) . '</td><td>' .
+				esc_html__( 'Registered only; per-control interaction unverified', 'mad4b-site-control-plane' ) . '</td></tr>';
+		}
+		if ( ! $state['items'] ) echo '<tr><td colspan="4">' . esc_html__( 'No controls visible in this request.', 'mad4b-site-control-plane' ) . '</td></tr>';
+		echo '</tbody></table>';
+		$base = array( 'page' => self::PAGE_SLUG, 'tab' => 'controls', 'control_kind' => $kind );
+		if ( $offset ) echo '<a class="button" href="' . esc_url( add_query_arg( array_merge( $base, array( 'control_offset' => max( 0, $offset - $limit ) ) ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Previous controls', 'mad4b-site-control-plane' ) . '</a> ';
+		if ( null !== $state['next_offset'] ) echo '<a class="button" href="' . esc_url( add_query_arg( array_merge( $base, array( 'control_offset' => $state['next_offset'] ) ), admin_url( 'admin.php' ) ) ) . '">' . esc_html__( 'Next controls', 'mad4b-site-control-plane' ) . '</a>';
+		echo '<p class="description">' . esc_html__( 'This directory is intentionally not a claim of 100% UI parity. JS-injected controls, control handlers, front-end builders, provider dependencies and effect readback require disposable WordPress and real browser acceptance.', 'mad4b-site-control-plane' ) . '</p>';
+	}
+
 	private static function render_overview( array $snapshot ) {
 		$authority = $snapshot['authority'];
+		$binding = isset( $snapshot['staging_candidate_binding'] ) ? $snapshot['staging_candidate_binding'] : array();
 		$self_test = $snapshot['runtime_self_test'];
 		$audit = $snapshot['audit_storage'];
 		echo '<h2>' . esc_html__( 'Runtime authority', 'mad4b-site-control-plane' ) . '</h2>';
@@ -162,7 +296,12 @@ final class MAD4B_SCP_Admin_UI {
 				'Authority status' => isset( $authority['status'] ) ? $authority['status'] : 'unknown',
 				'Schema version' => isset( $authority['schema_version'] ) ? $authority['schema_version'] : '',
 				'Mutation globally enabled' => ! empty( $authority['mutation_global_enabled'] ),
-				'Mutation effective for request' => ! empty( $authority['mutation_effective_for_request'] ),
+				'Global mutation gate (not execution authorization)' => ! empty( $authority['mutation_effective_for_request'] ),
+				'Stored Staging Write checkpoint (historical)' => ! empty( $authority['staging_write_authority']['ready'] ),
+				'Current candidate binding verified' => isset( $binding['match'] ) ? (bool) $binding['match'] : 'not_evaluated',
+				'Current build source' => isset( $binding['current_source_commit_sha'] ) ? $binding['current_source_commit_sha'] : '',
+				'Bound write source' => isset( $binding['stored_source_commit_sha'] ) ? $binding['stored_source_commit_sha'] : '',
+				'Per-ability authorization' => 'Not evaluated here; requires exact transport grant, plan and approval',
 				'Enabled agents' => isset( $authority['enabled_agents'] ) ? $authority['enabled_agents'] : 0,
 				'Exact grants' => isset( $authority['exact_grants'] ) ? $authority['exact_grants'] : 0,
 				'Runtime self-test' => isset( $self_test['status'] ) ? $self_test['status'] : 'unknown',
@@ -171,18 +310,43 @@ final class MAD4B_SCP_Admin_UI {
 			)
 		);
 		self::render_blockers( isset( $authority['blockers'] ) ? $authority['blockers'] : array() );
+		if ( ! empty( $binding['required'] ) && empty( $binding['match'] ) ) {
+			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Stored Write grants are not certified for the currently installed package. Use a fresh, separately approved Staging Write Authority Convergence plan. This page never changes permissions.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 
 		echo '<h2>' . esc_html__( 'MCP peer governance', 'mad4b-site-control-plane' ) . '</h2>';
 		$peer = $snapshot['mcp_peer_governance'];
 		self::key_value_table(
 			array(
+								'Inventory state' => ! empty( $peer['inventory_ready'] ) ? 'verified_current_request' : 'not_evaluated',
 				'Inventory ready' => ! empty( $peer['inventory_ready'] ),
 				'Inventory reason' => isset( $peer['reason'] ) ? $peer['reason'] : '',
 				'Write side-channel detected' => ! empty( $peer['write_side_channel_detected'] ),
-				'Peer count' => isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? count( $peer['peers'] ) : 0,
+								'Peer count' => ! empty( $peer['inventory_ready'] ) && isset( $peer['peers'] ) && is_array( $peer['peers'] ) ? count( $peer['peers'] ) : 'not_evaluated',
+				'Foreign MCP routes' => ! empty( $peer['inventory_ready'] ) ? (int) ( $peer['foreign_route_count'] ?? 0 ) : 'not_evaluated',
+				'Foreign MCP plugins' => ! empty( $peer['inventory_ready'] ) ? (int) ( $peer['foreign_plugin_count'] ?? 0 ) : 'not_evaluated',
 			)
 		);
-		self::render_blockers( isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
+		if ( ! empty( $peer['inventory_ready'] ) || ! empty( $peer['write_side_channel_detected'] ) || ! empty( $peer['foreign_transport_unreviewed'] ) ) {
+			self::render_blockers( isset( $peer['blockers'] ) ? $peer['blockers'] : array() );
+			if ( ! empty( $peer['foreign_transport_unreviewed'] ) ) {
+                echo '<div class="mad4b-scp-next-step is-attention"><p><strong>'
+                    . esc_html__( 'MCP transport review is required before governed writes.', 'mad4b-site-control-plane' )
+                    . '</strong> ' . esc_html__( 'Foreign REST route count is not the number of connected MCP peers or proof of an active write side-channel. It is an independent transport inventory that must be reviewed.', 'mad4b-site-control-plane' )
+                    . '</p><ol><li>'
+                    . esc_html__( 'Identify the plugin/provider responsible for each listed foreign MCP route.', 'mad4b-site-control-plane' )
+                    . '</li><li>'
+                    . esc_html__( 'Review its transport ownership and write capabilities through the governed provider inventory; do not disable providers or waive the blocker automatically.', 'mad4b-site-control-plane' )
+                    . '</li><li>'
+                    . esc_html__( 'Run a fresh deep Connection diagnostic after any independently approved provider change.', 'mad4b-site-control-plane' )
+                    . '</li></ol></div>';
+				$foreign = isset( $peer['foreign_transport_inventory'] ) && is_array( $peer['foreign_transport_inventory'] ) ? $peer['foreign_transport_inventory'] : array();
+				$details = array_merge( isset( $foreign['foreign_routes'] ) && is_array( $foreign['foreign_routes'] ) ? $foreign['foreign_routes'] : array(), isset( $foreign['foreign_plugins'] ) && is_array( $foreign['foreign_plugins'] ) ? $foreign['foreign_plugins'] : array() );
+				if ( $details ) echo '<p class="description">' . esc_html__( 'Foreign transport evidence:', 'mad4b-site-control-plane' ) . ' ' . esc_html( implode( ', ', array_slice( $details, 0, 20 ) ) ) . '</p>';
+			}
+		} else {
+			echo '<div class="notice notice-info inline"><p>' . esc_html__( 'MCP peer inventory was not evaluated on this request. Use Connection diagnostics for a fresh deep check; a deferred check is not a foreign-transport finding.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 	}
 
 	private static function render_agents( array $snapshot, $selected ) {
@@ -234,11 +398,60 @@ final class MAD4B_SCP_Admin_UI {
 	private static function render_mutations( array $items ) {
 		echo '<h2>' . esc_html__( 'Mutation / undo evidence', 'mad4b-site-control-plane' ) . '</h2>';
 		if ( ! $items ) { echo '<p>' . esc_html__( 'No mutation evidence found.', 'mad4b-site-control-plane' ) . '</p>'; return; }
-		echo '<table class="widefat striped"><thead><tr><th>Mutation</th><th>Agent</th><th>Ability</th><th>Target</th><th>Status</th><th>Reversible</th><th>Verification</th><th>Undo expires</th><th>Parent</th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Mutation</th><th>Agent</th><th>Ability</th><th>Target</th><th>Status</th><th>Reversible</th><th>Verification</th><th>Undo expires</th><th>Parent</th><th>Recovery</th></tr></thead><tbody>';
 		foreach ( $items as $item ) {
-			echo '<tr><td><code>' . esc_html( self::short_id( isset( $item['mutation_id'] ) ? $item['mutation_id'] : '' ) ) . '</code></td><td>' . esc_html( isset( $item['agent_label'] ) && $item['agent_label'] ? $item['agent_label'] : ( isset( $item['agent_slug'] ) ? $item['agent_slug'] : '' ) ) . '</td><td><code>' . esc_html( isset( $item['ability_name'] ) ? $item['ability_name'] : '' ) . '</code></td><td>' . esc_html( ( isset( $item['target_type'] ) ? $item['target_type'] : '' ) . ':' . ( isset( $item['target_id'] ) ? $item['target_id'] : '' ) ) . '</td><td><strong>' . esc_html( isset( $item['status'] ) ? $item['status'] : '' ) . '</strong></td><td>' . esc_html( ! empty( $item['reversible'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( isset( $item['verification_code'] ) ? $item['verification_code'] : '' ) . '</td><td>' . esc_html( isset( $item['undo_expires_at'] ) && $item['undo_expires_at'] ? $item['undo_expires_at'] : '—' ) . '</td><td><code>' . esc_html( self::short_id( isset( $item['parent_mutation_id'] ) ? $item['parent_mutation_id'] : '' ) ) . '</code></td></tr>';
+			$mutation_id = isset( $item['mutation_id'] ) ? (string) $item['mutation_id'] : '';
+			$recovery_url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'mutations', 'mutation' => $mutation_id ), admin_url( 'admin.php' ) );
+			echo '<tr><td><code>' . esc_html( self::short_id( $mutation_id ) ) . '</code></td><td>' . esc_html( isset( $item['agent_label'] ) && $item['agent_label'] ? $item['agent_label'] : ( isset( $item['agent_slug'] ) ? $item['agent_slug'] : '' ) ) . '</td><td><code>' . esc_html( isset( $item['ability_name'] ) ? $item['ability_name'] : '' ) . '</code></td><td>' . esc_html( ( isset( $item['target_type'] ) ? $item['target_type'] : '' ) . ':' . ( isset( $item['target_id'] ) ? $item['target_id'] : '' ) ) . '</td><td><strong>' . esc_html( isset( $item['status'] ) ? $item['status'] : '' ) . '</strong></td><td>' . esc_html( ! empty( $item['reversible'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( isset( $item['verification_code'] ) ? $item['verification_code'] : '' ) . '</td><td>' . esc_html( isset( $item['undo_expires_at'] ) && $item['undo_expires_at'] ? $item['undo_expires_at'] : '—' ) . '</td><td><code>' . esc_html( self::short_id( isset( $item['parent_mutation_id'] ) ? $item['parent_mutation_id'] : '' ) ) . '</code></td><td><a href="' . esc_url( $recovery_url ) . '">' . esc_html__( 'Preview', 'mad4b-site-control-plane' ) . '</a></td></tr>';
 		}
 		echo '</tbody></table>';
+	}
+
+	private static function render_recovery_preview( $preview ) {
+		if ( null === $preview ) return;
+		echo '<h2>' . esc_html__( 'Recovery preview', 'mad4b-site-control-plane' ) . '</h2>';
+		if ( is_wp_error( $preview ) ) { echo '<div class="notice notice-error inline"><p>' . esc_html( $preview->get_error_message() ) . '</p></div>'; return; }
+		self::key_value_table( array(
+			'Mutation' => isset( $preview['mutation_id'] ) ? $preview['mutation_id'] : '',
+			'Ability' => isset( $preview['ability'] ) ? $preview['ability'] : '',
+			'Target' => isset( $preview['target'] ) ? ( $preview['target']['type'] . ':' . $preview['target']['id'] ) : '',
+			'Readback' => isset( $preview['readback_state'] ) ? $preview['readback_state'] : '',
+			'Expires' => isset( $preview['undo_expires_at'] ) ? $preview['undo_expires_at'] : '',
+			'Eligible by repository evidence' => ! empty( $preview['eligible_by_repository_evidence'] ),
+			'Execution available here' => ! empty( $preview['execution_available_here'] ),
+		) );
+		self::render_blockers( isset( $preview['blockers'] ) ? $preview['blockers'] : array() );
+		echo '<p class="description">' . esc_html__( 'Preview only. Undo still requires the existing exact mutation authority, approval and execution checks.', 'mad4b-site-control-plane' ) . '</p>';
+	}
+
+	private static function render_consent( array $profile ) {
+		echo '<h2>' . esc_html__( 'Consent profiles and client compatibility', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Read-only projection. New scopes require external consent and no preset grants generic full access.', 'mad4b-site-control-plane' ) . '</p>';
+		$presets = isset( $profile['presets'] ) && is_array( $profile['presets'] ) ? $profile['presets'] : array();
+		echo '<table class="widefat striped"><thead><tr><th>Preset</th><th>Scopes</th><th>Default</th><th>Re-consent</th><th>Mutation authority</th></tr></thead><tbody>';
+		foreach ( $presets as $preset ) echo '<tr><td>' . esc_html( $preset['label'] ) . '</td><td><code>' . esc_html( implode( ', ', $preset['scopes'] ) ) . '</code></td><td>' . esc_html( ! empty( $preset['default'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( ! empty( $preset['requires_external_reconsent'] ) ? 'required' : 'not required' ) . '</td><td>' . esc_html( ! empty( $preset['mutation_authority'] ) ? 'yes' : 'no' ) . '</td></tr>';
+		echo '</tbody></table>';
+		self::key_value_table( array(
+			'Generation' => isset( $profile['generation_sha256'] ) ? self::short_hash( $profile['generation_sha256'] ) : '',
+			'PKCE' => isset( $profile['protocol']['pkce_methods'] ) ? $profile['protocol']['pkce_methods'] : array(),
+			'Dynamic registration exposed' => ! empty( $profile['protocol']['dynamic_client_registration_exposed'] ),
+			'New scopes require external consent' => ! empty( $profile['new_scopes_require_external_consent'] ),
+			'Generic full access supported' => ! empty( $profile['generic_full_access_supported'] ),
+		) );
+	}
+
+	private static function render_history( array $history ) {
+		echo '<h2>' . esc_html__( 'Governed change history', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Bounded, redacted evidence. History is not rollback authority and raw rollback payloads are not shown.', 'mad4b-site-control-plane' ) . '</p>';
+		$items = isset( $history['items'] ) && is_array( $history['items'] ) ? $history['items'] : array();
+		if ( ! $items ) { echo '<p>' . esc_html__( 'No governed mutation history found.', 'mad4b-site-control-plane' ) . '</p>'; return; }
+		echo '<table class="widefat striped"><thead><tr><th>Time</th><th>Agent</th><th>Operation</th><th>Target</th><th>Status</th><th>Diff evidence</th><th>Approval</th></tr></thead><tbody>';
+		foreach ( $items as $item ) {
+			$op = $item['operation']; $diff = $item['diff']; $evidence = $item['evidence'];
+			echo '<tr><td>' . esc_html( $item['created_at'] ) . '</td><td>' . esc_html( $item['agent']['label'] ? $item['agent']['label'] : $item['agent']['slug'] ) . '</td><td><code>' . esc_html( $op['ability'] ) . '</code></td><td>' . esc_html( $op['target_type'] . ':' . $op['target_id'] ) . '</td><td>' . esc_html( $op['status'] ) . '</td><td><code>' . esc_html( self::short_hash( $diff['before_sha256'] ) . ' → ' . self::short_hash( $diff['after_sha256'] ) ) . '</code></td><td><code>' . esc_html( self::short_id( $evidence['approval_ticket_id'] ) ) . '</code></td></tr>';
+		}
+		echo '</tbody></table>';
+		self::key_value_table( array( 'Export digest' => isset( $history['export_sha256'] ) ? self::short_hash( $history['export_sha256'] ) : '', 'Audit chain ready' => ! empty( $history['audit_chain_ready'] ), 'Legal hold supported' => ! empty( $history['legal_hold_supported'] ) ) );
 	}
 
 	private static function render_audit( array $snapshot ) {

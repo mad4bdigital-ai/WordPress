@@ -83,6 +83,19 @@ for marker in [
 ]:
     if marker not in write_schema:
         raise SystemExit("write dispatcher transport schema is missing reviewed governance field: " + marker)
+
+for marker in [
+    "if ( 'mad4b/write-execute' === (string) $name )",
+    "$mcp_meta['surface'] = 'write-dispatch';",
+    "$mcp_meta['generic_remote_admin'] = false;",
+    "$mcp_meta['breakglass_allowed'] = false;",
+]:
+    if marker not in abilities:
+        raise SystemExit("write-execute transport-only registration invariant missing: " + marker)
+
+staging_write_authority = (root / "includes" / "class-mad4b-scp-staging-write-authority.php").read_text(encoding="utf-8")
+if "array( 'enrollment', 'developer-dispatch', 'write-dispatch' )" not in staging_write_authority:
+    raise SystemExit("governed write augmentation no longer exempts the write dispatcher transport surface")
 if "private function schema( array $properties" not in abilities or "'additionalProperties' => false" not in abilities:
     raise SystemExit("write dispatcher must retain the shared top-level additionalProperties=false schema boundary")
 
@@ -201,7 +214,9 @@ echo "mad4b.authorization-permission-wrapper.runtime.v2: PASS\\n";
 if "'mad4b_approval_replay_denied' !== (string) $error->get_error_code()" in authorization:
     raise SystemExit("remote permission denial audit must not hide non-replay denial reason codes")
 
-dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools", 1)[1].split("public static function chatgpt_tools", 1)[0]
+# Inspect the exact dispatcher function, not its neighboring, separately
+# gated Staging bootstrap helper; a name in a denylist is not a dispatch grant.
+dispatch_catalog = servers.split("public static function chatgpt_dispatch_transport_tools()", 1)[1].split("public static function chatgpt_reviewed_direct_step_up_tools()", 1)[0]
 if "mad4b/approval-plan" in dispatch_catalog:
     raise SystemExit("approval-plan must remain hidden behind write-execute, not mounted as a direct ChatGPT mutation transport")
 if "array( 'mad4b/write-execute', 'mad4b/developer-execute', 'mad4b/enrollment-execute' )" not in dispatch_catalog:

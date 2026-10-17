@@ -1,0 +1,101 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "operation",
+    "site_uuid",
+    "environment",
+    "origin",
+    "source_sha",
+    "schema_digest",
+    "adapter_digest",
+    "issuer",
+    "subject",
+    "target_id",
+    "expected_revision",
+    "idempotency_key",
+    "plan_digest"
+  ],
+  "properties": {
+    "contract": {
+      "type": "string",
+      "enum": [
+        "mad4b.cso01.operation-envelope.v1"
+      ]
+    },
+    "operation": {
+      "type": "string",
+      "pattern": "^cso/[a-z0-9-]+$"
+    },
+    "site_uuid": {
+      "type": "string",
+      "minLength": 8
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "development",
+        "staging",
+        "production"
+      ]
+    },
+    "origin": {
+      "type": "string",
+      "pattern": "^https://"
+    },
+    "source_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "schema_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "adapter_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "issuer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 16
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "values": {
+      "type": "object",
+      "description": "Nonsecret validated inputs only; secrets forbidden."
+    },
+    "approval_ticket_ref": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "expires_at": {
+      "type": "string",
+      "minLength": 10
+    },
+    "dry_run": {
+      "type": "boolean"
+    }
+  },
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "CSO01 operation-envelope design schema; NOT an automatically registered WordPress Ability"
+}

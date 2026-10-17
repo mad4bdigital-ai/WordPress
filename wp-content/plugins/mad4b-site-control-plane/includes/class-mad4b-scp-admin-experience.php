@@ -11,6 +11,7 @@ final class MAD4B_SCP_Admin_Experience {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'admin_notices', array( __CLASS__, 'environment_context_notice' ), 1 );
+		MAD4B_SCP_Admin_Workspace::boot();
 	}
 
 	public static function environment_context() {
@@ -33,8 +34,23 @@ final class MAD4B_SCP_Admin_Experience {
 		$page = sanitize_key( self::query_string( 'page', '', 128 ) );
 		if ( 0 !== strpos( $page, 'mad4b-' ) ) return;
 		$context = self::environment_context();
-		echo '<div class="notice notice-info mad4b-environment-context"><p><strong>Environment context:</strong> Effective: <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; Raw WordPress: <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
-		if ( ! $context['match'] ) echo ' &middot; Operational authority follows the MAD4B Site Profile; raw WordPress environment is diagnostic only.';
+		$profile = class_exists( 'MAD4B_SCP_Site_Profile', false ) ? MAD4B_SCP_Site_Profile::status() : array();
+		// An explicitly confirmed implicit-Production override is not an
+		// unverified environment mismatch. It remains an acceptance advisory.
+		$confirmed_default = is_array( $profile )
+			&& ! empty( $profile['authority_ready'] )
+			&& ! empty( $profile['implicit_nonproduction_override_confirmed'] )
+			&& empty( $profile['wordpress_environment_explicit'] )
+			&& 'production' === $context['raw_wordpress_environment']
+			&& 'staging' === $context['effective_environment'];
+		$host_sync_pending = is_array( $profile )
+			&& 'host_managed' === ( $profile['environment_sync_mode'] ?? '' )
+			&& 'host_aligned' !== ( $profile['environment_sync_state'] ?? '' );
+		$warning = $host_sync_pending || ( ! $context['match'] && ! $confirmed_default );
+		echo '<div class="notice ' . ( $warning ? 'notice-warning' : 'notice-info' ) . ' mad4b-environment-context"><p><strong>' . esc_html__( 'Environment:', 'mad4b-site-control-plane' ) . '</strong> <code>' . esc_html( $context['effective_environment'] ) . '</code> &middot; ' . esc_html__( 'WordPress setting:', 'mad4b-site-control-plane' ) . ' <code>' . esc_html( $context['raw_wordpress_environment'] ) . '</code>';
+		if ( $host_sync_pending ) echo ' &middot; ' . esc_html__( 'Host-Managed Sync is pending or blocked. Apply WordPress environment settings at the trusted Host, then verify a fresh bootstrap before release.', 'mad4b-site-control-plane' );
+		elseif ( $confirmed_default ) echo ' &middot; ' . esc_html__( 'Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant.', 'mad4b-site-control-plane' );
+		elseif ( $warning ) echo ' &middot; ' . esc_html__( 'The environment differs: verify the exact host and Site Profile before accepting a release.', 'mad4b-site-control-plane' );
 		echo '</p></div>';
 	}
 
@@ -143,5 +159,12 @@ final class MAD4B_SCP_Admin_Experience {
 	public static function state_from_bool( $ready, $blocked = false ) {
 		if ( $ready ) return 'complete';
 		return $blocked ? 'blocked' : 'pending';
+	}
+
+	/** Missing observations stay distinct from a failed check. */
+	public static function observed_state( $value ) {
+		if ( true === $value ) return __( 'Ready', 'mad4b-site-control-plane' );
+		if ( false === $value ) return __( 'Needs attention', 'mad4b-site-control-plane' );
+		return __( 'Not checked', 'mad4b-site-control-plane' );
 	}
 }

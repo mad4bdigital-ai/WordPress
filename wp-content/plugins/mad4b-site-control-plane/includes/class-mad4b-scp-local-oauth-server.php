@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-oauth-consent-projection-view.php';
 
 /**
  * Standalone WordPress OAuth 2.1 authorization server for the MAD4B MCP read resource.
@@ -41,6 +42,8 @@ final class MAD4B_SCP_Local_OAuth_Server {
 	private static $booted = false;
 	private static $runtime_error = null;
 	private static $public_jwk_request_cache = null;
+	/** Request-local CIMD lookup, including errors; never a persistent authority cache. */
+	private static $cimd_request_lookup = array();
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -273,7 +276,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'code_challenge_methods_supported' => array( 'S256' ),
 			'scopes_supported' => $portable_only
 				? array( 'mad4b:read', 'offline_access' )
-				: array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ),
+				: array_merge( array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' ), 'staging' === self::current_environment() ? array( 'mad4b:approval:auto:all' ) : array() ),
 			'authorization_response_iss_parameter_supported' => true,
 			'protected_resources' => self::resource_identifiers(),
 			'client_id_metadata_document_supported' => true,
@@ -682,6 +685,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			&& ! empty( $developer_status['breakglass_enabled'] )
 			&& ! empty( $developer_status['breakglass_authority']['ready'] );
 		$full_staging_authority_ready = $write_ready && $developer_ready && $developer_breakglass_ready;
+		// Authority is distinct from executable sandbox readiness. Host facts are
+		// passive only; never launch or configure host binaries in a consent request.
+		$host_capabilities = class_exists( 'MAD4B_SCP_Developer_Host_Capabilities', false )
+			? MAD4B_SCP_Developer_Host_Capabilities::snapshot() : array();
+		$developer_execution = MAD4B_SCP_OAuth_Consent_Projection_View::developer_execution( $developer_ready, $host_capabilities );
+		$developer_breakglass_operational = $developer_breakglass_ready && ! empty( $developer_execution['operational_ready'] );
+		$full_staging_operational = $full_staging_authority_ready && ! empty( $developer_execution['operational_ready'] );
 		$developer_fingerprint = hash( 'sha256', wp_json_encode( array(
 			'agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
 			'developer_enabled' => ! empty( $developer_status['developer_enabled'] ),
@@ -700,6 +710,9 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'current_ready' => ! empty( $plan['current_ready'] ),
 			'developer_fingerprint' => $developer_fingerprint,
 			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'developer_host_fingerprint' => isset( $host_capabilities['capability_fingerprint'] ) ? (string) $host_capabilities['capability_fingerprint'] : '',
+			'developer_execution_ready' => ! empty( $developer_execution['operational_ready'] ),
+			'developer_host_prerequisites_ready' => ! empty( $developer_execution['host_prerequisites_ready'] ),
 		), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 		$ready = $write_ready;
@@ -750,6 +763,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			'developer_breakglass_enabled' => ! empty( $developer_status['breakglass_enabled'] ),
 			'developer_agent_public_id' => isset( $developer_status['agent_public_id'] ) ? (string) $developer_status['agent_public_id'] : '',
 			'full_staging_authority_ready' => $full_staging_authority_ready,
+			'full_staging_operational_ready' => $full_staging_operational,
+			'developer_execution_ready' => ! empty( $developer_execution['operational_ready'] ),
+			'developer_host_prerequisites_ready' => ! empty( $developer_execution['host_prerequisites_ready'] ),
+			'developer_operational_ready' => ! empty( $developer_execution['operational_ready'] ),
+			'developer_breakglass_operational_ready' => $developer_breakglass_operational,
+			'developer_execution_blockers' => $developer_execution['blockers'],
+			'developer_host_recovery_owner' => 'host_platform_operator',
 			'generic_raw_sql_breakglass_included' => false,
 			'blocking_conditions' => $blocking_conditions,
 			'grants' => $grants,
@@ -783,6 +803,30 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		) );
 	}
 
+	/**
+	 * First-byte consent display must never run the full governed Write catalog.
+	 * This is explicitly NOT authority evidence. The separately authenticated
+	 * AJAX readback may fill these fields after the OAuth form is delivered.
+	 */
+	private static function consent_grant_pending_projection() {
+		return array(
+			'contract' => 'mad4b.oauth-consent-pending-projection.v1',
+			'read_only' => true, 'mutation_performed' => false,
+			'authority_evaluated' => false, 'ready' => false,
+			'exact_grants_existing' => 0, 'write_tool_count' => 0,
+			'catalog_write_tool_count' => 0,
+			'runtime_eligible_write_tool_count' => 0,
+			'provider_gated_write_tool_count' => 0,
+			'governance_gated_write_tool_count' => 0,
+			'blocking_conditions' => array( array(
+				'code' => 'live_authority_readback_pending', 'count' => 1 ) ),
+			'grants' => array(),
+			'blocked_catalog_abilities' => array(),
+			'governance_gated_catalog_abilities' => array(),
+			'observed_at' => '',
+		);
+	}
+
 	private static function render_consent( array $validated, $user_id ) {
 		$client_name = isset( $validated['client']['client_name'] ) ? (string) $validated['client']['client_name'] : $validated['client_id'];
 		nocache_headers();
@@ -808,11 +852,14 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		echo '<h1>' . esc_html__( 'Authorize MCP access', 'mad4b-site-control-plane' ) . '</h1>';
 		$step_up_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $validated['scopes'], true );
 		$raw_breakglass_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $validated['scopes'], true );
-		$request_description = $raw_breakglass_requested
-			? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
-			: ( $step_up_requested
-				? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
-				: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) );
+		$ai_auto_all_requested = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE, $validated['scopes'], true );
+		$request_description = $ai_auto_all_requested
+			? __( 'is requesting read access and advance authority for its bound AI Agent to automatically decide governed Staging operation approval tickets. This delegation is broad and lasts while the approved OAuth connection is valid.', 'mad4b-site-control-plane' )
+			: ( $raw_breakglass_requested
+				? __( 'is requesting read access plus governed authority step-up and explicit raw-SQL Breakglass request scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+				: ( $step_up_requested
+					? __( 'is requesting read access plus a governed authority step-up scope for this WordPress MCP resource.', 'mad4b-site-control-plane' )
+					: __( 'is requesting read access to this WordPress MCP resource.', 'mad4b-site-control-plane' ) ) );
 		echo '<p><strong>' . esc_html( $client_name ) . '</strong> ' . esc_html( $request_description ) . '</p>';
 		$user_identity = self::consent_user_identity( $user_id );
 		echo '<p>' . esc_html__( 'Signed in as:', 'mad4b-site-control-plane' ) . ' <strong id="mad4b-oauth-user-label">' . esc_html( (string) $user_identity['display_label'] ) . '</strong></p>';
@@ -822,12 +869,20 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				esc_html__( 'This OAuth scope permits ChatGPT to request exact environment-bound governance bootstrap and convergence operations, including bootstrap Control Plane self-update and database-backed governed runtime-gate policy changes only where the current environment policy permits them. It does not itself create write grants, Developer authority, Developer Breakglass authority, Production mutation authority, or raw-SQL Breakglass authority. Production writes require an exact Production Site Profile, database-bound Production OAuth opt-in, explicit runtime-gate confirmation, exact grants, one-time approval, matching build/site digests, enrolled administrator identity, audit readiness, and all fail-closed governance gates. Full Staging Authority remains Staging-only.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
+		if ( $ai_auto_all_requested ) {
+			echo '<p><strong>' . esc_html__( 'AI automatic approval delegation:', 'mad4b-site-control-plane' ) . '</strong> ' .
+				esc_html__( 'By approving this exact additional OAuth scope, you authorize the named ChatGPT client and its bound Staging AI Agent to approve or reject governed operation tickets automatically, including operations that normally require a human ticket decision. Each operation still requires a valid target, exact grant, matching payload and build, applicable execution permission and audit. This is not a claim that AI is a human reviewer; original asset ownership verification, Production permissions and Breakglass rights are not changed. To revoke future decisions, revoke this OAuth grant; issued access tokens may remain valid until their short expiry.', 'mad4b-site-control-plane' ) .
+				'</p>';
+		}
 		if ( $raw_breakglass_requested ) {
 			echo '<p><strong>' . esc_html__( 'Raw-SQL Breakglass request:', 'mad4b-site-control-plane' ) . '</strong> ' .
 				esc_html__( 'This explicit scope allows the exact ChatGPT client to request visibility and call admission for a projected raw-SQL Breakglass Ability only on the bound Staging resource while the database-backed Breakglass gate is effective. The scope is not execution authority: a bound enabled NHI, exact mad4b-breakglass grant, central mutation policy, one-time exact Breakglass approval ticket, audit/budget gates, and the original Ability permission callback remain mandatory.', 'mad4b-site-control-plane' ) .
 				'</p>';
 		}
-		$grant_projection = self::consent_grant_projection();
+		// Authentication, PKCE validation and consent do not depend on a
+		// potentially slow catalog/governance scan. The UI begins unknown and
+		// performs an optional separately authorized live read after first paint.
+		$grant_projection = self::consent_grant_pending_projection();
 		$grant_count = isset( $grant_projection['exact_grants_existing'] ) ? (int) $grant_projection['exact_grants_existing'] : 0;
 		$grant_total = isset( $grant_projection['write_tool_count'] ) ? (int) $grant_projection['write_tool_count'] : 0;
 		$catalog_count = isset( $grant_projection['catalog_write_tool_count'] ) ? (int) $grant_projection['catalog_write_tool_count'] : 0;
@@ -835,12 +890,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$blocked_count = isset( $grant_projection['provider_gated_write_tool_count'] ) ? (int) $grant_projection['provider_gated_write_tool_count'] : 0;
 		$governance_blocked_count = isset( $grant_projection['governance_gated_write_tool_count'] ) ? (int) $grant_projection['governance_gated_write_tool_count'] : 0;
 		echo '<section class="mad4b-live-grants" id="mad4b-live-authority" aria-label="' . esc_attr__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '">';
-		echo '<div class="mad4b-grant-head"><h2>' . esc_html__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '</h2><span id="mad4b-grant-state" class="mad4b-state">' . esc_html( ! empty( $grant_projection['ready'] ) ? __( 'Converged', 'mad4b-site-control-plane' ) : __( 'Fail-closed', 'mad4b-site-control-plane' ) ) . '</span></div>';
+		echo '<div class="mad4b-grant-head"><h2>' . esc_html__( 'Live governed write authority', 'mad4b-site-control-plane' ) . '</h2><span id="mad4b-grant-state" class="mad4b-state">' . esc_html__( 'Awaiting verification', 'mad4b-site-control-plane' ) . '</span></div>';
 		echo '<div class="mad4b-grant-metrics">';
-		echo '<div><strong id="mad4b-exact-count">' . esc_html( sprintf( '%d/%d', $grant_count, $runtime_count ) ) . '</strong><span>' . esc_html__( 'exact / runtime eligible', 'mad4b-site-control-plane' ) . '</span></div>';
-		echo '<div><strong id="mad4b-catalog-count">' . esc_html( (string) $catalog_count ) . '</strong><span>' . esc_html__( 'governed catalog', 'mad4b-site-control-plane' ) . '</span></div>';
-		echo '<div><strong id="mad4b-blocked-count">' . esc_html( (string) $blocked_count ) . '</strong><span>' . esc_html__( 'provider gated', 'mad4b-site-control-plane' ) . '</span></div>';
-		echo '<div><strong id="mad4b-governance-blocked-count">' . esc_html( (string) $governance_blocked_count ) . '</strong><span>' . esc_html__( 'governance gated', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-exact-count">' . esc_html__( 'Pending', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'exact / runtime eligible', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-catalog-count">' . esc_html__( 'Pending', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'governed catalog', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-blocked-count">' . esc_html__( 'Pending', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'provider gated', 'mad4b-site-control-plane' ) . '</span></div>';
+		echo '<div><strong id="mad4b-governance-blocked-count">' . esc_html__( 'Pending', 'mad4b-site-control-plane' ) . '</strong><span>' . esc_html__( 'governance gated', 'mad4b-site-control-plane' ) . '</span></div>';
 		echo '</div>';
 		echo '<p class="mad4b-grant-note">' . esc_html__( 'This panel is live governance evidence, not an OAuth permission request. OAuth approval cannot create or widen write grants. Every normal remote write still requires a runtime-eligible ability, its exact grant, and a one-time approval.', 'mad4b-site-control-plane' ) . '</p>';
 		$blocking_conditions = isset( $grant_projection['blocking_conditions'] ) && is_array( $grant_projection['blocking_conditions'] ) ? $grant_projection['blocking_conditions'] : array();
@@ -859,9 +914,15 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			echo '</ul>';
 		}
 		echo '</div>';
-		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-grant-list">';
-		foreach ( (array) $grant_projection['grants'] as $grant ) echo '<li><code>' . esc_html( (string) $grant['ability'] ) . '</code> <span>· ' . esc_html( (string) $grant['provider'] ) . '</span></li>';
-		echo '</ul></details>';
+		// Render only validated nonblank rows. If a provider returns malformed
+		// data, surface the omission instead of displaying anonymous bullets.
+		$safe_grants = MAD4B_SCP_OAuth_Consent_Projection_View::safe_list( $grant_projection['grants'] ?? array() );
+		echo '<details><summary>' . esc_html__( 'Exact granted abilities', 'mad4b-site-control-plane' ) . ' (' . esc_html( (string) count( $safe_grants['rows'] ) ) . ')</summary><ul id="mad4b-grant-list">';
+		foreach ( $safe_grants['rows'] as $grant ) echo '<li><code>' . esc_html( $grant['ability'] ) . '</code> <span>· ' . esc_html( $grant['provider'] ) . '</span></li>';
+		if ( ! $safe_grants['rows'] ) echo '<li>' . esc_html__( 'No displayable ability names. Verify the authority projection before acting.', 'mad4b-site-control-plane' ) . '</li>';
+		echo '</ul>';
+		if ( $safe_grants['invalid'] || $safe_grants['omitted'] ) echo '<p class="mad4b-grant-note">' . esc_html( sprintf( '%d malformed and %d over display limit; this view is not an authority audit.', $safe_grants['invalid'], $safe_grants['omitted'] ) ) . '</p>';
+		echo '</details>';
 		echo '<details><summary>' . esc_html__( 'Provider-gated catalog abilities', 'mad4b-site-control-plane' ) . '</summary><ul id="mad4b-blocked-list">';
 		foreach ( (array) $grant_projection['blocked_catalog_abilities'] as $entry ) {
 			$ability = isset( $entry['ability'] ) ? (string) $entry['ability'] : '';
@@ -879,10 +940,11 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		}
 		echo '</ul></details>';
 		echo '<p class="mad4b-live-stamp">' . esc_html__( 'Live read-only authority refresh: immediate on focus/return, then every 15 seconds while visible; paused while hidden.', 'mad4b-site-control-plane' ) . ' <span id="mad4b-observed-at">' . esc_html( isset( $grant_projection['observed_at'] ) ? (string) $grant_projection['observed_at'] : '' ) . '</span></p>';
+		echo '<p class="mad4b-grant-note" id="mad4b-authority-refresh-health" role="status" aria-live="polite">Live evidence is refreshed only while this page is visible.</p>';
 		echo '</section>';
 		$projection_url = admin_url( 'admin-ajax.php' );
 		$projection_nonce = wp_create_nonce( 'mad4b_oauth_grant_projection' );
-		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ',nonce=' . wp_json_encode( $projection_nonce ) . ';const BASE=15000,MAX=60000;let timer=null,failures=0,inflight=false,lastFingerprint="";const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");let t=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");if(Array.isArray(x.items)&&x.items.length){const names=x.items.slice(0,4).map(i=>i&&i.ability?i.ability:(typeof i==="string"?i:"")).filter(Boolean);if(names.length)t+=" · "+names.join(", ")+(x.items.length>4?" …":"")}if(x.binding){const s=(x.binding.stored_source_commit_sha||"").slice(0,8),c=(x.binding.current_source_commit_sha||"").slice(0,8);if(s||c)t+=" · "+(s||"unbound")+" → "+(c||"unknown")}n.textContent=t;ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;q("#mad4b-governance-blocked-count").textContent=p.governance_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");const authority=(id,ready)=>{const e=q(id);if(!e)return;e.textContent=ready?"Allowed":"Blocked";e.className=ready?"mad4b-authority-ready":"mad4b-authority-blocked"};authority("#mad4b-write-state",!!p.ready);authority("#mad4b-developer-state",!!p.developer_authority_ready);authority("#mad4b-developer-breakglass-state",!!p.developer_breakglass_authority_ready);const full=q("#mad4b-full-authority-state");if(full){full.className=p.full_staging_authority_ready?"mad4b-full-ready":"mad4b-full-blocked";full.textContent="Full Staging Authority: "+(p.full_staging_authority_ready?"Ready":"Not fully converged")}blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(p.grants||[]).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));const bl=q("#mad4b-blocked-list");clear(bl);(p.blocked_catalog_abilities||[]).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));const glb=q("#mad4b-governance-blocked-list");clear(glb);(p.governance_gated_catalog_abilities||[]).forEach(x=>glb.appendChild(li(x.ability,x.provider,x.reason||"governance_gated")));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(p.observed_at)q("#mad4b-observed-at").textContent=p.observed_at};const schedule=(delay)=>{if(timer)clearTimeout(timer);timer=null;if(document.hidden)return;timer=setTimeout(run,delay)};const run=()=>{if(document.hidden||inflight)return;inflight=true;const body=new URLSearchParams();body.set("action","mad4b_oauth_grant_projection");body.set("nonce",nonce);fetch(u,{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:body.toString()}).then(r=>r.ok?r.json():Promise.reject(new Error("http_"+r.status))).then(x=>{if(!x||!x.success||!x.data||!x.data.projection)throw new Error("invalid_projection");failures=0;const fp=x.data.projection.projection_fingerprint||"";if(!fp||fp!==lastFingerprint){paint(x.data);lastFingerprint=fp}schedule(BASE)}).catch(()=>{failures=Math.min(failures+1,3);schedule(Math.min(MAX,BASE*Math.pow(2,failures)))}).finally(()=>{inflight=false})};document.addEventListener("visibilitychange",()=>{if(document.hidden){if(timer)clearTimeout(timer);timer=null}else{run()}});window.addEventListener("focus",()=>{if(!document.hidden)run()});run()})();</script>';
+		echo '<script nonce="' . esc_attr( $script_nonce ) . '">(function(){const u=' . wp_json_encode( $projection_url ) . ',nonce=' . wp_json_encode( $projection_nonce ) . ';const BASE=60000,MAX=180000;let timer=null,failures=0,inflight=false,lastFingerprint="";const q=(s)=>document.querySelector(s);const clear=(el)=>{while(el&&el.firstChild)el.removeChild(el.firstChild)};const li=(a,p,r)=>{const n=document.createElement("li"),c=document.createElement("code"),s=document.createElement("span");c.textContent=a||"";s.textContent=" · "+(p||"")+(r?" · "+r:"");n.append(c,s);return n};const blockers=(p)=>{const el=q("#mad4b-grant-blockers");clear(el);const b=Array.isArray(p.blocking_conditions)?p.blocking_conditions:[];if(!b.length){el.className="mad4b-grant-blockers mad4b-ok";el.textContent=p.ready?"Write authority is fully converged for the runtime-eligible surface.":"No grant drift detected; write authority remains unavailable for another governed condition.";return}el.className="mad4b-grant-blockers mad4b-warn";const ul=document.createElement("ul");b.forEach(x=>{const n=document.createElement("li");let t=(x.code||"governance_blocker")+(x.count?" ("+x.count+")":"");if(Array.isArray(x.items)&&x.items.length){const names=x.items.slice(0,4).map(i=>i&&i.ability?i.ability:(typeof i==="string"?i:"")).filter(Boolean);if(names.length)t+=" · "+names.join(", ")+(x.items.length>4?" …":"")}if(x.binding){const s=(x.binding.stored_source_commit_sha||"").slice(0,8),c=(x.binding.current_source_commit_sha||"").slice(0,8);if(s||c)t+=" · "+(s||"unbound")+" → "+(c||"unknown")}n.textContent=t;ul.appendChild(n)});el.append("Execution remains fail-closed: ",ul)};const paint=(d)=>{if(!d||!d.projection)return;const p=d.projection;q("#mad4b-exact-count").textContent=(p.exact_grants_existing||0)+"/"+(p.runtime_eligible_write_tool_count||0);q("#mad4b-catalog-count").textContent=p.catalog_write_tool_count||0;q("#mad4b-blocked-count").textContent=p.provider_gated_write_tool_count||0;q("#mad4b-governance-blocked-count").textContent=p.governance_gated_write_tool_count||0;const st=q("#mad4b-grant-state");st.textContent=p.ready?"Converged":"Fail-closed";st.className="mad4b-state "+(p.ready?"mad4b-ok-state":"mad4b-block-state");const authority=(id,ready)=>{const e=q(id);if(!e)return;e.textContent=ready?"Allowed":"Blocked";e.className=ready?"mad4b-authority-ready":"mad4b-authority-blocked"};authority("#mad4b-write-state",!!p.ready);authority("#mad4b-developer-state",!!p.developer_authority_ready);authority("#mad4b-developer-breakglass-state",!!p.developer_breakglass_authority_ready);const host=q("#mad4b-developer-host-state");if(host){host.textContent=p.developer_execution_ready?"Execution certified":p.developer_host_prerequisites_ready?"Host prerequisites found — certification pending":"Execution blocked";host.className=p.developer_execution_ready?"mad4b-authority-ready":p.developer_host_prerequisites_ready?"mad4b-authority-pending":"mad4b-authority-blocked"}const reasons=q("#mad4b-developer-host-blockers");if(reasons){const bs=Array.isArray(p.developer_execution_blockers)?p.developer_execution_blockers:[];reasons.textContent=p.developer_execution_ready?"Independent exact host acceptance verified; separate execution approval still required.":p.developer_host_prerequisites_ready?"Host binaries detected, but no independently verified resource-limit/network-isolation canary receipt exists. Execution remains blocked.":"Host execution blocked"+(bs.length?": "+bs.slice(0,8).join(", "):": independent host verification required")+". Recovery belongs to the host operator; OAuth approval cannot fix host tools."}const full=q("#mad4b-full-authority-state");if(full){full.className=p.full_staging_operational_ready?"mad4b-full-ready":"mad4b-full-blocked";full.textContent=p.environment!=="staging"?"Full Staging Authority: not applicable in this environment":"Full Staging Authority: "+(p.full_staging_authority_ready?"Authority converged":"Authority incomplete")+" · Host execution: "+(p.developer_execution_ready?"certified":p.developer_host_prerequisites_ready?"prerequisites only (uncertified)":"blocked")+" · Overall: "+(p.full_staging_operational_ready?"Operationally ready":"not operationally ready")}blockers(p);const gl=q("#mad4b-grant-list");clear(gl);(Array.isArray(p.grants)?p.grants:[]).filter(x=>x&&typeof x.ability==="string"&&typeof x.provider==="string"&&/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/.test(x.ability)&&/^[a-z0-9][a-z0-9._-]*$/.test(x.provider)).slice(0,150).forEach(x=>gl.appendChild(li(x.ability,x.provider,"")));if(!gl.firstChild)gl.appendChild(li("No displayable grant names","Review projection integrity",""));const bl=q("#mad4b-blocked-list");clear(bl);(Array.isArray(p.blocked_catalog_abilities)?p.blocked_catalog_abilities:[]).filter(x=>x&&typeof x.ability==="string"&&x.ability.trim()).slice(0,150).forEach(x=>bl.appendChild(li(x.ability,x.provider,x.reason||"provider_gated")));if(!bl.firstChild)bl.appendChild(li("No provider-gated items","",""));const glb=q("#mad4b-governance-blocked-list");clear(glb);(Array.isArray(p.governance_gated_catalog_abilities)?p.governance_gated_catalog_abilities:[]).filter(x=>x&&typeof x.ability==="string"&&x.ability.trim()).slice(0,150).forEach(x=>glb.appendChild(li(x.ability,x.provider,x.reason||"governance_gated")));if(!glb.firstChild)glb.appendChild(li("No governance-gated items","",""));if(d.user&&d.user.display_label)q("#mad4b-oauth-user-label").textContent=d.user.display_label;if(p.observed_at)q("#mad4b-observed-at").textContent=p.observed_at};const schedule=(delay)=>{if(timer)clearTimeout(timer);timer=null;if(document.hidden)return;timer=setTimeout(run,delay)};const run=()=>{if(document.hidden||inflight)return;inflight=true;const body=new URLSearchParams();body.set("action","mad4b_oauth_grant_projection");body.set("nonce",nonce);fetch(u,{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body:body.toString()}).then(r=>r.ok?r.json():Promise.reject(new Error("http_"+r.status))).then(x=>{if(!x||!x.success||!x.data||!x.data.projection)throw new Error("invalid_projection");failures=0;const fp=x.data.projection.projection_fingerprint||"";if(!fp||fp!==lastFingerprint){paint(x.data);lastFingerprint=fp}const stamp=q("#mad4b-observed-at");if(stamp&&x.data.projection.observed_at)stamp.textContent=x.data.projection.observed_at;const health=q("#mad4b-authority-refresh-health");if(health)health.textContent="Live authority readback successful. OAuth approval remains separate from Write/Developer authority.";schedule(BASE)}).catch(()=>{lastFingerprint="";failures=Math.min(failures+1,3);const health=q("#mad4b-authority-refresh-health");if(health)health.textContent="Live authority refresh failed; previously displayed information is historical and must not be used as current execution readiness.";const state=q("#mad4b-grant-state");if(state){state.textContent="Readback unavailable";state.className="mad4b-state mad4b-block-state"}const host=q("#mad4b-developer-host-state");if(host){host.textContent="Unverified";host.className="mad4b-authority-pending"}const full=q("#mad4b-full-authority-state");if(full){full.textContent="Operational readiness: requires fresh verified readback";full.className="mad4b-full-blocked"}schedule(Math.min(MAX,BASE*Math.pow(2,failures)))}).finally(()=>{inflight=false})};document.addEventListener("visibilitychange",()=>{if(document.hidden){if(timer)clearTimeout(timer);timer=null}else{run()}});window.addEventListener("focus",()=>{if(!document.hidden)run()});schedule(1200)})();</script>';
 		echo '<form method="post" action="' . esc_url( self::authorize_url() ) . '">';
 		foreach ( $hidden as $name => $value ) echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="' . esc_attr( $value ) . '">';
 		wp_nonce_field( 'mad4b_local_oauth_consent', '_mad4b_oauth_nonce' );
@@ -1000,6 +1062,12 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			if ( is_wp_error( $refresh ) ) self::send_oauth_error( 'server_error', 'Unable to create refresh token.', 500 );
 			$response['refresh_token'] = $refresh;
 		}
+		// The verified authorization-code or refresh exchange supplies the
+		// actual OAuth client, enrolled WordPress subject and exact resource.
+		// This observes identity ONLY; it does not create an App ID or any grant.
+		if ( class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ) {
+			MAD4B_SCP_ChatGPT_Auto_Binding::observe_local_token_issued( $client_id, $wp_user_id, $resource, $scopes );
+		}
 		self::send_json( $response, 200 );
 	}
 
@@ -1077,7 +1145,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$scope = trim( (string) $scope );
 		if ( strlen( $scope ) > self::MAX_SCOPE_BYTES ) return new WP_Error( 'invalid_scope', 'OAuth scope is too large.' );
 		$items = preg_split( '/\s+/', $scope );
-		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
+		$allowed = array( 'mad4b:read', 'mad4b:authority:step-up', 'mad4b:approval:auto:all', 'server:mad4b-breakglass', 'server:mad4b-developer', 'server:mad4b-developer-breakglass', 'offline_access' );
 		$scopes = array();
 		foreach ( is_array( $items ) ? $items : array() as $item ) {
 			$item = trim( (string) $item );
@@ -1095,6 +1163,7 @@ final class MAD4B_SCP_Local_OAuth_Server {
 			$developer = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer' );
 			$developer_breakglass = MAD4B_SCP_OAuth_Resource_Bridge::resource_identifier( 'mad4b-developer-breakglass' );
 			$has_step_up = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE, $scopes, true );
+			$has_ai_auto_all = in_array( MAD4B_SCP_OAuth_Resource_Bridge::AI_AUTO_ALL_SCOPE, $scopes, true );
 			$has_raw_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::BREAKGLASS_SCOPE, $scopes, true );
 			$has_developer = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_SCOPE, $scopes, true );
 			$has_developer_breakglass = in_array( MAD4B_SCP_OAuth_Resource_Bridge::DEVELOPER_BREAKGLASS_SCOPE, $scopes, true );
@@ -1103,6 +1172,10 @@ final class MAD4B_SCP_Local_OAuth_Server {
 				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is reserved for the exact ChatGPT CIMD client.' );
 				if ( ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is valid only for the canonical ChatGPT resource.' );
 				if ( ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'Authority step-up scope is unavailable outside an exact eligible governed environment.' );
+			}
+			if ( $has_ai_auto_all ) {
+				if ( ! hash_equals( self::CHATGPT_CIMD_CLIENT_ID, $client_id ) || ! hash_equals( $chatgpt, $resource ) ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is bound to the exact ChatGPT OAuth client and canonical MCP resource.' );
+				if ( 'staging' !== self::current_environment() || ! MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available() ) return new WP_Error( 'invalid_scope', 'AI auto-approval delegation is available only on an enrolled eligible Staging resource.' );
 			}
 			if ( $has_raw_breakglass ) {
 				if ( ! $has_step_up ) return new WP_Error( 'invalid_scope', 'Raw Breakglass scope requires the dedicated authority step-up scope.' );
@@ -1150,7 +1223,13 @@ final class MAD4B_SCP_Local_OAuth_Server {
 		$clients = self::clients();
 		if ( isset( $clients[ $client_id ] ) ) return $clients[ $client_id ];
 		if ( ! self::cimd_client_id_allowed( $client_id ) ) return null;
-		return self::fetch_cimd_client( $client_id );
+		// Error redirects can validate the same client twice. Re-fetching its
+		// external metadata serially doubles the network stall on failure.
+		// Cache only for this HTTP request; later OAuth sessions revalidate.
+		if ( array_key_exists( $client_id, self::$cimd_request_lookup ) )
+			return self::$cimd_request_lookup[ $client_id ];
+		self::$cimd_request_lookup[ $client_id ] = self::fetch_cimd_client( $client_id );
+		return self::$cimd_request_lookup[ $client_id ];
 	}
 
 	private static function cimd_supported() {

@@ -1,0 +1,445 @@
+<?php
+/** Isolated WordPress API contract fixture; no HTTP, DB, publishing or installs. */
+define( 'ABSPATH', dirname( __DIR__ ) . '/' );
+class WP_Error {
+    private $code;
+    public function __construct( $code, $message = '' ) { $this->code = $code; }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $v ) { return $v instanceof WP_Error; }
+function wp_json_encode( $v ) { return json_encode( $v, JSON_UNESCAPED_SLASHES ); }
+function wp_kses( $html, $allowed, $protocols ) {
+    // Minimal fixture. Real native wp_kses acceptance remains an integration gate.
+    return preg_replace( '/\\s+on[a-z]+\\s*=\\s*(["\\x27]).*?\\1/i', '', $html );
+}
+function wp_parse_url( $v ) { return parse_url( $v ); }
+function home_url( $path = '/' ) { return 'https://staging.our-site.test' . $path; }
+function sanitize_title( $v ) {
+    $v = strtolower( trim( $v ) );
+    return preg_replace( '/[^a-z0-9-]+/', '-', $v );
+}
+function get_post_types( $args, $output ) { return array( 'posts', 'products' ); }
+function get_taxonomies( $args, $output ) { return array( 'public_taxonomy' ); }
+function get_terms( $args ) {
+    $terms = array();
+    foreach ( $GLOBALS['taxonomy_terms'] as $term ) {
+        if ( $term['slug'] === $args['slug'] ) $terms[] = (object) $term;
+    }
+    return array_slice( $terms, 0, 2 );
+}
+function get_term_link( $term ) {
+    return 'https://staging.our-site.test/collections/' . $term->slug . '/';
+}
+function get_post( $id ) {
+    if ( ! isset( $GLOBALS['posts'][$id] ) ) return null;
+    return (object) $GLOBALS['posts'][$id];
+}
+function get_post_type_object( $type ) { return (object) array( 'public' => true ); }
+function current_user_can( $scope, $id ) { return ! empty( $GLOBALS['reader'] ); }
+function get_permalink( $id ) { return $GLOBALS['posts'][$id]['permalink']; }
+function get_posts( $args ) {
+    $found = array();
+    foreach ( $GLOBALS['posts'] as $id => $p ) {
+        if ( isset( $p['slug'] ) && $p['slug'] === $args['name'] &&
+            $p['post_status'] === 'publish' ) $found[] = $id;
+    }
+    return array_slice( $found, 0, 2 );
+}
+function wp_attachment_is_image( $id ) { return 'attachment' === ( $GLOBALS['posts'][$id]['post_type'] ?? '' ); }
+function get_post_meta( $id, $name, $single ) {
+    $value = $GLOBALS['meta'][$id][$name] ?? '';
+    return $single ? $value : ( '' === $value ? array() : array( $value ) );
+}
+function wp_get_attachment_url( $id ) { return $GLOBALS['posts'][$id]['permalink']; }
+class MAD4B_SCP_Policy {
+    public static function can_read() { return ! empty( $GLOBALS['reader'] ); }
+}
+class MAD4B_SCP_Site_Profile {
+    public static function status() {
+        return array( 'site_uuid' => 'site-1', 'profile_digest' => 'site-proof',
+            'origin_match' => true, 'environment_match' => true );
+    }
+}
+/** Minimal stand-in for WP_HTML_Tag_Processor; tests simple HTML tags only. */
+class WP_HTML_Tag_Processor {
+    private $html;
+    private $tags;
+    private $index = -1;
+    private $mods = array();
+    public function __construct( $html ) {
+        $this->html = $html;
+        preg_match_all( '/<\\s*([a-z][a-z0-9]*)\\b[^>]*>/i', $html, $matches, PREG_OFFSET_CAPTURE );
+        $this->tags = $matches[0];
+    }
+    public function next_tag() { return isset( $this->tags[++$this->index] ); }
+    public function get_tag() {
+        preg_match( '/^<\s*([a-z0-9]+)/i', $this->tags[$this->index][0], $m );
+        return strtoupper( $m[1] );
+    }
+    public function get_attribute( $name ) {
+        $tag = $this->mods[$this->index] ?? $this->tags[$this->index][0];
+        $pattern = '/\b' . preg_quote( $name, '/' ) . '\s*=\s*(["\x27])(.*?)\1/i';
+        return preg_match( $pattern, $tag, $m ) ? $m[2] : null;
+    }
+    public function set_attribute( $name, $value ) {
+        $tag = $this->mods[$this->index] ?? $this->tags[$this->index][0];
+        $pattern = '/\b' . preg_quote( $name, '/' ) . '\s*=\s*(["\x27])(.*?)\1/i';
+        $value = htmlspecialchars( $value, ENT_QUOTES, 'UTF-8' );
+        if ( preg_match( $pattern, $tag ) )
+            $tag = preg_replace( $pattern, $name . '="' . $value . '"', $tag, 1 );
+        else $tag = substr( $tag, 0, -1 ) . ' ' . $name . '="' . $value . '">';
+        $this->mods[$this->index] = $tag;
+    }
+    public function remove_attribute( $name ) {
+        $tag = $this->mods[$this->index] ?? $this->tags[$this->index][0];
+        $pattern = '/\s+' . preg_quote( $name, '/' ) . '\s*=\s*(["\x27])(.*?)\1/i';
+        $this->mods[$this->index] = preg_replace( $pattern, '', $tag, 1 );
+    }
+    public function get_updated_html() {
+        $out = $this->html;
+        for ( $i = count( $this->tags ) - 1; $i >= 0; $i-- ) {
+            if ( ! isset( $this->mods[$i] ) ) continue;
+            $old = $this->tags[$i][0];
+            $off = $this->tags[$i][1];
+            $out = substr_replace( $out, $this->mods[$i], $off, strlen( $old ) );
+        }
+        return $out;
+    }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-scrape-transfer.php';
+function check( $v, $why ) {
+    if ( ! $v ) { fwrite( STDERR, "FAIL: $why\n" ); exit( 1 ); }
+}
+$GLOBALS['reader'] = true;
+$GLOBALS['taxonomy_terms'] = array(
+    array( 'term_id' => 31, 'slug' => 'shared-category', 'taxonomy' => 'public_taxonomy' ),
+);
+$GLOBALS['posts'] = array(
+    7 => array( 'slug' => 'exact-route', 'post_type' => 'products',
+        'post_status' => 'publish', 'permalink' => 'https://staging.our-site.test/products/exact-route/' ),
+    8 => array( 'slug' => 'hidden-route', 'post_type' => 'products',
+        'post_status' => 'draft', 'permalink' => 'https://staging.our-site.test/products/hidden-route/' ),
+    19 => array( 'post_type' => 'attachment', 'post_status' => 'inherit',
+        'permalink' => 'https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg' ),
+);
+$img = 'https://example-competitor.test/assets/photo.jpg';
+$GLOBALS['meta'][19] = array( '_mad4b_remote_media_source_sha256' => hash( 'sha256', $img ),
+    '_mad4b_remote_media_content_sha256' => str_repeat( 'a', 64 ) );
+$input = array(
+    'source_page_url' => 'https://example-competitor.test/deals/special-ship',
+    'html' => '<p><a href="/products/exact-route?affiliate=1">Related</a> <a href="/deals/unknown">Unknown</a> <a href="https://independent.test/source">Outside</a></p><img src="' . $img . '" alt="Deck" srcset="' . $img . ' 2x">',
+    'prices' => array( array( 'raw' => 'USD 1,457 per person', 'currency' => 'USD', 'value' => '1457' ) ),
+    'media_bindings' => array( array( 'source_url' => $img, 'attachment_id' => 19 ) ),
+);
+$plan = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( ! is_wp_error( $plan ) && count( $plan['internal_link_map'] ) === 0 &&
+    count( $plan['unmatched_competitor_links'] ) === 2 &&
+    count( $plan['suggested_internal_links'] ) === 1 &&
+    $plan['image_import_remaining'] === 0 &&
+    $plan['source_prices'][0]['raw'] === 'USD 1,457 per person',
+    'Exact local link, unresolved competitor link, existing local image and price capture' );
+$rewritten = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $rewritten ) && $rewritten['rewritten_internal_links'] === 0 &&
+    $rewritten['competitor_links_unlinked'] === 3 && $rewritten['rewritten_to_local_media'] === 1 &&
+    strpos( $rewritten['html'], 'https://staging.our-site.test/products/exact-route/' ) === false &&
+    strpos( $rewritten['html'], 'https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg' ) !== false &&
+    strpos( $rewritten['html'], 'href="https://independent.test/source"' ) === false &&
+    strpos( $rewritten['html'], 'affiliate=1' ) === false &&
+    $rewritten['source_prices'][0]['value'] === '1457',
+    'Rewrite keeps source facts while mapping exact site links and verified local media' );
+$reviewed = $input;
+$reviewed['link_overrides'] = array( array(
+    'source_url' => '/products/exact-route?affiliate=1',
+    'target_post_id' => 7, 'reviewed' => true ) );
+$review_plan = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+$review_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $reviewed, array( 'expected_plan_sha256' => $review_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $review_rewrite ) &&
+    $review_rewrite['rewritten_internal_links'] === 1 &&
+    strpos( $review_rewrite['html'], 'https://staging.our-site.test/products/exact-route/' ) !== false,
+    'Only reviewed link bindings may map to existing local WordPress permalinks' );
+$original_permalink = $GLOBALS['posts'][7]['permalink'];
+$GLOBALS['posts'][7]['permalink'] = 'http://staging.our-site.test/products/exact-route/';
+$insecure_target = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+check( is_wp_error( $insecure_target ) &&
+    $insecure_target->get_error_code() === 'mad4b_scrape_transfer_target_missing',
+    'An HTTP permalink must never be accepted as the origin of an HTTPS WordPress site' );
+$GLOBALS['posts'][7]['permalink'] = 'https://staging.our-site.test:443/products/exact-route/';
+$default_https_port = MAD4B_SCP_Scrape_Transfer::plan( $reviewed );
+check( ! is_wp_error( $default_https_port ) &&
+    count( $default_https_port['internal_link_map'] ) === 1,
+    'Explicit HTTPS default port must be equivalent to the implicit default port' );
+$GLOBALS['posts'][7]['permalink'] = $original_permalink;
+$original_attachment_url = $GLOBALS['posts'][19]['permalink'];
+$GLOBALS['posts'][19]['permalink'] = 'http://staging.our-site.test/wp-content/uploads/2026/10/import.jpg';
+$insecure_media = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( is_wp_error( $insecure_media ) &&
+    $insecure_media->get_error_code() === 'mad4b_scrape_transfer_media_provenance_missing',
+    'An HTTP attachment cannot claim to be local media on an HTTPS WordPress origin' );
+$GLOBALS['posts'][19]['permalink'] = $original_attachment_url;
+$rejected = $reviewed; $rejected['link_overrides'][0]['reviewed'] = false;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $rejected ) ),
+    'Manual link missing review must not be accepted' );
+$term_page = $input;
+$term_page['html'] = '<p><a href="/collections/shared-category">Browse category</a></p>';
+unset( $term_page['media_bindings'] );
+$term_plan = MAD4B_SCP_Scrape_Transfer::plan( $term_page );
+check( ! is_wp_error( $term_plan ) &&
+    count( $term_plan['internal_link_map'] ) === 0 &&
+    array_values( $term_plan['suggested_internal_links'] )[0] ===
+    'https://staging.our-site.test/collections/shared-category/',
+    'Known public taxonomy archive must remap to the local term URL.' );
+$GLOBALS['taxonomy_terms'][] = array( 'term_id' => 32,
+    'slug' => 'exact-route', 'taxonomy' => 'public_taxonomy' );
+$ambiguous_term = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( ! is_wp_error( $ambiguous_term ) &&
+    count( $ambiguous_term['unmatched_competitor_links'] ) === 2,
+    'Post vs public taxonomy slug conflict must require explicit selection.' );
+array_pop( $GLOBALS['taxonomy_terms'] );
+$query_only = $input;
+$query_only['html'] = '<p><a href="?offer=river">River offer</a></p><img src="' . $img . '">';
+$query_plan = MAD4B_SCP_Scrape_Transfer::plan( $query_only );
+check( ! is_wp_error( $query_plan ) &&
+    $query_plan['unmatched_competitor_links'][0] ===
+        'https://example-competitor.test/deals/special-ship?offer=river',
+    'A query-only link must resolve against the full current source page, not its parent directory' );
+$orphan_binding = $input;
+$orphan_binding['html'] = '<p>Page without a captured image</p>';
+$orphan_plan = MAD4B_SCP_Scrape_Transfer::plan( $orphan_binding );
+check( is_wp_error( $orphan_plan ) &&
+    $orphan_plan->get_error_code() === 'mad4b_scrape_transfer_media_binding_invalid',
+    'A proven attachment may not be bound to a media URL missing from the captured source HTML' );
+$relative_media = $input;
+$relative_media['html'] = '<img src="../assets/photo.jpg" alt="Relative media">';
+$relative_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_media );
+check( ! is_wp_error( $relative_plan ) &&
+    $relative_plan['image_import_remaining'] === 0 &&
+    $relative_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Relative ../ image URL must normalize to the actual imported source identity' );
+$relative_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+    $relative_media, array( 'expected_plan_sha256' => $relative_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $relative_rewrite ) && $relative_rewrite['pending_media'] === 0 &&
+    $relative_rewrite['rewritten_to_local_media'] === 1,
+    'Normalized ../ image must use the verified WordPress Media Library binding' );
+$relative_clamped = $input;
+unset( $relative_clamped['media_bindings'] );
+$relative_clamped['html'] = '<img src="../../../assets/photo.jpg" alt="Clamped root">';
+$clamped_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_clamped );
+check( ! is_wp_error( $clamped_plan ) &&
+    $clamped_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Dot-segment URL normalization must clamp traversal to origin root' );
+$relative_query = $relative_clamped;
+$relative_query['html'] = '<img src="../assets/photo.jpg?size=large" alt="Relative image query">';
+$query_image_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_query );
+check( ! is_wp_error( $query_image_plan ) &&
+    $query_image_plan['image_import_tasks'][0]['source_url'] === $img . '?size=large',
+    'Dot segments in image URLs must normalize while retaining query parameters' );
+$relative_root = $relative_clamped;
+$relative_root['html'] = '<img src="/deals/../assets/photo.jpg" alt="Root image">';
+$root_image_plan = MAD4B_SCP_Scrape_Transfer::plan( $relative_root );
+check( ! is_wp_error( $root_image_plan ) &&
+    $root_image_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Root-relative URLs with dot segments must use the canonical source image identity' );
+$none = $input;
+unset( $none['media_bindings'] );
+$pending = MAD4B_SCP_Scrape_Transfer::plan( $none );
+check( ! is_wp_error( $pending ) && $pending['image_import_remaining'] === 1 &&
+    $pending['image_import_tasks'][0]['inspect_ability'] === 'media/remote-image-inspect' &&
+    $pending['image_import_tasks'][0]['inspect_input']['source_url'] === $img &&
+    $pending['image_import_tasks'][0]['content_inspection_required'] === true &&
+    $pending['image_import_tasks'][0]['import_apply_ability'] === 'media/remote-import-apply' &&
+    $pending['remote_media_manifest_items'][0]['binding_role'] === 'gallery' &&
+    $pending['remote_media_manifest_items'][0]['import']['rights_basis'] === 'unknown' &&
+    $pending['remote_media_manifest_items'][0]['import']['capture_only'] === true &&
+    $pending['remote_media_manifest_items'][0]['import']['duplicate_policy'] === 'reuse' &&
+    $pending['remote_media_manifest_items'][0]['import']['alt'] === 'Deck' &&
+    strpos( $pending['remote_media_manifest_items'][0]['import']['description'], 'Original image source:' ) === 0,
+    'Scraper should prepare full new attachment metadata and exact native importer fields, without rights claims' );
+$lazy = $input;
+$lazy['html'] = '<img src="data:image/gif;base64,R0lG" data-src="' . $img . '" alt="Deck detail">';
+$lazy_plan = MAD4B_SCP_Scrape_Transfer::plan( $lazy );
+check( ! is_wp_error( $lazy_plan ) &&
+    count( $lazy_plan['image_import_tasks'] ) === 1 &&
+    $lazy_plan['image_import_tasks'][0]['source_url'] === $img,
+    'Lazy image data-src should be imported instead of a placeholder' );
+foreach ( array( 'data-original', 'data-lazy-src' ) as $attribute ) {
+    $lazy_variant = $input;
+    unset( $lazy_variant['media_bindings'] );
+    $lazy_variant['html'] = '<img src="data:image/gif;base64,R0lG" ' . $attribute .
+        '="' . $img . '" alt="Nile image">';
+    $lazy_variant_plan = MAD4B_SCP_Scrape_Transfer::plan( $lazy_variant );
+    check( ! is_wp_error( $lazy_variant_plan ) &&
+        $lazy_variant_plan['image_import_remaining'] === 1 &&
+        $lazy_variant_plan['image_import_tasks'][0]['source_url'] === $img,
+        'Lazy image ' . $attribute . ' must be included in the governed media import manifest' );
+    $lazy_variant_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $lazy_variant, array( 'expected_plan_sha256' => $lazy_variant_plan['plan_sha256'] ) ) );
+    check( ! is_wp_error( $lazy_variant_rewrite ) &&
+        $lazy_variant_rewrite['pending_media'] === 1 &&
+        !$lazy_variant_rewrite['media_ready'] &&
+        !$lazy_variant_rewrite['ready_for_draft_review'],
+        'Lazy image ' . $attribute . ' must not falsely claim media completeness' );
+}
+$picture = $input;
+unset( $picture['media_bindings'] );
+$large = 'https://example-competitor.test/assets/photo-large.jpg';
+$picture['html'] = '<picture><source srcset="' . $img . ' 300w, ' . $large .
+    ' 1200w"><img src="data:image/gif;base64,R0lG" alt="River deck"></picture>';
+$picture_plan = MAD4B_SCP_Scrape_Transfer::plan( $picture );
+check( ! is_wp_error( $picture_plan ) &&
+    count( $picture_plan['image_import_tasks'] ) === 1 &&
+    $picture_plan['image_import_tasks'][0]['source_url'] === $large &&
+    !empty( $picture_plan['remote_media_manifest_items'][0]['import']['alt'] ) &&
+    $picture_plan['remote_media_manifest_items'][0]['import']['source_url'] === $large,
+    'Picture srcset should choose actual higher-resolution URL, not placeholder' );
+$picture['media_bindings'] = array();
+$picture_rewrite = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $picture, array( 'expected_plan_sha256' => $picture_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $picture_rewrite ) &&
+    !$picture_rewrite['ready_for_draft_review'] &&
+    $picture_rewrite['pending_media'] > 0,
+    'Missing native imported picture image must keep draft review blocked' );
+foreach ( array( 'src', 'data-src', 'data-original', 'data-lazy-src' ) as $source_attribute ) {
+    $picture_fallback = $input;
+    $picture_fallback['html'] = '<picture><source ' . $source_attribute . '="' . $img .
+        '"><img src="data:image/gif;base64,R0lG" alt="Fallback"></picture>';
+    $fallback_plan = MAD4B_SCP_Scrape_Transfer::plan( $picture_fallback );
+    check( ! is_wp_error( $fallback_plan ) &&
+        count( $fallback_plan['image_import_tasks'] ) === 1 &&
+        $fallback_plan['image_import_tasks'][0]['source_url'] === $img &&
+        $fallback_plan['image_import_remaining'] === 0,
+        'Picture SOURCE ' . $source_attribute . ' must discover the bound local image' );
+    $fallback_out = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $picture_fallback, array( 'expected_plan_sha256' => $fallback_plan['plan_sha256'] ) ) );
+    check( ! is_wp_error( $fallback_out ) && $fallback_out['pending_media'] === 0 &&
+        $fallback_out['rewritten_to_local_media'] === 1 &&
+        strpos( $fallback_out['html'], 'srcset="https://staging.our-site.test/wp-content/uploads/2026/10/import.jpg 1x"' ) !== false &&
+        strpos( $fallback_out['html'], $img ) === false,
+        'Picture SOURCE ' . $source_attribute . ' must rewrite imported image to local srcset' );
+    unset( $picture_fallback['media_bindings'] );
+    $fallback_pending = MAD4B_SCP_Scrape_Transfer::plan( $picture_fallback );
+    $fallback_pending_out = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+        $picture_fallback, array( 'expected_plan_sha256' => $fallback_pending['plan_sha256'] ) ) );
+    check( ! is_wp_error( $fallback_pending_out ) &&
+        $fallback_pending_out['pending_media'] === 1 && !$fallback_pending_out['media_ready'] &&
+        strpos( $fallback_pending_out['html'], $img ) === false,
+        'Unimported picture SOURCE ' . $source_attribute . ' must stay pending without exposing remote image' );
+}
+// An uninspectable source URL must fail closed, not claim images complete
+// or keep an untrusted external src in the WordPress handoff.
+$uninspectable = $input;
+unset( $uninspectable['media_bindings'] );
+$oversized_remote = 'https://example-competitor.test/assets/' . str_repeat( 'x', 2100 ) . '.jpg';
+$uninspectable['html'] = '<img src="' . $oversized_remote . '" alt="Unsafe image">';
+$uninspectable_plan = MAD4B_SCP_Scrape_Transfer::plan( $uninspectable );
+check( is_wp_error( $uninspectable_plan ) &&
+    $uninspectable_plan->get_error_code() === 'mad4b_scrape_transfer_media_url_invalid',
+    'Malformed or unbounded external IMG sources must fail closed before media_ready' );
+$uninspectable['html'] = '<picture><source srcset="' . $oversized_remote .
+    ' 2x"><img src="data:image/gif;base64,R0lG"></picture>';
+$bad_srcset = MAD4B_SCP_Scrape_Transfer::plan( $uninspectable );
+check( is_wp_error( $bad_srcset ) &&
+    $bad_srcset->get_error_code() === 'mad4b_scrape_transfer_media_url_invalid',
+    'Malformed or unbounded SOURCE srcset must fail closed before media_ready' );
+$placeholder_only = $input;
+unset( $placeholder_only['media_bindings'] );
+$placeholder_only['html'] = '<img src="data:image/gif;base64,R0lG" alt="Placeholder">';
+$placeholder_plan = MAD4B_SCP_Scrape_Transfer::plan( $placeholder_only );
+$placeholder_html = MAD4B_SCP_Scrape_Transfer::rewrite( array_merge(
+    $placeholder_only, array( 'expected_plan_sha256' => $placeholder_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $placeholder_html ) &&
+    false === strpos( $placeholder_html['html'], 'data:image' ),
+    'Unbound image-only data placeholders must not escape into sanitized WordPress HTML' );
+$utf8 = $input;
+$utf8['media_bindings'] = array();
+$utf8['html'] = '<img src="' . $img . '" alt="' . str_repeat( 'جمال النيل', 40 ) . '">';
+$utf8_plan = MAD4B_SCP_Scrape_Transfer::plan( $utf8 );
+check( ! is_wp_error( $utf8_plan ) &&
+    preg_match( '//u', $utf8_plan['remote_media_manifest_items'][0]['import']['alt'] ) === 1 &&
+    strlen( $utf8_plan['remote_media_manifest_items'][0]['import']['alt'] ) > 240,
+    'UTF-8 metadata truncation must preserve whole Arabic characters, not bytes' );
+$bad = $input;
+$bad['media_bindings'][0]['attachment_id'] = 7;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad ) ),
+    'Foreign attachment or nonimage ID must be rejected' );
+$stale = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $input, array( 'expected_plan_sha256' => str_repeat( 'f', 64 ) ) ) );
+check( is_wp_error( $stale ) && $stale->get_error_code() === 'mad4b_scrape_transfer_plan_drift',
+    'Rewrite with unreviewed input digest must not proceed' );
+$GLOBALS['posts'][20] = array( 'slug' => 'exact-route', 'post_type' => 'products',
+    'post_status' => 'publish', 'permalink' => 'https://staging.our-site.test/products/exact-route-2/' );
+$ambiguous = MAD4B_SCP_Scrape_Transfer::plan( $input );
+check( ! is_wp_error( $ambiguous ) && count( $ambiguous['unmatched_competitor_links'] ) === 2,
+    'Ambiguous slug must not link to the wrong product' );
+$mixed = $input;
+$mixed['html'] = '<picture><source srcset="' . $large . ' 1200w"><img src="' . $img . '" alt="Nile"></picture>';
+$mixed_plan = MAD4B_SCP_Scrape_Transfer::plan( $mixed );
+$mixed_result = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $mixed, array( 'expected_plan_sha256' => $mixed_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $mixed_result ) && !$mixed_result['media_ready'] &&
+    !$mixed_result['ready_for_draft_review'] && $mixed_result['pending_media'] === 1,
+    'Unimported picture source must block media completeness even when IMG is imported' );
+foreach ( array( '<script>alert(1)</script>',
+    '<form action="/book"><input name="card"></form>',
+    '<iframe src="/track"></iframe>', '<svg><use href="javascript:alert(1)"></use></svg>' ) as $unsafe ) {
+    $evil = $input; $evil['html'] = '<p>Boat</p>' . $unsafe;
+    check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $evil ) ),
+        'Unapproved executable source HTML should be rejected' );
+}
+$inline = $input; $inline['html'] = '<img src="' . $img . '" alt="Boat" onerror="alert(1)">';
+$inline_plan = MAD4B_SCP_Scrape_Transfer::plan( $inline );
+$inline_out = MAD4B_SCP_Scrape_Transfer::rewrite(
+    array_merge( $inline, array( 'expected_plan_sha256' => $inline_plan['plan_sha256'] ) ) );
+check( ! is_wp_error( $inline_out ) && strpos( $inline_out['html'], 'onerror' ) === false,
+    'Executable event attributes must not survive HTML sanitization' );
+unset( $GLOBALS['meta'][19]['_mad4b_remote_media_content_sha256'] );
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $input ) ),
+    'Source URL provenance alone cannot bind an image lacking native content hash' );
+$GLOBALS['meta'][19]['_mad4b_remote_media_content_sha256'] = str_repeat( 'a', 64 );
+check( !$rewritten['ready_for_draft_review'] &&
+    !$rewritten['scrape_provenance_verified'] &&
+    $rewritten['brand_editorial_metadata_required'] &&
+    $rewritten['html_safety_checked'],
+    'Local media URL and caller-supplied HTML cannot certify editorial draft readiness' );
+$editorial_input = $none;
+$editorial_input['editorial_media'] = array( array(
+    'source_url' => $img, 'brand_id' => 'egypt-tour-gates', 'locale' => 'en_US',
+    'title' => 'Nile cruise upper deck', 'alt' => 'Upper deck of a Nile cruise ship in Luxor',
+    'caption' => 'River views from the cruise deck',
+    'description' => 'An original English editorial description for ETG.',
+    'reviewed' => true ) );
+$original_plan = MAD4B_SCP_Scrape_Transfer::plan( $editorial_input );
+check( ! is_wp_error( $original_plan ) &&
+    $original_plan['brand_editorial_metadata_required'] === false &&
+    $original_plan['media_metadata_readback_verified'] === false &&
+    $original_plan['image_import_tasks'][0]['source_metadata']['alt'] === 'Deck' &&
+    $original_plan['remote_media_manifest_items'][0]['import']['alt'] ===
+        'Upper deck of a Nile cruise ship in Luxor' &&
+    $original_plan['image_import_tasks'][0]['brand_id'] === 'egypt-tour-gates',
+    'Original brand metadata is separate from captured competitor metadata and requires readback' );
+$unreviewed_media = $editorial_input;
+$unreviewed_media['editorial_media'][0]['reviewed'] = false;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $unreviewed_media ) ),
+    'Unreviewed SEO metadata cannot override the captured image fields' );
+$good_receipt = $input;
+$good_receipt['scrape_receipt'] = array(
+    'record_id' => 'research-capture-001',
+    'source_page_url' => $input['source_page_url'],
+    'body_sha256' => hash( 'sha256', $input['html'] ),
+    'captured_at' => '2026-10-13T12:00:00Z' );
+$receipt_plan = MAD4B_SCP_Scrape_Transfer::plan( $good_receipt );
+check( ! is_wp_error( $receipt_plan ) &&
+    $receipt_plan['scrape_receipt_id'] === 'research-capture-001' &&
+    $receipt_plan['scrape_provenance_status'] === 'submitted_receipt_not_server_verified' &&
+    !$receipt_plan['scrape_provenance_verified'] &&
+    $receipt_plan['plan_sha256'] !== $plan['plan_sha256'],
+    'Caller receipt matches exact bytes but cannot attest to the server-side scrape' );
+$bad_receipt = $good_receipt;
+$bad_receipt['scrape_receipt']['body_sha256'] = str_repeat( 'f', 64 );
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $bad_receipt ) ),
+    'Mismatched remote scrape receipt must be rejected' );
+$GLOBALS['reader'] = false;
+check( is_wp_error( MAD4B_SCP_Scrape_Transfer::plan( $input ) ),
+    'Unauthorized caller must not inspect site links' );
+echo "PASS: source-faithful prices, unique existing-site links, failed ambiguity, local Media Library URLs, provenance, no mutation\n";

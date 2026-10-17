@@ -113,7 +113,9 @@ for marker in [
     'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
     "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
-    'array_merge( self::chatgpt_dispatch_transport_tools(), $step_up )',
+    '$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );',
+    '$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );',
+    'in_array( $ability_name, $direct_mutation_transport, true )',
     'private static function chatgpt_internal_enrollment_mutations()',
     "MAD4B_SCP_Staging_Write_Grant_Reconciliation::chatgpt_read_tools()",
     "public static function chatgpt_direct_read_transport_tools()",
@@ -216,8 +218,8 @@ assert 'self::chatgpt_internal_enrollment_mutations()' in logical_enrollment
 assert 'if ( ! self::chatgpt_unified_catalog_enabled() )' in servers
 fallback = servers.split('if ( ! self::chatgpt_unified_catalog_enabled() )', 1)[1].split("$narrow_read = class_exists( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation' )", 1)[0]
 for marker in [
-    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up )",
-    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up )",
+    "$direct_allowlist = array_merge( self::chatgpt_direct_read_transport_tools(), self::chatgpt_dispatch_transport_tools(), $runtime_gate_step_up, $approval_bootstrap )",
+    "$fallback_candidates = array_merge( $core, $runtime_gate_step_up, $approval_bootstrap )",
     "$tools = array_values( array_intersect( $fallback_candidates, $direct_allowlist ) )",
     "$tools = array_values( array_diff( $tools, $breakglass, array( 'mad4b/database-raw-query' ) ) )",
     "array_unique( array_map( 'strval', $tools ) )",
@@ -226,6 +228,9 @@ for marker in [
 ]:
     assert marker in fallback, f'missing non-Staging session-safe fallback marker: {marker}'
 assert 'self::write_tools()' not in fallback, 'non-Staging fallback must not merge the governed write catalog directly'
+assert '$approval_bootstrap = self::chatgpt_approval_bootstrap_tools();' in servers, 'approval bootstrap must be explicitly reviewed and bounded'
+assert "'staging' !== sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )" in servers, 'approval bootstrap must deny non-Staging exposure'
+assert "self::ability_is_mounted( 'mad4b-write', $ability_name )" in servers, 'approval bootstrap needs governed Write mounting'
 
 direct_read = servers.split('public static function chatgpt_direct_read_transport_tools()', 1)[1].split('public static function chatgpt_dispatch_transport_tools()', 1)[0]
 assert "'mad4b/session-safe-diagnostics'" in direct_read, 'session-safe diagnostics missing from direct ChatGPT read allowlist'

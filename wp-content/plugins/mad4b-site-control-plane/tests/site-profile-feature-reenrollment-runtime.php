@@ -7,14 +7,43 @@ function is_wp_error($v){return $v instanceof WP_Error;} function sanitize_key($
 final class MAD4B_SCP_Audit { static function storage_status(){return array('ready'=>!empty($GLOBALS['audit_ready']));} static function record($a,$s,$st=''){if(!empty($GLOBALS['audit_fail']))return new WP_Error('audit_failed','forced');$GLOBALS['events'][]=array($a,$s,$st);return true;} }
 final class MAD4B_SCP_OAuth_Resource_Bridge { const AUTHORITY_STEP_UP_SCOPE='mad4b:authority:step-up'; static function verified_bearer_active(){return !empty($GLOBALS['bearer']);} static function verified_bearer_has_scope($scope){return self::AUTHORITY_STEP_UP_SCOPE===$scope&&!empty($GLOBALS['bearer']);} }
 final class MAD4B_SCP_Live_Acceptance_Observer { static function build_provenance_status(){return $GLOBALS['prov'];} }
+final class MAD4B_SCP_ChatGPT_Auto_Binding {
+    static function status(){return array('client_observed'=>!empty($GLOBALS['auto_chatgpt']));}
+    static function current_bearer_binding_ready(){return !empty($GLOBALS['auto_chatgpt']) && !empty($GLOBALS['bearer']);}
+}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile.php';
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-site-profile-enrollment.php';
 function ok($c,$m){if(!$c){fwrite(STDERR,"FAIL: $m\n");exit(1);}} function err($r,$c,$m){ok(is_wp_error($r)&&$c===$r->get_error_code(),$m.' got='.(is_wp_error($r)?$r->get_error_code():'success'));}
-function seed_profile($env='staging',$origin='https://staging.client.test',$app='plugin_asdk_app_test123'){$GLOBALS['env']=$env;$GLOBALS['home']=$origin;$GLOBALS['site']=$origin;$GLOBALS['uid']=7;$GLOBALS['admin']=true;$GLOBALS['bearer']=true;$GLOBALS['audit_ready']=true;$GLOBALS['audit_fail']=false;$GLOBALS['events']=array();$GLOBALS['opts']=array();$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]=array('contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>MAD4B_SCP_Site_Profile::VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>2,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Preserve Me','chatgpt_app_id'=>$app,'oauth_user_ids'=>array(7),'related_origins'=>array('development'=>'https://dev.client.test','staging'=>'https://staging.client.test','production'=>'https://client.test'),'features'=>array('oauth'=>true,'skills'=>false,'write'=>false,'production_write_confirmed'=>false,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>false),'legacy_agent_slug'=>'','legacy_zero_touch'=>false,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');MAD4B_SCP_Site_Profile::reset_cache();return $GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION];}
+function seed_profile($env='staging',$origin='https://staging.client.test',$app='plugin_asdk_app_test123'){$GLOBALS['auto_chatgpt']=false;$GLOBALS['env']=$env;$GLOBALS['home']=$origin;$GLOBALS['site']=$origin;$GLOBALS['uid']=7;$GLOBALS['admin']=true;$GLOBALS['bearer']=true;$GLOBALS['audit_ready']=true;$GLOBALS['audit_fail']=false;$GLOBALS['events']=array();$GLOBALS['opts']=array();$GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION]=array('contract'=>MAD4B_SCP_Site_Profile::CONTRACT,'version'=>MAD4B_SCP_Site_Profile::VERSION,'site_uuid'=>'123e4567-e89b-42d3-a456-426614174000','revision'=>2,'environment'=>$env,'canonical_origin'=>$origin,'display_name'=>'Preserve Me','chatgpt_app_id'=>$app,'oauth_user_ids'=>array(7),'related_origins'=>array('development'=>'https://dev.client.test','staging'=>'https://staging.client.test','production'=>'https://client.test'),'features'=>array('oauth'=>true,'skills'=>false,'write'=>false,'production_write_confirmed'=>false,'provider_isolation'=>true,'managed_runtime'=>true,'acceptance'=>false),'legacy_agent_slug'=>'','legacy_zero_touch'=>false,'created_at'=>'2026-01-01T00:00:00Z','updated_at'=>'2026-01-01T00:00:00Z');MAD4B_SCP_Site_Profile::reset_cache();return $GLOBALS['opts'][MAD4B_SCP_Site_Profile::OPTION];}
 function input_now(){return array('expected_revision'=>MAD4B_SCP_Site_Profile::revision(),'expected_profile_digest'=>MAD4B_SCP_Site_Profile::profile_digest(),'expected_source_commit_sha'=>$GLOBALS['prov']['source_commit_sha'],'expected_build_fingerprint'=>$GLOBALS['prov']['build_fingerprint'],'acceptance_enabled'=>true,'skills_enabled'=>true);}
 function app_input_now($app='plugin_asdk_app_bound123'){return array('expected_revision'=>MAD4B_SCP_Site_Profile::revision(),'expected_profile_digest'=>MAD4B_SCP_Site_Profile::profile_digest(),'expected_source_commit_sha'=>$GLOBALS['prov']['source_commit_sha'],'expected_build_fingerprint'=>$GLOBALS['prov']['build_fingerprint'],'chatgpt_app_id'=>$app);}
 
 $before=seed_profile('staging','https://staging.client.test','');$in=app_input_now();$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);ok(!is_wp_error($r),'App mapping bootstrap succeeds');$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());ok(3===(int)$after['revision'],'App mapping increments revision once');ok('plugin_asdk_app_bound123'===$after['chatgpt_app_id'],'App mapping persists exact App ID');ok(empty($after['features']['acceptance'])&&empty($after['features']['skills'])&&empty($after['features']['write']),'App mapping keeps Acceptance Skills and Write disabled');$expected=$before;$expected['revision']=3;$expected['chatgpt_app_id']='plugin_asdk_app_bound123';unset($expected['updated_at'],$after['updated_at']);ok($expected===$after,'App mapping preserves all non-target profile fields exactly');ok(1===count($GLOBALS['events'])&&'mad4b/site-profile-app-mapping-bound'===$GLOBALS['events'][0][0],'App mapping audit event recorded');$s=MAD4B_SCP_Site_Profile_Enrollment::status_readonly();ok(!empty($s['exact_profile_bound'])&&!empty($s['chatgpt_app_id_configured'])&&empty($s['acceptance_enabled'])&&empty($s['skills_enabled'])&&empty($s['write_enabled']),'App mapping status is bounded and non-secret');$phase=input_now();$phase_result=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($phase);ok(!is_wp_error($phase_result),'Phase A succeeds after separate App mapping bootstrap');$phase_after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());ok(4===(int)$phase_after['revision']&&!empty($phase_after['features']['acceptance'])&&!empty($phase_after['features']['skills'])&&empty($phase_after['features']['write']),'separate App mapping then Phase A sequencing is preserved');
+
+// The current ChatGPT UI exposes asdk_app_* while older installs used plugin_asdk_app_*.
+// Both represent exact stored opaque IDs. OAuth client_id never silently maps either.
+$before=seed_profile('staging','https://staging.client.test','');
+$current_app='asdk_app_currentformat123';
+$in=app_input_now($current_app);
+$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);
+ok(!is_wp_error($r),'Current ChatGPT asdk_app ID format may be explicitly mapped');
+$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok($after['chatgpt_app_id']===$current_app && MAD4B_SCP_Site_Profile::chatgpt_app_id()===$current_app,
+    'Current App ID persists and reads back exactly without plugin_ alias conversion');
+ok((int)$after['revision']===(int)$before['revision']+1 && empty($after['features']['write']) &&
+    empty($after['features']['acceptance']) && empty($after['features']['skills']),
+    'Current App ID mapping only changes App ID, revision and time without granting features');
+seed_profile('staging','https://staging.client.test',$current_app);
+ok(MAD4B_SCP_Site_Profile::configured() && MAD4B_SCP_Site_Profile::chatgpt_app_id()===$current_app,
+    'Site Profile record accepts current App ID format without downgrading old records');
+seed_profile('staging','https://staging.client.test','');
+$in=app_input_now('asdk_app_invalid-suffix!');
+err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
+    'Invalid current App ID is rejected, not normalized or silently mapped');
+seed_profile('staging','https://staging.client.test','');
+$in=app_input_now('asdk_app_valid123' . "\n" . 'another');
+err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid',
+    'Current App ID with an embedded newline must be rejected');
 
 seed_profile('staging','https://staging.client.test','');$in=app_input_now();$in['acceptance_enabled']=true;err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_mixed_mode_denied','mixed App mapping and Phase A denied');
 seed_profile('staging','https://staging.client.test','');$in=app_input_now('not-an-app-id');err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_app_mapping_invalid','invalid App ID denied');
@@ -34,6 +63,19 @@ seed_profile();$GLOBALS['site']='https://other.client.test';MAD4B_SCP_Site_Profi
 seed_profile();$GLOBALS['admin']=false;$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_admin_required','non-admin denied');
 seed_profile();$GLOBALS['uid']=8;$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_subject_not_enrolled','wrong subject denied');
 seed_profile('staging','https://staging.client.test','');$in=input_now();err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_app_mapping_missing','missing App ID denied');
+seed_profile('staging','https://staging.client.test','');
+$GLOBALS['auto_chatgpt']=true;
+$before=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+$in=input_now();
+$r=MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in);
+ok(!is_wp_error($r),'Verified current ChatGPT OAuth client replaces manual App ID prerequisite for Phase A');
+$after=get_option(MAD4B_SCP_Site_Profile::OPTION,array());
+ok(empty($after['chatgpt_app_id']) && empty($after['features']['write']) && !empty($after['features']['skills']) && !empty($after['features']['acceptance']),
+    'No fake App ID or write grant is inserted during dynamic OAuth-bound Phase A enrollment');
+ok(!empty(MAD4B_SCP_Site_Profile_Enrollment::status_readonly()['chatgpt_oauth_client_auto_bound']),
+    'Auto-client-binding is visible separately from App ID');
+$GLOBALS['auto_chatgpt']=false;
+
 $before=seed_profile();$in=input_now();$GLOBALS['audit_fail']=true;err(MAD4B_SCP_Site_Profile_Enrollment::reenroll_features($in),'mad4b_site_profile_feature_reenroll_audit_failed','audit failure is fail-closed');ok($before===get_option(MAD4B_SCP_Site_Profile::OPTION,array()),'audit failure restores exact previous profile');
 
 echo "mad4b.site-profile-feature-reenrollment.runtime.v1: PASS\n";

@@ -67,6 +67,9 @@ final class MAD4B_SCP_Skills_Admin_UI {
 				'page' => self::PAGE_SLUG,
 				'mad4b_skill_notice' => 'export_error',
 				'mad4b_skill_error' => sanitize_key( (string) $code ),
+				'mad4b_notice_receipt' => MAD4B_SCP_Admin_Experience::notice_receipt(
+					self::PAGE_SLUG, 'skill.export_error.' . sanitize_key( (string) $code )
+				),
 			),
 			admin_url( 'admin.php' )
 		);
@@ -97,6 +100,21 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		elseif ( is_string( $message ) && '' !== $message ) echo '<div class="notice notice-success"><p>' . esc_html( $message ) . '</p></div>';
 
 		self::render_status( $status );
+		$certificate = class_exists( 'MAD4B_SCP_Skill_Runtime_Certification', false )
+			? MAD4B_SCP_Skill_Runtime_Certification::persisted_status() : array();
+		if ( empty( $certificate['ready'] ) || empty( $certificate['build_identity_current'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills need verification', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority.', 'mad4b-site-control-plane' );
+			echo '</p></div>';
+		}
+		if ( empty( $status['editor_enabled'] ) ) {
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Managed Skills editor is disabled', 'mad4b-site-control-plane' ) . '</strong> — ';
+			echo esc_html__( 'An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified.', 'mad4b-site-control-plane' );
+			echo '</p></div>';
+		}
+		if ( isset( $status['storage_writable'] ) && false === $status['storage_writable'] ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html__( 'Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry.', 'mad4b-site-control-plane' ) . '</p></div>';
+		}
 		self::render_reconcile_managed( $status );
 		self::render_snapshot_note();
 		self::render_skill_table( $skills );
@@ -111,6 +129,7 @@ final class MAD4B_SCP_Skills_Admin_UI {
 		$notice = sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_notice' ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'export_error' !== $notice ) return;
 		$code = isset( $_GET['mad4b_skill_error'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'mad4b_skill_error' ) ) : 'unknown'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! MAD4B_SCP_Admin_Experience::notice_verified( self::PAGE_SLUG, 'skill.export_error.' . $code ) ) return;
 		echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( sprintf( __( 'Portable Plugin export failed. Error: %s', 'mad4b-site-control-plane' ), $code ) ) . '</p></div>';
 	}
 

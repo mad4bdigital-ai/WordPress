@@ -1,0 +1,68 @@
+{
+  "contract": "mad4b.aci-os.reuse-authority-crosswalk.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "owner_rule": "REUSE_MAD4B_FIRST",
+  "source_class": "SOURCE_CONTRACT_DEFINED_NOT_RUNTIME_CERTIFIED",
+  "entries": [
+    {
+      "id": "content_job",
+      "reuse": "Feature007.ContentJob",
+      "path": "specs/007-content-intelligence-workflow-platform/contracts/content-job.md",
+      "aci_owned": "DOMAIN_ARTIFACT_TYPES_ONLY",
+      "runtime_certified": false
+    },
+    {
+      "id": "skill_orchestration",
+      "reuse": "Feature007.SkillsOrchestration",
+      "path": "specs/007-content-intelligence-workflow-platform/contracts/skills-orchestration.md",
+      "aci_owned": "CONTEXT_AWARE_SKILL_SELECTION",
+      "runtime_certified": false
+    },
+    {
+      "id": "governed_publishing",
+      "reuse": "Feature007.Publishing",
+      "path": "specs/007-content-intelligence-workflow-platform/contracts/publishing.md",
+      "aci_owned": "PUBLISH_MANIFEST_INTERPRETATION_ONLY",
+      "runtime_certified": false
+    },
+    {
+      "id": "adaptive_capability",
+      "reuse": "CE01.AdaptiveOperations",
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/adaptive-operations.md",
+      "aci_owned": "DOMAIN_CONDITIONAL_PROFILES_ONLY",
+      "runtime_certified": false
+    },
+    {
+      "id": "content_evidence",
+      "reuse": "Feature007.ArtifactRegistry",
+      "path": "specs/007-content-intelligence-workflow-platform/spec.md",
+      "aci_owned": "EVIDENCE_PACK_AND_DECISION_CONTRACT",
+      "runtime_certified": false
+    },
+    {
+      "id": "site_grants_and_subject",
+      "reuse": "MAD4B.CurrentAuthority",
+      "path": "specs/007-content-intelligence-workflow-platform/constitution.md",
+      "aci_owned": "NONE",
+      "runtime_certified": false
+    },
+    {
+      "id": "native_wpml_relations",
+      "reuse": "WordPress.WPML.NativeProvider",
+      "path": "specs/007-content-intelligence-workflow-platform/extensions/adaptive-content-intelligence-os/contracts/native-relations-wpml.md",
+      "aci_owned": "READ_ONLY_TYPED_SEMANTIC_VERIFIER",
+      "runtime_certified": false
+    }
+  ],
+  "unresolved_runtime_proof": [
+    "exact_existing_class_or_MCP_ability",
+    "parameter_schema",
+    "runtime_capability_readback",
+    "adapter_owner_signature",
+    "effect_contract_parity",
+    "disposable_native_receipt"
+  ],
+  "no_duplicate_mutation_stack": true,
+  "unverified_reuse_blocks_operational_certification": true
+}

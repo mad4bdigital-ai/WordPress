@@ -213,7 +213,7 @@ final class MAD4B_SCP_Provider_Circuit_Breaker {
 
 	private static function identity( $provider_id, $site_uuid, $generation_sha256 ) {
 		$provider_id=sanitize_key((string)$provider_id);$site_uuid=strtolower(trim((string)$site_uuid));$generation_sha256=strtolower(trim((string)$generation_sha256));
-		if(''===$provider_id||1!==preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/D',$site_uuid)||1!==preg_match('/^[a-f0-9]{64}$/D',$generation_sha256))return new WP_Error('mad4b_provider_circuit_breaker_identity_invalid','Provider breaker identity must bind provider, canonical Site UUID and certification generation.');
+		if(''===$provider_id||1!==preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[45][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/D',$site_uuid)||1!==preg_match('/^[a-f0-9]{64}$/D',$generation_sha256))return new WP_Error('mad4b_provider_circuit_breaker_identity_invalid','Provider breaker identity must bind provider, canonical Site UUID and certification generation.');
 		return array('provider_id'=>$provider_id,'site_uuid'=>$site_uuid,'certification_generation_sha256'=>$generation_sha256,'breaker_key_sha256'=>hash('sha256','mad4b.provider-breaker-key.v1|'.$provider_id.'|'.$site_uuid.'|'.$generation_sha256));
 	}
 	private static function locked_row($key){global $wpdb;$t=MAD4B_SCP_Schema::tables();return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$t['provider_breakers']} WHERE BINARY breaker_key_sha256=BINARY %s FOR UPDATE",$key),ARRAY_A);}

@@ -1,0 +1,125 @@
+{
+  "contract": "mad4b.aci-os.content-recipes.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "default_content_recipe": null,
+  "registry_policy": "PER_SITE_BRAND_LOCALE_INTENT",
+  "recipes": [
+    {
+      "id": "article",
+      "content_kind": "article",
+      "requirements": [
+        "brand_context",
+        "evidence_pack",
+        "blueprint",
+        "fact_qa",
+        "editorial_qa",
+        "seo_qa",
+        "rights_qa"
+      ],
+      "requires_native_relations": false,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    },
+    {
+      "id": "destination",
+      "content_kind": "destination_page",
+      "requirements": [
+        "brand_context",
+        "geo_entity",
+        "evidence_pack",
+        "localization",
+        "internal_link_graph",
+        "fact_qa",
+        "seo_qa"
+      ],
+      "requires_native_relations": true,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    },
+    {
+      "id": "tour",
+      "content_kind": "tour_product",
+      "requirements": [
+        "verified_price_source",
+        "availability_source",
+        "cancellation_terms",
+        "brand_context",
+        "native_relation_identity",
+        "locale_mapping",
+        "rights_qa",
+        "commercial_fact_qa"
+      ],
+      "requires_native_relations": true,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    },
+    {
+      "id": "taxonomy",
+      "content_kind": "taxonomy_listing",
+      "requirements": [
+        "native_term_namespace",
+        "field_owner",
+        "localized_filter_dataset",
+        "listing_parity",
+        "rendered_qa"
+      ],
+      "requires_native_relations": true,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    },
+    {
+      "id": "landing",
+      "content_kind": "conversion_landing",
+      "requirements": [
+        "offer_authority",
+        "brand_context",
+        "evidence_pack",
+        "consent",
+        "conversion_tracking",
+        "rights_qa"
+      ],
+      "requires_native_relations": false,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    },
+    {
+      "id": "comparison",
+      "content_kind": "comparative_article",
+      "requirements": [
+        "independent_source_pack",
+        "claim_attribution",
+        "fair_comparison_policy",
+        "brand_context",
+        "rights_qa"
+      ],
+      "requires_native_relations": false,
+      "locale_policy": "SITE_PROFILE_DERIVED",
+      "source_policy": "DOMAIN_FACT_AUTHORITY_PROFILE",
+      "seo_provider": "CERTIFIED_ADAPTER_RESOLVED",
+      "editorial_rules": "WRITER_PROFILE",
+      "publishing": "SEPARATE_GOVERNED_APPROVAL",
+      "authorizing": false
+    }
+  ]
+}

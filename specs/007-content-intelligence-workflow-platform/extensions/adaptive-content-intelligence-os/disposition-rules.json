@@ -1,0 +1,256 @@
+{
+  "contract": "mad4b.aci-os.disposition-rules.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "unknown_finding_state": "QUARANTINED",
+  "decision_priority": [
+    "DENIED",
+    "QUARANTINED",
+    "NEEDS_REVIEW",
+    "NEEDS_EVIDENCE",
+    "WAITING_DEPENDENCIES",
+    "READY_FOR_NON_AUTHORITATIVE_PLAN"
+  ],
+  "rules": [
+    {
+      "code": "missing_brand_context",
+      "state": "NEEDS_EVIDENCE",
+      "owner": "context-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "canonical_conflict",
+      "state": "NEEDS_REVIEW",
+      "owner": "growth-strategist",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "poisoned_scrape",
+      "state": "QUARANTINED",
+      "owner": "research-operator",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "unsupported_claim",
+      "state": "NEEDS_EVIDENCE",
+      "owner": "growth-strategist",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "attribution_mismatch",
+      "state": "NEEDS_REVIEW",
+      "owner": "growth-analyst",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "edit_conflict",
+      "state": "NEEDS_REVIEW",
+      "owner": "editor",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "wpml_original_fallback",
+      "state": "NEEDS_REVIEW",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "wrong_term_namespace",
+      "state": "DENIED",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "translated_id_fallback",
+      "state": "NEEDS_REVIEW",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "unapproved_cross_site_identity",
+      "state": "DENIED",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "evidence_noncomparable",
+      "state": "NEEDS_EVIDENCE",
+      "owner": "research-operator",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "quota_exhaustion",
+      "state": "NEEDS_REVIEW",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "external_effect_unknown",
+      "state": "QUARANTINED",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "provider_spend_race",
+      "state": "NEEDS_REVIEW",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "model_failure",
+      "state": "WAITING_DEPENDENCIES",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "grant_revoked",
+      "state": "DENIED",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "missing_browser_readback",
+      "state": "NEEDS_REVIEW",
+      "owner": "publisher-approver",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "restore_epoch_replay",
+      "state": "DENIED",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "seasonal_false_causality",
+      "state": "NEEDS_REVIEW",
+      "owner": "growth-analyst",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "stale_authority",
+      "state": "DENIED",
+      "owner": "release-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "provider_schema_drift",
+      "state": "QUARANTINED",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "declared_cross_site_link_needs_review",
+      "state": "NEEDS_REVIEW",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "unsafe_media",
+      "state": "DENIED",
+      "owner": "independent-qa",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "publish_cas_conflict",
+      "state": "DENIED",
+      "owner": "publisher-approver",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "scope_escalation",
+      "state": "DENIED",
+      "owner": "release-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "NO_FINDING",
+      "state": "READY_FOR_NON_AUTHORITATIVE_PLAN",
+      "owner": "research-operator",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": false
+    },
+    {
+      "code": "provider_unauthorized",
+      "state": "QUARANTINED",
+      "owner": "research-operator",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "pagination_incomplete",
+      "state": "NEEDS_EVIDENCE",
+      "owner": "native-content-steward",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "missing_authority",
+      "state": "NEEDS_REVIEW",
+      "owner": "operations-owner",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    },
+    {
+      "code": "unsupported_business_claim",
+      "state": "DENIED",
+      "owner": "publisher-approver",
+      "confidence_class": "DESIGN_FIXTURE",
+      "auto_mutation": false,
+      "requires_evidence": true
+    }
+  ]
+}

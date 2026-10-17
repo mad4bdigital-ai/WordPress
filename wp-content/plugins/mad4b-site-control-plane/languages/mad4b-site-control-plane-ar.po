@@ -1,0 +1,776 @@
+# Arabic strings for the admin workspace UI.
+# Existing provider names and technical identifiers keep their registered values.
+
+msgid ""
+msgstr "Project-Id-Version: MAD4B Admin Workspace\nLanguage: ar\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=6; plural=(n==0?0:n==1?1:n==2?2:n%100>=3 && n%100<=10?3:n%100>=11 && n%100<=99?4:5);\n"
+
+msgid "%d workspaces found"
+msgstr "تم العثور على %d مساحة عمل"
+
+msgid "(opens in a new tab)"
+msgstr "(يفتح في علامة تبويب جديدة)"
+
+msgid "A runtime check needs review. Open the relevant workspace to inspect its current evidence."
+msgstr "يحتاج أحد فحوص التشغيل إلى مراجعة. افتح مساحة العمل المعنية للاطلاع على الأدلة الحالية."
+
+msgid "API credentials"
+msgstr "بيانات اعتماد API"
+
+msgid "Action Center"
+msgstr "مركز الإجراءات"
+
+msgid "Actionable"
+msgstr "بانتظار القرار"
+
+msgid "Add API credentials, select a profile and review search budgets."
+msgstr "أضف بيانات اعتماد API، واختر ملف بحث، وراجع ميزانياته."
+
+msgid "Add or manage search API credentials"
+msgstr "إضافة بيانات اعتماد API للبحث أو إدارتها"
+
+msgid "Add sources, API credentials and a paused search profile."
+msgstr "أضف المصادر وبيانات اعتماد API وملف بحث متوقفًا مؤقتًا."
+
+msgid "Additional observations are available in Provider Coverage."
+msgstr "توجد ملاحظات إضافية في صفحة تغطية المزودين."
+
+msgid "Administrator capability is required."
+msgstr "يلزم امتلاك صلاحية المسؤول."
+
+msgid "Advanced pipeline policy"
+msgstr "سياسة مسار المحتوى المتقدمة"
+
+msgid "Agents"
+msgstr "الوكلاء"
+
+msgid "All workspaces & setup"
+msgstr "كل مساحات العمل والإعدادات"
+
+msgid "Approval Decisions"
+msgstr "قرارات الموافقة"
+
+msgid "Approval required"
+msgstr "مطلوب موافقة"
+
+msgid "Approvals"
+msgstr "الموافقات"
+
+msgid "Archives"
+msgstr "الأرشيفات"
+
+msgid "Assets"
+msgstr "الأصول"
+
+msgid "Astra"
+msgstr "Astra"
+
+msgid "Audit"
+msgstr "التدقيق"
+
+msgid "Automation levels and review boundaries"
+msgstr "مستويات الأتمتة وحدود المراجعة"
+
+msgid "Bind the current build to repository checks and external acceptance results. Missing evidence stays unverified."
+msgstr "اربط الإصدار الحالي بفحوص المستودع ونتائج القبول الخارجية. تظل الأدلة الناقصة غير موثقة."
+
+msgid "Bounded stored observations; permission and execution certification are checked separately."
+msgstr "ملاحظات محفوظة ضمن نطاق محدود؛ تُفحص الصلاحيات واعتمادات التنفيذ بشكل مستقل."
+
+msgid "Brand & Context"
+msgstr "العلامة التجارية والسياق"
+
+msgid "Budgets"
+msgstr "الميزانيات"
+
+msgid "Capability"
+msgstr "القدرة"
+
+msgid "Certification"
+msgstr "الاعتماد"
+
+msgid "ChatGPT Connection"
+msgstr "اتصال ChatGPT"
+
+msgid "Check the isolated execution prerequisites. A missing host sandbox must be configured by the host administrator; existing access gates remain in force."
+msgstr "راجع متطلبات التنفيذ المعزول. إذا غابت بيئة العزل، فعلى مسؤول الاستضافة إعدادها؛ تبقى قيود الوصول الحالية سارية."
+
+msgid "Common setup actions"
+msgstr "إجراءات الإعداد الشائعة"
+
+msgid "Competitors"
+msgstr "المنافسون"
+
+msgid "Complete a valid external client connection for this build, then inspect the endpoint evidence."
+msgstr "أكمل اتصال عميل خارجي صالحًا لهذا الإصدار، ثم راجع أدلة نقاط الاتصال."
+
+msgid "Complete acceptance evidence"
+msgstr "استكمال أدلة القبول"
+
+msgid "Complete consent and verify a safe read."
+msgstr "أكمل الموافقة وتحقق من عملية قراءة آمنة."
+
+msgid "Configure a paused profile, connect a provider and review the budget before capturing search observations."
+msgstr "أعدّ ملف بحث متوقفًا مؤقتًا، ووصل مزودًا، وراجع الميزانية قبل جمع نتائج البحث."
+
+msgid "Configure context and providers"
+msgstr "إعداد السياق والمزودين"
+
+msgid "Connect Google"
+msgstr "ربط Google"
+
+msgid "Connect Google and manage brand sources and assets."
+msgstr "اربط Google وأدر مصادر العلامة التجارية وأصولها."
+
+msgid "Connect a client"
+msgstr "ربط عميل"
+
+msgid "Connection"
+msgstr "الاتصال"
+
+msgid "Content Pipeline"
+msgstr "مسار المحتوى"
+
+msgid "Core"
+msgstr "النواة"
+
+msgid "Credentials"
+msgstr "بيانات الاعتماد"
+
+msgid "Current build binding"
+msgstr "ربط الإصدار الحالي"
+
+msgid "Current local runtime observation."
+msgstr "ملاحظة حالية من بيئة التشغيل المحلية."
+
+msgid "Current write access is not ready. Review the existing site permissions and exact proposal before approving any change."
+msgstr "صلاحية الكتابة الحالية غير جاهزة. راجع صلاحيات الموقع والمقترح المحدد قبل الموافقة على أي تغيير."
+
+msgid "Database safety or attribution requires review before writes can proceed."
+msgstr "تحتاج سلامة قاعدة البيانات أو إسنادها إلى مراجعة قبل تنفيذ الكتابة."
+
+msgid "Database write safety"
+msgstr "سلامة الكتابة إلى قاعدة البيانات"
+
+msgid "Diagnostics"
+msgstr "التشخيص"
+
+msgid "Drop Ins"
+msgstr "الإضافات الخاصة"
+
+msgid "Dynamic Content Pipeline"
+msgstr "مسار المحتوى الديناميكي"
+
+msgid "Endpoints"
+msgstr "نقاط الاتصال"
+
+msgid "Enroll the site"
+msgstr "تسجيل الموقع"
+
+msgid "Enroll this site and review its environment and access."
+msgstr "سجل هذا الموقع وراجع بيئته وصلاحيات الوصول إليه."
+
+msgid "Environment"
+msgstr "البيئة"
+
+msgid "Exact existing inventory; no new grants or tools."
+msgstr "الجرد الحالي المطابق؛ دون منح صلاحيات أو أدوات جديدة."
+
+msgid "Existing authorization, approved recipe, exact readback and verified restoration."
+msgstr "تفويض قائم، وخطة معتمدة، وتحقق مطابق بعد التنفيذ، واستعادة موثقة."
+
+msgid "Existing read permissions."
+msgstr "صلاحيات القراءة القائمة."
+
+msgid "Experiments"
+msgstr "التجارب"
+
+msgid "External action required"
+msgstr "مطلوب إجراء خارجي"
+
+msgid "Find a page or setting"
+msgstr "ابحث عن صفحة أو إعداد"
+
+msgid "Follow client connection and consent instructions."
+msgstr "اتبع تعليمات ربط العميل والموافقة."
+
+msgid "Functional"
+msgstr "الوظائف"
+
+msgid "Google Drive"
+msgstr "Google Drive"
+
+msgid "Governance & History"
+msgstr "الحوكمة وسجل التغييرات"
+
+msgid "Governed write lane"
+msgstr "مسار الكتابة المنضبط"
+
+msgid "High-risk or new authority"
+msgstr "عمليات عالية المخاطر أو صلاحيات جديدة"
+
+msgid "History"
+msgstr "السجل"
+
+msgid "Inspect OAuth, endpoints, isolation and certification."
+msgstr "راجع OAuth ونقاط الاتصال والعزل والاعتماد."
+
+msgid "Inspect agents, effective access, changes and audit evidence."
+msgstr "راجع الوكلاء والوصول الفعلي والتغييرات وأدلة التدقيق."
+
+msgid "Inspect database performance and maintenance evidence."
+msgstr "راجع أداء قاعدة البيانات وأدلة الصيانة."
+
+msgid "Inspect the exact change and required approval."
+msgstr "راجع التغيير المحدد والموافقة المطلوبة."
+
+msgid "Inspect the individual capability gaps and required evidence in Provider Coverage."
+msgstr "راجع فجوات كل قدرة والأدلة المطلوبة في صفحة تغطية المزودين."
+
+msgid "Installed"
+msgstr "المثبتة"
+
+msgid "Intelligence"
+msgstr "التحليل"
+
+msgid "Isolation"
+msgstr "العزل"
+
+msgid "Language hierarchy and license notices"
+msgstr "تنبيهات تسلسل اللغات والترخيص"
+
+msgid "Languages"
+msgstr "اللغات"
+
+msgid "Leave all credential fields blank to keep the saved connection. Complete every field to replace it."
+msgstr "اترك كل حقول الاعتماد فارغة للاحتفاظ بالاتصال المحفوظ. أكمل جميع الحقول لاستبداله."
+
+msgid "Level"
+msgstr "المستوى"
+
+msgid "License and domain mismatch"
+msgstr "عدم تطابق الترخيص والنطاق"
+
+msgid "MAD4B Action Center"
+msgstr "مركز إجراءات MAD4B"
+
+msgid "MAD4B page sections"
+msgstr "أقسام صفحة MAD4B"
+
+msgid "MAD4B staged readiness"
+msgstr "مراحل جاهزية MAD4B"
+
+msgid "MAD4B workspace navigation"
+msgstr "التنقل بين مساحات عمل MAD4B"
+
+msgid "Maintenance"
+msgstr "الصيانة"
+
+msgid "Managed Skills"
+msgstr "المهارات المُدارة"
+
+msgid "Markets"
+msgstr "الأسواق"
+
+msgid "Mu Plugins"
+msgstr "الإضافات الإلزامية"
+
+msgid "Mutations"
+msgstr "التغييرات"
+
+msgid "Needs attention"
+msgstr "يحتاج إلى مراجعة"
+
+msgid "Next actions"
+msgstr "الإجراءات التالية"
+
+msgid "No current observation is available."
+msgstr "لا توجد ملاحظة حالية متاحة."
+
+msgid "No current provider observations. Open Provider Coverage to inspect available capabilities."
+msgstr "لا توجد ملاحظات حالية للمزودين. افتح صفحة التغطية لمراجعة القدرات المتاحة."
+
+msgid "No matching workspace. Clear the search to see all pages."
+msgstr "لا توجد مساحة عمل مطابقة. امسح البحث لعرض كل الصفحات."
+
+msgid "No pending actions were reported by this snapshot. External acceptance and repair coverage still require their own evidence."
+msgstr "لم تسجل هذه اللقطة إجراءات معلقة. لا يزال القبول الخارجي وتغطية الإصلاح يتطلبان أدلة مستقلة."
+
+msgid "No permission change or new certification."
+msgstr "دون تغيير الصلاحيات أو إصدار اعتماد جديد."
+
+msgid "Not checked"
+msgstr "لم يتم الفحص"
+
+msgid "Not configured"
+msgstr "غير مُعدّ"
+
+msgid "OAuth Check"
+msgstr "فحص OAuth"
+
+msgid "Oauth"
+msgstr "OAuth"
+
+msgid "Observation"
+msgstr "الملاحظة"
+
+msgid "Observe registered metadata"
+msgstr "قراءة البيانات الوصفية المسجلة"
+
+msgid "Open each workspace to inspect its current prerequisites. These steps describe setup; they do not certify completion."
+msgstr "افتح كل مساحة عمل لمراجعة متطلباتها الحالية. تصف هذه الخطوات مسار الإعداد ولا تثبت اكتماله."
+
+msgid "Open this registered workspace."
+msgstr "افتح مساحة العمل المسجلة هذه."
+
+msgid "Open workspace: %s"
+msgstr "افتح مساحة العمل: %s"
+
+msgid "Operation"
+msgstr "العملية"
+
+msgid "Overview"
+msgstr "نظرة عامة"
+
+msgid "Owner review required. No automatic promotion."
+msgstr "تلزم مراجعة المالك. لا توجد ترقية تلقائية."
+
+msgid "Performance"
+msgstr "الأداء"
+
+msgid "Pipeline policy JSON"
+msgstr "سياسة مسار المحتوى بصيغة JSON"
+
+msgid "Pipeline settings saved and verified."
+msgstr "تم حفظ إعدادات المسار والتحقق منها."
+
+msgid "Pipeline settings were not saved: "
+msgstr "لم تُحفظ إعدادات المسار: "
+
+msgid "Plugins"
+msgstr "الإضافات"
+
+msgid "Policy reference only. A level describes a boundary; it does not enable an operation or prove that a repair ran."
+msgstr "مرجع للسياسة فقط. يصف المستوى حدودًا، ولا يفعّل عملية أو يثبت تنفيذ إصلاح."
+
+msgid "Priority"
+msgstr "الأولوية"
+
+msgid "Proven ownership; preserve human edits."
+msgstr "ملكية مثبتة؛ مع الحفاظ على تعديلات المستخدم."
+
+msgid "Provider"
+msgstr "المزود"
+
+msgid "Provider Coverage"
+msgstr "تغطية المزودين"
+
+msgid "Provider observations"
+msgstr "ملاحظات المزودين"
+
+msgid "Provider settings saved and verified."
+msgstr "تم حفظ إعدادات المزود والتحقق منها."
+
+msgid "Provider setup requires an enrolled Staging, Development or Local environment."
+msgstr "يتطلب إعداد المزود تسجيل بيئة تجريبية أو تطويرية أو محلية."
+
+msgid "Providers"
+msgstr "المزودون"
+
+msgid "Quality"
+msgstr "الجودة"
+
+msgid "Readiness"
+msgstr "الجاهزية"
+
+msgid "Ready"
+msgstr "جاهز"
+
+msgid "Reconcile the previous change"
+msgstr "مطابقة نتيجة التغيير السابق"
+
+msgid "Refresh eligible existing staging access"
+msgstr "تحديث الوصول التجريبي القائم والمسموح"
+
+msgid "Refresh status projections"
+msgstr "تحديث عرض الحالات"
+
+msgid "Registered conditions"
+msgstr "الشروط المسجلة"
+
+msgid "Registered stages"
+msgstr "المراحل المسجلة"
+
+msgid "Remove credentials"
+msgstr "حذف بيانات الاعتماد"
+
+msgid "Remove saved connection"
+msgstr "حذف الاتصال المحفوظ"
+
+msgid "Removing credentials invalidates this local connection. A new connection must be saved and checked before use."
+msgstr "يؤدي حذف بيانات الاعتماد إلى إبطال هذا الاتصال المحلي. يجب حفظ اتصال جديد وفحصه قبل استخدامه."
+
+msgid "Repair owned configuration"
+msgstr "إصلاح الإعدادات المملوكة"
+
+msgid "Repair verified"
+msgstr "تم التحقق من الإصلاح"
+
+msgid "Requests"
+msgstr "الطلبات"
+
+msgid "Required boundary"
+msgstr "الحد المطلوب"
+
+msgid "Review Site Profile"
+msgstr "مراجعة ملف الموقع"
+
+msgid "Review affected provider capabilities"
+msgstr "مراجعة قدرات المزود المتأثرة"
+
+msgid "Review all provider capabilities"
+msgstr "مراجعة كل قدرات المزودين"
+
+msgid "Review and reconcile"
+msgstr "المراجعة والمطابقة"
+
+msgid "Review approved access"
+msgstr "مراجعة الوصول المعتمد"
+
+msgid "Review available skills and their reconciliation status."
+msgstr "راجع المهارات المتاحة وحالة مطابقتها."
+
+msgid "Review blockers and choose the next safe step."
+msgstr "راجع العوائق واختر الخطوة الآمنة التالية."
+
+msgid "Review browser acceptance"
+msgstr "مراجعة قبول المتصفح"
+
+msgid "Review component identity, updates and maintenance."
+msgstr "راجع هوية المكونات وتحديثاتها وصيانتها."
+
+msgid "Review context sources"
+msgstr "مراجعة مصادر السياق"
+
+msgid "Review database readiness"
+msgstr "مراجعة جاهزية قاعدة البيانات"
+
+msgid "Review developer prerequisites"
+msgstr "مراجعة متطلبات المطور"
+
+msgid "Review exact proposed changes and decision history."
+msgstr "راجع التغييرات المقترحة المحددة وسجل القرارات."
+
+msgid "Review installed providers"
+msgstr "مراجعة المزودين المثبتين"
+
+msgid "Review installed providers and capability-specific gaps."
+msgstr "راجع المزودين المثبتين والفجوات الخاصة بكل قدرة."
+
+msgid "Review provider certification"
+msgstr "مراجعة اعتماد المزود"
+
+msgid "Review runtime evidence"
+msgstr "مراجعة أدلة التشغيل"
+
+msgid "Review the current domain and the vendor's staging license policy in the provider settings. License deactivation or reactivation stays an explicit owner action."
+msgstr "راجع النطاق الحالي وسياسة الترخيص التجريبي لدى المزود من إعداداته. يظل إلغاء الترخيص أو إعادة تفعيله إجراءً صريحًا للمالك."
+
+msgid "Review the environment and site permissions."
+msgstr "راجع البيئة وصلاحيات الموقع."
+
+msgid "Review the first proposal"
+msgstr "مراجعة المقترح الأول"
+
+msgid "Review the installed build"
+msgstr "مراجعة الإصدار المثبت"
+
+msgid "Review the local browser connection check."
+msgstr "راجع فحص اتصال المتصفح المحلي."
+
+msgid "Runtime Components"
+msgstr "مكونات التشغيل"
+
+msgid "Save API credentials, then test the saved account. Search capture requires separate provider certification, a Search Profile and a governed budget."
+msgstr "احفظ بيانات اعتماد API ثم افحص الحساب المحفوظ. يتطلب جمع نتائج البحث اعتمادًا مستقلًا للمزود وملف بحث وميزانية منضبطة."
+
+msgid "Save and verify pipeline"
+msgstr "حفظ المسار والتحقق منه"
+
+msgid "Save credentials"
+msgstr "حفظ بيانات الاعتماد"
+
+msgid "Save stage selection"
+msgstr "حفظ اختيار المراحل"
+
+msgid "Saved account checked. Certification and budget gates remain separate."
+msgstr "تم فحص الحساب المحفوظ. تبقى متطلبات الاعتماد والميزانية مستقلة."
+
+msgid "Saved connection removed and verified."
+msgstr "تم حذف الاتصال المحفوظ والتحقق من ذلك."
+
+msgid "Saved securely; fields remain blank"
+msgstr "محفوظة بأمان؛ تبقى الحقول فارغة"
+
+msgid "Search API credentials"
+msgstr "بيانات اعتماد API للبحث"
+
+msgid "Search Intelligence"
+msgstr "ذكاء البحث"
+
+msgid "Search Intelligence sections"
+msgstr "أقسام ذكاء البحث"
+
+msgid "Search providers"
+msgstr "مزودو البحث"
+
+msgid "See what needs attention, who can resolve it and where to take the next step."
+msgstr "اعرف ما يحتاج إلى مراجعة، ومن يمكنه معالجته، وأين تنفذ الخطوة التالية."
+
+msgid "Select validation stages and review their prerequisites."
+msgstr "اختر مراحل التحقق وراجع متطلباتها."
+
+msgid "Serp"
+msgstr "نتائج البحث"
+
+msgid "Settings digest:"
+msgstr "بصمة الإعدادات:"
+
+msgid "Setup path"
+msgstr "مسار الإعداد"
+
+msgid "Site Profile"
+msgstr "ملف الموقع"
+
+msgid "Site enrollment required"
+msgstr "يلزم تسجيل الموقع"
+
+msgid "Skip to page content"
+msgstr "انتقل إلى محتوى الصفحة"
+
+msgid "Source checks need approved context, SEO checks need a certified provider, and frontend checks need browser acceptance evidence. Selecting a stage does not complete these prerequisites."
+msgstr "تحتاج فحوص المصادر إلى سياق معتمد، وفحوص SEO إلى مزود معتمد، وفحوص الواجهة إلى أدلة قبول المتصفح. اختيار مرحلة لا يستكمل هذه المتطلبات."
+
+msgid "Sources"
+msgstr "المصادر"
+
+msgid "Stage %d"
+msgstr "المرحلة %d"
+
+msgid "Stage selection preserves existing conditions, order and bounded repair policies. Mandatory stages remain enforced. Context, SEO and browser checks still require their runtime providers; enabling a stage does not certify them."
+msgstr "يحافظ اختيار المراحل على الشروط والترتيب وسياسات الإصلاح المحدودة. تبقى المراحل الإلزامية مفروضة. تحتاج فحوص السياق وSEO والمتصفح إلى مزوديها التشغيليين؛ تفعيل المرحلة لا يعتمدهم."
+
+msgid "Stages and conditions are registry-driven. New trusted stage or condition IDs become selectable automatically without changing the core pipeline."
+msgstr "تُدار المراحل والشروط من سجل موثوق. تصبح معرفات المراحل أو الشروط الموثوقة الجديدة قابلة للاختيار تلقائيًا دون تغيير أساس المسار."
+
+msgid "Stages are registered by trusted code. Settings control stage order, enablement, conditions and bounded policy values; settings cannot execute arbitrary PHP callbacks."
+msgstr "يسجل الكود الموثوق المراحل. تتحكم الإعدادات في ترتيبها وتفعيلها وشروطها والسياسات المحدودة، ولا تنفذ دوال PHP عشوائية."
+
+msgid "Surfaces"
+msgstr "الصفحات والأسطح"
+
+msgid "Targets"
+msgstr "الأهداف"
+
+msgid "Taxonomy language synchronization"
+msgstr "مزامنة التصنيفات بين اللغات"
+
+msgid "Technical evidence"
+msgstr "الأدلة التقنية"
+
+msgid "Test saved connection"
+msgstr "فحص الاتصال المحفوظ"
+
+msgid "The current build or its authority binding needs reconciliation. Review package identity and the existing candidate."
+msgstr "يحتاج الإصدار الحالي أو ربط صلاحياته إلى مطابقة. راجع هوية الحزمة والإصدار المرشح القائم."
+
+msgid "The outcome of an earlier change is uncertain. Review its receipt and current object state before retrying."
+msgstr "نتيجة تغيير سابق غير مؤكدة. راجع إيصال تنفيذه وحالة العنصر الحالية قبل إعادة المحاولة."
+
+msgid "Themes"
+msgstr "القوالب"
+
+msgid "This view reports evidence and grants no new access."
+msgstr "تعرض هذه الصفحة الأدلة ولا تمنح وصولًا جديدًا."
+
+msgid "Use the language provider's taxonomy hierarchy screen to inspect the affected terms and update each listed hierarchy. Review the source language and parent relationships first."
+msgstr "استخدم صفحة تسلسل التصنيفات في إضافة اللغات لمراجعة العناصر المتأثرة وتحديث كل تسلسل معروض. راجع لغة المصدر والعلاقات الأصلية أولًا."
+
+msgid "Validation prerequisites"
+msgstr "متطلبات التحقق"
+
+msgid "Verified automatic repair coverage: Not measured."
+msgstr "تغطية الإصلاح التلقائي الموثق: لم تُقَس."
+
+msgid "Verified read or reversible staging trial"
+msgstr "قراءة موثقة أو تجربة تجريبية قابلة للاستعادة"
+
+msgid "Verify the external client connection"
+msgstr "التحقق من اتصال العميل الخارجي"
+
+msgid "Write authority"
+msgstr "صلاحية الكتابة"
+
+msgid "Your next safe steps"
+msgstr "خطواتك الآمنة التالية"
+
+msgid "This checklist adapts to the current site and existing observations. It does not grant access, perform repairs, or claim release acceptance."
+msgstr "تتغير هذه الخطوات بحسب حالة الموقع. لا تمنح صلاحيات ولا تنفذ إصلاحات ولا تعتمد الإصدار."
+
+msgid "Current operator evidence is incomplete or untrusted. Reopen Runtime Components before taking action."
+msgstr "بيانات التشغيل الحالية غير مكتملة أو غير موثوقة. راجع مكونات التشغيل قبل اتخاذ أي إجراء."
+
+msgid "Identify this WordPress site"
+msgstr "تحديد هوية موقع WordPress"
+
+msgid "Confirm the exact origin, environment and deployment identity."
+msgstr "تحقق من عنوان الموقع والبيئة وهوية النشر."
+
+msgid "Connect and verify ChatGPT"
+msgstr "ربط ChatGPT والتحقق من الاتصال"
+
+msgid "Complete OAuth consent and verify an external read. A configured profile alone is not certification."
+msgstr "أكمل الموافقة على الاتصال واختبر قراءة فعلية. إعداد الملف وحده لا يعني نجاح الاتصال."
+
+msgid "Restore Managed Skills"
+msgstr "معالجة Managed Skills"
+
+msgid "Reconcile managed seeds and providers, then verify the certificate for this exact build."
+msgstr "حدّث المهارات المُدارة ومزوّديها، ثم تحقق من شهادة الإصدار الحالي."
+
+msgid "Inspect installed capabilities and certify only the specific missing provider evidence."
+msgstr "راجع القدرات المثبتة وتحقق من الأدلة الناقصة لكل مزوّد على حدة."
+
+msgid "Configure browser acceptance"
+msgstr "إعداد اختبارات المتصفح"
+
+msgid "Choose a registered site adapter and external runner. A saved preference does not certify a test."
+msgstr "اختر محول الموقع المسجل ومنفذ المتصفح الخارجي. حفظ الاختيار لا يعني نجاح الاختبار."
+
+msgid "Review pending change approvals"
+msgstr "مراجعة الموافقات المعلقة"
+
+msgid "Inspect the exact affected scope and existing ticket before approving or rejecting."
+msgstr "راجع نطاق التغيير والتذكرة المرتبطة به قبل الموافقة أو الرفض."
+
+msgid "Resolve an uncertain previous change"
+msgstr "التحقق من تغيير سابق غير محسوم"
+
+msgid "Review the last receipt and independently read back the affected object before any retry."
+msgstr "راجع إيصال المحاولة السابقة وحالة العنصر الفعلية قبل أي إعادة محاولة."
+
+msgid "Review isolated developer execution"
+msgstr "مراجعة عزل تنفيذ المطور"
+
+msgid "Host sandbox prerequisites require an authorized external operator. Existing safe lanes remain usable."
+msgstr "يتطلب إعداد عزل الخادم مسؤولًا مخولًا. تظل المسارات الآمنة الأخرى متاحة."
+
+msgid "Review exact write readiness"
+msgstr "التحقق من جاهزية الكتابة"
+
+msgid "The write runtime is not ready. Verify grants and candidate binding before seeking approval; no grants are created here."
+msgstr "مسار الكتابة غير جاهز. تحقق من الصلاحيات وربط الإصدار قبل طلب الموافقة، ولن تُنشأ صلاحيات هنا."
+
+msgid "Open this step"
+msgstr "فتح هذه الخطوة"
+
+msgid "Continue with this step"
+msgstr "متابعة الخطوة التالية"
+
+msgid "Responsible:"
+msgstr "المسؤول:"
+
+msgid "Advanced setup reference"
+msgstr "دليل الإعداد المتقدم"
+
+msgid "Environment:"
+msgstr "البيئة:"
+
+msgid "WordPress setting:"
+msgstr "إعداد WordPress:"
+
+msgid "Confirmed staging profile; WordPress is using its implicit Production default. Host alignment is advisory, not a new grant."
+msgstr "الموقع معتمد كبيئة تجريبية. يستخدم WordPress قيمة الإنتاج الافتراضية؛ توحيد إعداد الخادم تحسين مقترح وليس صلاحية جديدة."
+
+msgid "The environment differs: verify the exact host and Site Profile before accepting a release."
+msgstr "توجد اختلافات في تعريف البيئة؛ تحقق من الخادم وهوية الموقع قبل اعتماد الإصدار."
+
+msgid "Managed Skills need verification"
+msgstr "تحتاج Managed Skills إلى التحقق"
+
+msgid "A current certificate is missing or stale. Use the managed reconciliation step below, then inspect the renewed certificate; this page does not grant new Write authority."
+msgstr "شهادة التشغيل غير موجودة أو قديمة. نفّذ التسوية أدناه ثم افحص الشهادة الجديدة. لا تمنح هذه الصفحة صلاحية كتابة."
+
+msgid "Review exact decision boundary"
+msgstr "مراجعة نطاق القرار بدقة"
+
+msgid "Provider:"
+msgstr "المزوّد:"
+
+msgid "Target fingerprint:"
+msgstr "بصمة العنصر المستهدف:"
+
+msgid "Payload binding:"
+msgstr "بصمة ربط الطلب:"
+
+msgid "This ticket identifies an exact proposed operation. The current inbox does not independently prove before/after changes, rollback availability, or outcome. Review the operation plan and its owner before approving."
+msgstr "تحدد التذكرة عملية مقترحة بعينها، لكنها لا تثبت بمفردها أثر التغيير أو توفر التراجع أو نتيجته. راجع خطة العملية والمسؤول عنها قبل الموافقة."
+
+msgid "Before approving: identify the operation, affected provider and target, review the precise mutation plan and its rollback evidence. Unknown impact is never assumed safe."
+msgstr "قبل الموافقة، راجع العملية والمزوّد والعنصر المستهدف وخطة التغيير ودليل التراجع. لا يُعد الأثر غير المعروف آمنًا تلقائيًا."
+
+msgid "Browser setup progress"
+msgstr "تقدم إعداد المتصفح"
+
+msgid "Browser setup: your next step"
+msgstr "إعداد المتصفح: الخطوة التالية"
+
+msgid "1. A WordPress acceptance adapter is missing."
+msgstr "1. محوّل اختبارات WordPress غير موجود."
+
+msgid "Register a reviewed site adapter first. External Browser API credentials alone cannot repair this."
+msgstr "سجل محوّل موقع معتمدًا أولًا؛ مفاتيح خدمة المتصفح وحدها لا تحل المشكلة."
+
+msgid "2. Saved browser preference needs correction."
+msgstr "2. يجب تصحيح اختيار المتصفح المحفوظ."
+
+msgid "Choose a currently registered provider and save an exact new revision below."
+msgstr "اختر مزوّدًا مسجلًا حاليًا واحفظ نسخة إعداد جديدة أدناه."
+
+msgid "3. Verify external browser execution and receipt."
+msgstr "3. تحقق من التنفيذ الخارجي وإيصال النتيجة."
+
+msgid "WordPress cannot verify an external runner solely from these preferences. A signed browser result is required."
+msgstr "لا يستطيع WordPress التحقق من المنفذ الخارجي اعتمادًا على الإعدادات فقط؛ يلزم تقرير اختبار موقع."
+
+msgid "No secret is accepted on this page, and no test runs merely by saving preferences."
+msgstr "لا تستقبل هذه الصفحة مفاتيح سرية، ولا يبدأ اختبار بمجرد حفظ التفضيلات."
+
+msgid "Not applicable"
+msgstr "غير منطبق"
+
+msgid "Complete site identification first"
+msgstr "أكمل تعريف الموقع أولًا"
+
+msgid "No action currently reported"
+msgstr "لا يوجد إجراء مطلوب حاليًا"
+
+msgid "Review independent deployment identity"
+msgstr "مراجعة هوية النشر المستقلة"
+
+msgid "Site enrollment is valid, but independent same-origin clone protection is not configured. Host setup is separate from current Read and Write grants."
+msgstr "تعريف الموقع معتمد، لكن حماية نسخ الموقع على العنوان نفسه غير مفعلة. إعداد الخادم مستقل عن صلاحيات القراءة والكتابة الحالية."
+
+msgid "Managed Skills editor is disabled"
+msgstr "محرر المهارات المُدارة غير مفعل"
+
+msgid "An authorized Staging host operator must review MAD4B_SKILLS_EDITOR_ENABLED in wp-config.php or the managed host bootstrap. Do not enable Production editing or retry a failed remote reconciliation until this prerequisite and the exact build are verified."
+msgstr "يجب أن يراجع مسؤول الخادم المخوّل إعداد MAD4B_SKILLS_EDITOR_ENABLED في wp-config.php أو إعداد الخادم المُدار لبيئة الاختبار. لا تفعل تحرير الإنتاج ولا تعِد محاولة التسوية قبل التحقق من هذا الشرط وهوية الإصدار."
+
+msgid "Managed Skills storage is not writable. Review the owned filesystem directory and host permissions; do not bypass the governed Skill registry."
+msgstr "تخزين المهارات المُدارة غير قابل للكتابة. راجع صلاحيات مجلد التخزين الخاص بالموقع دون تجاوز سجل المهارات المحكوم."
+
+msgid "Required independent evidence"
+msgstr "الأدلة المستقلة المطلوبة"
+
+msgid "No evidence is certified by this checklist. Verify the actual external receipt and exact current build."
+msgstr "هذه القائمة لا تعتمد أي دليل تلقائيًا. تحقق من إيصال الفحص الخارجي الفعلي ومطابقته للإصدار الحالي."

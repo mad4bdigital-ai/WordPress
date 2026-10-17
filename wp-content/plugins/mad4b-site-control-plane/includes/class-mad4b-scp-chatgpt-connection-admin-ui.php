@@ -66,6 +66,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
 		$external_evidence_present = ! empty( $external_handshake['evidence_present'] );
+		$dynamic = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' )
+			? MAD4B_SCP_ChatGPT_Auto_Binding::status() : array();
 		$external_previous_session = ! empty( $external_handshake['previously_verified_external_session'] );
 		$external_certification_state = $external_previous_session
 			? ( isset( $external_handshake['certification_projection_state'] ) ? sanitize_key( (string) $external_handshake['certification_projection_state'] ) : 'previously_verified_revalidation_deferred' )
@@ -86,6 +88,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 		$oauth_canary_available = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::origin_enrolled() && MAD4B_SCP_Site_Profile::site_urls_match_enrollment() && MAD4B_SCP_Site_Profile::oauth_enabled();
 		$step_up_available = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) && MAD4B_SCP_OAuth_Resource_Bridge::authority_step_up_scope_available();
 		$scopes = $step_up_available ? array( 'mad4b:read', 'mad4b:authority:step-up', 'offline_access' ) : array( 'mad4b:read', 'offline_access' );
+		$ai_dashboard = class_exists( 'MAD4B_SCP_AI_Approval' )
+			? MAD4B_SCP_AI_Approval::dashboard_projection() : array();
 		$ready = $environment_ready && ! empty( $local['effective'] ) && ! empty( $bridge['effective'] ) && $cimd_ready && $gateway_identity_ready;
 
 		self::$status_cache = array(
@@ -120,6 +124,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'redirect_uri' => self::CHATGPT_REDIRECT_URI,
 			'token_endpoint_auth_method' => 'none',
 			'scopes' => $scopes,
+			'optional_ai_auto_all_scope' => ! empty( $ai_dashboard['oauth_scope_supported'] ) ? (string) $ai_dashboard['optional_owner_oauth_scope'] : '',
+			'optional_ai_auto_all_scope_requires_reconsent' => ! empty( $ai_dashboard['reconsent_required_for_new_scope'] ),
+			'ai_auto_all_current_remote_consent_state' => (string) ( $ai_dashboard['remote_chatgpt_token_grant_status'] ?? 'not_observed_in_admin_request' ),
 			'gateway_server_id' => 'mad4b-chatgpt',
 			'gateway_registered' => $gateway_registered,
 			'gateway_registration_identity_ready' => $gateway_identity_ready,
@@ -133,6 +140,11 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 			'creates_chatgpt_connector' => false,
 			'stores_chatgpt_credentials' => false,
 			'external_connection_certified' => false,
+			'dynamic_chatgpt_oauth_client_bound' => ! empty( $dynamic['client_observed'] ),
+			'dynamic_chatgpt_oauth_client_binding_state' => (string) ( $dynamic['state'] ?? 'unbound' ),
+			'dynamic_client_binding_blocker' => (string) ( $dynamic['blocker'] ?? 'binding_module_unavailable' ),
+			'chatgpt_app_id_available_in_oauth' => false,
+			'chatgpt_app_id_manual_input_required_for_oauth' => false,
 			'external_connection_evidence_present' => $external_evidence_present,
 			'external_connection_previously_verified' => $external_previous_session,
 			'external_connection_certification_deferred' => $external_previous_session,
@@ -223,7 +235,9 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<?php self::field_row( 'ChatGPT Client Identity', self::CHATGPT_CLIENT_ID ); ?>
 					<?php self::field_row( 'ChatGPT Redirect URI', self::CHATGPT_REDIRECT_URI ); ?>
 					<?php self::field_row( 'Token endpoint auth', 'none (public client + PKCE S256)' ); ?>
-					<?php self::field_row( 'Scopes', implode( ' ', $status['scopes'] ) ); ?>
+					<?php self::field_row( 'Default connection scopes (not automatic AI consent)', implode( ' ', $status['scopes'] ) ); ?>
+					<?php self::field_row( 'Optional broad AI approval scope', '' !== $status['optional_ai_auto_all_scope'] ? $status['optional_ai_auto_all_scope'] . ' — new ChatGPT OAuth consent required' : 'Unavailable here' ); ?>
+					<?php self::field_row( 'Existing ChatGPT AI scope grant', 'Not observable from WordPress admin; verify with a fresh authenticated remote bearer request' ); ?>
 					<?php self::field_row( 'Gateway', 'mad4b-chatgpt — governed read + approval-bound mutation projection' ); ?>
 				</tbody>
 			</table>
@@ -261,6 +275,8 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 					<tr><th>OAuth resource bridge effective</th><td><?php echo ! empty( $status['bridge_effective'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>CIMD advertised</th><td><?php echo ! empty( $status['cimd_supported'] ) ? 'yes' : 'no'; ?></td></tr>
 					<tr><th>ChatGPT CIMD policy ready</th><td><?php echo ! empty( $status['chatgpt_cimd_policy_ready'] ) ? 'yes' : 'no'; ?></td></tr>
+					<tr><th>Automatic OAuth client binding</th><td><?php echo esc_html( ! empty( $status['dynamic_chatgpt_oauth_client_bound'] ) ? 'bound to current enrolled site · not an App ID' : 'awaiting verified OAuth request · ' . $status['dynamic_client_binding_blocker'] ); ?></td></tr>
+					<tr><th>Manual App ID for OAuth</th><td>not required; App ID is not supplied by OAuth</td></tr>
 					<tr><th>External ChatGPT connection</th><td><?php echo esc_html( ! empty( $status['external_connection_evidence_present'] ) ? 'persisted external evidence · deep revalidation deferred' : 'not yet externally verified' ); ?></td></tr>
 				</tbody>
 			</table>

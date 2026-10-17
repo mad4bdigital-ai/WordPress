@@ -9,12 +9,16 @@ prep=(root/"includes/class-mad4b-scp-preparation-receipt.php").read_text(encodin
 context=(root/"includes/class-mad4b-scp-context-preflight.php").read_text(encoding="utf-8")
 execution=(root/"includes/class-mad4b-scp-execution-receipt.php").read_text(encoding="utf-8")
 
-expected={"execution_receipt":"execution-receipt-rs256-v1","preparation_receipt":"preparation-receipt-rs256-v1","context_receipt":"context-receipt-rs256-v1","production_evidence":"production-evidence-rs256-v1"}
+expected={"execution_receipt":"execution-receipt-rs256-v1","preparation_receipt":"preparation-receipt-rs256-v1","context_receipt":"context-receipt-rs256-v1","production_evidence":"production-evidence-rs256-v1","behavioral_evidence":"behavioral-evidence-rs256-v1","certification_pack":"certification-pack-rs256-v1"}
 if cfg.get("default_profiles") != expected: raise SystemExit("FAIL receipt crypto default profiles drift")
 for purpose,prefix in (("execution_receipt","execution-receipt"),("preparation_receipt","preparation-receipt"),("context_receipt","context-receipt"),("production_evidence","production-evidence")):
     for suffix,alg in (("rs256-v1","RS256"),("rs512-v2","RS512")):
         row=cfg.get("profiles",{}).get(f"{prefix}-{suffix}",{})
         if row.get("purpose")!=purpose or row.get("algorithm")!=alg or row.get("enabled") is not True: raise SystemExit(f"FAIL {purpose} algorithm profile {alg}")
+for purpose in ("behavioral_evidence","certification_pack"):
+    row=cfg.get("profiles",{}).get(expected[purpose],{})
+    if row.get("purpose")!=purpose or row.get("algorithm")!="RS256" or row.get("enabled") is not True or row.get("key_bits",0)<3072 or row.get("overlap_seconds")!=86400 or row.get("max_active_keys")!=2:
+        raise SystemExit("FAIL G3 purpose-specific crypto lifecycle "+purpose)
 for purpose in ("context_receipt","production_evidence"):
     if purpose not in time_cfg.get("purposes",{}): raise SystemExit("FAIL "+purpose+" time policy missing")
 if time_cfg["purposes"]["production_evidence"].get("max_age_seconds",0)<=0: raise SystemExit("FAIL production evidence freshness is unbounded")

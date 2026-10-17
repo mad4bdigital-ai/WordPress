@@ -16,6 +16,65 @@ final class MAD4B_SCP_Authorization {
 	private static $booted = false;
 	private static $execution_callback_started = array();
 	private static $trusted_execution_boundaries = array();
+    /** Ephemeral proof minted ONLY inside the existing governed callback. */
+    private static $operation_claim_in_callback = array();
+
+    public static function native_binding_callback_is_claimed( $input ) {
+        return self::operation_callback_is_claimed( 'mad4b/deployment-binding-native-apply', $input );
+    }
+
+    public static function google_revocation_callback_is_claimed( $input ) {
+        return self::operation_callback_is_claimed( 'mad4b/google-revocation-retry', $input );
+    }
+
+    private static function operation_callback_is_claimed( $name, $input ) {
+        if ( ! is_array( $input )
+            || ! is_array( self::$operation_claim_in_callback )
+            || $name !== ( self::$operation_claim_in_callback['ability'] ?? '' )
+            || empty( self::$operation_claim_in_callback['claim_sha256'] )
+            || empty( self::$operation_claim_in_callback['approval_ticket_id'] ) )
+            return false;
+        $ticket_id = (string) ( $input['_mad4b_approval_ticket_id'] ?? '' );
+        if ( ! hash_equals( (string) self::$operation_claim_in_callback['approval_ticket_id'], $ticket_id ) )
+            return false;
+        $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        return is_string( $encoded ) && hash_equals(
+            (string) self::$operation_claim_in_callback['claim_sha256'],
+            hash( 'sha256', $encoded ) );
+    }
+
+
+    /**
+     * Called solely by the immutable wrapper after the first and only
+     * claim_mutation and provider-entry durable checkpoint. The receipt is
+     * scoped to one exact ticket + input, erased even on PHP exceptions.
+     */
+    private static function invoke_claimed_callback( $name, array $claim, $input, $callback ) {
+        // An unrelated/nested callback must not borrow the outer operation's
+        // proof. These two operations alone consume this ephemeral receipt.
+        self::$operation_claim_in_callback = array();
+        if ( in_array( (string) $name, array( 'mad4b/deployment-binding-native-apply', 'mad4b/google-revocation-retry' ), true )
+            && true === ( $claim['allowed'] ?? false )
+            && 'execution_claimed' === (string) ( $claim['reason_code'] ?? '' )
+            && ! empty( $claim['approval_required'] )
+            && ! empty( $claim['approval_claimed'] )
+            && ! empty( $claim['approval_ticket_id'] )
+            && is_array( $input )
+            && hash_equals( (string) $claim['approval_ticket_id'],
+                (string) ( $input['_mad4b_approval_ticket_id'] ?? '' ) ) ) {
+            $encoded = wp_json_encode( $input, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+            if ( is_string( $encoded ) )
+                self::$operation_claim_in_callback = array(
+                    'ability' => (string) $name,
+                    'approval_ticket_id' => (string) $claim['approval_ticket_id'],
+                    'claim_sha256' => hash( 'sha256', $encoded ) );
+        }
+        try {
+            return call_user_func( $callback, $input );
+        } finally {
+            self::$operation_claim_in_callback = array();
+        }
+    }
 
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_filter' ) ) return;
@@ -59,6 +118,7 @@ final class MAD4B_SCP_Authorization {
 			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
 		}
 		self::$execution_callback_started = array();
+        self::$operation_claim_in_callback = array();
 		return true;
 	}
 
@@ -510,7 +570,8 @@ final class MAD4B_SCP_Authorization {
 			}
 			MAD4B_SCP_Authorization::mark_execution_callback_started( $name );
 			try {
-				$result = call_user_func( $original, $input );
+				$result = MAD4B_SCP_Authorization::invoke_claimed_callback(
+                    $name, $claim, $input, $original );
 			} catch ( \Throwable $throwable ) {
 				$exception_checkpoint = MAD4B_SCP_Authorization::execution_checkpoint( $claim, 'provider_returned', array(
 					'provider_exception' => true,
@@ -822,53 +883,8 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function authority_status() {
-		$schema = class_exists( 'MAD4B_SCP_Schema' ) ? MAD4B_SCP_Schema::status() : array( 'ready' => false );
-		$counts = ! empty( $schema['ready'] ) && class_exists( 'MAD4B_SCP_Agent_Registry' ) ? MAD4B_SCP_Agent_Registry::counts() : array( 'enabled_agents' => 0, 'enabled_subjects' => 0, 'grants' => 0, 'wildcard_grants' => 0 );
-		$mutation_gate = class_exists( 'MAD4B_SCP_Policy' ) && method_exists( 'MAD4B_SCP_Policy', 'mutation_gate_status' )
-			? MAD4B_SCP_Policy::mutation_gate_status()
-			: array( 'effective' => false, 'source' => 'unavailable' );
-		$mutation_configured = ! empty( $mutation_gate['effective'] );
-		$mutation_effective = $mutation_configured && MAD4B_SCP_Policy::can_mutate();
-		$peer_governance = class_exists( 'MAD4B_SCP_MCP_Peer_Governance' ) ? MAD4B_SCP_MCP_Peer_Governance::status() : array( 'inventory_ready' => false, 'write_side_channel_detected' => false, 'blockers' => array( 'mcp_peer_inventory_unavailable' ) );
-		$staging_write = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) ? MAD4B_SCP_Staging_Write_Authority::status() : array();
-		$blockers = array();
-		if ( empty( $schema['ready'] ) ) $blockers[] = 'governance_schema_unavailable';
-		if ( ! empty( $counts['wildcard_grants'] ) ) $blockers[] = 'wildcard_grants_detected';
-		if ( $mutation_configured && empty( $counts['enabled_agents'] ) ) $blockers[] = 'mutation_enabled_without_nhi';
-		if ( empty( $peer_governance['inventory_ready'] ) ) $blockers[] = 'mcp_peer_inventory_unavailable';
-		if ( ! empty( $peer_governance['write_side_channel_detected'] ) ) $blockers[] = 'mcp_write_side_channel_detected';
-		if ( ! empty( $peer_governance['foreign_transport_unreviewed'] ) ) $blockers[] = 'mcp_foreign_transport_unreviewed';
-		$blockers = array_values( array_unique( $blockers ) );
-		return array(
-			// This endpoint is a global governance/peer-health projection only. It is
-			// intentionally cheaper than per-ability mutation admission. Every actual
-			// mutation still resolves identity, exact grant, current write-authority
-			// drift, approvals, budgets and policy inside authorize_mutation().
-			'status_scope' => 'global_policy_and_peer_governance_only',
-			'per_ability_authorization_required' => true,
-			'current_write_authority_evaluated' => false,
-			'current_write_authority_evaluation' => 'deferred_to_authorize_mutation',
-			'legacy_status_ready_semantics' => 'global_gate_ready_not_execution_authorized',
-			'schema_ready' => ! empty( $schema['ready'] ),
-			'schema_version' => isset( $schema['installed_version'] ) ? (int) $schema['installed_version'] : 0,
-			'mutation_global_enabled' => $mutation_configured,
-			'mutation_gate_source' => isset( $mutation_gate['source'] ) ? (string) $mutation_gate['source'] : 'unknown',
-			'mutation_explicit_kill_switch' => ! empty( $mutation_gate['explicit_kill_switch'] ),
-			'mutation_effective_for_request' => $mutation_effective,
-			'nhi_mutation_required' => true,
-			'enabled_agents' => (int) $counts['enabled_agents'],
-			'enabled_subject_bindings' => (int) $counts['enabled_subjects'],
-			'exact_grants' => (int) $counts['grants'],
-			'wildcard_grants' => (int) $counts['wildcard_grants'],
-			'approval_service_ready' => class_exists( 'MAD4B_SCP_Approval_Tickets' ) && ! empty( $schema['ready'] ),
-			'budget_service_ready' => class_exists( 'MAD4B_SCP_Budgets' ) && ! empty( $schema['ready'] ),
-			'transport_context' => class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::status() : array( 'bound' => false, 'server_id' => '', 'credential_material_stored' => false ),
-			'mcp_peer_governance' => $peer_governance,
-			'staging_write_authority' => $staging_write,
-			'staging_write_authority_projection' => 'checkpoint_diagnostic_not_per_ability_execution_verdict',
-			'blockers' => $blockers,
-			'status' => $blockers ? 'blocked' : ( $mutation_configured ? ( $mutation_effective ? 'ready_for_governed_mutation' : 'mutation_configured_identity_required' ) : 'ready_read_only' ),
-		);
+		require_once __DIR__ . '/class-mad4b-scp-authority-health-projection.php';
+		return MAD4B_SCP_Authority_Health_Projection::authority_status();
 	}
 
 	public static function audit_remote_permission_denial( $ability_name, $error, $input = null ) {

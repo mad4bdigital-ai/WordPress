@@ -1,0 +1,5 @@
+# Storage Adapter Registry and Provider Certification
+
+Describe provider slug, installed plugin/vendor version bounds, WordPress/PHP compatibility, storage owners, registered abilities, input/output schema hashes, permissions, native sanitizers/hooks, cache/media/SEO/WPML side effects, rollback/readback limits and provenance. Each adapter starts READ_ONLY, may progress to PLAN_ONLY, WRITE_CANDIDATE and CERTIFIED_WRITE after independent disposable conformance; unknown or drifted provider is SUSPENDED.
+
+Proof: read existing exact data under actor permission; reject unauthorized meta/option; validate field schema and missing plugin; write safe disposable object through native API; inspect secondary tables/hooks/cache/relations; verify exact postcondition and supported compensation; negative crash/race tests; sign source/version and contract. Arbitrary table, column, serialized key and plugin private SQL cannot be inferred from a discovered field. Use WordPress Settings/REST, registered meta or vendor-native callback; do not offer unrestricted update_option, wp eval, shell or SQL.

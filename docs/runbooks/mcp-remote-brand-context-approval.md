@@ -1,0 +1,47 @@
+# Remote Brand Context review via governed MCP — Feature007
+
+## Objective
+
+Approve or reject a **site-bound, normalized, first-party Context asset** remotely without opening the WordPress admin UI. This is a governed alternative to the human review screen, **not** permission to import a foreign/unbound legacy source, auto-approve generated authority, or grant an AI agent human identity.
+
+## Discoverable capabilities
+
+1. `context/review-queue`: read-only current review candidates (including exact `asset_id`).
+2. `context/remote-owner-review-plan` with `asset_id`: read-only, binds current site UUID, authoritative `source_id`, asset content hash, registry revision and authority manifest into `plan_sha256`. It provides the title/excerpt and reports no authorization.
+3. `context/remote-owner-review-apply`: governed mutation requiring the same `asset_id`, exact `expected_plan_sha256`, a decision of `approve` / `needs_changes` / `reject`, and an explicit `confirmation=I REVIEWED EXACT BRAND SOURCE`. A human reviewer must first inspect full first-party material, not merely the excerpt.
+4. `context/review-audit`, `context/brand-core-coverage` and `context/brand-core-control-loop`: independently read back the exact reviewed hash, actor, postconditions, category coverage, and pending recovery work.
+
+The write follows the **existing exact one-time approval ticket** dispatcher; no extra OAuth scope and no Breakglass are granted. A matching authenticated WordPress administrator bearer is required: `auth_method=oauth2_bearer`, a locally mapped and consistent WP user ID, `manage_options`, exact Site Profile Staging origin/environment binding and a fresh approval ticket. AI-only bearer tokens cannot impersonate owners. Every decision is handled through the existing `review_asset_with_actor` registry lock, content/revision/manifest CAS, audit and persistence logic with `identity_method=oauth2_bearer_remote_owner`; the remote adapter verifies post-write asset readback.
+
+**Separate human ticket evidence:** OAuth and a string confirmation are not proof that a person personally reviewed the source. Before `context/remote-owner-review-apply`, a real administrator must approve that exact operation through the independent human decision channel. The action verifies the claimed ticket has `status=executing`, `ability_name=context/remote-owner-review-apply`, and `approved_by` equal to the mapped OAuth WordPress user. Tickets decided through AI have `approved_by=0` and are denied. An MCP-only human approval decision remains a separate unimplemented integration; do not claim a fully unattended / fully remote human lifecycle. The agent may remotely prepare, request and execute only *after* the independently recorded human decision.\n\n**Hard exclusions:** no categorical or authority reclassification in this remote endpoint, no required-scope change, no automatic owner confirmation, no stale generation evidence override, no automatic human attestation. Low-confidence automated classifications remain blocked for manual human classification through the separately reviewed route. Staging only until independently certified future policy, never Production by default.
+
+Existing `mad4b/context-ai-review` is a **different** remote action for a specifically delegated AI agent. It preserves category, authority and quality and denies suspicious operational documents, low-confidence classifications and changed evidence. Do not present AI review as human review.
+
+## Current All Royal Egypt quarantine
+
+At 2026-10-11 live readback, `context/review-queue` contained **zero** authorized candidates, `context/brand-core-coverage` had 0/3 approved categories, and `context/legacy-owner-transfer-discover` reported one foreign/conflicted legacy record. The exact owner-transfer routes already exist as MCP Abilities, but proof of original file identities, independent host crash-safe rollback certification and separate owner consent are mandatory. This remote owner-review implementation **does not** lift that quarantine. The first recovery step is to establish unambiguous first-party ownership, register/scan that approved source under a separate exact governed operation, then review its eligible normalized assets. No Memphis Tours publication is permitted until all three categories pass and commercial/media rights are separately verified.
+
+## Acceptance and current scope
+
+- PHP 7.4 and PHP 8.3 syntax check for Context Authority, Context Adapter and Brand Core loop.
+- `php wp-content/plugins/mad4b-site-control-plane/tests/context-remote-owner-review-runtime.php`
+- Regression tests: missing/malformed ID; unbound/task source; AI bearer and anonymous caller; wrong WP user/capability; missing exact one-time ticket; wrong Staging profile; missing confirmation; changed asset content/revision/manifest; stale/low-confidence source; denied review; valid complete first-party asset; independent readback and audit attribution.
+- Verify dynamic MCP discovery, write grant, owner OAuth mapping and one-time human approval ticket independently on a **certified exact-head** Staging package. Confirm full Native E2E with a disposable non-live asset before relying on this code.
+- This commit does not deploy a plugin, attest legacy ownership, approve an asset or modify Production. The presence of the remote API in source is not proof it is active on the installed Staging binary.
+
+## Lifecycle review corrections (2026-10-11)
+
+- `Content Experience update` of an already-live `publish`, `private` or `future` item now has Brand Core preflight and a binding hash in its plan; the apply path checks before the first change and compensates on a changed approval snapshot after helper/media/meta/taxonomy changes. This closes a live-edit bypass; it does not claim zero transient exposure or native rollback certification.
+- `Brand Core Remote Recovery` now models the human route explicitly: review queue → exact remote owner plan → governed decision → coverage. It checks preflight ability registration, not only read/write endpoints.
+- Legacy owner transfer is a precondition for brand approval only if the independently verified census reports quarantined legacy records (or census is unverified). A clean first-party Brand Context must not deadlock on a nonexistent transfer. Existing ownership conflicts never become auto-approved.
+- Still missing: independent exact-head native PHP 7.4/8.3 E2E; host-proven ownership for foreign legacy sources; signed staging package; direct human-only MCP ticket decision separate from agent transport; full recovery DAG resume, idempotency and source/asset publication audit.
+
+## Owner OAuth delegation for AI auto-approval (2026-10-11)
+
+The **new** explicit OAuth scope `mad4b:approval:auto:all` offers an alternate `owner_oauth_scope_auto_all` decision path to the existing `human_and_ai` standing-agent policy. The owner opts into it through a **fresh, separately displayed OAuth consent** for the exact ChatGPT CIMD client and canonical MAD4B resource. Previously approved `mad4b:read` / `mad4b:authority:step-up` / `offline_access` tokens cannot acquire it silently. The OAuth client must explicitly request this scope during a new authorization.
+
+Unlike the standing-Agent delegation, the new consent grants the bound AI Agent advance authority to **decide the exact operation approval tickets automatically**, even when the ordinary impact classifier chose a human approval lane. It is deliberately broad across eligible Staging governed operations, not a per-ability manual allowlist. Authoritative signed bearer authentication from the **exact local issuer**, explicit scope in the token, ChatGPT CIMD client binding, active administrator WordPress subject, Site Profile match, Site-Profile-owned enabled AI Agent and the exact NHI grant for `mad4b/approval-ai-decide` must all pass.
+
+This authorizes **approval decisions**, not arbitrary execution without runtime permissions: the existing one-time operation ticket still binds the target, payload, class and candidate, validates its current Site Profile, and is consumed exactly once. The AI decision is audited as `approver_type=ai_agent` and persisted with `approved_by=0`, never represented as a human review. Human ownership attestation on `context/remote-owner-review-apply` continues to require a separately recorded positive `approved_by` ticket; AI may not counterfeit an original first-party owner. Production, raw-SQL Breakglass, unauthorised server classes and explicit exceptional runtime procedures still require their own policies. Revocation prevents later tokens; already-issued access tokens may work until their short expiration (current local 600 seconds), subject to every live write gate.
+
+**Operational steps:** deploy a certified exact-head Staging package; ensure the ChatGPT MCP OAuth client requests `mad4b:approval:auto:all` on reconnection; explicitly review and approve the new consent notice in the browser; confirm `mad4b/approval-ai-decide` exact runtime grant and agent identity; test pending ticket → AI decision → one-time claim → action readback → audit, plus denial for old tokens, other issuer/client, non-admin account, Production, Breakglass, and quarantined Brand Context assets. No existing OAuth grant or plugin in Staging was changed by this source commit.

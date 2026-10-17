@@ -16,6 +16,14 @@ final class MAD4B_SCP_Plugin_Package {
 	const APPLY_CONTRACT = 'mad4b.plugin-package-apply.v1';
 
 	public static function boot() {
+		// Reuse the existing certified provider package pipeline for any plugin;
+		// the recovery layer never installs unregistered plugin archives.
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Update_Recovery', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-plugin-update-recovery.php';
+		MAD4B_SCP_Plugin_Update_Recovery::boot();
+		if ( ! class_exists( 'MAD4B_SCP_Plugin_Update_Evidence', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-plugin-update-evidence.php';
+		MAD4B_SCP_Plugin_Update_Evidence::boot();
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 34 );
 	}
 
@@ -150,6 +158,10 @@ final class MAD4B_SCP_Plugin_Package {
 			'source' => $source_state,
 			'caller_supplied_url_allowed' => false,
 			'caller_supplied_path_allowed' => false,
+			'github_ci_terminal_verdict_required' => false,
+			'source_owned_provider_package_digest_required' => true,
+			'unsigned_or_unregistered_plugin_update_allowed' => false,
+			'independent_native_test_failure_is_not_a_ci_outage' => true,
 			'production_allowed' => false,
 			'backup_required' => $installed,
 			'activation_state_preserved' => true,

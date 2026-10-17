@@ -1,0 +1,37 @@
+{
+  "contract": "mad4b.aci-os.evidence-trust.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "trust_classes": [
+    "UNTRUSTED_CLAIM",
+    "FIXTURE_SYNTHETIC",
+    "SOURCE_PROVENANCE_VERIFIED",
+    "PROVIDER_RECEIPT_VERIFIED",
+    "NATIVE_READBACK_VERIFIED",
+    "AUTHORITY_ATTESTED"
+  ],
+  "authority_receipt_fields": [
+    "receipt_id",
+    "site_uuid",
+    "canonical_origin",
+    "environment",
+    "runtime_generation",
+    "restore_epoch",
+    "provider_id",
+    "provider_version",
+    "capability_id",
+    "account_binding",
+    "actor_subject",
+    "policy_revision",
+    "source_digest",
+    "observed_at",
+    "expires_at",
+    "evidence_reference",
+    "issuer_key_id",
+    "signature_verification_result"
+  ],
+  "signature_validation_owner": "existing_MAD4B_trust_plane",
+  "client_boolean_is_not_attestation": true,
+  "matching_sha_is_not_authenticity": true,
+  "spec_preview_never_authorizes": true
+}

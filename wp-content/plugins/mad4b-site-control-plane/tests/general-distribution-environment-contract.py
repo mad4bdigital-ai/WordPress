@@ -18,7 +18,7 @@ if "MAD4B_SCP_Site_Profile::nonproduction_governed( 'oauth' )" not in connection
 if "$environment_ready = 'staging' === $environment" in connection_ui: raise SystemExit('ChatGPT UI still hardcodes Staging readiness')
 for marker in ["public static function wordpress_environment_explicit()", "exact_site_profile_default_override", "hostname_hint_used_for_authority", "mad4b_site_profile_environment_conflicts_explicit_wordpress"]:
     if marker not in profile: raise SystemExit(f'dynamic Site Profile environment resolver missing invariant: {marker}')
-for marker in ["name=\"environment\"", "No wp-config.php edit is required", "Suggested enrollment environment"]:
+for marker in ["name=\"environment\"", "Suggested enrollment environment", "Profile Only disables file edits", "Explicit host settings always win", "the deployment binding remains a separate MCP safety requirement"]:
     if marker not in profile_admin: raise SystemExit(f'zero-config environment enrollment UI missing invariant: {marker}')
 for marker in ["private static function environment_resolution()", "MAD4B_SCP_Site_Profile::environment_resolution()", "'environment_resolution' => $environment_resolution"]:
     if marker not in self_update: raise SystemExit(f'self-update is not consuming effective MAD4B environment: {marker}')

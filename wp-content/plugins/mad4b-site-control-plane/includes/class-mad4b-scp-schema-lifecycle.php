@@ -95,6 +95,12 @@ final class MAD4B_SCP_Schema_Lifecycle {
 	}
 
 	public static function maybe_reconcile_admin_lifecycle() {
+        // Native wp-admin GET/HEAD is presentation, never a database migration
+        // worker. Reconciliation remains available through scheduled lifecycle,
+        // explicit mutation and CLI, with the existing maintenance lease.
+        $method = isset( $_SERVER['REQUEST_METHOD'] ) && is_string( $_SERVER['REQUEST_METHOD'] )
+            ? strtoupper( trim( $_SERVER['REQUEST_METHOD'] ) ) : 'GET';
+        if ( in_array( $method, array( 'GET', 'HEAD' ), true ) ) return;
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		if ( defined( 'DOING_AJAX' ) && DOING_AJAX ) return;
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) return;

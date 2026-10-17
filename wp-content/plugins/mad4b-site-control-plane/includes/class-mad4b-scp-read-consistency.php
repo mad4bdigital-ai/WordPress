@@ -153,6 +153,7 @@ final class MAD4B_SCP_Read_Consistency {
 							'maxLength' => 64,
 						),
 						'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
+						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity' ), 'default' => 'full' ),
 						'budget_ms' => array(
 							'type' => 'integer',
 							'minimum' => 4000,
@@ -246,7 +247,8 @@ final class MAD4B_SCP_Read_Consistency {
 		}
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$before = self::safe_read_snapshot( $transaction_id, 'preflight' );
+		if ( is_wp_error( $before ) ) return $before;
 		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $before['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $expected_generation, $before, 'metadata_preflight_generation_mismatch' );
 		}
@@ -331,7 +333,8 @@ final class MAD4B_SCP_Read_Consistency {
 			$payload['surface'] = isset( $mcp['surface'] ) ? sanitize_key( (string) $mcp['surface'] ) : '';
 		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$after = self::safe_read_snapshot( $transaction_id, 'postflight' );
+		if ( is_wp_error( $after ) ) return $after;
 		if ( ! self::generation_matches( $before['runtime_generation'], $after['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( 'metadata', $transaction_id, 1, $before['runtime_generation'], $after, 'runtime_changed_during_metadata_read' );
 		}
@@ -376,20 +379,35 @@ final class MAD4B_SCP_Read_Consistency {
 			? max( 1000, min( self::MAX_BUNDLE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_BUNDLE_BUDGET_MS;
 
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$before = self::safe_read_snapshot( $transaction_id, 'preflight' );
+		if ( is_wp_error( $before ) ) return $before;
 		if ( ! self::generation_matches( $expected_generation, $before['runtime_generation'] ) ) {
 			return self::generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, $before, 'preflight_generation_mismatch' );
 		}
 
-		$result = MAD4B_SCP_Connector_Resilience::run_checks(
-			self::bundle_checks( $bundle ),
-			array(
-				'budget_ms' => $budget_ms,
-				'retry_transient' => $retry,
-			)
-		);
+		try {
+			$result = MAD4B_SCP_Connector_Resilience::run_checks(
+				self::bundle_checks( $bundle ),
+				array(
+					'budget_ms' => $budget_ms,
+					'retry_transient' => $retry,
+				)
+			);
+			if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'bundle_check_result_invalid' );
+		} catch ( Throwable $error ) {
+			$result = array(
+				'state' => 'partial', 'partial' => true,
+				'checks' => array(), 'failed_checks' => array_keys( self::bundle_checks( $bundle ) ),
+				'retryable_checks' => array(), 'elapsed_ms' => 0,
+				'error_code' => 'mad4b_read_bundle_internal_exception',
+				'error_class' => get_class( $error ),
+				'raw_exception_exposed' => false,
+				'read_only' => true, 'mutation_performed' => false,
+			);
+		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		$after = self::safe_read_snapshot( $transaction_id, 'postflight' );
+		if ( is_wp_error( $after ) ) return $after;
 		if ( ! self::generation_matches( $before['runtime_generation'], $after['runtime_generation'] ) ) {
 			$changed = self::generation_changed_envelope( $bundle, $transaction_id, $sequence, $expected_generation, $after, 'runtime_changed_during_bundle' );
 			$changed['discarded_check_count'] = isset( $result['checks'] ) && is_array( $result['checks'] ) ? count( $result['checks'] ) : 0;
@@ -445,13 +463,31 @@ final class MAD4B_SCP_Read_Consistency {
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
+		// Keep full diagnostics as the default for compatibility, while allowing
+		// a low-cost identity-only probe when transport latency is high.
+		$scope = isset( $input['diagnostic_scope'] ) && 'identity' === (string) $input['diagnostic_scope']
+			? 'identity' : 'full';
 		$budget_ms = isset( $input['budget_ms'] )
 			? max( 4000, min( self::MAX_SESSION_SAFE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
 		$started = microtime( true );
 
-		$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
-		$runtime_generation = isset( $before['runtime_generation'] ) ? (string) $before['runtime_generation'] : '';
+		try {
+			$before = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_session_snapshot_preflight_unavailable',
+				'Runtime identity preflight failed; reconnect and retry a read-only probe.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false, 'raw_exception_exposed' => false ) );
+		}
+		if ( is_wp_error( $before ) || ! is_array( $before ) ||
+			empty( $before['runtime_generation'] ) ) {
+			return new WP_Error( 'mad4b_session_snapshot_preflight_invalid',
+				'Runtime identity cannot be proven before diagnostics.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false ) );
+		}
+		$runtime_generation = (string) $before['runtime_generation'];
 		if ( '' !== $expected_generation && ! self::generation_matches( $expected_generation, $runtime_generation ) ) {
 			return self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $expected_generation, $before, 'session_safe_preflight_generation_mismatch' );
 		}
@@ -462,6 +498,18 @@ final class MAD4B_SCP_Read_Consistency {
 		$stop_reason = '';
 
 		foreach ( self::bundle_names() as $index => $bundle ) {
+			if ( 'identity' === $scope && 'identity' !== $bundle ) {
+				$partial = true;
+				$sections[ $bundle ] = array(
+					'state' => 'deferred_scope', 'partial' => true,
+					'failed_checks' => array(), 'retryable_checks' => array(),
+					'skipped_budget_checks' => array(), 'session_termination_count' => 0,
+					'check_count' => count( self::session_safe_bundle_checks( $bundle ) ),
+					'evidence_digest' => self::digest( array( 'bundle' => $bundle,
+						'state' => 'deferred_scope', 'generation' => $runtime_generation ) ),
+				);
+				continue;
+			}
 			$elapsed_ms = (int) round( ( microtime( true ) - $started ) * 1000 );
 			$remaining_ms = $budget_ms - $elapsed_ms;
 			if ( $remaining_ms < 1000 ) {
@@ -480,13 +528,28 @@ final class MAD4B_SCP_Read_Consistency {
 				continue;
 			}
 
-			$result = MAD4B_SCP_Connector_Resilience::run_checks(
-				self::session_safe_bundle_checks( $bundle ),
-				array(
-					'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
-					'retry_transient' => $retry,
-				)
-			);
+			try {
+				$result = MAD4B_SCP_Connector_Resilience::run_checks(
+					self::session_safe_bundle_checks( $bundle ),
+					array(
+						'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
+						'retry_transient' => $retry,
+					)
+				);
+				if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'session_bundle_not_array' );
+			} catch ( Throwable $error ) {
+				// Preserve bounded partial evidence rather than terminating the
+				// entire read-only MCP session. Never expose raw exception text.
+				$result = array(
+					'state' => 'partial', 'partial' => true, 'checks' => array(),
+					'failed_checks' => array_keys( self::session_safe_bundle_checks( $bundle ) ),
+					'retryable_checks' => array(), 'skipped_budget_checks' => array(),
+					'elapsed_ms' => 0, 'session_termination_count' => 0,
+					'error_code' => 'session_bundle_internal_exception',
+					'error_class' => get_class( $error ),
+					'read_only' => true, 'mutation_performed' => false,
+				);
+			}
 			$sections[ $bundle ] = self::compact_bundle_result( $bundle, $result );
 			$session_termination_count += isset( $result['session_termination_count'] ) ? max( 0, (int) $result['session_termination_count'] ) : 0;
 			if ( ! empty( $result['partial'] ) ) $partial = true;
@@ -510,8 +573,20 @@ final class MAD4B_SCP_Read_Consistency {
 			}
 		}
 
-		$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
-		if ( ! self::generation_matches( $runtime_generation, isset( $after['runtime_generation'] ) ? $after['runtime_generation'] : '' ) ) {
+		try {
+			$after = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_session_snapshot_postflight_unavailable',
+				'Runtime identity postflight failed; discard partial evidence.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false, 'raw_exception_exposed' => false ) );
+		}
+		if ( is_wp_error( $after ) || ! is_array( $after ) ||
+			empty( $after['runtime_generation'] ) )
+			return new WP_Error( 'mad4b_session_snapshot_postflight_invalid',
+				'Cannot confirm unchanged runtime identity; discard partial evidence.',
+				array( 'status' => 503, 'retryable' => true, 'mutation_performed' => false ) );
+		if ( ! self::generation_matches( $runtime_generation, $after['runtime_generation'] ) ) {
 			$changed = self::generation_changed_envelope( 'session_safe_diagnostics', $transaction_id, 1, $runtime_generation, $after, 'runtime_changed_during_session_safe_report' );
 			$changed['discarded_section_count'] = count( $sections );
 			$changed['report_payload_discarded'] = true;
@@ -520,12 +595,15 @@ final class MAD4B_SCP_Read_Consistency {
 
 		$subject_blockers = array();
 		$runtime_checks = isset( $sections['runtime']['checks'] ) && is_array( $sections['runtime']['checks'] ) ? $sections['runtime']['checks'] : array();
-		foreach ( array(
-			'write_authority' => 'effective_authority_ready',
-			'skills_runtime' => 'effective_skill_ready',
-		) as $check_name => $effective_key ) {
-			$summary = isset( $runtime_checks[ $check_name ]['summary'] ) && is_array( $runtime_checks[ $check_name ]['summary'] ) ? $runtime_checks[ $check_name ]['summary'] : array();
-			if ( empty( $summary[ $effective_key ] ) ) $subject_blockers[] = $check_name . '_not_effective';
+		// Historical managed-Skills checkpoint is not live certification.
+		// Never mislabel it as a live failure. The independent Skills Ability
+		// remains the canonical source of actual live readiness.
+		if ( isset( $runtime_checks['write_authority'] ) ) {
+			$summary = isset( $runtime_checks['write_authority']['summary'] ) &&
+				is_array( $runtime_checks['write_authority']['summary'] )
+				? $runtime_checks['write_authority']['summary'] : array();
+			if ( empty( $summary['effective_authority_ready'] ) )
+				$subject_blockers[] = 'write_authority_not_effective';
 		}
 		$subject_blockers = array_values( array_unique( $subject_blockers ) );
 		$operator_summary = self::session_safe_operator_summary( $sections, $partial, $subject_blockers, $after );
@@ -562,6 +640,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'subject_blockers' => $subject_blockers,
 			'operator_summary' => $operator_summary,
 			'subject_live_validation_deferred' => array( 'skills_runtime' ),
+			'diagnostic_scope' => $scope,
+			'live_skills_verified' => false,
 			'projection_freshness' => 'live',
 			'observed_at' => gmdate( 'c' ),
 			'elapsed_ms' => $diagnostic_elapsed_ms,
@@ -603,7 +683,10 @@ final class MAD4B_SCP_Read_Consistency {
 		$write_ready = array_key_exists( 'effective_authority_ready', $write ) && null !== $write['effective_authority_ready'] ? (bool) $write['effective_authority_ready'] : null;
 		$candidate_match = array_key_exists( 'candidate_binding_match', $write ) && null !== $write['candidate_binding_match'] ? (bool) $write['candidate_binding_match'] : null;
 		$grant_snapshot_ready = array_key_exists( 'current_grant_snapshot_ready', $write ) && null !== $write['current_grant_snapshot_ready'] ? (bool) $write['current_grant_snapshot_ready'] : null;
-		$skills_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready'] ? (bool) $skills['effective_skill_ready'] : null;
+		$skills_checkpoint_ready = array_key_exists( 'effective_skill_ready', $skills ) && null !== $skills['effective_skill_ready']
+			? (bool) $skills['effective_skill_ready'] : null;
+		$skills_ready = array_key_exists( 'live_skill_ready', $skills ) && null !== $skills['live_skill_ready']
+			? (bool) $skills['live_skill_ready'] : null;
 		$topology_ready = array_key_exists( 'ready', $topology ) && null !== $topology['ready'] ? (bool) $topology['ready'] : null;
 		$read_your_writes = array_key_exists( 'read_your_writes', $topology ) && null !== $topology['read_your_writes'] ? (bool) $topology['read_your_writes'] : null;
 		$protocol_ready = array_key_exists( 'ready', $protocol ) && null !== $protocol['ready'] ? (bool) $protocol['ready'] : null;
@@ -650,7 +733,10 @@ final class MAD4B_SCP_Read_Consistency {
 			$actions[] = 'deploy_exact_certified_runtime_release';
 			$blocking = true;
 		}
-		if ( false === $skills_ready ) {
+		if ( null === $skills_ready ) {
+			$reasons[] = 'skills_live_validation_deferred';
+			$actions[] = 'read_skills_runtime_certification';
+		} elseif ( false === $skills_ready ) {
 			$reasons[] = 'skills_runtime_not_ready';
 			$actions[] = 'reconcile_managed_skills';
 		}
@@ -693,6 +779,8 @@ final class MAD4B_SCP_Read_Consistency {
 				'read_your_writes' => $read_your_writes,
 				'mcp_protocol_profile_ready' => $protocol_ready,
 				'skills_runtime_ready' => $skills_ready,
+				'skills_candidate_checkpoint_ready' => $skills_checkpoint_ready,
+				'skills_live_validation_deferred' => null === $skills_ready,
 			),
 			'read_only' => true,
 			'authorizing' => false,
@@ -1652,6 +1740,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'diagnostic_budget_ratio' => $budget_ratio,
 			'request_elapsed_ms' => $request_elapsed_ms,
 			'request_overhead_ms' => max( 0, $request_elapsed_ms - $diagnostic_elapsed_ms ),
+			'plugin_bootstrap_phases' => isset( $metrics['plugin_bootstrap_phases'] ) && is_array( $metrics['plugin_bootstrap_phases'] )
+				? $metrics['plugin_bootstrap_phases'] : array( 'valid' => false ),
 			'db_query_count' => isset( $metrics['db_query_count'] ) ? max( 0, (int) $metrics['db_query_count'] ) : 0,
 			'included_file_count' => isset( $metrics['included_file_count'] ) ? max( 0, (int) $metrics['included_file_count'] ) : 0,
 			'memory_usage_bytes' => isset( $metrics['memory_usage_bytes'] ) ? max( 0, (int) $metrics['memory_usage_bytes'] ) : 0,
@@ -1674,8 +1764,28 @@ final class MAD4B_SCP_Read_Consistency {
 	private static function request_metrics() {
 		$started = isset( $_SERVER['REQUEST_TIME_FLOAT'] ) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
 		$elapsed_ms = max( 0, (int) round( ( microtime( true ) - $started ) * 1000 ) );
+		// The main plugin stamps these O(1) request-local phase boundaries.
+		// Durations are observations, not a substitute for gateway tracing or
+		// proof that all PHP request overhead belongs to MAD4B.
+		$boot_start = defined( 'MAD4B_SCP_BOOT_START_AT' ) ? (float) MAD4B_SCP_BOOT_START_AT : 0.0;
+		$module_ready = defined( 'MAD4B_SCP_BOOT_MODULES_READY_AT' ) ? (float) MAD4B_SCP_BOOT_MODULES_READY_AT : 0.0;
+		$hooks_ready = defined( 'MAD4B_SCP_BOOT_HOOKS_READY_AT' ) ? (float) MAD4B_SCP_BOOT_HOOKS_READY_AT : 0.0;
+		$phases_valid = $boot_start > 0 && $module_ready >= $boot_start && $hooks_ready >= $module_ready;
+		$bootstrap_phases = array(
+			'valid' => $phases_valid,
+			'plugin_module_load_phase_ms' => $phases_valid ? max( 0, (int) round( ( $module_ready - $boot_start ) * 1000 ) ) : null,
+			'plugin_hook_registration_phase_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $module_ready ) * 1000 ) ) : null,
+			'plugin_bootstrap_total_ms' => $phases_valid ? max( 0, (int) round( ( $hooks_ready - $boot_start ) * 1000 ) ) : null,
+			'pre_plugin_request_phase_ms' => $phases_valid ? max( 0, (int) round( ( $boot_start - $started ) * 1000 ) ) : null,
+			'gateway_latency_included' => false,
+			'pre_plugin_request_can_include_core_and_other_plugins' => true,
+			'other_plugin_component_attribution_available' => false,
+			'authorizing' => false,
+			'mutation_performed' => false,
+		);
 		return array(
 			'request_elapsed_ms' => $elapsed_ms,
+			'plugin_bootstrap_phases' => $bootstrap_phases,
 			'memory_usage_bytes' => function_exists( 'memory_get_usage' ) ? (int) memory_get_usage( true ) : 0,
 			'peak_memory_bytes' => function_exists( 'memory_get_peak_usage' ) ? (int) memory_get_peak_usage( true ) : 0,
 			'included_file_count' => function_exists( 'get_included_files' ) ? count( get_included_files() ) : 0,
@@ -1718,6 +1828,32 @@ final class MAD4B_SCP_Read_Consistency {
 		$result = array();
 		foreach ( $keys as $key ) if ( array_key_exists( $key, $status ) ) $result[ $key ] = $status[ $key ];
 		return $result;
+	}
+
+	/**
+	 * Shared fail-closed read snapshot guard. A failed WordPress read must be
+	 * represented as a typed retryable error, never bubble up to a generic MCP
+	 * transport failure or be treated as a current source identity.
+	 */
+	private static function safe_read_snapshot( $transaction_id, $phase ) {
+		$phase = 'postflight' === $phase ? 'postflight' : 'preflight';
+		try {
+			$snapshot = self::snapshot_header( array( 'read_transaction_id' => $transaction_id ) );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_snapshot_' . $phase . '_unavailable',
+				'Runtime read snapshot was unavailable; restart this read-only transaction.',
+				array( 'status' => 503, 'retryable' => true,
+					'raw_exception_exposed' => false, 'mutation_performed' => false ) );
+		}
+		if ( is_wp_error( $snapshot ) || ! is_array( $snapshot ) ||
+			! self::is_sha( (string) ( $snapshot['runtime_generation'] ?? '' ), 64 ) ||
+			! self::is_sha( (string) ( $snapshot['snapshot_id'] ?? '' ), 64 ) ) {
+			return new WP_Error( 'mad4b_snapshot_' . $phase . '_invalid',
+				'Runtime read snapshot identity cannot be verified.',
+				array( 'status' => 503, 'retryable' => true,
+					'mutation_performed' => false ) );
+		}
+		return $snapshot;
 	}
 
 	private static function generation_matches( $expected, $current ) {

@@ -26,13 +26,21 @@ final class MAD4B_SCP_Plugin {
 		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Schema_Lifecycle' ) ) {
 			MAD4B_SCP_Schema_Lifecycle::mark_current_package_applied( 'activation' );
 		}
-		if ( ! is_wp_error( self::$schema_error ) ) MAD4B_SCP_Skill_Seeder::bootstrap();
-		// Activation is the start of the safe autopilot lifecycle. It schedules
-		// bounded post-activation convergence after schema/audit bootstrap instead
-		// of waiting for a later request to rediscover version drift. Production
-		// remains observe-only inside Runtime_Convergence.
+		// Staging's exact-build convergence already includes audited Skill seed
+		// reconciliation. Avoid synchronously copying every seed during the HTTP
+		// installer when that same safe phase has been durably queued. Keep the
+		// original fail-closed inline fallback when scheduling is absent, blocked,
+		// or an existing self-update checkpoint must be preserved.
+		$mad4b_seed_deferred = false;
 		if ( ! is_wp_error( self::$schema_error ) && class_exists( 'MAD4B_SCP_Runtime_Convergence' ) ) {
-			MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+			$mad4b_activation = MAD4B_SCP_Runtime_Convergence::mark_activation_pending();
+			$mad4b_seed_deferred = is_array( $mad4b_activation )
+				&& ! empty( $mad4b_activation['scheduled'] )
+				&& isset( $mad4b_activation['state'] )
+				&& 'pending_safe_phases' === $mad4b_activation['state'];
+		}
+		if ( ! is_wp_error( self::$schema_error ) && ! $mad4b_seed_deferred ) {
+			MAD4B_SCP_Skill_Seeder::bootstrap();
 		}
 	}
 

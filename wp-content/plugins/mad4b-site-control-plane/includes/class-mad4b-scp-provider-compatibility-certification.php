@@ -815,7 +815,14 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 		$integrity = isset( $runtime['runtime_integrity'] ) && is_array( $runtime['runtime_integrity'] ) ? $runtime['runtime_integrity'] : array();
 		$adapter_reported_version = is_object( $adapter ) && method_exists( $adapter, 'runtime_version' ) ? trim( (string) $adapter->runtime_version() ) : '';
 		$runtime_installed_version = isset( $runtime['installed_version'] ) ? trim( (string) $runtime['installed_version'] ) : '';
-		$artifact_authority_bound = ! empty( $contract ) && ( '' !== $runtime_installed_version || ! empty( $runtime['components'] ) );
+		// In-tree Google Drive Context has no separate plugin header or
+		// repository-certified external ZIP. Evaluate its exact build-bound
+		// first-party evidence instead of treating it as a missing vendor plugin.
+		// This is identity evidence ONLY; it never certifies behavioral writes,
+		// rollback, owner consent, or Drive source permission.
+		$first_party = self::first_party_context_evidence( $provider, $adapter );
+		$artifact_authority_bound = ( ! empty( $contract ) && ( '' !== $runtime_installed_version || ! empty( $runtime['components'] ) ) )
+			|| ! empty( $first_party['bound'] );
 		$component_artifacts = array();
 		if ( ! empty( $contract['components'] ) && is_array( $contract['components'] ) ) {
 			foreach ( $contract['components'] as $key => $component ) {
@@ -842,6 +849,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'installed_version' => $runtime_installed_version,
 			'adapter_reported_version' => $adapter_reported_version,
 			'artifact_authority_bound' => $artifact_authority_bound,
+			'first_party_context' => $first_party,
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
 			'components' => $component_artifacts,
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : '',
@@ -854,6 +862,7 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'adapter_reported_version' => $adapter_reported_version,
 			'artifact_authority_bound' => $artifact_authority_bound,
 			'artifact_authority_state' => $artifact_authority_bound ? 'bound' : 'missing',
+			'first_party_context_evidence' => $first_party,
 			'certified_versions' => array_values( (array) ( $runtime['certified_versions'] ?? array() ) ),
 			'certification_authority' => isset( $runtime['certification_authority'] ) ? (string) $runtime['certification_authority'] : 'repository_baseline',
 			'plugin_file' => isset( $contract['plugin_file'] ) ? (string) $contract['plugin_file'] : '',
@@ -862,6 +871,73 @@ final class MAD4B_SCP_Provider_Compatibility_Certification {
 			'runtime_status' => isset( $runtime['status'] ) ? (string) $runtime['status'] : 'unknown',
 			'runtime_integrity' => $integrity,
 			'runtime_artifact_fingerprint' => self::stable_digest( $fingerprint_payload ),
+		);
+	}
+
+	/**
+	 * Identify the bundled Google Drive provider by its exact locally installed
+	 * build and fixed six-file runtime contract. File hashes here provide
+	 * tamper/drift detection against the current runtime; they are NOT a
+	 * substitute for external package/signature or behavioral/rollback receipts.
+	 */
+	private static function first_party_context_evidence( $provider, $adapter ) {
+		$denied = array( 'bound' => false, 'state' => 'not_applicable' );
+		if ( 'google_drive_context' !== $provider ) return $denied;
+		$denied['state'] = 'first_party_build_evidence_missing';
+		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'context_provider_contract_status' )
+			|| ! class_exists( 'MAD4B_SCP_External_Handshake_Evidence' )
+			|| ! method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'build_fingerprint' )
+			|| ! defined( 'MAD4B_SCP_DIR' ) ) return $denied;
+		try { $status = $adapter->context_provider_contract_status(); }
+		catch ( Throwable $error ) { return $denied; }
+		if ( ! is_array( $status ) || empty( $status['ready'] ) || empty( $status['first_party'] )
+			|| 'mad4b.google-drive-context-provider.v1' !== (string) ( $status['contract'] ?? '' )
+			|| 'google_drive_context' !== (string) ( $status['provider'] ?? '' ) ) return $denied;
+		$build = strtolower( trim( (string) ( $status['control_plane_build_fingerprint'] ?? '' ) ) );
+		$observed_build = strtolower( trim( (string) MAD4B_SCP_External_Handshake_Evidence::build_fingerprint() ) );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $build )
+			|| ! hash_equals( $build, $observed_build ) ) {
+			$denied['state'] = 'first_party_build_identity_drift';
+			return $denied;
+		}
+		$expected_files = array(
+			'includes/adapters/class-mad4b-scp-context-adapter.php',
+			'includes/class-mad4b-scp-brand-context-builder.php',
+			'includes/class-mad4b-scp-context-authority.php',
+			'includes/class-mad4b-scp-context-preflight.php',
+			'includes/class-mad4b-scp-context-provider-gateway.php',
+			'includes/class-mad4b-scp-google-drive-context.php',
+		);
+		$files = (array) ( $status['critical_files'] ?? array() );
+		if ( count( $files ) !== count( $expected_files ) ) return $denied;
+		foreach ( $expected_files as $relative ) {
+			$declared = strtolower( (string) ( $files[ $relative ] ?? '' ) );
+			$file = MAD4B_SCP_DIR . $relative;
+			if ( ! preg_match( '/^[a-f0-9]{64}$/D', $declared )
+				|| ! is_file( $file ) || ! is_readable( $file ) ) return $denied;
+			$observed = hash_file( 'sha256', $file );
+			if ( ! is_string( $observed ) || ! hash_equals( $declared, $observed ) ) {
+				$denied['state'] = 'first_party_critical_file_drift';
+				return $denied;
+			}
+		}
+		$rollback = (array) ( $status['rollback_contracts'] ?? array() );
+		if ( 'mad4b.rollback.google-drive-context-update.v1' !== (string) ( $rollback['context/update-drive-asset'] ?? '' )
+			|| 'mad4b.rollback.google-drive-context-recreate.v1' !== (string) ( $rollback['context/recreate-drive-asset'] ?? '' ) ) {
+			$denied['state'] = 'first_party_rollback_contract_drift';
+			return $denied;
+		}
+		$fingerprint = (string) ( $status['artifact_fingerprint'] ?? '' );
+		if ( ! preg_match( '/^[a-f0-9]{64}$/D', $fingerprint ) ) return $denied;
+		return array(
+			'bound' => true,
+			'state' => 'first_party_build_bound_not_behaviorally_certified',
+			'build_fingerprint' => $build,
+			'provider_artifact_fingerprint' => $fingerprint,
+			'verified_critical_file_count' => count( $expected_files ),
+			'behavioral_certification_granted' => false,
+			'rollback_certification_granted' => false,
+			'mutation_authorized' => false,
 		);
 	}
 

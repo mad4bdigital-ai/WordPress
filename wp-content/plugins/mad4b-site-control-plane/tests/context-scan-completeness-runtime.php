@@ -46,6 +46,23 @@ class MAD4B_SCP_Site_Profile {
 	}
 }
 
+// Scan and reuse fixtures carry one exact enrolled Staging Brand identity.
+class MAD4B_SCP_Operational_Integrity {
+    public static function capture() {
+        return array( 'scope' => array(
+            'tenant_ref' => 'scan-fixture-tenant',
+            'site_uuid' => '11111111-1111-4111-8111-111111111111',
+            'brand_ref' => str_repeat( 'a', 32 ),
+            'blog_id' => 1, 'network_id' => 1,
+            'environment' => 'staging', 'deployment_mode' => 'staging',
+        ) );
+    }
+    public static function assert_unchanged( $checkpoint, $for_write = true ) {
+        return self::capture()['scope'] === ( $checkpoint['scope'] ?? array() )
+            ? true : new WP_Error( 'scan_scope_changed' );
+    }
+}
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-operational-scope-guard.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-context-authority.php';
 
 function mad4b_scan_assert( $condition, $message, $context = null ) {
@@ -58,13 +75,20 @@ function mad4b_scan_assert( $condition, $message, $context = null ) {
 $source_id = str_repeat( 'a', 64 );
 $asset_id = str_repeat( 'b', 64 );
 $site_uuid = '11111111-1111-4111-8111-111111111111';
+$GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::PROFILE_OPTION ] = array(
+    'contract' => MAD4B_SCP_Context_Authority::PROFILE_CONTRACT,
+    'site_uuid' => $site_uuid,
+    'brand_id' => str_repeat( 'a', 32 ),
+    'brand_name' => 'Scan Completeness Fixture',
+    'revision' => 1,
+);
 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ] = array(
 	$source_id => array(
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-fixture',
@@ -87,7 +111,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $asset_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'source_id' => $source_id,
 		'source_mode' => 'governed',
 		'provider' => 'google_drive',
@@ -117,7 +141,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 	'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 	'source_id' => $reuse_source_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'provider' => 'google_drive',
 	'mode' => 'governed',
 	'external_root_id' => 'reuse-folder-fixture',
@@ -138,7 +162,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ][
 	'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 	'asset_id' => $reuse_asset_id,
 	'site_uuid' => $site_uuid,
-	'brand_id' => 'brand-fixture',
+	'brand_id' => str_repeat( 'a', 32 ),
 	'source_id' => $reuse_source_id,
 	'source_mode' => 'governed',
 	'provider' => 'google_drive',
@@ -259,7 +283,7 @@ for ( $i = 0; $i < MAD4B_SCP_Context_Authority::MAX_ASSETS - 1; ++$i ) {
 		'contract' => MAD4B_SCP_Context_Authority::ASSET_CONTRACT,
 		'asset_id' => $hidden_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'source_id' => str_repeat( 'f', 64 ),
 		'source_mode' => 'governed',
 		'provider' => 'google_drive',
@@ -345,7 +369,7 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::SOURCES_OPTION ]
 		'contract' => MAD4B_SCP_Context_Authority::SOURCE_CONTRACT,
 		'source_id' => $source_id,
 		'site_uuid' => $site_uuid,
-		'brand_id' => 'brand-fixture',
+		'brand_id' => str_repeat( 'a', 32 ),
 		'provider' => 'google_drive',
 		'mode' => 'governed',
 		'external_root_id' => 'folder-fixture',
@@ -367,29 +391,32 @@ $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::ASSETS_OPTION ] 
 $GLOBALS['mad4b_context_options'][ MAD4B_SCP_Context_Authority::REGISTRY_REVISION_OPTION ] = 20;
 
 class MAD4B_SCP_Context_Provider_Gateway {
+	public static $complete = true;
+	public static $assets = null;
 	public static function scan_source( $requested_source_id ) {
+		$assets = is_array( self::$assets ) ? self::$assets : array(
+			array(
+				'file_id' => 'drive-new-tone-of-voice',
+				'parent_folder_id' => 'folder-fixture',
+				'title' => 'Egypt Tour Gates - Tone of Voice.md',
+				'mimeType' => 'text/markdown',
+				'modifiedTime' => '2026-09-28T04:00:30Z',
+				'webViewLink' => 'https://docs.google.com/document/d/drive-new-tone-of-voice/edit',
+				'normalized_text' => 'Evidence-bound tone of voice regression fixture.',
+				'content_complete' => true,
+				'content_bytes' => 49,
+				'normalization_status' => 'ready',
+				'content_hash' => hash( 'sha256', 'Evidence-bound tone of voice regression fixture.' ),
+				'appProperties' => array( 'mad4b_kind' => 'brand_context' ),
+			),
+		);
 		return array(
-			'complete' => true,
-			'scan_generation' => hash( 'sha256', 'brand-source-scan-regression' ),
+			'complete' => (bool) self::$complete,
+			'scan_generation' => hash( 'sha256', self::$complete ? 'brand-source-scan-regression' : 'brand-source-scan-partial-regression' ),
 			'started_at' => '2026-09-28T04:01:00Z',
 			'completed_at' => '2026-09-28T04:01:01Z',
-			'truncation_reasons' => array(),
-			'assets' => array(
-				array(
-					'file_id' => 'drive-new-tone-of-voice',
-					'parent_folder_id' => 'folder-fixture',
-					'title' => 'Egypt Tour Gates - Tone of Voice.md',
-					'mimeType' => 'text/markdown',
-					'modifiedTime' => '2026-09-28T04:00:30Z',
-					'webViewLink' => 'https://docs.google.com/document/d/drive-new-tone-of-voice/edit',
-					'normalized_text' => 'Evidence-bound tone of voice regression fixture.',
-					'content_complete' => true,
-					'content_bytes' => 49,
-					'normalization_status' => 'ready',
-					'content_hash' => hash( 'sha256', 'Evidence-bound tone of voice regression fixture.' ),
-					'appProperties' => array( 'mad4b_kind' => 'brand_context' ),
-				),
-			),
+			'truncation_reasons' => self::$complete ? array() : array( 'scan_time_budget', 'scan_queue_incomplete' ),
+			'assets' => $assets,
 		);
 	}
 }
@@ -413,5 +440,50 @@ $registered = array_values( array_filter( MAD4B_SCP_Context_Authority::assets(),
 	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-new-tone-of-voice' === (string) $asset['file_id'];
 } ) );
 mad4b_scan_assert( 1 === count( $registered ), 'End-to-end source scan apply must register the newly observed Drive asset exactly once.', $registered );
+
+// A bounded partial provider scan may now commit only what was actually observed.
+// Context Authority still forbids absence evidence until a later complete scan.
+MAD4B_SCP_Context_Provider_Gateway::$complete = false;
+MAD4B_SCP_Context_Provider_Gateway::$assets = array(
+	array(
+		'file_id' => 'drive-partial-brand-strategy',
+		'parent_folder_id' => 'folder-fixture',
+		'title' => 'All Royal Egypt - Positioning Direction.md',
+		'mimeType' => 'text/markdown',
+		'modifiedTime' => '2026-09-28T04:02:30Z',
+		'webViewLink' => 'https://docs.google.com/document/d/drive-partial-brand-strategy/edit',
+		'normalized_text' => 'Partial-scan brand strategy evidence.',
+		'content_complete' => true,
+		'content_bytes' => 37,
+		'normalization_status' => 'ready',
+		'content_hash' => hash( 'sha256', 'Partial-scan brand strategy evidence.' ),
+		'appProperties' => array( 'mad4b_kind' => 'brand_context' ),
+	),
+);
+$partial_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+mad4b_scan_assert( ! is_wp_error( $partial_plan ) && empty( $partial_plan['scan_complete'] ), 'Partial source scan plan must remain explicit and exact-bound.', $partial_plan );
+$partial_before_revision = MAD4B_SCP_Context_Authority::registry_revision();
+$partial_apply = MAD4B_SCP_Brand_Context_Builder::source_scan_apply(
+	array(
+		'source_id' => $source_id,
+		'expected_plan_sha256' => $partial_plan['plan_sha256'],
+		'expected_provider_inventory_digest' => $partial_plan['provider_inventory_digest'],
+		'expected_registry_revision' => $partial_plan['registry_revision'],
+	)
+);
+mad4b_scan_assert( ! is_wp_error( $partial_apply ), 'Exact partial source scan apply must commit observed assets.', $partial_apply );
+mad4b_scan_assert( ! empty( $partial_apply['continuation_required'] ) && 'continue_source_scan' === $partial_apply['next_action'], 'Partial source scan apply must expose deterministic continuation.', $partial_apply );
+mad4b_scan_assert( $partial_before_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Partial source scan apply must advance registry revision exactly once.' );
+$partial_assets = MAD4B_SCP_Context_Authority::assets();
+$prior_tone = array_values( array_filter( $partial_assets, static function ( $asset ) {
+	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-new-tone-of-voice' === (string) $asset['file_id'];
+} ) );
+$partial_brand = array_values( array_filter( $partial_assets, static function ( $asset ) {
+	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-partial-brand-strategy' === (string) $asset['file_id'];
+} ) );
+mad4b_scan_assert( 1 === count( $prior_tone ) && 'ready' === $prior_tone[0]['status'], 'Partial apply must not mark an unseen previously registered asset unavailable.', $prior_tone );
+mad4b_scan_assert( 1 === count( $partial_brand ), 'Partial apply must register the newly observed asset exactly once.', $partial_brand );
+$partial_sources = MAD4B_SCP_Context_Authority::sources();
+mad4b_scan_assert( 'partial_scan' === $partial_sources[ $source_id ]['status'] && empty( $partial_sources[ $source_id ]['last_scan_complete'] ), 'Partial apply must preserve explicit incomplete source state.', $partial_sources[ $source_id ] );
 
 echo "mad4b.site-control-plane.context-scan-completeness.runtime.v4: PASS\n";

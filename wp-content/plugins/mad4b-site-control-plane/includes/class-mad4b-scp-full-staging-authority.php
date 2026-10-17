@@ -409,12 +409,19 @@ final class MAD4B_SCP_Full_Staging_Authority {
 			if ( ! isset( $execution[ $key ] ) || ! is_array( $execution[ $key ] ) ) continue;
 			$blockers = array_merge( $blockers, $execution[ $key ] );
 		}
+		$prerequisites = $process_ready && $normal_no_network_ready;
+		// A binary/sandbox presence report is NOT an independently verified
+		// no-network + resource-limit rehearsal. No signed host acceptance receipt
+		// is supplied on this status path: it cannot certify execution.
+		if ( $prerequisites ) $blockers[] = 'host_behavior_uncertified';
 		$blockers = self::compact_string_list( $blockers, 16 );
 		return array(
 			'host_capabilities_observed' => ! empty( $runtime ),
 			'process_backend_ready' => $process_ready,
 			'normal_no_network_execution_ready' => $normal_no_network_ready,
-			'execution_ready' => $process_ready && $normal_no_network_ready,
+			'host_prerequisites_ready' => $prerequisites,
+			'execution_certification' => 'NOT_CERTIFIED',
+			'execution_ready' => false,
 			'blockers' => $blockers,
 			'host_recovery' => self::developer_host_recovery( $blockers ),
 			'authorizing' => false,
@@ -440,6 +447,12 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					break;
 				case 'root_execution_denied':
 					$actions[] = 'run_php_worker_as_non_root';
+					break;
+				case 'non_root_identity_unverified':
+					$actions[] = 'verify_php_worker_non_root_identity';
+					break;
+				case 'host_behavior_uncertified':
+					$actions[] = 'certify_host_resource_and_network_isolation_using_independent_canary';
 					break;
 				case 'php_linter_unavailable':
 					$actions[] = 'ensure_executable_php_binary';

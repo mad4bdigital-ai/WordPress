@@ -50,6 +50,53 @@ if ( 'structural_classification_only' !== (string) ( $raw_row['execution_eligibi
 
 
 
+// Feature007 WordPress-native circular-dependency recovery. Each exact
+// Eligible Staging operations mount on their original Admin surface and
+// governed Write authority. Native build/install remain blocked before the
+// separate source opt-in; discovery cannot itself grant
+// permission, owner OAuth, one-time approval, install, or Production access.
+$native_bootstrap_write = array(
+    'mad4b/wordpress-native-candidate-opt-in-apply',
+    'mad4b/wp-native-build-start',
+    'mad4b/wp-native-self-approve-install',
+);
+$native_adapter = MAD4B_SCP_Adapter_Registry::instance()->get( 'wp-native-build' );
+if ( ! $native_adapter instanceof MAD4B_SCP_WP_Native_Build_Adapter ) {
+    $fail( 'Native bootstrap requires its real first-party adapter.' );
+}
+foreach ( $native_bootstrap_write as $bounded_name ) {
+    if ( ! wp_has_ability( $bounded_name ) ) {
+        $fail( 'Native bootstrap ability must be registered before runtime projection.', $bounded_name );
+    }
+    if ( 'mad4b/wp-native-build-start' === $bounded_name
+        && ! in_array( $bounded_name, MAD4B_SCP_Adapter_Registry::instance()->ability_names( 'admin' ), true ) ) {
+        $fail( 'Native build must be contributed by the registered first-party Admin adapter.', $bounded_name );
+    }
+    if ( in_array( $bounded_name, array( 'mad4b/wp-native-build-start', 'mad4b/wp-native-self-approve-install' ), true ) ) {
+        $eligibility = $native_adapter->mutation_ability_runtime_eligibility( $bounded_name );
+        if ( true !== $eligibility ) {
+            if ( ! is_wp_error( $eligibility ) || 'mad4b_native_adapter_staging_not_eligible' !== $eligibility->get_error_code()
+                || MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name ) ) {
+                $fail( 'Missing native Staging prerequisites must deny governed Write mounting.', $bounded_name );
+            }
+            $blocked = array_values( array_filter( MAD4B_SCP_Servers::blocked_write_tools(), static function ( $row ) use ( $bounded_name ) {
+                return $bounded_name === ( $row['ability'] ?? '' )
+                    && 'mad4b_native_adapter_staging_not_eligible' === ( $row['runtime_eligibility_code'] ?? '' );
+            } ) );
+            if ( 1 !== count( $blocked ) ) $fail( 'Native runtime denial must remain observable exactly once.', $bounded_name );
+            if ( 'mad4b/wp-native-build-start' === $bounded_name
+                && MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', $bounded_name ) ) {
+                $fail( 'Dynamic Admin mounting bypassed the native prerequisite denial.', $bounded_name );
+            }
+            continue;
+        }
+    }
+    if ( ! MAD4B_SCP_Servers::is_external_write_candidate( $bounded_name )
+        || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-write', $bounded_name )
+        || ! MAD4B_SCP_Servers::ability_is_mounted( 'mad4b-admin', $bounded_name ) ) {
+        $fail( 'Bootstrap mutation not mounted on original Admin plus governed Write; cannot request exact ticket.', $bounded_name );
+    }
+}
 $base = MAD4B_SCP_Servers::chatgpt_base_tools();
 if ( in_array( 'mad4b/diagnostics-health', $base, true ) ) $fail( 'Fixture Ability unexpectedly belongs to the stable base tools/list.' );
 
@@ -143,6 +190,40 @@ if (
 	$fail( 'Oversized Ability did not remain available through lazy transport/dispatcher planning.', $oversized_prepared );
 }
 $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
+// Regression: the public ChatGPT read discovery -> tool-info -> fixed dispatcher
+// must provide a signed, server-created identity without manual hash guessing.
+$read_info_tool = wp_get_ability( 'mad4b/tool-info' );
+$metadata_only = $read_info_tool->execute( array( 'ability_name' => $oversized_name ) );
+if ( is_wp_error( $metadata_only ) || array_key_exists( 'prepared_dispatch', $metadata_only ) ) {
+    $fail( 'Default tool-info unexpectedly issued a receipt or failed.', is_wp_error( $metadata_only ) ? $metadata_only->get_error_code() : $metadata_only );
+}
+$prepared_info = $read_info_tool->execute( array( 'ability_name' => $oversized_name, 'prepare_execution' => true ) );
+if ( is_wp_error( $prepared_info ) || empty( $prepared_info['prepared_dispatch']['preparation_receipt'] )
+    || 'read' !== ( $prepared_info['prepared_dispatch']['expected_execution_lane'] ?? '' )
+    || 'mad4b/read-execute' !== ( $prepared_info['dispatch_tool'] ?? '' ) ) {
+    $fail( 'Opt-in tool-info did not return exact signed read preparation.', is_wp_error( $prepared_info ) ? $prepared_info->get_error_code() : $prepared_info );
+}
+$prepared_dispatch_result = $read_dispatch->execute( array_merge(
+    array( 'ability_name' => $oversized_name, 'input' => array() ),
+    $prepared_info['prepared_dispatch']
+) );
+if ( is_wp_error( $prepared_dispatch_result ) || empty( $prepared_dispatch_result['result']['ok'] ) ) {
+    $fail( 'Tool-info prepared read failed through fixed dispatcher.', is_wp_error( $prepared_dispatch_result ) ? $prepared_dispatch_result->get_error_code() : $prepared_dispatch_result );
+}
+$bad_classification = $prepared_info['prepared_dispatch'];
+$bad_classification['expected_classification_sha256'] = str_repeat( '0', 64 );
+$bad_classification_result = $read_dispatch->execute( array_merge(
+    array( 'ability_name' => $oversized_name, 'input' => array() ),
+    $bad_classification
+) );
+if ( ! is_wp_error( $bad_classification_result ) || 'mad4b_dispatch_classification_drift' !== $bad_classification_result->get_error_code() ) {
+    $fail( 'Prepared tool-info path accepted classification tampering.' );
+}
+$nonread_info = $read_info_tool->execute( array( 'ability_name' => 'mad4b/plugin-package-apply', 'prepare_execution' => true ) );
+if ( ! is_wp_error( $nonread_info ) ) $fail( 'Read tool-info issued preparation for a write Ability.' );
+$recursive_info = $read_info_tool->execute( array( 'ability_name' => 'mad4b/read-execute', 'prepare_execution' => true ) );
+if ( ! is_wp_error( $recursive_info ) ) $fail( 'Read tool-info issued a nested dispatcher receipt.' );
+
 $oversized_identity = mad4b_test_prepared_dispatch_identity( $oversized_name );
 if ( is_wp_error( $oversized_identity ) ) $fail( 'Oversized Ability signed preparation failed.', $oversized_identity->get_error_code() );
 $oversized_execution = $read_dispatch->execute( array_merge(
@@ -256,8 +337,11 @@ try {
 
 	$optional = MAD4B_SCP_MCP_Catalog_Diagnostics::optional_projections( $final );
 	if ( ! in_array( 'mad4b/diagnostics-health', $optional, true ) ) $fail( 'Dynamic projection was not classified as optional for isolation.', $optional );
+	$budget = MAD4B_SCP_MCP_Catalog_Diagnostics::budget_projection( $final, $optional );
 	$preflight = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( $final, $optional );
-	if ( empty( $preflight['ready'] ) || ! in_array( 'mad4b/diagnostics-health', $preflight['tools'], true ) ) {
+	$expected_projection = in_array( 'mad4b/diagnostics-health', $budget['selected'], true );
+	if ( empty( $budget['ready'] ) || empty( $preflight['ready'] )
+		|| $expected_projection !== in_array( 'mad4b/diagnostics-health', $preflight['tools'], true ) ) {
 		$fail( 'Dynamic projection did not survive exact MCP preflight.', $preflight );
 	}
 
@@ -473,6 +557,17 @@ foreach ( array(
 }
 
 $status = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+if ( ! empty( $status['protocol_profile_inspection_performed'] )
+    || ( $status['protocol_profile']['state'] ?? '' ) !== 'deferred'
+    || ( $status['protocol_profile']['ready'] ?? null ) !== null ) {
+    $fail( 'Default projection status must not synchronously evaluate optional protocol profile.', $status );
+}
+$deep_profile_status = MAD4B_SCP_ChatGPT_Tool_Projection::status( array(
+    'include_protocol_profile' => true,
+) );
+if ( empty( $deep_profile_status['protocol_profile_inspection_performed'] ) ) {
+    $fail( 'Explicit protocol diagnostics opt-in did not execute.' );
+}
 if ( empty( $status['read_only'] ) || ! empty( $status['mutation_performed'] ) || ! empty( $status['projection_changes_authority'] ) ) {
 	$fail( 'Projection status changed its non-authorizing read boundary.', $status );
 }

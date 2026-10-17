@@ -51,6 +51,9 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		$status['provider_isolation_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::provider_isolation_enabled();
 		$status['managed_runtime_enabled'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::managed_runtime_enabled();
 		$status['chatgpt_app_id_configured'] = class_exists( 'MAD4B_SCP_Site_Profile' ) && '' !== MAD4B_SCP_Site_Profile::chatgpt_app_id();
+		$auto = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' ) ? MAD4B_SCP_ChatGPT_Auto_Binding::status() : array();
+		$status['chatgpt_oauth_client_auto_bound'] = ! empty( $auto['client_observed'] );
+		$status['chatgpt_app_id_not_exposed_by_oauth'] = true;
 		$status['oauth_user_count'] = class_exists( 'MAD4B_SCP_Site_Profile' ) ? count( MAD4B_SCP_Site_Profile::oauth_user_ids() ) : 0;
 		return $status;
 	}
@@ -75,7 +78,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 						'expected_profile_digest' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
 						'expected_source_commit_sha' => array( 'type' => 'string', 'minLength' => 40, 'maxLength' => 40, 'pattern' => '^[A-Fa-f0-9]{40}$' ),
 						'expected_build_fingerprint' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64, 'pattern' => '^[A-Fa-f0-9]{64}$' ),
-						'chatgpt_app_id' => array( 'type' => 'string', 'minLength' => 17, 'maxLength' => 191, 'pattern' => '^plugin_asdk_app_[A-Za-z0-9]+$' ),
+						'chatgpt_app_id' => array( 'type' => 'string', 'minLength' => 17, 'maxLength' => 191, 'pattern' => '^(?:plugin_)?asdk_app_[A-Za-z0-9]+$' ),
 						'acceptance_enabled' => array( 'type' => 'boolean' ),
 						'skills_enabled' => array( 'type' => 'boolean' ),
 					),
@@ -149,7 +152,14 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 		if ( ! hash_equals( $expected_sha, $current_sha ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_candidate_mismatch', 'Source commit does not match the exact requested candidate.' );
 		if ( ! hash_equals( $expected_fingerprint, $current_fingerprint ) ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_fingerprint_mismatch', 'Build fingerprint does not match the exact requested candidate.' );
 
-		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_app_mapping_missing', 'A valid stored ChatGPT App ID is required before Skills can be enabled.' );
+		// ChatGPT never provides its per-installation asdk_app_* App ID in OAuth.
+		// A verified current bearer AND site-bound observed CIMD client replace
+		// the manual App ID mapping precondition, NOT the separate Phase A
+		// governance approval, environment or exact package checks.
+		$auto_bound = class_exists( 'MAD4B_SCP_ChatGPT_Auto_Binding' )
+			&& MAD4B_SCP_ChatGPT_Auto_Binding::current_bearer_binding_ready();
+		if ( '' === MAD4B_SCP_Site_Profile::chatgpt_app_id() && ! $auto_bound )
+			return new WP_Error( 'mad4b_site_profile_feature_reenroll_app_mapping_missing', 'Verified ChatGPT OAuth client observation or explicitly stored App ID required.' );
 		if ( MAD4B_SCP_Site_Profile::acceptance_enabled() || MAD4B_SCP_Site_Profile::skills_enabled() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_unexpected_feature_state', 'Phase A requires Acceptance and Skills to be disabled before the exact transition.' );
 		if ( MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_feature_reenroll_write_must_remain_disabled', 'Governed write must remain disabled during Phase A.' );
 
@@ -216,7 +226,7 @@ final class MAD4B_SCP_Site_Profile_Enrollment {
 	private static function bind_app_mapping( $input ) {
 		if ( ! isset( $input['expected_revision'], $input['expected_profile_digest'], $input['expected_source_commit_sha'], $input['expected_build_fingerprint'], $input['chatgpt_app_id'] ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_binding_required', 'Exact revision, profile digest, build binding and ChatGPT App ID are required.' );
 		$app_id = trim( sanitize_text_field( (string) $input['chatgpt_app_id'] ) );
-		if ( ! preg_match( '/^plugin_asdk_app_[A-Za-z0-9]+$/', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_invalid', 'ChatGPT App ID is invalid.' );
+		if ( ! preg_match( '/^(?:plugin_)?asdk_app_[A-Za-z0-9]+$/D', $app_id ) ) return new WP_Error( 'mad4b_site_profile_app_mapping_invalid', 'ChatGPT App ID is invalid.' );
 		if ( MAD4B_SCP_Site_Profile::acceptance_enabled() || MAD4B_SCP_Site_Profile::skills_enabled() || MAD4B_SCP_Site_Profile::write_enabled() ) return new WP_Error( 'mad4b_site_profile_app_mapping_feature_state_invalid', 'App mapping bootstrap requires Acceptance, Skills and Write to remain disabled.' );
 		if ( '' !== MAD4B_SCP_Site_Profile::chatgpt_app_id() ) return new WP_Error( 'mad4b_site_profile_app_mapping_already_configured', 'ChatGPT App mapping is already configured; this bootstrap surface does not replace an existing mapping.' );
 

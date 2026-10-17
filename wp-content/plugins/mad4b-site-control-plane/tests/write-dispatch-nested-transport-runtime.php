@@ -78,6 +78,11 @@ MAD4B_SCP_Servers::$write = array( $target, $other );
 $schema_sha = hash( 'sha256', wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 
 $bound = MAD4B_SCP_Transport_Context::bind( 'mad4b-chatgpt', new MAD4B_Test_Request( '/mcp/mad4b-chatgpt' ) );
+$idle_status = MAD4B_SCP_Transport_Context::status();
+mad4b_assert( 'request_local' === $idle_status['write_dispatch_binding_lifetime'], 'Write dispatch binding is deliberately request-local.' );
+mad4b_assert( ! empty( $idle_status['write_dispatch_idle_unbound_expected'] )
+    && ! empty( $idle_status['write_dispatch_requires_exact_execution_evidence'] ),
+    'Idle unbound does not indicate persistent dispatch failure.' );
 mad4b_assert( true === $bound, 'ChatGPT transport should bind.' );
 
 $direct = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-admin', $target, array() );
@@ -98,6 +103,7 @@ $result = MAD4B_SCP_Transport_Context::with_write_dispatch_target(
 );
 mad4b_assert( 'ok' === $result, 'Exact nested dispatcher callback should return normally.' );
 mad4b_assert( empty( MAD4B_SCP_Transport_Context::status()['write_dispatch_target_bound'] ), 'Nested dispatch binding must clear after success.' );
+mad4b_assert( MAD4B_SCP_Transport_Context::status()['write_dispatch_idle_unbound_expected'], 'Idle request-local state must be restored after success.' );
 
 $after = MAD4B_SCP_Transport_Context::resolve_server_for_ability( 'mad4b-admin', $target, array() );
 mad4b_assert_error( $after, 'mad4b_transport_ability_not_mounted', 'Hidden target must fail closed after dispatcher callback.' );

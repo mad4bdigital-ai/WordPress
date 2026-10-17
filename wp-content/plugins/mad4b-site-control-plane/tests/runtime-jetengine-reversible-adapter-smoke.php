@@ -67,7 +67,9 @@ $agent = MAD4B_SCP_Agent_Registry::create_agent( array(
 ) );
 $check( is_array( $agent ), 'Unable to create JetEngine CI agent.' );
 $check( true === MAD4B_SCP_Agent_Registry::bind_subject( $agent['public_id'], $subject_type, $subject_fingerprint, 'CI JetEngine subject' ), 'Unable to bind JetEngine CI subject.' );
-$check( true === MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-content', 'jetengine/update-post-meta', 'jetengine', array(), 'allow', 'all' ), 'Unable to grant exact JetEngine content authority.' );
+// The provider's effective Write denial also prevents new Content grants.
+$grant = MAD4B_SCP_Agent_Registry::grant_ability( $agent['public_id'], 'mad4b-content', 'jetengine/update-post-meta', 'jetengine', array(), 'allow', 'all' );
+$check( is_wp_error( $grant ) && 'mad4b_grant_server_ability_mismatch' === $grant->get_error_code(), 'Blocked JetEngine writer acquired a new Content grant.' );
 
 $approval_ticket_id = '';
 add_filter( 'mad4b_scp_authenticated_subject_context', static function () use ( $subject_type, $subject_identifier, &$approval_ticket_id ) {

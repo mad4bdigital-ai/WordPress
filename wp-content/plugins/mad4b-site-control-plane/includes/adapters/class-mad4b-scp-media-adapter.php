@@ -1,5 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+if ( ! class_exists( 'MAD4B_SCP_External_Media_Ingest' ) ) require_once dirname( __DIR__ ) . '/class-mad4b-scp-external-media-ingest.php';
+require_once dirname( __DIR__ ) . '/class-mad4b-scp-media-response-payload.php';
 final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function id() { return 'media'; }
 	public function label() { return 'Media'; }
@@ -7,8 +9,8 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function ability_names() {
 		return array(
-			'read' => array( 'media/search', 'media/get' ),
-			'content' => array( 'media/update-metadata', 'media/set-featured', 'media/set-parent' ),
+			'read' => array( 'media/search', 'media/get', 'media/import-plan' ),
+			'content' => array( 'media/update-metadata', 'media/set-featured', 'media/set-parent', 'media/import-external' ),
 			'admin' => array(),
 		);
 	}
@@ -51,6 +53,33 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 			)
 		);
 
+		$this->add_ability(
+			'media/import-plan',
+			'Plan External Image Import into WordPress',
+			'import_plan',
+			array( 'MAD4B_SCP_Policy', 'can_read' ),
+			$this->schema( array(
+				'source_url' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 2048 ),
+				'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+				'parent_post_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+			), array( 'source_url', 'operation_key' ) )
+		);
+		$this->add_ability(
+			'media/import-external',
+			'Import External Image into WordPress Media Library',
+			'import_external',
+			array( $this, 'can_import_external' ),
+			$this->schema( array(
+				'source_url' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 2048 ),
+				'operation_key' => array( 'type' => 'string', 'minLength' => 12, 'maxLength' => 128 ),
+				'expected_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
+				'confirmed' => array( 'type' => 'boolean' ),
+				'parent_post_id' => array( 'type' => 'integer', 'minimum' => 0 ),
+				'title' => array( 'type' => 'string', 'maxLength' => 300 ),
+				'alt' => array( 'type' => 'string', 'maxLength' => 500 ),
+			), array( 'source_url', 'operation_key', 'expected_scope_sha256', 'confirmed' ) ),
+			'content', false, true, false
+		);
 		$this->add_ability(
 			'media/update-metadata',
 			'Update Media Metadata',
@@ -117,6 +146,13 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 		);
 	}
 
+	public function import_plan( $input = array() ) { return MAD4B_SCP_External_Media_Ingest::plan( is_array( $input ) ? $input : array() ); }
+	public function import_external( $input = array() ) { return MAD4B_SCP_External_Media_Ingest::apply( is_array( $input ) ? $input : array() ); }
+	public function can_import_external( $input ) {
+		if ( ! current_user_can( 'upload_files' ) ) return false;
+		$id = isset( $input['parent_post_id'] ) ? absint( $input['parent_post_id'] ) : 0;
+		return !$id || current_user_can( 'edit_post', $id );
+	}
 	public function can_read_attachment( $input ) {
 		$id = isset( $input['attachment_id'] ) ? absint( $input['attachment_id'] ) : 0;
 		return $id > 0 && current_user_can( 'read_post', $id );
@@ -469,47 +505,7 @@ final class MAD4B_SCP_Media_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private function media_payload( $post, $include_details = true ) {
-		$file = get_attached_file( $post->ID, true );
-		$metadata = wp_get_attachment_metadata( $post->ID );
-		$metadata = is_array( $metadata ) ? $metadata : array();
-		$encoded = wp_json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		$filesize = $file && is_file( $file )
-			? (int) filesize( $file )
-			: ( isset( $metadata['filesize'] ) ? absint( $metadata['filesize'] ) : 0 );
-
-		$width = isset( $metadata['width'] ) ? absint( $metadata['width'] ) : 0;
-		$height = isset( $metadata['height'] ) ? absint( $metadata['height'] ) : 0;
-		$payload = array(
-			'id' => (int) $post->ID,
-			'parent_id' => (int) $post->post_parent,
-			'author_id' => (int) $post->post_author,
-			'status' => (string) $post->post_status,
-			'date_gmt' => (string) $post->post_date_gmt,
-			'modified_gmt' => (string) $post->post_modified_gmt,
-			'title' => (string) $post->post_title,
-			'caption' => (string) $post->post_excerpt,
-			'alt' => (string) get_post_meta( $post->ID, '_wp_attachment_image_alt', true ),
-			'mime_type' => (string) $post->post_mime_type,
-			'is_image' => (bool) wp_attachment_is_image( $post->ID ),
-			'url' => (string) wp_get_attachment_url( $post->ID ),
-			'file' => $file ? basename( $file ) : '',
-			'file_extension' => $file ? strtolower( (string) pathinfo( $file, PATHINFO_EXTENSION ) ) : '',
-			'filesize' => $filesize,
-			'width' => $width,
-			'height' => $height,
-			'aspect_ratio' => $width > 0 && $height > 0 ? round( $width / $height, 6 ) : 0,
-			'generated_size_count' => isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ? count( $metadata['sizes'] ) : 0,
-			'embedded_metadata_present' => ! empty( $metadata['image_meta'] ) && is_array( $metadata['image_meta'] ),
-			'metadata_sha256' => hash( 'sha256', false === $encoded ? '' : $encoded ),
-			'detail_level' => $include_details ? 'full' : 'summary',
-		);
-		if ( $include_details ) {
-			$payload['description'] = (string) $post->post_content;
-			$payload['sizes'] = isset( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ? $metadata['sizes'] : array();
-			$payload['image_meta'] = isset( $metadata['image_meta'] ) && is_array( $metadata['image_meta'] ) ? $metadata['image_meta'] : array();
-			$payload['metadata'] = $metadata;
-		}
-		return $payload;
+		return MAD4B_SCP_Media_Response_Payload::from_post( $post, $include_details );
 	}
 
 	private function mutable_state_from_post( $post ) {

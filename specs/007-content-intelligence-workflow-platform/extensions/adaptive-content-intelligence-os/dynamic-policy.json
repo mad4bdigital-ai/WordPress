@@ -1,0 +1,114 @@
+{
+  "contract": "mad4b.aci-os.dynamic-policy.v1",
+  "status": "SPEC_BACKLOG_ONLY",
+  "authorizing": false,
+  "production_authorized": false,
+  "principle": "DYNAMIC_BY_DEFAULT",
+  "authority_owner": "existing_MAD4B",
+  "versioned_strategy_only": true,
+  "unknown_providers": "QUARANTINE",
+  "undiscovered_capability": "DENY",
+  "selectors": [
+    "tenant_id",
+    "site_uuid",
+    "canonical_origin",
+    "site_profile_revision",
+    "runtime_generation",
+    "restore_epoch",
+    "environment",
+    "brand_id",
+    "market",
+    "locale",
+    "native_entity_kind",
+    "content_recipe",
+    "provider_id",
+    "provider_account_binding",
+    "source_provenance",
+    "rights_policy",
+    "cost_currency",
+    "effect_class",
+    "effective_grant",
+    "approval_revision"
+  ],
+  "plan_states": [
+    "READY_FOR_NON_AUTHORITATIVE_PLAN",
+    "WAITING_DEPENDENCIES",
+    "NEEDS_EVIDENCE",
+    "NEEDS_REVIEW",
+    "DENIED",
+    "QUARANTINED"
+  ],
+  "autonomy_ceiling": "L0_SPEC_PREVIEW",
+  "dynamic_provider_admission": {
+    "exact_version": true,
+    "capability_certification": true,
+    "effect_classification": true,
+    "account_and_budget_binding": true,
+    "unknown_effects_denied": true,
+    "arbitrary_symbol_binding": false
+  },
+  "mandatory_per_action_checks": [
+    "exact_current_site",
+    "current_actor_grant",
+    "data_scope",
+    "content_field_ownership",
+    "evidence_freshness",
+    "per_account_budget",
+    "source_rights",
+    "typed_operation_contract",
+    "restore_epoch",
+    "idempotency",
+    "expected_native_revision",
+    "current_environment",
+    "negative_cases"
+  ],
+  "write_effects_require": [
+    "existing_MAD4B_grant",
+    "separate_approval_when_required",
+    "commit_time_CAS",
+    "native_provider_readback",
+    "rollback_or_external_reconciliation"
+  ],
+  "conditional_gates": {
+    "native_relation_in_scope": {
+      "when_any": [
+        "content_recipe.requires_native_relations",
+        "publish_manifest.contains_native_relations"
+      ],
+      "required_gate": "ACI-G4",
+      "fail_if_unknown": true
+    },
+    "paid_external_account": {
+      "when": "provider.effect_class=PAID",
+      "required_capabilities": [
+        "account_budget_reservation",
+        "verified_cost"
+      ],
+      "fail_if_unknown": true
+    },
+    "public_content_mutation": {
+      "when": "effect_class=WORDPRESS_WRITE",
+      "required_gates": [
+        "ACI-G7",
+        "ACI-G8"
+      ],
+      "explicit_authorization_only": true
+    },
+    "production": {
+      "when": "environment=production",
+      "require_separate_owner_authority": true,
+      "automatic": false
+    }
+  },
+  "fallback_policy": {
+    "provider_missing": "ISOLATE_DEPENDENT_STAGES",
+    "language_missing": "REVIEW_LOCALIZATION",
+    "data_missing": "NO_EVIDENCE_NOT_ZERO",
+    "model_failure": "CHECKPOINT_AND_PAUSE",
+    "external_effect_unknown": "RECONCILE_BEFORE_RETRY",
+    "new_provider_semantics": "CODE_REVIEW_AND_DISPOSABLE_RECERTIFICATION"
+  },
+  "catalog_updates": "CANDIDATE_ONLY_BEFORE_CERTIFICATION",
+  "safe_reads_survive_local_faults": true,
+  "force_serial_gate_dependencies": false
+}

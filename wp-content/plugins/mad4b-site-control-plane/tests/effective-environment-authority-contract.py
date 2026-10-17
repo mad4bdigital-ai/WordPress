@@ -29,3 +29,39 @@ site_profile=(ROOT/'includes/class-mad4b-scp-site-profile.php').read_text(encodi
 explicit=site_profile.split('public static function wordpress_environment_explicit()',1)[1].split('public static function current_environment()',1)[0]
 assert "if ( $explicit ) return true;" in explicit
 assert "apply_filters( 'mad4b_scp_wordpress_environment_explicit', false" in explicit
+
+
+admin=(ROOT/'includes/class-mad4b-scp-site-profile-admin.php').read_text(encoding='utf-8')
+experience=(ROOT/'includes/class-mad4b-scp-admin-experience.php').read_text(encoding='utf-8')
+for token in (
+    "ENV_SYNC_PROFILE_ONLY = 'profile_only'",
+    "ENV_SYNC_HOST_MANAGED = 'host_managed'",
+    'host_environment_sync_assessment(',
+    "'blocked_missing_deployment_binding'",
+    "'blocked_profile_identity'",
+    "'blocked_explicit_host_conflict'",
+    "'blocked_production_or_invalid_target'",
+    "'awaiting_host_bootstrap'",
+    "'host_aligned'",
+    "'environment_sync_mode' => $sync_mode",
+    "'environment_sync_state' => $sync_state",
+):
+    assert token in site_profile, f'Host sync mode contract missing {token}'
+assert "mad4b_site_profile_host_sync_production_denied" in site_profile
+assert "mad4b_site_profile_environment_sync_mode_invalid" in site_profile
+assert "get_option( self::OPTION, null )" in site_profile
+for token in (
+    "name=\"environment_sync_mode\"",
+    "'environment_sync_mode' => isset( $_POST['environment_sync_mode'] )",
+    "'environment_sync_state' => (string) $status['environment_sync_state']",
+    "WP_ENVIRONMENT_TYPE",
+    "MAD4B_SCP_DEPLOYMENT_BINDING",
+):
+    assert token in admin, f'Host-managed configuration UI missing {token}'
+assert "Host-Managed Sync is pending or blocked" in experience
+# A WordPress plugin cannot safely rewrite its bootstrap environment after
+# wp_get_environment_type() has already cached the value in this request.
+assert 'putenv(' not in admin
+assert "file_put_contents( " not in admin
+assert "define( 'WP_ENVIRONMENT_TYPE', 'staging' );" not in site_profile
+print('mad4b.environment-host-sync-mode-static.v1: PASS')
