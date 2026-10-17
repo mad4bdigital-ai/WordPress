@@ -116,6 +116,49 @@ final class MAD4B_SCP_Governed_Ability_Census {
 
     public static function direct_only() { return self::scan( 'direct_only' ); }
 
+    /**
+     * Bounded, secret-free metadata troubleshooting for CI and Staging reads.
+     * It never calls the registered execution or permission callbacks.
+     */
+    public static function diagnostic( $name ) {
+        $ability = function_exists( 'wp_get_ability' ) ? wp_get_ability( (string) $name ) : null;
+        $meta = is_object( $ability ) && method_exists( $ability, 'get_meta' )
+            ? $ability->get_meta() : array();
+        $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
+        $annotations = is_array( $meta ) && is_array( $meta['annotations'] ?? null )
+            ? $meta['annotations'] : array();
+        $callbacks = array();
+        if ( is_object( $ability ) && class_exists( 'WP_Ability', false )
+            && $ability instanceof WP_Ability ) {
+            foreach ( array( 'execute_callback', 'permission_callback' ) as $property_name ) {
+                try {
+                    $property = new ReflectionProperty( 'WP_Ability', $property_name );
+                    $property->setAccessible( true );
+                    $callbacks[ $property_name ] = self::callback_is_ours(
+                        $property->getValue( $ability ) );
+                } catch ( Throwable $error ) {
+                    $callbacks[ $property_name ] = false;
+                }
+            }
+        }
+        return array(
+            'registered' => is_object( $ability ),
+            'registry_count' => function_exists( 'wp_get_abilities' )
+                ? count( (array) wp_get_abilities() ) : -1,
+            'ability_is_wp_ability' => is_object( $ability )
+                && class_exists( 'WP_Ability', false ) && $ability instanceof WP_Ability,
+            'surface_enrollment' => 'enrollment' === ( $mcp['surface'] ?? null ),
+            'direct_step_up' => true === ( $mcp['chatgpt_direct_step_up'] ?? null ),
+            'exact_client_required' => true === ( $mcp['exact_chatgpt_client_required'] ?? null ),
+            'generic_remote_admin_false' => false === ( $mcp['generic_remote_admin'] ?? null ),
+            'production_mutation_allowed_false' => false === ( $mcp['production_mutation_allowed'] ?? null ),
+            'production_allowed_true' => true === ( $mcp['production_allowed'] ?? null ),
+            'readonly_false' => false === ( $annotations['readonly'] ?? null ),
+            'callback_provenance' => $callbacks,
+            'structural_discovery' => isset( self::structural_step_up()[ (string) $name ] ),
+        );
+    }
+
     public static function operation_id_for( $name ) {
         $row = self::eligible()[ (string) $name ] ?? null;
         return is_array( $row ) ? (string) $row['operation_id'] : '';
