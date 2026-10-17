@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Security_Forensics {
     const CONTRACT = 'mad4b.security-forensics.foundation.v1';
+    const PAGE_SLUG = 'mad4b-control-plane-security';
     const MAX_FILES = 48;
     const MAX_ENTRIES = 192;
     const MAX_BYTES = 8388608;
@@ -21,7 +22,11 @@ final class MAD4B_SCP_Security_Forensics {
         self::$booted = true;
         if ( ! function_exists( 'add_action' ) ) return;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 45 );
-        add_action( 'admin_menu', array( __CLASS__, 'menu' ), 90 );
+        // Use the shared parent-order and route-permission contract.
+        // A missing registry skips UI registration rather than bypassing it.
+        if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false )
+            && MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' ) )
+            MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 90 );
         // Native WordPress lifecycle hooks are observations, not proof that all
         // filesystem, SSH, WP-CLI or direct-DB mutations were captured.
         add_action( 'activated_plugin', array( __CLASS__, 'activated' ), 10, 2 );
@@ -40,11 +45,18 @@ final class MAD4B_SCP_Security_Forensics {
             && MAD4B_SCP_Security_Diagnostics::can_read();
     }
 
+    /** Project the governed Site Profile environment, not the implicit WordPress default. */
+    private static function environment() {
+        return class_exists( 'MAD4B_SCP_Site_Profile', false )
+            && method_exists( 'MAD4B_SCP_Site_Profile', 'current_environment' )
+            ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+    }
+
     private static function base( $surface ) {
         return array(
             'contract' => self::CONTRACT, 'surface' => $surface,
             'site_id' => class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::site_uuid() ? MAD4B_SCP_Site_Profile::site_uuid() : 'unbound',
-            'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown',
+            'environment' => self::environment(),
             'request_id' => function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : '',
             'evidence_id' => null, 'read_only' => true,
             'mutation_performed' => false, 'release_ready' => false,
@@ -64,7 +76,35 @@ final class MAD4B_SCP_Security_Forensics {
             'evidence_mode' => 'not_configured',
             'remote_vault' => 'not_verified',
             'independent_watchdog' => 'not_verified',
-            'production_mutation_authorized' => false
+            'production_mutation_authorized' => false,
+            'capability_discovery' => self::capability_discovery()
+        );
+    }
+
+    /**
+     * Common MAD4B dynamic model: observe current capabilities, never hardcode
+     * plugin versions, promote release certification or infer write grants.
+     * Existing Ability/Provider registries remain the source of truth.
+     */
+    public static function capability_discovery() {
+        $read_abilities = array( 'mad4b/security-site-posture', 'mad4b/security-file-indicators',
+            'mad4b/security-file-integrity', 'mad4b/security-database-indicators' );
+        $available = array();
+        foreach ( $read_abilities as $name ) {
+            $available[ $name ] = function_exists( 'wp_has_ability' ) && wp_has_ability( $name ) ? 'observed' : 'unknown';
+        }
+        return array(
+            'contract' => 'mad4b.security-capability-observation.v1',
+            'source_of_truth' => 'wordpress_abilities_api',
+            'read_abilities' => $available,
+            'audit_v2_present' => class_exists( 'MAD4B_SCP_Audit', false )
+                && method_exists( 'MAD4B_SCP_Audit', 'record' ),
+            'external_observer' => 'not_verified',
+            'external_witness' => 'not_verified',
+            'capability_presence_authorizes' => false,
+            'site_certified' => false,
+            'version_pin_required' => false,
+            'provider_runtime_certification' => 'not_observed'
         );
     }
 
@@ -84,7 +124,7 @@ final class MAD4B_SCP_Security_Forensics {
             'ssh_actor_inferred' => false,
             'authorization' => 'unverified',
             'host_ip' => null,
-            'environment' => function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : 'unknown',
+            'environment' => self::environment(),
             'site_id' => class_exists( 'MAD4B_SCP_Site_Profile', false ) && MAD4B_SCP_Site_Profile::site_uuid() ? MAD4B_SCP_Site_Profile::site_uuid() : 'unbound',
             'source_hook' => 'wordpress_core',
             'external_evidence_retained' => false
@@ -157,7 +197,13 @@ final class MAD4B_SCP_Security_Forensics {
         $root = realpath( ABSPATH );
         if ( ! $root ) return new WP_Error( 'mad4b_security_root_missing', 'WordPress root unavailable.' );
         $target = $relative[ $scope ] === '' ? $root : $root . DIRECTORY_SEPARATOR . str_replace( '/', DIRECTORY_SEPARATOR, $relative[ $scope ] );
-        if ( is_link( $target ) || ! is_dir( $target ) || ! is_readable( $target ) )
+        // A linked wp-content ancestor could redirect a nominally allowlisted
+        // scope to another tenant or location: never traverse it.
+        $content_root = $root . DIRECTORY_SEPARATOR . 'wp-content';
+        $canonical = realpath( $target );
+        if ( is_link( $content_root ) || is_link( $target ) || ! is_dir( $target ) || ! is_readable( $target )
+            || false === $canonical || ( $canonical !== $root
+                && 0 !== strpos( $canonical, $root . DIRECTORY_SEPARATOR ) ) )
             return self::base( 'integrity_scan' ) + array( 'scope' => $scope, 'coverage' => 'unavailable', 'findings' => array() );
         $entries = 0; $files = 0; $bytes = 0; $items = array(); $incomplete = false;
         $started = microtime( true );
@@ -180,6 +226,12 @@ final class MAD4B_SCP_Security_Forensics {
                     continue;
                 }
                 if ( ! is_file( $path ) ) { $incomplete = true; continue; }
+                // Exclude credential-bearing and configuration secrets completely.
+                $lower = strtolower( $name );
+                if ( 'wp-config.php' === $lower || '.env' === $lower
+                    || 0 === strpos( $lower, '.env.' ) || 'config.php' === $lower ) {
+                    $incomplete = true; continue;
+                }
                 if ( ++$files > self::MAX_FILES ) { $incomplete = true; break 2; }
                 $size = @filesize( $path );
                 if ( false === $size || $size > self::MAX_FILE_BYTES || $bytes + $size > self::MAX_BYTES ) {
@@ -342,7 +394,7 @@ final class MAD4B_SCP_Security_Forensics {
     public static function menu() {
         if ( ! function_exists( 'add_submenu_page' ) ) return;
         add_submenu_page( 'mad4b-control-plane', 'Security & Forensics', 'Security & Forensics',
-            'manage_options', 'mad4b-control-plane-security', array( __CLASS__, 'render' ) );
+            'manage_options', self::PAGE_SLUG, array( __CLASS__, 'render' ) );
     }
     public static function render() {
         if ( ! current_user_can( 'manage_options' ) ) {
@@ -358,7 +410,7 @@ final class MAD4B_SCP_Security_Forensics {
         $selected = isset( $_GET['section'] ) && is_string( $_GET['section'] ) ? sanitize_key( wp_unslash( $_GET['section'] ) ) : 'overview';
         foreach ( $sections as $label ) {
             $key = sanitize_title( $label );
-            $url = add_query_arg( array( 'page' => 'mad4b-control-plane-security', 'section' => $key ), admin_url( 'admin.php' ) );
+            $url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'section' => $key ), admin_url( 'admin.php' ) );
             echo '<a class="nav-tab ' . ( $selected === $key ? 'nav-tab-active' : '' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
         }
         echo '</nav><p>Current section: <strong>' . esc_html( $selected ) . '</strong>. Use governed MCP read abilities for bounded evidence. No scanner runs on page load.</p></div>';
