@@ -418,6 +418,14 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$result['state'] = 'REVIEWED_ADAPTER_UNAVAILABLE';
 			return $result;
 		}
+		if ( 'excluded_high_risk' === $result['coverage_state'] ) {
+			$result['state'] = 'PROVIDER_EXCLUDED_BY_RISK';
+			return $result;
+		}
+		if ( ! empty( $row['side_channel_blocker'] ) ) {
+			$result['state'] = 'PARALLEL_TRANSPORT_UNREVIEWED';
+			return $result;
+		}
 		$read = isset( $row['declared_adapter_read_abilities'] ) && is_array( $row['declared_adapter_read_abilities'] )
 			? $row['declared_adapter_read_abilities'] : array();
 		$write = isset( $row['declared_adapter_write_abilities'] ) && is_array( $row['declared_adapter_write_abilities'] )
@@ -440,8 +448,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			$result['required_gates'] = array( 'registered_wp_ability_permission_callback', 'oauth_read_scope', 'transport_read_authority' );
 			return $result;
 		}
-		if ( ! empty( $row['side_channel_blocker'] ) ) {
-			$result['state'] = 'PARALLEL_TRANSPORT_UNREVIEWED';
+		if ( ! in_array( $result['coverage_state'], array( 'supported_governed', 'supported_reversible' ), true ) ) {
+			$result['state'] = 'ADAPTER_WRITE_NOT_ELIGIBLE';
 			return $result;
 		}
 		if ( empty( $row['provider_certification_ok'] ) ) {
