@@ -8,6 +8,8 @@ on:
       - 'tools/solution-discovery/**'
       - 'specs/007-content-intelligence-workflow-platform/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
+      - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
   push:
     branches:
@@ -17,6 +19,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'tools/solution-discovery/**'
       - 'tools/mad4b_pre_staging_hybrid_audit.py'
+      - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
   workflow_dispatch:
 
 permissions:
@@ -52,6 +56,50 @@ jobs:
         with:
           php-version: '7.4'
           coverage: none
+
+      # Evaluate change blast radius BEFORE expensive full runtime testing.
+      # Unknown/missing probes fail closed; live Staging evidence is not
+      # synthesized from green CI. Scope is computed from exact PR SHAs.
+      - name: Predictive dependency impact and regression gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/mad4b_predictive_dependency_gate.py --self-test
+          base='${{ github.event.pull_request.base.sha }}'
+          head='${{ github.event.pull_request.head.sha || github.sha }}'
+          if [[ -n "$base" ]]; then
+            python3 tools/mad4b_predictive_dependency_gate.py \
+              --base "$base" --head "$head" --execute --enforce \
+              --output dist/mad4b-predictive-dependency-gate.json
+          else
+            python3 tools/mad4b_predictive_dependency_gate.py \
+              --full-scan --head "$head" --execute --enforce \
+              --output dist/mad4b-predictive-dependency-gate.json
+          fi
+
+      # Replay fault combinations sourced from sanitized ETG/ARE live
+      # observations. Execute genuine hermetic PHP failure-injection fixtures.
+      # A successful simulation NEVER provides a live Staging or owner receipt.
+      - name: Simulate live two-site faults and downstream repair dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/mad4b_live_remediation_simulator.py \
+            --self-test --execute-fixtures --enforce \
+            --output dist/mad4b-predictive-live-remediation.json
+          python3 - <<'PY_FAULT_POLICY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('dist/mad4b-predictive-live-remediation.json').read_text())
+          assert result['simulation_pass'] is True
+          assert result['fault_injections'] >= 36
+          assert result['runtime_repair_proven'] is False
+          assert result['release_ready'] is False
+          assert result['staging_write_authorized'] is False
+          assert result['production_mutation_allowed'] is False
+          assert not result['failed_php_fault_regressions']
+          print('Live-incident simulation coverage PASS; real-site acceptance still REQUIRED')
+          PY_FAULT_POLICY
 
       - name: Generic PHP syntax baseline
         shell: bash
