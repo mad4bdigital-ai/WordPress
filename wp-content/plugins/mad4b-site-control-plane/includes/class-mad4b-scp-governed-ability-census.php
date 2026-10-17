@@ -55,14 +55,10 @@ final class MAD4B_SCP_Governed_Ability_Census {
      * tool does not automatically qualify for generic enrollment dispatch.
      */
     private static function scan( $mode ) {
-        if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' )
-            || ! class_exists( 'MAD4B_SCP_Site_Profile' )
-            || ! MAD4B_SCP_Site_Profile::configured()
-            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
-            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
-        $environment = (string) MAD4B_SCP_Site_Profile::current_environment();
-        if ( 'staging' === $mode && 'staging' !== $environment ) return array();
-        if ( 'direct_only' === $mode && ! in_array( $environment, array( 'staging', 'production' ), true ) ) return array();
+        // tools/list materialization happens before OAuth and Site Profile
+        // authority convergence. Metadata discovery must not be a grant.
+        // The enrollment broker rechecks exact Staging identity separately.
+        if ( ! function_exists( 'wp_get_abilities' ) || ! function_exists( 'wp_get_ability' ) ) return array();
         $registry = wp_get_abilities();
         if ( ! is_array( $registry ) || count( $registry ) > self::MAX_ABILITIES ) return array();
         $result = array();
@@ -107,7 +103,17 @@ final class MAD4B_SCP_Governed_Ability_Census {
         return $result;
     }
 
-    public static function eligible() { return self::scan( 'staging' ); }
+    public static function structural_step_up() { return self::scan( 'staging' ); }
+
+    public static function eligible() {
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' )
+            || ! MAD4B_SCP_Site_Profile::configured()
+            || 'staging' !== (string) MAD4B_SCP_Site_Profile::current_environment()
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled()
+            || ! MAD4B_SCP_Site_Profile::site_urls_match_enrollment() ) return array();
+        return self::scan( 'staging' );
+    }
+
     public static function direct_only() { return self::scan( 'direct_only' ); }
 
     public static function operation_id_for( $name ) {
