@@ -12,10 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Governed_Ability_Census {
     const CONTRACT = 'mad4b.governed-ability-census.v1';
-    // Limit *first-party matches*, not all WordPress abilities registered by
-    // unrelated plugins. A large third-party registry is not a MAD4B outage.
+    // Limit first-party candidates only, never the global WordPress registry.
     const MAX_ABILITIES = 2048;
-    const MAX_FIRST_PARTY_CANDIDATES = 256;
 
     /** Return stable, installation-path-independent first-party callback identity. */
     private static function callback_identity( $callback ) {
@@ -112,7 +110,7 @@ final class MAD4B_SCP_Governed_Ability_Census {
             ++$first_party_candidates;
             // Too many MAD4B candidates is an integrity anomaly, not a reason
             // to start admitting arbitrary callbacks. Fail closed.
-            if ( $first_party_candidates > self::MAX_FIRST_PARTY_CANDIDATES ) return array();
+            if ( $first_party_candidates > self::MAX_ABILITIES ) return array();
             if ( wp_get_ability( $name ) !== $ability ) continue;
             $meta = $ability->get_meta();
             $mcp = is_array( $meta ) && is_array( $meta['mcp'] ?? null ) ? $meta['mcp'] : array();
