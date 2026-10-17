@@ -440,7 +440,10 @@ final class MAD4B_SCP_MCP_Hybrid {
         $value = $local->execute( $arguments );
         if ( is_wp_error( $value ) ) return $value;
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
-            'ability' => $ability, 'selected' => 'reviewed_adapter', 'result' => $value,
+            'ability' => $ability, 'selected' => 'reviewed_adapter',
+            'arguments_sha256' => self::digest( $arguments ),
+            'response_sha256' => self::digest( $value ),
+            'result' => $value,
             'native_execution_performed' => false, 'write_authority_created' => false,
             'mutation_intended' => false );
     }
@@ -496,6 +499,8 @@ final class MAD4B_SCP_MCP_Hybrid {
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
             'protocol' => $session['version'], 'catalog_sha256' => $expected,
+            'arguments_sha256' => self::digest( $arguments ),
+            'response_sha256' => self::digest( $reply['wire']['result'] ),
             'result' => $reply['wire']['result'],
             'authorization_source' => 'read_gate_plus_operator_reviewed_tool_contract',
             'write_authority_created' => false, 'mutation_intended' => false );
