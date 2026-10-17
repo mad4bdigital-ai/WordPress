@@ -120,9 +120,13 @@ final class MAD4B_SCP_Provider_Opt_In {
             $executor = (string) ( $browser['executor'] ?? 'auto' );
             $managed = MAD4B_SCP_Browser_Acceptance_Admin_UI::managed_executors();
             $selected = $managed[ $executor ][1] ?? array();
-            if ( empty( $caps['browser_attestation_public_key_valid'] )
-                || empty( $browser['credential_verified'] )
-                || empty( $browser['external_runner_connected'] ) ) {
+            // Native modes do not require external browser credentials.
+            // Independent signed browser attestation is a separate optional
+            // certification stage, not a missing mandatory credential.
+            if ( ! in_array( $executor, array( 'native_hybrid', 'wp_cron' ), true )
+                && ( empty( $caps['browser_attestation_public_key_valid'] )
+                    || empty( $browser['credential_verified'] )
+                    || empty( $browser['external_runner_connected'] ) ) ) {
                 $items[] = self::row( 'browser_runner', 'Browser Acceptance Runner', 'UNVERIFIED',
                     'mad4b-browser-acceptance',
                     'wp_cron' === $executor

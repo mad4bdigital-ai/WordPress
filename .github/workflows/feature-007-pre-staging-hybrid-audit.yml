@@ -67,6 +67,8 @@ jobs:
           set -euo pipefail
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/native-hybrid-acceptance.js
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-recertification-planning-semantics-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
@@ -928,6 +930,9 @@ jobs:
           php -l "$ROOT/includes/class-mad4b-scp-semantic-content-field-contracts.php"
           php -l "$ROOT/includes/class-mad4b-scp-staging-write-planning-guard.php"
           php "$ROOT/tests/native-wpcron-acceptance-runtime.php"
+          php -l "$ROOT/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+          php "$ROOT/tests/native-hybrid-acceptance-runtime.php"
+          node --check "$ROOT/assets/native-hybrid-acceptance.js"
           php "$ROOT/tests/provider-recertification-planning-semantics-runtime.php"
           for file in \
             includes/class-mad4b-scp-capability-search-index.php \

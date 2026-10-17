@@ -49,8 +49,14 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
         if ( ! current_user_can( 'manage_options' ) || ! self::available() )
             return new WP_Error( 'mad4b_native_cron_unavailable', 'Only an administrator on supported Staging may queue WP-Cron smoke.' );
         if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' )
-            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) )
+            || ! in_array( (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ),
+                array( 'wp_cron', 'native_hybrid' ), true ) )
             return new WP_Error( 'mad4b_native_cron_optin_required', 'Save the WP-Cron runner preference with owner opt-in first.' );
+        $preference = MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection();
+        if ( empty( $preference['preference_valid'] )
+            || 'operator_saved_or_legacy' !== (string) ( $preference['preference_source'] ?? '' )
+            || ! preg_match( '/^[a-f0-9]{32}$/D', (string) ( $preference['configuration_revision'] ?? '' ) ) )
+            return new WP_Error( 'mad4b_native_cron_saved_optin_required', 'An exact saved owner opt-in revision is required before scheduling any native smoke.' );
         if ( ! function_exists( 'add_option' ) || ! function_exists( 'wp_generate_uuid4' ) )
             return new WP_Error( 'mad4b_native_cron_job_unavailable', 'Native job primitives unavailable.' );
         $id = wp_generate_uuid4();
@@ -82,9 +88,18 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             || ! hash_equals( (string) get_option( self::LOCK, '' ), $id )
             || ! self::staging() ) return;
         if ( ! class_exists( 'MAD4B_SCP_Browser_Acceptance_Admin_UI' )
-            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) ) {
+            || ! in_array( (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ),
+                array( 'wp_cron', 'native_hybrid' ), true ) ) {
             $job['state'] = 'cancelled_preference_changed';
             $job['checked_at'] = gmdate( 'c' );
+            update_option( self::OPTION, $job, false );
+            delete_option( self::LOCK );
+            return;
+        }
+        $saved = MAD4B_SCP_Browser_Acceptance_Admin_UI::public_selection();
+        if ( empty( $saved['preference_valid'] )
+            || ! preg_match( '/^[a-f0-9]{32}$/D', (string) ( $saved['configuration_revision'] ?? '' ) ) ) {
+            $job['state'] = 'cancelled_missing_owner_optin';
             update_option( self::OPTION, $job, false );
             delete_option( self::LOCK );
             return;
@@ -134,7 +149,8 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
         echo '<p>Availability: <strong>' . esc_html( $s['wp_cron_available'] ? 'ready' : 'blocked' )
             . '</strong>; latest state: <code>' . esc_html( (string) ( $s['job']['state'] ?? 'not_queued' ) ) . '</code></p>';
         if ( ! $s['wp_cron_available']
-            || 'wp_cron' !== (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ) ) return;
+            || ! in_array( (string) ( MAD4B_SCP_Browser_Acceptance_Admin_UI::selection()['executor'] ?? '' ),
+                array( 'wp_cron', 'native_hybrid' ), true ) ) return;
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         echo '<input type="hidden" name="action" value="mad4b_native_cron_smoke_queue">';
         wp_nonce_field( 'mad4b_native_cron_smoke_queue', 'mad4b_native_cron_nonce' );

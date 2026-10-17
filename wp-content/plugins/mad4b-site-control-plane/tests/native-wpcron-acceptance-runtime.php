@@ -39,6 +39,11 @@ class MAD4B_SCP_Environment {
 class MAD4B_SCP_Browser_Acceptance_Admin_UI {
  const PAGE_SLUG='mad4b-browser-acceptance';
  public static function selection(){return ['executor'=>$GLOBALS['executor']??'auto'];}
+ public static function public_selection(){return [
+   'preference_source'=>$GLOBALS['consented']??true?'operator_saved_or_legacy':'default_observed',
+   'preference_valid'=>true,
+   'configuration_revision'=>$GLOBALS['consented']??true?str_repeat('a',32):''
+ ];}
 }
 function ok($b,$s){if(!$b){fwrite(STDERR,'FAIL '.$s."\n");exit(1);}}
 require dirname(__DIR__).'/includes/class-mad4b-scp-native-cron-acceptance.php';
@@ -49,7 +54,10 @@ $GLOBALS['env']='production';
 ok(is_wp_error($c::enqueue()) && $GLOBALS['calls']===0,'production denied');
 $GLOBALS['env']='staging';
 ok(is_wp_error($c::enqueue()) && $GLOBALS['calls']===0,'explicit optin required');
-$GLOBALS['executor']='wp_cron';
+$GLOBALS['executor']='native_hybrid';
+$GLOBALS['consented']=false;
+ok(is_wp_error($c::enqueue()) && $GLOBALS['calls']===0,'default hybrid never auto-queues without owner consent');
+$GLOBALS['consented']=true;
 $job=$c::enqueue();
 ok(is_array($job) && $GLOBALS['calls']===1 && $job['job']['state']==='queued','single queued smoke');
 ok(is_wp_error($c::enqueue()) && $GLOBALS['calls']===1,'duplicate queue denied');
