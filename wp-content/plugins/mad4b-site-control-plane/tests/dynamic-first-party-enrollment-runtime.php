@@ -130,6 +130,10 @@ mad4b_check( ! isset( MAD4B_SCP_Governed_Ability_Census::eligible()[ $direct_nam
 $all = MAD4B_SCP_Enrollment_Dispatch::discover( array( 'query' => 'direct runtime' ) );
 mad4b_check( 0 === $all['count'], 'direct-only operation appeared in generic enrollment discovery' );
 MAD4B_SCP_Site_Profile::$env = 'production';
+// MCP registration is an early structural read, not a permission decision.
+// The owner candidate must remain discoverable while execution stays denied.
+mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::structural_step_up()[ $owner ] ),
+    'Early tools/list lost trusted owner structural registration' );
 mad4b_check( array() === MAD4B_SCP_Governed_Ability_Census::eligible(),
     'Staging broker became available on Production' );
 mad4b_check( isset( MAD4B_SCP_Governed_Ability_Census::direct_only()[ $direct_name ] ),
