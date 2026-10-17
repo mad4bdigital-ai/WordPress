@@ -122,6 +122,17 @@ $last_call = end( $GLOBALS['invocations'] );
 $expect( $last_call['route'] === '/wpvulnerability/v1/plugins' && $last_call['method'] === 'GET', 'fixed local REST request only' );
 $GLOBALS['responses']['/wpvulnerability/v1/plugins'] = new StubRestResponse( 200, array( 'untrusted' => 'not a list' ) );
 $expect( $get( $vuln )['reason'] === 'provider_payload_unrecognized', 'schema drift not accepted' );
+$GLOBALS['responses']['/wpvulnerability/v1/plugins'] = new StubRestResponse( 200, array_fill(
+    0, 260, array( 'vulnerabilities' => array( array( 'name' => 'test' ) ) ) ) );
+$bounded = $get( $vuln );
+$expect( $bounded['affected_components'] === 250 && $bounded['components_reported'] === 260,
+    'large provider result bounded without pretending to cover all components' );
+$expect( $bounded['truncated'] && !$bounded['aggregation_complete'], 'truncation disclosed' );
+$GLOBALS['responses']['/wpvulnerability/v1/plugins'] = new StubRestResponse( 200, array() );
+$empty = $get( $vuln );
+$expect( $empty['state'] === 'observed' && !$empty['site_clean_certified'],
+    'empty provider feed does not certify a clean site' );
+
 
 $expect( $get( $wordfence )['reason'] === 'unreviewed_or_missing_optional_companion', 'unverified core Wordfence API not assumed' );
 $GLOBALS['abilities']['wpcli-for-wordfence/issues-count'] = new StubAbility( array( 'new' => 2, 'total' => 4 ) );
