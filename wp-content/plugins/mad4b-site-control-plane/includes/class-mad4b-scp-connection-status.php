@@ -29,6 +29,17 @@ final class MAD4B_SCP_Connection_Status {
 				: MAD4B_SCP_Provider_Contracts::runtime_status( 'mcp_adapter', $adapter_available ) )
 			: array( 'status' => 'unavailable', 'runtime_contract_ok' => false, 'identity_contract_ok' => false );
 		$provider_ok = $lightweight ? ! empty( $provider['identity_contract_ok'] ) : ! empty( $provider['runtime_contract_ok'] );
+		$read_capabilities = isset( $provider['read_continuity'] ) && is_array( $provider['read_continuity'] ) ? $provider['read_continuity'] : array();
+		// A deployed Adapter may offer valid read discovery despite version drift.
+		// Exact provider integrity remains an independent certification blocker.
+		$adapter_observation = ! $provider_ok && class_exists( 'MAD4B_SCP_Dependency_Manager' )
+			&& method_exists( 'MAD4B_SCP_Dependency_Manager', 'adapter_read_runtime_observation' )
+			? MAD4B_SCP_Dependency_Manager::adapter_read_runtime_observation() : array();
+		$provider_read_ok = $provider_ok || (
+			$adapter_available
+			&& ! empty( $read_capabilities['discovery_eligible'] )
+			&& ! empty( $adapter_observation['read_runtime_ready'] )
+		);
 		$servers = self::server_status( $lightweight );
 		$fallback_server_ids = array( 'mad4b-read', 'mad4b-chatgpt', 'mad4b-enrollment', 'mad4b-content', 'mad4b-write', 'mad4b-admin', 'mad4b-developer', 'mad4b-developer-breakglass', 'mad4b-breakglass' );
 		$expected_count = class_exists( 'MAD4B_SCP_Servers' ) ? count( MAD4B_SCP_Servers::expected_server_ids() ) : count( $fallback_server_ids );
@@ -72,7 +83,7 @@ final class MAD4B_SCP_Connection_Status {
 
 		$local_blockers = array();
 		if ( ! $adapter_available ) $local_blockers[] = 'mcp_adapter_unavailable';
-		if ( $adapter_available && ! $provider_ok ) $local_blockers[] = 'mcp_adapter_not_certified';
+		if ( $adapter_available && ! $provider_read_ok ) $local_blockers[] = 'mcp_adapter_read_surface_unavailable';
 		if ( ! $server_ok ) $local_blockers[] = 'mad4b_transport_registration_incomplete';
 		foreach ( $servers as $server ) {
 			if ( ! empty( $server['registration_error'] ) ) $local_blockers[] = $server['registration_error'];
@@ -88,6 +99,7 @@ final class MAD4B_SCP_Connection_Status {
 		$remote_preflight_blockers = array_values( array_unique( array_map( 'sanitize_key', $remote_preflight_blockers ) ) );
 
 		$certification_blockers = $remote_preflight_blockers;
+		if ( $adapter_available && ! $provider_ok ) $certification_blockers[] = 'mcp_adapter_not_certified';
 		if ( isset( $connection_contract['certification_blockers'] ) && is_array( $connection_contract['certification_blockers'] ) ) {
 			$certification_blockers = array_merge( $certification_blockers, $connection_contract['certification_blockers'] );
 		}
@@ -134,6 +146,10 @@ final class MAD4B_SCP_Connection_Status {
 			'mcp_adapter_certification' => $provider,
 			'mcp_adapter_certified' => (bool) $provider_ok,
 			'mcp_registration_lifecycle' => $mcp_registration_lifecycle,
+			'provider_read_capability_ready' => $provider_read_ok,
+			'provider_read_observation' => $adapter_observation,
+			'provider_exact_certification_ready' => $provider_ok,
+			'provider_version_drift_is_read_advisory_only' => $provider_read_ok && ! $provider_ok,
 			'local_transport_ready' => empty( $local_blockers ),
 			'local_transport_validation_state' => empty( $local_blockers ) ? ( $lightweight ? 'identity_ready_deep_validation_deferred' : 'ready' ) : 'blocked',
 			'local_transport_deep_validation_ready' => ! $lightweight && empty( $local_blockers ),

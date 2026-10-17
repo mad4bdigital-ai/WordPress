@@ -77,13 +77,13 @@ mad4b_test_assert( false !== strpos( $unreadable, 'google_token_unreadable' )
 $guidance = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', 'source_onboarding_guidance' );
 $guidance->setAccessible( true );
 foreach ( array(
-    'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'overview' ),
+    'DEPLOYMENT_BINDING_RECOVERY_REQUIRED' => array( 0, 'operational-remediation' ),
     'BRAND_PROFILE_REQUIRED' => array( 1, 'overview' ),
     'LEGACY_SOURCE_RECONCILIATION_REQUIRED' => array( 1, 'sources' ),
     'GOOGLE_CONNECTION_RECOVERY_REQUIRED' => array( 2, 'google-drive' ),
     'GOOGLE_WRITE_CONSENT_REQUIRED' => array( 2, 'google-drive' ),
     'EXISTING_SOURCE_POLICY_REVIEW_REQUIRED' => array( 3, 'sources' ),
-    'mad4b_source_onboarding_preflight_missing' => array( 0, 'overview' ),
+    'mad4b_source_onboarding_preflight_missing' => array( 0, 'operational-remediation' ),
 ) as $state => $expected ) {
     $actual = $guidance->invoke( null, $state );
     mad4b_test_assert( $actual['active'] === $expected[0]
@@ -92,6 +92,16 @@ foreach ( array(
         && '' !== $actual['message'],
         'Preflight guidance must preserve the correct recovery order: ' . $state );
 }
+$route = new ReflectionMethod( 'MAD4B_SCP_Context_Admin_UI', 'source_onboarding_setup_url' );
+$route->setAccessible( true );
+$deployment_url = $route->invoke( null, 'DEPLOYMENT_BINDING_RECOVERY_REQUIRED', 'operational-remediation' );
+mad4b_test_assert( 'https://staging.example.test/wp-admin/admin.php?page=mad4b-operational-remediation#mad4b-staging-recovery' === $deployment_url,
+    'Deployment binding setup link must land on the real Staging host identity instructions.' );
+mad4b_test_assert( 'https://staging.example.test/wp-admin/admin.php?page=mad4b-control-plane-site-profile' ===
+    $route->invoke( null, 'exact_staging_site_required', 'site-profile' ),
+    'Site Profile blocker must open Site Profile admin rather than Context Overview.' );
+mad4b_test_assert( '' === $route->invoke( null, 'UNRECOGNIZED_RECOVERY_REQUIRED', '' ),
+    'Unknown preflight state must not silently route to Overview.' );
 mad4b_test_assert( MAD4B_SCP_Google_Drive_Context::$reads === 3
     && MAD4B_SCP_Context_Authority::$reads === 3,
     'Rendering preflight guidance must not read provider or mutate Context.' );

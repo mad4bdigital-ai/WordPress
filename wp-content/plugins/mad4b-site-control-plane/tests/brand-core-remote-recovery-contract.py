@@ -318,6 +318,38 @@ for marker in (
 for forbidden in ("MAD4B_SCP_Authorization::claim_mutation(", "update_option(", "wp_remote_post(", "shell_exec(", "proc_open("):
     if forbidden in native_binding:
         raise AssertionError("native host binding must not write arbitrary WordPress options or execute shell: " + forbidden)
+# WordPress-local activation and nonce-verified Profile Save are narrowly
+# scoped bootstrap contexts, not a remote MCP approval bypass.
+plugin_core = (root / "includes/class-mad4b-scp-plugin.php").read_text(encoding="utf-8")
+profile_admin = (root / "includes/class-mad4b-scp-site-profile-admin.php").read_text(encoding="utf-8")
+for marker in (
+    "function activation_bootstrap()",
+    "current_filter() === $activation_hook",
+    "current_user_can( 'activate_plugins' )",
+    "function profile_save_bootstrap()",
+    "function bootstrap_from_verified_lifecycle(",
+    "'EXISTING_BINDING_REUSED'",
+    "private static function commit_new_binding(",
+):
+    must(native_binding, marker, "automatic local host binding lifecycle guard missing")
+for marker in (
+    "MAD4B_SCP_Deployment_Binding_Native::activation_bootstrap()",
+    "MAD4B_SCP_Audit::ensure_head_initialized()",
+):
+    must(plugin_core, marker, "activation hook must prepare audit before local binding bootstrap")
+for marker in (
+    "self::require_save_request();",
+    "self::persisted_readback_matches(",
+    "self::bootstrap_host_binding_after_verified_save(",
+    "MAD4B_SCP_Deployment_Binding_Native::profile_save_bootstrap()",
+):
+    must(profile_admin, marker, "Site Profile save must verify nonce/readback before safe local bootstrap")
+for fixture in (
+    "deployment-binding-activation-bootstrap-runtime.php",
+    "deployment-binding-profile-save-bootstrap-runtime.php",
+):
+    if not (root / "tests" / fixture).is_file():
+        raise AssertionError("local activation security regression fixture missing: " + fixture)
 must(native_binding_test, "Single outer ticket claim only; no duplicate internal claim or budget",
     "native binding integration fixture missing")
 must(site_profile, "MAD4B_SCP_Deployment_Binding_Native::read_host_secret(",

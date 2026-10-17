@@ -72,6 +72,26 @@ oauth_first_paint_assert(
     && false !== strpos( $render, 'wp_nonce_field(' ),
     'Live readback is delayed and governed consent nonce remains required'
 );
+// The choice must always be rendered before optional authority details.
+$form_position = strpos( $render, 'mad4b-oauth-consent-decision' );
+$pending_position = strpos( $render, 'consent_grant_pending_projection()' );
+$diagnostics_position = strpos( $render, 'mad4b-live-authority' );
+oauth_first_paint_assert(
+    false !== $form_position && false !== $pending_position && false !== $diagnostics_position
+    && $form_position < $pending_position && $pending_position < $diagnostics_position,
+    'OAuth approve and deny actions must precede optional diagnostic lists'
+);
+oauth_first_paint_assert(
+    1 === substr_count( stripslashes( $render ), 'name="decision" value="approve"' )
+    && 1 === substr_count( stripslashes( $render ), 'name="decision" value="deny"' ),
+    'OAuth primary form must have exactly one choice for each action'
+);
+oauth_first_paint_assert(
+    false !== strpos( $render, 'new AbortController()' )
+    && false !== strpos( $render, 'signal:controller.signal' )
+    && false !== strpos( $render, 'clearTimeout(abortTimer)' ),
+    'Optional live status requires a bounded, abortable HTTP request'
+);
 // A failed CIMD request must not be repeated when the OAuth error path
 // validates the same trusted client a second time during one HTTP request.
 $client = new ReflectionMethod( $c, 'client' );

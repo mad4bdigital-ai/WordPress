@@ -3,7 +3,7 @@
  * Plugin Name: MAD4B Site Control Plane
  * Plugin URI: https://github.com/mad4bdigital-ai/WordPress
  * Description: Governed WordPress Abilities and MCP control surfaces for site, content, plugins, filesystem, database, diagnostics, adapters, and breakglass recovery.
- * Version: 0.4.0-rc.96
+ * Version: 0.4.0-rc.102
  * Requires at least: 6.9
  * Requires PHP: 7.4
  * Author: MAD4B
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 // attribution; this does not claim to measure other plugins or proxy latency.
 if ( ! defined( 'MAD4B_SCP_BOOT_START_AT' ) ) define( 'MAD4B_SCP_BOOT_START_AT', microtime( true ) );
 
-define( 'MAD4B_SCP_VERSION', '0.4.0-rc.96' );
+define( 'MAD4B_SCP_VERSION', '0.4.0-rc.102' );
 define( 'MAD4B_SCP_FILE', __FILE__ );
 define( 'MAD4B_SCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MAD4B_SCP_BOOT_RUNTIME_FILE_SHA256', is_readable( __FILE__ ) ? hash_file( 'sha256', __FILE__ ) : '' );
@@ -476,6 +476,9 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-translation-brid
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
 MAD4B_SCP_Full_Content_Operations_Adapter::boot();
 MAD4B_SCP_Translation_Bridge_Adapter::boot();
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remediation-coverage.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-root-cause-resolver.php';
+MAD4B_SCP_Root_Cause_Resolver::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
 MAD4B_SCP_Adapter_Registry::boot_ability_registration();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
@@ -544,6 +547,9 @@ MAD4B_SCP_Admin_Surface_Coverage::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-coverage-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-components-admin-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-opt-in.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-cron-acceptance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-hybrid-acceptance.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-site-capability-discovery.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-capability-browser-provider.php';
 add_filter( 'mad4b_browser_acceptance_providers', array( 'MAD4B_SCP_Native_Capability_Browser_Provider', 'register' ), 15 );

@@ -67,7 +67,7 @@ final class MAD4B_SCP_Operator_Workspace {
 				'guidance' => __( 'An authority grant is not proof of isolated Host execution, a signed Host receipt or rollback.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'staging_release', 'label' => __( 'Staging release acceptance', 'mad4b-site-control-plane' ),
 				'state' => 'INDEPENDENT_ACCEPTANCE_REQUIRED', 'evidence' => 'mad4b/staging-convergence-verify',
-				'owner' => 'release_operator', 'page' => 'mad4b-operator-control-center', 'query' => array( 'recovery' => 'show' ),
+				'owner' => 'release_operator', 'page' => 'mad4b-operational-remediation', 'query' => array( 'recovery' => 'show' ),
 				'guidance' => __( 'Run exact-head Staging convergence and external Browser, Host, Skills and performance acceptance. Local HEALTHY never means release-ready.', 'mad4b-site-control-plane' ) ),
 			array( 'id' => 'production_promotion', 'label' => __( 'Production promotion', 'mad4b-site-control-plane' ),
 				'state' => 'NOT_AUTHORIZED_HERE', 'evidence' => 'mad4b/production-readiness',
@@ -147,6 +147,37 @@ final class MAD4B_SCP_Operator_Workspace {
 		return array( 'id' => $id, 'state' => $kind, 'title' => $title, 'message' => $message, 'page' => $slug, 'query' => $query );
 	}
 
+	/**
+	 * Environment-aware update lifecycle guidance. It is deliberately
+	 * non-authorizing: installing a new package does not activate old grants,
+	 * certify the release or grant Production writer authority.
+	 */
+	public static function update_lifecycle_policy( $environment ) {
+		$production = 'production' === (string) $environment;
+		$staging = 'staging' === (string) $environment;
+		return array(
+			'contract' => 'mad4b.post-update-operator-lifecycle.v1',
+			'environment' => (string) $environment,
+			'state' => $production ? 'PRODUCTION_READ_ONLY_RECONCILIATION'
+				: ( $staging ? 'STAGING_REVIEW_AND_RECOVERY' : 'ENVIRONMENT_NOT_VERIFIED' ),
+			'first_action' => 'VERIFY_INSTALLED_RUNTIME_AND_SIGNED_RELEASE',
+			'production_write_allowed' => false,
+			'automatic_binding_rotation' => false,
+			'automatic_grant_expansion' => false,
+			'automatic_replay_allowed' => false,
+			'production_promotion_inferred' => false,
+			'next_page' => $production ? 'mad4b-runtime-components'
+				: ( $staging ? 'mad4b-operational-remediation' : 'mad4b-control-plane-site-profile' ),
+			'next_anchor' => $staging ? 'mad4b-staging-recovery' : '',
+			'guidance' => $production
+				? 'After a Production plugin update, verify installed source SHA, signed release, database topology, OAuth/MCP and provider state; inspect existing access without automatically enabling Write, binding, Developer or Breakglass.'
+				: ( $staging
+					? 'After Staging update, reuse an independently verified host binding, review exact Write grants, then verify Context and external providers. New approvals only for changed authority.'
+					: 'Unknown environment is blocked. Verify Site Profile before any recovery request.' ),
+			'authorizing' => false, 'mutation_performed' => false,
+		);
+	}
+
 	public static function state_label( $state ) {
 		$labels = array(
 			'AUTO_REPAIRED' => __( 'Repair verified', 'mad4b-site-control-plane' ),
@@ -163,6 +194,32 @@ final class MAD4B_SCP_Operator_Workspace {
 		MAD4B_SCP_Admin_Experience::styles();
 		echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Action Center', 'mad4b-site-control-plane' ) . '</h1>';
 		echo '<p class="description">' . esc_html__( 'See what needs attention, who can resolve it and where to take the next step.', 'mad4b-site-control-plane' ) . '</p>';
+		// Action Center is the triage hub, not a second approval or repair executor.
+		// Keep guidance composable and link to the exact owner of each step.
+		$environment = function_exists( 'wp_get_environment_type' )
+			? (string) wp_get_environment_type() : 'unverified';
+		$lifecycle = self::update_lifecycle_policy( $environment );
+		echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-journeys-title">';
+		echo '<h2 id="mad4b-journeys-title">' . esc_html__( 'Where to work — one role per page', 'mad4b-site-control-plane' ) . '</h2>';
+		foreach ( array(
+			array( 'title' => 'Action Center', 'description' => 'Triage signals, priority and owner; never approve or execute here.', 'slug' => 'mad4b-operator-control-center' ),
+			array( 'title' => 'Operational Remediation', 'description' => 'One guided recovery state and next step; no automatic ticket or write on page load.', 'slug' => 'mad4b-operational-remediation' ),
+			array( 'title' => 'Approval Decisions', 'description' => 'Review individual exact-scope owner tickets and their history.', 'slug' => 'mad4b-approval-decisions' ),
+			array( 'title' => 'Provider Coverage / MCP Routes', 'description' => 'Compare native-provider discovery against MAD4B adapter registration; never infer authorization.', 'slug' => 'mad4b-adapter-coverage', 'query' => array( 'tab' => 'mcp-routes' ) ),
+			array( 'title' => 'Runtime Components', 'description' => 'Check installed package identity, update history and lifecycle evidence.', 'slug' => 'mad4b-runtime-components' ),
+			array( 'title' => 'Governance & History', 'description' => 'Inspect effective grants, consent, append-only audit and mutation reconciliation.', 'slug' => 'mad4b-control-plane' ),
+		) as $journey ) {
+			$url = MAD4B_SCP_Admin_Workspace::link( $journey['slug'], isset( $journey['query'] ) ? $journey['query'] : array() );
+			echo '<p><strong>' . esc_html( $journey['title'] ) . '</strong> — ' . esc_html( $journey['description'] );
+			if ( '' !== $url ) echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'Open', 'mad4b-site-control-plane' ) . '</a>';
+			echo '</p>';
+		}
+		echo '</section>';
+		echo '<section class="mad4b-scp-panel"><h2>' . esc_html__( 'After plugin update — environment-specific lifecycle', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p><code>' . esc_html( $lifecycle['state'] ) . '</code> ' . esc_html( $lifecycle['guidance'] ) . '</p>';
+		$next = MAD4B_SCP_Admin_Workspace::link( $lifecycle['next_page'] );
+		if ( '' !== $next ) echo '<p><a class="button button-secondary" href="' . esc_url( $next . ( '' !== $lifecycle['next_anchor'] ? '#' . $lifecycle['next_anchor'] : '' ) ) . '">' . esc_html__( 'Review next step', 'mad4b-site-control-plane' ) . '</a></p>';
+		echo '<p class="description">' . esc_html__( 'This is not a post-update certification, release approval or automatic site mutation.', 'mad4b-site-control-plane' ) . '</p></section>';
 		$cards = array();
 		foreach ( $model['checks'] as $check ) $cards[] = array( 'label' => $check['label'], 'value' => MAD4B_SCP_Admin_Experience::observed_state( $check['value'] ), 'help' => null === $check['value'] ? __( 'No current observation is available.', 'mad4b-site-control-plane' ) : __( 'Current local runtime observation.', 'mad4b-site-control-plane' ), 'state' => null === $check['value'] ? 'pending' : ( $check['value'] ? 'complete' : 'attention' ) );
 		MAD4B_SCP_Admin_Experience::cards( $cards );
@@ -204,7 +261,7 @@ final class MAD4B_SCP_Operator_Workspace {
 			}
 			echo '<p>' . esc_html__( 'Verified automation rate: unavailable until the eligible workload and readback evidence are measured.', 'mad4b-site-control-plane' ) . '</p></details>';
 		}
-		if ( class_exists( 'MAD4B_SCP_Runtime_Recovery_Workspace', false ) ) MAD4B_SCP_Runtime_Recovery_Workspace::render();
+		// Deep recovery diagnostics are located in Operational Remediation.
 		echo '<details class="mad4b-evidence-details"><summary>' . esc_html__( 'Advanced setup reference', 'mad4b-site-control-plane' ) . '</summary>';
 		self::setup_path();
 		echo '</details>';

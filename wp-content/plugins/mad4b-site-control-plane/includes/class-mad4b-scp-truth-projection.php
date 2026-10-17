@@ -175,7 +175,12 @@ final class MAD4B_SCP_Truth_Projection {
 		if ( empty( $fact['profile_environment_match'] ) ) $blockers[] = 'site_profile_environment_drift';
 		if ( empty( $fact['profile_origin_match'] ) ) $blockers[] = 'site_profile_origin_drift';
 		if ( empty( $fact['adapter_available'] ) ) $blockers[] = 'mcp_adapter_unavailable';
-		if ( ! empty( $fact['adapter_available'] ) && empty( $fact['adapter_identity_ok'] ) ) $blockers[] = 'mcp_adapter_identity_not_certified';
+		// Session diagnostics only require proven read runtime compatibility.
+		// Mutation and full connection certification keep exact artifact checks.
+		if ( ! empty( $fact['adapter_available'] )
+			&& empty( $fact['adapter_identity_ok'] )
+			&& empty( $fact['adapter_read_compatible'] ) )
+			$blockers[] = 'mcp_adapter_read_runtime_not_verified';
 		// Session-safe diagnostics execute through the real MCP transport. Unlike
 		// passive admin projections, actual registration is mandatory here.
 		if ( empty( $fact['chatgpt_actual_registered'] ) ) $blockers[] = 'mcp_chatgpt_not_registered';

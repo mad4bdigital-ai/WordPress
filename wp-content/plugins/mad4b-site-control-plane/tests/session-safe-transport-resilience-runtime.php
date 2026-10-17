@@ -36,7 +36,7 @@ MAD4B_SCP_Read_Consistency::register_session_safe_report();
 $ability = $GLOBALS['abilities'][ MAD4B_SCP_Read_Consistency::SESSION_SAFE_REPORT_ABILITY ];
 $schema = $ability['input_schema']['properties']['diagnostic_scope'] ?? array();
 require_contract( $schema['default'] === 'full' &&
-    $schema['enum'] === array( 'full', 'identity' ),
+    $schema['enum'] === array( 'full', 'identity', 'triage' ),
     'Explicit low-cost identity diagnostics; full remains default' );
 require_contract( $ability['meta']['annotations']['readonly'] === true &&
     $ability['meta']['annotations']['destructive'] === false,

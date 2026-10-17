@@ -98,6 +98,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			self::redirect( 'autopilot_profile_readback_blocked' );
 		}
 		$sync = self::sync_wp_config_after_verified_save( $after );
+		self::bootstrap_host_binding_after_verified_save( $sync );
 		$state = (string) ( $sync['state'] ?? 'unknown' );
 		self::redirect( 'config_written_verified_new_request_required' === $state
 			? 'autopilot_config_written'
@@ -148,7 +149,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				), 500 );
 			}
 			$environment_sync = self::sync_wp_config_after_verified_save( $status );
+			$binding_bootstrap = self::bootstrap_host_binding_after_verified_save( $environment_sync );
 			wp_send_json_success( array(
+				'host_binding_bootstrap' => $binding_bootstrap,
 				'environment_sync' => $environment_sync,
 				'message' => __( 'Site Profile saved. WordPress bootstrap synchronization status is reported separately.', 'mad4b-site-control-plane' ),
 				'persistence_verified' => true,
@@ -176,6 +179,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			self::redirect( 'mad4b_site_profile_readback_mismatch' );
 		}
 		$environment_sync = self::sync_wp_config_after_verified_save( $status );
+		self::bootstrap_host_binding_after_verified_save( $environment_sync );
 		self::redirect( 'config_written_verified_new_request_required' === ( $environment_sync['state'] ?? '' )
 			? 'saved_environment_sync_written' : ( 'already_aligned' === ( $environment_sync['state'] ?? '' ) || 'not_requested' === ( $environment_sync['state'] ?? '' )
 			? 'saved' : 'saved_environment_sync_blocked' ) );
@@ -288,6 +292,28 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		return function_exists( 'wp_doing_ajax' ) && wp_doing_ajax();
 	}
 
+	/**
+	 * Single verified admin save: bootstrap once after Site Profile is fully
+	 * persisted. A wp-config environment change needs its own new request.
+	 * Return bounded status; no grants or silent fallback to remote approvals.
+	 */
+	private static function bootstrap_host_binding_after_verified_save( $sync ) {
+		$state = is_array( $sync ) ? (string) ( $sync['state'] ?? '' ) : '';
+		if ( ! in_array( $state, array( 'already_aligned', 'not_requested' ), true ) )
+			return array( 'state' => 'ENVIRONMENT_READBACK_REQUIRED', 'mutation_performed' => false );
+		if ( ! class_exists( 'MAD4B_SCP_Deployment_Binding_Native', false ) )
+			require_once __DIR__ . '/class-mad4b-scp-deployment-binding-native.php';
+		$result = MAD4B_SCP_Deployment_Binding_Native::profile_save_bootstrap();
+		if ( is_wp_error( $result ) )
+			return array( 'state' => 'BLOCKED', 'code' => $result->get_error_code(),
+				'mutation_performed' => false );
+		return is_array( $result ) ? array(
+			'state' => (string) ( $result['state'] ?? 'UNKNOWN' ),
+			'mutation_performed' => ! empty( $result['activation_bootstrap'] ),
+			'next_readback' => $result['next_readback'] ?? '',
+		) : array( 'state' => 'UNKNOWN', 'mutation_performed' => false );
+	}
+
 	private static function require_save_request() {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
 			if ( self::is_ajax_request() ) wp_send_json_error( array( 'code' => 'mad4b_site_profile_post_required', 'message' => __( 'Use the Site Profile save form.', 'mad4b-site-control-plane' ) ), 405 );
@@ -396,7 +422,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 					$plan = $autopilot['automation_plan'];
 					$lanes = isset( $plan['assistant_workflow'] ) && is_array( $plan['assistant_workflow'] ) ? $plan['assistant_workflow'] : array();
 				?>
-				<h3><?php esc_html_e( 'Ordered Staging recovery — independent gates', 'mad4b-site-control-plane' ); ?></h3>
+				<h3><?php esc_html_e( 'Ordered Staging recovery â€” independent gates', 'mad4b-site-control-plane' ); ?></h3>
 				<p><?php echo esc_html( sprintf( 'Next: %s | Owner: %s | Profile revision: %d',
 					(string) ( $plan['next_action_id'] ?? 'none' ), (string) ( $plan['responsible_actor'] ?? 'none' ),
 					(int) ( $plan['profile_identity']['revision'] ?? 0 ) ) ); ?></p>
@@ -417,7 +443,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			</div>
 			<?php if ( 'REVIEW_REQUIRED' === ( $legacy_migration['status'] ?? '' ) ) : ?>
 			<div class="notice notice-warning" style="max-width:950px;padding:1em">
-				<p><strong><?php esc_html_e( 'Legacy Site Profile identity detected — not imported', 'mad4b-site-control-plane' ); ?></strong></p>
+				<p><strong><?php esc_html_e( 'Legacy Site Profile identity detected â€” not imported', 'mad4b-site-control-plane' ); ?></strong></p>
 				<p><?php esc_html_e( 'Status reads never import legacy identity or grant access. Administrators may migrate this exact identity, then reenroll features independently.', 'mad4b-site-control-plane' ); ?></p>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_LEGACY_MIGRATE ); ?>">
@@ -431,7 +457,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<?php endif; ?>
 			<table class="widefat striped" style="max-width:1000px;margin:1em 0">
 				<tbody>
-				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> · <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. For an administrator-confirmed Staging profile, Host-Managed Sync attempts a guarded automatic wp-config.php correction on Save. The new environment is effective from the next WordPress request. Explicit host configuration and unwritable/ambiguous files are never overridden.', 'mad4b-site-control-plane' ); ?></p>
+				<tr><th><?php esc_html_e( 'Environment sync mode', 'mad4b-site-control-plane' ); ?></th><td><strong><?php echo esc_html( $sync_mode ); ?></strong> Â· <code><?php echo esc_html( $sync_state ); ?></code><p class="description"><?php esc_html_e( 'Profile Only changes MAD4B policy. For an administrator-confirmed Staging profile, Host-Managed Sync attempts a guarded automatic wp-config.php correction on Save. The new environment is effective from the next WordPress request. Explicit host configuration and unwritable/ambiguous files are never overridden.', 'mad4b-site-control-plane' ); ?></p>
 				<?php if ( 'blocked_missing_deployment_binding' === $sync_state ) : ?><div class="notice notice-warning inline"><p><?php esc_html_e( 'Host deployment binding is missing. If WordPress already reports explicit Staging, the environment is aligned; this warning concerns clone-safe Host identity and selected-HEAD operations only. Provision a unique host-private MAD4B_SCP_DEPLOYMENT_BINDING, then save the exact Site Profile to bind its digest. Never reuse a Production secret.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
 				<?php if ( 'blocked_explicit_host_conflict' === $sync_state ) : ?><div class="notice notice-error inline"><p><?php esc_html_e( 'Host declares another environment explicitly. Site Profile cannot override it; reconcile at the Host after checking its identity.', 'mad4b-site-control-plane' ); ?></p></div><?php endif; ?>
 				<?php if ( '' !== $host_directive ) : ?>
@@ -448,7 +474,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 				<tr><th><?php esc_html_e( 'Site UUID', 'mad4b-site-control-plane' ); ?></th><td><code><?php echo esc_html( (string) $status['site_uuid'] ); ?></code></td></tr>
 				<tr><th><?php esc_html_e( 'Revision', 'mad4b-site-control-plane' ); ?></th><td><?php echo esc_html( (string) $status['revision'] ); ?></td></tr>
 				<tr><th><?php esc_html_e( 'Origin binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['origin_match'] ) && ! empty( $status['environment_match'] ) && ! empty( $status['deployment_binding_match'] ) ? 'PASS' : 'BLOCKED'; ?></td></tr>
-				<tr><th><?php esc_html_e( 'Deployment binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['deployment_binding_configured'] ) ? esc_html__( 'Configured', 'mad4b-site-control-plane' ) : esc_html__( 'Not configured', 'mad4b-site-control-plane' ); ?> · <?php echo ! empty( $status['same_origin_clone_protection'] ) ? esc_html__( 'same-origin clone protection active', 'mad4b-site-control-plane' ) : esc_html__( 'database/origin binding only', 'mad4b-site-control-plane' ); ?></td></tr>
+				<tr><th><?php esc_html_e( 'Deployment binding', 'mad4b-site-control-plane' ); ?></th><td><?php echo ! empty( $status['deployment_binding_configured'] ) ? esc_html__( 'Configured', 'mad4b-site-control-plane' ) : esc_html__( 'Not configured', 'mad4b-site-control-plane' ); ?> Â· <?php echo ! empty( $status['same_origin_clone_protection'] ) ? esc_html__( 'same-origin clone protection active', 'mad4b-site-control-plane' ) : esc_html__( 'database/origin binding only', 'mad4b-site-control-plane' ); ?></td></tr>
 				</tbody>
 			</table>
 

@@ -153,7 +153,7 @@ final class MAD4B_SCP_Read_Consistency {
 							'maxLength' => 64,
 						),
 						'retry_transient_reads' => array( 'type' => 'boolean', 'default' => true ),
-						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity' ), 'default' => 'full' ),
+						'diagnostic_scope' => array( 'type' => 'string', 'enum' => array( 'full', 'identity', 'triage' ), 'default' => 'full' ),
 						'budget_ms' => array(
 							'type' => 'integer',
 							'minimum' => 4000,
@@ -463,10 +463,11 @@ final class MAD4B_SCP_Read_Consistency {
 		$transaction_id = self::transaction_id( isset( $input['read_transaction_id'] ) ? $input['read_transaction_id'] : '' );
 		$expected_generation = isset( $input['expected_runtime_generation'] ) ? strtolower( trim( (string) $input['expected_runtime_generation'] ) ) : '';
 		$retry = ! array_key_exists( 'retry_transient_reads', $input ) || ! empty( $input['retry_transient_reads'] );
-		// Keep full diagnostics as the default for compatibility, while allowing
-		// a low-cost identity-only probe when transport latency is high.
-		$scope = isset( $input['diagnostic_scope'] ) && 'identity' === (string) $input['diagnostic_scope']
-			? 'identity' : 'full';
+		// Full remains the legacy default. Explicit triage limits synchronous
+		// MCP read cost to identity + runtime, so optional provider and deep
+		// certification errors cannot terminate a simple operator diagnosis.
+		$requested_scope = isset( $input['diagnostic_scope'] ) ? (string) $input['diagnostic_scope'] : 'full';
+		$scope = in_array( $requested_scope, array( 'full', 'identity', 'triage' ), true ) ? $requested_scope : 'full';
 		$budget_ms = isset( $input['budget_ms'] )
 			? max( 4000, min( self::MAX_SESSION_SAFE_BUDGET_MS, absint( $input['budget_ms'] ) ) )
 			: self::DEFAULT_SESSION_SAFE_BUDGET_MS;
@@ -498,7 +499,7 @@ final class MAD4B_SCP_Read_Consistency {
 		$stop_reason = '';
 
 		foreach ( self::bundle_names() as $index => $bundle ) {
-			if ( 'identity' === $scope && 'identity' !== $bundle ) {
+			if ( 'full' !== $scope && ( 'identity' === $scope ? 'identity' !== $bundle : ! in_array( $bundle, array( 'identity', 'runtime' ), true ) ) ) {
 				$partial = true;
 				$sections[ $bundle ] = array(
 					'state' => 'deferred_scope', 'partial' => true,
@@ -661,6 +662,11 @@ final class MAD4B_SCP_Read_Consistency {
 				'server_sequential_execution' => true,
 				'direct_parallel_fanout_required' => false,
 				'direct_composite_fanout_allowed' => false,
+				// Client-side advisory: WP cannot serialize independent remote calls.
+				'client_max_inflight_per_site_recommended' => 1,
+				'client_dispatch_policy' => 'serialize_per_site_and_use_generation_pinned_receipts',
+				'client_read_failure_action' => 'verify_generation_then_reprepare_read',
+				'blind_mutation_retry_allowed' => false,
 				'max_response_bytes' => self::MAX_SESSION_SAFE_REPORT_BYTES,
 			),
 			'client_action' => $partial ? 'inspect_partial_report_then_retry_missing_scope' : 'use_report_without_parallel_status_fanout',
@@ -1184,6 +1190,14 @@ final class MAD4B_SCP_Read_Consistency {
 		$provider = class_exists( 'MAD4B_SCP_Provider_Contracts' ) && method_exists( 'MAD4B_SCP_Provider_Contracts', 'runtime_identity_status' )
 			? MAD4B_SCP_Provider_Contracts::runtime_identity_status( 'mcp_adapter', $adapter_available )
 			: array();
+		$adapter_identity_ok = ! empty( $provider['identity_contract_ok'] );
+		$adapter_read_observation = ! $adapter_identity_ok
+			&& $adapter_available
+			&& class_exists( 'MAD4B_SCP_Dependency_Manager' )
+			&& method_exists( 'MAD4B_SCP_Dependency_Manager', 'adapter_read_runtime_observation' )
+			? MAD4B_SCP_Dependency_Manager::adapter_read_runtime_observation() : array();
+		$adapter_read_compatible = $adapter_identity_ok
+			|| ! empty( $adapter_read_observation['read_runtime_ready'] );
 		$handshake = class_exists( 'MAD4B_SCP_External_Handshake_Evidence' ) && method_exists( 'MAD4B_SCP_External_Handshake_Evidence', 'persisted_identity_status' )
 			? MAD4B_SCP_External_Handshake_Evidence::persisted_identity_status()
 			: array();
@@ -1192,7 +1206,8 @@ final class MAD4B_SCP_Read_Consistency {
 			'profile_environment_match' => ! empty( $profile['environment_match'] ),
 			'profile_origin_match' => ! empty( $profile['origin_match'] ),
 			'adapter_available' => $adapter_available,
-			'adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'adapter_identity_ok' => $adapter_identity_ok,
+			'adapter_read_compatible' => $adapter_read_compatible,
 			'chatgpt_actual_registered' => ! empty( $chatgpt['registered'] ),
 		);
 		$projection = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'session_connection_identity' )
@@ -1205,7 +1220,9 @@ final class MAD4B_SCP_Read_Consistency {
 			'environment' => isset( $profile['environment'] ) ? sanitize_key( (string) $profile['environment'] ) : '',
 			'control_plane_version' => defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '',
 			'mcp_adapter_available' => $adapter_available,
-			'mcp_adapter_identity_ok' => ! empty( $provider['identity_contract_ok'] ),
+			'mcp_adapter_identity_ok' => $adapter_identity_ok,
+			'mcp_adapter_read_compatible' => $adapter_read_compatible,
+			'mcp_adapter_exact_write_certification_deferred' => ! $adapter_identity_ok,
 			'chatgpt_registered' => ! empty( $chatgpt['registered'] ),
 			'chatgpt_materialized' => ! empty( $chatgpt['materialized'] ),
 			'chatgpt_tool_count' => isset( $chatgpt['tool_count'] ) ? max( 0, (int) $chatgpt['tool_count'] ) : 0,

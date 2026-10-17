@@ -105,8 +105,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-automation-slo.php",
-      "sha256": "cdd3e6e4925888e78df49af98f0386cc5edad84d3ae0638a77b59994c5fca1d5",
-      "bytes": 37466
+      "sha256": "ade6b62f3922533f64d37170787aa1442c5bef37d1695144ad77dce3674dd684",
+      "bytes": 39270
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-runtime-convergence.php",
@@ -115,13 +115,13 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
-      "sha256": "380b916c7f5b1e242a3d8e1b4193447368038d18316a90612bcd9310e1257884",
-      "bytes": 114143
+      "sha256": "9233ad1c675a0dda19464d4e9e3e2ffc54b819916c5b0ad7bb2dfa8b45a8a01c",
+      "bytes": 127017
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "9b205909fbcd47780d5c614400e62be8753ac07d21060afd978e34318bd40d49",
-      "bytes": 23479
+      "sha256": "85e9e732c80dfbaff615eb2603b14eb40050e55cc9c31dcc30cce6400dcd1925",
+      "bytes": 28114
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-restore-convergence.php",
@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "350d0286ec0eaed384e5e8f2e3c80958ed9aad8d8095a831b0bab2f99d30a429",
-      "bytes": 50121
+      "sha256": "84d53fd740f6db40ff837c78d86510daaefec23ed7638ffc69157cc9ae1cfa6f",
+      "bytes": 50572
     }
   ],
   "test_paths": [
@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "ae6974674c22e2d7aabcad3c660b34f0f6f544be02c8ccb55b8f482531d1130c",
-      "bytes": 48206
+      "sha256": "be110ef1275fb3ee0aea7a9a46215896b08659014924f23328a18fad219d9ae5",
+      "bytes": 54038
     }
   ],
   "repository_foundations": [

@@ -176,7 +176,9 @@ final class MAD4B_SCP_Full_Staging_Authority {
 				'mad4b_full_staging_authority' => self::CONTRACT,
 				'production_allowed' => false,
 				'generic_raw_sql_breakglass_included' => false,
-				'chatgpt_direct_step_up' => ! $readonly && 'enrollment' === sanitize_key( (string) $surface ),
+				'generic_remote_admin' => false,
+                'production_mutation_allowed' => false,
+                'chatgpt_direct_step_up' => ! $readonly && 'enrollment' === sanitize_key( (string) $surface ),
 				'exact_chatgpt_client_required' => ! $readonly && 'enrollment' === sanitize_key( (string) $surface ),
 			),
 			'annotations' => array(
@@ -302,6 +304,41 @@ final class MAD4B_SCP_Full_Staging_Authority {
 		);
 	}
 
+	/**
+	 * A full-authority handshake must not recursively run the independent
+	 * Staging Write handshake while projecting its result. That duplicates
+	 * read and generation snapshots, inflates MCP response size and can cause
+	 * caller-side timeouts. The exact Write-only plan remains available through
+	 * the independently permission-gated owner-review read Ability, which is
+	 * prepared and executed with its own fresh signed schema/authority receipt.
+	 *
+	 * Never return a cached or synthesized plan digest here, and never infer
+	 * owner consent from this routing hint.
+	 */
+	private static function write_only_handoff( $expected_generation = '' ) {
+		unset( $expected_generation );
+		return array(
+			'contract' => 'mad4b.staging-write-only-owner-handoff.v1',
+			'state' => 'separate_governed_read_required',
+			'authority_scope' => 'governed_staging_write_only',
+			'authority_effect' => 'none',
+			'developer_authority_requested' => false,
+			'developer_breakglass_requested' => false,
+			'production_mutation_allowed' => false,
+			'authorizing' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+			'owner_review_evaluated' => false,
+			'exact_apply_available' => false,
+			'owner_review_read_ability' => 'mad4b/staging-write-owner-review',
+			'owner_reconciliation_diagnostic_ability' => 'mad4b/staging-write-owner-reconciliation-diagnose',
+			'apply_ability' => 'mad4b/staging-write-authority-convergence-apply',
+			'client_action' => 'prepare_one_owner_review_then_governed_read_execute_and_revalidate_before_step_up',
+			'blind_apply_allowed' => false,
+			'external_mcp_parallel_reads_required' => false,
+		);
+	}
+
 	public static function handshake() {
 		$access = self::can_access();
 		if ( is_wp_error( $access ) || ! $access ) return $access;
@@ -392,6 +429,7 @@ final class MAD4B_SCP_Full_Staging_Authority {
 					'client_action' => ! empty( $plan['ready_to_apply'] ) ? 'apply_exact_handshake' : 'repair_blockers_then_request_fresh_handshake',
 					'deep_status_direct_projection' => false,
 					'deep_plan_direct_projection' => false,
+					'write_only_handoff' => self::write_only_handoff( (string) ( $after['runtime_generation'] ?? '' ) ),
 					'deep_reads_available_via_governed_dispatch' => true,
 				);
 			},

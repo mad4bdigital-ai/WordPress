@@ -227,10 +227,13 @@ final class MAD4B_SCP_Runtime_Convergence {
 			? MAD4B_SCP_Staging_Write_Authority::candidate_binding_status()
 			: array();
 		$write_effective = class_exists( 'MAD4B_SCP_Staging_Write_Authority' ) && MAD4B_SCP_Staging_Write_Authority::effective();
-		$rest = class_exists( 'MAD4B_SCP_REST_Compatibility' ) ? MAD4B_SCP_REST_Compatibility::status() : array();
+		// Optional diagnostic providers must not crash the critical Deployment,
+		// Skills and Write readback. Fail closed, with typed missing evidence.
+		$optional_incidents = array();
+		$rest = self::read_optional_observation( 'MAD4B_SCP_REST_Compatibility', 'rest_compatibility', $optional_incidents );
 		$external_wpml = isset( $rest['external_wpml_acceptance'] ) && is_array( $rest['external_wpml_acceptance'] ) ? $rest['external_wpml_acceptance'] : array();
-		$providers = class_exists( 'MAD4B_SCP_Provider_Closure_Matrix' ) ? MAD4B_SCP_Provider_Closure_Matrix::matrix() : array();
-		$performance = class_exists( 'MAD4B_SCP_Admin_Query_Performance' ) ? MAD4B_SCP_Admin_Query_Performance::status() : array();
+		$providers = self::read_optional_observation( 'MAD4B_SCP_Provider_Closure_Matrix', 'provider_closure', $optional_incidents );
+		$performance = self::read_optional_observation( 'MAD4B_SCP_Admin_Query_Performance', 'query_performance', $optional_incidents );
 		$local_oauth = class_exists( 'MAD4B_SCP_Local_OAuth_Server', false ) && method_exists( 'MAD4B_SCP_Local_OAuth_Server', 'runtime_identity_status' )
 			? MAD4B_SCP_Local_OAuth_Server::runtime_identity_status()
 			: array();
@@ -295,6 +298,16 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'candidate_binding_match' => $binding_match,
 				'current_source_commit_sha' => isset( $candidate_binding['current_source_commit_sha'] ) ? (string) $candidate_binding['current_source_commit_sha'] : '',
 				'stored_source_commit_sha' => isset( $candidate_binding['stored_source_commit_sha'] ) ? (string) $candidate_binding['stored_source_commit_sha'] : '',
+                'manual_owner_review_path' => 'tools.php?page=mad4b-staging-write-owner-review',
+                'manual_owner_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
+                'remote_handshake_ability' => 'mad4b/staging-write-authority-convergence-handshake',
+                'remote_apply_ability' => 'mad4b/staging-write-authority-convergence-apply',
+                'remote_apply_confirmation' => 'ENABLE GOVERNED STAGING WRITE AUTHORITY',
+                'remote_oauth_step_up_scope' => 'mad4b:authority:step-up',
+                'after_owner_approval' => 'exact_owner_intent_then_governed_remote_apply_then_independent_write_readback',
+                'post_readback_ability' => 'mad4b/staging-write-authority-convergence-status',
+                'safe_runtime_resumption' => 'requires_separate_signed_automation_policy_opt_in_and_slo_ticket',
+                'approval_itself_mutates_grants' => false,
 			) ),
 			'external_acceptance' => self::phase( 'external_acceptance', $wpml_verified ? 'ready' : 'pending', $wpml_required, array( 'deployment', 'schema' ), false, array(
 				'wpml_required' => $wpml_required,
@@ -304,7 +317,7 @@ final class MAD4B_SCP_Runtime_Convergence {
 				'response_status' => isset( $external_wpml['response_status'] ) ? (int) $external_wpml['response_status'] : 0,
 				'internal_rest_state' => isset( $rest['wpml']['state'] ) ? sanitize_key( (string) $rest['wpml']['state'] ) : '',
 			) ),
-			'provider_closure' => self::phase( 'provider_closure', empty( $providers['provider_gated_count'] ) ? 'ready' : 'conditional_gate', false, array( 'schema', 'managed_skills' ), false, array(
+			'provider_closure' => self::phase( 'provider_closure', ! isset( $providers['provider_gated_count'] ) ? 'unverified' : ( 0 === (int) $providers['provider_gated_count'] ? 'ready' : 'conditional_gate' ), false, array( 'schema', 'managed_skills' ), false, array(
 				'provider_gated_count' => isset( $providers['provider_gated_count'] ) ? (int) $providers['provider_gated_count'] : 0,
 				'closure_class_counts' => isset( $providers['closure_class_counts'] ) && is_array( $providers['closure_class_counts'] ) ? $providers['closure_class_counts'] : array(),
 			) ),
@@ -362,10 +375,130 @@ final class MAD4B_SCP_Runtime_Convergence {
 			'phases' => $phases,
 			'required_blockers' => $required_blockers,
 			'checkpoint' => is_array( $checkpoint ) ? $checkpoint : array(),
+			'checkpoint_operator_state' => self::checkpoint_operator_state( $checkpoint, $identity, $required_blockers ),
+			'optional_diagnostic_incidents' => $optional_incidents,
+			'guided_next_actions' => self::guided_next_actions( $phases, $order ),
+			'diagnostic_retry_policy' => self::diagnostic_retry_policy(),
 			'automatic_checkpoint_gate' => self::automatic_checkpoint_gate( $checkpoint ),
 			'dynamic_extension_filter' => 'mad4b_scp_runtime_convergence_phases',
 			'read_only' => true,
 			'mutation_performed' => false,
+		);
+	}
+
+	/** Fail-closed optional read adapter; never expose raw exception messages. */
+	private static function read_optional_observation( $class, $id, array &$incidents ) {
+		if ( ! class_exists( $class ) || ! method_exists( $class, 'status' ) && ! method_exists( $class, 'matrix' ) ) {
+			$incidents[] = $id . '_unavailable';
+			return array();
+		}
+		try {
+			$method = 'MAD4B_SCP_Provider_Closure_Matrix' === $class ? 'matrix' : 'status';
+			$observed = call_user_func( array( $class, $method ) );
+			if ( ! is_array( $observed ) ) {
+				$incidents[] = $id . '_invalid_response';
+				return array();
+			}
+			return $observed;
+		} catch ( Throwable $error ) {
+			$incidents[] = $id . '_internal_exception';
+			return array();
+		}
+	}
+
+	/**
+	 * Distinguish an old activation checkpoint from an active blocker. A saved
+	 * record is audit history, not permission to replay an earlier package.
+	 * The original checkpoint is preserved unchanged.
+	 */
+	public static function checkpoint_operator_state( $checkpoint, $identity, $required_blockers ) {
+		$checkpoint = is_array( $checkpoint ) ? $checkpoint : array();
+		$identity = is_array( $identity ) ? $identity : array();
+		$required_blockers = is_array( $required_blockers ) ? $required_blockers : array( 'readiness_unverified' );
+		$current = strtolower( trim( (string) ( $identity['source_commit_sha'] ?? '' ) ) );
+		$target = isset( $checkpoint['target_identity']['source_commit_sha'] )
+			? strtolower( trim( (string) $checkpoint['target_identity']['source_commit_sha'] ) ) : '';
+		$state = isset( $checkpoint['state'] ) ? (string) $checkpoint['state'] : '';
+		if ( '' === $state ) $outcome = 'no_checkpoint';
+		elseif ( 1 !== preg_match( '/^[a-f0-9]{40}$/', $current ) || 1 !== preg_match( '/^[a-f0-9]{40}$/', $target ) ) $outcome = 'checkpoint_identity_unverified';
+		elseif ( ! hash_equals( $current, $target ) ) $outcome = empty( $required_blockers ) ? 'superseded_audit_only' : 'historical_checkpoint_independent_blockers';
+		else $outcome = empty( $required_blockers ) ? 'current_candidate_core_ready' : 'current_candidate_requires_reconciliation';
+		return array(
+			'contract' => 'mad4b.runtime-checkpoint-operator.v1',
+			'state' => $outcome,
+			'persisted_state' => $state,
+			'current_source_commit_sha' => $current,
+			'checkpoint_source_commit_sha' => $target,
+			'checkpoint_matches_current_build' => 1 === preg_match( '/^[a-f0-9]{40}$/', $current ) && 1 === preg_match( '/^[a-f0-9]{40}$/', $target ) && hash_equals( $current, $target ),
+			'current_required_blockers' => array_values( array_slice( $required_blockers, 0, 12 ) ),
+			'replay_old_checkpoint_allowed' => false,
+			'checkpoint_modified' => false,
+			'read_only' => true,
+		);
+	}
+
+	/**
+	 * Single guided read-only handoff for Deployment -> Skills -> Write ->
+	 * provider coverage -> external acceptance. Never dispatches writes.
+	 */
+	public static function guided_next_actions( $phases, $order ) {
+		$phases = is_array( $phases ) ? $phases : array();
+		$order = is_array( $order ) ? $order : array();
+		$abilities = array(
+			'deployment' => 'mad4b/deployment-binding-status',
+			'schema' => 'mad4b/runtime-convergence-plan',
+			'local_oauth_store' => 'mad4b/runtime-convergence-plan',
+			'managed_skills' => 'mad4b/skills-runtime-certification',
+			'authority_binding' => 'mad4b/staging-write-authority-convergence-handshake',
+			'provider_closure' => 'mad4b/provider-closure-matrix',
+			'external_acceptance' => 'mad4b/browser-acceptance-plan',
+			'performance_advisory' => 'mad4b/frontend-performance-status',
+		);
+		$steps = array();
+		$next = '';
+		foreach ( array_slice( $order, 0, 20 ) as $phase_id ) {
+			if ( ! is_string( $phase_id ) || ! isset( $phases[ $phase_id ] ) || ! is_array( $phases[ $phase_id ] ) ) continue;
+			$phase = $phases[ $phase_id ];
+			$state = isset( $phase['state'] ) ? (string) $phase['state'] : 'unknown';
+			$required = ! empty( $phase['required'] );
+			$auto_safe = ! empty( $phase['auto_safe'] );
+			if ( 'ready' === $state ) $lane = $required ? 'verified_core_only' : 'optional_phase_no_release_attestation';
+			elseif ( $required && $auto_safe ) $lane = 'bounded_safe_reconciliation';
+			elseif ( 'authority_binding' === $phase_id || 'owner_gate' === $state ) $lane = 'exact_owner_gate';
+			else $lane = 'independent_evidence_or_manual_review';
+			if ( '' === $next && 'ready' !== $state && ( $required || 'provider_closure' === $phase_id ) ) $next = $phase_id;
+			$steps[] = array(
+				'phase' => $phase_id,
+				'state' => $state,
+				'required_for_core' => $required,
+				'processing_lane' => $lane,
+				'next_read_or_plan_ability' => isset( $abilities[ $phase_id ] ) ? $abilities[ $phase_id ] : 'mad4b/runtime-convergence-status',
+				'automatic_mutation_triggered' => false,
+				'external_browser_verified' => false,
+				'production_release_certified' => false,
+			);
+		}
+		return array( 'contract' => 'mad4b.guided-convergence-handoff.v1', 'next_phase' => $next, 'steps' => $steps, 'owner_approval_bypassed' => false, 'production_authorized' => false, 'mutation_performed' => false );
+	}
+
+	/**
+	 * Document a single-call fallback for transient MCP internal/timeout errors:
+	 * never replay an uncertain write and never parallel-fan-out deep reads.
+	 */
+	public static function diagnostic_retry_policy() {
+		return array(
+			'contract' => 'mad4b.diagnostic-recovery-route.v1',
+			'initial_read' => 'mad4b/session-safe-diagnostics',
+			'initial_scope' => 'triage',
+			'fallback_read' => 'mad4b/read-snapshot-header',
+			'followup_read' => 'mad4b/read-diagnostic-bundle',
+			'followup_scope' => 'one_generation_bound_bundle_per_request',
+			'parallel_deep_probe_allowed' => false,
+			'retry_uncertain_mutation_allowed' => false,
+			'frontend_origin_500_is_release_acceptance' => false,
+			'public_browser_challenge_403_is_browser_acceptance' => false,
+			'owner_gate_skip_allowed' => false,
+			'read_only' => true,
 		);
 	}
 
@@ -682,6 +815,91 @@ final class MAD4B_SCP_Runtime_Convergence {
 			? $stored
 			: new WP_Error( 'mad4b_runtime_convergence_checkpoint_block_failed', 'Self-update convergence checkpoint could not be quarantined.' );
 	}
+
+    /**
+     * Pure, side-effect-free evaluation of a *previously denied* automatic
+     * safe-phase checkpoint after an explicitly approved automation switch
+     * change. This is NOT a write/Production authority transition.
+     */
+    public static function opt_in_recovery_preflight( $checkpoint, $switch, $identity_match ) {
+        $result = array( 'contract'=>'mad4b.runtime-safe-opt-in.v1',
+            'state'=>'BLOCKED', 'reason'=>'invalid_checkpoint', 'eligible'=>false,
+            'authorizing'=>false, 'mutation_performed'=>false, 'production_mutation'=>false );
+        if ( ! is_array( $checkpoint ) || ! is_array( $switch )
+            || 'pending_manual_resume' !== ( $checkpoint['state'] ?? '' )
+            || ! in_array( $checkpoint['source'] ?? '', array( 'plugin_activation', 'self_update' ), true )
+            || 'mad4b_automation_automation_kill_switch' !== ( $checkpoint['resume_blocker'] ?? '' ) )
+            return $result;
+        if ( ! is_bool( $identity_match ) || ! $identity_match ) {
+            $result['reason'] = 'exact_runtime_changed'; return $result;
+        }
+        if ( empty( $switch['integrity_valid'] ) || ! is_array( $switch['scopes'] ?? null ) ) {
+            $result['reason'] = 'switch_integrity_invalid'; return $result;
+        }
+        foreach ( array( '*', 'runtime-convergence:*', 'runtime-convergence:safe-phases' ) as $scope ) {
+            if ( ! empty( $switch['scopes'][ $scope ] ) ) {
+                $result['reason'] = 'automation_scope_still_paused'; return $result;
+            }
+        }
+        $result['state'] = 'SCHEDULE_SAFE_PHASES_ELIGIBLE';
+        $result['reason'] = '';
+        $result['eligible'] = true;
+        return $result;
+    }
+
+    /**
+     * Called ONLY after WP Admin's nonce-protected change_switch() succeeded.
+     * Replay of failed/unknown SLO outcomes remains prohibited: the checkpoint
+     * must be paused for the EXACT kill-switch reason, not another blocker.
+     */
+    public static function resume_after_automation_policy_opt_in() {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin()
+            || ! current_user_can( 'manage_options' )
+            || 'staging' !== ( class_exists( 'MAD4B_SCP_Environment' )
+                ? MAD4B_SCP_Environment::effective()
+                : ( function_exists( 'wp_get_environment_type' ) ? wp_get_environment_type() : '' ) ) )
+            return array( 'state'=>'ADMIN_STAGING_REQUIRED', 'scheduled'=>false );
+        $checkpoint = get_option( self::CHECKPOINT_OPTION, array() );
+        if ( ! is_array( $checkpoint ) || ! class_exists( 'MAD4B_SCP_Automation_SLO', false ) )
+            return array( 'state'=>'CHECKPOINT_OR_POLICY_UNAVAILABLE', 'scheduled'=>false );
+        // An obsolete paused record is not a license to rerun ready phases.
+        // Keep it for independent historical checkpoint review.
+        $graph = self::status();
+        if ( is_array( $graph ) && 'ready' === ( $graph['state'] ?? '' ) )
+            return array( 'state'=>'ALREADY_CONVERGED_HISTORICAL_CHECKPOINT', 'scheduled'=>false,
+                'owner_write_granted'=>false, 'production_mutation'=>false );
+        $target = is_array( $checkpoint['target_identity'] ?? null ) ? $checkpoint['target_identity'] : array();
+        $current = self::current_identity();
+        $same = self::automatic_identity_safe( $target )
+            && self::identity_matches( $target, $current );
+        $status = self::opt_in_recovery_preflight( $checkpoint,
+            MAD4B_SCP_Automation_SLO::switch_status(), (bool) $same );
+        if ( ! $status['eligible'] )
+            return array( 'state'=>$status['reason'], 'scheduled'=>false );
+        $next = $checkpoint;
+        $next['state'] = 'pending_safe_phases';
+        $next['automatic_retry_allowed'] = true;
+        $next['retry_policy'] = 'approved_safe_phase_opt_in_subject_to_slo_ticket';
+        $next['updated_at'] = gmdate( 'c' );
+        unset( $next['resume_blocker'] );
+        // Two-phase safe handoff: queue an inert Cron wakeup BEFORE allowing
+        // the checkpoint to become executable. A scheduling failure now leaves
+        // the previous paused checkpoint untouched; no rollback CAS is needed.
+        $scheduled = self::schedule_resume( self::maintenance_not_before() );
+        if ( ! $scheduled )
+            return array( 'state'=>'WP_CRON_NOT_SCHEDULED', 'scheduled'=>false,
+                'checkpoint_unchanged'=>true, 'owner_write_granted'=>false, 'production_mutation'=>false );
+        // A racing or failed CAS leaves an orphaned wakeup, never an executable
+        // checkpoint: Cron independently checks its pending-safe-phase fence
+        // and obtains a fresh SLO ticket before any work.
+        $committed = self::automatic_checkpoint_cas( $checkpoint, $next );
+        if ( is_wp_error( $committed ) || true !== $committed )
+            return array( 'state'=>'CHECKPOINT_CAS_FAILED', 'scheduled'=>true,
+                'checkpoint_activation_unverified'=>true,
+                'owner_write_granted'=>false, 'production_mutation'=>false );
+        return array( 'state'=>'SAFE_PHASES_QUEUED_FOR_SLO_ADMISSION',
+            'scheduled'=>true, 'owner_write_granted'=>false, 'production_mutation'=>false );
+    }
 
 	public static function maybe_schedule_pending() {
 		if ( class_exists( 'MAD4B_SCP_MCP_Request_Scope', false ) && MAD4B_SCP_MCP_Request_Scope::current_request_is_protocol_hotpath() ) return;
@@ -1124,9 +1342,14 @@ final class MAD4B_SCP_Runtime_Convergence {
 		$minimum = max( time() + 5, absint( $not_before ), self::maintenance_not_before() );
 		$next = wp_next_scheduled( self::CRON_HOOK );
 		if ( false !== $next && (int) $next >= $minimum ) return true;
-		if ( false !== $next && function_exists( 'wp_clear_scheduled_hook' ) ) wp_clear_scheduled_hook( self::CRON_HOOK );
+		// Preserve a previously queued event if scheduling the replacement fails.
+		// Clearing the entire hook first could silently lose the only recovery job.
 		$scheduled = wp_schedule_single_event( $minimum, self::CRON_HOOK, array(), true );
-		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) return true;
+		if ( ! is_wp_error( $scheduled ) && false !== $scheduled ) {
+			if ( false !== $next && (int) $next < $minimum && function_exists( 'wp_unschedule_event' ) )
+				wp_unschedule_event( (int) $next, self::CRON_HOOK, array(), true );
+			return true;
+		}
 		$next = wp_next_scheduled( self::CRON_HOOK );
 		return false !== $next && (int) $next >= $minimum;
 	}

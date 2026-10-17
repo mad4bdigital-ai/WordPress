@@ -39,9 +39,9 @@ assert "MAD4B_SCP_Guided_Operator_Experience::render( $snapshot )" in operator
 assert 'Advanced setup reference' in operator
 assert '.mad4b-guided-step.is-next' in css and '@media (max-width:782px)' in css
 assert 'Review exact decision boundary' in approval and 'Unknown impact is never assumed safe.' in approval
-assert "A WordPress acceptance adapter is missing." in browser
-assert "Saved browser preference needs correction." in browser
-assert "Verify external browser execution and receipt." in browser
+assert "Native Hybrid (WP-Cron + my admin browser, recommended)" in browser
+assert "Native Hybrid uses this administrator browser with WP-Cron where available." in browser
+assert "Release gate stays BLOCKED until a valid WordPress adapter" in browser
 assert "Managed Skills need verification" in skills
 assert "implicit_nonproduction_override_confirmed" in environment and "$confirmed_default" in environment
 catalog = gettext.GNUTranslations((root / 'languages/mad4b-site-control-plane-ar.mo').open('rb'))

@@ -572,8 +572,12 @@ final class MAD4B_SCP_Unified_Capability_Gateway {
 		}
 		if ( in_array( $lane, array( 'write', 'content', 'admin' ), true ) && ( ! isset( $row['readonly'] ) || false !== $row['readonly'] ) ) return array( 'state' => 'blocked', 'blocker' => 'write_dispatch_requires_mutation_annotation', 'transport' => 'none' );
 		if ( 'enrollment' === $lane ) {
+			$resolved_id = class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+				? MAD4B_SCP_Governed_Ability_Census::operation_id_for( $ability_name ) : '';
 			return array(
 				'state' => 'requires_operation_resolution',
+				'resolved_operation_id' => $resolved_id,
+				'registry_verified_first_party' => '' !== $resolved_id,
 				'blocker' => 'enrollment_operation_resolution_required',
 				'transport' => 'mcp',
 				'server' => 'mad4b-chatgpt',

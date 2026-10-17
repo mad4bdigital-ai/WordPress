@@ -690,6 +690,44 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		return is_wp_error( $persisted ) ? $persisted : $error;
 	}
 
+	/**
+	 * A checkpointed batch releases its lease after persisting its cursor.
+	 * An unlocked running checkpoint on the SAME exact build is expected,
+	 * not intrinsically stale. This only authorizes a read-only resume hint;
+	 * the next write still requires fresh OAuth/permission/exact identity.
+	 */
+	public static function skills_checkpoint_resume_policy( $checkpoint, $identity_current, $lock_active ) {
+		$checkpoint = is_array( $checkpoint ) ? $checkpoint : array();
+		$status = isset( $checkpoint['status'] ) ? sanitize_key( (string) $checkpoint['status'] ) : 'idle';
+		$stage = isset( $checkpoint['stage'] ) ? sanitize_key( (string) $checkpoint['stage'] ) : '';
+		$operation_id = isset( $checkpoint['operation_id'] ) ? (string) $checkpoint['operation_id'] : '';
+		$valid_id = 1 === preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $operation_id );
+		$valid_stage = in_array( $stage, array(
+			'preflight', 'seed_reconciliation', 'seed_ready',
+			'provider_reconciliation', 'provider_ready', 'runtime_certification',
+		), true );
+		$resumable = 'running' === $status && ! $lock_active
+			&& $identity_current && $valid_id && $valid_stage;
+		$state = 'running' === $status && ! $lock_active
+			? ( $resumable ? 'awaiting_exact_resume' : 'checkpoint_resume_unverified' )
+			: $status;
+		if ( ! $identity_current && ! in_array( $status, array( 'idle', 'blocked' ), true ) ) {
+			$state = 'stale_build_checkpoint';
+		}
+		$next = $lock_active ? 'observe_current_attempt'
+			: ( $resumable ? 'resume_same_operation_after_exact_authorization' : 'replan_exact_candidate' );
+		return array(
+			'contract' => 'mad4b.managed-skills-resume-policy.v1',
+			'state' => $state,
+			'resume_eligible_after_fresh_permission' => $resumable,
+			'normal_batch_pause' => $resumable,
+			'next_action' => $next,
+			'requires_fresh_exact_authorization' => true,
+			'blind_retry_allowed' => false,
+			'mutation_performed' => false,
+		);
+	}
+
 	public static function managed_skills_reconciliation_status() {
 		$checkpoint = self::skills_job_status();
 		$lock = get_option( self::SKILLS_LOCK_OPTION, array() );
@@ -711,8 +749,8 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 			: array();
 		$checkpoint_identity_current = ! empty( $checkpoint_identity ) && self::skills_identity_matches( $checkpoint_identity, $current_identity );
 
-		$state = ( 'running' === $checkpoint_state && ! $lock_active ) ? 'stale_running_checkpoint' : $checkpoint_state;
-		if ( 'completed' === $checkpoint_state && ! $checkpoint_identity_current ) $state = 'stale_build_checkpoint';
+		$policy = self::skills_checkpoint_resume_policy( $checkpoint, $checkpoint_identity_current, $lock_active );
+		$state = $policy['state'];
 		$ready = 'completed' === $checkpoint_state
 			&& ! empty( $checkpoint['certification_ready'] )
 			&& $checkpoint_identity_current;
@@ -732,8 +770,11 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				'heartbeat_at' => is_array( $lock ) && isset( $lock['heartbeat_at'] ) ? (string) $lock['heartbeat_at'] : '',
 			),
 			'reconciliation_required' => ! $ready,
+			'resume_eligible_after_fresh_permission' => $policy['resume_eligible_after_fresh_permission'],
+			'normal_batch_pause' => $policy['normal_batch_pause'],
+			'checkpoint_generation_current' => $checkpoint_identity_current,
 			'blind_retry_allowed' => false,
-			'next_action' => $ready ? 'none' : ( $lock_active ? 'observe_current_attempt' : 'replan_exact_operation' ),
+			'next_action' => $ready ? 'none' : $policy['next_action'],
 			'production_mutation' => false,
 			'read_only' => true,
 			'mutation_performed' => false,

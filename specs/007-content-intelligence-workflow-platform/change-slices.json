@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "698ed304048948890a884deed2c646a68978e434",
-  "changed_file_count": 924,
+  "reviewed_base_sha": "36d97e4de94e709d3e7875acf3a42402ae7b1042",
+  "changed_file_count": 181,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -525,7 +525,7 @@
     },
     {
       "id": "autonomous-assistants-gc-gf-preview-foundation",
-      "semantic_unit": "GA\u2013GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
+      "semantic_unit": "GA–GF non-authorizing capability dependency convergence preview and pure assistant task transition contract; no durable execution, plugin install or grants",
       "revert_boundary": "Revert assistant convergence and task transition preview plus focused tests together without changing core durable journal, G4/G6/G9 executor or staging authority",
       "certification": "exact_head",
       "path_globs": [
@@ -2236,8 +2236,206 @@
       "path_globs": [
         "specs/007-content-intelligence-workflow-platform/contracts/reviewed-workflow-candidates/mad4b-staging-candidate-publish.yml"
       ]
+    },
+    {
+      "id": "rc102-cross-site-onboarding-and-mcp-recovery",
+      "semantic_unit": "Staging site onboarding and MCP transport recovery documentation and integration points for ETG and All Royal Egypt; no Production grants",
+      "revert_boundary": "Revert Staging onboarding and recovery documentation and independent compatibility adapters without changing the baseline authorization kernel.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/AUTOMATIC-DEPLOYMENT-BINDING-LIFECYCLE.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/DEPLOYMENT-BINDING-POST-ACTIVATION-AND-PRODUCTION-rc102.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/MCP-FAST-ONBOARDING-ROOT-CAUSE-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-MCP-AND-UPDATE-LIFECYCLE-UX.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RC102-GUIDED-DEPLOYMENT-PROVIDER-ERROR-RECOVERY-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-RC102-SAFE-HANDOFF-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-ROUTE-DISCOVERY-OWNER-GATE-HOSTINGER-rc102.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/REMOTE-OAUTH-AND-WP-ADMIN-ROUTE-AUDIT.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/STAGING-RECOVERY-DEPLOYMENT-LIFECYCLE-UX.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/WORDPRESS-NATIVE-UPDATE-AND-TICKET-RECOVERY.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-coverage-admin-ui.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-subject-user-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-mcp-path-review.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-matrix.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-recovery-center.php",
+        "wp-content/plugins/mad4b-site-control-plane/docs/MCP-SKILLS-EXACT-CHECKPOINT-RESUME-FIX-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/STAGING-LOCAL-OWNER-OAUTH-REVIEW-SEPARATION-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/CAPABILITY-FIRST-PLUGIN-CHANGE-CONTINUITY-20261016.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-dependency-manager.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-truth-projection.php"
+      ]
+    },
+    {
+      "id": "rc102-cross-site-onboarding-regression-evidence",
+      "semantic_unit": "Fail-closed regression tests for deployment binding, Managed Skills, Elementor, MCP, provider compatibility and site recovery without authorizing writes",
+      "revert_boundary": "Revert only these rc.102 targeted regression fixtures and retain independent site and source certification requirements.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/action-center-update-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-activation-bootstrap-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-post-setup-production-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-profile-save-bootstrap-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-wordpress-update-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/deployment-binding-wordpress-update-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/elementor-heading-probe-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/fast-staging-autopilot-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/guided-runtime-convergence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-setup-action-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-multi-user-tenant-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-closure-fleet-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-mcp-path-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/recovery-route-matrix-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/remote-oauth-wp-admin-route-separation-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-optional-observations-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-safe-opt-in-recovery-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-safe-resume-handoff-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-recovery-center-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-recovery-center-ui-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-local-owner-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-one-step-review-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/managed-skills-checkpoint-resume-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-owner-grant-local-preview-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-standalone-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/local-oauth-csp-redirect-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/oauth-live-authority-browser-e2e.mjs",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-version-neutral-read-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-version-neutral-read-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-session-read-continuity-runtime.php"
+      ]
+    },
+    {
+      "id": "stack-recovery-and-provider-operator-documents",
+      "semantic_unit": "Reviewed native-first recovery, provider opt-in and runtime-diagnostic operational notes; not release evidence or authority",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/DYNAMIC-ENROLLMENT-REMEDIATION-HANDOFF-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/GOVERNED-DYNAMIC-ABILITY-CENSUS-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/NATIVE-FIRST-ROOT-CAUSE-REMEDIATION-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/NATIVE-HYBRID-ACCEPTANCE-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/PR403-CONSOLIDATED-REMEDIATION-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/PR403-MCP-RUNTIME-ERROR-CLOSURE-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/PROVIDER-OPTIN-NATIVE-PERFORMANCE-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-LIFECYCLE-P1-CLOSURE-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-LIFECYCLE-SIMPLIFICATION-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-OPERATION-JOURNAL-AND-REASSESSMENT-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/RECOVERY-TERMINAL-RECONCILIATION-20261017.md"
+      ]
+    },
+    {
+      "id": "stack-owner-and-readback-documents",
+      "semantic_unit": "Reviewed owner handoffs, operation readiness and on-site readback notes; approval remains independent",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/docs/OPERATIONAL-SCOPE-READINESS-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/OPERATOR-RELEASE-TASK-REGISTER-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/OWNER-REVIEW-OAUTH-PLAN-PARITY-20261017.md",
+        "wp-content/plugins/mad4b-site-control-plane/docs/POST-CONFIRM-ADMIN-READBACK-20261017.md"
+      ]
+    },
+    {
+      "id": "stack-native-hybrid-and-frontend-services",
+      "semantic_unit": "WordPress Cron/browser hybrid acceptance, passive frontend sampling and current verdict services; not a live acceptance certificate",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/assets/native-hybrid-acceptance.js",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-runner.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-acceptance-verdict-reducer.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-cron-acceptance.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      ]
+    },
+    {
+      "id": "stack-provider-and-root-cause-services",
+      "semantic_unit": "Capability-first LiteSpeed and provider opt-in, source-root-cause and Query Monitor evidence services; no new grants",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-litespeed-adapter.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-opt-in.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-query-monitor-evidence-bridge.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-root-cause-resolver.php"
+      ]
+    },
+    {
+      "id": "stack-governed-operations-and-audit-services",
+      "semantic_unit": "Current Staging gates, exact Write planning guard and operation journal evidence, fail closed on stale identities",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-runtime-gates.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-operation-journal.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-planning-guard.php"
+      ]
+    },
+    {
+      "id": "stack-operator-census-and-semantic-services",
+      "semantic_unit": "Bounded governed ability discovery, operator remediation coverage and semantic field/source read services",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remediation-coverage.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-semantic-content-field-contracts.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-info-reader.php"
+      ]
+    },
+    {
+      "id": "stack-hybrid-and-frontend-test-fixtures",
+      "semantic_unit": "PHP/JS bounded Cron, browser acceptance, frontend performance and freshness regression fixtures",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-functional-freshness-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php"
+      ]
+    },
+    {
+      "id": "stack-provider-and-dynamic-discovery-tests",
+      "semantic_unit": "Capability-first provider/root cause, enrollment, monitoring and runtime resilience regression fixtures",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/connector-resilience-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-provider-remediation-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/litespeed-optimization-hook-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-first-root-cause-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-recertification-planning-semantics-runtime.php"
+      ]
+    },
+    {
+      "id": "stack-governance-journal-and-owner-tests",
+      "semantic_unit": "Exact-scope, owner handoff and MariaDB journal/concurrency regression fixtures; never authorizes Staging writes",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-operation-journal-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-operation-journal-source-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-operation-journal-wpdb-concurrency.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-scope-dynamic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/write-only-owner-handoff-runtime.php"
+      ]
+    },
+    {
+      "id": "stack-operator-readback-and-contract-tests",
+      "semantic_unit": "Operator readback, site-info and bounded remediation contract fixtures",
+      "revert_boundary": "Revert only these explicit source paths as a reviewed integration slice; preserve independent Security and owner gates, with any cross-slice changes requiring a new exact-head review.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operator-primary-next-step-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-info-resilience-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "8dfe158703a387cdb44dabd7fa6fe027b8720bc4e66a247d40b8350280260c28",
+  "changed_paths_sha256": "dbf4119ceb6ba812942f0e4c99e3074978812f4311fc049d9fd6212f517f5d51",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

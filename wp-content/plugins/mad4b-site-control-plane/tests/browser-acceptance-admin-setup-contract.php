@@ -10,8 +10,9 @@ $c='MAD4B_SCP_Browser_Acceptance_Admin_UI';
 $defaults=$c::public_selection();
 check_browser( $defaults['preference_valid'] === true && $defaults['preference_source'] === 'default_observed' &&
   preg_match( '/^[a-f0-9]{32}$/D', $defaults['configuration_revision'] ), 'pristine site uses read-only observed default without manual preference save' );
+check_browser( $defaults['executor'] === 'native_hybrid', 'new site native hybrid default remains non-authorizing' );
 check_browser( count($c::managed_executors()) === 4, 'catalog' );
-foreach (array('auto','cloudflare','browserbase','browserless','steel') as $p) check_browser( !is_wp_error($c::normalize(array('executor'=>$p,'profile_id'=>'s-1'))), 'valid executor' );
+foreach (array('auto','native_hybrid','wp_cron','cloudflare','browserbase','browserless','steel') as $p) check_browser( !is_wp_error($c::normalize(array('executor'=>$p,'profile_id'=>'s-1'))), 'valid executor' );
 foreach (array(
 array('executor'=>'bad','profile_id'=>''),
 array('executor'=>array('auto'),'profile_id'=>''),
@@ -21,6 +22,13 @@ array('executor'=>'auto','profile_id'=>'','javascript'=>'alert(1)'),
 array('executor'=>'auto','profile_id'=>'','site_provider_id'=>'https://unsafe.test'),
 array('executor'=>'auto','profile_id'=>str_repeat('x',65))
 ) as $bad) check_browser( is_wp_error($c::normalize($bad)), 'denied unsafe input' );
+$browser_source = file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acceptance-admin-ui.php');
+check_browser( strpos( $browser_source, "opt_in_external_runner" ) !== false
+    && strpos( $browser_source, "I opt in to this execution mode" ) !== false,
+    'external runner requires explicit opt-in on the saved choice' );
+check_browser( strpos( $browser_source, 'data-mad4b-browser-runner' ) !== false
+    && strpos( $browser_source, 'Provision these names only in the external runner' ) !== false,
+    'dynamic external requirements guide without accepting secrets' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'steel','profile_id'=>'site-1','secret'=>'never-expose');
 $pref=$c::public_selection();
 check_browser( $pref['executor']==='steel' && !isset($pref['secret']), 'credential redaction' );
@@ -53,7 +61,7 @@ check_browser( strpos( $browser_source, "add_query_arg( 'saved', '1'" ) === fals
 check_browser( strpos( $browser_source, 'expected_configuration_revision' ) !== false, 'form must bind exact revision' );
 check_browser( strpos( $browser_source, 'AND BINARY option_value = BINARY %s' ) !== false, 'compare-and-swap checks exact persisted bytes regardless of collation' );
 $GLOBALS['browser_setting'][$c::OPTION]=array('executor'=>'unknown','profile_id'=>'');
-check_browser( $c::selection()['executor']==='auto', 'invalid option fail-closed' );
+check_browser( $c::selection()['executor']==='native_hybrid', 'invalid option falls back to non-authorizing native preference, never auto-runs without consent' );
 $main=file_get_contents(dirname(__DIR__).'/mad4b-site-control-plane.php');
 $core=file_get_contents(dirname(__DIR__).'/includes/class-mad4b-scp-browser-acceptance-core.php');
 check_browser( substr_count($main,"require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-browser-acceptance-admin-ui.php';")===1,'one include');

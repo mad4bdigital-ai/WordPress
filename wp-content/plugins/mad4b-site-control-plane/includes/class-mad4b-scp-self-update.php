@@ -81,6 +81,7 @@ final class MAD4B_SCP_Self_Update {
 		add_action( 'admin_post_mad4b_control_plane_native_update', array( __CLASS__, 'handle_native_update' ) );
 		add_action( 'admin_post_mad4b_control_plane_refresh_update', array( __CLASS__, 'handle_refresh_update' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'native_update_notice' ) );
+        add_action( 'admin_notices', array( __CLASS__, 'native_host_setup_notice' ) );
 
 		// Forward recovery path: exact governed Staging may refresh the signed,
 		// immutable release channel from WP-Cron without depending on a healthy MCP
@@ -384,6 +385,8 @@ final class MAD4B_SCP_Self_Update {
 				'production_allowed' => false,
 				'generic_raw_sql_breakglass_included' => false,
 				'chatgpt_direct_step_up' => true,
+                'generic_remote_admin' => false,
+                'production_mutation_allowed' => false,
 				'exact_chatgpt_client_required' => true,
 			)
 		);
@@ -1195,6 +1198,9 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function native_update_action_link( array $links ) {
+        if ( class_exists( 'MAD4B_SCP_Deployment_Binding_Native' )
+            && method_exists( 'MAD4B_SCP_Deployment_Binding_Native', 'wordpress_setup_action_link' ) )
+            $links = MAD4B_SCP_Deployment_Binding_Native::wordpress_setup_action_link( $links );
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return $links;
 
 		// Keep wp-admin/plugins.php cache-only and visually consistent with ordinary
@@ -1507,6 +1513,26 @@ final class MAD4B_SCP_Self_Update {
 		self::persist_update_attempt( $final_state, $manifest, '', array(), $bootstrap_mode ? 'wordpress_admin_candidate_drift_bootstrap' : 'wordpress_admin_plugin_update' );
 		self::redirect_native_result( $final_state, '' );
 	}
+
+    public static function native_host_setup_notice() {
+        if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
+        $state = isset( $_GET['mad4b_native_host_setup'] )
+            ? sanitize_key( wp_unslash( $_GET['mad4b_native_host_setup'] ) ) : '';
+        if ( ! in_array( $state, array( 'blocked', 'reused', 'new_readback_required' ), true ) ) return;
+        if ( 'blocked' === $state ) {
+            echo '<div class="notice notice-warning"><p>'
+                . esc_html__( 'Staging host setup was blocked safely. Review the Site Profile and host binding diagnostics. No key was overwritten.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+        } elseif ( 'reused' === $state ) {
+            echo '<div class="notice notice-info"><p>'
+                . esc_html__( 'The existing Staging host binding was preserved; no new approval or key rotation was performed.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+        } else {
+            echo '<div class="notice notice-success"><p>'
+                . esc_html__( 'The Staging host binding was created. Complete independent readback and separately review Governed Write before using it.', 'mad4b-site-control-plane' )
+                . '</p></div>';
+        }
+    }
 
 	public static function native_update_notice() {
 		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) return;

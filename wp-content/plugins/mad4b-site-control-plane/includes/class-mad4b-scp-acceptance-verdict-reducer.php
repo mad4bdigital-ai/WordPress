@@ -17,8 +17,20 @@ final class MAD4B_SCP_Acceptance_Verdict_Reducer {
 		$verification = isset( $evidence['verification'] ) && is_array( $evidence['verification'] ) ? $evidence['verification'] : array();
 		$semantic_verified = 'PASS' === $verdict && true === ( isset( $verification['semantic_parity_verified'] ) ? $verification['semantic_parity_verified'] : false );
 		$browser_verified = true === ( isset( $verification['browser_runtime_parity_verified'] ) ? $verification['browser_runtime_parity_verified'] : false );
-		$browser_status = $browser_verified ? 'PASS' : 'INCOMPLETE_EVIDENCE';
-		$overall = 'PASS' === $verdict && ! $browser_verified ? 'INCOMPLETE_EVIDENCE' : $verdict;
+		$suite = isset( $evidence['requested_suite'] ) ? sanitize_key( (string) $evidence['requested_suite'] ) : 'unknown';
+        // Missing external browser evidence must not downgrade semantic-only
+        // or backend acceptance. Unknown suites stay fail-closed.
+        $needs_browser = ! in_array( $suite, array( 'semantic', 'server', 'backend' ), true );
+        if ( ! $needs_browser ) {
+            // Do not expose unrelated browser-only gaps as semantic blockers.
+            $incomplete = array_values( array_filter( $incomplete, static function ( $reason ) {
+                return 'browser_runtime_not_observed' !== $reason;
+            } ) );
+        }
+        $browser_status = ! $needs_browser ? 'NOT_APPLICABLE'
+            : ( $browser_verified ? 'PASS' : 'INCOMPLETE_EVIDENCE' );
+        $overall = 'PASS' === $verdict && ( ( $needs_browser && ! $browser_verified ) || ! empty( $incomplete ) )
+            ? 'INCOMPLETE_EVIDENCE' : $verdict;
 		$tests = array();
 		foreach ( array_slice( isset( $evidence['tests'] ) && is_array( $evidence['tests'] ) ? $evidence['tests'] : array(), 0, 64, true ) as $name => $status ) {
 			$name = sanitize_key( (string) $name );
@@ -29,6 +41,8 @@ final class MAD4B_SCP_Acceptance_Verdict_Reducer {
 			'contract' => self::CONTRACT,
 			'verdict' => $verdict,
 			'overall_evidence_status' => $overall,
+			'requested_suite' => $suite,
+			'browser_evidence_required_for_this_suite' => $needs_browser,
 			'classification' => isset( $evidence['classification'] ) ? sanitize_key( (string) $evidence['classification'] ) : '',
 			'verification' => array(
 				'semantic_parity_verified' => $semantic_verified,

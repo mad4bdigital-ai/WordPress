@@ -28,6 +28,21 @@
         });
       }
     }
+    // Opt-in guidance is presentational: never reads or submits secret values.
+    var browserSelector = document.querySelector('#mad4b-browser-executor');
+    var browserFields = document.querySelector('[data-mad4b-browser-runner-fields]');
+    if (browserSelector && browserFields) {
+      var updateRunnerHelp = function () {
+        var value = browserSelector.value;
+        browserFields.querySelectorAll('[data-mad4b-browser-runner]').forEach(function (section) {
+          section.hidden = section.dataset.mad4bBrowserRunner !== value;
+        });
+        var autoHelp = browserFields.querySelector('[data-mad4b-browser-runner-auto]');
+        if (autoHelp) autoHelp.hidden = value !== 'auto';
+      };
+      browserSelector.addEventListener('change', updateRunnerHelp);
+      updateRunnerHelp();
+    }
     // Wide evidence tables scroll inside their own named keyboard-accessible region.
     document.querySelectorAll('#wpbody-content .wrap table.widefat').forEach(function (table) {
       if (table.closest('.mad4b-scp-table-wrap, .mad4b-workspace-table')) return;

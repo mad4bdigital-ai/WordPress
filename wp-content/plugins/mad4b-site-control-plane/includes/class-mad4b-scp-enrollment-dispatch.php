@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
 
 /**
  * Hardened policy/execution helper for bounded Staging enrollment operations.
@@ -158,23 +159,79 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			&& MAD4B_SCP_Remote_Operation_Parity::reviewed_owner_staging_convergence( $operation_id, $row );
 	}
 
-	private static function operation( $operation_id ) {
+	/**
+	 * Auto-resolve registered, provenance-verified first-party enrollment Abilities.
+	 * Registration is read-only metadata; target permission, OAuth step-up and
+	 * exact digest admission still happen inside the existing governed dispatcher.
+	 * The synthetic ID is deterministic and collision-resistant, not a grant.
+	 */
+	private static function dynamic_operations() {
+		$operations = array();
+		foreach ( MAD4B_SCP_Governed_Ability_Census::eligible() as $name => $candidate ) {
+			$id = (string) $candidate['operation_id'];
+			$identity = array(
+				'contract' => MAD4B_SCP_Governed_Ability_Census::CONTRACT,
+				'ability' => $name,
+				'owner_intent_only' => ! empty( $candidate['owner_intent_only'] ),
+                'broker_dispatch_policy' => (string) $candidate['broker_dispatch_policy'],
+                'callback_pair_digest' => (string) $candidate['callback_pair_digest'],
+				'first_party_callback_source' => (string) $candidate['source'],
+			);
+			$operations[ $id ] = array(
+				'operation_id' => $id, 'feature_id' => 'dynamic_core_enrollment',
+                'broker_dispatch_policy' => (string) $candidate['broker_dispatch_policy'],
+                'callback_pair_digest' => (string) $candidate['callback_pair_digest'],
+                'owner_intent_only' => ! empty( $candidate['owner_intent_only'] ),
+				'remote_ability' => $name, 'provider' => 'core',
+				'authority_surface' => 'mad4b-enrollment',
+				'remote_mode' => 'verified_first_party_oauth_step_up',
+				'remote_caller_role' => ! empty( $candidate['owner_intent_only'] ) ? 'owner' : 'enrolled_operator',
+				'human_decision_required' => true,
+				'production_policy' => 'deny', 'remote_registered' => true,
+				'execution_eligible' => true, 'remote_parity_ready' => true,
+				'trust_class' => 'core', 'registrar_id' => 'mad4b-core',
+				'source_plugin' => 'mad4b-site-control-plane',
+				'registration_digest' => hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+				'capability_tags' => array( 'dynamic', 'oauth-step-up', 'staging-only', 'non-authorizing-discovery' ),
+			);
+		}
+		ksort( $operations, SORT_STRING );
+		return $operations;
+	}
+
+	private static function operation( $operation_id, $verified_dynamic = null ) {
 		$operation_id = sanitize_key( (string) $operation_id );
 		if ( '' === $operation_id || ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_operation_unknown', 'Governed enrollment operation is unknown.' );
 		}
 		$catalog = MAD4B_SCP_Remote_Operation_Parity::catalog();
-		if ( ! isset( $catalog[ $operation_id ] ) || ! is_array( $catalog[ $operation_id ] ) ) {
+		$dynamic = is_array( $verified_dynamic ) ? $verified_dynamic : self::dynamic_operations();
+		$verified_first_party = isset( $dynamic[ $operation_id ] );
+		if ( $verified_first_party && isset( $catalog[ $operation_id ] ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_operation_collision', 'Dynamic and catalog operation identity collision.' );
+		}
+		if ( ! $verified_first_party && ( ! isset( $catalog[ $operation_id ] ) || ! is_array( $catalog[ $operation_id ] ) ) ) {
 			return new WP_Error( 'mad4b_enrollment_dispatch_operation_unknown', 'Governed enrollment operation is not present in the current catalog.' );
 		}
-		$row = $catalog[ $operation_id ];
+		$row = $verified_first_party ? $dynamic[ $operation_id ] : $catalog[ $operation_id ];
+        // A first-party callback is not sufficient authority: the broker
+        // accepts only explicit, owner-reviewed, Staging-only declarations.
+        // Other privileged operations keep their dedicated dispatch lane.
+        if ( $verified_first_party && (
+            'owner_attestation_v1' !== ( $row['broker_dispatch_policy'] ?? '' )
+            || empty( $row['owner_intent_only'] )
+            || empty( $row['callback_pair_digest'] )
+            || empty( $row['human_decision_required'] ) ) ) {
+            return new WP_Error( 'mad4b_enrollment_dispatch_policy_not_reviewed',
+                'Dynamic broker operation has no reviewed owner-attestation policy.' );
+        }
 		$ability_name = isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '';
 		$enrollment_abilities = MAD4B_SCP_Remote_Operation_Parity::enrollment_abilities();
 		$owner_convergence = self::owner_staging_write_convergence( $operation_id, $row );
 		if ( 'mad4b-enrollment' !== ( isset( $row['authority_surface'] ) ? (string) $row['authority_surface'] : '' )
-			|| ( ! $owner_convergence && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
-			|| ! in_array( $ability_name, $enrollment_abilities, true )
-			|| ( ! $owner_convergence && ! empty( $row['human_decision_required'] ) )
+			|| ( ! $verified_first_party && ! $owner_convergence && 'operator' !== ( isset( $row['remote_caller_role'] ) ? (string) $row['remote_caller_role'] : '' ) )
+			|| ( ! $verified_first_party && ! in_array( $ability_name, $enrollment_abilities, true ) )
+			|| ( ! $verified_first_party && ! $owner_convergence && ! empty( $row['human_decision_required'] ) )
 			|| 'deny' !== ( isset( $row['production_policy'] ) ? (string) $row['production_policy'] : '' )
 			|| empty( $row['remote_registered'] )
 			|| empty( $row['execution_eligible'] )
@@ -183,6 +240,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		}
 		$ability = self::target_ability( $ability_name );
 		if ( is_wp_error( $ability ) ) return $ability;
+		if ( $verified_first_party && ( $ability_name !== (string) $dynamic[ $operation_id ]['remote_ability']
+            || ! hash_equals( (string) $dynamic[ $operation_id ]['callback_pair_digest'],
+                (string) $row['callback_pair_digest'] ) ) ) {
+			return new WP_Error( 'mad4b_enrollment_dispatch_verified_candidate_drift', 'Verified first-party enrollment registration changed.' );
+		}
 		if ( $owner_convergence ) {
 			$meta = $ability->get_meta();
 			$mcp = isset( $meta['mcp'] ) && is_array( $meta['mcp'] ) ? $meta['mcp'] : array();
@@ -366,8 +428,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 	private static function eligible_operations() {
 		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' ) ) return array();
 		$eligible = array();
-		foreach ( MAD4B_SCP_Remote_Operation_Parity::catalog() as $operation_id => $row ) {
-			$current = self::operation( $operation_id );
+		$catalog = MAD4B_SCP_Remote_Operation_Parity::catalog();
+		$dynamic = self::dynamic_operations();
+		foreach ( array_keys( $catalog + $dynamic ) as $operation_id ) {
+			$current = self::operation( $operation_id, $dynamic );
 			if ( is_wp_error( $current ) ) continue;
 			$eligible[ $operation_id ] = $current['row'];
 		}
@@ -413,12 +477,44 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'count' => count( $items ),
 			'operations' => $items,
 			'generic_human_decision_operations_excluded' => true,
-			'owner_step_up_exception' => 'staging_write_authority_convergence_only',
+			'owner_step_up_exception' => 'registered_first_party_step_up_only',
+			'dynamic_verified_first_party_count' => count( self::dynamic_operations() ),
 			'production_mutation_allowed' => false,
 			'breakglass_included' => false,
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
+	}
+
+	/** Compact, no-mutation post-transport-error checkpoint observation. */
+	private static function managed_skills_checkpoint_handoff() {
+		if ( ! class_exists( 'MAD4B_SCP_Remote_Operation_Parity' )
+			|| ! method_exists( 'MAD4B_SCP_Remote_Operation_Parity', 'managed_skills_reconciliation_status' ) ) {
+			return array( 'state' => 'status_unavailable', 'read_only' => true, 'blind_retry_allowed' => false );
+		}
+		try {
+			$raw = MAD4B_SCP_Remote_Operation_Parity::managed_skills_reconciliation_status();
+			if ( ! is_array( $raw ) ) throw new UnexpectedValueException( 'invalid_checkpoint_status' );
+			$checkpoint = isset( $raw['checkpoint'] ) && is_array( $raw['checkpoint'] ) ? $raw['checkpoint'] : array();
+			return array(
+				'contract' => 'mad4b.enrollment-checkpoint-handoff.v1',
+				'state' => isset( $raw['state'] ) ? sanitize_key( (string) $raw['state'] ) : 'unverified',
+				'current_identity' => ! empty( $raw['checkpoint_identity_current'] ),
+				'checkpoint_ready' => ! empty( $raw['ready'] ),
+				'operation_id' => isset( $checkpoint['operation_id'] ) ? (string) $checkpoint['operation_id'] : '',
+				'stage' => isset( $checkpoint['stage'] ) ? sanitize_key( (string) $checkpoint['stage'] ) : '',
+				'seed_cursor' => isset( $checkpoint['seed_cursor'] ) ? (int) $checkpoint['seed_cursor'] : null,
+				'lock_active' => ! empty( $raw['lock']['active'] ),
+				'resume_eligible_after_fresh_permission' => ! empty( $raw['resume_eligible_after_fresh_permission'] ),
+				'normal_batch_pause' => ! empty( $raw['normal_batch_pause'] ),
+				'blind_retry_allowed' => false,
+				'next_action' => isset( $raw['next_action'] ) ? sanitize_key( (string) $raw['next_action'] ) : 'inspect_exact_checkpoint',
+				'read_only' => true, 'mutation_performed' => false,
+			);
+		} catch ( Throwable $error ) {
+			return array( 'state' => 'checkpoint_observation_failed', 'read_only' => true,
+				'blind_retry_allowed' => false, 'raw_exception_exposed' => false );
+		}
 	}
 
 	public static function info( $input ) {
@@ -436,6 +532,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'input_schema_sha256' => $row['input_schema_sha256'],
 			'input_schema' => method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null,
 			'operation' => $row,
+			// Operator can recover from a lost MCP mutation response using the
+			// same stable Enrollment Info tool, without a second expensive
+			// catalog projection or any replay of the target write.
+			'checkpoint_handoff' => 'managed_skills_reconciliation' === $operation_id
+				? self::managed_skills_checkpoint_handoff() : array( 'state' => 'independent_plan_required', 'read_only' => true ),
 			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
 				? self::live_managed_skills_preflight() : null,
 			'request_permission_preflight' => 'managed_skills_reconciliation' === $operation_id
@@ -484,12 +585,50 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			return new WP_Error( 'mad4b_enrollment_dispatch_child_fence_unavailable', 'Governed child execution is unavailable.' );
 		}
 		$child_ability = (string) $row['remote_ability'];
-		$result = MAD4B_SCP_Execution_Fence::with_governed_child(
-			$child_ability,
-			$params,
-			static function () use ( $ability, $params ) { return $ability->execute( $params ); },
-			'enrollment_dispatch'
-		);
+		// An internal Throwable after dispatch may follow a durable child
+		// checkpoint. Convert it to a typed, fail-closed result rather than
+		// terminating the MCP session with an opaque transport exception.
+		// Never retry here: the caller must observe the exact operation state.
+		try {
+			$result = MAD4B_SCP_Execution_Fence::with_governed_child(
+				$child_ability,
+				$params,
+				static function () use ( $ability, $params ) { return $ability->execute( $params ); },
+				'enrollment_dispatch'
+			);
+		} catch ( Throwable $error ) {
+			if ( 'managed_skills_reconciliation' !== $operation_id ) {
+				return array(
+					'contract' => self::CONTRACT,
+					'operation_id' => $row['operation_id'],
+					'remote_ability' => $row['remote_ability'],
+					'state' => 'child_outcome_uncertain_reconciliation_required',
+					'ready' => false,
+					'target_error_code' => 'mad4b_enrollment_child_internal_exception',
+					'raw_exception_exposed' => false,
+					'human_decision_required' => ! empty( $row['human_decision_required'] ),
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'authority_granted' => false,
+					'operation_invoked' => true,
+					'mutation_performed' => null,
+					'mutation_evidence_source' => 'unknown_after_child_exception',
+					'production_mutation' => false,
+					'breakglass_included' => false,
+				);
+			}
+			$result = new WP_Error(
+				'mad4b_enrollment_child_internal_exception',
+				'The child operation outcome is uncertain; inspect its persisted checkpoint before any retry.',
+				array(
+					'operation_id' => $operation_id,
+					'reconciliation_required' => true,
+					'blind_retry_allowed' => false,
+					'raw_exception_exposed' => false,
+					'production_mutation_allowed' => false,
+				)
+			);
+		}
 		if ( is_wp_error( $result ) ) {
 			// Only the bounded managed-Skills operation returns a non-authorizing
 			// diagnostic envelope. The generic dispatcher otherwise preserves WP_Error.

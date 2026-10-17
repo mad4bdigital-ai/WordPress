@@ -61,6 +61,23 @@ jobs:
             | sort -z \
             | xargs -0 -n1 php -l
 
+      - name: Automatic provider opt-in and Browser owner consent (PHP 7.4)
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-functional-freshness-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-scope-dynamic-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/acceptance-core-contract.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/native-hybrid-acceptance.js
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-recertification-planning-semantics-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-frontend-performance-probe-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/browser-acceptance-admin-setup-contract.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/provider-connection-center-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.js
+
       - name: Generic discovery PHP 7.4 runtime fixtures
         shell: bash
         run: |
@@ -449,6 +466,23 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php
 
+      - name: Native-first recovery lifecycle security regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php -l "$P/includes/class-mad4b-scp-root-cause-resolver.php"
+          php -l "$P/includes/class-mad4b-scp-remediation-coverage.php"
+          php -l "$P/includes/class-mad4b-scp-operational-remediation.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-owner-intent.php"
+          php "$P/tests/native-first-root-cause-runtime.php"
+          php "$P/tests/cross-provider-remediation-runtime.php"
+          php "$P/tests/litespeed-optimization-hook-runtime.php"
+          php "$P/tests/operator-primary-next-step-runtime.php"
+          php "$P/tests/staging-operation-journal-runtime.php"
+          python3 "$P/tests/staging-operation-journal-source-contract.py"
+          php "$P/tests/staging-write-owner-intent-runtime.php"
+
       - name: MAD4B-specific pre-Staging audit
         shell: bash
         run: |
@@ -558,6 +592,44 @@ jobs:
           MAD4B_CI_REDIS_HOST=127.0.0.1 MAD4B_CI_REDIS_PORT=6379 php -r '$r=new Redis(); if(!$r->connect(getenv("MAD4B_CI_REDIS_HOST"),(int)getenv("MAD4B_CI_REDIS_PORT"),2.0)||false===$r->ping()) exit(1);'
           php /tmp/wp-cli.phar plugin activate mcp-adapter --path="$WP_PATH"
           php /tmp/wp-cli.phar plugin activate mad4b-site-control-plane --path="$WP_PATH"
+
+      - name: Prove site-operation reservation under parallel real DB requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/staging-operation-journal-wpdb-concurrency.php"
+          RUN="op-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${{ matrix.php }}-${{ matrix.wordpress }}"
+          for GROUP in same different; do
+            php /tmp/wp-cli.phar eval-file "$TEST" setup "$RUN" "$GROUP" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+            OUT="/tmp/mad4b-operation-$GROUP"
+            mkdir -p "$OUT"
+            PIDS=()
+            for IDX in 0 1 2 3 4; do
+              php /tmp/wp-cli.phar eval-file "$TEST" worker "$RUN" "$GROUP" "$IDX" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin > "$OUT/$IDX.json" &
+              PIDS+=("$!")
+            done
+            for PID in "${PIDS[@]}"; do wait "$PID"; done
+            python3 - "$OUT" <<'PY'
+          import json, pathlib, sys
+          files=sorted(pathlib.Path(sys.argv[1]).glob('*.json'))
+          records=[json.loads(p.read_text()) for p in files]
+          assert len(records)==5, records
+          assert sum(x['success'] for x in records)==1, records
+          assert all(x['success'] or x['code'] in {
+              'mad4b_site_operation_lock_held',
+              'mad4b_site_operation_lock_claim_unverified',
+              # Named database mutex contention is a fail-closed denial.
+              'mad4b_operation_mutex_busy',
+              'mad4b_previous_operation_needs_reconciliation',
+              'mad4b_operation_readback_required',
+              # A concurrent loser may fail its signed reservation readback;
+              # that is safe DENIAL, not permission to execute twice.
+              'mad4b_operation_reservation_unverified',
+          } for x in records), records
+          print('PARALLEL_WPDB_OPERATION_RESERVATION_PASS',records)
+          PY
+            php /tmp/wp-cli.phar eval-file "$TEST" verify "$RUN" "$GROUP" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+          done
 
       - name: Prove schema v13 migration contract
         shell: bash
@@ -708,6 +780,19 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/adaptive-runtime-convergence-runtime.php
 
+      - name: Recovery lifecycle and owner authority / PHP ${{ matrix.php }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php "$P/tests/staging-operation-journal-runtime.php"
+          python3 "$P/tests/staging-operation-journal-source-contract.py"
+          php "$P/tests/staging-write-owner-intent-runtime.php"
+          php "$P/tests/operator-primary-next-step-runtime.php"
+          php "$P/tests/native-first-root-cause-runtime.php"
+          php "$P/tests/cross-provider-remediation-runtime.php"
+          php "$P/tests/litespeed-optimization-hook-runtime.php"
+
       - name: Lint and execute Adaptive Search runtime/provider contracts
         env:
           ASI_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -846,6 +931,17 @@ jobs:
         run: |
           set -euo pipefail
           ROOT=wp-content/plugins/mad4b-site-control-plane
+          php -l "$ROOT/includes/class-mad4b-scp-native-cron-acceptance.php"
+          php -l "$ROOT/includes/class-mad4b-scp-semantic-content-field-contracts.php"
+          php -l "$ROOT/includes/class-mad4b-scp-staging-write-planning-guard.php"
+          php "$ROOT/tests/native-wpcron-acceptance-runtime.php"
+          php -l "$ROOT/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+          php "$ROOT/tests/native-hybrid-acceptance-runtime.php"
+          php "$ROOT/tests/native-functional-freshness-runtime.php"
+          php "$ROOT/tests/staging-scope-dynamic-runtime.php"
+          php "$ROOT/tests/acceptance-core-contract.php"
+          node --check "$ROOT/assets/native-hybrid-acceptance.js"
+          php "$ROOT/tests/provider-recertification-planning-semantics-runtime.php"
           for file in \
             includes/class-mad4b-scp-capability-search-index.php \
             includes/class-mad4b-scp-recovery-route-resolver.php \
