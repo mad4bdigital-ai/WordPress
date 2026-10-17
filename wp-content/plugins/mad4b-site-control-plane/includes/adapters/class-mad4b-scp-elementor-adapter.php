@@ -213,7 +213,8 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			|| false === strpos( $production_host, '.' ) || '' === $staging_host
 			|| $production_host === $staging_host )
 			return new WP_Error( 'mad4b_elementor_font_css_origin_invalid', 'Distinct explicit production hostname required; no URL or path accepted.' );
-		$uploads = wp_upload_dir();
+		// WordPress read-only upload-dir discovery: never create a directory.
+		$uploads = function_exists( 'wp_get_upload_dir' ) ? wp_get_upload_dir() : wp_upload_dir( null, false );
 		$basedir = is_array( $uploads ) ? (string) ( $uploads['basedir'] ?? '' ) : '';
 		$directory = '' !== $basedir ? realpath( $basedir . '/elementor/css' ) : false;
 		if ( false === $directory || ! is_dir( $directory ) )
