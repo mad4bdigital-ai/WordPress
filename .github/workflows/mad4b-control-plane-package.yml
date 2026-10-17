@@ -9,6 +9,7 @@ on:
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -25,6 +26,7 @@ on:
       - 'wp-content/plugins/*.zip'
       - 'tools/capture-functional-gap-contract-evidence.py'
       - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
       - 'wp-content/plugins/mad4b-site-control-plane/config/functional-gap-policy.json'
       - '.github/workflows/mad4b-control-plane-package.yml'
       - '.github/workflows/mad4b-live-acceptance-evidence.yml'
@@ -193,6 +195,30 @@ jobs:
           assert data['required_live_evidence']
           print('Predictive package gate: regression coverage PASS, live authorization remains withheld')
           PY_INVARIANT
+
+      # Replay fault combinations sourced from sanitized ETG/ARE live
+      # observations. Execute genuine hermetic PHP failure-injection fixtures.
+      # A successful simulation NEVER provides a live Staging or owner receipt.
+      - name: Simulate live two-site faults and downstream repair dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/mad4b_live_remediation_simulator.py \
+            --self-test --execute-fixtures --enforce \
+            --output dist/mad4b-prepackage-live-remediation.json
+          python3 - <<'PY_FAULT_POLICY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('dist/mad4b-prepackage-live-remediation.json').read_text())
+          assert result['simulation_pass'] is True
+          assert result['fault_injections'] >= 36
+          assert result['runtime_repair_proven'] is False
+          assert result['release_ready'] is False
+          assert result['staging_write_authorized'] is False
+          assert result['production_mutation_allowed'] is False
+          assert not result['failed_php_fault_regressions']
+          print('Live-incident simulation coverage PASS; real-site acceptance still REQUIRED')
+          PY_FAULT_POLICY
 
       - name: Verify canonical Skill seed package
         shell: bash

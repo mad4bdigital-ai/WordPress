@@ -6,6 +6,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
       - '.github/workflows/mad4b-predictive-dependency-parity.yml'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -16,6 +17,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/**'
       - 'wp-content/plugins/mcp-adapter.zip'
       - 'tools/mad4b_predictive_dependency_gate.py'
+      - 'tools/mad4b_live_remediation_simulator.py'
       - '.github/workflows/mad4b-predictive-dependency-parity.yml'
       - '.github/workflows/feature-007-pre-staging-hybrid-audit.yml'
       - '.github/workflows/mad4b-control-plane-package.yml'
@@ -68,11 +70,37 @@ jobs:
               --output "dist/mad4b-predictive-parity-php-${{ matrix.php }}.json"
           fi
 
+      # Replay fault combinations sourced from sanitized ETG/ARE live
+      # observations. Execute genuine hermetic PHP failure-injection fixtures.
+      # A successful simulation NEVER provides a live Staging or owner receipt.
+      - name: Simulate live two-site faults and downstream repair dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tools/mad4b_live_remediation_simulator.py \
+            --self-test --execute-fixtures --enforce \
+            --output dist/mad4b-live-remediation-php-${{ matrix.php }}.json
+          python3 - <<'PY_FAULT_POLICY'
+          import json
+          from pathlib import Path
+          result=json.loads(Path('dist/mad4b-live-remediation-php-${{ matrix.php }}.json').read_text())
+          assert result['simulation_pass'] is True
+          assert result['fault_injections'] >= 36
+          assert result['runtime_repair_proven'] is False
+          assert result['release_ready'] is False
+          assert result['staging_write_authorized'] is False
+          assert result['production_mutation_allowed'] is False
+          assert not result['failed_php_fault_regressions']
+          print('Live-incident simulation coverage PASS; real-site acceptance still REQUIRED')
+          PY_FAULT_POLICY
+
       - name: Preserve non-authorizing impact evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mad4b-predictive-php-${{ matrix.php }}
-          path: dist/mad4b-predictive-parity-php-${{ matrix.php }}.json
+          path: |
+            dist/mad4b-predictive-parity-php-${{ matrix.php }}.json
+            dist/mad4b-live-remediation-php-${{ matrix.php }}.json
           if-no-files-found: ignore
           retention-days: 14
