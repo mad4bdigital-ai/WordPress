@@ -110,6 +110,10 @@ try {
     $result = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $input, array( 'expected_plan_sha256' => $plan['plan_sha256'] ) ) );
     $assert( is_array( $result ) && $result['installed'] && ! $result['active'], 'native WordPress install without implicit activation' );
     $assert( $result['security_enforcement_certified'] === false && $result['operational_verified'] === false, 'no fake protection certification' );
+    $inventory = MAD4B_SCP_Official_Security_Packages::inventory();
+    $assert( count( $inventory['providers'] ) === 5 && $inventory['read_only'], 'five optional providers projected without native scanners' );
+    $assert( $inventory['providers'][0]['installed'] && ! $inventory['providers'][0]['site_active'], 'read-only installed but inactive status' );
+    $assert( ! $inventory['providers'][0]['telemetry_read_capability_certified'], 'do not fabricate provider telemetry access' );
     $assert( strlen( $result['download_sha256'] ) === 64 && $GLOBALS['audit_calls'] === 3, 'downloaded artifact hash and final audit' );
     $blocked = MAD4B_SCP_Official_Security_Packages::plan( $input );
     $assert( ! $blocked['eligible'], 'subsequent install blocked for already installed plugin' );
@@ -118,6 +122,8 @@ try {
     $activePlan = MAD4B_SCP_Official_Security_Packages::plan( $activeInput );
     $activated = MAD4B_SCP_Official_Security_Packages::apply( array_merge( $activeInput, array( 'expected_plan_sha256' => $activePlan['plan_sha256'] ) ) );
     $assert( is_array( $activated ) && $activated['active'], 'opt-in allowlisted site activation after install' );
+    $inventory = MAD4B_SCP_Official_Security_Packages::inventory();
+    $assert( $inventory['providers'][0]['site_active'] && ! $inventory['providers'][0]['security_enforcement_certified'], 'active provider remains unverified until independent evidence' );
     $assert( $GLOBALS['audit_calls'] === 5 && $GLOBALS['download_calls'] === 3, 'one governed audit pair per successful install' );
     echo "SECURITY_OPERATIONAL_PROVIDERS_RUNTIME: PASS ($checks checks)\n";
 } finally {
