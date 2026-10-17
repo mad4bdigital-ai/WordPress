@@ -13,7 +13,12 @@ function add_option($k,$v,$a='',$autoload=false) {
  $GLOBALS['opts'][$k]=$v;return true;
 }
 function update_option($k,$v,$autoload=false){$GLOBALS['opts'][$k]=$v;return true;}
-function delete_option($k){unset($GLOBALS['opts'][$k]);return true;}
+function delete_option($k){
+ if($k===MAD4B_SCP_Native_Cron_Acceptance::LOCK && !empty($GLOBALS['fail_lock_delete_once'])){
+  $GLOBALS['fail_lock_delete_once']=false;return false;
+ }
+ unset($GLOBALS['opts'][$k]);return true;
+}
 function wp_generate_uuid4(){return 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';}
 function wp_schedule_single_event($when,$hook,$args=[],$error=false){
  $GLOBALS['calls']++;$GLOBALS['scheduled']=[$when,$hook,$args];return true;
@@ -95,6 +100,10 @@ $GLOBALS['cron_event_pending']=false;
 $GLOBALS['env']='production';
 ok(is_wp_error($c::reconcile_stale($id)),'Production stale job repair denied');
 $GLOBALS['env']='staging';
+$GLOBALS['fail_lock_delete_once']=true;
+$first=$c::reconcile_stale($id);
+ok(is_wp_error($first) && $c::status()['manual_reconciliation_eligible']===true,
+ 'interrupted stale lock cleanup remains resumable without replay');
 $result=$c::reconcile_stale($id);
 ok(is_array($result) && $result['lock_released']===true
  && $result['new_job_enqueued']===false && $GLOBALS['calls']===1
