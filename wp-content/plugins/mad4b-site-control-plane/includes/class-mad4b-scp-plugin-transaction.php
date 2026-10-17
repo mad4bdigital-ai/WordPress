@@ -31,6 +31,7 @@ final class MAD4B_SCP_Plugin_Transaction {
 					'component' => array( 'type' => 'string', 'maxLength' => 64 ),
 					'activation_scope' => array( 'type' => 'string', 'enum' => array( 'site', 'network' ), 'default' => 'site' ),
 					'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+                    'activate_after_install' => array( 'type' => 'boolean', 'default' => false ),
 				),
 				'required' => array( 'action', 'reason' ),
 				'additionalProperties' => false,
@@ -80,7 +81,17 @@ final class MAD4B_SCP_Plugin_Transaction {
 			if ( '' === $provider ) return new WP_Error( 'mad4b_plugin_transaction_provider_required', 'Certified provider_id is required for install/replace.' );
 			$planner = 'mad4b/plugin-package-plan';
 			$executor = 'mad4b/plugin-package-apply';
-			$planner_input += array( 'provider_id' => $provider, 'component' => $component, 'source' => 'auto_certified' );
+			// A reviewed official security slug uses the existing package executor,
+            // never a generic URL installer or a new mutation authority.
+            require_once __DIR__ . '/class-mad4b-scp-official-security-packages.php';
+            $official = MAD4B_SCP_Official_Security_Packages::provider( $provider );
+            $planner_input += array(
+                'provider_id' => $provider,
+                'component' => $component,
+                'source' => $official ? 'wordpress_org' : 'auto_certified',
+            );
+            if ( $official && 'install' === $action )
+                $planner_input['activate_after_install'] = ! empty( $input['activate_after_install'] );
 		} else {
 			return new WP_Error( 'mad4b_plugin_transaction_action_invalid', 'Unsupported plugin transaction action.' );
 		}
