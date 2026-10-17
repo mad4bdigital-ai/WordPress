@@ -51,7 +51,7 @@ final class MAD4B_SCP_Native_Cron_Acceptance {
             'job' => array_intersect_key( $job, array_flip(
                 array( 'job_id', 'state', 'queued_at', 'checked_at', 'http_status', 'elapsed_ms',
                     'error_code', 'source', 'checked_epoch', 'source_commit_sha',
-                    'site_origin_sha256', 'preference_revision' ) ) );
+                    'site_origin_sha256', 'preference_revision' ) ) ) );
     }
 
     /** Explicit local administrator reconciliation; never requeues a stale job. */
