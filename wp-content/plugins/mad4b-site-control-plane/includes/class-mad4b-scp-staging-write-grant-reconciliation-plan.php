@@ -102,30 +102,47 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan {
 		return $value;
 	}
 
+	/**
+	 * A single canonical registry agent is used by both WordPress owner review
+	 * and OAuth MCP planning. Each transport still authenticates independently.
+	 * OAuth must resolve to the SAME persisted agent, never just a matching slug.
+	 */
 	private static function current_agent() {
-		if ( self::$local_owner_preview ) {
-			if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' )
-				|| ! method_exists( 'MAD4B_SCP_Agent_Registry', 'get_agent_by_slug' ) )
-				return new WP_Error( 'mad4b_grant_local_preview_registry_missing', 'Governed agent registry is unavailable.' );
-			$agent = MAD4B_SCP_Agent_Registry::get_agent_by_slug( 'chatgpt-governed-write' );
-			if ( ! is_array( $agent )
-				|| 'chatgpt-governed-write' !== (string) ( $agent['slug'] ?? '' )
-				|| 'enabled' !== (string) ( $agent['status'] ?? '' )
-				|| 'staging' !== (string) ( $agent['environment'] ?? '' )
-				|| (int) ( $agent['wp_user_id'] ?? 0 ) !== get_current_user_id()
-				|| ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() ) )
-				return new WP_Error( 'mad4b_grant_local_preview_agent_not_exact', 'No exact enabled Staging governed agent for this enrolled owner.' );
-			return $agent;
-		}
-		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) || ! class_exists( 'MAD4B_SCP_Agent_Registry' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_identity_unavailable', 'Governance identity components are unavailable.' );
+		if ( ! class_exists( 'MAD4B_SCP_Agent_Registry' )
+			|| ! method_exists( 'MAD4B_SCP_Agent_Registry', 'get_agent_by_slug' ) )
+			return new WP_Error( 'mad4b_grant_reconcile_plan_registry_missing', 'Governed agent registry is unavailable.' );
+		$agent = MAD4B_SCP_Agent_Registry::get_agent_by_slug( 'chatgpt-governed-write' );
+		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
+		$valid = is_array( $agent ) && ! empty( $agent['id'] )
+			&& 'chatgpt-governed-write' === (string) ( $agent['slug'] ?? '' )
+			&& 'enabled' === (string) ( $agent['status'] ?? '' )
+			&& $environment === (string) ( $agent['environment'] ?? '' )
+			&& (int) ( $agent['wp_user_id'] ?? 0 ) === get_current_user_id()
+			&& MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() );
+		if ( ! $valid )
+			return new WP_Error( self::$local_owner_preview
+				? 'mad4b_grant_local_preview_agent_not_exact'
+				: 'mad4b_grant_reconcile_plan_agent_invalid',
+				'Canonical governed-write agent is not exact for the enrolled owner and environment.' );
+		if ( self::$local_owner_preview ) return $agent;
+		if ( ! class_exists( 'MAD4B_SCP_Identity_Context' ) )
+			return new WP_Error( 'mad4b_grant_reconcile_plan_identity_unavailable', 'Verified OAuth identity context unavailable.' );
 		$identity = MAD4B_SCP_Identity_Context::current();
 		if ( is_wp_error( $identity ) ) return $identity;
-		if ( empty( $identity['authenticated'] ) || 'oauth2_bearer' !== ( isset( $identity['auth_method'] ) ? (string) $identity['auth_method'] : '' ) ) return new WP_Error( 'mad4b_grant_reconcile_plan_oauth_identity_required', 'Verified OAuth bearer governance identity is required.' );
-		$agent = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
-		if ( is_wp_error( $agent ) ) return $agent;
-		$environment = sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() );
-		if ( 'chatgpt-governed-write' !== (string) $agent['slug'] || 'enabled' !== (string) $agent['status'] || $environment !== (string) $agent['environment'] ) return new WP_Error( 'mad4b_grant_reconcile_plan_agent_invalid', 'Resolved governance identity is not the canonical enabled current-environment write agent.' );
-		if ( (int) $agent['wp_user_id'] !== get_current_user_id() ) return new WP_Error( 'mad4b_grant_reconcile_plan_agent_user_mismatch', 'Resolved governed-write agent belongs to another WordPress user.' );
+		if ( ! is_array( $identity ) || empty( $identity['authenticated'] )
+			|| 'oauth' !== (string) ( $identity['subject_type'] ?? '' )
+			|| 'oauth2_bearer' !== (string) ( $identity['auth_method'] ?? '' ) )
+			return new WP_Error( 'mad4b_grant_reconcile_plan_oauth_identity_required', 'Verified OAuth bearer governance identity required.' );
+		$resolved = MAD4B_SCP_Agent_Registry::resolve_agent( $identity );
+		if ( is_wp_error( $resolved ) ) return $resolved;
+		if ( ! is_array( $resolved ) || (int) ( $resolved['id'] ?? 0 ) !== (int) $agent['id']
+			|| (string) ( $resolved['public_id'] ?? '' ) !== (string) ( $agent['public_id'] ?? '' )
+			|| (int) ( $resolved['wp_user_id'] ?? 0 ) !== get_current_user_id()
+			|| (string) ( $resolved['slug'] ?? '' ) !== (string) $agent['slug']
+			|| (string) ( $resolved['environment'] ?? '' ) !== $environment
+			|| 'enabled' !== (string) ( $resolved['status'] ?? '' ) )
+			return new WP_Error( 'mad4b_grant_reconcile_plan_subject_agent_mismatch',
+				'OAuth subject is not bound to the exact canonical governed-write agent.' );
 		return $agent;
 	}
 
