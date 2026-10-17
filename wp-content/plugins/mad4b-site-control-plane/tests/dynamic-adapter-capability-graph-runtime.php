@@ -80,6 +80,7 @@ graph_ok( $graph['unknown_plugin_write_allowed'] === false
     && $graph['automatic_write_registration'] === false, 'No authority from discovery' );
 // Validate each dimension against exact registered and certified evidence.
 $capable = $coverage;
+$capable['plugins'][1]['coverage_state'] = 'supported_reversible';
 $capable['plugins'][1]['adapter_write_abilities'] = array( 'core-provider/update-item' );
 $capable['plugins'][1]['adapter_reversible_contracts'] = array(
     'core-provider/update-item' => 'mad4b.rollback.provider-item.v1'
@@ -116,6 +117,20 @@ $denied = $c::plan_from_graph($uncertified_graph,array('plugin_file'=>'core-prov
     'dimension'=>'write', 'ability'=>'core-provider/update-item'));
 graph_ok($denied['state'] === 'WRITE_BEHAVIOR_NOT_CERTIFIED',
     'Provider versions are not automatically certified from discovery' );
+$parallel = $capable;
+$parallel['plugins'][1]['side_channel_blocker'] = 'unreviewed_parallel_mcp';
+$parallel_graph = $c::build_capability_graph($parallel, $plugins, $capable_abilities);
+$parallel_read = $c::plan_from_graph($parallel_graph, array('plugin_file'=>'core-provider/main.php',
+    'dimension'=>'read', 'ability'=>'core-provider/read-status'));
+graph_ok($parallel_read['state'] === 'PARALLEL_TRANSPORT_UNREVIEWED',
+    'Unreviewed parallel MCP transport also blocks functional read routing');
+$excluded = $capable;
+$excluded['plugins'][1]['coverage_state'] = 'excluded_high_risk';
+$excluded_graph = $c::build_capability_graph($excluded, $plugins, $capable_abilities);
+$excluded_write = $c::plan_from_graph($excluded_graph, array('plugin_file'=>'core-provider/main.php',
+    'dimension'=>'write', 'ability'=>'core-provider/update-item'));
+graph_ok($excluded_write['state'] === 'PROVIDER_EXCLUDED_BY_RISK',
+    'Explicit policy exclusion cannot be bypassed by a registered ability');
 $stale = $c::plan_from_graph( $g, array('plugin_file'=>'core-provider/main.php',
     'dimension'=>'write', 'ability'=>'core-provider/update-item',
     'expected_graph_sha256'=>str_repeat('0',64)));
