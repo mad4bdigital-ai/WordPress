@@ -108,10 +108,8 @@ for marker in [
     'chatgpt_unified_catalog_enabled',
     'public static function chatgpt_reviewed_direct_step_up_tools()',
     'public static function is_chatgpt_direct_step_up_tool( $ability_name )',
-    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
-    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
-    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
-    "MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()",
+    'MAD4B_SCP_Governed_Ability_Census::structural_step_up()',
+    'owner_intent_only',
     '$step_up = self::chatgpt_reviewed_direct_step_up_tools();',
     '$direct_mutation_transport = array_merge( self::chatgpt_dispatch_transport_tools(), $step_up );',
     '$direct_mutation_transport = array_values( array_unique( array_merge( $direct_mutation_transport, $approval_bootstrap ) ) );',
@@ -179,16 +177,9 @@ for marker in [
 assert "if ( isset( $dynamic[ $ability_name ] ) )" in catalog_diagnostics
 assert "self::ability_is_direct_step_up( $ability_name )" in catalog_diagnostics
 reviewed_helper = servers.split('public static function chatgpt_reviewed_direct_step_up_tools()', 1)[1].split('public static function is_chatgpt_direct_step_up_tool', 1)[0]
-for marker in [
-    'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY',
-    'MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY',
-    'MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY',
-    'MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()',
-]:
-    assert marker in reviewed_helper, f'missing reviewed step-up priority source: {marker}'
-assert reviewed_helper.index('MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
-assert reviewed_helper.index('MAD4B_SCP_Self_Update::BOOTSTRAP_APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
-assert reviewed_helper.index('MAD4B_SCP_Governed_Runtime_Gates::APPLY_ABILITY') < reviewed_helper.index('MAD4B_SCP_Remote_Operation_Parity::chatgpt_direct_step_up_catalog_tools()')
+for marker in ['MAD4B_SCP_Governed_Ability_Census::structural_step_up()', 'owner_intent_only', 'self::chatgpt_approval_bootstrap_tools()']:
+    assert marker in reviewed_helper, f'missing dynamic reviewed step-up invariant: {marker}'
+assert 'MAD4B_SCP_Full_Staging_Authority::APPLY_ABILITY' not in reviewed_helper
 
 # Low-level enrollment primitives never join the direct ChatGPT catalog, even
 # for a bearer carrying authority:step-up. They remain behind enrollment-execute.

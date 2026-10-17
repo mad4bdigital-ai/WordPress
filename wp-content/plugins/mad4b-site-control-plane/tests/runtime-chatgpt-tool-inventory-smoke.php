@@ -117,7 +117,12 @@ $direct_required = array(
 );
 foreach ( $direct_required as $tool_name ) {
 	if ( ! in_array( $tool_name, $actual_names, true ) ) {
-		$fail( 'Required minimal Staging ChatGPT direct tool is missing.', $tool_name );
+		$fail( 'Required minimal Staging ChatGPT direct tool is missing.', array(
+            'tool' => $tool_name,
+            'first_party_census' => class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+                ? MAD4B_SCP_Governed_Ability_Census::diagnostic( str_replace( 'mad4b-', 'mad4b/', $tool_name ) )
+                : array( 'unavailable' => true ),
+        ) );
 	}
 }
 

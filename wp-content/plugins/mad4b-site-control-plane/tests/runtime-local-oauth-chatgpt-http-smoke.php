@@ -267,7 +267,15 @@ foreach ( $reviewed_step_up_names as $hidden_step_up ) {
 // Every registered direct mutation is execution-gated, even when the caller knows its hidden name.
 $classification = MAD4B_SCP_MCP_Catalog_Diagnostics::classification_snapshot();
 $registered_step_names = array_keys( array_filter( $classification, static function ( $row ) { return ! empty( $row['direct_step_up'] ); } ) );
-if ( empty( $registered_step_names ) || count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) $fail( 'Reviewed registered catalog must remain nonempty and within its budget.' );
+if ( empty( $registered_step_names ) || count( $preauth_names ) > MAD4B_SCP_MCP_Catalog_Diagnostics::MAX_TOOLS ) {
+    $fail( 'Reviewed registered catalog must remain nonempty and within its budget.', array(
+        'reviewed_count' => count( $registered_step_names ),
+        'preauth_count' => count( $preauth_names ),
+        'owner_census' => class_exists( 'MAD4B_SCP_Governed_Ability_Census' )
+            ? MAD4B_SCP_Governed_Ability_Census::diagnostic( 'mad4b/staging-write-owner-attest' )
+            : array( 'unavailable' => true ),
+    ) );
+}
 foreach ( array( 'mad4b-site-profile-feature-reenroll', 'mad4b-site-profile-write-enable', 'mad4b-staging-write-grant-reconcile', 'mad4b-staging-write-candidate-bind' ) as $internal ) if ( in_array( $internal, $preauth_names, true ) ) $fail( 'Internal primitive must never enter the registered direct superset.', $internal );
 $assert_direct_denied = static function ( $bearer, $session, $client_kind ) use ( $dispatch, $fail, $normalize, $classification, $registered_step_names ) {
 	foreach ( $registered_step_names as $index => $tool_name ) {

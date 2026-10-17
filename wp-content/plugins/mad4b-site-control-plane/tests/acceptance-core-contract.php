@@ -75,7 +75,18 @@ $run = $runner->run( array( 'provider_id' => 'fake', 'profile_id' => 'tours' ) )
 expect_true( 'PASS' === $run['result']['verdict'], 'semantic PASS is preserved' );
 expect_true( true === $run['result']['verification']['semantic_parity_verified'], 'semantic verification is explicit' );
 expect_true( false === $run['result']['verification']['browser_runtime_parity_verified'], 'PHP never claims browser verification' );
-expect_true( 'INCOMPLETE_EVIDENCE' === $run['result']['overall_evidence_status'], 'browser observation gap remains explicit without downgrading semantic PASS to product failure' );
+expect_true( 'PASS' === $run['result']['overall_evidence_status'], 'semantic-only PASS is not blocked by unrelated browser evidence' );
+expect_true( empty( $run['result']['incomplete_evidence'] ), 'irrelevant missing browser report is not a semantic blocker' );
+$semantic_other = ( new MAD4B_SCP_Acceptance_Verdict_Reducer() )->reduce( array(
+    'requested_suite' => 'semantic', 'verdict' => 'PASS',
+    'verification' => array( 'semantic_parity_verified' => true ),
+    'incomplete_evidence' => array( 'browser_runtime_not_observed', 'required_server_assertion_missing' ),
+) );
+expect_true( 'INCOMPLETE_EVIDENCE' === $semantic_other['overall_evidence_status'],
+    'missing genuinely required semantic/server evidence still blocks' );
+expect_true( false === $run['result']['browser_evidence_required_for_this_suite']
+ && 'NOT_APPLICABLE' === $run['result']['verification']['browser_evidence_status'],
+ 'unrequested browser evidence is NOT_APPLICABLE rather than a global blocker' );
 
 $unsafe = safe_provider( 'unsafe' );
 $unsafe['run_callback'] = function ( array $request ) {
