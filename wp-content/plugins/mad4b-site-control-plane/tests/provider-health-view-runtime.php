@@ -201,4 +201,35 @@ $write = MAD4B_SCP_Provider_Health_View::capability_first( 'jetengine',
 $check( 'WRITE_CANDIDATE_UNAUTHORIZED' === $write['capabilities']['write.sample']['state']
 	&& false === $write['mutation_authorized'] && false === $write['capabilities']['write.sample']['mutation_authorized'],
 	'Reported write eligibility was silently treated as authorization.', $write );
+$partial_health = MAD4B_SCP_Provider_Health_View::normalize(
+	array( 'provider' => 'jetengine', 'status' => 'version_drift', 'runtime_contract_ok' => false ),
+	array( 'version_drift' ), array(), array(
+		'contract' => 'mad4b.provider-capability-certification-result.v1',
+		'provider_id' => 'jetengine',
+		'capabilities' => array(
+			'read.sample' => array( 'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true ),
+			'invalid.sample' => array( 'surface_exposed' => true ),
+		),
+	)
+);
+$check( 'DEGRADED' === $partial_health['health_state']
+	&& 'capability_evidence_partial_invalid' === $partial_health['reason']
+	&& array( 'read.sample' ) === $partial_health['read_eligible_capabilities']
+	&& false === $partial_health['runtime_contract_mutation_eligible'],
+	'Partial capability evidence was made healthy or authorized mutation.', $partial_health );
+$foreign_cert_health = MAD4B_SCP_Provider_Health_View::normalize(
+	array( 'provider' => 'jetengine', 'status' => 'certified', 'runtime_contract_ok' => true ),
+	array(), array(), array(
+		'contract' => 'mad4b.provider-capability-certification-result.v1',
+		'provider_id' => 'rank_math',
+		'capabilities' => array( 'read.sample' => array(
+			'surface_exposed' => true, 'structural_compatible' => true, 'read_eligible' => true
+		) ),
+	)
+);
+$check( false === $foreign_cert_health['capability_scope']
+	&& false === $foreign_cert_health['runtime_contract_mutation_eligible']
+	&& 'invalid_or_foreign' === $foreign_cert_health['capability_first']['evidence_state'],
+	'Foreign certification entered runtime mutation eligibility.', $foreign_cert_health );
+
 echo "Capability-first provider matrix: PASS (10 providers, version drift, scoped read, owner gate and corrupt evidence)\n";
