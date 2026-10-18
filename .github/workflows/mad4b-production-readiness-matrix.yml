@@ -40,6 +40,27 @@ jobs:
           set -euo pipefail
           python3 tools/production_readiness_matrix.py validate
           python3 tools/production_readiness_matrix.py self-test
+      - name: Inventory existing source capabilities without baseline certification
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_baseline.py self-test
+          python3 tools/readiness_baseline.py render \
+            --head-sha "$EXACT_HEAD" \
+            --out artifacts/production-readiness
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("artifacts/production-readiness/baseline-inventory.json").read_text())
+          assert p["contract"] == "mad4b.baseline-capability-inventory.v1"
+          assert p["authorizing"] is False and p["production_authorized"] is False
+          assert p["total_observed"] >= p["reviewed_source_entries"]
+          assert all(x["live_site_verified"] is False and
+                     x["production_authorized"] is False for x in p["records"])
+          print("BASELINE_REVIEW_GAPS_NOT_AUTOCERTIFIED: PASS")
+          PY
+
       - name: Test dynamic coverage fail-closed scenarios
         run: |
           set -euo pipefail

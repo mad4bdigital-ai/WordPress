@@ -167,3 +167,18 @@ service and approval workflow.
 GitHub Actions artifacts have 30-day retention and are not a durable,
 tamper-evident Evidence Ledger. This PR does **not** create signed runtime
 receipts, merge a PR, change Branch Protection, grant permissions or deploy.
+
+### Historical baseline inventory
+
+The workflow also runs `tools/readiness_baseline.py` on the exact checked-out
+SHA. It produces `baseline-inventory.json` and `baseline-inventory.csv`,
+enumerating source catalog IDs and static PHP registrations, their possible
+risk/Control mapping and the gap between `OBSERVED_UNREVIEWED` and
+`REVIEWED_SOURCE_COVERAGE_ONLY`.
+
+This replaces the misleading assumption that an empty historic reviewed
+registry equals fully covered existing features. Even a source-reviewed item
+has `live_site_verified=false` and `production_authorized=false`. The
+inventory is a review backlog, not a migration that silently certifies all
+older features. Dynamic WordPress registration still needs authenticated
+read-only runtime census when external trust is independently available.
