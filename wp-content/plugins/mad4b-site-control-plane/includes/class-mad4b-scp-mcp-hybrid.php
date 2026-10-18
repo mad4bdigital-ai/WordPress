@@ -208,8 +208,16 @@ final class MAD4B_SCP_MCP_Hybrid {
         } else {
             $wire = json_decode( $body, true );
         }
+        // A JSON-RPC response contains exactly one of result or error, never both.
+        // Mixed envelopes must not be accepted as successful tools/call reads.
+        $has_result = is_array( $wire ) && array_key_exists( 'result', $wire );
+        $has_error = is_array( $wire ) && array_key_exists( 'error', $wire );
         if ( ! is_array( $wire ) || (string) ( $wire['id'] ?? '' ) !== $id || ( $wire['jsonrpc'] ?? '' ) !== '2.0'
-            || ( ! isset( $wire['result'] ) && ! isset( $wire['error'] ) ) ) return new WP_Error( 'mad4b_mcp_peer_invalid_rpc', 'MCP JSON-RPC envelope does not match the request.' );
+            || $has_result === $has_error
+            || ( $has_error && ( ! is_array( $wire['error'] )
+                || ! is_int( $wire['error']['code'] ?? null )
+                || ! is_string( $wire['error']['message'] ?? null ) ) ) )
+            return new WP_Error( 'mad4b_mcp_peer_invalid_rpc', 'MCP JSON-RPC envelope does not match the request.' );
         $next_session = (string) wp_remote_retrieve_header( $response, 'mcp-session-id' );
         if ( strlen( $next_session ) > 191 || false !== strpos( $next_session, "\n" ) ) $next_session = '';
         return array( 'wire' => $wire, 'session' => $next_session, 'http_status' => (int) $status );

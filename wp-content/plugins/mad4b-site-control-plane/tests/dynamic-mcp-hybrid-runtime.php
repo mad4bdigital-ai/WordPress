@@ -45,6 +45,8 @@ function wp_safe_remote_post( $url, $args ) {
         $result = array( 'content' => array( array('type'=>'text', 'text'=>'SAFE_DATA') ), 'isError'=>false );
     } else return new WP_Error( 'unexpected_call', 'unknown method' );
     $wire = array( 'jsonrpc'=>'2.0', 'id'=>$json['id'], 'result'=>$result );
+    if ( $method === 'tools/call' && ! empty( $GLOBALS['mcp_both_result_error'] ) )
+        $wire['error'] = array( 'code'=>-32000, 'message'=>'Contradictory RPC result and error' );
     if ( ! empty($GLOBALS['mcp_sse']) )
         return array( 'status'=>200, 'headers'=>array('content-type'=>'text/event-stream','mcp-session-id'=>$session),
             'body'=>"event: message\ndata: ".json_encode($wire)."\n\n" );
@@ -110,6 +112,12 @@ $read = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspe
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
 mcp_check( ! is_wp_error($read) && $read['result']['content'][0]['text']==='SAFE_DATA',
     'Owner-reviewed read-only tools/call executes with exact fingerprint' );
+$GLOBALS['mcp_both_result_error'] = true;
+$ambiguous = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
+    'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
+mcp_check( is_wp_error($ambiguous) && $ambiguous->get_error_code()==='mad4b_mcp_peer_invalid_rpc',
+    'Conflicting JSON-RPC result/error envelope must not pass as a successful read' );
+$GLOBALS['mcp_both_result_error'] = false;
 $blocked = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/delete',
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'] ));
 mcp_check( is_wp_error($blocked) && $blocked->get_error_code()==='mad4b_native_read_not_certified',

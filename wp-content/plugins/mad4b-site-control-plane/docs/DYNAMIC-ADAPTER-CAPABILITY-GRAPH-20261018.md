@@ -92,7 +92,7 @@ Owner controls the protected file and its pinned manifest digest, which allows a
 
 Provider selection is native-first only **after** positive independent trust/contract evidence. Until then the legacy provider MCP path isolation and foreign peer mutation guards remain intact, rather than creating an undocumented parallel Write plane.
 
-Required MCP transport states: `DETECTED_UNVERIFIED`, `TRANSPORT_AUTHENTICATED`, `CATALOG_SNAPSHOT_REVIEWED`, `READ_CERTIFIED`, `WRITE_BEHAVIOR_CERTIFIED`, `GOVERNED_EXECUTION_ELIGIBLE`, with an explicit `SUSPENDED_ON_DRIFT` state whenever route, principal, schemas or code changes. The current PR does **not** implement independent network MCP negotiation or remote tool execution and must not be represented as live native MCP certification.
+Required MCP transport states: `DETECTED_UNVERIFIED`, `TRANSPORT_AUTHENTICATED`, `CATALOG_SNAPSHOT_REVIEWED`, `READ_CERTIFIED`, `WRITE_BEHAVIOR_CERTIFIED`, `GOVERNED_EXECUTION_ELIGIBLE`, with an explicit `SUSPENDED_ON_DRIFT` state whenever route, principal, schemas or code changes. PR #415 now implements bounded, operator-pinned MCP catalog negotiation and reviewed read-only execution (detailed below). These source-level capabilities are **not** independent ETG/ARE live MCP federation certification and grant no Write authority.
 
 ### Distinguish integration from authorization
 
