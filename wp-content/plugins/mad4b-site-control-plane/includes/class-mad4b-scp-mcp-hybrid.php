@@ -239,7 +239,8 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return new WP_Error( 'mad4b_mcp_peer_url_unsafe', 'Pinned MCP endpoint is not eligible for HTTPS transport.' );
         $isolation = self::transport_isolation_guard( $peer );
         if ( is_wp_error( $isolation ) ) return $isolation;
-        $circuit = MAD4B_SCP_MCP_Peer_Health::check( $peer );
+        $phase = 'tools/call' === $method ? 'read' : 'catalog';
+        $circuit = MAD4B_SCP_MCP_Peer_Health::check( $peer, $phase );
         if ( is_wp_error( $circuit ) ) return $circuit;
         if ( ! function_exists( 'wp_safe_remote_post' ) ) return new WP_Error( 'mad4b_mcp_http_unavailable', 'Safe HTTP transport is unavailable.' );
         if ( null === self::$rpc_started_at ) self::$rpc_started_at = microtime( true );
@@ -278,13 +279,13 @@ final class MAD4B_SCP_MCP_Hybrid {
             'limit_response_size' => self::MAX_BYTES, 'blocking' => true,
         ) );
         if ( is_wp_error( $response ) ) {
-            MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer );
+            MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer, $phase );
             return new WP_Error( 'mad4b_mcp_peer_transport_failed', 'Peer MCP transport failed; no route can be certified.' );
         }
         $status = wp_remote_retrieve_response_code( $response );
         if ( $status < 200 || $status >= 300 ) {
             if ( 429 === (int) $status || (int) $status >= 500 )
-                MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer );
+                MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer, $phase );
             return new WP_Error( 'mad4b_mcp_peer_http_' . (int) $status, 'Peer MCP HTTP status prevents catalog verification.' );
         }
         $body = wp_remote_retrieve_body( $response );
@@ -406,7 +407,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( is_wp_error( $session ) ) return $session;
         $catalog = self::catalog_in_session( $peers[$peer_id], $session );
         if ( is_wp_error( $catalog ) ) return $catalog;
-        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id] );
+        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id], 'catalog' );
         $record = array( 'session' => $session, 'catalog' => $catalog,
             'created_at' => microtime( true ), 'cache_key' => $cache_key );
         self::$request_catalogs[$cache_key] = $record;
@@ -697,7 +698,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             if ( is_wp_error( $validated ) || true !== $validated )
                 return new WP_Error( 'mad4b_native_output_schema_mismatch', 'MCP response violates reviewed output schema.' );
         }
-        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id] );
+        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id], 'read' );
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
             'protocol' => $session['version'], 'catalog_sha256' => $expected,
