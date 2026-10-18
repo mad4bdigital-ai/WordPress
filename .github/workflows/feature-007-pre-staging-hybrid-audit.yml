@@ -156,16 +156,26 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/post-review-audit-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-regressions.py --output dist/mad4b-open-issue-regressions.json
           python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-live-coverage-contract.py
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-live-coverage.py \
-            --live \
-            --repo "${{ github.repository }}" \
-            --regressions dist/mad4b-open-issue-regressions.json \
-            --output dist/mad4b-open-issue-live-coverage.json
           python3 -m py_compile tools/mad4b-local-ci-parity.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/local-ci-multi-environment-contract.py
           for scenario in disabled normal master missing uncertified drift bad-archive; do
             php wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php "$scenario"
           done
+
+      # Do NOT pass a GitHub token to the other integration/PHP fixtures.
+      # This read-only ability has its own narrow job-step token scope.
+      - name: Admit all live GitHub open Issues into reviewed regression coverage
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: |
+          set -euo pipefail
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-live-coverage.py \
+            --live \
+            --repo "${{ github.repository }}" \
+            --regressions dist/mad4b-open-issue-regressions.json \
+            --output dist/mad4b-open-issue-live-coverage.json
 
       - name: Unified capability gateway native acceptance / PHP 7.4 + Node
         shell: bash
