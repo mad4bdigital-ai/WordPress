@@ -131,6 +131,17 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 				. '</p></div></div>';
 			return;
 		}
+		// A missing or stale release pointer must hide the installation action,
+		// not the explicit owner-requested update check. Never perform HTTP
+		// refresh on admin GET or silently equate a PR candidate with release.
+		if ( class_exists( 'MAD4B_SCP_Self_Update', false ) ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'mad4b_control_plane_refresh_update' );
+			echo '<input type="hidden" name="action" value="mad4b_control_plane_refresh_update">';
+			echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Check for certified updates', 'mad4b-site-control-plane' ) . '</button></p>';
+			echo '</form>';
+			echo '<p class="description">' . esc_html__( 'Check the signed Control Plane channel on request. Compatible runtime installation remains unavailable until exact release-set metadata and source identity are verified.', 'mad4b-site-control-plane' ) . '</p>';
+		}
 		if ( $missing_release_target ) {
 			echo '<div class="notice notice-warning inline"><p><strong>'
 				. esc_html__( 'Certified runtime update target is missing or incomplete.', 'mad4b-site-control-plane' )
