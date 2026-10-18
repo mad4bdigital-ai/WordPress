@@ -47,4 +47,40 @@ registration_assert( ! $registry->register( new Unreviewed_Third_Party_Adapter()
     'Unreviewed external Adapter_Base subclass denied even via legacy hook' );
 registration_assert( $registry->get( 'unreviewed' ) === null,
     'Unreviewed class cannot auto-mount or register directly' );
+
+$candidates = $registry->candidate_inventory();
+registration_assert( $candidates['count'] >= 1
+    && $candidates['rows'][0]['source_review_required']
+    && ! $candidates['rows'][0]['read_execution_authorized']
+    && ! $candidates['rows'][0]['write_execution_authorized'],
+    'Unreviewed external Adapter accepted for discovery only' );
+registration_assert( ! $registry->register( new Unreviewed_Third_Party_Adapter() )
+    && $registry->candidate_inventory()['count'] === $candidates['count'],
+    'Repeat candidate deduplicated without mounting' );
+$GLOBALS['untrusted_calls'] = 0;
+$anonymous = new class extends MAD4B_SCP_Adapter_Base {
+    public function id() { ++$GLOBALS['untrusted_calls']; throw new RuntimeException( 'unknown_id_was_called' ); }
+    public function label() { return 'Anonymous'; }
+    public function is_available() { return false; }
+    public function ability_names() { ++$GLOBALS['untrusted_calls']; throw new RuntimeException( 'unknown_abilities_were_called' ); }
+    public function register_abilities() { ++$GLOBALS['untrusted_calls']; throw new RuntimeException( 'unknown_executed' ); }
+};
+registration_assert( ! $registry->register( $anonymous ), 'Unknown anonymous object not mounted' );
+$after = $registry->candidate_inventory();
+registration_assert( $after['count'] === $candidates['count'] + 1 && $GLOBALS['untrusted_calls'] === 0,
+    'Anonymous candidate observable without invoking any of its methods' );
+$anonymous_found = false;
+foreach ( $after['rows'] as $candidate ) {
+    registration_assert( preg_match( '/^[a-f0-9]{64}$/D', $candidate['candidate_fingerprint'] )
+        && ! $candidate['ability_registration_allowed']
+        && ! $candidate['active_adapter_registered'],
+        'Candidate records cannot authorize a registered tool' );
+    if ( $candidate['anonymous'] ) {
+        $anonymous_found = true;
+        registration_assert( 0 === strpos( $candidate['class_label'], 'anonymous#' )
+            && false === strpos( $candidate['class_label'], __DIR__ ),
+            'Anonymous PHP filename is not exposed to observers' );
+    }
+}
+registration_assert( $anonymous_found, 'Anonymous Adapter included in candidate discovery' );
 echo "DYNAMIC_ADAPTER_REGISTRATION_POLICY: PASS (no implicit mutation grant)\n";

@@ -11,6 +11,9 @@ final class MAD4B_SCP_Adapter_Registry {
 	private static $instance;
 	private static $ability_hooks_bound = false;
 	private $adapters = array();
+	private $unreviewed_candidates = array();
+	private $candidate_overflow = 0;
+	const MAX_UNREVIEWED_CANDIDATES = 96;
 	private $defaults_registered = false;
 	private static $approved_bundled_cache = null;
 
@@ -121,6 +124,63 @@ final class MAD4B_SCP_Adapter_Registry {
 		// Separate source-reviewed registration policy controls all providers.
 		do_action( 'mad4b_scp_register_adapters', $this );
 	}
+
+    /**
+     * Unknown and anonymous Adapter_Base objects enter a bounded, passive
+     * discovery queue. Do not invoke id(), status(), ability_names() or any
+     * third-party callback to describe an unreviewed object.
+     */
+    private function observe_unreviewed_candidate( $adapter ) {
+        try {
+            $reflection = new ReflectionClass( $adapter );
+            $name = $reflection->getName();
+            $source = $reflection->getFileName();
+            $real = is_string( $source ) ? realpath( $source ) : false;
+            $fingerprint = hash( 'sha256', $name . "\n" . ( is_string( $real ) ? $real : '' )
+                . "\n" . (int) $reflection->getStartLine() );
+            if ( isset( $this->unreviewed_candidates[ $fingerprint ] ) ) return;
+            if ( count( $this->unreviewed_candidates ) >= self::MAX_UNREVIEWED_CANDIDATES ) {
+                ++$this->candidate_overflow;
+                return;
+            }
+            $bundled = realpath( __DIR__ . '/adapters' );
+            $external = defined( 'WP_PLUGIN_DIR' ) ? realpath( WP_PLUGIN_DIR ) : false;
+            $source_kind = 'unknown_runtime';
+            if ( is_string( $real ) && false !== $bundled
+                && 0 === strpos( $real, $bundled . DIRECTORY_SEPARATOR ) ) $source_kind = 'unreviewed_bundled';
+            elseif ( is_string( $real ) && false !== $external
+                && 0 === strpos( $real, $external . DIRECTORY_SEPARATOR ) ) $source_kind = 'external_plugin';
+            $this->unreviewed_candidates[ $fingerprint ] = array(
+                'candidate_fingerprint' => $fingerprint,
+                // Anonymous generated names may embed absolute paths and NULs.
+                'class_label' => $reflection->isAnonymous()
+                    ? 'anonymous#' . substr( $fingerprint, 0, 12 ) : substr( $name, 0, 128 ),
+                'anonymous' => $reflection->isAnonymous(),
+                'source_kind' => $source_kind,
+                'state' => 'DISCOVERED_REVIEW_REQUIRED',
+                'active_adapter_registered' => false,
+                'read_execution_authorized' => false,
+                'write_execution_authorized' => false,
+                'ability_registration_allowed' => false,
+                'source_review_required' => true,
+            );
+        } catch ( Throwable $error ) { ++$this->candidate_overflow; }
+    }
+
+    public function candidate_inventory() {
+        $rows = $this->unreviewed_candidates;
+        ksort( $rows, SORT_STRING );
+        return array(
+            'contract' => 'mad4b.unreviewed-adapter-candidates.v1',
+            'discovery_only' => true, 'count' => count( $rows ),
+            'truncated' => $this->candidate_overflow > 0,
+            'rows' => array_values( $rows ),
+            'auto_mount' => false, 'authorizing' => false,
+            'mutation_performed' => false,
+            'next_action' => 'review_source_then_pin_exact_adapter',
+        );
+    }
+
 	public function register( $adapter ) {
 		if ( ! $adapter instanceof MAD4B_SCP_Adapter_Base ) return false;
 		// Adapter_Base inheritance alone is not authority. Third-party hooks
@@ -129,7 +189,10 @@ final class MAD4B_SCP_Adapter_Registry {
 		$approved_bundled = in_array( $class, self::approved_bundled_adapter_classes(), true )
 			&& self::is_trusted_bundled_class( $class );
 		$approved_external = ! $approved_bundled && MAD4B_SCP_External_Adapter_Trust::allows( $adapter );
-		if ( ! $approved_bundled && ! $approved_external ) return false;
+		if ( ! $approved_bundled && ! $approved_external ) {
+			$this->observe_unreviewed_candidate( $adapter );
+			return false; // Executable registration still needs independent trust.
+		}
 		$id = $adapter->id();
 		if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id ) ) return false;
 		if ( isset( $this->adapters[ $id ] ) ) return false; // Reject silent collisions/overrides.
@@ -204,6 +267,8 @@ final class MAD4B_SCP_Adapter_Registry {
 			'bundled_class_discovery_count' => count( $discovered ),
 			'approved_class_count' => count( $approved ),
 			'unreviewed_bundled_candidates' => $pending_review,
+			'unreviewed_runtime_candidates' => $this->candidate_inventory(),
+			'unknown_adapter_discovery_supported' => true,
 			'new_candidate_write_enabled' => false,
 			'registration_policy' => 'source_reviewed_bundled_or_owner_pinned_external',
 			'external_admission' => MAD4B_SCP_External_Adapter_Trust::status() );
