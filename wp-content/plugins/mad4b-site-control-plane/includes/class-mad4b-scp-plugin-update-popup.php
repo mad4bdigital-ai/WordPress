@@ -66,7 +66,7 @@ final class MAD4B_SCP_Plugin_Update_Popup {
 
     public static function entry( $plugin_file ) {
         if ( ! is_string( $plugin_file ) || strlen( $plugin_file ) > 280 ) return array();
-        if ( self::core_plugin( $plugin_file ) ) return array();
+        if ( self::core_plugin( $plugin_file ) ) return array(
             'id' => 'control-plane',
             'name' => 'MAD4B Site Control Plane',
             'version' => MAD4B_SCP_VERSION,
