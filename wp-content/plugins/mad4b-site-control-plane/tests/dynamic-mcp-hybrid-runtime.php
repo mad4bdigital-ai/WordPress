@@ -9,6 +9,26 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
 function wp_http_validate_url( $url ) { return strpos( $url, 'https://reviewed.example/' ) === 0; }
+abstract class MAD4B_SCP_Adapter_Base {}
+class MAD4B_SCP_Policy { public static function can_read() { return ! empty( $GLOBALS['hybrid_wp_read'] ); } }
+class MAD4B_SCP_Identity_Context { public static function current() {
+    return array( 'authenticated' => ! empty( $GLOBALS['hybrid_authenticated'] ) );
+} }
+class MAD4B_SCP_Agent_Registry {
+    public static function resolve_agent( $identity ) {
+        return ! empty( $identity['authenticated'] ) ? array( 'id' => 17 ) : new WP_Error( 'missing_identity', 'Missing authenticated subject' );
+    }
+    public static function exact_grant( $agent_id, $server, $ability, $provider = 'core' ) {
+        if ( empty( $GLOBALS['hybrid_grant'] ) || 17 !== $agent_id || 'mad4b-read' !== $server
+            || ! in_array( $provider, array( 'native_mcp_test-peer', 'hybrid_local' ), true )
+            || ! in_array( $ability, array( 'demo/inspect', 'demo/offline' ), true ) )
+            return new WP_Error( 'no_exact_grant', 'Exact grant missing' );
+        return array( 'effect' => 'allow' );
+    }
+}
+$GLOBALS['hybrid_wp_read'] = true;
+$GLOBALS['hybrid_authenticated'] = true;
+$GLOBALS['hybrid_grant'] = true;
 function mcp_check( $condition, $message ) {
     if ( ! $condition ) { fwrite( STDERR, 'HYBRID_FAIL: ' . $message . "\n" ); exit( 1 ); }
 }
@@ -108,6 +128,19 @@ $denied = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/ins
     'expected_catalog_sha256'=>str_repeat('0',64), 'arguments'=>array('q'=>'safe') ));
 mcp_check( is_wp_error($denied) && $denied->get_error_code()==='mad4b_native_read_catalog_drift',
     'Stale catalogue snapshot cannot trigger tools/call' );
+$before_denied = count($GLOBALS['mcp_calls']);
+$GLOBALS['hybrid_grant'] = false;
+$no_grant = $hybrid::read_tool(array('peer_id'=>'test-peer','ability'=>'demo/inspect',
+    'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256']));
+mcp_check(is_wp_error($no_grant) && $no_grant->get_error_code() === 'mad4b_hybrid_exact_grant_required'
+    && count($GLOBALS['mcp_calls']) === $before_denied, 'Missing exact grant denies remote IO before negotiation');
+$GLOBALS['hybrid_grant'] = true;
+$GLOBALS['hybrid_authenticated'] = false;
+$no_agent = $hybrid::read_tool(array('peer_id'=>'test-peer','ability'=>'demo/inspect',
+    'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256']));
+mcp_check(is_wp_error($no_agent) && $no_agent->get_error_code() === 'mad4b_hybrid_subject_required'
+    && count($GLOBALS['mcp_calls']) === $before_denied, 'Missing subject denies peer before negotiation');
+$GLOBALS['hybrid_authenticated'] = true;
 $read = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
 mcp_check( ! is_wp_error($read) && $read['result']['content'][0]['text']==='SAFE_DATA',
@@ -154,11 +187,19 @@ mcp_check( ! is_wp_error($drift) && $drift['bindings']['demo/inspect']['state'] 
     'Remote native tool schema drift is detected without execution' );
 // Simulate an exact previously source-reviewed local adapter. The real
 // runtime uses WP_Ability::execute, which enforces validation and permissions.
-final class MAD4B_Test_Hybrid_Adapter {
+final class MAD4B_Test_Hybrid_Adapter extends MAD4B_SCP_Adapter_Base {
     public function ability_names() { return array('read'=>array('demo/offline')); }
 }
 final class MAD4B_Test_Hybrid_Ability {
-    public function execute( $args ) { return array('ok'=>true,'permission_checked'=>true,'query'=>$args['q'] ?? ''); }
+    protected $execute_callback;
+    public function __construct( $tampered = false ) {
+        $this->execute_callback = function( $args ) {
+            return array( 'ok' => true, 'permission_checked' => true, 'query' => $args['q'] ?? '' );
+        };
+    }
+    public function get_name() { return 'demo/offline'; }
+    public function get_meta() { return array( 'annotations' => array( 'readonly' => true, 'destructive' => false ) ); }
+    public function execute( $args ) { return call_user_func( $this->execute_callback, $args ); }
 }
 final class MAD4B_SCP_Adapter_Registry {
     public static function instance() { return new self(); }
@@ -175,6 +216,14 @@ mcp_check(!is_wp_error($hybrid_read)
     && $hybrid_read['result']['permission_checked'] === true
     && count($GLOBALS['mcp_calls']) === $before_local,
     'Local fallback executes via registered Ability with no remote request');
+$GLOBALS['hybrid_grant'] = false;
+$before_local_denied = count($GLOBALS['mcp_calls']);
+$local_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/offline',
+    'arguments'=>array('q'=>'blocked'),'peer_id'=>''));
+mcp_check(is_wp_error($local_denied) && $local_denied->get_error_code()==='mad4b_hybrid_exact_grant_required'
+    && count($GLOBALS['mcp_calls'])===$before_local_denied,
+    'Local fallback cannot bypass exact per-ability Agent grant');
+$GLOBALS['hybrid_grant'] = true;
 $GLOBALS['mcp_tools'][0]['inputSchema'] = $schema;
 $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
     'peer_id'=>'test-peer', 'arguments'=>array('q'=>'test')));
