@@ -3,20 +3,14 @@ name: MAD4B Cross Plugin Source Artifact Candidate
 on:
   pull_request:
     paths:
-      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
-      - 'wp-content/plugins/etg-dynamic-filter-seo-bridge/**'
-      - 'tools/mad4b-cross-plugin-package.py'
-      - 'wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py'
+      - 'wp-content/plugins/**'
+      - 'tools/mad4b-cross-plugin-*.py'
       - '.github/workflows/mad4b-cross-plugin-candidate.yml'
   workflow_dispatch:
     inputs:
       source_id:
-        description: Reviewed source ID from cross-plugin-sources.json
-        required: true
-        type: string
-      source_commit_sha:
-        description: Exact 40-character commit SHA in reviewed source repository
-        required: true
+        description: Optional reviewed source ID (empty = all eligible sources)
+        required: false
         type: string
 
 permissions:
@@ -27,71 +21,77 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  package-candidate:
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+  discover-candidates:
+    name: Resolve immutable reviewed candidate matrix
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.selection.outputs.matrix }}
+      has_candidates: ${{ steps.selection.outputs.has_candidates }}
     steps:
-      - name: Exact workflow checkout
+      - name: Checkout exact trusted PR head
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - name: Verify non-authorizing hermetic deterministic candidate contract
-        shell: bash
+      - name: Verify generalized hermetic package contract
         run: |
           set -euo pipefail
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
-      - name: Validate exact source and approved repository
-        id: source
-        shell: bash
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-workflow-dynamic-contract.py
+      - name: Select exact candidates from reviewed source registry
+        id: selection
         env:
-          SOURCE_ID: ${{ github.event_name == 'pull_request' && 'etg-dynamic-filter-seo-bridge' || inputs.source_id }}
-          SOURCE_SHA: ${{ github.event_name == 'pull_request' && '' || inputs.source_commit_sha }}
+          SOURCE_ID: ${{ inputs.source_id || '' }}
         run: |
-          python3 - <<'PY'
-          import json, os, re
-          from pathlib import Path
-          name=os.environ["SOURCE_ID"]
-          incoming=os.environ["SOURCE_SHA"]
-          assert re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',name)
-          data=json.loads(Path('wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json').read_text())
-          assert data['contract']=='mad4b.cross-plugin-sources.v1'
-          rows=[x for x in data['sources'] if x['id']==name]
-          assert len(rows)==1 and rows[0]['review_state']=='source_reviewed_artifact_pending'
-          repo=rows[0]['repository']
-          sha=rows[0].get('candidate_source_commit_sha','')
-          assert re.fullmatch(r'[a-f0-9]{40}',sha), 'unreviewed immutable candidate source'
-          assert not incoming or incoming==sha, 'workflow dispatch cannot override source pin'
-          assert re.fullmatch(r'[A-Za-z0-9_.-]{1,70}/[A-Za-z0-9_.-]{1,100}',repo)
-          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
-            output.write(f'repository={repo}\n')
-            output.write(f'source_commit_sha={sha}\n')
-            output.write(f'source_id={name}\n')
-          PY
-      - name: Checkout exact reviewed plugin source without executing it
+          set -euo pipefail
+          python3 tools/mad4b-cross-plugin-candidates.py \
+            --manifest wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json \
+            --source-id "$SOURCE_ID" --github-output "$GITHUB_OUTPUT"
+
+  package-candidate:
+    name: Build candidate ${{ matrix.source_id }}
+    needs: discover-candidates
+    if: needs.discover-candidates.outputs.has_candidates == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover-candidates.outputs.matrix) }}
+    steps:
+      - name: Checkout exact trusted PR head
         uses: actions/checkout@v4
         with:
-          repository: ${{ steps.source.outputs.repository }}
-          ref: ${{ steps.source.outputs.source_commit_sha }}
-          path: candidate
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-          submodules: false
-          fetch-depth: 1
-      - name: Package only registered plugin directory
+      - name: Fetch exact source SHA (read-only, never execute source)
         shell: bash
         env:
-          SOURCE_ID: ${{ steps.source.outputs.source_id }}
-          SOURCE_SHA: ${{ steps.source.outputs.source_commit_sha }}
+          SOURCE_REPOSITORY: ${{ matrix.repository }}
+          SOURCE_SHA: ${{ matrix.source_commit_sha }}
         run: |
+          set -euo pipefail
+          mkdir -p candidate
+          git -C candidate init -q
+          git -C candidate remote add origin "https://github.com/$SOURCE_REPOSITORY.git"
+          git -C candidate -c protocol.version=2 fetch --no-tags --depth=1 origin "$SOURCE_SHA"
+          git -C candidate -c advice.detachedHead=false checkout --detach --force FETCH_HEAD
+          test "$(git -C candidate rev-parse HEAD)" = "$SOURCE_SHA"
+      - name: Build only source-registered plugin directory
+        shell: bash
+        env:
+          SOURCE_ID: ${{ matrix.source_id }}
+          SOURCE_SHA: ${{ matrix.source_commit_sha }}
+        run: |
+          set -euo pipefail
           python3 tools/mad4b-cross-plugin-package.py \
             --trusted-manifest wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json \
-            --checkout candidate \
-            --source-id "$SOURCE_ID" --sha "$SOURCE_SHA" --out "$RUNNER_TEMP/candidate-artifact"
-      - name: Preserve review-only candidate and provenance
+            --checkout candidate --source-id "$SOURCE_ID" --sha "$SOURCE_SHA" \
+            --out "$RUNNER_TEMP/candidate-artifact"
+      - name: Retain non-authorizing candidate ZIP and receipt
         uses: actions/upload-artifact@v4
         with:
-          name: cross-plugin-${{ steps.source.outputs.source_id }}-${{ steps.source.outputs.source_commit_sha }}
+          name: cross-plugin-${{ matrix.source_id }}-${{ matrix.source_commit_sha }}
           path: ${{ runner.temp }}/candidate-artifact/
           if-no-files-found: error
           retention-days: 14
