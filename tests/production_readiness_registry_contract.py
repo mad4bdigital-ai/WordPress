@@ -232,4 +232,46 @@ with mock.patch.object(reg, "git_text", return_value=interface_source):
     assert "ajax:wp_ajax_mad4b_export" in names
     assert "cron:mad4b_report_cron" in names
 
+# A controlled migration allows a reviewed rule correction without mutating
+# history or weakening its P0/linked controls.
+old_rule = copy.deepcopy(policy["domain_rules"][0])
+updated_rule = copy.deepcopy(old_rule)
+updated_rule["pattern"] = old_rule["pattern"] + "|additional-governed-capability"
+migrated = copy.deepcopy(policy)
+migrated["domain_rules"][0] = updated_rule
+def digest(rule):
+    return reg.hashlib.sha256(
+        reg.json.dumps(rule, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+migrated["policy_migrations"] = [{
+    "id": "impact-rule-migration-001",
+    "rule_id": old_rule["id"],
+    "from_sha256": digest(old_rule),
+    "to_sha256": digest(updated_rule),
+    "status": "reviewed_for_ci_only",
+    "production_authorized": False,
+    "live_evidence_required": True,
+    "owner_role": "Security and Repository Governance",
+    "review_rationale": "Expand classified input while preserving historic P0 risk and all controls with a regression test.",
+    "regression_tests": [test_path],
+}]
+def old_policy(_commit, path):
+    if path == reg.CONTROLS:
+        return copy.deepcopy(controls)
+    if path == reg.COVERAGE:
+        return copy.deepcopy(policy)
+    raise AssertionError("Unexpected old policy: " + path)
+with mock.patch.object(reg, "json_file", side_effect=old_policy):
+    failures, accepted, _ = reg.validate_coverage(
+        migrated, controls, base, head, [("M", test_path)], {}, {})
+    assert not failures and not accepted, "Reviewed migration should pass"
+    unsafe = copy.deepcopy(migrated)
+    unsafe["domain_rules"][0]["controls"] = old_rule["controls"][:-1]
+    unsafe["policy_migrations"][0]["to_sha256"] = digest(unsafe["domain_rules"][0])
+    try:
+        reg.validate_coverage(unsafe, controls, base, head, [("M", test_path)], {}, {})
+        raise AssertionError("Removing historic covered controls must fail")
+    except ValueError as exc:
+        assert "remove linked controls" in str(exc)
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

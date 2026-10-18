@@ -112,3 +112,58 @@ advanced. A source-coverage review is bound to the resulting PR tree and cannot
 self-authorize Production or replace a real Staging runtime verification.
 Static analysis may miss dynamically constructed WordPress registrations;
 the source-change review gate still requires human judgment and same-PR tests.
+
+## Long-term readiness architecture and policy lifecycle
+
+Four deliberately separate responsibilities:
+
+| Layer | Implemented source | Authority boundary |
+| --- | --- | --- |
+| Control/Capability Registry | `controls.json`, `capability-coverage.json` | Defines review questions; no Production authority |
+| Diff and Coverage Engine | `tools/production_readiness_registry.py` | Exact-head candidate discovery; CI coverage only |
+| Evidence Envelope Boundary | `tools/readiness_evidence.py` | Validates IDs/metadata and hashes; **does not verify cryptographic signatures or trust** |
+| Read-only Release and KPI Projection | `tools/readiness_quality.py`, `quality-policy.json` | Reconciles CI facts and unresolved live evidence; always NO-GO without external authorization |
+
+### Five operational KPIs
+
+The read-only workflow generates `quality-scorecard.json` and
+`quality-scorecard.md` at the exact PR SHA. KPI definitions/targets live in
+`quality-policy.json`: 100% P0 source-review coverage; <5% adjudicated CI
+false positives; <=10 minute p95 evaluation time; 100% independently
+verified site-bound live evidence; and zero unauthorized Production promotions.
+
+Unknown denominators or unavailable trusted sources become
+`INSUFFICIENT_EVIDENCE`, **never zero or PASS**. Source-review coverage
+is only a proxy for CI review quality, not site certification. Human-adjudicated
+false-positive decisions, completed workflow timing, independently signed
+Staging receipts and Production audit evidence are not connected by this
+workflow. It does not pretend that manually supplied JSON can sign itself.
+
+### Governed impact rule migrations
+
+Previously reviewed impact rules cannot be modified silently. If a rule
+requires correcting, add one `policy_migrations` record under
+`capability-coverage.json` with a unique `id`, exact `rule_id`,
+`from_sha256` and `to_sha256` calculated over canonical JSON with sorted
+keys and compact separators, `owner_role`, a meaningful
+`review_rationale`, a regression test changed in the same PR, and
+`status: reviewed_for_ci_only`, `live_evidence_required: true`,
+`production_authorized: false`. Historic P0 risk and linked controls
+cannot be reduced. The migration only allows reviewable source evolution,
+not independent owner approval or site mutation.
+
+### Rollout and evidence maturity
+
+**Phase A:** fix failing tests and preserve nonauthorizing CI/negative tests.
+**Phase B:** build a reviewed baseline capability map and risk-weighted
+regression inventory; verify detection against a real set of PRs.
+**Phase C:** connect an external *trusted* Staging verifier and immutable
+Evidence Ledger; verify signature, package hash, site identity, expiry and
+revocation outside of this reporter.
+**Phase D:** use authoritative completed workflow/audit samples to measure the
+remaining four KPIs, and add a separately authorized Release Decision
+service and approval workflow.
+
+GitHub Actions artifacts have 30-day retention and are not a durable,
+tamper-evident Evidence Ledger. This PR does **not** create signed runtime
+receipts, merge a PR, change Branch Protection, grant permissions or deploy.

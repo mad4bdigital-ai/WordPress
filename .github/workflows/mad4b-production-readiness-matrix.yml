@@ -124,6 +124,38 @@ jobs:
           assert p["historical_observations_non_authoritative"] is True
           print("PRODUCTION_MATRIX_NON_AUTHORIZING: PASS")
           PY
+      - name: Validate evidence envelope and quality indicator guardrails
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_evidence.py
+          python3 tools/readiness_quality.py self-test
+
+      - name: Generate non-authorizing five-KPI scorecard
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_quality.py evaluate \
+            --impact artifacts/production-readiness/capability-impact.json \
+            --readiness artifacts/production-readiness/readiness.json \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/quality-scorecard.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check quality result never impersonates independent release evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("artifacts/production-readiness/quality-scorecard.json").read_text())
+          assert p["contract"] == "mad4b.readiness-quality-report.v1"
+          assert p["production_decision"] == "NO-GO"
+          assert p["authorizing"] is False and p["production_authorized"] is False
+          assert len(p["metrics"]) == 5
+          assert all(metric["measured_value"] is None or
+                     metric["provenance"] == "EXACT_HEAD_SOURCE_DIFF_ONLY"
+                     for metric in p["metrics"])
+          assert p["data_trust"] == "REPOSITORY_ONLY_WITHOUT_SIGNED_SITE_OR_PRODUCTION_AUDIT"
+          print("FIVE_KPI_READINESS_NON_AUTHORIZING: PASS")
+          PY
+
       - name: Upload generated matrix reports
         uses: actions/upload-artifact@v4
         if: always()

@@ -303,8 +303,46 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
            "Historical decommission evidence cannot be silently changed")
     old_rules = {x["id"]: x for x in previous.get("domain_rules", [])}
     new_rules = {x["id"]: x for x in coverage.get("domain_rules", [])}
-    ensure(all(new_rules.get(k) == v for k, v in old_rules.items()),
-           "Historical impact-mapping rules cannot be silently weakened")
+    migrations = coverage.get("policy_migrations", [])
+    previous_migrations = previous.get("policy_migrations", [])
+    migration_by_id = {x.get("id") : x for x in migrations}
+    ensure(len(migration_by_id) == len(migrations),
+           "Duplicate policy migration identity")
+    ensure(all(migration_by_id.get(x["id"]) == x for x in previous_migrations),
+           "Historical policy migration records cannot change")
+    for rule_id, prior_rule in old_rules.items():
+        current_rule = new_rules.get(rule_id)
+        ensure(current_rule is not None, "Historical impact-mapping rule removed")
+        if prior_rule == current_rule:
+            continue
+        previous_digest = hashlib.sha256(
+            json.dumps(prior_rule, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        current_digest = hashlib.sha256(
+            json.dumps(current_rule, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        match = [x for x in migrations if x.get("rule_id") == rule_id
+                 and x.get("from_sha256") == previous_digest
+                 and x.get("to_sha256") == current_digest]
+        ensure(len(match) == 1,
+               "Historical impact-mapping rules require exact reviewed migration")
+        migration = match[0]
+        ensure(migration.get("status") == "reviewed_for_ci_only"
+               and migration.get("production_authorized") is False
+               and migration.get("live_evidence_required") is True
+               and migration.get("owner_role")
+               and len(migration.get("review_rationale", "")) >= 40,
+               "Policy migration review must not grant Production authority")
+        ensure(set(prior_rule.get("controls", [])) <= set(current_rule.get("controls", []))
+               and (prior_rule.get("risk") != "P0" or current_rule.get("risk") == "P0"),
+               "Policy migration cannot downgrade historical P0 or remove linked controls")
+        tests = migration.get("regression_tests", [])
+        changed_test_files = {name for _, name in changed}
+        ensure(isinstance(tests, list) and len(tests) > 0
+               and all(test in changed_test_files and
+                       (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
+                       and (ROOT / test).is_file() for test in tests),
+               "Policy migration requires new regression tests in current PR")
     ensure(len(ids) == len(set(ids)), "Duplicate capability coverage IDs")
     changed_set = {p for _, p in changed}
     failures = []

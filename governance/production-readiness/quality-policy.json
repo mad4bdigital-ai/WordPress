@@ -1,0 +1,79 @@
+{
+  "contract": "mad4b.readiness-quality-policy.v1",
+  "authorizing": false,
+  "auto_deploy": false,
+  "production_promotion": false,
+  "status_rules": {
+    "unmeasured": "INSUFFICIENT_EVIDENCE",
+    "failing": "BELOW_TARGET",
+    "observed": "OBSERVED_NOT_PRODUCTION_CERTIFIED",
+    "ci_success_is_not_live_site_proof": true
+  },
+  "goals": [
+    {
+      "id": "p0_change_coverage",
+      "unit": "percent",
+      "target": 100,
+      "direction": "min",
+      "source": "exact-head-impact-and-reviewed-source-blobs",
+      "minimum_sample": 1,
+      "definition": "Changed P0 runtime sources explicitly linked to exact blob-reviewed control coverage / all changed P0 runtime sources in same exact-head diff."
+    },
+    {
+      "id": "false_positive_rate",
+      "unit": "percent",
+      "target": 5,
+      "direction": "max_exclusive",
+      "source": "human-adjudicated-gate-outcomes",
+      "minimum_sample": 20,
+      "definition": "Audited false positive gate failures / all adjudicated failed gate outcomes across rolling window; requires independent human dispositions."
+    },
+    {
+      "id": "pr_ci_evaluation_duration",
+      "unit": "minutes",
+      "target": 10,
+      "direction": "max",
+      "source": "completed-github-workflow-runs",
+      "minimum_sample": 20,
+      "definition": "P95 of completed required CI evaluation duration measured from authoritative workflow run timestamps; exclude queued wait in a separate field."
+    },
+    {
+      "id": "live_evidence_integrity",
+      "unit": "percent",
+      "target": 100,
+      "direction": "min",
+      "source": "signed-site-bound-evidence-verifier",
+      "minimum_sample": 1,
+      "definition": "Trusted verifier-accepted immutable site-bound live evidence receipts / all required live receipts for exact release candidate."
+    },
+    {
+      "id": "unauthorized_production_promotions",
+      "unit": "count",
+      "target": 0,
+      "direction": "max",
+      "source": "authoritative-production-audit-ledger",
+      "minimum_sample": 1,
+      "definition": "Promotion actions without matching independently authorized owner grant; no observed audit records means unknown, not zero."
+    }
+  ],
+  "data_trust": {
+    "manual_json_is_advisory_only": true,
+    "no_ci_evidence_self_signature": true,
+    "external_receipt_verification_required": true,
+    "production_audit_required": true
+  },
+  "dimensions": [
+    "repository",
+    "exact_head_sha",
+    "environment",
+    "site_id",
+    "package_sha256",
+    "producer",
+    "observed_at"
+  ],
+  "retention": {
+    "actions_artifacts_days": 30,
+    "permanent_signed_ledger": "NOT_CONNECTED",
+    "no_claim_of_durability": true
+  }
+}
