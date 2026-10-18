@@ -167,12 +167,25 @@ assert operation["aliases"]["reconcile-provider"] == "wordpress.provider.recerti
 direct_projection = operation["read_projection"]["direct"]
 catalog_projection = operation["read_projection"]["catalog"]
 assert set(direct_projection).issubset(set(catalog_projection))
-assert direct_projection == [
+# Preserve the fixed original read-only foundation while allowing the
+# source-registered Operation Registry to extend MCP read projection.
+# The previous exact-list equality prevented new bounded planners/verification.
+baseline_direct = [
     "mad4b/wordpress-operation-discover",
     "mad4b/plugin-transaction-plan",
     "mad4b/operation-resume-status",
     "mad4b/runtime-convergence-plan",
 ]
+assert direct_projection[:len(baseline_direct)] == baseline_direct
+assert len(direct_projection) == len(set(direct_projection))
+for extra_ability in direct_projection[len(baseline_direct):]:
+    assert runtime_represents_ability(extra_ability), extra_ability
+    assert extra_ability in catalog_projection
+    assert extra_ability.endswith(("-status", "-plan", "-verify", "-discover")), extra_ability
+    assert not extra_ability.endswith(("-apply", "-execute", "-delete", "-write")), extra_ability
+if "wordpress.governance.optional-preference" in ids:
+    assert {"mad4b/optional-governance-plan", "mad4b/optional-governance-verify"}.issubset(set(direct_projection))
+    assert "mad4b/optional-governance-apply" not in direct_projection
 assert "mad4b/dependency-impact" in catalog_projection
 assert "mad4b/provider-candidate-matrix" in catalog_projection
 assert "mad4b/provider-autopilot-status" in catalog_projection
