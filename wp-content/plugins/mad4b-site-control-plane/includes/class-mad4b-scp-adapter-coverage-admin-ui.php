@@ -38,6 +38,9 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			'priority' => __( 'Priority Coverage', 'mad4b-site-control-plane' ),
 			'functional' => __( 'Functional Gaps', 'mad4b-site-control-plane' ),
 			'mcp-routes' => __( 'MCP Routes', 'mad4b-site-control-plane' ),
+			'capabilities' => __( 'Capability Graph', 'mad4b-site-control-plane' ),
+			'native-peers' => __( 'Native Peers', 'mad4b-site-control-plane' ),
+			'route-preview' => __( 'Route Preview', 'mad4b-site-control-plane' ),
 			'requests' => __( 'Support Requests', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
@@ -50,6 +53,17 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 			MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
 			require_once __DIR__ . '/class-mad4b-scp-provider-mcp-path-review.php';
 			MAD4B_SCP_Provider_MCP_Path_Review::render();
+			echo '</div>';
+			return;
+		}
+		if ( in_array( $tab, array( 'capabilities', 'native-peers', 'route-preview' ), true ) ) {
+			MAD4B_SCP_Admin_Experience::styles();
+			echo '<div class="wrap mad4b-scp-admin-page"><h1>' . esc_html__( 'MAD4B Provider Coverage', 'mad4b-site-control-plane' ) . '</h1>';
+			MAD4B_SCP_Admin_Experience::tabs( self::PAGE_SLUG, $tabs, $tab );
+			require_once __DIR__ . '/class-mad4b-scp-admin-native-mcp-view.php';
+			if ( 'capabilities' === $tab ) MAD4B_SCP_Admin_Native_MCP_View::render_graph();
+			elseif ( 'native-peers' === $tab ) MAD4B_SCP_Admin_Native_MCP_View::render_peers();
+			else MAD4B_SCP_Admin_Native_MCP_View::render_route_preview();
 			echo '</div>';
 			return;
 		}

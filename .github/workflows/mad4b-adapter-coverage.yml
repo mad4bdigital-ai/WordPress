@@ -67,6 +67,8 @@ jobs:
           php -l "$P/includes/class-mad4b-scp-mcp-hybrid-authority.php"
           php -l "$P/includes/class-mad4b-scp-mcp-hybrid.php"
           php "$P/tests/dynamic-mcp-hybrid-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-admin-native-mcp-view.php"
+          php "$P/tests/admin-native-mcp-view-runtime.php"
 
       - name: Verify discovery and reversible adapter contracts
         shell: bash

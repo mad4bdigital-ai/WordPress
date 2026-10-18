@@ -206,6 +206,8 @@ final class MAD4B_SCP_Operator_Workspace {
 			array( 'title' => 'Operational Remediation', 'description' => 'One guided recovery state and next step; no automatic ticket or write on page load.', 'slug' => 'mad4b-operational-remediation' ),
 			array( 'title' => 'Approval Decisions', 'description' => 'Review individual exact-scope owner tickets and their history.', 'slug' => 'mad4b-approval-decisions' ),
 			array( 'title' => 'Provider Coverage / MCP Routes', 'description' => 'Compare native-provider discovery against MAD4B adapter registration; never infer authorization.', 'slug' => 'mad4b-adapter-coverage', 'query' => array( 'tab' => 'mcp-routes' ) ),
+			array( 'title' => 'Capability Graph', 'description' => 'Inspect registered vs reviewed WordPress capabilities and preview routes without executing them.', 'slug' => 'mad4b-adapter-coverage', 'query' => array( 'tab' => 'capabilities' ) ),
+			array( 'title' => 'Native Peers', 'description' => 'Inspect local peer circuit and trust status without provider HTTP on page load.', 'slug' => 'mad4b-adapter-coverage', 'query' => array( 'tab' => 'native-peers' ) ),
 			array( 'title' => 'Runtime Components', 'description' => 'Check installed package identity, update history and lifecycle evidence.', 'slug' => 'mad4b-runtime-components' ),
 			array( 'title' => 'Governance & History', 'description' => 'Inspect effective grants, consent, append-only audit and mutation reconciliation.', 'slug' => 'mad4b-control-plane' ),
 		) as $journey ) {
