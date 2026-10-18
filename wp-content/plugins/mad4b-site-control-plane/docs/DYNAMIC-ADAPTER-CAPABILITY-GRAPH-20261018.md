@@ -209,3 +209,21 @@ MCP peer failures are isolated per exact pinned peer ID and endpoint using a Wor
 Within one PHP request, the negotiated session and complete tools catalog are cached for at most one second, never persisted across requests. The immediate hybrid read checks exact Agent authority and caller-acknowledged catalog SHA-256 and then uses the matching session; `tools/call` invalidates the in-request cache even on failure. The separate six-second native request budget remains a hard limit. Neither cache nor health record contains provider access tokens.
 
 The tests include full negative authorization cases, cross-file source drift, native WP Ability fallback, request-scoped cache reuse, modern/legacy protocol and JSON/SSE pagination, circuit opening and recovery. These tests remain **unverified pending actual GitHub Actions execution on the final head** and do not certify real ETG/ARE Staging connectivity.
+
+### Dynamic scoped provider credentials
+
+The native MCP client supports an optional **operator-owned** `MAD4B_SCP_MCP_PEER_AUTH_RESOLVER` PHP callable, configured independently of WordPress plugins and before bootstrap. The resolver signature is `resolver(peer_id, pinned_audience, required_scopes)`. It must return an array containing a valid `access_token` string, integer Unix `expires_at`, exact `audience`, and `scopes` array. The native client never persists or returns the bearer, refuses values containing header-injection characters, and rejects expired credentials (less than 30 seconds remaining), wrong audiences, and missing required scopes **before outbound HTTP**. The resolver may interact with an existing owner-authorized OAuth credential broker, including its own rotation/refresh, but this PR does not implement provider-specific OAuth grants or interactive refresh itself.
+
+Each owner-pinned peer manifest may optionally declare:
+```json
+{
+  "id": "my-peer",
+  "endpoint": "https://provider.example/mcp",
+  "audience": "https://provider.example",
+  "required_scopes": ["tools.read"],
+  "bindings": []
+}
+```
+The `audience` must match the HTTPS origin in the pinned endpoint. If any required scopes are declared and no trusted credential resolver is configured, the peer fails closed; legacy static token constants are only accepted for peers without required scopes. This is a compatibility path, **not** independent OAuth expiration assurance. The resolver can be implemented by a reviewed external credential integration without adding new MAD4B core adapters, secrets, or WordPress options.
+
+No credentials are returned through the candidate inventory, catalog results, hybrid plan, audit digests, or circuit breaker. Existing exact per-user/Agent grants still control every read execution separately from provider OAuth authorization.
