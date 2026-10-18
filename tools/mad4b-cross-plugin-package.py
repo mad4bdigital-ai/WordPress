@@ -60,6 +60,26 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
             and main.startswith(slug + "/"), "plugin header path differs from registered identity")
     folder = checkout.joinpath(*subdir.split("/"))
     require(folder.is_dir() and not folder.is_symlink() and folder.resolve() == folder, "plugin source missing or symlink")
+    # HEAD alone does not attest the working tree. Reject tracked drift and
+    # even ignored additions in the packaged scope; later verify the exact
+    # payload against immutable Git blobs to close read-time races as well.
+    status = subprocess.check_output(
+        ["git", "-C", str(checkout), "status", "--porcelain=v1",
+         "--untracked-files=all", "--ignored", "--", subdir], timeout=15)
+    require(not status, "plugin working tree differs from reviewed commit")
+    listing = subprocess.check_output(
+        ["git", "-C", str(checkout), "ls-tree", "-rz", source_sha, "--", subdir], timeout=15)
+    expected_blobs = {}
+    for record in listing.split(b"\0"):
+        if not record:
+            continue
+        meta, name = record.split(b"\t", 1)
+        mode, kind, digest = meta.decode("ascii").split()
+        require(kind == "blob" and mode in ("100644", "100755"), "non-regular Git source rejected")
+        name = name.decode("utf-8")
+        require(name.startswith(subdir + "/"), "Git source path outside registered directory")
+        expected_blobs[name[len(subdir) + 1:]] = digest
+        require(len(expected_blobs) <= MAX_FILES, "file-count budget exceeded")
     header = folder / main.split("/", 1)[1]
     require(header.is_file() and not header.is_symlink(), "plugin entrypoint absent")
     main_text = header.read_text(encoding="utf-8")
@@ -92,6 +112,8 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
             contents.append((relative, path))
     contents.sort(key=lambda x: x[0])
     require(contents, "empty plugin archive")
+    require({relative for relative, _ in contents} == set(expected_blobs),
+            "working file inventory differs from exact Git tree")
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     zip_path = out_dir / (source_id + "-" + source_sha + ".zip")
@@ -99,6 +121,8 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
         for relative, path in contents:
             payload = path.read_bytes()
+            git_blob = hashlib.sha1(b"blob " + str(len(payload)).encode("ascii") + b"\0" + payload).hexdigest()
+            require(git_blob == expected_blobs[relative], "source blob changed before archive write")
             name = slug + "/" + relative
             info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             info.create_system = 3
@@ -123,6 +147,7 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
         "archive_bytes": archive_size,
         "archive_manifest_sha256": entries_digest,
         "archive_file_count": len(contents),
+        "source_blob_verification": True,
         "outcome_authorizes_deployment": False,
         "production_promotion_granted": False,
         "wordpress_execution_performed": False,

@@ -774,3 +774,180 @@ msgstr "الأدلة المستقلة المطلوبة"
 
 msgid "No evidence is certified by this checklist. Verify the actual external receipt and exact current build."
 msgstr "هذه القائمة لا تعتمد أي دليل تلقائيًا. تحقق من إيصال الفحص الخارجي الفعلي ومطابقته للإصدار الحالي."
+
+msgid "Review MAD4B update"
+msgstr "مراجعة تحديث MAD4B"
+
+msgid "Review plugin deployment"
+msgstr "مراجعة تثبيت الإضافة"
+
+msgid "Checking source and package eligibility..."
+msgstr "جارٍ فحص المصدر وأهلية الحزمة…"
+
+msgid "Source changed. Preview again to check the current selection."
+msgstr "تغير المصدر. أعد المعاينة لفحص الاختيار الحالي."
+
+msgid "The preview timed out. Check your connection and preview again."
+msgstr "انتهت مهلة المعاينة. تحقق من الاتصال وأعد المعاينة."
+
+msgid "Eligible for separate approval"
+msgstr "مؤهل لطلب موافقة مستقلة"
+
+msgid "Needs review"
+msgstr "يحتاج إلى مراجعة"
+
+msgid "Not authorized"
+msgstr "غير مصرح"
+
+msgid "Blocked"
+msgstr "محجوب"
+
+msgid "Exact commit"
+msgstr "الالتزام المحدد"
+
+msgid "Plugin"
+msgstr "الإضافة"
+
+msgid "Open Plugin Deployment to review the missing certificate, site permissions or source evidence before requesting approval."
+msgstr "افتح صفحة تثبيت الإضافات لمراجعة الشهادة الناقصة أو صلاحيات الموقع أو أدلة المصدر قبل طلب الموافقة."
+
+msgid "Technical details"
+msgstr "التفاصيل التقنية"
+
+msgid "Preview only. Installation requires a separately certified ZIP and exact approval."
+msgstr "هذه معاينة فقط. يتطلب التثبيت حزمة ZIP معتمدة بصورة مستقلة وموافقة محددة."
+
+msgid "Preview could not be completed. Use Open Plugin Deployment for a full review."
+msgstr "تعذر إكمال المعاينة. افتح صفحة تثبيت الإضافات للمراجعة الكاملة."
+
+msgid "MAD4B verified release channel"
+msgstr "قناة إصدارات MAD4B المعتمدة"
+
+msgid "Reviewed plugin source"
+msgstr "مصدر إضافة تمت مراجعته"
+
+msgid "Close update review"
+msgstr "إغلاق مراجعة التحديث"
+
+msgid "Inspect the release source and request a verified update. Checking does not install anything."
+msgstr "راجع مصدر الإصدار واطلب تحديثًا معتمدًا. الفحص لا يثبت أي حزمة."
+
+msgid "Inspect installed state and reviewed Git source. A candidate is not an approved install."
+msgstr "راجع النسخة المثبتة ومصدر Git الذي تمت مراجعته. النسخة المرشحة تحتاج موافقة مستقلة للتثبيت."
+
+msgid "Installed version"
+msgstr "الإصدار المثبت"
+
+msgid "Not determined"
+msgstr "لم يتم تحديده"
+
+msgid "WordPress environment"
+msgstr "بيئة WordPress"
+
+msgid "Update status"
+msgstr "حالة التحديث"
+
+msgid "Not checked on this page; open the certified channel."
+msgstr "لم يتم الفحص من هذه الصفحة؛ افتح قناة الإصدارات المعتمدة."
+
+msgid "Source"
+msgstr "المصدر"
+
+msgid "Signed MAD4B release pointer, not arbitrary GitHub ZIP."
+msgstr "مرجع إصدار MAD4B الموقّع، مع التحقق من هوية الحزمة."
+
+msgid "GitHub repository"
+msgstr "مستودع GitHub"
+
+msgid "Source review"
+msgstr "مراجعة المصدر"
+
+msgid "ZIP certificate"
+msgstr "شهادة حزمة ZIP"
+
+msgid "Open Runtime Update"
+msgstr "فتح تحديث مكونات التشغيل"
+
+msgid "Open Plugin Deployment"
+msgstr "فتح تثبيت الإضافات"
+
+msgid "Close"
+msgstr "إغلاق"
+
+msgid "Check official MAD4B release"
+msgstr "فحص إصدار MAD4B الرسمي"
+
+msgid "An explicit nonce-protected check can contact the signed release channel. It does not install any plugin."
+msgstr "يمكن لهذا الفحص المحمي الاتصال بقناة الإصدارات الموقّعة. لا يثبت الفحص أي إضافة."
+
+msgid "Check certified updates"
+msgstr "فحص التحديثات المعتمدة"
+
+msgid "Preview Staging branch or commit"
+msgstr "معاينة فرع أو التزام لبيئة Staging"
+
+msgid "The exact Git source is resolved and validated after submission. A preview does not install it."
+msgstr "يتم تحديد مصدر Git والتحقق منه بعد الإرسال. المعاينة لا تثبته."
+
+msgid "Source type"
+msgstr "نوع المصدر"
+
+msgid "Branch HEAD"
+msgstr "أحدث التزام في الفرع"
+
+msgid "Specific commit in branch"
+msgstr "التزام محدد داخل الفرع"
+
+msgid "Exact commit SHA"
+msgstr "بصمة الالتزام المحدد"
+
+msgid "PR HEAD"
+msgstr "أحدث التزام في طلب السحب"
+
+msgid "Branch name"
+msgstr "اسم الفرع"
+
+msgid "Commit SHA"
+msgstr "بصمة الالتزام"
+
+msgid "40-character SHA"
+msgstr "بصمة SHA من 40 حرفًا"
+
+msgid "PR number"
+msgstr "رقم طلب السحب"
+
+msgid "Reason"
+msgstr "السبب"
+
+msgid "Preview this source"
+msgstr "معاينة هذا المصدر"
+
+msgid "Preview exact source"
+msgstr "معاينة المصدر المحدد"
+
+msgid "This read-only request resolves a Git reference against its reviewed repository; it cannot install a ZIP."
+msgstr "يحدد طلب القراءة مرجع Git داخل المستودع الذي تمت مراجعته. لا يمكنه تثبيت حزمة ZIP."
+
+msgid "Git reference type"
+msgstr "نوع مرجع Git"
+
+msgid "Pull Request"
+msgstr "طلب سحب"
+
+msgid "Branch@SHA"
+msgstr "الفرع@بصمة الالتزام"
+
+msgid "Reference"
+msgstr "المرجع"
+
+msgid "branch, PR number, or 40-character SHA"
+msgstr "اسم الفرع أو رقم طلب السحب أو بصمة SHA من 40 حرفًا"
+
+msgid "Preview certified source"
+msgstr "معاينة المصدر وفحص اعتماده"
+
+msgid "No automatic install. Staging and Production authorizations remain separate; the installer verifies provenance, permissions, backup and readback."
+msgstr "يتطلب التثبيت إجراءً صريحًا. موافقات Staging وProduction مستقلة؛ ويتحقق المثبت من المصدر والصلاحيات والنسخة الاحتياطية والنتيجة."
+
+msgid "The release source could not be confirmed as a newer build. No plugin files were changed. Check certified updates and review the source relationship before retrying."
+msgstr "تعذر التأكد من أن مصدر الإصدار أحدث من النسخة المثبتة. لم تتغير ملفات الإضافة. افحص التحديثات المعتمدة وراجع علاقة المصدر قبل إعادة المحاولة."

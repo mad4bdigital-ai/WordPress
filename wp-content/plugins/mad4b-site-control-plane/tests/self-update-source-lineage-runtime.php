@@ -72,4 +72,26 @@ require_relation( 'target_ahead' === $c::native_source_relationship( $current, $
     'Successful retry should independently attest successor' );
 require_relation( count( $GLOBALS['lineage_requests'] ) === 6,
     'Unexpected network accesses; UI and same/older source should remain local' );
+$fixture = sys_get_temp_dir() . '/mad4b-lineage-' . bin2hex( random_bytes( 8 ) ) . '/';
+mkdir( $fixture, 0700 );
+define( 'MAD4B_SCP_DIR', $fixture );
+define( 'MAD4B_SCP_FILE', $fixture . 'plugin.php' );
+file_put_contents( MAD4B_SCP_FILE, "<?php\n/*\n * Version: 0.4.0-rc.102\n */\n" );
+file_put_contents( $fixture . 'MAD4B-BUILD-PROVENANCE.json', json_encode( $current ) );
+register_shutdown_function( static function () use ( $fixture ) {
+    unlink( $fixture . 'plugin.php' ); unlink( $fixture . 'MAD4B-BUILD-PROVENANCE.json' ); rmdir( $fixture );
+} );
+$GLOBALS['lineage_cache'] = array();
+$before = count( $GLOBALS['lineage_requests'] );
+require_relation( 'needs_review' === $c::native_release_state( $new )['state'], 'Cold passive UI must not claim current' );
+require_relation( count( $GLOBALS['lineage_requests'] ) === $before, 'Passive UI contacted GitHub' );
+simulate_lineage( 'ahead', 3, 0 );
+require_relation( 'available' === $c::native_release_state( $new, true )['state'], 'Explicit check failed to warm cold lineage' );
+require_relation( 'available' === $c::native_release_state( $new )['state'], 'Passive UI did not reuse explicit verified check' );
+$GLOBALS['lineage_cache'] = array(); // Simulate the 300-second cache expiring.
+$GLOBALS['lineage_response'] = new WP_Error( 'network_down' );
+require_relation( 'needs_review' === $c::native_release_state( $new, true )['state'], 'Expired/network unknown was mislabeled current' );
+simulate_lineage( 'behind', 0, 273 );
+require_relation( 'needs_review' === $c::native_release_state( $target, true )['state'], 'Ancestor was mislabeled current' );
+require_relation( 'current' === $c::native_release_state( $current )['state'], 'Exact installed source must remain current' );
 echo "NATIVE_SOURCE_LINEAGE: PASS (same, older, ancestor, successor, divergent, unknown and cache)\n";

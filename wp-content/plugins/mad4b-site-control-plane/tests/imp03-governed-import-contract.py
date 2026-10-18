@@ -7,6 +7,8 @@ code=lambda name:(P/"includes"/name).read_text(encoding="utf-8")
 authority=code("class-mad4b-scp-activity-import-authority.php")
 snapshot=code("class-mad4b-scp-activity-import-snapshot.php")
 review=code("class-mad4b-scp-activity-import-review.php")
+review_ui=(code("class-mad4b-scp-activity-import-fallback-view.php") +
+           code("class-mad4b-scp-activity-import-experience.php"))
 modes=code("class-mad4b-scp-activity-import-modes.php")
 profiles=(code("class-mad4b-scp-content-experience-profiles.php") + code("trait-mad4b-scp-content-experience-ability-definitions.php"))
 fixture=(P/"tests"/"imp01-import-preview-runtime.php").read_text(encoding="utf-8")
@@ -35,7 +37,10 @@ for token in ("MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS", "x-mad4b-key-id",
               "wp_nonce_field( 'mad4b_activity_export_approved'",
               "mad4b_activity_import_approve", "mad4b_activity_import_export",
               "wp_safe_redirect", "source_values_encrypted_at_rest"):
-    check(token in review, "Signed provider identity/approval UI guard missing "+token)
+    check(token in (review_ui if token.startswith("wp_nonce_field(") else review),
+          "Signed provider identity/approval UI guard missing "+token)
+check("use MAD4B_SCP_Activity_Import_Fallback_View;" in review,
+      "Import review must retain its extracted fallback view")
 check("'import_contract' => $import_contract" in profiles, "Standalone import facet not in normalized Experience Profile")
 check("MAD4B_ACTIVITY_IMPORT_SOURCE_KEYS" in modes, "Mode readiness still relies on obsolete global credential")
 check("'x-mad4b-key-id'" in script and "'x-mad4b-key-id'" in generic, "Clients lack per-source key binding")
