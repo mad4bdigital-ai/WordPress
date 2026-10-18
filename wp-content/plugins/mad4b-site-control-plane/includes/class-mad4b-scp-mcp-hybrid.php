@@ -151,6 +151,9 @@ final class MAD4B_SCP_MCP_Hybrid {
                     'ability' => $row['ability'], 'tool' => $row['tool'],
                     'dimension' => $row['dimension'], 'schema_sha256' => $row['schema_sha256'],
                     'read_execution_reviewed' => true === ( $row['read_execution_reviewed'] ?? false ),
+                    'output_schema_sha256' => isset( $row['output_schema_sha256'] ) && is_string( $row['output_schema_sha256'] )
+                        && preg_match( '/^[a-f0-9]{64}$/D', $row['output_schema_sha256'] )
+                        ? $row['output_schema_sha256'] : '',
                 );
             }
             ksort( $bindings, SORT_STRING );
@@ -320,6 +323,8 @@ final class MAD4B_SCP_MCP_Hybrid {
                     return new WP_Error( 'mad4b_mcp_tools_list_ambiguous', 'Duplicate or malformed MCP tool identity.' );
                 $result[$tool['name']] = array(
                     'name' => $tool['name'],
+                    'input_schema' => $tool['inputSchema'],
+                    'output_schema' => is_array( $tool['outputSchema'] ?? null ) ? $tool['outputSchema'] : null,
                     'schema_sha256' => self::digest( $tool['inputSchema'] ),
                     'annotations' => is_array( $tool['annotations'] ?? null ) ? array_intersect_key( $tool['annotations'],
                         array_flip( array( 'readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint' ) ) ) : array(),
@@ -339,10 +344,18 @@ final class MAD4B_SCP_MCP_Hybrid {
         foreach ( $peer['bindings'] as $ability => $binding ) {
             $tool = $result[$binding['tool']] ?? null;
             $matched = is_array( $tool ) && hash_equals( $binding['schema_sha256'], $tool['schema_sha256'] );
+            if ( $matched && is_array( $tool['output_schema'] ?? null ) ) {
+                $expected_output = (string) ( $binding['output_schema_sha256'] ?? '' );
+                $matched = '' !== $expected_output
+                    && hash_equals( $expected_output, self::digest( $tool['output_schema'] ) );
+            }
+            if ( $matched && ! is_array( $tool['output_schema'] ?? null )
+                && ! empty( $binding['output_schema_sha256'] ) ) $matched = false;
             $reviewed[$ability] = array(
                 'ability' => $ability, 'tool' => $binding['tool'], 'dimension' => $binding['dimension'],
                 'state' => !$tool ? 'MCP_TOOL_MISSING' : ( $matched ? 'MCP_SCHEMA_REVIEWED' : 'MCP_SCHEMA_DRIFT' ),
                 'schema_sha256' => $binding['schema_sha256'],
+                'output_schema_sha256' => isset( $binding['output_schema_sha256'] ) ? $binding['output_schema_sha256'] : '',
                 'read_execution_reviewed' => $binding['read_execution_reviewed'],
                 'read_execution_eligible' => $matched
                     && 'read' === $binding['dimension']
@@ -523,6 +536,13 @@ final class MAD4B_SCP_MCP_Hybrid {
             if ( $candidate['name'] === $binding['tool'] ) { $tool = $candidate; break; }
         }
         $annotations = is_array( $tool['annotations'] ?? null ) ? $tool['annotations'] : array();
+        // WordPress REST JSON Schema validator is the existing trusted schema
+        // gate. Do not invoke third-party callbacks on unvalidated input.
+        if ( ! function_exists( 'rest_validate_value_from_schema' ) )
+            return new WP_Error( 'mad4b_native_schema_validator_unavailable', 'WordPress schema validation is unavailable.' );
+        $validation = rest_validate_value_from_schema( $arguments, $tool['input_schema'], 'arguments' );
+        if ( is_wp_error( $validation ) || true !== $validation )
+            return new WP_Error( 'mad4b_native_arguments_invalid', 'Native tool arguments do not match the reviewed input schema.' );
         if ( true !== ( $annotations['readOnlyHint'] ?? null )
             || true === ( $annotations['destructiveHint'] ?? null ) )
             return new WP_Error( 'mad4b_native_read_annotation_missing', 'Remote tool did not affirm non-destructive read-only behavior.' );
@@ -537,6 +557,14 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ( $reply['wire']['result']['resultType'] ?? ( '2026-07-28' === $session['version'] ? '' : 'complete' ) ) !== 'complete'
             || ! empty( $reply['wire']['result']['isError'] ) )
             return new WP_Error( 'mad4b_native_read_result_incomplete', 'MCP tool requires further interaction or returned an error; no automatic retries.' );
+        if ( is_array( $tool['output_schema'] ?? null ) ) {
+            $structured = $reply['wire']['result']['structuredContent'] ?? null;
+            if ( ! is_array( $structured ) )
+                return new WP_Error( 'mad4b_native_output_missing', 'Reviewed structured MCP result is missing.' );
+            $validated = rest_validate_value_from_schema( $structured, $tool['output_schema'], 'structuredContent' );
+            if ( is_wp_error( $validated ) || true !== $validated )
+                return new WP_Error( 'mad4b_native_output_schema_mismatch', 'MCP response violates reviewed output schema.' );
+        }
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
             'protocol' => $session['version'], 'catalog_sha256' => $expected,
