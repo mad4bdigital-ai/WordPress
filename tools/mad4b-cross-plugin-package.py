@@ -41,6 +41,12 @@ def reviewed_source(manifest, source_id):
 def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
     require(GIT_SHA.fullmatch(source_sha) is not None, "exact Git commit required")
     source = reviewed_source(trusted_manifest, source_id)
+    # Pin Candidate builds to a reviewed, immutable repository commit even when
+    # final certificate fields are intentionally empty. No build can silently
+    # select an arbitrary input commit and present it as the registered source.
+    pinned = source.get("candidate_source_commit_sha") or source.get("source_commit_sha") or ""
+    require(GIT_SHA.fullmatch(pinned) is not None and source_sha == pinned,
+            "candidate source does not match exact reviewed registry SHA")
     checkout = pathlib.Path(checkout).resolve(strict=True)
     git_head = subprocess.check_output(
         ["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, timeout=15).strip()
@@ -61,6 +67,9 @@ def build(trusted_manifest, checkout, source_id, source_sha, out_dir):
     require(match is not None, "WordPress plugin Version header missing")
     version = match.group(1).strip()
     require(len(version) <= 80, "invalid WordPress plugin version")
+    candidate_version = source.get("candidate_artifact_version") or source.get("artifact_version") or ""
+    require(bool(candidate_version) and version == candidate_version,
+            "plugin header version differs from exact source candidate")
     contents = []
     total = 0
     for parent, dirs, filenames in os.walk(folder, followlinks=False):

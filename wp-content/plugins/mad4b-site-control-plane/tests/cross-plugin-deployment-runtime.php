@@ -35,6 +35,8 @@ $catalog=$cls::discover();
 check($catalog['count']===1 && !$catalog['mutation_performed'],'source registry inventory');
 check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
 check($catalog['items'][0]['repository']==='mad4bdigital-ai/WordPress','ETG same-repository source present');
+check($catalog['items'][0]['package_certification']==='pending',
+    'candidate metadata may not promote ETG package certification');
 check($catalog['items'][0]['installed']===false,'not-installed source detected');
 $sha=str_repeat('a',40);
 $input=array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'commit','reference'=>$sha);
