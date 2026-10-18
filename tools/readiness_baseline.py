@@ -7,6 +7,7 @@ Git head to supply review worklists for progressively closing baseline gaps.
 from __future__ import annotations
 import argparse
 import csv
+from readiness_csv import safe_writer
 import json
 from pathlib import Path
 import sys
@@ -68,7 +69,7 @@ def render(report, out):
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     with (folder / "baseline-inventory.csv").open(
             "w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.writer(fh)
+        writer = safe_writer(fh)
         writer.writerow(("Capability ID", "Source", "Risk", "Suggested controls",
                          "Historical review", "Live verified", "Production authorized"))
         for r in report["records"]:

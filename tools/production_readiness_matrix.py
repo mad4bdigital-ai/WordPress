@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from readiness_csv import safe_writer
 import json
 import os
 from pathlib import Path
@@ -235,7 +236,7 @@ def render(matrix, report, output):
     (output / "readiness.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     with (output / "controls.csv").open("w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.writer(fh)
+        writer = safe_writer(fh)
         writer.writerow(("Control ID", "Domain", "Title", "Acceptance", "Priority",
                          "Scope", "Owner", "Required evidence", "Historical observation",
                          "Source", "Live evidence verified", "Production authorized"))
@@ -247,7 +248,7 @@ def render(matrix, report, output):
                              "NO", "NO"))
     def write_projection(filename, headers, data):
         with (output / filename).open("w", encoding="utf-8-sig", newline="") as fh:
-            writer = csv.writer(fh)
+            writer = safe_writer(fh)
             writer.writerow(headers)
             writer.writerows(data)
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from readiness_csv import safe_writer
 import hashlib
 import json
 import os
@@ -612,7 +613,7 @@ def emit(report, out):
     (target / "capability-impact.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     with (target / "capability-impact.csv").open("w", newline="", encoding="utf-8-sig") as fh:
-        w = csv.writer(fh)
+        w = safe_writer(fh)
         w.writerow(("Path", "Change", "Area", "Risk", "Suggested control IDs",
                     "New capability IDs", "Removed capability IDs"))
         for x in report["impact"]:
@@ -663,7 +664,7 @@ def emit(report, out):
         encoding="utf-8")
     with (target / "control-history.csv").open(
             "w", newline="", encoding="utf-8-sig") as fh:
-        writer = csv.writer(fh)
+        writer = safe_writer(fh)
         writer.writerow(("Control ID", "Domain", "Priority", "Exact HEAD",
                          "New in diff", "Source impacted", "Coverage check",
                          "Live evidence", "Production authorized"))
@@ -692,7 +693,7 @@ def emit(report, out):
         json.dumps(delta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     with (target / "control-delta.csv").open("w", newline="",
                                                 encoding="utf-8-sig") as fh:
-        writer = csv.writer(fh)
+        writer = safe_writer(fh)
         writer.writerow(("Control ID", "Definition delta", "Base SHA256",
                          "Head SHA256", "Site evidence", "Production authorization"))
         for item in revisions:

@@ -14,7 +14,10 @@
     "existing_behavior_changes_require_reviewed_test_evidence": true,
     "new_capability_control_growth_decision_required": true,
     "registered_interface_additions_require_coverage": true,
-    "control_metadata_history_is_sha_bound": true
+    "control_metadata_history_is_sha_bound": true,
+    "policy_scope_protected_against_reduction": true,
+    "impact_rules_cannot_shadow_existing_rules": true,
+    "regression_tests_must_execute_in_ci": true
   },
   "domain_rules": [
     {
@@ -30,7 +33,7 @@
     },
     {
       "id": "update",
-      "pattern": "plugin|package|update|rollback|deploy|release|recovery|restore",
+      "pattern": "cross[-_]?plugin|plugin[-_](?:update|rollback|install)|package|updat(?:e|ing)|rollback|deploy|release|recovery|restore",
       "risk": "P0",
       "controls": [
         "UPDATES-01",
@@ -127,7 +130,8 @@
     "require_same_pr_regression_test": true,
     "require_existing_control_mapping": true,
     "live_evidence_required": true,
-    "production_authorized": false
+    "production_authorized": false,
+    "require_executed_regression_test": true
   },
   "capability_growth_policy": {
     "contract": "mad4b.readiness-control-growth.v1",

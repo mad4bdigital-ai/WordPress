@@ -40,6 +40,7 @@ jobs:
           set -euo pipefail
           python3 tools/production_readiness_matrix.py validate
           python3 tools/production_readiness_matrix.py self-test
+          python3 tools/readiness_csv.py
       - name: Inventory existing source capabilities without baseline certification
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
