@@ -120,8 +120,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "85e9e732c80dfbaff615eb2603b14eb40050e55cc9c31dcc30cce6400dcd1925",
-      "bytes": 28114
+      "sha256": "e939192675ac317920e3725610e06b6ac7cc6c32eb9a3b189c61fbb7ba0fbbe6",
+      "bytes": 28575
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-restore-convergence.php",
@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "84d53fd740f6db40ff837c78d86510daaefec23ed7638ffc69157cc9ae1cfa6f",
-      "bytes": 50572
+      "sha256": "51ce38350da3991de4bf561d723809a6d55c617105475cb846a8b8f870b569b7",
+      "bytes": 50769
     }
   ],
   "test_paths": [
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",
