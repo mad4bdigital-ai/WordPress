@@ -588,6 +588,10 @@ jobs:
             php: '8.3'
             database: mariadb:11.8
             health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: '7.1.3'
+            php: '8.5.11'
+            database: mariadb:11.8
+            health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
 
     services:
       mysql:
@@ -633,6 +637,15 @@ jobs:
           set -euo pipefail
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
 
+      - name: Assert exact deployed PHP/WP compatibility target
+        if: matrix.wordpress == '7.1.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r 'if (PHP_VERSION !== "8.5.11") { fwrite(STDERR, "Expected PHP 8.5.11, got ".PHP_VERSION.PHP_EOL); exit(1); }'
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php
+
       - name: Provision disposable Staging WordPress
         shell: bash
         env:
@@ -648,6 +661,9 @@ jobs:
           php /tmp/wp-cli.phar option update home 'https://mad4b-catalog.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar option update siteurl 'https://mad4b-catalog.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          if [[ "$WP_VERSION" == '7.1.3' ]]; then
+            test "$(php /tmp/wp-cli.phar core version --path="$WP_PATH")" = '7.1.3'
+          fi
 
       - name: Install exact MCP Adapter and Control Plane
         shell: bash
