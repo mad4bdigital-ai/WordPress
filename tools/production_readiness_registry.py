@@ -476,6 +476,29 @@ def evaluate(base, head):
     }
 
 
+def control_digest(row):
+    """Content-addressed definition identity, not proof of runtime execution."""
+    return hashlib.sha256(json.dumps(row, ensure_ascii=False, sort_keys=True,
+                         separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def control_delta(previous, current):
+    """Diff historical Control definitions without promoting evidence state."""
+    prior = {x["id"]: x for x in (previous or {}).get("controls", [])}
+    result = []
+    for row in current["controls"]:
+        old = prior.get(row["id"])
+        old_sha = control_digest(old) if old is not None else None
+        new_sha = control_digest(row)
+        state = ("NEW" if old is None else
+                 "UNCHANGED" if old_sha == new_sha else "REVISED")
+        result.append({"id": row["id"], "state": state,
+                       "base_definition_sha256": old_sha,
+                       "head_definition_sha256": new_sha,
+                       "authorizing": False, "live_evidence_status": "UNVERIFIED"})
+    return result
+
+
 def emit(report, out):
     target = Path(out)
     target.mkdir(parents=True, exist_ok=True)
@@ -494,6 +517,8 @@ def emit(report, out):
     current_controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     previous_controls = json_file(report["source_base_sha"], CONTROLS)
     previous_ids = {x["id"] for x in (previous_controls or {}).get("controls", [])}
+    revisions = control_delta(previous_controls, current_controls)
+    revisions_by_id = {r["id"]: r for r in revisions}
     uncovered_controls = {
         control for gap in report["coverage_gaps"]
         for control in gap.get("controls", [])
@@ -507,6 +532,9 @@ def emit(report, out):
         "source_base_sha": report["source_base_sha"],
         "exact_head_sha": report["exact_head_sha"],
         "introduced_in_diff": row["id"] not in previous_ids,
+        "definition_change": revisions_by_id[row["id"]]["state"],
+        "base_definition_sha256": revisions_by_id[row["id"]]["base_definition_sha256"],
+        "head_definition_sha256": revisions_by_id[row["id"]]["head_definition_sha256"],
         "source_change_impact": row["id"] in impacted_controls,
         "ci_coverage_status": (
             "BLOCKED_BY_UNCOVERED_CHANGE" if row["id"] in uncovered_controls
@@ -540,6 +568,33 @@ def emit(report, out):
                 "YES" if row["source_change_impact"] else "NO",
                 row["ci_coverage_status"], "UNVERIFIED", "NO",
             ))
+    state_counts = {
+        status: sum(r["state"] == status for r in revisions)
+        for status in ("NEW", "REVISED", "UNCHANGED")
+    }
+    delta = {
+        "contract": "mad4b.readiness-control-delta.v1",
+        "base_sha": report["source_base_sha"],
+        "exact_head_sha": report["exact_head_sha"],
+        "authorizing": False,
+        "production_authorized": False,
+        "counts": state_counts,
+        "revisions": revisions,
+    }
+    (target / "control-delta.json").write_text(
+        json.dumps(delta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with (target / "control-delta.csv").open("w", newline="",
+                                                encoding="utf-8-sig") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(("Control ID", "Definition delta", "Base SHA256",
+                         "Head SHA256", "Site evidence", "Production authorization"))
+        for item in revisions:
+            writer.writerow((item["id"], item["state"],
+                             item["base_definition_sha256"] or "",
+                             item["head_definition_sha256"], "UNVERIFIED", "NO"))
+    report["counts"]["controls_new"] = state_counts["NEW"]
+    report["counts"]["controls_revised"] = state_counts["REVISED"]
+    report["counts"]["controls_unchanged"] = state_counts["UNCHANGED"]
     # Exact-head append-only logical event: immutable GitHub Actions artifact
     # tied to head+run ID. This never changes repository source or approvals.
     event = {key: report[key] for key in (
@@ -550,6 +605,7 @@ def emit(report, out):
                   "github_run_id": os.environ.get("GITHUB_RUN_ID"),
                   "retention_note": "Run-scoped artifact; durable source history remains in Git.",
                   "control_history_count": len(control_rows),
+                  "control_delta": state_counts,
                   "new_control_ids": sorted(x["id"] for x in control_rows
                                             if x["introduced_in_diff"])})
     (target / "capability-history-event.json").write_text(
@@ -588,6 +644,12 @@ def self_test():
                    "<?php self::register( 'mad4b/example', 'Title')"):
         assert PHP_DECLARATION.search(source)
     assert not SHA.fullmatch("incorrect")
+    sample = {"controls": [{"id": "GOVERNANCE-01", "priority": "P0"}]}
+    assert control_delta(sample, sample)[0]["state"] == "UNCHANGED"
+    assert control_delta(sample, {"controls": [
+        {"id": "GOVERNANCE-01", "priority": "P0", "acceptance": "changed"}]
+    })[0]["state"] == "REVISED"
+    assert control_delta(None, sample)[0]["state"] == "NEW"
     print("DYNAMIC_READINESS_COVERAGE_SELF_TEST: PASS")
 
 

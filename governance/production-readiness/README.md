@@ -62,3 +62,53 @@ python3 tools/production_readiness_registry.py evaluate \
 ```
 
 **Scope of static detection:** registry entries, literal `mad4b/...` references in PHP files containing Ability registration patterns, newly introduced PHP service files and Admin JS/CSS assets. Dynamically assembled Ability names, feature behavior changes without new identifiers, and external plugins still require additional runtime/reviewer evidence. The impact matrix lists changed code, but a passing static scanner is not a full code review.
+
+## Growing readiness — three enforced directions
+
+**1. Wider coverage (new capabilities).** Source-diff discovery now includes operation,
+adapter, overlay, gap, workstream, static WordPress Ability, REST, AJAX and Cron
+identifiers, plus new PHP services/Admin assets. A capability review must explicitly
+choose `needs_new_control: true` and add mapped `new_control_ids` in the same PR,
+or choose `false` with a substantive `coverage_reuse_rationale`. New control
+definitions are proposed by impact analysis but never silently approved.
+
+**2. Deeper behavioral coverage (existing code changes).** Every added or modified
+runtime PHP source, tracked configuration JSON and Admin JS/CSS in supported
+subtrees requires a persistent `reviewed_changes` record keyed by
+`path` and the exact `source_blob_sha` from `git rev-parse HEAD:path`.
+Include two or more mapped `control_ids`, `regression_tests` changed in the
+same PR, `owner_role`, `review_rationale`, `status: reviewed_for_ci_only`,
+`production_authorized: false` and `live_evidence_required: true`. Renamed
+or removed entrypoints require lifecycle review. Editing implementation
+without changing an Ability name still requires a new source review.
+
+Example, when retaining existing controls:
+```json
+{
+  "id": "ability:mad4b/feature-new",
+  "control_ids": ["SECURITY-01", "MCP-01"],
+  "regression_tests": ["tests/new-feature-contract.py"],
+  "owner_role": "Security and Feature Owner",
+  "review_rationale": "Permission boundary and capability contract were tested together.",
+  "status": "reviewed_for_ci_only",
+  "production_authorized": false,
+  "live_evidence_required": true,
+  "needs_new_control": false,
+  "coverage_reuse_rationale": "Existing permissions and MCP controls already cover this feature."
+}
+```
+
+**3. Historical control revisions.** In addition to `control-history.json/csv`,
+the renderer emits `control-delta.json/csv` with a SHA256 fingerprint of every
+control definition at the immutable comparison base and exact PR HEAD.
+Per-control states are `NEW`, `REVISED` and `UNCHANGED`; these describe
+source definition changes, *not* release readiness or signed live acceptance.
+Run-scoped CI artifacts contain these projections, and Git history preserves
+the reviewed definitions; long-lived signed evidence is a separate governed
+store, not implemented by this workflow.
+
+The comparison uses the immutable merge-base when an upstream PR base has
+advanced. A source-coverage review is bound to the resulting PR tree and cannot
+self-authorize Production or replace a real Staging runtime verification.
+Static analysis may miss dynamically constructed WordPress registrations;
+the source-change review gate still requires human judgment and same-PR tests.

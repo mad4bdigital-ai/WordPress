@@ -59,9 +59,14 @@ jobs:
           if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
             git fetch --no-tags origin "$BASE_SHA" --depth=1
           fi
-          git merge-base --is-ancestor "$BASE_SHA" "$EXACT_HEAD" || {
-            echo 'Reviewed base is not an ancestor of exact PR head'; exit 1;
-          }
+          if ! git merge-base --is-ancestor "$BASE_SHA" "$EXACT_HEAD"; then
+            # Base branch can advance while a stacked PR is open. Compare
+            # against the immutable fork point rather than fail or trust a
+            # mutable base head that is not in the PR ancestry.
+            BASE_SHA="$(git merge-base "$BASE_SHA" "$EXACT_HEAD")"
+            test -n "$BASE_SHA"
+          fi
+          echo "Readiness compared exact head $EXACT_HEAD against fork $BASE_SHA"
           python3 tools/production_readiness_registry.py evaluate \
             --base-sha "$BASE_SHA" \
             --head-sha "$EXACT_HEAD" \
@@ -77,6 +82,12 @@ jobs:
           assert p["authorizing"] is False
           assert p["all_live_evidence_unverified"] is True
           assert len(p["controls"]) >= 170
+          delta=json.loads(Path("artifacts/production-readiness/control-delta.json").read_text())
+          assert delta["contract"] == "mad4b.readiness-control-delta.v1"
+          assert delta["authorizing"] is False and delta["production_authorized"] is False
+          assert sum(delta["counts"].values()) == len(p["controls"])
+          assert all(x["live_evidence_status"] == "UNVERIFIED"
+                     and x["authorizing"] is False for x in delta["revisions"])
           assert all(x["live_evidence_status"] == "UNVERIFIED" and
                      x["production_authorized"] is False
                      for x in p["controls"])
