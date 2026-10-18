@@ -83,7 +83,11 @@ def catalog_snapshot(ref):
             values = [x["id"] for x in j.get("operations", [])]
         elif kind == "adapter":
             values = [x["id"] for x in j.get("families", [])]
-            values.extend(x["id"] for x in j.get("priority_external", []))
+            priority = [x["id"] for x in j.get("priority_external", [])]
+            ensure(len(priority) == len(set(priority)), "Duplicate priority external adapter")
+            # A priority provider may intentionally be the same adapter family.
+            # Count it once; this is not a source integrity violation.
+            values.extend(x for x in priority if x not in values)
         elif kind == "overlay":
             values = [x["provider_id"] for x in j.get("overlays", [])]
         elif kind == "gap":
