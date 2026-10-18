@@ -299,8 +299,8 @@ with patch.object(mod.subprocess, "run", return_value=SimpleNamespace(returncode
 assert ordinary["mode"] == "non_feature_branch"
 assert ordinary["owner_attestation_required"] is False
 
-# A retry of a stale head must not evict exact-head release evidence. Separate
-# pull_request and pull_request_target evidence for the same candidate as well.
+# Superseded PR CI must be cancelled when the head changes, but the surviving
+# check still certifies its immutable source head. Keep event and PR lanes separate.
 evidence_workflows = [
     "mad4b-context-authority.yml",
     "mad4b-site-control-plane.yml",
@@ -329,8 +329,17 @@ def evidence_concurrency_key(workflow, sha, event, pr=276):
     ).lower()
 
 for workflow in evidence_workflows:
+    workflow_source = (HERE.parent / ".github/workflows" / workflow).read_text(encoding="utf-8")
+    group_line = re.search(r"^  group: (.+)$", workflow_source, re.M)
+    assert group_line is not None, workflow
+    assert "github.event.pull_request.head.sha" not in group_line.group(1), workflow
+    assert "cancel-in-progress: true" in workflow_source, workflow
+for workflow in evidence_workflows:
     current = evidence_concurrency_key(workflow, "b" * 40, "pull_request")
-    assert current != evidence_concurrency_key(workflow, "a" * 40, "pull_request"), workflow
+    # The same PR/workflow/event now shares one lane across successive commits;
+    # obsolete queued checks are superseded while each run's source evidence
+    # remains pinned to the immutable head SHA at checkout.
+    assert current == evidence_concurrency_key(workflow, "a" * 40, "pull_request"), workflow
     assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request_target"), workflow
     assert current != evidence_concurrency_key(workflow, "b" * 40, "pull_request", pr=277), workflow
     assert current == evidence_concurrency_key(workflow, "b" * 40, "pull_request"), workflow
