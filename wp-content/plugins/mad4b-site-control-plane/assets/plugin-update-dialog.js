@@ -62,4 +62,56 @@
       dialog._mad4bOrigin.focus();
     }
   }, true);
+}  // Only the explicit Cross-Plugin preview uses AJAX. Without fetch, the
+  // original admin-post form remains a functioning accessible fallback.
+  document.addEventListener('submit', function (event) {
+    var form = event.target.closest('form[data-mad4b-async-preview]');
+    if (!form || typeof window.fetch !== 'function' || typeof window.FormData !== 'function') return;
+    var result = form.querySelector('[data-mad4b-preview-result]');
+    var url = form.getAttribute('data-mad4b-ajax-url');
+    if (!result || !url) return;
+    event.preventDefault();
+    var button = form.querySelector('button[type="submit"]');
+    var body = new FormData(form);
+    body.set('action', 'mad4b_cross_plugin_preview_ajax');
+    if (button) button.disabled = true;
+    result.hidden = false;
+    result.textContent = 'Checking source and package eligibility...';
+    window.fetch(url, {method: 'POST', credentials: 'same-origin', body: body})
+      .then(function (response) { return response.json(); })
+      .then(function (payload) {
+        if (!payload || !payload.data) throw new Error('Invalid preview response');
+        var data = payload.data;
+        result.textContent = '';
+        var summary = document.createElement('strong');
+        summary.textContent = String(data.state || 'BLOCKED');
+        result.appendChild(summary);
+        [
+          ['Operation', data.operation],
+          ['Exact commit', data.resolved_sha],
+          ['Plugin', data.plugin_file]
+        ].forEach(function (entry) {
+          if (!entry[1]) return;
+          var row = document.createElement('div');
+          row.textContent = entry[0] + ': ' + String(entry[1]);
+          result.appendChild(row);
+        });
+        if (Array.isArray(data.blockers) && data.blockers.length) {
+          var list = document.createElement('ul');
+          data.blockers.slice(0, 20).forEach(function (reason) {
+            var item = document.createElement('li');
+            item.textContent = String(reason);
+            list.appendChild(item);
+          });
+          result.appendChild(list);
+        }
+        var note = document.createElement('p');
+        note.textContent = 'Preview only. Installation requires a separately certified ZIP and exact approval.';
+        result.appendChild(note);
+      })
+      .catch(function () {
+        result.textContent = 'Preview could not be completed. Use Open Plugin Deployment for a full review.';
+      })
+      .finally(function () { if (button) button.disabled = false; });
+  });
 })();

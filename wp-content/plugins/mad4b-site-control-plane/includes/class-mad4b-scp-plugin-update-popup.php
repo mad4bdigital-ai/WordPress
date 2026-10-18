@@ -193,7 +193,8 @@ final class MAD4B_SCP_Plugin_Update_Popup {
             } else {
                 echo '<div class="mad4b-ud-separator"></div><h3>Preview exact source</h3>';
                 echo '<p class="description">This read-only request resolves a Git reference against its reviewed repository; it cannot install a ZIP.</p>';
-                echo '<form class="mad4b-ud-form" method="post" action="'
+                echo '<form class="mad4b-ud-form" data-mad4b-async-preview data-mad4b-ajax-url="'
+                    . esc_url( admin_url( 'admin-ajax.php' ) ) . '" method="post" action="'
                     . esc_url( admin_url( 'admin-post.php' ) ) . '">';
                 echo '<input type="hidden" name="action" value="mad4b_cross_plugin_preview">';
                 echo '<input type="hidden" name="source_id" value="' . esc_attr( $entry['id'] ) . '">';
@@ -204,7 +205,8 @@ final class MAD4B_SCP_Plugin_Update_Popup {
                 echo '<label>Reference<input name="reference" class="regular-text" maxlength="161" required'
                     . ' placeholder="branch, PR number, or 40-character SHA"></label>';
                 echo '<label>Reason<input name="reason" class="regular-text" minlength="3" maxlength="500" required></label>';
-                echo '<button class="button button-primary" type="submit">Preview certified source</button></form>';
+                echo '<button class="button button-primary" type="submit">Preview certified source</button>'
+                    . '<div class="mad4b-ud-preview-result" data-mad4b-preview-result role="status" aria-live="polite" aria-atomic="true" hidden></div></form>';
             }
             echo '<p class="mad4b-ud-footnote">No automatic install. Staging and Production authorizations remain separate; the installer verifies provenance, permissions, backup and readback.</p></dialog>';
         }

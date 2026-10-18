@@ -23,3 +23,9 @@
 .mad4b-ud-dialog .mad4b-ud-footnote{margin:0;padding:16px 24px;background:#f3f6fa;color:#586777;font-size:12px;line-height:1.5}
 @media(max-width:580px){.mad4b-ud-dialog .mad4b-ud-header{padding:17px}.mad4b-ud-dialog .mad4b-ud-details{grid-template-columns:1fr}.mad4b-ud-dialog .mad4b-ud-intro,.mad4b-ud-dialog .mad4b-ud-details,.mad4b-ud-dialog .mad4b-ud-actions,.mad4b-ud-dialog .mad4b-ud-form{margin-left:16px;margin-right:16px}}
 @media(prefers-reduced-motion:reduce){.mad4b-ud-dialog{scroll-behavior:auto}}
+
+.mad4b-ud-dialog .mad4b-ud-preview-result{padding:12px 14px;border:1px solid #bfd2dd;background:#f6f9fc;border-radius:8px;overflow-wrap:anywhere;line-height:1.55;min-width:0}
+.mad4b-ud-dialog .mad4b-ud-preview-result ul{margin:8px 0;padding-inline-start:20px;list-style:disc}
+.mad4b-ud-dialog .mad4b-ud-preview-result p{margin:9px 0 0}
+.mad4b-ud-dialog[dir="rtl"],[dir="rtl"] .mad4b-ud-dialog{text-align:start}
+@media(max-width:375px){.mad4b-ud-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 20px);border-radius:10px}.mad4b-ud-dialog .mad4b-ud-header{gap:8px;padding:12px}.mad4b-ud-dialog h2{font-size:18px}.mad4b-ud-dialog h3{margin-inline:12px}.mad4b-ud-dialog .mad4b-ud-intro,.mad4b-ud-dialog .mad4b-ud-details,.mad4b-ud-dialog .mad4b-ud-actions,.mad4b-ud-dialog .mad4b-ud-form{margin-inline:12px}.mad4b-ud-dialog .description{margin-inline:12px}}

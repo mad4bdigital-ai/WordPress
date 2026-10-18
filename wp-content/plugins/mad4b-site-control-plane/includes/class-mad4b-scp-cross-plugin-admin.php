@@ -5,12 +5,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Cross_Plugin_Admin {
     const PAGE = 'mad4b-plugin-deployment';
     const ACTION = 'mad4b_cross_plugin_preview';
+    const AJAX_PREVIEW = 'mad4b_cross_plugin_preview_ajax';
     const INTAKE = 'mad4b_cross_plugin_intake';
 
     public static function boot() {
         MAD4B_SCP_Admin_Route_Registry::register( self::PAGE, 'manage_options' );
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 32 );
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_preview' ) );
+        add_action( 'wp_ajax_' . self::AJAX_PREVIEW, array( __CLASS__, 'handle_ajax_preview' ) );
         add_action( 'admin_post_' . self::INTAKE, array( __CLASS__, 'handle_intake' ) );
     }
 
@@ -30,6 +32,49 @@ final class MAD4B_SCP_Cross_Plugin_Admin {
     }
 
     private static function key() { return 'mad4b_plugin_deployment_preview_' . (int) get_current_user_id(); }
+
+    /**
+     * Explicit nonce-protected AJAX preview for the Plugins row dialog.
+     * Returns only bounded read-only evidence; never a package apply input.
+     */
+    public static function handle_ajax_preview() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            || ! current_user_can( 'manage_options' )
+            || 'not_verified' === self::environment() ) {
+            wp_send_json_error( array( 'state' => 'NOT_AUTHORIZED',
+                'blockers' => array( 'administrator_and_enrolled_site_required' ) ), 403 );
+            return;
+        }
+        if ( ! check_ajax_referer( self::ACTION, '_wpnonce', false ) ) {
+            wp_send_json_error( array( 'state' => 'NOT_AUTHORIZED',
+                'blockers' => array( 'invalid_preview_nonce' ) ), 403 );
+            return;
+        }
+        $input = array();
+        foreach ( array( 'source_id', 'ref_type', 'reference', 'reason' ) as $field ) {
+            $value = isset( $_POST[$field] ) && is_string( $_POST[$field] )
+                ? wp_unslash( $_POST[$field] ) : '';
+            $input[$field] = strlen( $value ) <= 500 ? trim( $value ) : '';
+        }
+        $result = strlen( $input['reason'] ) >= 3
+            ? MAD4B_SCP_Cross_Plugin_Deployment::plan( $input )
+            : new WP_Error( 'cross_plugin_reason_required', 'A bounded audit reason is required.' );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( array( 'state' => 'BLOCKED',
+                'blockers' => array( sanitize_key( $result->get_error_code() ) ) ), 400 );
+            return;
+        }
+        $blockers = array_slice( (array) ( $result['blockers'] ?? array() ), 0, 20 );
+        wp_send_json_success( array(
+            'state' => ! empty( $result['eligible'] ) ? 'PLAN_ELIGIBLE_NOT_AUTHORIZED' : 'NEEDS_REVIEW',
+            'operation' => (string) ( $result['operation'] ?? '' ),
+            'resolved_sha' => (string) ( $result['resolved_sha'] ?? '' ),
+            'plugin_file' => (string) ( $result['plugin_file'] ?? '' ),
+            'blockers' => array_values( array_map( 'sanitize_key', $blockers ) ),
+            'mutation_performed' => false,
+            'authorizing' => false,
+        ) );
+    }
 
     public static function handle_preview() {
         if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' )
