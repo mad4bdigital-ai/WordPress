@@ -76,11 +76,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
-      "sha256": "44123551ae96606d5cd06191e87f87526e2b4daafede0a2a4203ff7164e170d4"
+      "sha256": "fefc219f5ff1f5dc109b597ba901568172f48bfd283ed9ba1e9649cb7a07e1f9"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
-      "sha256": "51481033f3cff1e4beb4c3ed80f286429fb0a4d3de0384157b9d95aebcd241ab"
+      "sha256": "efa2c762bd91f2d6ba1964d7b53993c3fadc6ba01977e0232142eb3e4198b782"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",

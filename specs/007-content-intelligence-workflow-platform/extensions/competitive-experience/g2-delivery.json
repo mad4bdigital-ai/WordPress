@@ -79,7 +79,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php",
-      "sha256": "345cc98fc9bffc05392c9928d0788b42a961c310c9a496b92c233cd09b05f276"
+      "sha256": "20b13d3308f974ba46c9be4b5b804b90fa1f4627f46d0026f97fc7fa39f38ec5"
     }
   ],
   "test_paths": [
