@@ -141,8 +141,8 @@ def main() -> int:
         )
         (destination / "tag-trigger-evidence.md").write_text(
             "# Readiness tag trigger (source-only)\n\n"
-            f"- Ref: \`{args.ref}\`\n"
-            f"- Exact commit: \`{args.head_sha}\`\n"
+            f"- Ref: `{args.ref}`\n"
+            f"- Exact commit: `{args.head_sha}`\n"
             "- Master ancestry: VERIFIED\n"
             "- Production authorization: **NO-GO**\n",
             encoding="utf-8",
