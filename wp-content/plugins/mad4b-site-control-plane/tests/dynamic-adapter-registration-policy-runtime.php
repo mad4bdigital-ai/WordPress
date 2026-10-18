@@ -34,6 +34,8 @@ registration_assert( in_array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', $appro
 registration_assert( count( $approved ) >= 18,
     'Reviewed policy retains built-in default adapters even when not loaded in this fixture' );
 $registry->register_defaults();
+registration_assert( in_array( 'mad4b/adapter-candidates', $registry->ability_names( 'read' ), true ),
+    'Quarantined candidate inventory is discoverable via the canonical read plane' );
 registration_assert( in_array( 'mad4b/plugin-capability-graph', $registry->ability_names( 'read' ), true ),
     'Registered plugin capability graph is discoverable via canonical read inventory' );
 registration_assert( count( $registry->all() ) > 0, 'Reviewed default adapters actually register after trust check' );

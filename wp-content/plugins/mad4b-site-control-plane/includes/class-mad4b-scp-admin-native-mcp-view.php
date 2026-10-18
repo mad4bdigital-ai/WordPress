@@ -82,7 +82,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
             ? (int) $_GET['offset'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- pure read.
         $model = self::graph_model( is_array( $graph ) ? $graph : array(), $offset );
         echo '<h2>Installed plugin capability graph</h2>';
-        echo '<p class="description">Registration is not runtime authorization. No plugin callback, external HTTP request or mutation is executed by this view.</p>';
+        echo '<p class="description">Registration is not runtime authorization. The underlying inventory may call approved provider status hooks; no unknown Adapter callback or write is executed by this panel.</p>';
         echo '<p>Discovery: <code>' . esc_html( $model['state'] ) . '</code> · Observed: ' . esc_html( (string) $model['count'] ) . ' · Graph SHA-256: <code>' . esc_html( $model['sha'] ?: 'unavailable' ) . '</code></p>';
         if ( ! $model['complete'] ) echo '<div class="notice notice-warning inline"><p>Inventory is partial. Route plans are ineligible until discovery is complete.</p></div>';
         echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th scope="col">Plugin / version</th><th scope="col">State</th><th scope="col">Abilities registered</th><th scope="col">Review evidence</th><th scope="col">Read route</th></tr></thead><tbody>';
@@ -104,6 +104,24 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         echo '</tbody></table></div>';
         if ( $model['offset'] > 0 ) echo '<a class="button" href="' . esc_url( self::tab_url( 'capabilities', array( 'offset' => max( 0, $model['offset'] - self::PAGE_SIZE ) ) ) ) . '">Previous</a> ';
         if ( null !== $model['next_offset'] ) echo '<a class="button" href="' . esc_url( self::tab_url( 'capabilities', array( 'offset' => $model['next_offset'] ) ) ) . '">Next</a>';
+
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false ) ) {
+            // Registry candidates are inert metadata and are safe to render.
+            $candidates = MAD4B_SCP_Adapter_Registry::instance()->candidate_inventory();
+            echo '<h2>Unreviewed named / anonymous Adapter candidates</h2>';
+            echo '<p class="description">Discovered for source review, not mounted as executable Abilities or granted Write authority.</p>';
+            echo '<p>Observed: ' . esc_html( (string) $candidates['count'] )
+                . ( $candidates['truncated'] ? ' (partial)' : '' ) . '</p>';
+            if ( ! empty( $candidates['rows'] ) ) {
+                echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th scope="col">Candidate</th><th scope="col">Source</th><th scope="col">Review state</th><th scope="col">Fingerprint</th></tr></thead><tbody>';
+                foreach ( $candidates['rows'] as $candidate ) {
+                    echo '<tr><th scope="row"><code>' . esc_html( $candidate['class_label'] ) . '</code></th><td>' . esc_html( $candidate['source_kind'] )
+                        . '</td><td>' . esc_html( $candidate['state'] ) . '</td><td><code>' . esc_html( $candidate['candidate_fingerprint'] ) . '</code></td></tr>';
+                }
+                echo '</tbody></table></div>';
+            }
+        }
+
     }
 
     public static function render_route_preview() {

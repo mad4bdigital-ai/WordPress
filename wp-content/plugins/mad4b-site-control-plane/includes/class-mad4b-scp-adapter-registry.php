@@ -209,6 +209,7 @@ final class MAD4B_SCP_Adapter_Registry {
 	public function register_abilities() {
 		$this->register_defaults();
 		$this->register_registry_ability( 'mad4b/adapters-inventory', 'Adapters Inventory', 'inventory', 'List registered MAD4B adapters and their runtime availability/reversible contracts.' );
+		$this->register_registry_ability( 'mad4b/adapter-candidates', 'Unreviewed Adapter Candidates', 'candidate_inventory', 'Observe safe metadata-only named and anonymous Adapter candidates, never grant or execute their callbacks.' );
 		$this->register_registry_ability( 'mad4b/plugin-adapter-coverage', 'Plugin Adapter Coverage', 'plugin_coverage', 'Discover installed plugins and classify their governed adapter coverage without installing, enabling or generating code.' );
 		$this->register_registry_ability( 'mad4b/adapter-support-requests', 'Adapter Support Requests', 'adapter_support_requests', 'Return deterministic read-only support requirements for plugins that need an adapter, provider certification, reversible certification, or side-channel isolation.' );
 		$this->register_registry_ability( 'mad4b/provider-functional-coverage', 'Provider Functional Coverage', 'provider_functional_coverage', 'Show capability-level provider coverage, status-only candidates, safety blockers and next safe actions.' );
@@ -317,7 +318,7 @@ final class MAD4B_SCP_Adapter_Registry {
 			'mad4b/plugin-activate', 'mad4b/plugin-deactivate', 'mad4b/plugin-package-apply', 'mad4b/plugin-remote-update-apply', 'mad4b/filesystem-write', 'mad4b/filesystem-patch',
 			'mad4b/database-update', 'mad4b/audit-tail', 'mad4b/mutation-get', 'mad4b/mutation-undo',
 			'mad4b/agent-list', 'mad4b/agent-effective-access', 'mad4b/approval-plan',
-			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/plugin-capability-graph', 'mad4b/plugin-capability-route-plan', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
+			'mad4b/database-raw-query', 'mad4b/adapters-inventory', 'mad4b/adapter-candidates', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/provider-candidate-matrix', 'mad4b/plugin-capability-graph', 'mad4b/plugin-capability-route-plan', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test',
 			'mad4b/skills-list', 'mad4b/skill-get', 'mad4b/skills-export-status', 'mad4b/skills-runtime-certification',
 		);
 	}
@@ -542,7 +543,7 @@ final class MAD4B_SCP_Adapter_Registry {
 		);
 	}
 	public function ability_names( $surface ) {
-		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/plugin-capability-graph', 'mad4b/plugin-capability-route-plan', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test' );
+		$names = array(); if ( 'read' === $surface ) $names = array( 'mad4b/adapters-inventory', 'mad4b/adapter-candidates', 'mad4b/plugin-adapter-coverage', 'mad4b/capability-atlas', 'mad4b/adapter-support-requests', 'mad4b/provider-functional-coverage', 'mad4b/provider-contract-discovery', 'mad4b/plugin-capability-graph', 'mad4b/plugin-capability-route-plan', 'mad4b/functional-gap-runtime-evidence', 'mad4b/runtime-self-test' );
 		foreach ( $this->adapters as $adapter ) { $map = $adapter->ability_names(); if ( isset( $map[ $surface ] ) && is_array( $map[ $surface ] ) ) $names = array_merge( $names, $map[ $surface ] ); }
 		return array_values( array_unique( $names ) );
 	}
