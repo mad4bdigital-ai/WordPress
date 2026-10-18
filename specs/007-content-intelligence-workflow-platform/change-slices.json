@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "f85e89e14486b2c7f440f094007d4c7139be2c1d",
-  "changed_file_count": 181,
+  "reviewed_base_sha": "61e748676f85ddc4e0acdb2cb68bf026e37173f4",
+  "changed_file_count": 38,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2434,8 +2434,37 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/operator-primary-next-step-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/site-info-resilience-runtime.php"
       ]
+    },
+    {
+      "id": "dynamic-adapters-native-mcp-admin-ui-20261018",
+      "semantic_unit": "Dynamic adapter Native MCP read implementation, source trust, regression fixtures and passive wp-admin capability/peer/route visibility",
+      "revert_boundary": "Revert new native MCP and dynamic-adapter implementation/tests as one reviewed group without reverting Owner Intent security gates or granting Write.",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-adapter-coverage.yml",
+        "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/DYNAMIC-ADAPTER-CAPABILITY-GRAPH-20261018.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-ci-failure-evidence-fixture.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-adapter-trust.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-header-parameters.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid-authority.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-local-ability-trust.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-health.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-read-behavior.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-native-mcp-view-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-adapter-capability-graph-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-adapter-registration-policy-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-orchestration-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-external-adapter-trust-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-mcp-hybrid-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-runtime-hardening-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-failure-evidence.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-governed-adapter-contract.py"
+      ]
     }
   ],
-  "changed_paths_sha256": "dbf4119ceb6ba812942f0e4c99e3074978812f4311fc049d9fd6212f517f5d51",
+  "changed_paths_sha256": "afd7c4100555f690a8f77e15e320ad0bb6f0b78ccf0aade8ed42752810bae616",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }

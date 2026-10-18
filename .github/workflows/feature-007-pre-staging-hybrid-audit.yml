@@ -126,6 +126,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php
           php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-mcp-hybrid-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/admin-native-mcp-view-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
@@ -543,6 +545,12 @@ jobs:
           php "$P/tests/staging-operation-journal-runtime.php"
           python3 "$P/tests/staging-operation-journal-source-contract.py"
           php "$P/tests/staging-write-owner-intent-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-authority.php"
+          php "$P/tests/staging-write-owner-grant-local-preview-runtime.php"
+          php "$P/tests/staging-write-grant-canonical-order-runtime.php"
+          php -l "$P/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+          php "$P/tests/elementor-font-css-origin-audit-runtime.php"
 
       - name: MAD4B-specific pre-Staging audit
         shell: bash
@@ -849,6 +857,12 @@ jobs:
           php "$P/tests/staging-operation-journal-runtime.php"
           python3 "$P/tests/staging-operation-journal-source-contract.py"
           php "$P/tests/staging-write-owner-intent-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-grant-reconciliation-plan.php"
+          php -l "$P/includes/class-mad4b-scp-staging-write-authority.php"
+          php "$P/tests/staging-write-owner-grant-local-preview-runtime.php"
+          php "$P/tests/staging-write-grant-canonical-order-runtime.php"
+          php -l "$P/includes/adapters/class-mad4b-scp-elementor-adapter.php"
+          php "$P/tests/elementor-font-css-origin-audit-runtime.php"
           php "$P/tests/operator-primary-next-step-runtime.php"
           php "$P/tests/native-first-root-cause-runtime.php"
           php "$P/tests/cross-provider-remediation-runtime.php"
