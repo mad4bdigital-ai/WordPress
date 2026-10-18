@@ -32,3 +32,25 @@ The workflow `MAD4B Cross Plugin Source Artifact Candidate` creates an artifact 
 5. After Staging acceptance, separately review Production installer + promotion attestation and pass production-specific no-breakglass, one-time approval and rollback acceptance.
 
 This document does not assert that an ETG package was installed, certified, or approved.
+
+## Candidate artifact evidence — GitHub run 39154897673
+
+A non-authorizing Actions candidate was successfully built and the emitted artifact was independently downloaded and inspected (not a Production/Staging install).
+
+| Evidence | Verified value |
+| --- | --- |
+| Artifact ID | [12146207788](https://github.com/mad4bdigital-ai/WordPress/actions/runs/39154897673/artifacts/12146207788) |
+| Source commit | `76ef918d8485c42e92dd38b3725efd4de5471556` |
+| Plugin archive SHA-256 | `7e76194e8fa89a34c1d04bdfcf58db835363ec2cb9659fe22694e4437310c368` |
+| Plugin archive bytes | 493681 |
+| File count | 198 |
+| Internal file-manifest SHA-256 | `6b733edee034fae781bdf4a550977cb0fdbfeb8e55507fc04aee37b937ae339e` |
+| Header version | `0.4.0-alpha.13` |
+| Source blob tree check | 198 of 198 Git blob identities matched extracted ZIP contents |
+| Independent deterministic reserialization | Byte-for-byte identical ZIP hash |
+| PHP syntax smoke | 175/175 files PASS on PHP 8.4.24 |
+| Source certification | **Pending** |
+| WordPress Staging acceptance | **Pending** |
+| Production promotion/executor | **Blocked** |
+
+The transient GitHub Actions artifact is NOT a permanent release URL. Never populate the authoritative `artifact_sha256` or set `package_certification=certified` solely from this candidate; an independently governed release publication and acceptance trail are required.

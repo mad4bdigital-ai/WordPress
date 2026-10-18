@@ -23,8 +23,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: cross-plugin-candidate-${{ github.event.pull_request.number || github.event.inputs.source_id }}-${{ github.event.pull_request.head.sha || github.event.inputs.source_commit_sha }}
-  cancel-in-progress: false
+  group: cross-plugin-candidate-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
   package-candidate:
@@ -32,9 +32,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Trusted workflow checkout
+      - name: Exact workflow checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Verify non-authorizing hermetic deterministic candidate contract
         shell: bash
