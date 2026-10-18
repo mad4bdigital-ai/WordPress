@@ -48,7 +48,7 @@ class MAD4B_SCP_Agent_Registry {
     public static function exact_grant( $agent_id, $server, $ability, $provider = 'core' ) {
         if ( empty( $GLOBALS['hybrid_grant'] ) || 17 !== $agent_id || 'mad4b-read' !== $server
             || ! in_array( $provider, array( 'native_mcp_test-peer', 'hybrid_local' ), true )
-            || ! in_array( $ability, array( 'demo/inspect', 'demo/offline' ), true ) )
+            || ! in_array( $ability, array( 'demo/inspect', 'demo/offline', 'demo/native-local' ), true ) )
             return new WP_Error( 'no_exact_grant', 'Exact grant missing' );
         return array( 'effect' => 'allow' );
     }
@@ -121,6 +121,23 @@ $GLOBALS['mcp_tools'] = array(
 );
 $manifest_dir = sys_get_temp_dir() . '/mad4b-mcp-hybrid-' . getmypid();
 mcp_check( ! is_dir($manifest_dir) && mkdir($manifest_dir, 0700), 'Unique fixture directory' );
+$local_plugins = $manifest_dir . '/plugins';
+mcp_check( mkdir( $local_plugins . '/demo', 0700, true ), 'Local WordPress Ability fixture plugin created' );
+define( 'WP_PLUGIN_DIR', $local_plugins );
+function get_option( $key, $fallback = array() ) {
+    return 'active_plugins' === $key ? array( 'demo/main.php' ) : $fallback;
+}
+$entry_php = '<?php // test plugin package';
+$reader_php = '<?php function ci_native_wp_read( $args ) { return array("ok" => true, "checked" => true, "q" => $args["q"] ?? ""); }';
+file_put_contents( $local_plugins . '/demo/main.php', $entry_php );
+file_put_contents( $local_plugins . '/demo/reader.php', $reader_php );
+require_once $local_plugins . '/demo/reader.php';
+$native_local_input = $schema;
+$native_local_output = array( 'type' => 'object' );
+$native_local_tree = array(
+    'main.php' => hash( 'sha256', $entry_php ),
+    'reader.php' => hash( 'sha256', $reader_php )
+);
 $manifest_path = $manifest_dir . '/reviewed.json';
 $manifest = array( 'contract'=>'mad4b.mcp-hybrid.v1', 'peers'=>array( array(
     'id'=>'test-peer', 'endpoint'=>'https://reviewed.example/mcp',
@@ -132,6 +149,15 @@ $manifest = array( 'contract'=>'mad4b.mcp-hybrid.v1', 'peers'=>array( array(
         array('ability'=>'demo/delete', 'tool'=>'unsafe_delete', 'dimension'=>'write',
             'schema_sha256'=>hash('sha256',json_encode(array('type'=>'object')))),
     ),
+) ), 'local_abilities'=>array( array(
+    'ability'=>'demo/native-local',
+    'plugin_basename'=>'demo/main.php',
+    'callback_source_relpath'=>'demo/reader.php',
+    'callback_source_sha256'=>hash( 'sha256', $reader_php ),
+    'php_source_tree_sha256'=>hash( 'sha256', json_encode( $native_local_tree, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+    'input_schema_sha256'=>hash( 'sha256', json_encode( mcp_canonical($native_local_input), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+    'output_schema_sha256'=>hash( 'sha256', json_encode( mcp_canonical($native_local_output), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
+    'read_execution_reviewed'=>true
 ) ) );
 file_put_contents( $manifest_path, json_encode( $manifest ) );
 define( 'MAD4B_SCP_MCP_PEER_MANIFEST_PATH', $manifest_path );
@@ -261,11 +287,21 @@ final class MAD4B_Test_Hybrid_Ability {
     public function get_meta() { return array( 'annotations' => array( 'readonly' => true, 'destructive' => false ) ); }
     public function execute( $args ) { return call_user_func( $this->execute_callback, $args ); }
 }
+final class MAD4B_Test_Native_WordPress_Ability {
+    protected $execute_callback = 'ci_native_wp_read';
+    public function get_name() { return 'demo/native-local'; }
+    public function get_meta() { return array( 'annotations'=>array( 'readonly'=>true, 'destructive'=>false ) ); }
+    public function get_input_schema() { return $GLOBALS['native_local_input']; }
+    public function get_output_schema() { return array( 'type'=>'object' ); }
+    public function execute( $args ) { return call_user_func( $this->execute_callback, $args ); }
+}
+$GLOBALS['native_local_input'] = $native_local_input;
 final class MAD4B_SCP_Adapter_Registry {
     public static function instance() { return new self(); }
     public function all() { return array( new MAD4B_Test_Hybrid_Adapter() ); }
 }
 function wp_get_ability( $name ) {
+    if ( 'demo/native-local' === $name ) return new MAD4B_Test_Native_WordPress_Ability();
     return 'demo/offline' === $name ? new MAD4B_Test_Hybrid_Ability() : null;
 }
 $before_local = count($GLOBALS['mcp_calls']);
@@ -276,6 +312,21 @@ mcp_check(!is_wp_error($hybrid_read)
     && $hybrid_read['result']['permission_checked'] === true
     && count($GLOBALS['mcp_calls']) === $before_local,
     'Local fallback executes via registered Ability with no remote request');
+$native_local_plan = $hybrid::hybrid_plan(array('ability'=>'demo/native-local','dimension'=>'read','peer_id'=>''));
+mcp_check( ! is_wp_error($native_local_plan) && $native_local_plan['selected'] === 'wordpress_ability',
+    'Native WordPress Ability receives an independent reviewed local route without a vendor PHP Adapter' );
+$native_local = $hybrid::execute_hybrid_read(array(
+    'ability'=>'demo/native-local', 'arguments'=>array('q'=>'native'), 'peer_id'=>''
+));
+mcp_check( ! is_wp_error( $native_local ) && $native_local['selected'] === 'wordpress_ability'
+    && $native_local['result']['checked'] === true,
+    'Native WordPress Ability executes only after operator source, schema and exact Agent-grant attestation' );
+$changed_source = $local_plugins . '/demo/reader.php';
+file_put_contents( $changed_source, $reader_php . "\n// changed file" );
+mcp_check( ! MAD4B_SCP_MCP_Local_Ability_Trust::verified_read(
+    wp_get_ability('demo/native-local'), 'demo/native-local' ),
+    'Source drift prevents a native WordPress Ability fallback even when its semantic name remains stable' );
+file_put_contents( $changed_source, $reader_php );
 $trusted = new MAD4B_Test_Hybrid_Ability();
 $spoofed = new MAD4B_Test_Hybrid_Ability();
 $callback_ref = new ReflectionProperty( $spoofed, 'execute_callback' );
@@ -335,5 +386,9 @@ $recovered = $hybrid::catalog( 'test-peer' );
 mcp_check( ! is_wp_error( $recovered )
     && $hybrid::candidate_inventory()['peer_transport_health']['test-peer']['state'] === 'CLOSED',
     'Healthy provider recovers after breaker cooldown without persistent credential changes' );
+unlink( $local_plugins . '/demo/reader.php' );
+unlink( $local_plugins . '/demo/main.php' );
+rmdir( $local_plugins . '/demo' );
+rmdir( $local_plugins );
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";
