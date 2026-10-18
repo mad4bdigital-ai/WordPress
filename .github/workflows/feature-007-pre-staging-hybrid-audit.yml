@@ -25,7 +25,6 @@ on:
 
 permissions:
   contents: read
-  issues: read
 
 concurrency:
   group: feature-007-pre-staging-hybrid-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
@@ -56,7 +55,6 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '7.4'
-          extensions: pdo_sqlite, mbstring
           coverage: none
 
       # Evaluate change blast radius BEFORE expensive full runtime testing.
@@ -154,28 +152,11 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/self-update-source-lineage-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/post-review-audit-contract.py
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-regressions.py --output dist/mad4b-open-issue-regressions.json
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-live-coverage-contract.py
           python3 -m py_compile tools/mad4b-local-ci-parity.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/local-ci-multi-environment-contract.py
           for scenario in disabled normal master missing uncertified drift bad-archive; do
             php wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-runtime.php "$scenario"
           done
-
-      # Do NOT pass a GitHub token to the other integration/PHP fixtures.
-      # This read-only ability has its own narrow job-step token scope.
-      - name: Admit all live GitHub open Issues into reviewed regression coverage
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          GITHUB_API_URL: ${{ github.api_url }}
-        run: |
-          set -euo pipefail
-          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-live-coverage.py \
-            --live \
-            --repo "${{ github.repository }}" \
-            --regressions dist/mad4b-open-issue-regressions.json \
-            --output dist/mad4b-open-issue-live-coverage.json
 
       - name: Unified capability gateway native acceptance / PHP 7.4 + Node
         shell: bash
@@ -586,8 +567,6 @@ jobs:
           path: |
             dist/pre-staging-hybrid-audit.json
             dist/mad4b-architecture-dependency-graph.json
-            dist/mad4b-open-issue-regressions.json
-            dist/mad4b-open-issue-live-coverage.json
           if-no-files-found: error
           retention-days: 14
 

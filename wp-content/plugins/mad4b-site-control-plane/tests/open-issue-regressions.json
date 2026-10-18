@@ -57,7 +57,8 @@
         "write-dispatch-nested-transport-runtime.php",
         "staging-write-candidate-binding-runtime.php",
         "provider-behavioral-recertification-contract.php",
-        "context-remote-owner-review-runtime.php"
+        "context-remote-owner-review-runtime.php",
+        "wp-native-build-adapter-bootstrap-runtime.php"
       ],
       "independent_acceptance_required": [
         "Certified install/discover/connect/govern/approve/execute/verify/recover on each site",
