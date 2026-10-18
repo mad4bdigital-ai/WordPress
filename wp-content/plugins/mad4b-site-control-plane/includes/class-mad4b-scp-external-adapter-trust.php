@@ -49,6 +49,24 @@ final class MAD4B_SCP_External_Adapter_Trust {
                 || ! preg_match( '/^[a-f0-9]{64}$/D', $row['php_source_tree_sha256'] )
                 || 0 !== strpos( $row['source_relpath'], dirname( $row['plugin_basename'] ) . '/' )
                 || ! is_array( $row['abilities'] ) || ! is_array( $row['reversible_contracts'] ) ) return self::$verified_manifest;
+            // Optional explicit per-Ability callback source bindings support
+            // distributed implementations without granting trust to every
+            // file under the plugin directory.
+            $callbacks = $row['callback_sources'] ?? array();
+            if ( ! is_array( $callbacks ) || count( $callbacks ) > 128 ) return self::$verified_manifest;
+            $read_abilities = is_array( $row['abilities']['read'] ?? null )
+                ? $row['abilities']['read'] : array();
+            foreach ( $callbacks as $ability_name => $callback ) {
+                if ( ! is_string( $ability_name ) || ! in_array( $ability_name, $read_abilities, true )
+                    || ! is_array( $callback )
+                    || ! isset( $callback['relative_path'], $callback['sha256'] )
+                    || ! self::safe_relpath( $callback['relative_path'] )
+                    || ! preg_match( '/[.]php$/D', $callback['relative_path'] )
+                    || 0 !== strpos( $callback['relative_path'], dirname( $row['plugin_basename'] ) . '/' )
+                    || ! is_string( $callback['sha256'] )
+                    || ! preg_match( '/^[a-f0-9]{64}$/D', $callback['sha256'] ) )
+                    return self::$verified_manifest;
+            }
             $seen[$class] = $row;
         }
         self::$verified_manifest = $seen;
