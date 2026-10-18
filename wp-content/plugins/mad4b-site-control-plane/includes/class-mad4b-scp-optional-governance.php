@@ -34,6 +34,7 @@ final class MAD4B_SCP_Optional_Governance {
 
     public static function boot() {
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'save' ) );
+        add_action( 'wp_ajax_' . self::ACTION, array( __CLASS__, 'save_ajax' ) );
         if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) {
             MAD4B_SCP_Admin_Route_Registry::register( self::SLUG, 'manage_options' );
             MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 33 );
@@ -213,11 +214,20 @@ final class MAD4B_SCP_Optional_Governance {
             'Optional Governance', 'manage_options', self::SLUG, array( __CLASS__, 'page' ) );
     }
 
+    private static function view_snapshot( array $state ) {
+        $fields = array(
+            'revision' => $state['revision'],
+            'definitions_sha256' => $state['definitions_sha256'],
+            'modes_sha256' => self::signature( $state['modes'] ),
+        );
+        return MAD4B_SCP_Admin_Settings_Persistence::view_readback( 'optional_governance', $fields );
+    }
+
     public static function page() {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator required.' );
         $definitions = self::catalog();
         $state = self::state();
-        echo '<div class="wrap"><h1>Options Control — Optional Governance</h1>';
+        echo '<div class="wrap" id="mad4b-optional-governance-control"><h1>Options Control — Optional Governance</h1>';
         echo '<p>These settings affect operator advisory status only. They never change GitHub CI, authorization, grants, certification, audit, rollback or Production protection.</p>';
         if ( is_wp_error( $definitions ) || is_wp_error( $state ) ) {
             echo '<div class="notice notice-error"><p>Invalid configuration. Strict defaults remain active.</p></div></div>';
@@ -227,7 +237,11 @@ final class MAD4B_SCP_Optional_Governance {
         echo '<p><strong>Operating profile:</strong> ' . esc_html( $state['operating_mode'] ) .
             '. Inherited optional warning mode: ' . esc_html( self::$profile_defaults[$state['operating_mode']] ) . '.</p>';
         echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
-        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        echo '<form class="mad4b-settings-ajax-form" method="post" action="' .
+            esc_url( admin_url( 'admin-post.php' ) ) .
+            '" data-mad4b-refresh-selector="#mad4b-optional-governance-control"' .
+            MAD4B_SCP_Admin_Settings_Persistence::view_attributes(
+                'optional_governance', self::view_snapshot( $state )['fields'] ) . '>';
         wp_nonce_field( self::ACTION );
         echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
         echo '<input type="hidden" name="revision" value="' . esc_attr( (string) $state['revision'] ) . '">';
@@ -269,6 +283,7 @@ final class MAD4B_SCP_Optional_Governance {
             echo '<li>' . esc_html( $locked ) . ' — mandatory</li>';
         echo '</ul>';
         submit_button( 'Save advisory preferences' );
+        echo '<p data-mad4b-settings-feedback role="status" aria-live="polite"></p>';
         echo '</form></div>';
     }
 
@@ -345,35 +360,77 @@ final class MAD4B_SCP_Optional_Governance {
             'production_authorized' => false );
     }
 
-    public static function save() {
-        if ( ! current_user_can( 'manage_options' ) )
-            wp_die( 'Administrator required.', '', array( 'response' => 403 ) );
-        check_admin_referer( self::ACTION );
+
+    /** Common typed input and exact revision validator, shared by both Admin transports. */
+    private static function submitted_options() {
         $definitions = self::catalog();
         $before = self::state();
         if ( is_wp_error( $definitions ) || is_wp_error( $before ) )
-            wp_die( 'Invalid optional governance policy configuration.' );
-        $revision = isset( $_POST['revision'] ) ? (int) $_POST['revision'] : -1;
-        $fingerprint = isset( $_POST['definitions_sha256'] )
+            return new WP_Error( 'mad4b_optional_invalid_config', 'Optional policy configuration is invalid.' );
+        $posted_revision = $_POST['revision'] ?? null;
+        if ( ! is_scalar( $posted_revision ) ||
+            ! preg_match( '/^(0|[1-9][0-9]{0,9})$/D', (string) $posted_revision ) )
+            return new WP_Error( 'mad4b_optional_bad_revision', 'A typed settings revision is required.' );
+        $revision = (int) $posted_revision;
+        $fingerprint = isset( $_POST['definitions_sha256'] ) && is_string( $_POST['definitions_sha256'] )
             ? (string) wp_unslash( $_POST['definitions_sha256'] ) : '';
-        if ( $revision !== $before['revision']
-            || ! hash_equals( $before['definitions_sha256'], $fingerprint ) )
-            wp_die( 'Options changed. Refresh the page before saving.' );
+        if ( $revision !== $before['revision'] ||
+            ! hash_equals( $before['definitions_sha256'], $fingerprint ) )
+            return new WP_Error( 'mad4b_optional_stale_form', 'Options changed. Refresh the page before saving.' );
         $posted = isset( $_POST['modes'] ) && is_array( $_POST['modes'] )
             ? wp_unslash( $_POST['modes'] ) : array();
-        if ( array_diff( array_keys( $posted ), array_keys( $definitions ) )
-            || count( $posted ) !== count( $definitions ) )
-            wp_die( 'Unexpected optional policy settings.' );
+        if ( count( $posted ) !== count( $definitions ) ||
+            array_diff( array_keys( $posted ), array_keys( $definitions ) ) )
+            return new WP_Error( 'mad4b_optional_bad_fields', 'Unexpected optional policy fields.' );
         $modes = array();
         foreach ( $definitions as $id => $row ) {
             $mode = $posted[$id] ?? null;
-            if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
-                wp_die( 'Invalid optional policy mode.' );
+            if ( ! is_string( $mode ) ||
+                ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
+                return new WP_Error( 'mad4b_optional_bad_mode', 'Invalid optional policy mode.' );
             $modes[$id] = $mode;
         }
-        $outcome = self::persist_modes( $modes, $revision, $fingerprint );
+        return array( 'modes'=>$modes, 'revision'=>$revision,
+            'definitions_sha256'=>$fingerprint );
+    }
+
+    public static function save() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Administrator required.', '', array( 'response'=>403 ) );
+        check_admin_referer( self::ACTION );
+        $submitted = self::submitted_options();
+        if ( is_wp_error( $submitted ) ) wp_die( $submitted->get_error_message() );
+        $outcome = self::persist_modes(
+            $submitted['modes'], $submitted['revision'], $submitted['definitions_sha256'] );
         if ( is_wp_error( $outcome ) ) wp_die( $outcome->get_error_message() );
         wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::SLUG ) ) );
         exit;
+    }
+
+    public static function save_ajax() {
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_send_json_error( array( 'code'=>'mad4b_optional_admin_denied',
+                'message'=>'Administrator capability required.' ), 403 );
+        check_ajax_referer( self::ACTION );
+        $submitted = self::submitted_options();
+        if ( is_wp_error( $submitted ) )
+            wp_send_json_error( array( 'code'=>$submitted->get_error_code(),
+                'message'=>$submitted->get_error_message() ), 409 );
+        $result = self::persist_modes(
+            $submitted['modes'], $submitted['revision'], $submitted['definitions_sha256'] );
+        if ( is_wp_error( $result ) )
+            wp_send_json_error( array( 'code'=>$result->get_error_code(),
+                'message'=>$result->get_error_message() ), 409 );
+        $after = self::state();
+        if ( is_wp_error( $after ) || $after['revision'] !== $result['revision'] ) {
+            wp_send_json_error( array( 'code'=>'mad4b_optional_view_unverified',
+                'message'=>'Saved settings could not be verified for the refreshed view.' ), 409 );
+        }
+        wp_send_json_success( array(
+            'message'=>'Optional advisory settings saved and verified.',
+            'persistence_verified'=>true, 'readback'=>array( 'revision'=>$after['revision'] ),
+            'view_readback'=>self::view_snapshot( $after ),
+            'authority_created'=>false, 'production_authorized'=>false,
+        ) );
     }
 }

@@ -218,4 +218,35 @@ $prod = $remote::apply( array( 'policy_id'=>'machine_ingress', 'mode'=>'off',
     'expected_plan_sha256'=>$prod_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($prod) && $prod->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
     'Production remote policy mutation must be denied' );
-echo "OPTIONAL_GOVERNANCE: PASS (policy source, CAS lock, audit rollback, remote parity, stale SHA, Production denial)\n";
+// Shared admin AJAX entry verifies the identical CAS/audit state and returns
+// a signed-by-source view contract, with no independent persistence shortcut.
+function check_ajax_referer( $action ) { return true; }
+function optional_ajax_fixture() {
+    class MAD4B_SCP_Admin_Settings_Persistence {
+        public static function view_readback( $form, $fields ) {
+            return array( 'contract'=>'mad4b.admin-settings-view-readback.v1',
+                'form_id'=>$form, 'fields'=>$fields );
+        }
+    }
+}
+optional_ajax_fixture();
+function wp_send_json_error( $data, $status = 400 ) {
+    throw new RuntimeException( 'AJAX_ERROR:' . $data['code'] );
+}
+function wp_send_json_success( $data ) {
+    if ( empty($data['persistence_verified']) ||
+        ($data['view_readback']['fields']['revision']??null)!==2 ) throw new RuntimeException('AJAX_BAD_RECEIPT');
+    throw new RuntimeException( 'AJAX_OK' );
+}
+$live_status = $cls::status();
+$form_modes = array();
+foreach( $live_status['gates'] as $row ) $form_modes[$row['id']] = $row['configured_mode'];
+$_POST = array( 'revision'=>(string)$live_status['revision'],
+    'definitions_sha256'=>$live_status['definitions_sha256'], 'modes'=>$form_modes );
+$ajax_success = false;
+try { $cls::save_ajax(); } catch ( RuntimeException $error ) {
+    $ajax_success = 'AJAX_OK' === $error->getMessage();
+}
+expect( $ajax_success && $cls::status()['revision'] === 2,
+    'Shared Admin AJAX must persist, verify, and return a source-view contract' );
+echo "OPTIONAL_GOVERNANCE: PASS (CAS lock, admin AJAX view parity, remote SHA, audit rollback, Production denial)\n";

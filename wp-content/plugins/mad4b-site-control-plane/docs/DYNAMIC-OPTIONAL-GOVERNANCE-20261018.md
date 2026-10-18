@@ -37,3 +37,6 @@ Read-only `mad4b/optional-governance-plan` computes one-policy intended mode, ac
 
 ## Phase 3 — Operator dashboard parity
 The local Options Control now shows the three remote abilities separately, current settings revision, full catalog digest and a conspicuous note that a registered tool is **not** an authorized Write session. The hermetic regression includes success/readback under a simulated enrolled Staging owner, repeat-SHA rejection and explicit Production denial. These are source and fixture tests, not ETG/ARE real-world execution evidence.
+
+## Phase 4 — Unified Admin Settings UX
+Options Control now opts into the existing `MAD4B_SCP_Admin_Settings_Persistence` browser workflow rather than building a second frontend. A narrow, explicitly allowlisted enqueue loads the standard assets on this one MAD4B admin screen. The nonce- and admin-capability-guarded AJAX handler and original `admin-post.php` fallback use the *same typed input validator* and `persist_modes` CAS/audit service. The browser must refresh the real options panel and match the source-issued `mad4b.admin-settings-view-readback.v1` field snapshot before reporting success; failed refreshes mark the form stale to prevent accidental repeated writes.
