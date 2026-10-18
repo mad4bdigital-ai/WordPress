@@ -8,6 +8,20 @@ class WP_Error {
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
+function rest_validate_value_from_schema( $value, $schema, $key = '' ) {
+    if ( ! is_array( $schema ) || ! is_array( $value ) ) return new WP_Error('bad_schema','Invalid structure');
+    if ( ( $schema['type'] ?? '' ) !== 'object' ) return new WP_Error('schema_not_object','Invalid object schema');
+    foreach ( $schema['required'] ?? array() as $required ) {
+        if ( ! array_key_exists( $required, $value ) ) return new WP_Error('required_missing','Required property missing');
+    }
+    foreach ( $schema['properties'] ?? array() as $name => $rule ) {
+        if ( ! array_key_exists( $name, $value ) ) continue;
+        if ( ( $rule['type'] ?? '' ) === 'string' && ! is_string($value[$name]) ) return new WP_Error('bad_type','String expected');
+        if ( ( $rule['type'] ?? '' ) === 'integer' && ! is_int($value[$name]) ) return new WP_Error('bad_type','Integer expected');
+    }
+    return true;
+}
+
 function wp_http_validate_url( $url ) { return strpos( $url, 'https://reviewed.example/' ) === 0; }
 $GLOBALS['hybrid_isolation_effective'] = false;
 class MAD4B_SCP_MCP_Provider_Isolation {
@@ -159,6 +173,12 @@ $read = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspe
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
 mcp_check( ! is_wp_error($read) && $read['result']['content'][0]['text']==='SAFE_DATA',
     'Owner-reviewed read-only tools/call executes with exact fingerprint' );
+$before_invalid_args = count($GLOBALS['mcp_calls']);
+$invalid_args = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
+    'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>42) ));
+mcp_check(is_wp_error($invalid_args) && $invalid_args->get_error_code()==='mad4b_native_arguments_invalid'
+    && ! in_array('tools/call',array_slice($GLOBALS['mcp_calls'],$before_invalid_args),true),
+    'Input Schema validation refuses invalid arguments before MCP tools/call');
 $GLOBALS['mcp_both_result_error'] = true;
 $ambiguous = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
