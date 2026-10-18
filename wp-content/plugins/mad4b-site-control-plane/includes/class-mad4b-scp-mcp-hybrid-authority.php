@@ -50,6 +50,64 @@ final class MAD4B_SCP_MCP_Hybrid_Authority {
     }
 
     /**
+     * A second PHP file may implement an Ability only when an independently
+     * reviewed binding identifies the exact callback source and its digest.
+     * The adapter's own class path alone never approves sibling files.
+     */
+    private static function reviewed_callback_source( $adapter, $ability_name, $callback_file ) {
+        if ( ! is_string( $callback_file ) || false === realpath( $callback_file ) ) return false;
+        $class = get_class( $adapter );
+        $entry = null;
+        $source = '';
+        $root = '';
+
+        // Source-controlled bundled policy, not plugin-owned filters or meta.
+        if ( class_exists( 'MAD4B_SCP_Adapter_Registry', false )
+            && method_exists( 'MAD4B_SCP_Adapter_Registry', 'approved_bundled_adapter_classes' )
+            && in_array( $class, MAD4B_SCP_Adapter_Registry::approved_bundled_adapter_classes(), true ) ) {
+            $file = dirname( __DIR__ ) . '/config/adapter-registration-policy.json';
+            $raw = is_readable( $file ) ? file_get_contents( $file ) : '';
+            $policy = is_string( $raw ) ? json_decode( $raw, true ) : null;
+            if ( is_array( $policy ) && ( $policy['contract'] ?? '' ) === 'mad4b.adapter-registration-policy.v1' )
+                $entry = $policy['reviewed_callback_sources'][$class][$ability_name] ?? null;
+            $root = realpath( dirname( __DIR__ ) );
+            $source = is_array( $entry ) && isset( $entry['relative_path'] )
+                ? $root . DIRECTORY_SEPARATOR . $entry['relative_path'] : '';
+        }
+
+        // Independently operator-pinned external manifest, with exact plugin
+        // activation and complete PHP tree pin checked on registration.
+        if ( null === $entry && class_exists( 'MAD4B_SCP_External_Adapter_Trust', false )
+            && MAD4B_SCP_External_Adapter_Trust::allows( $adapter ) ) {
+            $manifest = MAD4B_SCP_External_Adapter_Trust::manifest();
+            $external = $manifest[$class] ?? null;
+            $entry = is_array( $external ) ? ( $external['callback_sources'][$ability_name] ?? null ) : null;
+            $root = defined( 'WP_PLUGIN_DIR' ) ? realpath( WP_PLUGIN_DIR ) : false;
+            $source = is_array( $entry ) && isset( $entry['relative_path'] ) && false !== $root
+                ? $root . DIRECTORY_SEPARATOR . $entry['relative_path'] : '';
+            if ( ! is_array( $external ) || ! is_array( $entry )
+                || false === $root || ! isset( $external['plugin_basename'] ) )
+                return false;
+            $plugin_dir = realpath( $root . DIRECTORY_SEPARATOR . dirname( $external['plugin_basename'] ) );
+            $candidate = realpath( $source );
+            if ( false === $plugin_dir || false === $candidate
+                || 0 !== strpos( $candidate, $plugin_dir . DIRECTORY_SEPARATOR ) ) return false;
+        }
+
+        if ( ! is_array( $entry ) || ! is_string( $entry['relative_path'] ?? null )
+            || ! preg_match( '~^[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+)+[.]php$~D', $entry['relative_path'] )
+            || false !== strpos( $entry['relative_path'], '..' )
+            || ! is_string( $entry['sha256'] ?? null )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $entry['sha256'] ) ) return false;
+        $real = realpath( $source );
+        $actual = realpath( $callback_file );
+        if ( false === $real || false === $actual || ! hash_equals( $real, $actual )
+            || false === $root || 0 !== strpos( $real, $root . DIRECTORY_SEPARATOR ) ) return false;
+        $hash = hash_file( 'sha256', $real );
+        return is_string( $hash ) && hash_equals( $entry['sha256'], $hash );
+    }
+
+    /**
      * The effective execution callback, not just an untrusted ability name
      * or its provider-declared metadata, must originate in the exact reviewed
      * Adapter source. If WP does not expose the callback under its expected
@@ -74,7 +132,8 @@ final class MAD4B_SCP_MCP_Hybrid_Authority {
             $callback_file = self::callback_file( $callback );
             $actual_file = is_string( $callback_file ) ? realpath( $callback_file ) : false;
             if ( false === $adapter_file || false === $actual_file
-                || ! hash_equals( $adapter_file, $actual_file ) ) return false;
+                || ( ! hash_equals( $adapter_file, $actual_file )
+                    && ! self::reviewed_callback_source( $adapter, $ability_name, $actual_file ) ) ) return false;
             $declared = $adapter->ability_names();
             return is_array( $declared ) && isset( $declared['read'] )
                 && is_array( $declared['read'] ) && in_array( $ability_name, $declared['read'], true );
