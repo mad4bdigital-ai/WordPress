@@ -6,6 +6,8 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/optional-governance-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
       - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
       - '.github/workflows/mad4b-optional-governance.yml'
 permissions:
@@ -27,5 +29,7 @@ jobs:
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
           php wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php

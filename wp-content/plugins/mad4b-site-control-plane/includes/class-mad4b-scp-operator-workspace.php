@@ -203,6 +203,7 @@ final class MAD4B_SCP_Operator_Workspace {
 		echo '<h2 id="mad4b-journeys-title">' . esc_html__( 'Where to work — one role per page', 'mad4b-site-control-plane' ) . '</h2>';
 		foreach ( array(
 			array( 'title' => 'Action Center', 'description' => 'Triage signals, priority and owner; never approve or execute here.', 'slug' => 'mad4b-operator-control-center' ),
+			array( 'title' => 'Options Control', 'description' => 'Set optional operator notice severity; mandatory protection and release gates remain locked.', 'slug' => 'mad4b-optional-governance-options' ),
 			array( 'title' => 'Operational Remediation', 'description' => 'One guided recovery state and next step; no automatic ticket or write on page load.', 'slug' => 'mad4b-operational-remediation' ),
 			array( 'title' => 'Approval Decisions', 'description' => 'Review individual exact-scope owner tickets and their history.', 'slug' => 'mad4b-approval-decisions' ),
 			array( 'title' => 'Provider Coverage / MCP Routes', 'description' => 'Compare native-provider discovery against MAD4B adapter registration; never infer authorization.', 'slug' => 'mad4b-adapter-coverage', 'query' => array( 'tab' => 'mcp-routes' ) ),
@@ -223,6 +224,37 @@ final class MAD4B_SCP_Operator_Workspace {
 		$cards = array();
 		foreach ( $model['checks'] as $check ) $cards[] = array( 'label' => $check['label'], 'value' => MAD4B_SCP_Admin_Experience::observed_state( $check['value'] ), 'help' => null === $check['value'] ? __( 'No current observation is available.', 'mad4b-site-control-plane' ) : __( 'Current local runtime observation.', 'mad4b-site-control-plane' ), 'state' => null === $check['value'] ? 'pending' : ( $check['value'] ? 'complete' : 'attention' ) );
 		MAD4B_SCP_Admin_Experience::cards( $cards );
+        // The operator health reducer does not treat advisory notices as
+        // release blockers, but their raw provenance stays visible here.
+        $optional = class_exists( 'MAD4B_SCP_Optional_Governance', false )
+            ? MAD4B_SCP_Optional_Governance::status() : array( 'valid' => false );
+        $advisories = isset( $snapshot['optional_advisories'] ) && is_array( $snapshot['optional_advisories'] )
+            ? array_slice( $snapshot['optional_advisories'], 0, 32 ) : array();
+        $muted = isset( $snapshot['muted_optional_reasons'] ) && is_array( $snapshot['muted_optional_reasons'] )
+            ? array_slice( $snapshot['muted_optional_reasons'], 0, 32 ) : array();
+        echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-optional-operator-title">';
+        echo '<h2 id="mad4b-optional-operator-title">Optional governance and advisories</h2>';
+        echo '<p>Optional operator notices do not change identity, approval, Write authority or release certification. Raw evidence remains available.</p>';
+        if ( ! empty( $optional['valid'] ) )
+            echo '<p><strong>Operating profile:</strong> <code>' . esc_html( (string) $optional['operating_mode'] ) .
+                '</code> · ' . count( $advisories ) . ' advisory notice(s), ' . count( $muted ) . ' muted notice(s).</p>';
+        else echo '<p>Policy status unavailable; original diagnostic severity remains in effect.</p>';
+        if ( $advisories ) {
+            echo '<h3>Advisory notices — not release blockers</h3><ul>';
+            foreach ( $advisories as $reason )
+                if ( is_string( $reason ) ) echo '<li><code>' . esc_html( $reason ) . '</code></li>';
+            echo '</ul>';
+        }
+        if ( $muted ) {
+            echo '<details><summary>Muted notices (raw evidence retained)</summary><ul>';
+            foreach ( $muted as $reason )
+                if ( is_string( $reason ) ) echo '<li><code>' . esc_html( $reason ) . '</code></li>';
+            echo '</ul></details>';
+        }
+        $url_options = MAD4B_SCP_Admin_Workspace::link( 'mad4b-optional-governance-options' );
+        if ( '' !== $url_options )
+            echo '<p><a class="button button-secondary" href="' . esc_url( $url_options ) . '">Open Options Control</a></p>';
+        echo '</section>';
 		echo '<section class="mad4b-scp-panel" aria-labelledby="mad4b-readiness-scopes-title">';
 		echo '<h2 id="mad4b-readiness-scopes-title">' . esc_html__( 'Independent readiness and acceptance scopes', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p>' . esc_html__( 'A local healthy status is not a Host execution, a successful release, or Production approval. Each scope has its own evidence and owner.', 'mad4b-site-control-plane' ) . '</p>';

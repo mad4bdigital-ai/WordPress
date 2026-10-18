@@ -8,10 +8,10 @@ The built-in `MAD4B_SCP_Policy_Resolution` operates with SINGLE_OWNER_HARDENED /
 ## New controls
 - WordPress Admin → MAD4B → Optional Governance, for administrators only, nonce-protected, audited, source-schema-bound, with persisted readback.
 - Read-only `mad4b/optional-governance-status` Ability for dynamic interface catalogs.
-- Three presentation modes: `enforced` (preserve current DEGRADED warning), `advisory` (show optional warning without degrading health), `off` (suppress optional warning; raw signals remain in the returned evidence).
+- Four settings: `inherit` (follow current operating profile), `enforced` (preserve DEGRADED warning), `advisory` (show an optional notice without degrading health), `off` (mute optional notice; preserve raw evidence).
 - Built-in options cover noncritical developer lane, developer breakglass-lane availability, external machine diagnostic ingress and provider closure reminders.
 - New `optional_*` advisory definitions may be registered through `mad4b_scp_optional_governance_definitions`, and status signals through `mad4b_scp_optional_governance_observations`, subject to bounded schema and namespace checks; trusted source-owned built-in reason bindings cannot be overridden.
-- Static default `enforced` on missing/invalid storage or policy catalog.
+- Missing preference storage inherits the verified operating profile; malformed options, catalog or operating-mode evidence preserve the original diagnostic severity.
 - Each policy displays a reason code, persisted mode and catalog digest. The options setting never changes any actual mutation/CI/certification policy.
 
 ## Explicit nonoptional gates
@@ -26,3 +26,5 @@ The operator reducer consumes the optional projection **only for DEGRADED adviso
 The shared `MAD4B_SCP_Policy_Resolution::current_operating_mode()` is the **only** source for the operating profile: SINGLE_OWNER_HARDENED defaults optional operator warning severity to `advisory`; ENTERPRISE_MULTI_OPERATOR and EMERGENCY_RECOVERY default it to `enforced`. Unsupported/missing profiles preserve the original warnings. Per-optional-policy modes are `inherit`, `enforced`, `advisory`, `off`. Dynamic extensions remain limited to `optional_*` advisory reasons.
 
 The Admin Options Control renders non-optional security and Release Verdict gates as locked guidance and exposes effective mode/current profile. A read-only `mad4b/optional-governance-status` Ability is mounted into `mad4b-read` and `mad4b-chatgpt`; WordPress Options do not change GitHub CI or owner approvals.
+
+Action Center renders optional advisory reasons separately and muted reasons in a collapsed evidence list, with a link to Options Control. Core blockers, recovery reasons, and independent release scopes remain unchanged.
