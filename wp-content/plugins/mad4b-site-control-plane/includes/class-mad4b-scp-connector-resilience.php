@@ -23,6 +23,18 @@ final class MAD4B_SCP_Connector_Resilience {
 	const SESSION_TERMINATION_BUDGET = 2;
 
 	public static function safe_read( $name, $callback, array $options = array() ) {
+		// Locally generated, per-invocation identifier. Never trust an incoming
+		// token/header or reuse a stable error fingerprint as a correlation ID.
+		$correlation_id = bin2hex( random_bytes( 16 ) );
+		$result = self::safe_read_impl( $name, $callback, $options );
+		$result['correlation_id'] = $correlation_id;
+		$result['stage'] = substr( sanitize_key( (string) $name ), 0, 96 );
+		$result['timing_scope'] = 'origin_callback_attempts_only';
+		// elapsed_ms excludes host queues, proxy transit and client wall time.
+		return $result;
+	}
+
+	private static function safe_read_impl( $name, $callback, array $options ) {
 		$name = sanitize_key( (string) $name );
 		$retry_transient = ! array_key_exists( 'retry_transient', $options ) || ! empty( $options['retry_transient'] );
 		$max_attempts = isset( $options['max_attempts'] )
@@ -157,6 +169,10 @@ final class MAD4B_SCP_Connector_Resilience {
 				'mad4b_generation_fenced_read_failed',
 				'Generation-fenced read did not complete safely.',
 				array(
+					'correlation_id' => $read['correlation_id'],
+					'stage' => $read['stage'],
+					'callback_elapsed_ms' => $read['elapsed_ms'],
+					'timing_scope' => $read['timing_scope'],
 					'category' => isset( $read['category'] ) ? (string) $read['category'] : 'unknown',
 					'source_error_code' => isset( $read['error_code'] ) ? sanitize_key( (string) $read['error_code'] ) : '',
 					'client_action' => isset( $read['client_action'] ) ? (string) $read['client_action'] : 'reconnect_then_retry_once',
@@ -185,10 +201,22 @@ final class MAD4B_SCP_Connector_Resilience {
 			);
 		}
 
-		$projected = call_user_func( $projector, array_key_exists( 'data', $read ) ? $read['data'] : null, $before, $after );
+		try {
+			$projected = call_user_func( $projector, array_key_exists( 'data', $read ) ? $read['data'] : null, $before, $after );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'mad4b_generation_fenced_read_projection_failed',
+				'Compact read projection failed. Inspect the correlated origin invocation.', array(
+					'correlation_id' => $read['correlation_id'], 'stage' => 'compact_read_projection',
+					'blind_retry_allowed' => false, 'mutation_performed' => false,
+					'raw_error_message_exposed' => false,
+				) );
+		}
 		if ( is_wp_error( $projected ) ) return $projected;
 		if ( ! is_array( $projected ) ) return new WP_Error( 'mad4b_generation_fenced_read_projection_invalid', 'Compact read projection must return an object.' );
 		$projected['runtime_generation'] = $after_generation;
+		$projected['correlation_id'] = $read['correlation_id'];
+		$projected['callback_elapsed_ms'] = $read['elapsed_ms'];
+		$projected['timing_scope'] = $read['timing_scope'];
 		$projected['snapshot_id'] = isset( $after['snapshot_id'] ) ? (string) $after['snapshot_id'] : '';
 		$projected['read_attempts'] = isset( $read['attempts'] ) ? (int) $read['attempts'] : 1;
 		$projected['automatic_retry_performed'] = ! empty( $read['automatic_retry_performed'] );
@@ -243,6 +271,9 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( ! empty( $result['ok'] ) ) {
 			return array(
 				'result' => array_key_exists( 'data', $result ) ? $result['data'] : null,
+				'correlation_id' => $result['correlation_id'],
+				'stage' => $result['stage'],
+				'timing_scope' => $result['timing_scope'],
 				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,
 				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
 			);
@@ -252,6 +283,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			'Governed read execution failed. Inspect structured metadata before retrying.',
 			array(
 				'target' => $target,
+				'correlation_id' => $result['correlation_id'],
+				'stage' => $result['stage'],
+				'timing_scope' => $result['timing_scope'],
 				'retryable' => ! empty( $result['retryable'] ),
 				'automatic_retry_allowed' => ! empty( $result['automatic_retry_allowed'] ),
 				'automatic_retry_performed' => ! empty( $result['automatic_retry_performed'] ),

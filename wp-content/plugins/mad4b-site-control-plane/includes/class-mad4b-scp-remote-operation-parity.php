@@ -321,10 +321,15 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		unset( $builtin_row );
 		$builtin_operation_ids = array_fill_keys( array_map( 'sanitize_key', array_keys( $rows ) ), true );
 		$filtered = apply_filters( 'mad4b_scp_remote_operation_catalog', $rows );
+		$catalog_truncated = is_array( $filtered ) && count( $filtered ) > 500;
 		if ( is_array( $filtered ) ) $rows = array_slice( $filtered, 0, 500, true );
 		$required = array( 'feature_id', 'capability_tags', 'provider', 'remote_ability', 'authority_surface', 'executor', 'remote_mode', 'remote_caller_role', 'production_policy', 'human_decision_required', 'registrar_id', 'source_plugin', 'trust_class' );
 		$normalized = array();
 		self::$catalog_rejections = array();
+		if ( $catalog_truncated ) self::$catalog_rejections[] = array(
+			'operation_id' => '', 'reason' => 'catalog_registration_limit_exceeded',
+			'observed_count' => count( $filtered ), 'inspected_count' => 500,
+		);
 		foreach ( $rows as $key => $row ) {
 			$raw_key = (string) $key;
 			$key = sanitize_key( $raw_key );
@@ -638,10 +643,16 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 		foreach ( $operations as $id => $row ) {
 			if ( empty( $row['remote_parity_ready'] ) ) $missing[] = $id;
 		}
+		$registered_ready = ! empty( $operations ) && empty( $missing ) && empty( self::$catalog_rejections );
 		return array(
 			'contract' => self::CONTRACT,
-			'ready' => empty( $missing ),
-			'state' => empty( $missing ) ? 'ready' : 'remote_parity_incomplete',
+			'ready' => $registered_ready,
+			'state' => $registered_ready ? 'ready' : 'remote_parity_incomplete',
+			'registered_parity_ready' => $registered_ready,
+			'coverage_scope' => 'registered_operations_only',
+			'total_discovered_automation_coverage' => null,
+			'complete_automation_coverage_proven' => false,
+			'coverage_inventory_ability' => 'mad4b/admin-surface-coverage',
 			'operation_count' => count( $operations ),
 			'manual_only_count' => count( $missing ),
 			'manual_only_operations' => $missing,
