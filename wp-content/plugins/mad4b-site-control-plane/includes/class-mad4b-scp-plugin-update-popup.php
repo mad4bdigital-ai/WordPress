@@ -125,6 +125,11 @@ final class MAD4B_SCP_Plugin_Update_Popup {
     public static function render() {
         if ( ! self::can_inspect() || ! self::$seen ) return;
         foreach ( self::$seen as $id => $entry ) {
+            // Render against the current WordPress environment. A previously
+            // observed Staging row must never expose the Staging source form
+            // after the site's environment classification changes.
+            $entry['environment'] = function_exists( 'wp_get_environment_type' )
+                ? wp_get_environment_type() : 'unknown';
             $core = 'core' === $entry['kind'];
             echo '<dialog class="mad4b-ud-dialog" id="' . esc_attr( $id )
                 . '" aria-labelledby="' . esc_attr( $id . '-title' )
