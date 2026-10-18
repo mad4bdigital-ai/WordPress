@@ -24,6 +24,7 @@ SOURCE = [
     'cross-plugin-artifact-builder-contract.py', 'cross-plugin-source-matrix-contract.py',
     'cross-plugin-workflow-dynamic-contract.py', 'selected-head-update-contract.py',
     'self-update-staging-candidate-contract.py',
+    'release-candidate-identity-contract.py',
 ]
 RUNTIME = [
     'structural-redaction-runtime.php', 'self-update-source-lineage-runtime.php',
