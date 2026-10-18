@@ -7,6 +7,18 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+$GLOBALS['mcp_audit_fail'] = false;
+$GLOBALS['mcp_audit_events'] = array();
+class MAD4B_SCP_Audit {
+    public static function record( $ability, array $details, $status = 'ok', $join_transaction = false ) {
+        if ( ! empty($GLOBALS['mcp_audit_fail']) )
+            return new WP_Error( 'mock_audit_storage_unavailable', 'Durable journal unavailable' );
+        if ( strpos( json_encode($details), 'TEST_REDACTED_TOKEN' ) !== false )
+            return new WP_Error( 'mock_audit_secret_leak', 'Bearer leaked into audit' );
+        $GLOBALS['mcp_audit_events'][] = array( 'ability'=>$ability, 'summary'=>$details );
+        return array( 'id'=>count($GLOBALS['mcp_audit_events']) );
+    }
+}
 function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
 function rest_validate_value_from_schema( $value, $schema, $key = '' ) {
     if ( ! is_array( $schema ) || ! is_array( $value ) ) return new WP_Error('bad_schema','Invalid structure');
@@ -238,6 +250,13 @@ mcp_check( ! MAD4B_SCP_MCP_Read_Behavior::certified(
     $mutated_canary, 'test-peer', 'demo/inspect', 'read_inspect'
 ), 'Detected before/after drift denies read-only behavior certification' );
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
+$GLOBALS['mcp_audit_fail'] = true;
+$before_audit_denial = count($GLOBALS['mcp_calls']);
+$audit_denied = $hybrid::catalog('test-peer');
+mcp_check(is_wp_error($audit_denied) && $audit_denied->get_error_code() === 'mock_audit_storage_unavailable'
+    && count($GLOBALS['mcp_calls']) === $before_audit_denial,
+    'Unavailable append-only audit fails closed before credentialed catalog discovery');
+$GLOBALS['mcp_audit_fail'] = false;
 $GLOBALS['hybrid_isolation_effective'] = true;
 $before_isolation = count($GLOBALS['mcp_calls']);
 $isolation_denied = $hybrid::catalog('test-peer');
@@ -288,6 +307,9 @@ mcp_check(is_wp_error($no_agent) && $no_agent->get_error_code() === 'mad4b_hybri
 $GLOBALS['hybrid_authenticated'] = true;
 $read = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'], 'arguments'=>array('q'=>'safe') ));
+mcp_check( count( $GLOBALS['mcp_audit_events'] ) >= 2
+    && in_array( 'tool_read_verified', array_column( array_column($GLOBALS['mcp_audit_events'], 'summary'), 'stage' ), true ),
+    'Successful native read has a durable scrubbed audit receipt' );
 mcp_check( ! is_wp_error($read) && $read['result']['content'][0]['text']==='SAFE_DATA',
     'Owner-reviewed read-only tools/call executes with exact fingerprint' );
 $before_invalid_args = count($GLOBALS['mcp_calls']);
