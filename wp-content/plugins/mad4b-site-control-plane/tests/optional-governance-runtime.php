@@ -128,8 +128,12 @@ final class MAD4B_SCP_Managed_Skills_Lease {
         return ! self::$reject_refresh && is_array($lock) && ($lock['owner']??null) === $owner
             ? true : new WP_Error('fenced','lease lost');
     }
-    public static function compare_and_swap_option( $name, $expected, $replacement = null ) {
-        if (!array_key_exists($name,$GLOBALS['options']) ||
+    public static function compensate_optional_governance_option( $owner, $expected, $replacement = null ) {
+        $lock=get_option('mad4b_scp_optional_governance_settings_lock_v1',array());
+        $name='mad4b_scp_optional_governance_options_v1';
+        if (!is_array($lock) || ($lock['owner']??null)!==$owner
+            || ($lock['expires_at_epoch']??0)<time()
+            || !array_key_exists($name,$GLOBALS['options']) ||
             $GLOBALS['options'][$name] !== $expected) return false;
         if (null===$replacement) unset($GLOBALS['options'][$name]);
         else $GLOBALS['options'][$name] = $replacement;

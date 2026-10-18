@@ -370,8 +370,8 @@ final class MAD4B_SCP_Optional_Governance {
             if ( $prior_loaded && $write_started ) {
                 // Compare the exact recorded post-write state before reverting.
                 // Never restore a stale snapshot over a newer writer.
-                $restored = MAD4B_SCP_Managed_Skills_Lease::compare_and_swap_option(
-                    self::OPTION, $next, $old_raw );
+                $restored = MAD4B_SCP_Managed_Skills_Lease::compensate_optional_governance_option(
+                    $token, $next, $old_raw );
                 if ( ! $restored || get_option( self::OPTION, null ) !== $old_raw )
                     $failure = 'Policy outcome uncertain: CAS rollback was not verified; investigate option and audit before retrying.';
             }

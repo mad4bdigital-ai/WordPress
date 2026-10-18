@@ -67,3 +67,6 @@ The hermetic registration canary now imports the actual `MAD4B_SCP_Abilities::re
 
 ## MCP catalog vs WordPress Ability parity
 The Staging-only, read-only WP-CLI canary now compares actual WordPress registrations with the current `MAD4B_SCP_Servers::core_tools('mad4b-read')`, `chatgpt_full_catalog_candidates()`, and runtime-eligible `write_tools()` lists, catching apparent discovery without a mounted target. This does not replace a real network MCP `tools/list` and separately approved one-time mutation acceptance from an authorized remote client.
+
+## Prevent a generic CAS mutation API
+The managed-lease generic `compare_and_swap_option` method is PRIVATE again. The Options Control may call only `compensate_optional_governance_option`, a bounded helper that checks administrator capability, the exact option name and an unexpired same-owner lease before attempting CAS rollback. This prevents the new optional governance feature from exporting a generic arbitrary-option CAS interface.
