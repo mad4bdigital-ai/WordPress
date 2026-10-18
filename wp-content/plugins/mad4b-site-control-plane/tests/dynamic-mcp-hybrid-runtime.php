@@ -167,7 +167,18 @@ $manifest = array( 'contract'=>'mad4b.mcp-hybrid.v1', 'peers'=>array( array(
     'audience'=>'https://reviewed.example', 'required_scopes'=>array('tools.read'),
     'bindings'=>array(
         array('ability'=>'demo/inspect', 'tool'=>'read_inspect', 'dimension'=>'read',
-            'schema_sha256'=>$schema_digest, 'read_execution_reviewed'=>true),
+            'schema_sha256'=>$schema_digest, 'read_execution_reviewed'=>true,
+            'read_behavior_certification'=>array(
+                'contract'=>'mad4b.native-mcp-read-behavior.v1',
+                'owner_reviewed'=>true, 'no_side_effects_observed'=>true,
+                'environment'=>'staging', 'peer_id'=>'test-peer',
+                'ability'=>'demo/inspect', 'tool'=>'read_inspect',
+                'schema_sha256'=>$schema_digest,
+                'observed_at'=>time()-10, 'valid_until'=>time()+3600,
+                'before_state_sha256'=>hash('sha256','SYNTHETIC_TEST_BEFORE'),
+                'after_state_sha256'=>hash('sha256','SYNTHETIC_TEST_BEFORE'),
+                'independent_evidence_sha256'=>hash('sha256','SYNTHETIC_FIXTURE_NOT_LIVE_EVIDENCE'),
+            ) ),
         array('ability'=>'demo/fallback', 'tool'=>'missing_tool', 'dimension'=>'read',
             'schema_sha256'=>$schema_digest, 'read_execution_reviewed'=>true),
         array('ability'=>'demo/delete', 'tool'=>'unsafe_delete', 'dimension'=>'write',
@@ -212,6 +223,20 @@ $unreachable_header_schema = array('type'=>'object','properties'=>array(
 ));
 mcp_check( is_wp_error(MAD4B_SCP_MCP_Header_Parameters::definition($unreachable_header_schema)),
     'Annotations inside items/ref/composition are not valid statically reachable parameters' );
+$canary = $manifest['peers'][0]['bindings'][0];
+mcp_check( MAD4B_SCP_MCP_Read_Behavior::certified(
+    $canary, 'test-peer', 'demo/inspect', 'read_inspect'
+), 'Owner-pinned synthetic staging read-before-after attestation matches fixture' );
+$expired_canary = $canary;
+$expired_canary['read_behavior_certification']['valid_until'] = time() - 1;
+mcp_check( ! MAD4B_SCP_MCP_Read_Behavior::certified(
+    $expired_canary, 'test-peer', 'demo/inspect', 'read_inspect'
+), 'Expired behavior evidence cannot authorize a tool call' );
+$mutated_canary = $canary;
+$mutated_canary['read_behavior_certification']['after_state_sha256'] = hash('sha256','DIFFERENT');
+mcp_check( ! MAD4B_SCP_MCP_Read_Behavior::certified(
+    $mutated_canary, 'test-peer', 'demo/inspect', 'read_inspect'
+), 'Detected before/after drift denies read-only behavior certification' );
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
 $GLOBALS['hybrid_isolation_effective'] = true;
 $before_isolation = count($GLOBALS['mcp_calls']);
