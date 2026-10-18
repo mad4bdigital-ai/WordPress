@@ -569,6 +569,20 @@ final class MAD4B_SCP_Staging_Write_Owner_Intent {
             'owner_intent_receipt_sha256' => 'OWNER_INTENT_CURRENT' === $state['state']
                 ? $state['receipt_sha256'] : '',
             'plan_read_error' => is_wp_error( $review ) ? $review->get_error_code() : '',
+            // When the owner review cannot issue a digest, surface the exact
+            // source-review blockers through a read-only diagnostic. Never
+            // mint an owner receipt from a blocked plan.
+            'owner_review_digest_available' => $eligible && ! empty( $review['review_digest'] ),
+            'exact_grant_plan_blockers' => $blocked_plan
+                && isset( $blocked_plan['exact_grant_plan_blockers'] )
+                && is_array( $blocked_plan['exact_grant_plan_blockers'] )
+                ? array_slice( array_values( array_map( 'sanitize_text_field',
+                    $blocked_plan['exact_grant_plan_blockers'] ) ), 0, 20 ) : array(),
+            'stale_authority_resolution' => $blocked_plan
+                && in_array( 'unreviewed_stale_write_authority',
+                    (array) ( $blocked_plan['hard_blockers'] ?? array() ), true )
+                ? 'source_review_exact_retirement_pair_then_new_owner_review_and_oauth_step_up'
+                : 'not_required',
             'plan_blockers' => $blocked_plan && isset( $blocked_plan['hard_blockers'] )
                 && is_array( $blocked_plan['hard_blockers'] )
                 ? array_slice( $blocked_plan['hard_blockers'], 0, 20 )

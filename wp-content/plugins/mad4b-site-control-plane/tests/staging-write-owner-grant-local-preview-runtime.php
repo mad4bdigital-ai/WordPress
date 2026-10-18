@@ -127,4 +127,30 @@ $GLOBALS['explicit_owner']=true;$GLOBALS['admin_route']=false;
 check_preview(is_wp_error($grant::plan_for_local_owner()),'non_admin_route_denied');
 $GLOBALS['admin_route']=true;$GLOBALS['environment']='production';
 check_preview(is_wp_error($grant::plan_for_local_owner())&&$grant::plan_for_local_owner()->get_error_code()==='mad4b_grant_local_preview_staging_only','production_denied');
+// The two exact source discrepancies discovered independently at ETG and ARE
+// must be reconciled without granting retired capabilities, Production rights,
+// wildcards, Developer, or Breakglass authority.
+require dirname(__DIR__) . '/includes/class-mad4b-scp-staging-write-grant-reconciliation.php';
+$policy = 'MAD4B_SCP_Staging_Write_Grant_Reconciliation';
+$GLOBALS['environment'] = 'staging';
+$allowed = $policy::allowed_ability_providers();
+$retired = $policy::retirable_stale_ability_providers();
+check_preview(($allowed['mad4b/optional-governance-apply'] ?? '') === 'core',
+    'live missing optional governance ability must be exact Staging-only provider');
+check_preview(!isset($allowed['mad4b/provider-behavioral-recertify'])
+    && ($retired['mad4b/provider-behavioral-recertify'] ?? '') === 'core',
+    'historical recertification can only be retired, never newly granted');
+check_preview(!isset($allowed['mad4b/database-raw-query']),
+    'raw SQL must not enter reconciled write grants');
+$GLOBALS['environment'] = 'production';
+$production_allowed = $policy::allowed_ability_providers();
+$production_retired = $policy::retirable_stale_ability_providers();
+check_preview(!isset($production_allowed['mad4b/optional-governance-apply'])
+    && !isset($production_retired['mad4b/provider-behavioral-recertify']),
+    'Staging-only review may not elevate Production grants or retirements');
+check_preview($policy::required_confirmation() === $policy::PRODUCTION_CONFIRMATION,
+    'Production retains distinct confirmation');
+$GLOBALS['environment'] = 'staging';
+check_preview($policy::required_confirmation() === $policy::CONFIRMATION,
+    'Staging exact confirmation preserved');
 echo "STAGING_WRITE_OWNER_GRANT_PREVIEW_RUNTIME_PASS\n";

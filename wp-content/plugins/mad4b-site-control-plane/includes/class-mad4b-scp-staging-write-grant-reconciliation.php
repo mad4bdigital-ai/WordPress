@@ -149,6 +149,10 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 				'mad4b/content-set-meta' => 'core',
 				'mad4b/content-trash-post' => 'core',
 				'mad4b/control-plane-selected-head-apply' => 'core',
+				// PR #423: the registered Optional Governance Apply is covered by
+				// canonical one-time ticket admission; this is an exact Staging
+				// provider pair, never a new generic/Wildcard grant.
+				'mad4b/optional-governance-apply' => 'core',
 				'mad4b/deployment-binding-native-apply' => 'core',
 				'mad4b/deployment-binding-setup-apply' => 'core',
 				'mad4b/host-operation-apply' => 'core',
@@ -203,6 +207,12 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// eligible for new grant creation.
 		$providers = self::allowed_ability_providers();
 		$providers['elementor/update-widget-settings'] = 'elementor';
+		// PR #423: observed on both ETG and All Royal Egypt after rc.102.
+		// Historical recertification is NOT in the current governed Write
+		// inventory. Permit only retirement of its exact old core grant,
+		// and only in Staging, after one fresh owner-reviewed plan + step-up.
+		if ( 'staging' === self::current_environment() )
+			$providers['mad4b/provider-behavioral-recertify'] = 'core';
 		ksort( $providers, SORT_STRING );
 		return $providers;
 	}
