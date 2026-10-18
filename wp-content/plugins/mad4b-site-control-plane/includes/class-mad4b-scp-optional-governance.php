@@ -286,6 +286,7 @@ final class MAD4B_SCP_Optional_Governance {
         }
         if ( ! $locked ) wp_die( 'Another policy save is active. Retry after it completes.' );
         $failure = '';
+        $prior_loaded = false;
         try {
             $current = self::state();
             if ( is_wp_error( $current )
@@ -293,6 +294,7 @@ final class MAD4B_SCP_Optional_Governance {
                 || ! hash_equals( $current['definitions_sha256'], $fingerprint ) )
                 throw new RuntimeException( 'Optional policy changed during saving; refresh and retry.' );
             $old_raw = get_option( self::OPTION, null );
+            $prior_loaded = true;
             $event = array( 'previous_revision' => $revision, 'next_revision' => $revision + 1,
                 'definitions_sha256' => $fingerprint, 'modes_sha256' => self::signature( $modes ),
                 'scope' => 'operator_advisory_only' );
@@ -310,7 +312,7 @@ final class MAD4B_SCP_Optional_Governance {
                 throw new RuntimeException( 'Applied policy audit failed; attempting preference rollback.' );
         } catch ( Throwable $error ) {
             $failure = $error->getMessage();
-            if ( isset( $old_raw ) ) {
+            if ( $prior_loaded ) {
                 if ( null === $old_raw ) delete_option( self::OPTION );
                 else update_option( self::OPTION, $old_raw, false );
                 if ( get_option( self::OPTION, null ) !== $old_raw )
