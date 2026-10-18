@@ -10,7 +10,11 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 $GLOBALS['actions'] = array();
 $GLOBALS['registered_abilities'] = array();
-$GLOBALS['registered_categories'] = array( 'mad4b-read'=>true );
+$GLOBALS['registered_categories'] = array();
+function wp_register_ability_category( $slug, array $args ) {
+    $GLOBALS['registered_categories'][$slug] = true;
+    return (object) $args;
+}
 function add_action( $event, $callback, $priority = 10 ) {
     $GLOBALS['actions'][$event][] = $callback;
 }
@@ -24,6 +28,14 @@ function wp_register_ability( $name, array $args ) {
 }
 function expect( $ok, $reason ) { if ( ! $ok ) throw new RuntimeException( $reason ); }
 class MAD4B_SCP_Policy { public static function can_read() { return true; } }
+// Prove the real MAD4B ability category source, not a hand-written fixture.
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
+$categories = new MAD4B_SCP_Abilities();
+$categories->register_categories();
+expect( ! empty( $GLOBALS['registered_categories']['mad4b-read'] )
+    && ! empty( $GLOBALS['registered_categories']['mad4b-write'] ),
+    'Actual MAD4B source must register both read and write categories' );
+unset( $GLOBALS['registered_categories']['mad4b-write'] );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-optional-governance-remote.php';
 $c = 'MAD4B_SCP_Optional_Governance_Remote';
 $c::boot();
@@ -34,7 +46,7 @@ expect( wp_has_ability($c::PLAN) && wp_has_ability($c::VERIFY),
     'Read Plan and Verify must register under pre-registered mad4b-read category' );
 expect( ! wp_has_ability($c::APPLY),
     'Without a registered write category WordPress must fail closed; no phantom Apply' );
-$GLOBALS['registered_categories']['mad4b-write'] = true;
+$categories->register_categories();
 foreach ( $GLOBALS['actions']['wp_abilities_api_init'] as $fn ) call_user_func( $fn );
 expect( wp_has_ability($c::APPLY), 'Existing mad4b-write category must admit Apply registration' );
 $apply=$GLOBALS['registered_abilities'][$c::APPLY];

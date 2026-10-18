@@ -61,3 +61,6 @@ CI now runs a second hermetic registration canary: the source-owned WordPress Ab
 
 ## One-time approval conservation
 Remote Apply now validates the exact planned target and rejects unchanged/stale/invalid requests **before** the central one-time approval is examined. The governed wrapper is still the only component authorized to claim a ticket, and the final provider callback must revalidate the same plan inside the claimed execution frame. This reduces redundant approval churn without turning the Write operation into a read bypass.
+
+## Real WP Abilities acceptance strengthened
+The hermetic registration canary now imports the actual `MAD4B_SCP_Abilities::register_categories()` definitions before testing the missing-category denial and restored registration. The real Staging WP-CLI canary verifies `get_input_schema()` contains the source-injected approval ticket property and `get_meta()` contains source-owned governed-write, Authorization execution and final execution fence metadata. It tests a *valid exact changed-mode plan and confirmation* without the required one-time owner approval/OAuth ticket and requires a WordPress permission error and byte-identical saved options. This probes the registered runtime, not just malformed JSON schema. Real successful owner-approved MCP mutation remains a separately governed Staging acceptance action.

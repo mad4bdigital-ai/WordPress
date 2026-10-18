@@ -34,11 +34,30 @@ $plan=wp_get_ability($prefix.'plan')->execute(array('policy_id'=>$policy,'mode'=
 $verify=wp_get_ability($prefix.'verify')->execute(array('policy_id'=>$policy,'mode'=>$current));
 if(is_wp_error($plan) || is_wp_error($verify) || empty($verify['verified']))
     throw new RuntimeException('Plan/Verify live WordPress Abilities did not return read-only evidence.');
-$invalid=array(
-    'policy_id'=>$policy, 'mode'=>'off', 'expected_plan_sha256'=>str_repeat('0',64),
-    'confirmation'=>'INVALID APPROVAL'
+// Real integration check: the platform must install both approval-ticket
+// schema augmentation and central claimed execution wrappers.
+$apply_ability=wp_get_ability($prefix.'apply');
+$input_schema=$apply_ability->get_input_schema();
+$meta=$apply_ability->get_meta();
+if ( ! isset($input_schema['properties']['_mad4b_approval_ticket_id'])
+    || empty($meta['mcp']['mad4b_governed_write_authority'])
+    || empty($meta['mcp']['mad4b_execution_boundary'])
+    || empty($meta['mcp']['mad4b_final_execution_admission']) )
+    throw new RuntimeException('Write schema or claimed-execution wrapping is not installed.');
+$target = 'off' === $current ? 'advisory' : 'off';
+$change_plan=wp_get_ability($prefix.'plan')->execute(array(
+    'policy_id'=>$policy, 'mode'=>$target
+));
+if (is_wp_error($change_plan) || empty($change_plan['change_required']))
+    throw new RuntimeException('Could not establish a changed-mode exact plan.');
+// The shape is otherwise valid, but *without* the independently approved
+// one-time ticket. It must fail in live WordPress permission checks.
+$unapproved=array(
+    'policy_id'=>$policy, 'mode'=>$target,
+    'expected_plan_sha256'=>$change_plan['plan_sha256'],
+    'confirmation'=>MAD4B_SCP_Optional_Governance_Remote::CONFIRM,
 );
-$result=wp_get_ability($prefix.'apply')->execute($invalid);
+$result=$apply_ability->execute($unapproved);
 $after=get_option('mad4b_scp_optional_governance_options_v1',null);
 if(!is_wp_error($result) || $before!==$after)
     throw new RuntimeException('Unapproved WP_Ability::execute mutated Staging option.');
