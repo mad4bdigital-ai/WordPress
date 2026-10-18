@@ -174,3 +174,38 @@ Replace all examples with independently verified details. This deliberately does
 **External PHP dependency fingerprint:** External Adapter admission requires `php_source_tree_sha256` over all installed PHP files under the exact activated plugin directory, not just `source_sha256` for the class file. Extra or changed helper PHP files revoke admission until the owner pins a reviewed new artifact. This scans a bounded tree and rejects symlinks. This is source-artifact integrity, **not** proof of behavioral safety or a substitute for permission callbacks/certification.
 
 **Incomplete dimensions:** Native MCP Write and reversible compensation remain *not executable* via `tools/call`; they require separately reviewed provider-specific before/after/restore and exact owner approval, grants, CAS and audit. OAuth refresh/credential lifecycle and real ETG/ARE Staging certification remain pending. Do not merge based on source-level controls or queued CI.
+
+### Dynamic local WordPress Ability fallback
+
+For plugins that register native WordPress Abilities without an Adapter subclass, the **same owner-pinned MCP peer manifest** may optionally include `local_abilities`. Every record is a source-reviewed exact ability, active plugin, reflected callback file, complete bounded PHP source tree digest, and input/output JSON schema fingerprints. This is independent from native MCP peers and does **not** auto-admit discovered namespace matches.
+
+```json
+{
+  "contract": "mad4b.mcp-hybrid.v1",
+  "peers": [],
+  "local_abilities": [
+    {
+      "ability": "vendor/inspect",
+      "plugin_basename": "vendor/vendor.php",
+      "callback_source_relpath": "vendor/includes/read-service.php",
+      "callback_source_sha256": "<real lowercase 64-digit hex>",
+      "php_source_tree_sha256": "<real lowercase 64-digit hex>",
+      "input_schema_sha256": "<real lowercase 64-digit hex>",
+      "output_schema_sha256": "<real lowercase 64-digit hex>",
+      "read_execution_reviewed": true
+    }
+  ]
+}
+```
+
+The manifest itself is installed outside WordPress content, is pinned by its complete SHA-256 through protected operator configuration, and is **not** writable by the vendor plugin. Native WordPress Abilities still need `get_meta().annotations.readonly=true` without `destructive=true`, their own working `WP_Ability::execute()` permission callback, and an exact `Agent_Registry::exact_grant()` on the `mad4b-read` surface with provider `hybrid_local`. No auto-grant or write support is provided.
+
+The route order is *eligible reviewed native MCP read* → *reviewed Adapter WP Ability read* → *independently pinned native WordPress Ability read*. The route choice is per semantic ability, and stale/changed source/schema makes the local ability ineligible. Distributed callback implementations are similarly supported using `reviewed_callback_sources` for bundled adapters or `callback_sources` in an operator-pinned external PHP Adapter manifest; each binding requires the exact ability name, relative PHP file and SHA-256.
+
+### Circuit breaker and bounded snapshot lifetime
+
+MCP peer failures are isolated per exact pinned peer ID and endpoint using a WordPress transient containing **only failure counters and timestamps**. Three transport or HTTP 429/5xx failures inside 90 seconds open a 30-second circuit. Network-free candidate discovery reports `CLOSED`/`OPEN` status and bounded retry time, enabling approved local fallback without repeated failing HTTP calls. A completed healthy catalog or read closes the circuit; a successful handshake alone does not.
+
+Within one PHP request, the negotiated session and complete tools catalog are cached for at most one second, never persisted across requests. The immediate hybrid read checks exact Agent authority and caller-acknowledged catalog SHA-256 and then uses the matching session; `tools/call` invalidates the in-request cache even on failure. The separate six-second native request budget remains a hard limit. Neither cache nor health record contains provider access tokens.
+
+The tests include full negative authorization cases, cross-file source drift, native WP Ability fallback, request-scoped cache reuse, modern/legacy protocol and JSON/SSE pagination, circuit opening and recovery. These tests remain **unverified pending actual GitHub Actions execution on the final head** and do not certify real ETG/ARE Staging connectivity.
