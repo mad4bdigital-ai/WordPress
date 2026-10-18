@@ -76,6 +76,7 @@ Example operator-reviewed manifest (illustrative; the 64-hex values must be actu
     "plugin_basename": "my-vendor/my-vendor.php",
     "source_relpath": "my-vendor/includes/class-site-adapter.php",
     "source_sha256": "<actual sha256 of the php source>",
+    "php_source_tree_sha256": "<actual sha256 of sorted PHP-file path/hash pairs for the entire active plugin>",
     "abilities": {"read": ["my-vendor/status"], "content": [], "admin": []},
     "reversible_contracts": {}
   }]
@@ -159,3 +160,17 @@ Replace all examples with independently verified details. This deliberately does
 ### CI and release proof
 
 `tests/dynamic-mcp-hybrid-runtime.php` exercises mocked **HTTP-only** modern and legacy protocols, cursor pagination, SSE, catalog drift, genuine read call, denial of native Write, unpinned local fallback, and passive candidate discovery. The adapter coverage and Pre-Staging workflows run the fixture plus PHP lint. These tests do **not** replace real authenticated ETG/ARE Staging canaries or Production certification.
+
+### P0/P1 integration hardening (18 October 2026)
+
+**Actual permission before execution:** `MAD4B_SCP_MCP_Hybrid_Authority::authorize_read()` verifies `MAD4B_SCP_Policy::can_read()`, an authenticated MAD4B subject bound to an enabled Agent, and an existing exact Agent grant for **server `mad4b-read` + requested semantic Ability + provider**. Native provider grant is `native_mcp_<peer_id>`; local fallback provider is `hybrid_local`. A valid MCP manifest by itself NEVER creates these grants. No wildcard, no server fallback and no automatic grant changes.
+
+**Callback provenance:** the hybrid route selects an existing WP Ability only when exactly one already-approved Adapter declares its read surface, the runtime `WP_Ability` exposes an inspectable execute callback with the same source file as the reviewed Adapter class, and WordPress annotations assert `readonly=true` without `destructive=true`. The real callback is checked again before execution. This conservative v1 behavior means legitimate distributed callbacks in other files remain inventory-only until their exact source is separately approved. It specifically prevents namespace collision from silently turning a foreign callback into an accepted local fallback.
+
+**Provider isolation:** when `MAD4B_SCP_MCP_Provider_Isolation::effective()` is enabled, same-site native MCP HTTP requests are rejected before network I/O. The provider must instead use a reviewed local route. This read path does not disable `MCP Peer Governance`, bypass its mutation guard, open suppressed endpoints, or promote any native Write tool.
+
+**Protocol and schemas:** modern 2026-07-28 `server/discover` / `tools/list` and read `tools/call` must return `resultType=complete`; input arguments are validated against the observed, reviewed `inputSchema` using the WordPress schema validator prior to outbound invocation. If a tool declares `outputSchema`, the operator must pin `output_schema_sha256` as well, and its returned `structuredContent` must validate. Unknown or input-required output fails closed. Native RPC requests have a six-second aggregate on-demand request budget and unique request IDs to avoid repeated expensive negotiations.
+
+**External PHP dependency fingerprint:** External Adapter admission requires `php_source_tree_sha256` over all installed PHP files under the exact activated plugin directory, not just `source_sha256` for the class file. Extra or changed helper PHP files revoke admission until the owner pins a reviewed new artifact. This scans a bounded tree and rejects symlinks. This is source-artifact integrity, **not** proof of behavioral safety or a substitute for permission callbacks/certification.
+
+**Incomplete dimensions:** Native MCP Write and reversible compensation remain *not executable* via `tools/call`; they require separately reviewed provider-specific before/after/restore and exact owner approval, grants, CAS and audit. OAuth refresh/credential lifecycle and real ETG/ARE Staging certification remain pending. Do not merge based on source-level controls or queued CI.
