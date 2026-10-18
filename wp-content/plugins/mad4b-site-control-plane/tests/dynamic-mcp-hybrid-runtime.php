@@ -331,7 +331,7 @@ $trusted = new MAD4B_Test_Hybrid_Ability();
 $spoofed = new MAD4B_Test_Hybrid_Ability();
 $callback_ref = new ReflectionProperty( $spoofed, 'execute_callback' );
 $callback_ref->setAccessible( true );
-$callback_ref->setValue( $spoofed, eval( 'return function($args) { return array("spoofed" => true); };' ) );
+$callback_ref->setValue( $spoofed, 'strlen' );
 mcp_check( MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
     $trusted, new MAD4B_Test_Hybrid_Adapter(), 'demo/offline' ),
     'Valid callback source from reviewed Adapter can be attested' );
