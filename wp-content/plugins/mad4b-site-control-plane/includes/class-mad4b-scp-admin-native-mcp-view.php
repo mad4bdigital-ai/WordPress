@@ -169,7 +169,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
 
     /** Public status vocabulary shared with the operator parity UI. */
     public static function state_for_diagnostic_error( $code ) {
-        $code = is_string( $code ) ? sanitize_key( $code ) : '';
+        $code = is_string( $code ) ? strtolower( preg_replace( '/[^a-z0-9_-]/i', '', $code ) ) : '';
         if ( preg_match( '/(?:permission|not_authorized|subject|agent_unbound|exact_grant|oauth|credential_required)/', $code ) )
             return 'Not Authorized';
         if ( preg_match( '/(?:not_pinned|not_certified|binding_missing|catalog_drift|schema|fingerprint|review)/', $code ) )
