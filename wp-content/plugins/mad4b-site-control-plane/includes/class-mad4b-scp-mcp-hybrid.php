@@ -26,8 +26,17 @@ final class MAD4B_SCP_MCP_Hybrid {
     private static $request_catalogs = array();
     const REQUEST_CATALOG_MAX_AGE_SECONDS = 1.0;
     public static function boot() {
-        if ( function_exists( 'add_action' ) )
-            add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 33 );
+        if ( ! function_exists( 'add_action' ) ) return;
+        add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 21 );
+        add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 33 );
+    }
+    public static function register_category() {
+        if ( ! function_exists( 'wp_register_ability_category' ) ) return;
+        if ( function_exists( 'wp_has_ability_category' ) && wp_has_ability_category( 'mad4b-native-mcp' ) ) return;
+        wp_register_ability_category( 'mad4b-native-mcp', array(
+            'label' => 'MAD4B Native MCP and Hybrid Reads',
+            'description' => 'Governed read-only native MCP discovery, planning, and source-reviewed WordPress Ability fallback.',
+        ) );
     }
     private static function input_schema( $kind ) {
         $properties = array(
@@ -62,7 +71,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             wp_register_ability( $name, array(
                 'label' => ucwords( str_replace( array( '/', '-' ), ' ', $name ) ),
                 'description' => $details[1],
-                'category' => 'mad4b-read',
+                'category' => 'mad4b-native-mcp',
                 'execute_callback' => array( __CLASS__, $details[0] ),
                 'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),
                 'input_schema' => self::input_schema( $kind ),
