@@ -545,7 +545,7 @@ render_row = self_update.split("public static function render_update_row(", 1)[1
 for marker in (
     "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
     "There is a new version of %1$s available. Version %2$s.",
-    "Update now",
+    "Review certified update",
 ):
     if marker not in render_row:
         raise SystemExit(f"WordPress-native update row marker missing: {marker}")
@@ -852,7 +852,7 @@ for marker in (
     "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
     "$manifest['display_version']",
     "There is a new version of %1$s available. Version %2$s.",
-    "Update now",
+    "Review certified update",
 ):
     assert marker in render_body, f"WordPress-native update row invariant missing: {marker}"
 for forbidden in (
