@@ -63,6 +63,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-selected-head-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-selected-head-admin-runtime.php
+
 
       - name: Verify exact upstream MCP Adapter release
         shell: bash
