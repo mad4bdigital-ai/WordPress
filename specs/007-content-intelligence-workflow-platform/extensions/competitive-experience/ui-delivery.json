@@ -90,7 +90,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "9cea57049d21fccc2e1f6c5a7751b3a5205382b06223ff88a6a3e1f903c1f071"
+      "sha256": "e1bb7e05ef84b0a8980d9a0a30e584319f064dd44f109d92c92f805c278093e1"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/adaptive-search-provider-enrollment-runtime.php",
