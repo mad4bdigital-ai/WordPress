@@ -157,6 +157,17 @@ final class MAD4B_SCP_Servers {
 			if ( ! empty( $binding['ready'] ) ) $tools[] = MAD4B_SCP_Deployment_Mode_Resolver::ABILITY;
 		}
 		if ( 'mad4b-read' === $server_id && class_exists( 'MAD4B_SCP_Adaptive_Search_Intelligence' ) ) $tools = array_merge( $tools, MAD4B_SCP_Adaptive_Search_Intelligence::ability_names( 'read' ) );
+		// Acceptance cores register their own WordPress Abilities. They are
+		// first-party source-owned read definitions, not provider adapters.
+		// Do not route them through anonymous Adapter_Base registrations: the
+		// reviewed class/path trust policy correctly rejects anonymous classes.
+		if ( 'mad4b-read' === $server_id ) {
+			foreach ( array( 'MAD4B_SCP_Acceptance_Core', 'MAD4B_SCP_Browser_Acceptance_Core' ) as $core ) {
+				if ( class_exists( $core, false ) && method_exists( $core, 'read_ability_names' ) ) {
+					$tools = array_merge( $tools, $core::read_ability_names() );
+				}
+			}
+		}
 		if ( 'mad4b-admin' === $server_id
 			&& class_exists( 'MAD4B_SCP_Context_Authority' )
 			&& function_exists( 'wp_has_ability' )
