@@ -1,0 +1,80 @@
+name: MAD4B Cross Plugin Source Artifact Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_id:
+        description: Reviewed source ID from cross-plugin-sources.json
+        required: true
+        type: string
+      source_commit_sha:
+        description: Exact 40-character commit SHA in reviewed source repository
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-plugin-candidate-${{ github.event.inputs.source_id }}-${{ github.event.inputs.source_commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  package-candidate:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trusted workflow checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate exact source and approved repository
+        id: source
+        shell: bash
+        env:
+          SOURCE_ID: ${{ inputs.source_id }}
+          SOURCE_SHA: ${{ inputs.source_commit_sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          name=os.environ["SOURCE_ID"]
+          sha=os.environ["SOURCE_SHA"]
+          assert re.fullmatch(r'[a-z][a-z0-9_-]{0,63}',name)
+          assert re.fullmatch(r'[a-f0-9]{40}',sha)
+          data=json.loads(Path('wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json').read_text())
+          assert data['contract']=='mad4b.cross-plugin-sources.v1'
+          rows=[x for x in data['sources'] if x['id']==name]
+          assert len(rows)==1 and rows[0]['review_state'] in ('source_reviewed_artifact_pending','source_reviewed_artifact_certified')
+          repo=rows[0]['repository']
+          assert re.fullmatch(r'[A-Za-z0-9_.-]{1,70}/[A-Za-z0-9_.-]{1,100}',repo)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:
+            output.write(f'repository={repo}\n')
+          PY
+      - name: Checkout exact reviewed plugin source without executing it
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.source.outputs.repository }}
+          ref: ${{ inputs.source_commit_sha }}
+          path: candidate
+          persist-credentials: false
+          submodules: false
+          fetch-depth: 1
+      - name: Package only registered plugin directory
+        shell: bash
+        env:
+          SOURCE_ID: ${{ inputs.source_id }}
+          SOURCE_SHA: ${{ inputs.source_commit_sha }}
+        run: |
+          python3 tools/mad4b-cross-plugin-package.py \
+            --trusted-manifest wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json \
+            --checkout candidate \
+            --source-id "$SOURCE_ID" --sha "$SOURCE_SHA" --out "$RUNNER_TEMP/candidate-artifact"
+      - name: Preserve review-only candidate and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-plugin-${{ inputs.source_id }}-${{ inputs.source_commit_sha }}
+          path: ${{ runner.temp }}/candidate-artifact/
+          if-no-files-found: error
+          retention-days: 14
