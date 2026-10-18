@@ -1,6 +1,6 @@
 {
   "contract": "mad4b.optional-governance-catalog.v1",
-  "default_mode": "enforced",
+  "default_mode": "inherit",
   "scope": "operator_advisory_only",
   "gates": [
     {
@@ -33,5 +33,15 @@
       "label": "Machine ingress evidence pending",
       "description": "Optional reminder to bind diagnostics reachability evidence."
     }
-  ]
+  ],
+  "operating_mode_defaults": {
+    "ENTERPRISE_MULTI_OPERATOR": "enforced",
+    "SINGLE_OWNER_HARDENED": "advisory",
+    "EMERGENCY_RECOVERY": "enforced"
+  },
+  "semantics": {
+    "presentation_only": true,
+    "core_authorization_immutable": true,
+    "clear_intent_never_substitutes_exact_approval": true
+  }
 }

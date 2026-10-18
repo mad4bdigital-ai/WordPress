@@ -14,6 +14,16 @@ final class MAD4B_SCP_Optional_Governance {
     const SLUG = 'mad4b-optional-governance-options';
     const ACTION = 'mad4b_optional_governance_save';
     private static $catalog = null;
+    private static $profile_defaults = null;
+    private static $protected_gates = array(
+        'Owner identity and OAuth',
+        'Exact operation owner approval',
+        'GitHub required CI and Release Verdict',
+        'Production and Breakglass authority',
+        'Provider write certification',
+        'Audit, rollback, recovery and kill switches',
+        'Environment, runtime identity and drift checks',
+    );
     private static $builtins = array(
         'developer_lane' => 'developer_lane_not_ready',
         'developer_breakglass_lane' => 'developer_breakglass_lane_not_ready',
@@ -57,6 +67,13 @@ final class MAD4B_SCP_Optional_Governance {
             || ( $data['scope'] ?? '' ) !== 'operator_advisory_only'
             || ! isset( $data['gates'] ) || ! is_array( $data['gates'] )
             || count( $data['gates'] ) > 64 ) return self::$catalog;
+        $defaults = $data['operating_mode_defaults'] ?? null;
+        if ( ! is_array( $defaults ) || count( $defaults ) !== 3 ) return self::$catalog;
+        foreach ( array( 'ENTERPRISE_MULTI_OPERATOR', 'SINGLE_OWNER_HARDENED', 'EMERGENCY_RECOVERY' ) as $profile )
+            if ( ! isset( $defaults[$profile] )
+                || ! in_array( $defaults[$profile], array( 'enforced', 'advisory' ), true ) )
+                return self::$catalog;
+        self::$profile_defaults = $defaults;
         $result = array();
         foreach ( $data['gates'] as $row ) {
             if ( ! self::valid_definition( $row ) || isset( $result[$row['id']] ) ) return self::$catalog;
@@ -80,9 +97,20 @@ final class MAD4B_SCP_Optional_Governance {
         return hash( 'sha256', (string) wp_json_encode( $definitions, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
     }
 
+    private static function operating_mode() {
+        if ( ! class_exists( 'MAD4B_SCP_Policy_Resolution', false ) )
+            return new WP_Error( 'mad4b_optional_profile_unavailable', 'The authoritative operating mode is unavailable.' );
+        $mode = MAD4B_SCP_Policy_Resolution::current_operating_mode();
+        if ( is_wp_error( $mode ) || ! is_string( $mode ) || ! isset( self::$profile_defaults[$mode] ) )
+            return new WP_Error( 'mad4b_optional_profile_invalid', 'The authoritative operating mode is invalid.' );
+        return $mode;
+    }
+
     private static function state() {
         $definitions = self::catalog();
         if ( is_wp_error( $definitions ) ) return $definitions;
+        $operating_mode = self::operating_mode();
+        if ( is_wp_error( $operating_mode ) ) return $operating_mode;
         $raw = function_exists( 'get_option' ) ? get_option( self::OPTION, array() ) : array();
         if ( ! is_array( $raw ) || ( isset( $raw['contract'] ) && $raw['contract'] !== self::CONTRACT ) )
             return new WP_Error( 'mad4b_optional_options_invalid', 'Optional governance configuration is malformed.' );
@@ -91,14 +119,18 @@ final class MAD4B_SCP_Optional_Governance {
         $saved = isset( $raw['modes'] ) ? $raw['modes'] : array();
         if ( ! is_array( $saved ) ) return new WP_Error( 'mad4b_optional_modes_invalid', 'Saved modes are invalid.' );
         $modes = array();
+        $effective_modes = array();
         foreach ( $definitions as $id => $row ) {
-            $mode = isset( $saved[$id] ) ? $saved[$id] : 'enforced';
-            if ( ! in_array( $mode, array( 'enforced', 'advisory', 'off' ), true ) )
+            $mode = isset( $saved[$id] ) ? $saved[$id] : 'inherit';
+            if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
                 return new WP_Error( 'mad4b_optional_mode_invalid', 'An optional setting is invalid.' );
             $modes[$id] = $mode;
+            $effective_modes[$id] = 'inherit' === $mode ? self::$profile_defaults[$operating_mode] : $mode;
         }
-        return array( 'revision' => $revision, 'modes' => $modes,
-            'definitions_sha256' => self::signature( $definitions ) );
+        return array( 'revision' => $revision, 'modes' => $modes, 'effective_modes' => $effective_modes,
+            'operating_mode' => $operating_mode,
+            'definitions_sha256' => self::signature( array( 'definitions' => $definitions,
+                'profile_defaults' => self::$profile_defaults ) ) );
     }
 
     public static function status() {
@@ -111,11 +143,13 @@ final class MAD4B_SCP_Optional_Governance {
         $rows = array();
         foreach ( $definitions as $id => $row )
             $rows[] = array( 'id' => $id, 'reason' => $row['reason'],
-                'label' => $row['label'], 'mode' => $state['modes'][$id],
+                'label' => $row['label'], 'configured_mode' => $state['modes'][$id],
+                'mode' => $state['effective_modes'][$id],
                 'scope' => 'operator_advisory_only' );
         return array( 'contract' => self::CONTRACT, 'valid' => true,
             'revision' => $state['revision'], 'definitions_sha256' => $state['definitions_sha256'],
-            'gates' => $rows, 'settings_only' => true, 'governed_authorization_modified' => false,
+            'operating_mode' => $state['operating_mode'], 'profile_defaults' => self::$profile_defaults,
+            'gates' => $rows, 'locked_security_gates' => self::$protected_gates, 'settings_only' => true, 'governed_authorization_modified' => false,
             'production_authorized' => false, 'permission_created' => false,
             'mutation_performed' => false );
     }
@@ -141,7 +175,7 @@ final class MAD4B_SCP_Optional_Governance {
                 $result['raw_degraded'][] = $reason;
             }
             if ( ! in_array( $reason, $result['degraded'], true ) ) continue;
-            $mode = $state['modes'][$id];
+            $mode = $state['effective_modes'][$id];
             if ( 'enforced' === $mode ) continue;
             $result['degraded'] = array_values( array_diff( $result['degraded'], array( $reason ) ) );
             if ( 'advisory' === $mode ) $result['advisory'][] = $reason;
@@ -177,13 +211,16 @@ final class MAD4B_SCP_Optional_Governance {
         if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator required.' );
         $definitions = self::catalog();
         $state = self::state();
-        echo '<div class="wrap"><h1>Optional Governance &amp; Policy Controls</h1>';
+        echo '<div class="wrap"><h1>Options Control — Optional Governance</h1>';
         echo '<p>These settings affect operator advisory status only. They never change GitHub CI, authorization, grants, certification, audit, rollback or Production protection.</p>';
         if ( is_wp_error( $definitions ) || is_wp_error( $state ) ) {
             echo '<div class="notice notice-error"><p>Invalid configuration. Strict defaults remain active.</p></div></div>';
             return;
         }
         if ( isset( $_GET['saved'] ) && '1' === $_GET['saved'] ) echo '<div class="notice notice-success"><p>Advisory options saved and audited.</p></div>';
+        echo '<p><strong>Operating profile:</strong> ' . esc_html( $state['operating_mode'] ) .
+            '. Inherited optional warning mode: ' . esc_html( self::$profile_defaults[$state['operating_mode']] ) . '.</p>';
+        echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         wp_nonce_field( self::ACTION );
         echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '">';
@@ -193,11 +230,14 @@ final class MAD4B_SCP_Optional_Governance {
         foreach ( $definitions as $id => $row ) {
             echo '<tr><td><strong>' . esc_html( $row['label'] ) . '</strong><p>' . esc_html( $row['description'] ) . '</p></td><td>';
             echo '<select name="modes[' . esc_attr( $id ) . ']">';
-            foreach ( array( 'enforced'=>'Enforced warning', 'advisory'=>'Optional notice', 'off'=>'Disabled notice' ) as $key => $label )
+            foreach ( array( 'inherit'=>'Inherit operating profile', 'enforced'=>'Enforced warning', 'advisory'=>'Optional notice', 'off'=>'Disabled notice' ) as $key => $label )
                 echo '<option value="' . esc_attr( $key ) . '"' . selected( $state['modes'][$id], $key, false ) . '>' . esc_html( $label ) . '</option>';
-            echo '</select></td><td>Operator status only</td></tr>';
+            echo '</select> <small>Effective: ' . esc_html( $state['effective_modes'][$id] ) . '</small></td><td>Operator status only</td></tr>';
         }
-        echo '</tbody></table>';
+        echo '</tbody></table><h2>Mandatory protection gates (read-only)</h2><ul>';
+        foreach ( self::$protected_gates as $locked )
+            echo '<li>' . esc_html( $locked ) . ' — mandatory</li>';
+        echo '</ul>';
         submit_button( 'Save advisory preferences' );
         echo '</form></div>';
     }
@@ -218,7 +258,7 @@ final class MAD4B_SCP_Optional_Governance {
         $modes = array();
         foreach ( $definitions as $id => $row ) {
             $mode = $posted[$id] ?? null;
-            if ( ! in_array( $mode, array( 'enforced', 'advisory', 'off' ), true ) ) wp_die( 'Invalid policy mode.' );
+            if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) ) wp_die( 'Invalid policy mode.' );
             $modes[$id] = $mode;
         }
         if ( ! class_exists( 'MAD4B_SCP_Audit', false ) ) wp_die( 'Audit storage is unavailable.' );

@@ -21,3 +21,8 @@ Staging/Production permissions remain separately managed by the existing authori
 
 ## Integration and acceptance
 The operator reducer consumes the optional projection **only for DEGRADED advisory reasons** and includes `raw_degraded_reasons`, `optional_advisories`, `muted_optional_reasons`. Blocking/recovery arrays remain unchanged. A disabled warning must never be represented as completed certification. Test PHP 7.4/8.3, WordPress Admin nonce and audit, malformed saved configuration, dynamic extension identities, and unchanged hard blockers.
+
+## Mode-aware optional policies
+The shared `MAD4B_SCP_Policy_Resolution::current_operating_mode()` is the **only** source for the operating profile: SINGLE_OWNER_HARDENED defaults optional operator warning severity to `advisory`; ENTERPRISE_MULTI_OPERATOR and EMERGENCY_RECOVERY default it to `enforced`. Unsupported/missing profiles preserve the original warnings. Per-optional-policy modes are `inherit`, `enforced`, `advisory`, `off`. Dynamic extensions remain limited to `optional_*` advisory reasons.
+
+The Admin Options Control renders non-optional security and Release Verdict gates as locked guidance and exposes effective mode/current profile. A read-only `mad4b/optional-governance-status` Ability is mounted into `mad4b-read` and `mad4b-chatgpt`; WordPress Options do not change GitHub CI or owner approvals.
