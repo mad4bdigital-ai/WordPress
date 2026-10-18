@@ -170,11 +170,11 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     ensure(all(guards.values()), "Coverage guard disabled")
     ensure(len(coverage.get("domain_rules", [])) >= 8, "Impact mapping incomplete")
     ctl_ids = {c["id"] for c in controls["controls"]}
-    ensure(len(ctl_ids) >= 170, "Baseline controls removed")
     old_controls = json_file(base, CONTROLS)
     ensure(old_controls is not None, "Missing reviewed base controls")
     disappeared = {x["id"] for x in old_controls["controls"]} - ctl_ids
     ensure(not disappeared, "A historical control was deleted: " + repr(sorted(disappeared)))
+    ensure(len(ctl_ids) >= 170, "Baseline controls removed")
     for entry in controls["controls"]:
         if "lifecycle" not in entry:
             continue
