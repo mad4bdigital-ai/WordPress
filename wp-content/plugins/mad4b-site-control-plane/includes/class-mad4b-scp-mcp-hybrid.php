@@ -340,6 +340,13 @@ final class MAD4B_SCP_MCP_Hybrid {
     }
     private static function negotiate( array $peer ) {
         $modern = self::rpc( $peer, 'server/discover', array(), '2026-07-28' );
+        if ( is_wp_error( $modern ) ) {
+            $code = $modern->get_error_code();
+            if ( 0 === strpos( $code, 'mad4b_mcp_credential_' )
+                || in_array( $code, array( 'mad4b_mcp_scoped_credential_required',
+                    'mad4b_mcp_peer_circuit_open', 'mad4b_mcp_provider_isolated' ), true ) )
+                return $modern;
+        }
         if ( ! is_wp_error( $modern ) && is_array( $modern['wire']['result'] ?? null )
             && ( $modern['wire']['result']['resultType'] ?? '' ) === 'complete'
             && in_array( '2026-07-28', $modern['wire']['result']['supportedVersions'] ?? array(), true ) )
