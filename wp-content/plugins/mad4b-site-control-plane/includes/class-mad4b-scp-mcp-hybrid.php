@@ -266,7 +266,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_mcp_peer_invalid_rpc', 'MCP JSON-RPC envelope does not match the request.' );
         $next_session = (string) wp_remote_retrieve_header( $response, 'mcp-session-id' );
         if ( strlen( $next_session ) > 191 || false !== strpos( $next_session, "\n" ) ) $next_session = '';
-        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peer );
+        // A successful handshake alone must not reset the breaker.
         return array( 'wire' => $wire, 'session' => $next_session, 'http_status' => (int) $status );
     }
     private static function notify_legacy_initialized( array $peer, $version, $session ) {
@@ -338,10 +338,11 @@ final class MAD4B_SCP_MCP_Hybrid {
             && microtime( true ) - $cached['created_at'] < self::REQUEST_CATALOG_MAX_AGE_SECONDS )
             return $cached;
         unset( self::$request_catalogs[$cache_key] );
-        $prepared = self::prepared_catalog( $peer_id );
-        if ( is_wp_error( $prepared ) ) return $prepared;
-        $session = $prepared['session'];
-        $catalog = $prepared['catalog'];
+        $session = self::negotiate( $peers[$peer_id] );
+        if ( is_wp_error( $session ) ) return $session;
+        $catalog = self::catalog_in_session( $peers[$peer_id], $session );
+        if ( is_wp_error( $catalog ) ) return $catalog;
+        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id] );
         $record = array( 'session' => $session, 'catalog' => $catalog,
             'created_at' => microtime( true ), 'cache_key' => $cache_key );
         self::$request_catalogs[$cache_key] = $record;
@@ -569,10 +570,10 @@ final class MAD4B_SCP_MCP_Hybrid {
         // The exact per-peer Agent grant must be checked BEFORE outbound IO.
         $authorized = MAD4B_SCP_MCP_Hybrid_Authority::authorize_read( $peer_id, $ability, 'native' );
         if ( is_wp_error( $authorized ) ) return $authorized;
-        $session = self::negotiate( $peers[$peer_id] );
-        if ( is_wp_error( $session ) ) return $session;
-        $catalog = self::catalog_in_session( $peers[$peer_id], $session );
-        if ( is_wp_error( $catalog ) ) return $catalog;
+        $prepared = self::prepared_catalog( $peer_id );
+        if ( is_wp_error( $prepared ) ) return $prepared;
+        $session = $prepared['session'];
+        $catalog = $prepared['catalog'];
         if ( ! hash_equals( $expected, (string) $catalog['capability_snapshot_sha256'] ) )
             return new WP_Error( 'mad4b_native_read_catalog_drift', 'Native catalog changed since review; execute nothing.' );
         $row = $catalog['bindings'][$ability] ?? array();
@@ -613,6 +614,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             if ( is_wp_error( $validated ) || true !== $validated )
                 return new WP_Error( 'mad4b_native_output_schema_mismatch', 'MCP response violates reviewed output schema.' );
         }
+        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id] );
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
             'protocol' => $session['version'], 'catalog_sha256' => $expected,
