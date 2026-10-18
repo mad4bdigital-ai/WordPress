@@ -13,7 +13,7 @@ final class MAD4B_SCP_Plugin_Update_Popup {
     private static $catalog = null;
 
     public static function boot() {
-        if ( self::$booted ) return;
+        if ( self::$booted || ! function_exists( 'add_filter' ) || ! function_exists( 'add_action' ) ) return;
         self::$booted = true;
         add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links' ), 30, 4 );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
