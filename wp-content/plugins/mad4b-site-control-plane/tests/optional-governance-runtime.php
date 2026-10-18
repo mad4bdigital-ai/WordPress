@@ -164,4 +164,58 @@ try { $cls::save(); } catch ( RuntimeException $error ) {
 expect( $stale_denied && MAD4B_SCP_Audit::$count === 2
     && ! array_key_exists( $cls::OPTION, $GLOBALS['options'] ),
     'Stale plan must be rejected without an audit or persistent mutation' );
-echo "OPTIONAL_GOVERNANCE: PASS (profile inheritance, dynamic scope, immutable gates, audit rollback, stale plan)\n";
+// Explicitly exercise the same source-owned persistence service remotely,
+// with a hermetic exact-authorized Staging owner and a fail-closed Production.
+function enable_optional_remote_owner_fixture() {
+    class MAD4B_SCP_Site_Profile {
+        public static $environment = 'staging';
+        public static function current_environment() { return self::$environment; }
+        public static function user_is_enrolled( $id ) { return 1 === $id; }
+    }
+    class MAD4B_SCP_Policy {
+        public static function can_mutate() { return true; }
+    }
+    class MAD4B_SCP_OAuth_Resource_Bridge {
+        const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+        public static function verified_bearer_active() { return true; }
+        public static function verified_bearer_has_scope( $scope ) {
+            return $scope === self::AUTHORITY_STEP_UP_SCOPE;
+        }
+        public static function verified_bearer_client_is( $id ) {
+            return $id === MAD4B_SCP_Local_OAuth_Server::CHATGPT_CIMD_CLIENT_ID;
+        }
+    }
+    class MAD4B_SCP_Local_OAuth_Server {
+        const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt';
+    }
+    class MAD4B_SCP_Authorization {
+        public static function authorize_mutation( $ability, $surface, $provider, $input ) {
+            return $ability === MAD4B_SCP_Optional_Governance_Remote::APPLY
+                && $surface === 'mad4b-write' && $provider === 'core';
+        }
+    }
+}
+enable_optional_remote_owner_fixture();
+$reviewed = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+expect( ! is_wp_error( $reviewed ) && $reviewed['revision'] === 0,
+    'Remote Staging plan must bind an unchanged revision' );
+$applied = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+    'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( ! is_wp_error($applied) && $applied['readback_verified']
+    && $applied['audit_recorded'] && $applied['revision'] === 1
+    && false === $applied['authority_created'], 'Governed remote apply parity failed' );
+$stored_verify = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+expect( ! is_wp_error( $stored_verify ) && $stored_verify['verified']
+    && $stored_verify['revision'] === 1,
+    'Remote persisted readback differs from applied state' );
+$stale = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+    'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( is_wp_error($stale) && $stale->get_error_code()==='mad4b_optional_remote_plan_stale',
+    'Stale remote plan must reject replay' );
+MAD4B_SCP_Site_Profile::$environment = 'production';
+$prod_plan = $remote::plan( array( 'policy_id'=>'machine_ingress', 'mode'=>'off' ) );
+$prod = $remote::apply( array( 'policy_id'=>'machine_ingress', 'mode'=>'off',
+    'expected_plan_sha256'=>$prod_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( is_wp_error($prod) && $prod->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    'Production remote policy mutation must be denied' );
+echo "OPTIONAL_GOVERNANCE: PASS (policy source, CAS lock, audit rollback, remote parity, stale SHA, Production denial)\n";

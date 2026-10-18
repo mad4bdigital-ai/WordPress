@@ -240,7 +240,31 @@ final class MAD4B_SCP_Optional_Governance {
                 echo '<option value="' . esc_attr( $key ) . '"' . selected( $state['modes'][$id], $key, false ) . '>' . esc_html( $label ) . '</option>';
             echo '</select> <small>Effective: ' . esc_html( $state['effective_modes'][$id] ) . '</small></td><td>Operator status only</td></tr>';
         }
-        echo '</tbody></table><h2>Mandatory protection gates (read-only)</h2><ul>';
+        echo '</tbody></table>';
+        echo '<h2>Remote Operations</h2>';
+        echo '<p>Optional policy edits can be reviewed through MCP Plan and verified through MCP Verify. Remote Apply is separately governed by exact owner OAuth step-up, an approved Write ticket and Staging runtime authority. A registered tool is not proof of execution permission.</p>';
+        $remote_plan = class_exists( 'MAD4B_SCP_Optional_Governance_Remote', false )
+            && function_exists( 'wp_has_ability' )
+            && wp_has_ability( MAD4B_SCP_Optional_Governance_Remote::PLAN );
+        $remote_apply = class_exists( 'MAD4B_SCP_Optional_Governance_Remote', false )
+            && function_exists( 'wp_has_ability' )
+            && wp_has_ability( MAD4B_SCP_Optional_Governance_Remote::APPLY );
+        $remote_verify = class_exists( 'MAD4B_SCP_Optional_Governance_Remote', false )
+            && function_exists( 'wp_has_ability' )
+            && wp_has_ability( MAD4B_SCP_Optional_Governance_Remote::VERIFY );
+        echo '<table class="widefat striped"><thead><tr><th>Operation</th><th>Registration</th><th>Authority</th></tr></thead><tbody>';
+        foreach ( array(
+            array( 'Plan', $remote_plan, 'Read-only; no execution or grant' ),
+            array( 'Apply', $remote_apply, 'Exact authorized Staging Write operation only' ),
+            array( 'Verify', $remote_verify, 'Read-only persisted value' ),
+        ) as $row )
+            echo '<tr><td>' . esc_html( $row[0] ) . '</td><td>' .
+                esc_html( $row[1] ? 'Registered, authority not inferred' : 'Not verified' ) .
+                '</td><td>' . esc_html( $row[2] ) . '</td></tr>';
+        echo '</tbody></table>';
+        echo '<p><strong>Current options revision:</strong> ' . esc_html( (string) $state['revision'] ) .
+            '. <strong>Policy catalog SHA:</strong> <code>' . esc_html( $state['definitions_sha256'] ) . '</code></p>';
+        echo '<h2>Mandatory protection gates (read-only)</h2><ul>';
         foreach ( self::$protected_gates as $locked )
             echo '<li>' . esc_html( $locked ) . ' — mandatory</li>';
         echo '</ul>';
