@@ -111,9 +111,7 @@ $verified_callback = new MAD4B_Test_External_Read_Ability( 'ci_reviewed_external
 external_assert( MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
     $verified_callback, $valid, 'external-ci/inspect' ),
     'Reviewed external Ability may implement its callback in a distinct exact pinned file' );
-$unknown_callback = new MAD4B_Test_External_Read_Ability( eval(
-    'return function($args) { return array("foreign"=>true); };'
-) );
+$unknown_callback = new MAD4B_Test_External_Read_Ability( 'strlen' );
 external_assert( ! MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
     $unknown_callback, $valid, 'external-ci/inspect' ),
     'Unreviewed callback source cannot borrow an approved Ability name' );
