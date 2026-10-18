@@ -105,8 +105,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "9cea57049d21fccc2e1f6c5a7751b3a5205382b06223ff88a6a3e1f903c1f071",
-      "bytes": 16428
+      "sha256": "be51a4e3a1530c38bae4b2796bdb97561d5bcf69595c231ee3d6b047afe7b077",
+      "bytes": 17305
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g6-delivery-integrity.py",
