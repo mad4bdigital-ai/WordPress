@@ -59,5 +59,65 @@ class LatestHeadReaperTests(unittest.TestCase):
             request.assert_not_called()
 
 
+    def test_pending_requested_states_are_eligible_but_same_head_is_not(self):
+        for state in ("queued", "in_progress", "waiting", "pending", "requested"):
+            self.assertTrue(reaper.candidate(
+                item(100, "older", state=state), number=407, sha="latest", branch="feature"
+            ))
+            self.assertFalse(reaper.candidate(
+                item(101, "latest", state=state), number=407, sha="latest", branch="feature"
+            ))
+
+    def test_overfull_search_window_is_partitioned_without_dropping_evidence(self):
+        paths = []
+        def fake_api(method, repository, path, token):
+            paths.append(path)
+            if "status=queued" not in path:
+                return {"total_count": 0, "workflow_runs": []}
+            if "created=" not in path:
+                return {"total_count": 1000, "workflow_runs": []}
+            if "page=1" in path:
+                return {"total_count": 1, "workflow_runs": [item(100, "old")]}
+            return {"total_count": 0, "workflow_runs": []}
+        with patch.object(reaper, "api", side_effect=fake_api):
+            actual = reaper.stale_runs("mad4bdigital-ai/WordPress", {
+                "number": 407, "sha": "new", "branch": "feature",
+                "created_at": "2026-10-17T00:00:00Z",
+            }, "token")
+        self.assertEqual([x["id"] for x in actual], [100])
+        self.assertTrue(any("created=" in x for x in paths))
+
+    def test_changes_during_long_cancel_batch_stop_at_next_recheck(self):
+        earlier = {"number": 407, "sha": "new", "branch": "feature"}
+        changed = {"number": 407, "sha": "later", "branch": "feature"}
+        runs = [item(n, "old") for n in range(1, 29)]
+        def fake_api(method, repository, path, token):
+            return {}
+        with patch.object(reaper, "identify", side_effect=[earlier, earlier, earlier, changed]), \
+             patch.object(reaper, "stale_runs", return_value=runs), \
+             patch.object(reaper, "api", side_effect=fake_api) as request, \
+             patch.object(reaper.time, "sleep"):
+            with self.assertRaisesRegex(RuntimeError, "PR_HEAD_MOVED_DURING_CANCELLATION"):
+                reaper.run("mad4bdigital-ai/WordPress", 407, "token", True)
+            self.assertEqual(request.call_count, 20)
+
+    def test_pull_request_workflows_cannot_pin_concurrency_to_commit_sha(self):
+        import re
+        workflows = script.resolve().parents[1] / "workflows"
+        checked = 0
+        for workflow in sorted(workflows.glob("*.yml")):
+            source = workflow.read_text(encoding="utf-8")
+            if not re.search(r"^  pull_request(?:_target)?:", source, re.M):
+                continue
+            checked += 1
+            block = re.search(r"^concurrency:\n((?:[ \t]+[^\n]*\n)+)", source, re.M)
+            self.assertIsNotNone(block, workflow.name + " needs PR concurrency")
+            lines = block.group(1)
+            self.assertIn("github.event.pull_request.number", lines, workflow.name)
+            self.assertIn("cancel-in-progress: true", lines, workflow.name)
+            self.assertNotIn("github.event.pull_request.head.sha", lines, workflow.name)
+            self.assertNotIn("github.sha", lines, workflow.name)
+        self.assertGreater(checked, 50)
+
 if __name__ == "__main__":
     unittest.main()

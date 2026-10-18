@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Cancel only superseded PR CI runs, preserving exact-head workflow isolation."""
 import argparse
+import datetime
+import time
 import json
 import os
 import urllib.error
 import urllib.parse
 import urllib.request
 
-ACTIVE_STATES = ("queued", "in_progress", "waiting")
-MAX_PAGES_PER_STATE = 15
+ACTIVE_STATES = ("queued", "in_progress", "waiting", "pending", "requested")
+MAX_PAGES_PER_STATE = 10
+MAX_SPLIT_DEPTH = 22
+MAX_CANCEL_PER_RUN = 400
 
 
 def api(method, repository, path, token):
@@ -55,28 +59,54 @@ def identify(repository, number, token):
     if origin != repository:
         print("SKIP_CROSS_REPOSITORY_PR", number)
         return None
-    return {"number": number, "sha": head["sha"], "branch": head["ref"]}
+    return {"number": number, "sha": head["sha"], "branch": head["ref"], "created_at": pr.get("created_at", "2000-01-01T00:00:00Z")}
 
 
 def stale_runs(repository, pr, token):
-    matches = {}
-    for state in ACTIVE_STATES:
-        for page in range(1, MAX_PAGES_PER_STATE + 1):
-            query = urllib.parse.urlencode({
-                "branch": pr["branch"], "status": state,
-                "per_page": 100, "page": page,
-            })
-            data = api("GET", repository, "/actions/runs?" + query, token)
-            runs = data.get("workflow_runs") or []
-            for run in runs:
-                if candidate(run, number=pr["number"], sha=pr["sha"], branch=pr["branch"]):
-                    matches[run["id"]] = run
-            if len(runs) < 100:
-                break
-            if page == MAX_PAGES_PER_STATE:
-                raise RuntimeError("RESULT_WINDOW_TRUNCATED; refusing partial cancellation")
-    return list(matches.values())
+    """Scan exact-PR active runs without GitHub's 1,000-result truncation.
 
+    Split overloaded search windows by run-creation time; never submit a
+    partial cancellation list when an API window cannot be partitioned.
+    """
+    matches = {}
+    def parse_utc(value):
+        return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    start = parse_utc(pr.get("created_at") or "2000-01-01T00:00:00Z")
+    end = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
+    def interval(state, lower=None, upper=None, depth=0):
+        params = {"branch": pr["branch"], "status": state, "per_page": 100, "page": 1}
+        if lower is not None:
+            params["created"] = lower.strftime("%Y-%m-%dT%H:%M:%SZ") + ".." + upper.strftime("%Y-%m-%dT%H:%M:%SZ")
+        data = api("GET", repository, "/actions/runs?" + urllib.parse.urlencode(params), token)
+        first = data.get("workflow_runs") or []
+        total = data.get("total_count", len(first))
+        if total >= 1000:
+            if depth >= MAX_SPLIT_DEPTH:
+                raise RuntimeError("RESULT_WINDOW_TRUNCATED; refusing partial cancellation")
+            lower = lower or start
+            upper = upper or end
+            seconds = int((upper - lower).total_seconds())
+            if seconds < 2:
+                raise RuntimeError("RESULT_WINDOW_UNSPLITTABLE; refusing partial cancellation")
+            midpoint = lower + datetime.timedelta(seconds=seconds // 2)
+            interval(state, lower, midpoint, depth + 1)
+            interval(state, midpoint + datetime.timedelta(seconds=1), upper, depth + 1)
+            return
+        max_pages = max(1, (total + 99) // 100)
+        if max_pages > MAX_PAGES_PER_STATE:
+            raise RuntimeError("RESULT_WINDOW_TRUNCATED; refusing partial cancellation")
+        for page in range(1, max_pages + 1):
+            if page == 1:
+                rows = first
+            else:
+                params["page"] = page
+                rows = api("GET", repository, "/actions/runs?" + urllib.parse.urlencode(params), token).get("workflow_runs") or []
+            for row in rows:
+                if candidate(row, number=pr["number"], sha=pr["sha"], branch=pr["branch"]):
+                    matches[row["id"]] = row
+    for state in ACTIVE_STATES:
+        interval(state)
+    return list(matches.values())
 
 def run(repository, number, token, apply):
     pr = identify(repository, number, token)
@@ -94,11 +124,22 @@ def run(repository, number, token, apply):
     if current is None or current["sha"] != pr["sha"]:
         raise RuntimeError("PR_HEAD_MOVED; no cancellations submitted")
     accepted = 0
-    for entry in targets:
+    finished = 0
+    for i, entry in enumerate(targets[:MAX_CANCEL_PER_RUN]):
+        if i % 20 == 0:
+            current = identify(repository, number, token)
+            if current is None or current["sha"] != pr["sha"] or current["branch"] != pr["branch"]:
+                raise RuntimeError("PR_HEAD_MOVED_DURING_CANCELLATION; stopping immediately")
         result = api("POST", repository, "/actions/runs/" + str(entry["id"]) + "/cancel", token)
-        if not result.get("already_finished"):
+        if result.get("already_finished"):
+            finished += 1
+        else:
             accepted += 1
-    print(json.dumps({"cancel_requested": accepted, "already_finished": len(targets) - accepted}))
+        time.sleep(0.1)
+    print(json.dumps({
+        "cancel_requested": accepted, "already_finished": finished,
+        "remaining_candidates": max(0, len(targets) - MAX_CANCEL_PER_RUN),
+    }))
     return accepted
 
 
