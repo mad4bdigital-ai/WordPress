@@ -106,7 +106,7 @@ function current_user_can( $capability ) { return 'manage_options' === $capabili
 $unauthorized = $remote::apply(array( 'policy_id'=>'developer_lane','mode'=>'off',
     'confirmation'=>$remote::CONFIRM,'expected_plan_sha256'=>$remote_plan['plan_sha256'] ));
 expect( is_wp_error($unauthorized) &&
-    $unauthorized->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    $unauthorized->get_error_code()==='mad4b_optional_remote_claimed_execution_required',
     'Remote Apply must deny an unauthenticated/no-Site-Profile WordPress request' );
 function check_admin_referer( $action ) { return true; }
 function wp_unslash( $value ) { return $value; }
@@ -231,6 +231,7 @@ enable_optional_remote_owner_fixture();
 // central claim; only the governed callback may invoke the provider.
 function governed_optional_apply_fixture( $input ) {
     $checked = MAD4B_SCP_Optional_Governance_Remote::can_apply( $input );
+    if ( is_wp_error( $checked ) ) return $checked;
     expect( is_array($checked) && true === ($checked['allowed']??false),
         'Governed Ability permission-time preflight did not permit reviewed Staging actor' );
     MAD4B_SCP_Authorization::$in_claimed_callback = true;

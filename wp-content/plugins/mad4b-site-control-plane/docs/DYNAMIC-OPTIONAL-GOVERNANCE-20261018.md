@@ -9,7 +9,7 @@ The built-in `MAD4B_SCP_Policy_Resolution` operates with SINGLE_OWNER_HARDENED /
 - WordPress Admin → MAD4B → Optional Governance, for administrators only, nonce-protected, audited, source-schema-bound, with persisted readback.
 - Read-only `mad4b/optional-governance-status` Ability for dynamic interface catalogs.
 - Four settings: `inherit` (follow current operating profile), `enforced` (preserve DEGRADED warning), `advisory` (show an optional notice without degrading health), `off` (mute optional notice; preserve raw evidence).
-- Built-in options cover noncritical developer lane, developer breakglass-lane availability, external machine diagnostic ingress and provider closure reminders.
+- Built-in options cover only developer lane, developer breakglass-lane availability, and external machine diagnostic ingress signals. Provider closure/certification is explicitly excluded until operation-specific safety classification is independently established.
 - New `optional_extension_*` advisory definitions may be registered through `mad4b_scp_optional_governance_definitions`, and status signals through `mad4b_scp_optional_governance_observations`, subject to bounded schema and namespace checks; trusted source-owned built-in reason bindings cannot be overridden.
 - Missing preference storage inherits the verified operating profile; malformed options, catalog or operating-mode evidence preserve the original diagnostic severity.
 - Each policy displays a reason code, persisted mode and catalog digest. The options setting never changes any actual mutation/CI/certification policy.
