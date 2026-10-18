@@ -30,6 +30,8 @@ final class MAD4B_SCP_Optional_Governance_Remote {
                 'pattern'=>'^[a-f0-9]{64}$' );
             $properties['confirmation'] = array( 'type'=>'string',
                 'enum'=>array( self::CONFIRM ) );
+            $properties['_mad4b_approval_ticket_id'] = array(
+                'type'=>'string', 'pattern'=>MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN );
             $required[] = 'expected_plan_sha256';
             $required[] = 'confirmation';
         }
@@ -60,7 +62,8 @@ final class MAD4B_SCP_Optional_Governance_Remote {
                 'meta'=>array( 'public'=>false, 'show_in_rest'=>false,
                     'mcp'=>array( 'public'=>false, 'type'=>'tool',
                         'surface'=>$readonly ? 'read' : 'write',
-                        'generic_remote_admin'=>false, 'production_mutation_allowed'=>false ),
+                        'generic_remote_admin'=>false, 'production_mutation_allowed'=>false,
+                        'mad4b_governed_write_authority'=>! $readonly ),
                     'annotations'=>array( 'readonly'=>$readonly,
                         'destructive'=>! $readonly, 'idempotent'=>$readonly ) ),
             ) );
@@ -70,10 +73,17 @@ final class MAD4B_SCP_Optional_Governance_Remote {
     private static function normalize( $input, $for_apply = false ) {
         if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_optional_remote_input_invalid', 'Expected a typed input object.' );
         $allowed = $for_apply
-            ? array( 'policy_id', 'mode', 'expected_plan_sha256', 'confirmation' )
+            ? array( 'policy_id', 'mode', 'expected_plan_sha256',
+                'confirmation', '_mad4b_approval_ticket_id' )
             : array( 'policy_id', 'mode' );
         if ( array_diff( array_keys( $input ), $allowed ) )
             return new WP_Error( 'mad4b_optional_remote_extra_keys', 'Remote policy input contains undeclared fields.' );
+        // Ticket is transport-only; the central wrapper claims and audits it.
+        if ( $for_apply && isset( $input['_mad4b_approval_ticket_id'] )
+            && ( ! is_string( $input['_mad4b_approval_ticket_id'] )
+                || ! preg_match( '/' . MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN . '/D',
+                    $input['_mad4b_approval_ticket_id'] ) ) )
+            return new WP_Error( 'mad4b_optional_remote_ticket_invalid', 'Invalid one-time authorization ticket identity.' );
         $id = $input['policy_id'] ?? '';
         $mode = $input['mode'] ?? '';
         if ( ! is_string( $id ) || ! preg_match( '/^[a-z][a-z0-9_]{2,79}$/D', $id )

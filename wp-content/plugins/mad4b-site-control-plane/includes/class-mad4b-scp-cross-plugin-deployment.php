@@ -300,14 +300,22 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             $blockers[] = 'production_package_executor_not_yet_certified';
         }
         $native = array();
-        if ( 'staging' === $environment && empty( $blockers )
-            && class_exists( 'MAD4B_SCP_Plugin_Package' ) ) {
+        if ( 'staging' === $environment
+            && ( ! class_exists( 'MAD4B_SCP_Plugin_Package' )
+                || ! is_callable( array( 'MAD4B_SCP_Plugin_Package', 'plan' ) ) ) )
+            $blockers[] = 'native_package_planner_unavailable';
+        if ( 'staging' === $environment && empty( $blockers ) ) {
             $native = MAD4B_SCP_Plugin_Package::plan( array(
                 'provider_id' => $source['provider_id'],
                 'source' => 'auto_certified',
                 'reason' => (string) ( $input['reason'] ?? 'Exact reviewed cross-plugin deployment' ) ) );
             if ( is_wp_error( $native ) ) {
                 $blockers[] = $native->get_error_code();
+                $native = array();
+            } elseif ( ! is_array( $native )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $native['plan_sha256'] ?? '' ) )
+                || ! isset( $native['eligible'] ) ) {
+                $blockers[] = 'native_package_plan_invalid';
                 $native = array();
             } elseif ( ! hash_equals( (string) ( $native['plugin_file'] ?? '' ), $source['plugin_file'] )
                 || ! hash_equals( (string) ( $native['certified_archive_sha256'] ?? '' ), $artifact_sha )

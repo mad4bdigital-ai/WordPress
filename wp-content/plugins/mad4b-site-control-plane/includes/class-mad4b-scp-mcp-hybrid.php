@@ -318,7 +318,10 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_mcp_peer_http_' . (int) $status, 'Peer MCP HTTP status prevents catalog verification.' );
         }
         $body = wp_remote_retrieve_body( $response );
-        if ( ! is_string( $body ) || strlen( $body ) >= self::MAX_BYTES ) return new WP_Error( 'mad4b_mcp_peer_response_unbounded', 'Peer MCP response was incomplete or too large.' );
+        if ( ! is_string( $body ) || strlen( $body ) >= self::MAX_BYTES ) {
+            MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer, $phase );
+            return new WP_Error( 'mad4b_mcp_peer_response_unbounded', 'Peer MCP response was incomplete or too large.' );
+        }
         $type = strtolower( (string) wp_remote_retrieve_header( $response, 'content-type' ) );
         if ( false !== strpos( $type, 'text/event-stream' ) ) {
             // The bounded response may contain comments/keepalive and multiple events.
@@ -332,7 +335,10 @@ final class MAD4B_SCP_MCP_Hybrid {
                 if ( ! $data ) continue;
                 $candidate = json_decode( implode( "\n", $data ), true );
                 if ( is_array( $candidate ) && (string) ( $candidate['id'] ?? '' ) === $id ) {
-                    if ( null !== $decoded ) return new WP_Error( 'mad4b_mcp_duplicate_response', 'Multiple responses used one RPC identity.' );
+                    if ( null !== $decoded ) {
+                        MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer, $phase );
+                        return new WP_Error( 'mad4b_mcp_duplicate_response', 'Multiple responses used one RPC identity.' );
+                    }
                     $decoded = $candidate;
                 }
             }
@@ -348,8 +354,10 @@ final class MAD4B_SCP_MCP_Hybrid {
             || $has_result === $has_error
             || ( $has_error && ( ! is_array( $wire['error'] )
                 || ! is_int( $wire['error']['code'] ?? null )
-                || ! is_string( $wire['error']['message'] ?? null ) ) ) )
+                || ! is_string( $wire['error']['message'] ?? null ) ) ) ) {
+            MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer, $phase );
             return new WP_Error( 'mad4b_mcp_peer_invalid_rpc', 'MCP JSON-RPC envelope does not match the request.' );
+        }
         $next_session = (string) wp_remote_retrieve_header( $response, 'mcp-session-id' );
         if ( strlen( $next_session ) > 191 || false !== strpos( $next_session, "\n" ) ) $next_session = '';
         // A successful handshake alone must not reset the breaker.

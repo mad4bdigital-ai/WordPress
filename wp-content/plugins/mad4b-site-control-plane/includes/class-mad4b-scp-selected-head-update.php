@@ -48,7 +48,10 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array(
                     'public' => false, 'show_in_rest' => false,
-                    'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $a[3] ? 'read' : 'admin' ),
+                    'mcp' => array( 'public' => false, 'type' => 'tool',
+                        'surface' => $a[3] ? 'read' : 'admin',
+                        // Canonical Authorization owns the ticket claim and execute callback.
+                        'mad4b_governed_write_authority' => ! $a[3] ),
                     'annotations' => array( 'readonly' => $a[3], 'destructive' => ! $a[3], 'idempotent' => $a[3] ),
                 ),
             ) );
@@ -496,6 +499,10 @@ final class MAD4B_SCP_Selected_Head_Update {
         $s['required'][] = 'confirmation';
         $s['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' );
         $s['properties']['confirmation'] = array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) );
+        $s['properties']['_mad4b_approval_ticket_id'] = array(
+            'type' => 'string',
+            'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN,
+        );
         return $s;
     }
 }
