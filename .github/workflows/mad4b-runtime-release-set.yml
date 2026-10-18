@@ -67,6 +67,8 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-admin-environment-runtime.php
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json >/dev/null
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
+          python3 -m py_compile tools/mad4b-cross-plugin-package.py
 
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
 

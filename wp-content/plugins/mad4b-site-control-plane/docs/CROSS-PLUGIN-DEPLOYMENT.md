@@ -59,3 +59,20 @@ was typed or because a branch was found.
 - Only a separately approved ETG/ARE Staging canary and Production
   promotion acceptance can certify each installation path. Source checks alone
   are not sufficient.
+
+## Trusted artifact candidate builder
+
+The optional GitHub workflow `.github/workflows/mad4b-cross-plugin-candidate.yml`
+runs only from the trusted default master branch via explicit workflow_dispatch.
+Inputs are a reviewed source ID and an exact commit SHA; the target repository
+is resolved from the reviewed local registry, not a caller URL. The build
+checks out source with `persist-credentials: false`, `submodules: false` and
+does **not** execute any plugin code or its repository CI workflows.
+
+The deterministic ZIP builder checks the checkout SHA, plugin root/main header,
+symlinks and archive budgets, and creates reproducible ZIP bytes plus a
+SHA-256/file-manifest provenance receipt. The uploaded GitHub Actions artifact
+is **BUILT_PENDING_INDEPENDENT_REVIEW** only. An independent build review,
+certification profile, exact SHA/ZIP registration, Staging behavior test and
+separate Production promotion are still required to make it deployable.
+Do not equate a successful ZIP build with a deployment authorization.
