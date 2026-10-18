@@ -75,4 +75,55 @@ $GLOBALS['operating_mode'] = 'SINGLE_OWNER_HARDENED';
 $GLOBALS['options'][$cls::OPTION]['modes']['developer_lane'] = 'bypass_auth';
 $invalid = $cls::project( $hard, array() );
 expect( $invalid['degraded'] === $hard && ! $invalid['active_policy'], 'Invalid options must fail closed' );
-echo "OPTIONAL_GOVERNANCE: PASS (default, optional, core protection, invalid storage)\n";
+// Save-path regression: an append-only audit failure after the first-ever
+// persistence must remove the newly added option, not leave it half applied.
+function current_user_can( $capability ) { return 'manage_options' === $capability; }
+function check_admin_referer( $action ) { return true; }
+function wp_unslash( $value ) { return $value; }
+function wp_generate_uuid4() { return 'test-lease-token'; }
+function add_option( $name, $value, $unused = '', $autoload = false ) {
+    if ( array_key_exists( $name, $GLOBALS['options'] ) ) return false;
+    $GLOBALS['options'][$name] = $value;
+    return true;
+}
+function update_option( $name, $value, $autoload = false ) {
+    $GLOBALS['options'][$name] = $value;
+    return true;
+}
+function delete_option( $name ) { unset( $GLOBALS['options'][$name] ); return true; }
+function wp_die( $message, $title = '', $args = array() ) {
+    throw new RuntimeException( (string) $message );
+}
+final class MAD4B_SCP_Audit {
+    public static $count = 0;
+    public static function record( $event, array $summary, $status = 'ok' ) {
+        self::$count++;
+        return self::$count === 2 ? new WP_Error('mock_audit_failed', 'audit failed') : array( 'event'=>$event );
+    }
+}
+unset( $GLOBALS['options'][$cls::OPTION] );
+$empty = $cls::status();
+expect( $empty['valid'] && $empty['revision'] === 0, 'Test requires no previously saved policy' );
+$save_modes = array();
+foreach ( $empty['gates'] as $gate ) $save_modes[$gate['id']] = 'inherit';
+$_POST = array( 'revision'=>0, 'definitions_sha256'=>$empty['definitions_sha256'], 'modes'=>$save_modes );
+$save_blocked = false;
+try { $cls::save(); } catch ( RuntimeException $error ) {
+    $save_blocked = false !== strpos( $error->getMessage(), 'audit failed' )
+        || false !== strpos( $error->getMessage(), 'rollback' );
+}
+expect( $save_blocked && MAD4B_SCP_Audit::$count === 2,
+    'Failure after second audit must fail the save' );
+expect( ! array_key_exists( $cls::OPTION, $GLOBALS['options'] )
+    && ! array_key_exists( $cls::LOCK, $GLOBALS['options'] ),
+    'Failed first-save audit must roll back option and release lease' );
+// Stale-revision request must not change the store or append an audit event.
+$_POST['revision'] = 7;
+$stale_denied = false;
+try { $cls::save(); } catch ( RuntimeException $error ) {
+    $stale_denied = false !== strpos( $error->getMessage(), 'Options changed' );
+}
+expect( $stale_denied && MAD4B_SCP_Audit::$count === 2
+    && ! array_key_exists( $cls::OPTION, $GLOBALS['options'] ),
+    'Stale plan must be rejected without an audit or persistent mutation' );
+echo "OPTIONAL_GOVERNANCE: PASS (profile inheritance, dynamic scope, immutable gates, audit rollback, stale plan)\n";
