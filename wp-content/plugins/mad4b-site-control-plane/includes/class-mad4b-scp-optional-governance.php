@@ -11,7 +11,8 @@ final class MAD4B_SCP_Optional_Governance {
     const CATALOG = 'config/optional-governance-catalog.json';
     const CATALOG_CONTRACT = 'mad4b.optional-governance-catalog.v1';
     const OPTION = 'mad4b_scp_optional_governance_options_v1';
-    const SLUG = 'mad4b-optional-governance-options';
+    const PAGE_SLUG = 'mad4b-optional-governance-options';
+    const SLUG = self::PAGE_SLUG; // Backward-compatible public slug alias.
     const ACTION = 'mad4b_optional_governance_save';
     const LOCK = 'mad4b_scp_optional_governance_settings_lock_v1';
     private static $catalog = null;
@@ -36,7 +37,7 @@ final class MAD4B_SCP_Optional_Governance {
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'save' ) );
         add_action( 'wp_ajax_' . self::ACTION, array( __CLASS__, 'save_ajax' ) );
         if ( class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) {
-            MAD4B_SCP_Admin_Route_Registry::register( self::SLUG, 'manage_options' );
+            MAD4B_SCP_Admin_Route_Registry::register( self::PAGE_SLUG, 'manage_options' );
             MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 33 );
         }
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_read_ability' ), 39 );

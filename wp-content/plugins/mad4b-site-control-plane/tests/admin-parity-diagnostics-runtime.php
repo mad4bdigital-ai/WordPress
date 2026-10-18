@@ -13,7 +13,9 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-navigation-manifes
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-native-plugin-admin-menu.php';
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-admin-ui.php';
 $expected = MAD4B_SCP_Admin_Navigation_Manifest::menu_rows();
-if ( 20 !== count( $expected ) ) throw new RuntimeException( 'Manifest route count drift.' );
+if ( count( $expected ) < 21 ||
+    ! isset( $expected['mad4b-optional-governance-options'] ) )
+    throw new RuntimeException( 'Manifest lost mandatory routes or Options Control.' );
 MAD4B_SCP_Native_Plugin_Admin_Menu::register_menu();
 if ( count( $GLOBALS['native'] ) !== count( $expected ) ) throw new RuntimeException( 'Fast menu route drift.' );
 foreach ( array_values( $expected ) as $i => $row ) {

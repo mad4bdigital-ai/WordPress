@@ -76,3 +76,6 @@ PR #415 remains independently Draft. A source coexistence guard `tests/optional-
 
 ## Latest-head CI concurrency
 The dedicated `MAD4B Optional Governance Policy` workflow now has a PR-number-scoped concurrency group without SHA, with cancellation of superseded optional-policy workflow runs only. It does not touch protected Release Verdict, GitHub branch rules or other mandatory CI. GitHub Actions execution remains dependent on the runner/platform queue; this does not certify successful tests.
+
+## CI regression remediations — Spec hygiene and Admin parity
+Older exact-head CI runs revealed two genuine compatibility failures: workflow exact-head hygiene rejected the optional-policy CI checkout without an explicit PR HEAD ref, and Admin Performance rejected the new Options Control route because its class used `SLUG` rather than the standard `PAGE_SLUG` and the parity fixture still asserted a hardcoded pre-extension count of 20 routes. This change pins checkout to the exact PR SHA, retains `SLUG` as a compatibility alias, registers the route under `PAGE_SLUG`, and switches the parity test to enforce a minimum baseline plus presence of the required new route while still comparing every rendered menu row. No required test was disabled. The separate Release Verdict check still requires a real exact-head owner attestation.
