@@ -49,6 +49,8 @@ check(!$plan['eligible'] && empty($plan['native_executor'])
     && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true)
     && in_array('source_review_promotion_required',$plan['blockers'],true),
     'uncertified or unreviewed source offered as executable package');
+check(in_array('native_package_planner_unavailable', $plan['blockers'], true),
+    'Missing native Staging package planner must be a hard blocker' );
 check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
     'read-only planning claimed execution');
 $GLOBALS['wp_environment']='production';

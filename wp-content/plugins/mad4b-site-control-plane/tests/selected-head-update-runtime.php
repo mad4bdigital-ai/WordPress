@@ -31,6 +31,7 @@ $GLOBALS['case'] = isset( $argv[1] ) ? $argv[1] : 'normal';
 $head = str_repeat( 'a', 40 );
 $other = str_repeat( 'b', 40 );
 define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 if ( 'disabled' !== $GLOBALS['case'] ) {
     define( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED', true );
     define( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED', true );
@@ -140,6 +141,16 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-selected-head-updat
 $cls = 'MAD4B_SCP_Selected_Head_Update';
 $cls::boot();
 $cls::register_abilities();
+$apply_definition = $GLOBALS['registered'][ $cls::APPLY_ABILITY ] ?? array();
+$plan_definition = $GLOBALS['registered'][ $cls::PLAN_ABILITY ] ?? array();
+expect( true === ( $apply_definition['meta']['mcp']['mad4b_governed_write_authority'] ?? false )
+    && false === ( $plan_definition['meta']['mcp']['mad4b_governed_write_authority'] ?? true ),
+    'Selected HEAD must use canonical claimed write while Plan remains read-only' );
+expect( isset( $apply_definition['input_schema']['properties']['_mad4b_approval_ticket_id'] )
+    && ( $apply_definition['input_schema']['properties']['_mad4b_approval_ticket_id']['pattern'] ?? null )
+        === MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN
+    && false === ( $apply_definition['input_schema']['additionalProperties'] ?? true ),
+    'Selected HEAD owner approval ticket must be declared under strict schema' );
 expect( count( $GLOBALS['registered'] ) === 2, 'both plan/apply abilities must be explicitly registered' );
 expect( $GLOBALS['registered'][$cls::PLAN_ABILITY]['meta']['annotations']['readonly'] === true, 'plan must be read-only' );
 expect( $GLOBALS['registered'][$cls::APPLY_ABILITY]['meta']['mcp']['public'] === false, 'apply must not be public' );
