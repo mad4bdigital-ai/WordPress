@@ -58,7 +58,7 @@ class MAD4B_SCP_Agent_Registry {
     public static function exact_grant( $agent_id, $server, $ability, $provider = 'core' ) {
         if ( empty( $GLOBALS['hybrid_grant'] ) || 17 !== $agent_id || 'mad4b-read' !== $server
             || ! in_array( $provider, array( 'native_mcp_test-peer', 'hybrid_local' ), true )
-            || ! in_array( $ability, array( 'demo/inspect', 'demo/offline', 'demo/native-local' ), true ) )
+            || ! in_array( $ability, array( 'demo/inspect', 'demo/offline', 'demo/native-local', 'mad4b/native-mcp-catalog' ), true ) )
             return new WP_Error( 'no_exact_grant', 'Exact grant missing' );
         return array( 'effect' => 'allow' );
     }
@@ -366,6 +366,21 @@ $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
 mcp_check(is_wp_error($native_denied)
     && $native_denied->get_error_code() === 'mad4b_hybrid_read_snapshot_unacknowledged',
     'Hybrid read does not trigger native call without client-acknowledged catalog hash');
+mcp_new_request_epoch();
+$GLOBALS['hybrid_grant'] = false;
+$before_catalog_denial = count($GLOBALS['mcp_calls']);
+$catalog_denied = $hybrid::catalog('test-peer');
+mcp_check( is_wp_error($catalog_denied) && $catalog_denied->get_error_code() === 'mad4b_hybrid_exact_grant_required'
+    && count($GLOBALS['mcp_calls']) === $before_catalog_denial,
+    'Standalone MCP catalog requires an exact per-peer Agent grant BEFORE network IO' );
+$plan_denied = $hybrid::hybrid_plan(array('peer_id'=>'test-peer',
+    'ability'=>'demo/inspect', 'dimension'=>'read'));
+mcp_check( ! is_wp_error($plan_denied)
+    && $plan_denied['selected'] === ''
+    && $plan_denied['native_unavailable_reason'] === 'mad4b_hybrid_exact_grant_required'
+    && count($GLOBALS['mcp_calls']) === $before_catalog_denial,
+    'Hybrid planning cannot probe pinned remote provider without exact per-tool Grant' );
+$GLOBALS['hybrid_grant'] = true;
 $before_auth_rejection = count( $GLOBALS['mcp_calls'] );
 foreach ( array( 'expired' => 'mad4b_mcp_credential_invalid',
     'wrong-audience' => 'mad4b_mcp_credential_invalid',
