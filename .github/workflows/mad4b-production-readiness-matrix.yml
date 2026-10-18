@@ -1,0 +1,91 @@
+name: MAD4B Production Readiness Matrix
+
+on:
+  pull_request:
+    paths:
+      - 'governance/production-readiness/**'
+      - 'tools/production_readiness_matrix.py'
+      - '.github/workflows/mad4b-production-readiness-matrix.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/production-*.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
+      - 'specs/007-content-intelligence-workflow-platform/release-closure-readiness.json'
+  push:
+    branches: [master, 'develop/production-readiness-*']
+    paths:
+      - 'governance/production-readiness/**'
+      - 'tools/production_readiness_matrix.py'
+      - '.github/workflows/mad4b-production-readiness-matrix.yml'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/production-*.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
+      - 'specs/007-content-intelligence-workflow-platform/release-closure-readiness.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: mad4b-readiness-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  production-matrix-contract:
+    name: Production readiness matrix contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout identity
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          python3 --version
+      - name: Validate audit matrix and policy bindings
+        run: |
+          set -euo pipefail
+          python3 tools/production_readiness_matrix.py validate
+          python3 tools/production_readiness_matrix.py self-test
+      - name: Generate exact-head read-only evaluation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/production_readiness_matrix.py render \
+            --head-sha "$EXACT_HEAD" \
+            --repo "$GITHUB_REPOSITORY" \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/readiness.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Assert report is not Production authorization
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("artifacts/production-readiness/readiness.json").read_text())
+          assert p["contract"] == "mad4b.production-readiness-evaluation.v1"
+          assert p["decision"] == "NO-GO"
+          assert p["authorizing"] is False and p["mutation_performed"] is False
+          assert p["production_ready"] is False and p["production_authorized"] is False
+          assert p["totals"]["controls"] >= 170 and p["totals"]["domains"] >= 21
+          assert p["totals"]["production_stages"] >= 14
+          assert p["totals"]["feature_workstreams"] >= 23
+          assert p["historical_observations_non_authoritative"] is True
+          print("PRODUCTION_MATRIX_NON_AUTHORIZING: PASS")
+          PY
+      - name: Upload generated matrix reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mad4b-production-readiness-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/production-readiness/
+          retention-days: 30
+          if-no-files-found: warn

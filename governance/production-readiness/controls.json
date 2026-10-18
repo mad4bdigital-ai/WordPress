@@ -1,0 +1,3081 @@
+{
+  "contract": "mad4b.production-readiness-matrix-source.v1",
+  "authorizing": false,
+  "automated_promotion": false,
+  "description": "Editable audit control definitions copied from the 2026-10-18 checklist. Initial observations are historical and never authoritative runtime/production evidence.",
+  "source_kind": "user_reviewed_excel_snapshot",
+  "baseline_reference": {
+    "pr": 423,
+    "exact_head_at_original_review": "57a7a9e1fe75dd48f3e9f49797968fa2d492ddf8",
+    "date": "2026-10-18"
+  },
+  "evidence_rules": {
+    "missing_is_blocked": true,
+    "repository_ci_is_not_live_evidence": true,
+    "require_signed_live_receipt": true,
+    "owner_attestation_is_exact_head_bound": true,
+    "production_promotion_requires_separate_authorization": true
+  },
+  "controls": [
+    {
+      "id": "GOVERNANCE-01",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "تجميد Exact HEAD",
+      "acceptance": "مطابقة SHA للإصدار، ZIP، خطة النشر، التأمين والاختبارات قبل الترقية",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "GitHub SHA + release receipt",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-02",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "تمييز Ready عن Authorized",
+      "acceptance": "Production Ready لا تمنح Write أو صلاحية نشر تلقائيًا",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "signed promotion approval",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-03",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "PR #423 بلا إخفاقات",
+      "acceptance": "إغلاق فشل Spec Quality وPre-Staging وإعادة تشغيل Release Verdict على SHA النهائي",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "فشل CI",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "required 10 workflows",
+      "source": {
+        "url": "https://github.com/mad4bdigital-ai/WordPress/pull/423"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-04",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "اعتماد مالك للرأس النهائي",
+      "acceptance": "تعليق OWNER_ATTEST_SINGLE_OWNER من المالك لا يصبح صالحًا بعد أي Commit إضافي",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Exact GitHub owner comment",
+      "source": {
+        "url": "https://github.com/mad4bdigital-ai/WordPress/pull/423#issuecomment-6250713201"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-05",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "خطة إنتاج منفصلة عن Staging",
+      "acceptance": "التصريح لموقع Production محدد ولا يعاد استخدام تصريح Staging",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "production-promotion-attestation",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-06",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "لا تجاوز CI أو Breakglass",
+      "acceptance": "إثبات عدم استخدام تجاوز Branch protection أو Developer/Raw SQL خلال عملية الترقي",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-07",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "حدود Core مقابل Feature007",
+      "acceptance": "تعطيل الوحدات الاختيارية غير المعتمدة دون الإيحاء بإكمال الميزة كاملة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-08",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "مصفوفة المسؤوليات والاعتمادات",
+      "acceptance": "تسمية Release owner، security، operations، QA، الموقع والمسؤول عن rollback",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/docs/RELEASE-AND-OPERATOR-RUNBOOK.md"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "GOVERNANCE-09",
+      "domain": "الحوكمة وحدود نطاق الإصدار",
+      "title": "دليل مصدر/مدة صلاحية",
+      "acceptance": "أي دليل تجريبي أو قديم أو من رأس مختلف غير صالح لحسم Release Gate",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-01",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "تحميل ملف الإضافة الأساسي",
+      "acceptance": "تسجيل القنوات والـhooks دون Fatal أو تغييرات Database/Filesystem في GET read-only",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Real WP activation + request trace",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-02",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "تفعيل وتعطيل نظيفان",
+      "acceptance": "Activate/Deactivate والتعطل الجزئي لا يسقط الموقع ولا يحذف بيانات غير مصرح بها",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-03",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "صفحة Plugins السريعة",
+      "acceptance": "GET/HEAD plugins.php لا يسبب تهيئة كاملة أو Writes؛ إجراء update.php يبقى محكومًا",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-04",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "WordPress 6.9 فأحدث",
+      "acceptance": "اختبار نسخ WordPress المدعومة مقابل إضافة MCP Adapter المثبتة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-05",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "PHP 7.4 / 8.3 / 8.4 / 8.5",
+      "acceptance": "Lint + integration لكل إصدار مستهدف، مع 8.3/8.5 الفعليين عند الحاجة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "نجح اختبار مصدر",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Selected-head PHP matrix; Live pending",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-06",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "Bootstrap dependencies",
+      "acceptance": "عدم وجود missing require/class وعدم تضارب أسماء الفئات أو الـautoload",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-07",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "MU bootstrap وREST",
+      "acceptance": "لا تسجل Abilities أو MCP قبل اكتمال دورة wp_abilities_api_init",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/bootstrap/mad4b-mcp-adapter-mu-bootstrap.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-08",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "عدم تعطيل إضافات الموقع",
+      "acceptance": "تعارض plugin update/activation, Query Monitor, Elementor, WPML, JetEngine",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-09",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "Multisite / WP CLI / cron",
+      "acceptance": "سلوك موثق/محكوم في wp-admin وREST وCron وWP CLI؛ لا افتراض دعم بدون اختبارات",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-01",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "Site Profile exact identity",
+      "acceptance": "مراجعة site_uuid + canonical origin + revision + digest في Staging/Production",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-02",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "تطابق WP_ENVIRONMENT_TYPE",
+      "acceptance": "لا تعتبر Production = Staging بسبب Site Profile أو مُدخل مُرسِل",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-03",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "SiteURL/HomeURL parity",
+      "acceptance": "Site URL وHome URL وHost proxy canonical URLs متطابقة مع التسجيل الفعلي",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-04",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "Clone protection",
+      "acceptance": "نسخة staging/production لا تتشارك نفس هوية الموقع أو تخدع التواقيع",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-05",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "حماية التفعيل الأول",
+      "acceptance": "انقطاع إعداد Site Profile ينتج تشخيصًا غير منفذ، لا Write bootstrap غير محكوم",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-06",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "الربط بعد الاستعادة",
+      "acceptance": "تغيير Restore Epoch يؤدي إلى إعادة تحقق من هوية الموقع وصلاحيات NHI",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "IDENTITY-07",
+      "domain": "هوية الموقع والبيئة والتسجيل",
+      "title": "Production activation independent",
+      "acceptance": "لا يتحول Production writer من read-only إلى Write بمجرد تغيير ملف إعداد",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-01",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "OAuth discovery/JWKS",
+      "acceptance": "issuer/audience/expiry/nonce/PKCE والسلاسل المسؤولة مستقلة ومتحقق منها",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-02",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "Single App مع scope محدود",
+      "acceptance": "نفس app policy، grant واضح ومحدود، offline access/step-up عند اللزوم",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-03",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "تطابق Client وToken",
+      "acceptance": "إسناد Bearer لأصل ومستخدم وClient وAgent معلومين؛ عدم قبول Tokens من عميل آخر",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-04",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "Step-up على عمليات Apply",
+      "acceptance": "لا تكفي جلسة Admin دون scope أو عامل Step-up مطلوب",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-05",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "Enrolled owner",
+      "acceptance": "User id والقدرات manage_options/update_plugins مطابقتان للسياق",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-06",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "NHI least-privilege Grants",
+      "acceptance": "Exact agent+peer+server+ability+provider grant قبل أي اتصال أو تغيير",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-agent-registry.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-07",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "تقييد Breakglass",
+      "acceptance": "Breakglass منفصل وخارج نطاق النشر؛ لا Raw SQL أو shell عامة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-08",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "عدم تسريب Secrets",
+      "acceptance": "Logs/Telemetry/Browser/Crash لا تكشف bearer أو keys أو request credentials",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OAUTH-09",
+      "domain": "OAuth وNHI والتصريح المحكوم",
+      "title": "دورة إبطال مفاتيح وتوكنات",
+      "acceptance": "Revocation/refresh/key rotation تتوقف آمنًا عند فقد الاتصال أو تغيير الإصدار",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-01",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "UUIDv4 canonical Ticket",
+      "acceptance": "التذكرة مقبولة ضمن المخطط، من مصدر موثوق، وبهوية UUID معيارية",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-02",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Claim مرة واحدة",
+      "acceptance": "Approved -> executing فقط مرة واحدة؛ لا يمكن replay ولا إعادة المطالبة داخل callback",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-03",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Exact input hash/target",
+      "acceptance": "الربط بـpayload+target+version+profile+agent+scope على مدخلات العملية الأصلية",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-04",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Selected-Head claimed apply",
+      "acceptance": "الدالة تستدعى داخل WordPress Ability fenced، لا PHP مباشر",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "WordPress WP_Ability::execute + DB receipt",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-05",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Optional Governance claimed apply",
+      "acceptance": "تذكرة مجازة واحدة، والمخطط يقبل metadata دون تخزينه مع تفضيلات المستخدم",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-06",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Recheck بعد تنزيل ZIP",
+      "acceptance": "فحص Step-up/site/owner/source الجديد دون Re-authorize للتذكرة المستهلكة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-07",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "Revocation/timeout/race",
+      "acceptance": "اختبار انقضاء الموافقة وتغير الـrevision والالتزام ومطالبتين متزامنتين",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-08",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "لا blind retry بعد uncertainty",
+      "acceptance": "Pending/ambiguous execution يحتاج reconciliation/readback بدل إعادة التثبيت",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "TICKETS-09",
+      "domain": "تذاكر الاعتماد وإعادة التشغيل",
+      "title": "حدود impact/provenance",
+      "acceptance": "ثبت أن أي تعديل جانبي مشروط بالترخيص نفسه والموارد نفسها",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-impact-binding.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-01",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Execution Fence per request",
+      "acceptance": "فشل مغلق إن لم تبدأ boundary canonical أو اختلف callback identity",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-fence.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-02",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Final admission/Commit guard",
+      "acceptance": "فحص identity/Grant/policy عند نقطة Commit، لا بعد توليد الخطة فقط",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-03",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Durable journal",
+      "acceptance": "الخطة والموافقة والتطبيق/التعويض موثقة بمعرفات واحدة ودائمة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-04",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Transaction / DB topology",
+      "acceptance": "نفس الكاتب ومعاملات القاعدة، وعدم استخدام schema ناقصة لإجراء Apply",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-05",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Optimistic concurrency",
+      "acceptance": "ETag/Revision/Source SHA وTarget fingerprint تمنع فقد تغييرات طرف آخر",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-execution-commit-guard.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-06",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "Crash & retry semantics",
+      "acceptance": "انقطاع بعد Apply وقبل Receipt يؤدي إلى reconcile ولا يسمح بنتيجة غير مؤكدة Pass",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/replay-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-07",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "ثبات النتائج بعد التنفيذ",
+      "acceptance": "Postcondition/readback مستقلان وقابلان للمقارنة ومربوطان بالعملية",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-08",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "compensation والـrollback",
+      "acceptance": "محاكاة partial write/failure ومطابقة استعادة الحالة/الملفات",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-restore-epoch.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "EXECUTION-09",
+      "domain": "التنفيذ والاتساق والعزل",
+      "title": "الميزانية وحدود الوقت",
+      "acceptance": "Timeout/budget/rate limits قبل side effect، ولا silent infinite loops",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-01",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "Release root provenance",
+      "acceptance": "التمييز بين signed master channel وselected-head Staging channel",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-02",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "ZIP exact SHA/size",
+      "acceptance": "SHA256 وbyte count وملفات الزيب قبل التثبيت وبعده",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-03",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "مراجعة manifests",
+      "acceptance": "CANONICAL-PACKAGE-RECEIPT/build fingerprint/install manifest متطابقة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-04",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "Selected-Head branch moves",
+      "acceptance": "رفض نقل branch/PR عند تغير resolved SHA بين التخطيط والتنزيل",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-selected-head-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-05",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "رفض archive traversal/symlinks",
+      "acceptance": "فحص paths & ZIP contents and source packages قبل فك الأرشيف",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-06",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "التثبيت الذري والحماية",
+      "acceptance": "Backup -> atomic replace -> readback -> rollback بجلسة محكومة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-07",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "توافق Control Plane+MCP Adapter",
+      "acceptance": "0.7.0 target مع transition 0.6.1 فقط بشهادة زوج إصدارات",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-08",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "زر Update والـPopup",
+      "acceptance": "Review certified update؛ لا زر Update Now غير محكوم في صفحة Plugins",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-popup.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-09",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "منع auto-update Production",
+      "acceptance": "لا تتحول Scheduled/WP-Cron events إلى Production mutation",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "UPDATES-10",
+      "domain": "المصدر وسلسلة التوريد والتحديث",
+      "title": "قناة rollback وصلاحية الاحتفاظ",
+      "acceptance": "إثبات artifact retention وملفات الاسترجاع وقابلية الاستعادة على staging",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-01",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "Registry allowlist",
+      "acceptance": "لا يُقبل Repo خارجي أو URL مُدخل دون source review معتمد",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-02",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "ETG bridge certified ZIP",
+      "acceptance": "الحالة الحالية pending وartifact_sha256 فارغة؛ يمنع التثبيت",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "محجوب بالمصدر",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-03",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "Native package planner availability",
+      "acceptance": "غياب MAD4B_SCP_Plugin_Package أو plan invalid = Blocker",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار CI",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-04",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "مصادقة commit/repository",
+      "acceptance": "Source resolved SHA/cert_sha والصورة الأصلية متطابقة",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-05",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "ثبت dependency/plugin_file",
+      "acceptance": "اسم الإضافة وprovider_id وplugin_directory ليست قابلة للتلاعب",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-06",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "انفصال Plan/Apply",
+      "acceptance": "لا يحدث تثبيت/تفعيل من استعراض المصدر أو popup read request",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-07",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "Production separate promotion",
+      "acceptance": "لا تكفي شهادة Staging لتثبيت الإضافة على Production",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "CROSSPLUGIN-08",
+      "domain": "النشر من مستودعات وإضافات أخرى",
+      "title": "اختبار إضافة غير مثبتة",
+      "acceptance": "Dry run install -> backup -> activate -> verify -> rollback",
+      "priority": "P0",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-01",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Abilities catalogue parity",
+      "acceptance": "كل Ability يظهر في WordPress والمخدم/Client ضمن Grant المعتمد",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-registration-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-02",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "إعداد MCP Adapter",
+      "acceptance": "Runtime Adapter 0.7.0 + protocol compatibility بدون نسختين متعارضتين",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/runtime-release-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-03",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Session management",
+      "acceptance": "تدفق initialize/tools/list/tools/call وstreamable HTTP/legacy",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-04",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Read discovery pre-grant",
+      "acceptance": "لا استدعاء خارجي قبل Agent+Peer+Tool Grant",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-05",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "MCP read-only proof",
+      "acceptance": "read annotations وschema/callback hash/read behavior لا تحل محل authorization",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-06",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Malicious/invalid envelope",
+      "acceptance": "رفض mixed error/result, duplicate id, invalid JSONRPC، وتحديث Circuit Breaker",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار CI",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-07",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Timeout/transport backoff",
+      "acceptance": "2xx malformed, 429, 5xx, network fail وتصنيف catalog مقابل read",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-health.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-08",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "No automatic replay of mutation",
+      "acceptance": "غياب تنفيذ مكرر بعد reconnect/session loss",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-09",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Credentials egress",
+      "acceptance": "Pinned HTTPS, SSRF protection, no redirects/transport downgrade",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "MCP-10",
+      "domain": "WordPress Abilities وMCP Remote",
+      "title": "Fail-closed isolation",
+      "acceptance": "تعطل Provider لا يفتح كتابة أو يُسقط صلاحيات بقية Providers",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-01",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Discovery vs Authority",
+      "acceptance": "الاكتشاف لا يمنح capability فعلية ولا Write",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-02",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Class trust allowlist",
+      "acceptance": "فئة Adapter من الحزمة المعتمدة فقط؛ unknown plugin read-only",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-03",
+      "domain": "Adapters وProvider compatibility",
+      "title": "External source SHA",
+      "acceptance": "PHP source tree والكود المنفذ لا يتغيران خلال التصديق",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-adapter-trust.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-04",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Cumulative PHP hash budget",
+      "acceptance": "128 MiB و4096 PHP file كحدود قصوى وعدم استخدام Cache غير مأمون",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار CI",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-adapter-trust.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-05",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Provider certification exact version",
+      "acceptance": "الـZIP ومكتبة الموفر والإصدارات المقاسة تطابق الواقع",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-06",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Elementor/JetEngine/Jetsmartfilters",
+      "acceptance": "اختبارات negative + read/write guarded fallback دون كسر التوافق",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-07",
+      "domain": "Adapters وProvider compatibility",
+      "title": "WPML/RankMath/FluentForms",
+      "acceptance": "اختبار الفئات والقراءات والتعديلات بعد التحديث",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-08",
+      "domain": "Adapters وProvider compatibility",
+      "title": "WooCommerce & other providers",
+      "acceptance": "اعتماد لكل موفر مطلوب فقط، والبقية disabled safe",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-09",
+      "domain": "Adapters وProvider compatibility",
+      "title": "بيانات اعتماد الموفر",
+      "acceptance": "لا كشف للـpassword/Token في Logs أو Audit، وشهادة revocation",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-execution-binding.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PROVIDERS-10",
+      "domain": "Adapters وProvider compatibility",
+      "title": "Provider health ring / circuit",
+      "acceptance": "اختبار disabled/revoked/slow/down/return malformed بدون تغيير صلاحيات",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-circuit-breaker.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-01",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Action Center غير منفذ افتراضيًا",
+      "acceptance": "فتح الصفحة لا ينفذ Recovery ولا Provider discovery مكلف",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-02",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Admin/MCP state parity",
+      "acceptance": "Available, Needs Review, Not Authorized, Blocked, Verified متسقة",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-remote-parity.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-03",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Plugins popup source selection",
+      "acceptance": "زر Update يعرض مراجعة المصدر من دون direct install",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-popup.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-04",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Nonces/CSRF/Capabilities",
+      "acceptance": "اختبارات GET/POST/AJAX + forged success/nonce/role denial",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-05",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "XSS/DOM injection",
+      "acceptance": "Escaping HTML/JS/Attribute/URL على كل شاشة مستخدم",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-06",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "RTL Arabic + keyboard",
+      "acceptance": "العربية وRTL والتباين والتنقل/التركيز والـscreen reader",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/assets/admin-workspace.css"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-07",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Offline/timeout UX",
+      "acceptance": "الخطأ يقود إلى إجراءات تشخيص وتأكيد، لا success مزيف",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ADMIN-08",
+      "domain": "لوحة التحكم والـPopup وتجربة المسؤول",
+      "title": "Mobile admin/browser parity",
+      "acceptance": "المودالات والتصفح وتغيير التبويبات على جهاز صغير",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/assets/plugin-update-dialog.js"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-01",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "Browser harness مستقل",
+      "acceptance": "Playwright/Browser harness على الموقع المثبت وليس stub داخل CI",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-02",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "Admin page navigation",
+      "acceptance": "فحص انتقالات التبويبات والـdeep links والـ404 والصلاحيات",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-03",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "AJAX parity",
+      "acceptance": "نتائج/عناصر page=Ajax وnonAjax متطابقة على نفس Identity",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-04",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "No mutation on read",
+      "acceptance": "فحص GET pages وMCP catalog لا يغير options/posts/db",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-05",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "Visual regression + RTL",
+      "acceptance": "التغيرات لا تخفي عناصر Popup ولا تصل إلى الواجهة تحت role أقل",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "BROWSER-06",
+      "domain": "قبول المتصفح والتجربة الحية",
+      "title": "Browser real session safety",
+      "acceptance": "إنهاء الجلسات وإبطال nonce وCSRF tests على Staging",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-01",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "WPML locale contexts",
+      "acceptance": "مقارنة مصادر الترجمة ومواقع hreflang لكل لغة",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-wpml-response-contract.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-02",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "Canonical/Meta SEO",
+      "acceptance": "RankMath وcanonical وrobots وstructured schema قراءةً ونشرًا",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g5-seo-provider-families.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-03",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "ETG listing identity",
+      "acceptance": "data-post-id, result count, filter title/intro/image والمصادر المعتمدة",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-04",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "AJAX results and pagination",
+      "acceptance": "فلترة multiple taxonomies وتطابق النتائج مع canonical view",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-hybrid-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-05",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "SEO no auto publish",
+      "acceptance": "تفعيل SEO content publication يتطلب جاهزية منفصلة",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "LOCALIZATION-06",
+      "domain": "الترجمة وSEO والفلترة",
+      "title": "إصدارات WPML/SEO الحالية",
+      "acceptance": "فحص توافق الإصدارات الحية والتغييرات قبل إصدار Production",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/certified-provider-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-01",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "WP-Cron schedule readiness",
+      "acceptance": "تشغيل الخلفية في الوقت المحدد، بدون تضخم مجدول أو تنفيذ مكرر",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-cron-acceptance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-02",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "Worker locks/leasing",
+      "acceptance": "Lease heartbeat/fencing/TTL/reclaim لا يُسقط مستخدمين نشطين",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-managed-skills-lease.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-03",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "DLQ/retries/uncertain",
+      "acceptance": "Dead letter queue مع replay idempotency وحظر blind retry",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-04",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "Skills exact-build reconciliation",
+      "acceptance": "Seed/provider certificates تطابق build المثبت بعد تحديث أو Restore",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-05",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "Queue backpressure",
+      "acceptance": "اختبار congestion/worker loss/concurrency تحت ضغط مع thresholds",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-scheduler-backlog.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-06",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "BitFlows provider gating",
+      "acceptance": "لا تنفيذ عبر Provider غير معتمد؛ external automation mechanics only",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AUTOMATION-07",
+      "domain": "WP-Cron وQueues وManaged Skills",
+      "title": "Cron never Production promotion",
+      "acceptance": "background cannot widen Site Profile/production authorization",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-01",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "Source-to-plan lineage",
+      "acceptance": "Research/SERP/Scrape inputs مربوطة بالمصدر والوقت والترخيص",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-02",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "Brand Core & authors",
+      "acceptance": "تأكيد Tone/Editorial/Knowledge وحقوق المصنفات قبل النشر",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-03",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "Draft not publish",
+      "acceptance": "AI يولد draft، والنشر عبر human approval المحدد",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-04",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "Media safe ingestion",
+      "acceptance": "mime/magic/size/media provenance/alt SEO بدون arbitrary URL/path",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/egress-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-05",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "SEO/provider publication gating",
+      "acceptance": "لا نشر إذا WPML/RankMath/Browser أو Content QA غير مصدقة",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-06",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "AI output review & privacy",
+      "acceptance": "حظر PII/leak/copyright issues مع content QA audit",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-data-governance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "AI-07",
+      "domain": "Content Intelligence وWorkflows",
+      "title": "Workflow rollback",
+      "acceptance": "تعويض create/update وملفات media بعد فشل partial",
+      "priority": "P1",
+      "release_scope": "Optional",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-01",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Security baseline",
+      "acceptance": "vulnerability scan، تحديث التبعيات، وفحص Security Pack رسمي قبل الإنتاج",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-security-diagnostics.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-02",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Audit immutable/tamper",
+      "acceptance": "توقيعات الأحداث وربط المستخدم والأصل والـactor/time",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit-integrity.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-03",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Security diagnostics read scope",
+      "acceptance": "فحص ملفات/DB read-only لا يكشف secrets أو يقرأ مسارات غير مصرح بها",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-security-diagnostics.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-04",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "File tamper & code integrity",
+      "acceptance": "Hash manifest والملفات الحرجة بعد كل إصدار",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-security-forensics.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-05",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Input validation all operations",
+      "acceptance": "Schemas/Nonces/Allowlist/SSRF/Path traversal وunsafe serialization",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-06",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Abuse budget & throttling",
+      "acceptance": "Bruteforce, request floods, excessive tasks/provider rate limits",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/abuse-budget.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-07",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Incident runbook",
+      "acceptance": "إجراءات احتواء الأثر، أدلة الإثبات، restoration/rotation",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-security-forensics.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-08",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Key lifecycle",
+      "acceptance": "RS256/RS512 rotation, revocation, overlap وstorage separation",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/crypto-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "SECURITY-09",
+      "domain": "Security & Forensics وPrivacy",
+      "title": "Security plugins integration",
+      "acceptance": "Wordfence/WPVulnerability/Activity Log اختيارية دون سلطة تغير قواعد MAD4B",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/security-operational-providers.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-01",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Governance DB schema exact",
+      "acceptance": "متطلبات الجداول والـindexes والـprivileges على Production فعلًا لا مجرد ملفات",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-02",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Runtime DB topology",
+      "acceptance": "writer topology same-writer evidence وعدم الانزلاق إلى DB بديلة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-database-topology.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-03",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Schema migration idempotency",
+      "acceptance": "Repeated activation/upgrade لا تعيد DDL بشكل غير آمن",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-04",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Backup-before-DDL",
+      "acceptance": "تطبيق schema migrations آمن قابل للرجوع، ولا prod DDL دون إذن",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-schema-lifecycle.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-05",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "WP Core data model parity",
+      "acceptance": "Posts/options/users + multi-owner record identity تحفظ صلاحيات WordPress",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/operating-model-contracts.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-06",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Data retention/cleanup",
+      "acceptance": "حذف سجلات/أسرار/زمن احتفاظ حوكمة مع Decommission منفصل",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "DATABASE-07",
+      "domain": "Schema / DB / Data Lifecycle",
+      "title": "Fail-closed persistence",
+      "acceptance": "DB error لا يتحول نجاحًا وهميًا ولا يفقد سجل التنفيذ",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-01",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Frontend server elapsed",
+      "acceptance": "3 عينات حية على الأقل، كل عينة ضمن ميزانية زمن الخادم المصرح بها",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-02",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Frontend DB queries",
+      "acceptance": "عدد الاستعلامات ضمن 100 استعلام وفق الميزانية المعتمدة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-03",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Frontend peak memory",
+      "acceptance": "الذروة ضمن 128 MiB للميزانية المعتمدة على الموقع",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-04",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Admin bootstrap overhead",
+      "acceptance": "وقت GET plugins.php وwp-admin مع إضافة MAD4B مقابل baseline",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-05",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "SLO p95 stages",
+      "acceptance": "p95 عبر auth/discovery/provider/readback مقابل ملفات SLO",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-06",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Heavy provider load",
+      "acceptance": "اختبارات concurrent RPC/DB/site requests، isolation ومراقبة backpressure",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-07",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "PHP source tree scan bound",
+      "acceptance": "اختبار 128 MiB aggregate / 4096 files وأن المصدر يتغير يلغى trust",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار CI",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-adapter-trust.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-08",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Query Monitor regression",
+      "acceptance": "0 warnings/errors MAD4B + مراجعة slow queries في نوافذ ملائمة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PERFORMANCE-09",
+      "domain": "الأداء والذاكرة والسجلات",
+      "title": "Cache freshness semantics",
+      "acceptance": "لا Cache على حساب source SHA/authorization/state، TTL واضح",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-01",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Protected backup receipt",
+      "acceptance": "دليل backup يشمل code/db/options وموقع التخزين وتواقيع",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-02",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Restore drill",
+      "acceptance": "تشغيل استعادة Staging فعلية واختبار login/Abilities/db بعد الاستعادة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-03",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Out-of-band recovery",
+      "acceptance": "إمكانية recovery حتى عند تعطل Plugin وMCP الداخلي",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-04",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Rollback exact package",
+      "acceptance": "الرجوع إلى ZIP السابق وReadback في نفس cycle مع lease",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-05",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Ambiguous write recovery",
+      "acceptance": "Reconcile operation journal بدل Blind Retry بعد network loss",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operation-journal.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-06",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "Decommission & portability",
+      "acceptance": "تصدير واسترجاع context/config والدلائل والسلطات وإبطال credentials",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-decommission-governance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "RECOVERY-07",
+      "domain": "Backup، الاسترجاع، Decommission",
+      "title": "RTO/RPO rehearsal",
+      "acceptance": "تسجيل زمن التعافي وفقد البيانات المقبول مع مسؤوليات واضحة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/docs/RELEASE-AND-OPERATOR-RUNBOOK.md"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-01",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Operations SLO dashboard",
+      "acceptance": "p95/error/availability + burn-rate windows مع تنبيهات تنفيذية",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-02",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Trace correlation",
+      "acceptance": "Correlation ID ل plan->authorization->claim->apply->verify",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-03",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Redaction & low-cardinality",
+      "acceptance": "عدم الاحتفاظ بمدخلات حساسة أو Bearer، مع limit/tenant hashed",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/observability-slo-profiles.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-04",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Alerts false-positive handling",
+      "acceptance": "التنبيهات Advisory منفصلة عن صلاحيات عمليات Write",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-05",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Operator Doctor",
+      "acceptance": "تشخيص أسباب التعطل وإجراءات علاج منفصلة عن Execution",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "OBSERVABILITY-06",
+      "domain": "المراقبة والاستجابة للحوادث",
+      "title": "Log retention/incident exports",
+      "acceptance": "تحديد مدة حفظ واسترجاع السجلات، وفصل قراءات الحوادث عن الأسرار",
+      "priority": "P1",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-audit-integrity.php"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-01",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Staging parity installation",
+      "acceptance": "نفس SHA/version/adapter/dependencies ومنبع الإعداد المستهدف",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-02",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Canary request/receipt",
+      "acceptance": "إجراء Write عكسي واحد على staging؛ readback/undo مرتين",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-03",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Production dry-run",
+      "acceptance": "Preflight read-only على هوية Production الفعلية، بلا أي mutation",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-04",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Separate production promotion",
+      "acceptance": "إثبات signed source/version/staging proof/owner approval",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-05",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Freeze during rollout",
+      "acceptance": "منع انتقال HEAD/PR/Artifact وتهيئة مواقع غير مشمولة",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/docs/RELEASE-AND-OPERATOR-RUNBOOK.md"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-06",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Blue/green or rollback window",
+      "acceptance": "خطة backout واحتمال توقف اتصالات REST/MCP خلال تحديث الملفات",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/docs/RELEASE-AND-OPERATOR-RUNBOOK.md"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-07",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Post-activation readback",
+      "acceptance": "نسخة/sha/DB/provider/widget/routes/cron متطابقة فور التفعيل",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/config/staging-deployment-handoff.json"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "ROLLOUT-08",
+      "domain": "ترقية Production وخطة الطرح",
+      "title": "Stakeholder release sign-off",
+      "acceptance": "اعتماد QA/Security/Ops ومالك الموقع مع سجلات التسليم",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging + Production",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Release / Site owner",
+      "evidence_requirement": "Readback حي + سجل مستقل",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/docs/RELEASE-AND-OPERATOR-RUNBOOK.md"
+      },
+      "reviewer_note": null,
+      "evidence_url": null,
+      "original_review_date": "2026-10-18"
+    }
+  ]
+}
