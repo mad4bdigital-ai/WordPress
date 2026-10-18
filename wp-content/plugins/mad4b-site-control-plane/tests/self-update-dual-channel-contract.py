@@ -60,7 +60,7 @@ required_self_update = [
     "manifest_unavailable",
     "policy_blocked",
     "native_update_environment_policy_blocked",
-    "Check for updates",
+    "Check MAD4B updates",
     "'ui_state' =>",
     "'ui_blockers' =>",
     "handle_native_update",
@@ -109,6 +109,24 @@ required_self_update = [
 for marker in required_self_update:
     if marker not in self_update:
         raise SystemExit(f"missing dual-channel self-update invariant: {marker}")
+
+# Plugin row remains navigation-only, while the nonce-protected refresh form
+# lives on the fully bootstrapped Runtime Update page. Insist on BOTH surfaces:
+# do not restore nested forms inside WordPress's Plugins bulk-action form.
+runtime_update_admin = (root / "includes" / "class-mad4b-scp-runtime-components-admin-ui.php").read_text(encoding="utf-8")
+native_popup = (root / "includes" / "class-mad4b-scp-plugin-update-popup.php").read_text(encoding="utf-8")
+for marker in ("Check for updates", "mad4b_control_plane_refresh_update",
+               "wp_nonce_field( 'mad4b_control_plane_refresh_update' )"):
+    if marker not in runtime_update_admin:
+        raise SystemExit(f"missing runtime maintenance refresh UI invariant: {marker}")
+for marker in ("admin_footer-plugins.php", "plugin_action_links",
+               "mad4b_control_plane_refresh_update",
+               "wp_nonce_field( 'mad4b_control_plane_refresh_update' )"):
+    if marker not in native_popup:
+        raise SystemExit(f"missing native Plugins popup refresh invariant: {marker}")
+if "<form" in self_update.split("private static function native_update_action_link", 1)[1].split(
+        "private static function native_update_ui_state", 1)[0]:
+    raise SystemExit("nested form reintroduced in native Plugins action link")
 
 
 # Bootstrap self-update is a narrow circular-dependency breaker, not a general

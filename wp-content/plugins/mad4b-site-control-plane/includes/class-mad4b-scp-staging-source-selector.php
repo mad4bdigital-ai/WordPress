@@ -43,10 +43,18 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		if ( ! in_array( $repo, self::allowed_repositories(), true ) ) {
 			return self::reject( 'repository_denied', 'Staging source repository is not host-allowlisted.' );
 		}
-		if ( ! in_array( $type, array( 'pull_request', 'branch', 'commit' ), true ) ) {
+		if ( ! in_array( $type, array( 'pull_request', 'branch', 'commit', 'branch_commit' ), true ) ) {
 			return self::reject( 'type_invalid', 'Staging source type is unsupported.' );
 		}
-		if ( 'pull_request' === $type ) {
+		if ( 'branch_commit' === $type ) {
+            if ( strlen( $reference ) > 161 || ! preg_match( '/^(.+)@([a-f0-9]{40})$/D', $reference, $pair ) )
+                return self::reject( 'reference_invalid', 'Branch and exact commit SHA must be joined with @.' );
+            // Reuse the original hardened branch validation.
+            $branch_validated = self::normalize( array(
+                'repository' => $repo, 'type' => 'branch', 'reference' => $pair[1]
+            ) );
+            if ( is_wp_error( $branch_validated ) ) return $branch_validated;
+        } elseif ( 'pull_request' === $type ) {
 			if ( ! preg_match( '/^[1-9][0-9]{0,8}$/D', $reference ) ) return self::reject( 'reference_invalid', 'Invalid PR reference.' );
 		} elseif ( 'commit' === $type ) {
 			if ( ! preg_match( '/^[a-f0-9]{40}$/D', $reference ) ) return self::reject( 'reference_invalid', 'Commit reference must be exact lowercase SHA-1.' );
@@ -72,7 +80,10 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		$repo = $source['repository'];
 		$reference = $source['reference'];
 		$type = $source['type'];
-		if ( 'pull_request' === $type ) {
+		if ( 'branch_commit' === $type ) {
+            $pair = explode( '@', $reference, 2 );
+            $path = '/compare/' . $pair[1] . '...' . rawurlencode( $pair[0] );
+        } elseif ( 'pull_request' === $type ) {
 			$path = '/pulls/' . $reference;
 		} elseif ( 'branch' === $type ) {
 			$path = '/branches/' . rawurlencode( $reference );
@@ -97,7 +108,19 @@ final class MAD4B_SCP_Staging_Source_Selector {
 		if ( ! is_string( $raw ) || strlen( $raw ) > 262144 ) return self::reject( 'response_invalid', 'Source resolution response is invalid.' );
 		$data = json_decode( $raw, true );
 		if ( ! is_array( $data ) ) return self::reject( 'response_invalid', 'Source resolution did not return a JSON object.' );
-		if ( 'pull_request' === $type ) {
+		if ( 'branch_commit' === $type ) {
+            $pair = explode( '@', $reference, 2 );
+            $selected_sha = $pair[1];
+            $ancestor = (string) ( $data['merge_base_commit']['sha'] ?? '' );
+            $base = (string) ( $data['base_commit']['sha'] ?? '' );
+            $branch_head = (string) ( $data['head_commit']['sha'] ?? '' );
+            if ( ! in_array( $data['status'] ?? '', array( 'ahead', 'identical' ), true )
+                || ! hash_equals( $selected_sha, $base )
+                || ! hash_equals( $selected_sha, $ancestor )
+                || 1 !== preg_match( '/^[a-f0-9]{40}$/D', $branch_head ) )
+                return self::reject( 'branch_commit_not_reachable', 'Selected commit is not verified as an ancestor of this branch.' );
+            $sha = $selected_sha;
+        } elseif ( 'pull_request' === $type ) {
 			$head = isset( $data['head'] ) && is_array( $data['head'] ) ? $data['head'] : array();
 			$head_repo = isset( $head['repo']['full_name'] ) ? (string) $head['repo']['full_name'] : '';
 			if ( 'open' !== ( isset( $data['state'] ) ? $data['state'] : '' )
@@ -119,6 +142,8 @@ final class MAD4B_SCP_Staging_Source_Selector {
 			'type' => $type,
 			'reference' => $reference,
 			'resolved_sha' => $sha,
+            'source_branch' => 'branch_commit' === $type ? $pair[0] : ( 'branch' === $type ? $reference : '' ),
+            'branch_head_sha' => 'branch_commit' === $type ? $branch_head : ( 'branch' === $type ? $sha : '' ),
 			'remote_verified' => true,
 			'authorizing' => false,
 			'mutation_performed' => false,

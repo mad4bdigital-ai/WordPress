@@ -59,6 +59,12 @@ if ( function_exists( 'is_admin' ) && is_admin()
     // runtime on native plugin-management GET/HEAD requests.
     require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-plugin-admin-menu.php';
     MAD4B_SCP_Native_Plugin_Admin_Menu::boot();
+    // Register a source-only Plugins row review dialog before the fastpath return.
+    // No network, grants or Control Plane runtime are booted on GET/HEAD.
+    if ( 'plugins.php' === $mad4b_native_plugin_page ) {
+        require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-update-popup.php';
+        MAD4B_SCP_Plugin_Update_Popup::boot();
+    }
     return;
 }
 unset( $mad4b_native_plugin_page, $mad4b_native_plugin_method, $mad4b_native_plugin_has_action );

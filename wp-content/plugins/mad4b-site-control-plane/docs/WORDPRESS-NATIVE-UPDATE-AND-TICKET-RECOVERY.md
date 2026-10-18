@@ -1,6 +1,6 @@
 # WordPress-native update and ticket recovery — rc.99
 
-This update extends the existing verified release channel in the WordPress Plugins screen. **Check for updates** is a nonce-protected POST and resolves the signed immutable release pointer; **Update now** uses the existing verified-archive, maintenance-lease, backup/readback/rollback coordinator. No arbitrary WordPress.org update transient or automatic core-update enrollment is added.
+This update extends the existing verified release channel in the WordPress Plugins screen. **Check MAD4B updates** is a safe link from `wp-admin/plugins.php` to **Runtime Components → Runtime Update**, which owns a standalone, nonce-protected **Check for updates** POST. This avoids invalid nested forms inside WordPress' plugin bulk-action form. The check is read-only and requires administrator visibility, not the `update_plugins` mutation capability. Verified update notices link back to the certified runtime update screen; installation still requires `update_plugins` and the existing exact pair/provenance, maintenance, readback and rollback gates. No arbitrary WordPress.org update transient or automatic core-update enrollment is added.
 
 ## First-time host binding after upgrading an active plugin
 
@@ -23,3 +23,17 @@ Tests: deployment-binding-wordpress-update-runtime.php (wrong context, missing n
 Live Staging must separately demonstrate: actual WordPress-update UX, pending ticket creation and authorized approval, independent binding readback, re-planned Write, Context onboarding and browser acceptance. A successful local test is not real MCP client registration or a Production release decision.
 
 **No change to Production authorization, Developer, Breakglass, raw SQL, external Google grants, or automatic WordPress core updates.**
+
+## Staging branch / exact commit workspace
+
+Runtime Components > Runtime Update offers an opt-in Staging-only source picker. It accepts branch HEAD, exact commit, PR HEAD, or an exact commit proven as an ancestor of a named branch (GitHub compare read: `compare/<SHA>...<branch>`). The preview pins source SHA, independently certified GitHub release manifest, existing upload plan digest and Site Profile digest. A nonce-protected administrator action only **previews**; selected-head install remains a separate administrator POST which delegates to the existing `Selected_Head_Update::apply` and therefore must satisfy the enrolled owner, OAuth Step-Up, exact authorizing ticket, archive digest, independent evidence, backup, rollback and readback checks. No caller-supplied package URL/archive and no arbitrary source tarballs. The site never caches OAuth tokens. Staging-only UI is hidden outside exact staging Site Profile + WordPress environment.
+
+The existing recurring WP-Cron recovery is bound to the signed stable master release channel; it does not pick arbitrary PR/branch/commit or convey the owner's OAuth Step-Up. This Staging picker does not enqueue a Cron mutation or reinterpret a read-only preview as authorization.
+
+### WordPress Plugins-screen popup (Early Zero-Touch compatible)
+
+A lightweight popup class boots before the fastpath return on ordinary wp-admin/plugins.php GET/HEAD. The page stays zero-touch: no full Control Plane boot, remote provider call, database migration, or cron scheduling. The update-review action uses accessible native HTML dialog, responsive CSS, Escape/close focus restoration, and a valid fallback admin URL if JavaScript is disabled. Dialog markup and its nonce-protected forms are emitted in admin_footer-plugins.php outside WordPress's bulk-action form.
+
+The MAD4B plugin row can explicitly refresh the signed release channel or preview a specific Staging Git source; neither preview installs anything. Once separate Cross-Plugin PR #421 is also deployed, reviewed installed plugin rows gain the same popup and submit to the existing cross-plugin read-only plan. An absent plugin has no WordPress row and uses Plugin Deployment. Production never shows the Staging selected-commit form.
+
+Integration dependency: PR #420 adds the popup; PR #421 supplies the reviewed cross-plugin source registry and independent Admin/MCP planner. On a #420-only site, only MAD4B's popup is visible. Reconcile both PRs and retest the resulting exact merge head before deployment.

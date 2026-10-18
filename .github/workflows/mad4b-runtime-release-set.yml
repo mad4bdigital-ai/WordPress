@@ -70,6 +70,14 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
           python3 -m py_compile tools/mad4b-cross-plugin-package.py
 
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-selected-head-admin.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-source-selector.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-popup.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-source-selector-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/staging-selected-head-admin-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-popup-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/self-update-dual-channel-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
 
       - name: Verify exact upstream MCP Adapter release

@@ -453,8 +453,8 @@ final class MAD4B_SCP_Selected_Head_Update {
                     'required' => array( 'repository', 'type', 'reference' ),
                     'properties' => array(
                         'repository' => array( 'type' => 'string', 'maxLength' => 140 ),
-                        'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit' ) ),
-                        'reference' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 120 ),
+                        'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit', 'branch_commit' ) ),
+                        'reference' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 161 ),
                     ),
                 ),
                 'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
