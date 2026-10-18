@@ -35,12 +35,14 @@ if ( ! file_exists( $hybrid_path ) ) {
     echo "OPTIONAL_ADAPTER_COMPATIBILITY: DEFERRED (PR415 Native MCP hybrid absent; source-only baseline checks PASS)\n";
     exit(0);
 }
+assert_contract( false !== strpos( $plugin, 'class-mad4b-scp-mcp-hybrid.php' ),
+    'PR415 Native Hybrid entrypoint missing plugin bootstrap require' );
+$hybrid_source = file_get_contents( $hybrid_path );
 foreach ( array(
-    'class-mad4b-scp-mcp-hybrid.php',
     'class-mad4b-scp-mcp-hybrid-authority.php',
     'class-mad4b-scp-mcp-local-ability-trust.php',
-) as $name ) assert_contract( false !== strpos( $plugin, $name ),
-    'PR415 merged hybrid file missing bootstrap require: ' . $name );
+) as $name ) assert_contract( false !== strpos( $hybrid_source, $name ),
+    'PR415 Native Hybrid missing trusted nested component: ' . $name );
 assert_contract( false !== strpos( $servers, 'mcp' ),
     'Dynamic MCP catalog surface missing after hybrid integration' );
 assert_contract( file_exists( $root . '/includes/class-mad4b-scp-admin-native-mcp-view.php' ),
