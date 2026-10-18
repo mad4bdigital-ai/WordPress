@@ -2,6 +2,8 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-mcp-hybrid-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-peer-health.php';
+require_once __DIR__ . '/class-mad4b-scp-external-adapter-trust.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-local-ability-trust.php';
 
 /**
  * Owner-pinned native MCP discovery and hybrid routing.
@@ -485,10 +487,14 @@ final class MAD4B_SCP_MCP_Hybrid {
         // source-reviewed Adapter. Unknown native WordPress abilities remain
         // candidates, not executable local fallback.
         if ( 'read' === $dimension && isset( $local[$ability] ) ) {
-            $verified = MAD4B_SCP_MCP_Hybrid_Authority::matching_adapter( wp_get_ability( $ability ), $ability );
+            $wp_ability = wp_get_ability( $ability );
+            $verified = MAD4B_SCP_MCP_Hybrid_Authority::matching_adapter( $wp_ability, $ability );
             if ( null !== $verified ) {
                 $local[$ability]['reviewed'] = true;
                 $local[$ability]['source'] = 'adapter';
+            } elseif ( MAD4B_SCP_MCP_Local_Ability_Trust::verified_read( $wp_ability, $ability ) ) {
+                $local[$ability]['reviewed'] = true;
+                $local[$ability]['source'] = 'wordpress';
             }
         }
         $plan = self::hybrid_plan_from_evidence( $native, $local, $ability, $dimension );
@@ -524,22 +530,26 @@ final class MAD4B_SCP_MCP_Hybrid {
             return self::read_tool( array( 'peer_id' => $peer_id, 'ability' => $ability,
                 'expected_catalog_sha256' => $expected, 'arguments' => $arguments ) );
         }
-        if ( 'reviewed_adapter' !== $selected || ! function_exists( 'wp_get_ability' ) )
-            return new WP_Error( 'mad4b_hybrid_no_eligible_read', 'Neither an approved native read nor registered reviewed adapter read was available.' );
+        if ( ! in_array( $selected, array( 'reviewed_adapter', 'wordpress_ability' ), true )
+            || ! function_exists( 'wp_get_ability' ) )
+            return new WP_Error( 'mad4b_hybrid_no_eligible_read', 'No approved native, reviewed Adapter or pinned WordPress Ability read was available.' );
         $authorized = MAD4B_SCP_MCP_Hybrid_Authority::authorize_read( '', $ability, 'local' );
         if ( is_wp_error( $authorized ) ) return $authorized;
         $local = wp_get_ability( $ability );
         if ( ! is_object( $local ) || ! method_exists( $local, 'execute' ) )
             return new WP_Error( 'mad4b_hybrid_local_disappeared', 'Reviewed local Ability disappeared before dispatch.' );
-        if ( null === MAD4B_SCP_MCP_Hybrid_Authority::matching_adapter( $local, $ability ) )
+        $source_valid = 'reviewed_adapter' === $selected
+            ? null !== MAD4B_SCP_MCP_Hybrid_Authority::matching_adapter( $local, $ability )
+            : MAD4B_SCP_MCP_Local_Ability_Trust::verified_read( $local, $ability );
+        if ( ! $source_valid )
             return new WP_Error( 'mad4b_hybrid_local_provenance_changed',
-                'Local Ability callback provenance changed between planning and execution.' );
+                'Local Ability callback or independently reviewed source changed before dispatch.' );
         // WP_Ability::execute validates input/output and independently checks
         // permission_callback. Never call an Adapter method directly.
         $value = $local->execute( $arguments );
         if ( is_wp_error( $value ) ) return $value;
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
-            'ability' => $ability, 'selected' => 'reviewed_adapter',
+            'ability' => $ability, 'selected' => $selected,
             'arguments_sha256' => self::digest( $arguments ),
             'response_sha256' => self::digest( $value ),
             'result' => $value,
