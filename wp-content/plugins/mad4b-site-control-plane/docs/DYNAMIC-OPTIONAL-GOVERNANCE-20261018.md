@@ -91,3 +91,6 @@ After the WordPress bootstrap added source-reviewed Optional Governance includes
 
 ## Security UX: GET flags do not certify an audit
 A fresh source review found that Option Control's traditional `admin-post.php` redirect displayed a success/audit claim from a bare `?saved=1` URL. The page now treats both `saved=1` and `saved=unchanged` as *navigation hints only*, shows the live source-owned stored policy revision, and never claims a mutation/audit on URL evidence. Source-verified AJAX receipts retain their original readback requirements. Disposable WordPress renders both forged URL variants and asserts that no false success or no-change certificate appears.
+
+## PHP 8.4 and PHP 8.5 runtime compatibility scope
+The two real Staging sites previously reported PHP 8.5.11 on WordPress 7.1.3. Keep plugin's minimum PHP 7.4; extend the **functional** Optional Governance policy suite from PHP 7.4/8.3 to 7.4/8.3/8.4/8.5. Extend Feature 007 disposable WordPress + MySQL Adaptive Search, Admin Pages, runtime recovery and owner-authority conformance to PHP 8.4 and PHP 8.5 as well. This supplements the existing site-wide PHP 8.4/8.5 lint in the MAD4B Site Control Plane workflow. Use the existing setup-php v2 stable PHP 8.5 support; no environment upgrade, global compatibility claim or owner authorization is implied until exact-head CI and live Staging acceptance pass.

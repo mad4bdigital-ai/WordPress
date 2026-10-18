@@ -797,7 +797,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.3']
+        php: ['7.4', '8.3', '8.4', '8.5']
     services:
       mysql:
         image: mysql:8.0
