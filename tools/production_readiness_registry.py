@@ -36,6 +36,11 @@ CAP_CATALOGS = {
     "workstream": CONFIG + "feature-007-workstream-certification.json",
 }
 PRIORITIES = {"P0", "P1"}
+# Immutable minimum review perimeter independent of mutable source policy.
+REQUIRED_SOURCE_ROOT = "wp-content/plugins/mad4b-site-control-plane/"
+REQUIRED_EXTENSIONS = frozenset((".php", ".js", ".css", ".json"))
+REQUIRED_SUBTREES = frozenset(("includes/", "assets/", "config/"))
+ALLOWED_EXCLUSIONS = frozenset(("tests/", "docs/", "languages/"))
 REST_ROUTE = re.compile(r"""register_rest_route\s*\(\s*['"]([a-z0-9._/-]+)['"]\s*,\s*['"]([^'"]+)['"]""", re.I)
 AJAX_ROUTE = re.compile(r"""add_action\s*\(\s*['"](wp_ajax_(?:nopriv_)?[a-z0-9_-]+)['"]""", re.I)
 CRON_SCHEDULE = re.compile(r"""wp_schedule_(?:single_)?event\s*\(\s*[^,]+,\s*(?:[^,]+,\s*)?['"]([a-z0-9_-]+)['"]""", re.I)
@@ -142,7 +147,7 @@ def registered_surfaces(ref, path):
 
 def is_reviewed_runtime_path(path, coverage):
     cfg = coverage["code_change_rules"]
-    root = cfg["runtime_root"]
+    root = REQUIRED_SOURCE_ROOT
     if not path.startswith(root):
         return False
     rel = path[len(root):]
@@ -200,7 +205,10 @@ def new_source_ids(base, head, changed):
 
 
 def classify(path, cap, coverage):
-    text = (path + " " + cap).lower()
+    # Match the relative feature name, never the global wp-content/plugins prefix.
+    relative = path[len(REQUIRED_SOURCE_ROOT):] if path.startswith(REQUIRED_SOURCE_ROOT) else path
+    cap_name = cap[len("service:" + REQUIRED_SOURCE_ROOT):] if cap.startswith("service:" + REQUIRED_SOURCE_ROOT) else cap
+    text = (relative + " " + cap_name).lower()
     rules = coverage["domain_rules"]
     for rule in rules:
         if rule["id"] != "platform" and re.search(rule["pattern"], text):
@@ -226,6 +234,9 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
         "new_capability_control_growth_decision_required",
         "registered_interface_additions_require_coverage",
         "control_metadata_history_is_sha_bound",
+        "policy_scope_protected_against_reduction",
+        "impact_rules_cannot_shadow_existing_rules",
+        "regression_tests_must_execute_in_ci",
     )
     ensure(all(guards.get(k) is True for k in required_guards),
            "Required coverage guards missing or disabled")
@@ -244,8 +255,15 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
            and code_rules.get("authorizing") is False
            and code_rules.get("production_authorized") is False
            and code_rules.get("require_current_git_blob") is True
-           and code_rules.get("require_same_pr_regression_test") is True,
+           and code_rules.get("require_same_pr_regression_test") is True
+           and code_rules.get("require_executed_regression_test") is True,
            "Exact source-change review gate disabled")
+    ensure(code_rules.get("runtime_root") == REQUIRED_SOURCE_ROOT
+           and code_rules.get("root_php") is True
+           and set(code_rules.get("covered_extensions", [])) >= REQUIRED_EXTENSIONS
+           and set(code_rules.get("included_subtrees", [])) >= REQUIRED_SUBTREES
+           and set(code_rules.get("excluded_subtrees", [])) <= ALLOWED_EXCLUSIONS,
+           "Protected runtime coverage scope changed or weakened")
     ctl_ids = {c["id"] for c in controls["controls"]}
     old_controls = json_file(base, CONTROLS)
     ensure(old_controls is not None, "Missing reviewed base controls")
@@ -533,6 +551,22 @@ def evaluate(base, head):
         "retired": [{"id": k, "source": v} for k, v in sorted(removed.items())],
         "reviewed_for_ci_only": reviewed,
         "reviewed_behavior_changes": behavior,
+        "required_regression_tests": sorted({
+            test
+            for record in coverage.get("reviewed_changes", [])
+            if record["path"] in {item["path"] for item in behavior}
+            for test in record.get("regression_tests", [])
+        } | {
+            test
+            for record in coverage.get("reviewed_capabilities", [])
+            if record["id"] in reviewed
+            for test in record.get("regression_tests", [])
+        } | {
+            test
+            for record in coverage.get("policy_migrations", [])
+            for test in record.get("regression_tests", [])
+            if test in {name for _, name in changed}
+        }),
         "suggested_checklist_growth": [
             {"id": capability, "source": path,
              "existing_controls": classify(path, capability, coverage)["controls"],
