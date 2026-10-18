@@ -12,7 +12,7 @@ final class MAD4B_SCP_Adapter_Coverage_Admin_UI {
 		self::$booted = true;
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 30 );
 		require_once __DIR__ . '/class-mad4b-scp-admin-native-mcp-view.php';
-		add_action( 'admin_post_mad4b_native_peer_diagnostic', array( 'MAD4B_SCP_Admin_Native_MCP_View', 'handle_diagnostic_post' ) );
+		MAD4B_SCP_Admin_Native_MCP_View::boot();
 	}
 
 	public static function register_menu() {

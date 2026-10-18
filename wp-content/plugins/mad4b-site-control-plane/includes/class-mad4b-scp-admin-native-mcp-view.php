@@ -7,6 +7,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_Admin_Native_MCP_View {
     const PAGE_SIZE = 25;
+    private static $booted = false;
+
+    /** Register POST-only diagnostic independently from presentation-only pages. */
+    public static function boot() {
+        if ( self::$booted ) return;
+        self::$booted = true;
+        add_action( 'admin_post_mad4b_native_peer_diagnostic', array( __CLASS__, 'handle_diagnostic_post' ) );
+    }
+
 
     public static function graph_model( array $graph, $offset = 0 ) {
         $offset = max( 0, (int) $offset );
