@@ -235,6 +235,8 @@ final class MAD4B_SCP_Optional_Governance {
             return;
         }
         if ( isset( $_GET['saved'] ) && '1' === $_GET['saved'] ) echo '<div class="notice notice-success"><p>Advisory options saved and audited.</p></div>';
+        if ( isset( $_GET['saved'] ) && 'unchanged' === $_GET['saved'] )
+            echo '<div class="notice notice-info"><p>Options are already current. No new mutation, audit or revision was needed.</p></div>';
         echo '<p><strong>Operating profile:</strong> ' . esc_html( $state['operating_mode'] ) .
             '. Inherited optional warning mode: ' . esc_html( self::$profile_defaults[$state['operating_mode']] ) . '.</p>';
         echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
@@ -277,6 +279,11 @@ final class MAD4B_SCP_Optional_Governance {
                 esc_html( $row[1] ? 'Registered, authority not inferred' : 'Not verified' ) .
                 '</td><td>' . esc_html( $row[2] ) . '</td></tr>';
         echo '</tbody></table>';
+        if ( class_exists( 'MAD4B_SCP_Admin_Workspace', false ) ) {
+            $history_url = MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane', array( 'tab' => 'audit' ) );
+            if ( '' !== $history_url )
+                echo '<p><a href="' . esc_url( $history_url ) . '">Review existing Governance &amp; Audit History</a></p>';
+        }
         echo '<p><strong>Current options revision:</strong> ' . esc_html( (string) $state['revision'] ) .
             '. <strong>Policy catalog SHA:</strong> <code>' . esc_html( $state['definitions_sha256'] ) . '</code></p>';
         echo '<h2>Mandatory protection gates (read-only)</h2><ul>';
@@ -423,7 +430,8 @@ final class MAD4B_SCP_Optional_Governance {
         $outcome = self::persist_modes(
             $submitted['modes'], $submitted['revision'], $submitted['definitions_sha256'] );
         if ( is_wp_error( $outcome ) ) wp_die( $outcome->get_error_message() );
-        wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::SLUG ) ) );
+        wp_safe_redirect( add_query_arg( 'saved', ! empty( $outcome['no_change'] ) ? 'unchanged' : '1',
+            admin_url( 'admin.php?page=' . self::SLUG ) ) );
         exit;
     }
 
@@ -447,7 +455,10 @@ final class MAD4B_SCP_Optional_Governance {
                 'message'=>'Saved settings could not be verified for the refreshed view.' ), 409 );
         }
         wp_send_json_success( array(
-            'message'=>'Optional advisory settings saved and verified.',
+            'message'=>! empty( $result['no_change'] )
+                ? 'Already current. No options changed.' : 'Optional advisory settings saved and verified.',
+            'changed'=>empty( $result['no_change'] ),
+            'audit_recorded'=>! empty( $result['audit_recorded'] ),
             'persistence_verified'=>true, 'readback'=>array( 'revision'=>$after['revision'] ),
             'view_readback'=>self::view_snapshot( $after ),
             'authority_created'=>false, 'production_authorized'=>false,

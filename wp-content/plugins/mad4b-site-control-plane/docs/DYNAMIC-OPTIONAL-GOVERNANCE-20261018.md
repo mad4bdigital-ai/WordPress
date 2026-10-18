@@ -49,3 +49,6 @@ A request which reproduces exactly the already stored advisory settings is now t
 
 ## Review P1 — reserved safety reason namespace
 All externally registered advisory diagnostic IDs and reason codes must start with `optional_extension_`, not broad `optional_`. Existing core reasons such as `optional_capability_state_unbound` must not be shadowed or muted through the extension filter. Duplicate reasons and IDs are rejected, and the fixture exercises an attempted core-reason impersonation. This is a source contract change while PR #416 is still Draft and undeployed.
+
+## Operator UX no-op and audit navigation
+The admin-post flow redirects with `saved=unchanged` when an exact no-op is verified; AJAX reports `changed=false`, `audit_recorded=false` and a truthful already-current message. Options Control links directly to the **existing** Governance & Audit History page, avoiding a parallel audit storage surface.
