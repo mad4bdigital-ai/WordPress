@@ -6,7 +6,7 @@ This directory contains the **non-authorizing** development source for the 170 c
 
 - controls.json: stable ID, priority, owner, acceptance condition, source references, initial historical observation.
 - tools/production_readiness_matrix.py: validates identities/source references and reads live repository policy definitions for 14 production stages, 23 workstreams, 13 core-required gates.
-- .github/workflows/mad4b-production-readiness-matrix.yml: on PR changes, development-branch pushes, master changes, or manual dispatch; read-only token.
+- .github/workflows/mad4b-production-readiness-matrix.yml: on PR changes, development-branch/master pushes, governed `readiness/v*` tag pushes, or manual dispatch; read-only token.
 - GitHub Action artifact: readiness.json and readiness.md, plus Excel-compatible UTF-8 CSVs: controls.csv, production-stages.csv, feature-workstreams.csv, core-required-gates.csv, required-ci.csv and independent-signoffs.csv, all projected for the exact source commit.
 
 ## Usage
@@ -14,6 +14,43 @@ This directory contains the **non-authorizing** development source for the 170 c
 python3 tools/production_readiness_matrix.py validate
 python3 tools/production_readiness_matrix.py self-test
 python3 tools/production_readiness_matrix.py render --head-sha "$(git rev-parse HEAD)" --repo mad4bdigital-ai/WordPress
+
+## Automatic read-only evaluation via Git tags
+
+The matrix also runs on a Git **tag push** whose name matches `readiness/v*`,
+for example `readiness/v2026.10.19-rc1`. This is in addition to PR, branch
+push and manual `workflow_dispatch` triggers. It does **not** run for
+unrelated tags such as `v1.0.0` or `release/v1.0.0`.
+
+For a governed tag, `tools/readiness_tag_policy.py` first checks:
+1. The tag ref matches `refs/tags/readiness/v<digit>...` and contains only
+   a safe single tag-name segment after the prefix.
+2. The GitHub event exact SHA, checked-out commit and resolved Git tag all match.
+   Lightweight and annotated tags are supported (the tag is dereferenced to a commit).
+3. The tagged commit is a verified ancestor of the fetched `origin/master`.
+   An unmerged or divergent PR-branch tag is rejected, not treated as certified.
+4. The evaluated source has no release/deployment privileges. Its receipt includes
+   `authorizing=false`, `production_ready=false`, `production_authorized=false`.
+
+The workflow runs fail-closed policy self-tests on every invocation and emits
+`tag-trigger-evidence.json` plus Markdown in the existing 30-day artifact
+bundle for matching tag events. Ordinary tag creation after the corresponding
+workflow change is merged to `master` triggers the run automatically:
+
+```bash
+git fetch origin master
+git tag -a readiness/v2026.10.19-rc1 origin/master -m "Readiness evaluation"
+git push origin refs/tags/readiness/v2026.10.19-rc1
+```
+
+This is **not** an automatic Production release, a signed site acceptance or
+proof that all 170 controls passed. The existing source-diff evaluation on
+tag pushes compares the tagged HEAD with its first parent, not against every
+historical release tag; live Staging evidence and independent Production
+promotion approval are still separate. Protect readiness tags against rewriting
+with a dedicated GitHub ruleset where appropriate. The trigger becomes
+effective only once a commit containing this workflow is merged; adding a tag
+to an older commit without the workflow does not retrofit this trigger.
 
 ## Trust boundaries
 
