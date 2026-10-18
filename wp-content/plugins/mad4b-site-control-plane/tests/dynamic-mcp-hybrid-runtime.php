@@ -41,6 +41,7 @@ function set_transient( $key, $value, $ttl ) {
 }
 function delete_transient( $key ) { unset( $GLOBALS['mcp_transients'][$key] ); return true; }
 $GLOBALS['mcp_forced_transport_failures'] = 0;
+$GLOBALS['mcp_forced_call_failures'] = 0;
 $GLOBALS['hybrid_isolation_effective'] = false;
 class MAD4B_SCP_MCP_Provider_Isolation {
     public static function effective() { return ! empty( $GLOBALS['hybrid_isolation_effective'] ); }
@@ -81,6 +82,10 @@ function wp_safe_remote_post( $url, $args ) {
     $method = (string) ( $json['method'] ?? '' );
     $revision = $GLOBALS['mcp_revision'];
     $GLOBALS['mcp_calls'][] = $method;
+    if ( 'tools/call' === $method && $GLOBALS['mcp_forced_call_failures'] > 0 ) {
+        --$GLOBALS['mcp_forced_call_failures'];
+        return new WP_Error( 'mock_read_outage', 'Simulated tool-call-only transport outage' );
+    }
     if ( $GLOBALS['mcp_forced_transport_failures'] > 0 ) {
         --$GLOBALS['mcp_forced_transport_failures'];
         return new WP_Error( 'mock_network_down', 'Simulated transport outage' );
@@ -431,5 +436,31 @@ unlink( $local_plugins . '/demo/reader.php' );
 unlink( $local_plugins . '/demo/main.php' );
 rmdir( $local_plugins . '/demo' );
 rmdir( $local_plugins );
+mcp_new_request_epoch();
+$GLOBALS['mcp_forced_call_failures'] = 3;
+for ( $trial = 0; $trial < 3; ++$trial ) {
+    $fresh = $hybrid::catalog( 'test-peer' );
+    mcp_check( ! is_wp_error($fresh), 'Healthy tool listing is still available during failing tool calls' );
+    $failed_call = $hybrid::read_tool( array(
+        'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
+        'expected_catalog_sha256'=>$fresh['capability_snapshot_sha256'],
+        'arguments'=>array('q'=>'simulated') ) );
+    mcp_check( is_wp_error( $failed_call ), 'Native tool-call outage must be surfaced' );
+}
+$separate = $hybrid::candidate_inventory()['peer_transport_health']['test-peer'];
+mcp_check( $separate['catalog']['state'] === 'CLOSED' && $separate['read']['state'] === 'OPEN',
+    'Successful tools/list cannot reset repeated tools/call failures' );
+$count_before_read_circuit = count( array_filter( $GLOBALS['mcp_calls'],
+    static function ( $method ) { return 'tools/call' === $method; } ) );
+$blocked_call = $hybrid::read_tool( array(
+    'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
+    'expected_catalog_sha256'=>$fresh['capability_snapshot_sha256'],
+    'arguments'=>array('q'=>'blocked') ) );
+$count_after_read_circuit = count( array_filter( $GLOBALS['mcp_calls'],
+    static function ( $method ) { return 'tools/call' === $method; } ) );
+mcp_check( is_wp_error($blocked_call)
+    && $blocked_call->get_error_code() === 'mad4b_mcp_peer_circuit_open'
+    && $count_before_read_circuit === $count_after_read_circuit,
+    'Read call circuit blocks new tools/call before outbound IO' );
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";
