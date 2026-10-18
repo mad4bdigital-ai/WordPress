@@ -195,7 +195,15 @@ def snapshot(matrix, policy, stages, feature, closure, source_cfg,
             "id": s["id"], "gate": s.get("gate"),
             "status": "LIVE_ATTESTATION_UNVERIFIED",
         } for s in feature["workstreams"]],
-        "core_workstreams": closure["profiles"][CORE]["open_or_partial"],
+        "core_workstreams": [{
+            "id": item,
+            "repository_status": next(
+                (e.get("status", "EXTERNAL_PENDING")
+                 for e in closure["profiles"][CORE]["open_or_partial"]
+                 if e.get("id") == item),
+                "DONE_REPOSITORY_ONLY"),
+            "live_verified_by_matrix_ci": False,
+        } for item in closure["profiles"][CORE]["workstream_ids"]],
         "unpromoted_cross_plugin_sources": unresolved_sources,
         "historical_observations_non_authoritative": True,
     }
@@ -217,13 +225,37 @@ def render(matrix, report, output):
                              c["priority"], c["release_scope"], c["owner_role"],
                              c["evidence_requirement"], c["initial_observation"], src,
                              "NO", "NO"))
+    def write_projection(filename, headers, data):
+        with (output / filename).open("w", encoding="utf-8-sig", newline="") as fh:
+            writer = csv.writer(fh)
+            writer.writerow(headers)
+            writer.writerows(data)
+
+    write_projection("production-stages.csv",
+        ("Stage ID", "Evidence contract", "Required live receipt status", "Source producer"),
+        ((s["id"], s["evidence_contract"], s["status"], s["source"])
+         for s in report["production_stages"]))
+    write_projection("feature-workstreams.csv",
+        ("Workstream ID", "Required gate", "Live evidence status"),
+        ((s["id"], s["gate"], s["status"])
+         for s in report["feature_workstreams"]))
+    write_projection("core-required-gates.csv",
+        ("Core workstream", "Repository evidence status", "Live verified by CI"),
+        ((s["id"], s["repository_status"], "NO")
+         for s in report["core_workstreams"]))
+    write_projection("required-ci.csv",
+        ("Workflow", "Exact HEAD", "Run status", "Conclusion", "Run URL"),
+        ((s["workflow"], s["exact_head"], s["status"],
+          s["conclusion"] or "", s["run_url"] or "")
+         for s in report["required_workflows"]))
+
     lines = [
         "# MAD4B Production Readiness — dynamic CI projection",
         "",
         "**Decision: NO-GO.** This artifact cannot authorize Production.",
         "",
         "| Metric | Current |", "| --- | --- |",
-        "| Exact source HEAD | \`{}\` |".format(report["source_head_sha"]),
+        "| Exact source HEAD | `{}` |".format(report["source_head_sha"]),
         "| Controls / domains | {} / {} |".format(
             report["totals"]["controls"], report["totals"]["domains"]),
         "| P0 / P1 | {} / {} |".format(report["totals"]["P0"], report["totals"]["P1"]),

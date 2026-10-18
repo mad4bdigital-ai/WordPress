@@ -7,7 +7,7 @@ This directory contains the **non-authorizing** development source for the 170 c
 - controls.json: stable ID, priority, owner, acceptance condition, source references, initial historical observation.
 - tools/production_readiness_matrix.py: validates identities/source references and reads live repository policy definitions for 14 production stages, 23 workstreams, 13 core-required gates.
 - .github/workflows/mad4b-production-readiness-matrix.yml: on PR changes, development-branch pushes, master changes, or manual dispatch; read-only token.
-- GitHub Action artifact: readiness.json + controls.csv (UTF-8 BOM; Excel compatible) + readiness.md for the exact source commit.
+- GitHub Action artifact: readiness.json and readiness.md, plus Excel-compatible UTF-8 CSVs: controls.csv, production-stages.csv, feature-workstreams.csv, core-required-gates.csv and required-ci.csv, all projected for the exact source commit.
 
 ## Usage
 
