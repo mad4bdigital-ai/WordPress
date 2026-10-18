@@ -8,7 +8,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_MCP_Header_Parameters {
     private static function scan( $node, $path, $allowed, &$definitions, &$names, &$count ) {
-        if ( ! is_array( $node ) || ++$count > 8192 ) return false;
+        if ( ! is_array( $node ) ) return true;
+        if ( ++$count > 8192 ) return false;
         if ( array_key_exists( 'x-mcp-header', $node ) ) {
             $name = $node['x-mcp-header'];
             $type = $node['type'] ?? '';
