@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-cross-plugin-lifecycle.php';
 
 /**
  * Reviewed multi-repository WordPress plugin deployment discovery and planning.
@@ -35,6 +36,32 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
                         'plugin_file' => array( 'type' => 'string', 'maxLength' => 150 ),
                         'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
                     ) ),
+            ),
+            'mad4b/plugin-deployment-certification-plan' => array(
+                'label' => 'Check Exact Package Certification',
+                'description' => 'Read independent source/archive/provider certificate blockers; never certifies by itself.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'certification_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array( 'source_id' => array( 'type' => 'string', 'maxLength' => 64 ) ) ),
+            ),
+            'mad4b/plugin-deployment-staging-apply-plan' => array(
+                'label' => 'Review Governed Staging Plugin Apply',
+                'description' => 'Prepare exact existing package Apply input only after certification and Staging checks; no mutation.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'staging_apply_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array(
+                        'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+                        'reason' => array( 'type' => 'string', 'maxLength' => 500 ) ) ),
+            ),
+            'mad4b/plugin-deployment-production-promotion-plan' => array(
+                'label' => 'Review Independent Production Promotion',
+                'description' => 'Read Production promotion gates; a Staging approval never promotes a package.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'production_promotion_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array( 'source_id' => array( 'type' => 'string', 'maxLength' => 64 ) ) ),
             ),
             'mad4b/plugin-deployment-plan' => array( 'label' => 'Plan Cross-Plugin Deployment',
                 'description' => 'Preview exact Git source, plugin install/replace, artifact and environment gates. Never mutates.',
