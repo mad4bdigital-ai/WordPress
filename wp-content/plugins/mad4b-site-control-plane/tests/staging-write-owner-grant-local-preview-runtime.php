@@ -38,6 +38,15 @@ class MAD4B_SCP_Agent_Registry {
         check_preview($slug==='chatgpt-governed-write','registry_exact_slug');
         return $GLOBALS['agent'];
     }
+    public static function resolve_agent($identity) {
+        check_preview(($identity['auth_method'] ?? '')==='oauth2_bearer','oauth_identity_verified');
+        return isset($GLOBALS['resolved_agent']) ? $GLOBALS['resolved_agent'] : $GLOBALS['agent'];
+    }
+}
+class MAD4B_SCP_Identity_Context {
+    public static function current() {
+        return array('authenticated'=>true,'subject_type'=>'oauth','auth_method'=>'oauth2_bearer');
+    }
 }
 class MAD4B_SCP_Schema {
     public static function critical_ready(){if(!empty($GLOBALS['simulate_throw'])) throw new RuntimeException('schema_read_error'); return false;}
@@ -73,7 +82,33 @@ $GLOBALS['agent']['environment']='production';
 $bad=$agent_method->invoke(null);
 check_preview(is_wp_error($bad)&&$bad->get_error_code()==='mad4b_grant_local_preview_agent_not_exact','other_environment_agent_denied');
 $GLOBALS['agent']['environment']='staging';
+$local_agent=$agent_method->invoke(null);
 $flag->setValue(null,false);
+$remote_agent=$agent_method->invoke(null);
+check_preview(is_array($remote_agent) && $remote_agent===$local_agent,
+    'same enrolled agent registry record used by admin and oauth planning');
+$GLOBALS['resolved_agent']=$GLOBALS['agent'];
+$GLOBALS['resolved_agent']['id']=99;
+$mismatch=$agent_method->invoke(null);
+check_preview(is_wp_error($mismatch)
+    && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
+    'different OAuth subject agent denied even with same slug and owner');
+$GLOBALS['resolved_agent']['id']=42;
+$GLOBALS['resolved_agent']['public_id']='different-public-agent';
+$mismatch=$agent_method->invoke(null);
+check_preview(is_wp_error($mismatch)
+    && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
+    'same ID but different OAuth public agent identity denied');
+$GLOBALS['resolved_agent']['public_id']='agent-42';
+$GLOBALS['resolved_agent']['status']='disabled';
+$mismatch=$agent_method->invoke(null);
+check_preview(is_wp_error($mismatch)
+    && $mismatch->get_error_code()==='mad4b_grant_reconcile_plan_subject_agent_mismatch',
+    'disabled OAuth-resolved agent denied');
+unset($GLOBALS['resolved_agent']);
+$remote_agent=$agent_method->invoke(null);
+check_preview(is_array($remote_agent) && $remote_agent===$local_agent,
+    'verified OAuth recovers exact canonical evidence after subject match');
 
 $GLOBALS['simulate_throw']=true;
 try{$grant::plan_for_local_owner();check_preview(false,'expected_exception');}
