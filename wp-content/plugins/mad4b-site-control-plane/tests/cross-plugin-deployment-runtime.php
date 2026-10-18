@@ -7,6 +7,8 @@ class WP_Error {
 }
 function is_wp_error($x) { return $x instanceof WP_Error; }
 $GLOBALS['environment']='staging';
+$GLOBALS['wp_environment']='staging';
+function wp_get_environment_type() { return $GLOBALS['wp_environment']; }
 $GLOBALS['remote_calls']=0;
 $GLOBALS['remote_result']=array('sha'=>str_repeat('a',40));
 class MAD4B_SCP_Site_Profile {
@@ -44,16 +46,23 @@ $plan=$cls::plan($input);
 check(is_array($plan) && $plan['operation']==='install' && $plan['resolved_sha']===$sha,
     'new plugin install planning missing');
 check(!$plan['eligible'] && empty($plan['native_executor'])
-    && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true),
-    'uncertified source offered as executable package');
+    && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true)
+    && in_array('source_review_promotion_required',$plan['blockers'],true),
+    'uncertified or unreviewed source offered as executable package');
 check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
     'read-only planning claimed execution');
+$GLOBALS['wp_environment']='production';
+$env_mismatch=$cls::plan($input);
+check(!$env_mismatch['eligible'] && empty($env_mismatch['native_executor'])
+    && in_array('environment_not_registered_for_source',$env_mismatch['blockers'],true),
+    'MCP planning trusted a Staging profile while WordPress reported Production');
 $GLOBALS['environment']='production';
 $prod=$cls::plan($input);
 check(!$prod['eligible'] && in_array('production_package_executor_not_yet_certified',$prod['blockers'],true)
     && in_array('independent_production_promotion_attestation_required',$prod['blockers'],true),
     'Production applied Staging permissions');
 $GLOBALS['environment']='staging';
+$GLOBALS['wp_environment']='staging';
 $pair=$cls::selection(array('source_id'=>'etg-dynamic-filter-seo-bridge',
     'ref_type'=>'branch_commit','reference'=>'feature/release@'.$sha));
 check(is_array($pair),'valid branch+commit rejected');

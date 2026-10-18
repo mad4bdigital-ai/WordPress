@@ -126,7 +126,9 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             $folder = basename( $directory );
             if ( ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id )
                 || ! preg_match( '#^[a-zA-Z0-9_.-]{1,70}/[a-zA-Z0-9_.-]{1,100}$#D', $repo )
+                || false !== strpos( $repo, '..' )
                 || ! preg_match( '#^[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+){0,12}$#D', $directory )
+                || false !== strpos( $directory, '..' )
                 || ! preg_match( '#^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+\.php$#D', $plugin )
                 || 0 !== strpos( $plugin, $folder . '/' )
                 || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $provider )
@@ -224,7 +226,12 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
     }
 
     private static function environment() {
-        return class_exists( 'MAD4B_SCP_Site_Profile' ) ? (string) MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+        if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! function_exists( 'wp_get_environment_type' )
+            || ! MAD4B_SCP_Site_Profile::origin_enrolled() ) return 'not_verified';
+        $profile = (string) MAD4B_SCP_Site_Profile::current_environment();
+        $wp = (string) wp_get_environment_type();
+        return in_array( $wp, array( 'staging', 'production' ), true ) && $profile === $wp
+            ? $profile : 'not_verified';
     }
 
     private static function current_plugin( $plugin_file ) {
@@ -280,6 +287,8 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             $blockers[] = 'site_origin_not_enrolled';
         $cert_sha = (string) ( $source['source_commit_sha'] ?? '' );
         $artifact_sha = (string) ( $source['artifact_sha256'] ?? '' );
+        if ( 'source_reviewed_artifact_certified' !== (string) ( $source['review_state'] ?? '' ) )
+            $blockers[] = 'source_review_promotion_required';
         if ( ! preg_match( '/^[a-f0-9]{40}$/D', $cert_sha ) || ! hash_equals( $cert_sha, $sha ) )
             $blockers[] = 'exact_source_commit_not_certified';
         if ( ! preg_match( '/^[a-f0-9]{64}$/D', $artifact_sha )
