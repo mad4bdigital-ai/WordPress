@@ -196,6 +196,10 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                "Impact rule references absent controls")
         re.compile(rule["pattern"])
     reviews = coverage.get("reviewed_capabilities", [])
+    # Reviews are a persistent versioned registry. A previously reviewed
+    # capability remains in Git after its introduction PR is merged.
+    previous = json_file(base, COVERAGE) or {"reviewed_capabilities": []}
+    previously_reviewed = {x.get("id") for x in previous.get("reviewed_capabilities", [])}
     ids = [x.get("id") for x in reviews]
     ensure(len(ids) == len(set(ids)), "Duplicate capability coverage IDs")
     changed_set = {p for _, p in changed}
@@ -250,7 +254,17 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
             ensure(event.get("replacement") and event["replacement"] != removed_cap,
                    "Superseded capability missing replacement " + removed_cap)
     for x in reviews:
-        ensure(x.get("id") in added, "Stale or invented current-PR coverage: " + str(x.get("id")))
+        ensure(x.get("id") in added or x.get("id") in previously_reviewed,
+               "Coverage can only introduce an ID with new code evidence: " +
+               str(x.get("id")))
+        ensure(x.get("status") == "reviewed_for_ci_only" and
+               x.get("production_authorized") is False and
+               x.get("live_evidence_required") is True,
+               "Historical coverage cannot grant runtime authority: " + str(x.get("id")))
+        ensure(isinstance(x.get("control_ids"), list) and
+               len(set(x["control_ids"])) == len(x["control_ids"]) and
+               set(x["control_ids"]) <= ctl_ids,
+               "Historical review must retain valid control IDs: " + str(x.get("id")))
     return failures, accepted
 
 

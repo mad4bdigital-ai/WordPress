@@ -85,4 +85,19 @@ with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)):
     except ValueError as exc:
         assert "historical control was deleted" in str(exc).lower()
 
+# A reviewed capability persists in Git after its introduction PR has merged.
+# Its unchanged historic review must not fail the next unrelated PR.
+def previous_review(_commit, path):
+    if path == reg.CONTROLS:
+        return copy.deepcopy(controls)
+    if path == reg.COVERAGE:
+        return copy.deepcopy(covered)
+    raise AssertionError("Unexpected base catalog: " + path)
+
+with mock.patch.object(reg, "json_file", side_effect=previous_review):
+    failures, accepted = reg.validate_coverage(
+        copy.deepcopy(covered), controls, base, head,
+        [("M", "docs/OTHER.md")], {}, {})
+    assert not failures and not accepted, "Historical coverage survives later PRs"
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")
