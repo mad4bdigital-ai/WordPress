@@ -13,6 +13,7 @@ final class MAD4B_SCP_Optional_Governance {
     const OPTION = 'mad4b_scp_optional_governance_options_v1';
     const SLUG = 'mad4b-optional-governance-options';
     const ACTION = 'mad4b_optional_governance_save';
+    const LOCK = 'mad4b_scp_optional_governance_settings_lock_v1';
     private static $catalog = null;
     private static $profile_defaults = null;
     private static $protected_gates = array(
@@ -243,40 +244,84 @@ final class MAD4B_SCP_Optional_Governance {
     }
 
     public static function save() {
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator required.', '', array( 'response' => 403 ) );
+        if ( ! current_user_can( 'manage_options' ) )
+            wp_die( 'Administrator required.', '', array( 'response' => 403 ) );
         check_admin_referer( self::ACTION );
         $definitions = self::catalog();
         $before = self::state();
-        if ( is_wp_error( $definitions ) || is_wp_error( $before ) ) wp_die( 'Invalid policy configuration.' );
+        if ( is_wp_error( $definitions ) || is_wp_error( $before ) )
+            wp_die( 'Invalid optional governance policy configuration.' );
         $revision = isset( $_POST['revision'] ) ? (int) $_POST['revision'] : -1;
-        $fingerprint = isset( $_POST['definitions_sha256'] ) ? (string) wp_unslash( $_POST['definitions_sha256'] ) : '';
-        if ( $revision !== $before['revision'] || ! hash_equals( $before['definitions_sha256'], $fingerprint ) )
-            wp_die( 'Policy changed; refresh the page before saving.' );
-        $posted = isset( $_POST['modes'] ) && is_array( $_POST['modes'] ) ? wp_unslash( $_POST['modes'] ) : array();
+        $fingerprint = isset( $_POST['definitions_sha256'] )
+            ? (string) wp_unslash( $_POST['definitions_sha256'] ) : '';
+        if ( $revision !== $before['revision']
+            || ! hash_equals( $before['definitions_sha256'], $fingerprint ) )
+            wp_die( 'Options changed. Refresh the page before saving.' );
+        $posted = isset( $_POST['modes'] ) && is_array( $_POST['modes'] )
+            ? wp_unslash( $_POST['modes'] ) : array();
         if ( array_diff( array_keys( $posted ), array_keys( $definitions ) )
-            || count( $posted ) !== count( $definitions ) ) wp_die( 'Unexpected policy fields.' );
+            || count( $posted ) !== count( $definitions ) )
+            wp_die( 'Unexpected optional policy settings.' );
         $modes = array();
         foreach ( $definitions as $id => $row ) {
             $mode = $posted[$id] ?? null;
-            if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) ) wp_die( 'Invalid policy mode.' );
+            if ( ! in_array( $mode, array( 'inherit', 'enforced', 'advisory', 'off' ), true ) )
+                wp_die( 'Invalid optional policy mode.' );
             $modes[$id] = $mode;
         }
-        if ( ! class_exists( 'MAD4B_SCP_Audit', false ) ) wp_die( 'Audit storage is unavailable.' );
-        $old_raw = get_option( self::OPTION, array() );
-        // Audit first: a failed audit blocks preference changes. No authority changes.
-        $audit = MAD4B_SCP_Audit::record( 'mad4b/optional-governance-settings',
-            array( 'previous_revision' => $before['revision'],
-                'next_revision' => $before['revision'] + 1,
-                'definitions_sha256' => $fingerprint,
-                'modes_sha256' => self::signature( $modes ), 'scope' => 'operator_advisory_only' ), 'ok' );
-        if ( is_wp_error( $audit ) ) wp_die( 'Audit unavailable; preferences were not modified.' );
-        $next = array( 'contract' => self::CONTRACT,
-            'revision' => $before['revision'] + 1, 'modes' => $modes );
-        update_option( self::OPTION, $next, false );
-        if ( get_option( self::OPTION, array() ) !== $next ) {
-            update_option( self::OPTION, $old_raw, false );
-            wp_die( 'Failed to persist policy readback.' );
+        if ( ! class_exists( 'MAD4B_SCP_Audit', false ) || ! function_exists( 'add_option' ) )
+            wp_die( 'Audited optional policy persistence is unavailable.' );
+        $token = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : bin2hex( random_bytes( 16 ) );
+        $lease = array( 'token' => $token, 'expires_at' => time() + 120 );
+        // Concurrent writes never use a stale revision. A crashed previous
+        // lease can be recovered after expiry, then the full plan is rechecked.
+        $locked = add_option( self::LOCK, $lease, '', false );
+        if ( ! $locked ) {
+            $stale = get_option( self::LOCK, array() );
+            if ( is_array( $stale ) && isset( $stale['expires_at'] )
+                && is_int( $stale['expires_at'] ) && $stale['expires_at'] < time() ) {
+                delete_option( self::LOCK );
+                $locked = add_option( self::LOCK, $lease, '', false );
+            }
         }
+        if ( ! $locked ) wp_die( 'Another policy save is active. Retry after it completes.' );
+        $failure = '';
+        try {
+            $current = self::state();
+            if ( is_wp_error( $current )
+                || $current['revision'] !== $revision
+                || ! hash_equals( $current['definitions_sha256'], $fingerprint ) )
+                throw new RuntimeException( 'Optional policy changed during saving; refresh and retry.' );
+            $old_raw = get_option( self::OPTION, null );
+            $event = array( 'previous_revision' => $revision, 'next_revision' => $revision + 1,
+                'definitions_sha256' => $fingerprint, 'modes_sha256' => self::signature( $modes ),
+                'scope' => 'operator_advisory_only' );
+            // Log the request, not a fictitious successful application.
+            $requested = MAD4B_SCP_Audit::record( 'mad4b/optional-governance-requested', $event, 'ok' );
+            if ( is_wp_error( $requested ) )
+                throw new RuntimeException( 'Audit unavailable. No preference changed.' );
+            $next = array( 'contract' => self::CONTRACT,
+                'revision' => $revision + 1, 'modes' => $modes );
+            update_option( self::OPTION, $next, false );
+            if ( get_option( self::OPTION, null ) !== $next )
+                throw new RuntimeException( 'Policy save failed readback.' );
+            $applied = MAD4B_SCP_Audit::record( 'mad4b/optional-governance-applied', $event, 'ok' );
+            if ( is_wp_error( $applied ) )
+                throw new RuntimeException( 'Applied policy audit failed; attempting preference rollback.' );
+        } catch ( Throwable $error ) {
+            $failure = $error->getMessage();
+            if ( isset( $old_raw ) ) {
+                if ( null === $old_raw ) delete_option( self::OPTION );
+                else update_option( self::OPTION, $old_raw, false );
+                if ( get_option( self::OPTION, null ) !== $old_raw )
+                    $failure = 'Policy rollback could not be verified; inspect operator settings and audit before retrying.';
+            }
+        } finally {
+            $held = get_option( self::LOCK, array() );
+            if ( is_array( $held ) && hash_equals( $token, (string) ( $held['token'] ?? '' ) ) )
+                delete_option( self::LOCK );
+        }
+        if ( '' !== $failure ) wp_die( $failure );
         wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::SLUG ) ) );
         exit;
     }
