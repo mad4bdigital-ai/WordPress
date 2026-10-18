@@ -120,6 +120,21 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
         self::redirect();
     }
 
+    /**
+     * The WordPress Ability is the only supported mutation entrypoint. Calling
+     * the provider's PHP apply() directly would skip the ticket claim.
+     */
+    public static function execute_approved_candidate( array $input ) {
+        if ( ! function_exists( 'wp_get_ability' ) )
+            return new WP_Error( 'mad4b_staging_selected_head_abilities_unavailable',
+                'Governed WordPress Abilities runtime is not available.' );
+        $ability = wp_get_ability( MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY );
+        if ( ! is_object( $ability ) || ! is_callable( array( $ability, 'execute' ) ) )
+            return new WP_Error( 'mad4b_staging_selected_head_ability_unavailable',
+                'The governed selected-head Apply ability is not registered.' );
+        return $ability->execute( $input );
+    }
+
     public static function handle_apply() {
         self::require_admin( self::APPLY_ACTION );
         if ( ! current_user_can( 'update_plugins' ) )
@@ -133,15 +148,20 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
             ? (string) wp_unslash( $_POST['expected_plan_sha256'] ) : '';
         $confirm = isset( $_POST['confirmation'] ) && is_string( $_POST['confirmation'] )
             ? (string) wp_unslash( $_POST['confirmation'] ) : '';
+        $ticket = isset( $_POST['_mad4b_approval_ticket_id'] ) && is_string( $_POST['_mad4b_approval_ticket_id'] )
+            ? (string) wp_unslash( $_POST['_mad4b_approval_ticket_id'] ) : '';
         if ( ! $record || empty( $record['eligible'] )
             || ! preg_match( '/^[a-f0-9]{64}$/D', $plan_sha )
             || ! hash_equals( (string) $record['plan_sha256'], $plan_sha )
-            || ! hash_equals( MAD4B_SCP_Selected_Head_Update::CONFIRMATION, $confirm ) )
-            wp_die( 'The exact Staging plan is stale or not approved; preview again.', '', array( 'response' => 409 ) );
+            || ! hash_equals( MAD4B_SCP_Selected_Head_Update::CONFIRMATION, $confirm )
+            || ! class_exists( 'MAD4B_SCP_Identifiers', false )
+            || 1 !== preg_match( '/' . MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN . '/D', $ticket ) )
+            wp_die( 'Exact plan and one-time owner approval ticket are required; preview again.', '', array( 'response' => 409 ) );
 
         // Consume the preview before the mutation boundary, preventing replay.
         delete_transient( self::key() );
-        $result = MAD4B_SCP_Selected_Head_Update::apply( array(
+        $result = self::execute_approved_candidate( array(
+            '_mad4b_approval_ticket_id' => $ticket,
             'candidate_source' => $record['source'],
             'reason' => $record['reason'],
             'expected_plan_sha256' => $plan_sha,
@@ -218,6 +238,10 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
                 wp_nonce_field( self::APPLY_ACTION );
                 echo '<label>Exact confirmation <input class="regular-text" autocomplete="off" name="confirmation" required placeholder="'
                     . esc_attr( MAD4B_SCP_Selected_Head_Update::CONFIRMATION ) . '"></label>';
+                echo '<p><label>Exact one-time owner approval ticket (UUIDv4) '
+                    . '<input class="regular-text" name="_mad4b_approval_ticket_id" '
+                    . 'autocomplete="off" spellcheck="false" maxlength="36" minlength="36" required></label></p>';
+                echo '<p class="description">The approval must match this exact plan. WordPress Abilities will claim the ticket and enforce the existing update, backup and rollback gates.</p>';
                 echo '<p><button type="submit" class="button button-primary">Request governed Staging install</button></p></form>';
                 }
             }
