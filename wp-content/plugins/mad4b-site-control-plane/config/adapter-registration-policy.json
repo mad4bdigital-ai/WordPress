@@ -97,5 +97,8 @@
   "test_only_source_classes": [
     "MAD4B_CI_Failure_Evidence_Adapter"
   ],
-  "test_only_mode": "not_loaded_by_runtime_bootstrap_not_a_public_ability"
+  "test_only_mode": "not_loaded_by_runtime_bootstrap_not_a_public_ability",
+  "reviewed_callback_sources": {},
+  "callback_sources_contract": "exact_bundled_adapter_class_plus_read_ability_to_source_relative_path_sha256",
+  "callback_source_policy": "no_auto_trust_for_sibling_files"
 }
