@@ -122,4 +122,45 @@ if ( false !== $environment_allowed->invoke( null, false ) ) {
 	exit( 7 );
 }
 
+
+/** Check/read UI remains visible to a site admin who cannot install plugins. */
+$GLOBALS['mad4b_test_admin'] = true;
+$GLOBALS['mad4b_test_manage_options'] = true;
+$GLOBALS['mad4b_test_update_plugins'] = false;
+function is_admin() { return (bool) $GLOBALS['mad4b_test_admin']; }
+function current_user_can( $cap ) {
+    return 'manage_options' === $cap ? (bool) $GLOBALS['mad4b_test_manage_options']
+        : ( 'update_plugins' === $cap ? (bool) $GLOBALS['mad4b_test_update_plugins'] : false );
+}
+function admin_url( $path ) { return 'https://test.invalid/wp-admin/' . ltrim( $path, '/' ); }
+function esc_url( $url ) { return (string) $url; }
+function esc_html__( $text, $domain = '' ) { return (string) $text; }
+$links = MAD4B_SCP_Self_Update::plugin_action_links( array( 'deactivate' => '<a>Deactivate</a>' ) );
+if ( empty( $links['mad4b_update_check'] )
+    || false === strpos( $links['mad4b_update_check'], 'tab=maintenance' )
+    || false !== strpos( $links['mad4b_update_check'], '<form' )
+    || false === strpos( $links['mad4b_update_check'], 'Check MAD4B updates' ) ) {
+    fwrite( STDERR, "Read-only check link disappeared, used nested form or bypassed maintenance page\n" );
+    exit( 8 );
+}
+$GLOBALS['mad4b_test_admin'] = false;
+$links = MAD4B_SCP_Self_Update::plugin_action_links( array() );
+if ( isset( $links['mad4b_update_check'] ) ) {
+    fwrite( STDERR, "Update check link appeared outside wp-admin\n" );
+    exit( 9 );
+}
+$GLOBALS['mad4b_test_admin'] = true;
+$GLOBALS['mad4b_test_manage_options'] = false;
+$links = MAD4B_SCP_Self_Update::plugin_action_links( array() );
+if ( isset( $links['mad4b_update_check'] ) ) {
+    fwrite( STDERR, "Update check link appeared without any update/admin capability\n" );
+    exit( 10 );
+}
+$GLOBALS['mad4b_test_update_plugins'] = true;
+$links = MAD4B_SCP_Self_Update::plugin_action_links( array() );
+if ( empty( $links['mad4b_update_check'] ) ) {
+    fwrite( STDERR, "Update-capable role could not inspect the channel\n" );
+    exit( 11 );
+}
+
 echo "mad4b.wordpress-plugin-auto-update-observation.v1 runtime: PASS\n";

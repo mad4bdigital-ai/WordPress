@@ -97,6 +97,18 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<h2>' . esc_html__( 'Certified runtime update', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Update MAD4B Site Control Plane and the official MCP Adapter only as one certified compatible runtime set. The operation re-plans the exact release pair before mutation and preserves the existing governed verification, rollback and readback boundaries.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'The WordPress Plugins update channel is the stable Release-Verdict channel published from master only. Pull-request candidate builds are intentionally not offered there before merge.', 'mad4b-site-control-plane' ) . '</p></div>';
+        // A passive GET must not make outbound update-channel requests.
+        // Place the read-only refresh in its own admin screen (not inside
+        // the WordPress Plugins bulk-action form).
+        echo '<section id="mad4b-self-update-check" class="mad4b-scp-panel"><h3>'
+            . esc_html__( 'Check MAD4B release channel', 'mad4b-site-control-plane' )
+            . '</h3><p>' . esc_html__( 'Check the signed stable release pointer. This only refreshes verification evidence; it does not install packages or change authorizations.', 'mad4b-site-control-plane' )
+            . '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        echo '<input type="hidden" name="action" value="mad4b_control_plane_refresh_update">';
+        wp_nonce_field( 'mad4b_control_plane_refresh_update' );
+        echo '<button type="submit" class="button button-secondary">'
+            . esc_html__( 'Check for updates', 'mad4b-site-control-plane' ) . '</button></form></section>';
+
 
 		if ( ! current_user_can( 'update_plugins' ) ) {
 			echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'Plugin update capability is required to change the certified runtime set.', 'mad4b-site-control-plane' ) . '</p></div>';

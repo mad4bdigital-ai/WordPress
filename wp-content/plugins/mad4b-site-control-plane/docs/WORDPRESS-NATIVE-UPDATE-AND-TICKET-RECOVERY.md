@@ -1,6 +1,6 @@
 # WordPress-native update and ticket recovery — rc.99
 
-This update extends the existing verified release channel in the WordPress Plugins screen. **Check for updates** is a nonce-protected POST and resolves the signed immutable release pointer; **Update now** uses the existing verified-archive, maintenance-lease, backup/readback/rollback coordinator. No arbitrary WordPress.org update transient or automatic core-update enrollment is added.
+This update extends the existing verified release channel in the WordPress Plugins screen. **Check MAD4B updates** is a safe link from `wp-admin/plugins.php` to **Runtime Components → Runtime Update**, which owns a standalone, nonce-protected **Check for updates** POST. This avoids invalid nested forms inside WordPress' plugin bulk-action form. The check is read-only and requires administrator visibility, not the `update_plugins` mutation capability. Verified update notices link back to the certified runtime update screen; installation still requires `update_plugins` and the existing exact pair/provenance, maintenance, readback and rollback gates. No arbitrary WordPress.org update transient or automatic core-update enrollment is added.
 
 ## First-time host binding after upgrading an active plugin
 
