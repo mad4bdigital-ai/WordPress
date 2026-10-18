@@ -20,6 +20,8 @@ final class MAD4B_SCP_MCP_Hybrid {
     private static $rpc_started_at = null;
     private static $rpc_sequence = 0;
     private static $rpc_budget_seconds = 6.0;
+    private static $request_catalogs = array();
+    const REQUEST_CATALOG_MAX_AGE_SECONDS = 1.0;
     public static function boot() {
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 33 );
@@ -308,13 +310,35 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_mcp_legacy_notify_failed', 'Legacy MCP initialized notification failed.' );
         return array( 'version' => $revision, 'session' => $initial['session'], 'discovered' => $initial['wire']['result'] );
     }
-    public static function catalog( $peer_id ) {
+    /**
+     * Request-only cache: never persists provider credentials, protocol
+     * sessions or tool schemas. One freshly negotiated MCP session may serve
+     * the hybrid planner and the immediate read call for <=1 second.
+     * Drift is still checked by exact owner-pinned schema and client catalog
+     * hash; tools/call invalidates this cache regardless of its result.
+     */
+    private static function prepared_catalog( $peer_id ) {
         $peers = self::manifest();
-        if ( ! isset( $peers[$peer_id] ) ) return new WP_Error( 'mad4b_mcp_peer_not_pinned', 'Provider MCP endpoint is not owner-pinned.' );
-        $peer = $peers[$peer_id];
-        $session = self::negotiate( $peer );
-        if ( is_wp_error( $session ) ) return $session;
-        return self::catalog_in_session( $peer, $session );
+        if ( ! isset( $peers[$peer_id] ) )
+            return new WP_Error( 'mad4b_mcp_peer_not_pinned', 'Provider MCP endpoint is not owner-pinned.' );
+        $cache_key = hash( 'sha256', $peer_id . '|' . $peers[$peer_id]['endpoint'] );
+        $cached = self::$request_catalogs[$cache_key] ?? null;
+        if ( is_array( $cached ) && isset( $cached['created_at'] )
+            && microtime( true ) - $cached['created_at'] < self::REQUEST_CATALOG_MAX_AGE_SECONDS )
+            return $cached;
+        unset( self::$request_catalogs[$cache_key] );
+        $prepared = self::prepared_catalog( $peer_id );
+        if ( is_wp_error( $prepared ) ) return $prepared;
+        $session = $prepared['session'];
+        $catalog = $prepared['catalog'];
+        $record = array( 'session' => $session, 'catalog' => $catalog,
+            'created_at' => microtime( true ), 'cache_key' => $cache_key );
+        self::$request_catalogs[$cache_key] = $record;
+        return $record;
+    }
+    public static function catalog( $peer_id ) {
+        $prepared = self::prepared_catalog( $peer_id );
+        return is_wp_error( $prepared ) ? $prepared : $prepared['catalog'];
     }
     private static function catalog_in_session( array $peer, array $session ) {
         $peer_id = $peer['id'];
@@ -563,6 +587,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         $reply = self::rpc( $peers[$peer_id], 'tools/call',
             array( 'name' => $binding['tool'], 'arguments' => $arguments ),
             $session['version'], $session['session'] );
+        unset( self::$request_catalogs[$prepared['cache_key']] );
         if ( is_wp_error( $reply ) ) return $reply;
         if ( ! is_array( $reply['wire']['result'] ?? null ) )
             return new WP_Error( 'mad4b_native_read_call_failed', 'The MCP tool call produced no verified result.' );
