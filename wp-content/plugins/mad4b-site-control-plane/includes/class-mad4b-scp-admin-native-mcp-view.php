@@ -160,7 +160,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
             ? strtolower( $raw['expected_catalog_sha256'] ) : '';
         if ( ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $peer )
             || ! in_array( $mode, array( 'catalog', 'read' ), true ) ) return null;
-        if ( 'read' === $mode && ( ! preg_match( '/^[A-Za-z0-9_./:-]{1,191}$/D', $ability )
+        if ( 'read' === $mode && ( ! preg_match( '~^[A-Za-z0-9_./:-]{1,191}$~D', $ability )
             || ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) ) ) return null;
         if ( 'catalog' === $mode && ( '' !== $ability || '' !== $sha ) ) return null;
         return array( 'peer_id' => $peer, 'mode' => $mode,
