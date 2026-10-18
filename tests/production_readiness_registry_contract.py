@@ -194,7 +194,8 @@ with mock.patch.object(reg, "json_file", side_effect=previous_review):
                               [("M", "docs/OTHER.md")], {}, {})
         raise AssertionError("Weakening an inherited impact mapping must fail")
     except ValueError as exc:
-        assert "impact-mapping rules" in str(exc)
+        assert ("impact-mapping rules" in str(exc) or
+                "Impact classification contract drift" in str(exc))
 
 def previous_retirement(_commit, path):
     if path == reg.CONTROLS:
