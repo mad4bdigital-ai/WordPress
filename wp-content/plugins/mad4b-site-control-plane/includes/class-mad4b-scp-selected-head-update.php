@@ -92,10 +92,23 @@ final class MAD4B_SCP_Selected_Head_Update {
             return new WP_Error( 'mad4b_selected_head_update_backend_missing', 'Governed package update backend is unavailable.' );
         // Reuse all existing enrolled-owner, OAuth step-up and central approval
         // gates of the manual Staging candidate upload, not bootstrap/breakglass.
-        $access = MAD4B_SCP_Self_Update::can_upload_apply(
-            array( 'channel' => self::candidate_channel() )
-        );
-        if ( is_wp_error( $access ) || true !== $access ) return $access;
+        // Do not preflight the *different* control-plane-upload-apply ability:
+        // it may require a distinct one-time owner ticket and cannot authorize
+        // the selected-head operation. Check actor/environment/OAuth here, then
+        // authorize exactly self::APPLY_ABILITY once at the Ability boundary.
+        $admin = MAD4B_SCP_Policy::can_admin();
+        if ( is_wp_error( $admin ) || ! $admin ) return $admin;
+        if ( ! MAD4B_SCP_Policy::can_mutate() )
+            return new WP_Error( 'mad4b_selected_head_mutation_disabled', 'Control Plane mutation is disabled.' );
+        if ( ! current_user_can( 'manage_options' )
+            || ! class_exists( 'MAD4B_SCP_Site_Profile', false )
+            || ! MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )
+            || ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge', false )
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+            || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+                MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
+            return new WP_Error( 'mad4b_selected_head_staging_owner_step_up_required',
+                'Enrolled Staging administrator with verified OAuth step-up is required.' );
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_selected_head_authorization_missing', 'Central authorization unavailable.' );
         return MAD4B_SCP_Authorization::authorize_mutation(
@@ -379,11 +392,22 @@ final class MAD4B_SCP_Selected_Head_Update {
     }
 
     public static function apply( $input ) {
+        // The exact one-time approval must have been claimed by the registered
+        // WordPress Ability and carried through the governed execution fence.
+        if ( ! class_exists( 'MAD4B_SCP_Authorization', false )
+            || ! MAD4B_SCP_Authorization::execution_callback_started( self::APPLY_ABILITY )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+            || ! MAD4B_SCP_Execution_Fence::has_active_frame() )
+            return self::fail( 'governed_execution_required',
+                'Use the claimed governed WordPress Ability, not a direct PHP installation call.' );
         $input = is_array( $input ) ? $input : array();
         if ( ( $input['confirmation'] ?? '' ) !== self::CONFIRMATION )
             return self::fail( 'confirmation_required', 'Explicit reviewed Staging update confirmation required.' );
         $access = self::can_apply( $input );
-        if ( is_wp_error( $access ) || true !== $access ) return $access;
+        if ( is_wp_error( $access ) ) return $access;
+        if ( ! MAD4B_SCP_Authorization::permission_result_from_authorization( $access ) )
+            return self::fail( 'authorization_denied',
+                'The exact selected-head owner authorization was not granted.' );
         $expected = (string) ( $input['expected_plan_sha256'] ?? '' );
         if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
             return self::fail( 'plan_digest_required', 'Exact plan digest required.' );
