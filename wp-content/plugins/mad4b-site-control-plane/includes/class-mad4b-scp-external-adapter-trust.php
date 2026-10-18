@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 final class MAD4B_SCP_External_Adapter_Trust {
     const CONTRACT = 'mad4b.external-adapter-trust.v1';
+    // Bounded cumulative PHP source scanning; integrity is always recomputed,
+    // not cached across requests or concurrent source updates.
+    const MAX_TREE_PHP_BYTES = 134217728; // 128 MiB.
     private static $verified_manifest = null;
 
     public static function manifest() {
@@ -90,6 +93,7 @@ final class MAD4B_SCP_External_Adapter_Trust {
         $root = realpath( $plugin_root );
         if ( false === $root || ! is_dir( $root ) ) return '';
         $files = array();
+        $total_php_bytes = 0;
         try {
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS )
@@ -98,7 +102,10 @@ final class MAD4B_SCP_External_Adapter_Trust {
                 if ( $item->isLink() ) return '';
                 if ( ! $item->isFile() ) continue;
                 if ( strtolower( $item->getExtension() ) !== 'php' ) continue;
-                if ( count( $files ) >= 4096 || $item->getSize() > 16777216 ) return '';
+                $size = $item->getSize();
+                if ( count( $files ) >= 4096 || ! is_int( $size ) || $size < 0
+                    || $size > 16777216 || $total_php_bytes > self::MAX_TREE_PHP_BYTES - $size ) return '';
+                $total_php_bytes += $size;
                 $path = $item->getRealPath();
                 if ( false === $path || 0 !== strpos( $path, $root . DIRECTORY_SEPARATOR ) ) return '';
                 $digest = hash_file( 'sha256', $path );

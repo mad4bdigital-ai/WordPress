@@ -146,6 +146,23 @@ external_assert( is_string( $hash_changed ) && '' !== $hash_changed
     'Same-request PHP source drift must never be hidden by digest caching' );
 foreach ( $fixture_files as $file ) unlink( $file );
 rmdir( $benchmark_dir );
+// Sparse fixtures test the cumulative source budget without provisioning a
+// huge plugin or weakening the single-file 16 MiB limit.
+$budget_dir = $root . '/aggregate-budget';
+external_assert( mkdir( $budget_dir, 0700 ), 'Aggregate budget fixture directory' );
+$budget_files = array();
+for ( $n = 0; $n < 9; ++$n ) {
+    $file = $budget_dir . '/budget-' . $n . '.php';
+    $handle = fopen( $file, 'wb' );
+    external_assert( false !== $handle && ftruncate( $handle, 16777216 ),
+        'Sparse PHP source fixture for aggregate scan budget' );
+    fclose( $handle );
+    $budget_files[] = $file;
+}
+external_assert( MAD4B_SCP_External_Adapter_Trust::php_source_tree_sha256( $budget_dir ) === '',
+    'PHP source tree exceeding cumulative 128 MiB budget must be rejected' );
+foreach ( $budget_files as $file ) unlink( $file );
+rmdir( $budget_dir );
 fwrite( STDOUT, 'EXTERNAL_PHP_TREE_DIGEST_SAMPLE: two scans of 128 files in '
     . $benchmark_ms . " ms; exact drift detection PASS\n" );
 unlink( $reviewed_callback );
