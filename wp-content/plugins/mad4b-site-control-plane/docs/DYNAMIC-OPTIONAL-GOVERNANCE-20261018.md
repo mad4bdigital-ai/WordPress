@@ -43,3 +43,6 @@ Options Control now opts into the existing `MAD4B_SCP_Admin_Settings_Persistence
 
 ## Phase 5 — Provider-neutral Operation Registry
 The semantic operation `wordpress.governance.optional-preference` is now registered with exact planner/executor names, an optional-operator-policy target, source-owned readback, owner confirmation, named Staging-only executor and no generic mutation dispatch. It is indexed in the existing provider-neutral `Operation Registry` and `Remote Operation Parity`; its presence is discoverability **not** authorization. Plan/Verify also enter both read projections.
+
+## Incremental review correction — stable no-op and CAS compensation
+A request which reproduces exactly the already stored advisory settings is now treated as a read-only verified no-op under the existing CAS lease: no redundant audit, revision bump, or mutation receipt. Remote Plan reports `change_required=false`, and Remote Apply's receipt correctly reflects zero mutation and no new audit. After writing the requested audit event, the save service refreshes its durable CAS lease before persisting. If persistence or its final audit fails, compensation uses compare-and-swap against the exact post-write option value; it refuses to overwrite another writer's newer state. The hermetic fixture covers no-op Remote Apply and admin AJAX view readback.

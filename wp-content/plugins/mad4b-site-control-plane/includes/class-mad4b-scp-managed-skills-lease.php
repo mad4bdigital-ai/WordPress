@@ -3,7 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 final class MAD4B_SCP_Managed_Skills_Lease {
-	private static function compare_and_swap_option( $name, $expected, $replacement = null ) {
+	public static function compare_and_swap_option( $name, $expected, $replacement = null ) {
 		global $wpdb;
 		if ( ! isset( $wpdb->options ) ) return false;
 		$where = array( 'option_name' => (string) $name, 'option_value' => maybe_serialize( $expected ) );

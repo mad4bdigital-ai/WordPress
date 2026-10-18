@@ -118,6 +118,18 @@ final class MAD4B_SCP_Managed_Skills_Lease {
         $lock = get_option($name,array());
         if ( is_array($lock) && ($lock['owner']??null) === $owner ) delete_option($name);
     }
+    public static function refresh( $name, $ttl, $owner ) {
+        $lock = get_option($name,array());
+        return is_array($lock) && ($lock['owner']??null) === $owner
+            ? true : new WP_Error('fenced','lease lost');
+    }
+    public static function compare_and_swap_option( $name, $expected, $replacement = null ) {
+        if (!array_key_exists($name,$GLOBALS['options']) ||
+            $GLOBALS['options'][$name] !== $expected) return false;
+        if (null===$replacement) unset($GLOBALS['options'][$name]);
+        else $GLOBALS['options'][$name] = $replacement;
+        return true;
+    }
 }
 function add_option( $name, $value, $unused = '', $autoload = false ) {
     if ( array_key_exists( $name, $GLOBALS['options'] ) ) return false;
@@ -208,6 +220,16 @@ $stored_verify = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>
 expect( ! is_wp_error( $stored_verify ) && $stored_verify['verified']
     && $stored_verify['revision'] === 1,
     'Remote persisted readback differs from applied state' );
+$unchanged_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+expect( ! is_wp_error($unchanged_plan) && false===$unchanged_plan['change_required'],
+    'Remote preview must explicitly identify no-op changes' );
+$audit_before_noop = MAD4B_SCP_Audit::$count;
+$unchanged_apply = $remote::apply(array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+    'expected_plan_sha256'=>$unchanged_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ));
+expect( ! is_wp_error($unchanged_apply) && ! $unchanged_apply['preferences_mutated']
+    && ! $unchanged_apply['audit_recorded'] && $unchanged_apply['no_change']
+    && $unchanged_apply['revision']===1 && MAD4B_SCP_Audit::$count===$audit_before_noop,
+    'No-op apply must not create audit entries or bump revision' );
 $stale = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($stale) && $stale->get_error_code()==='mad4b_optional_remote_plan_stale',
@@ -235,7 +257,7 @@ function wp_send_json_error( $data, $status = 400 ) {
 }
 function wp_send_json_success( $data ) {
     if ( empty($data['persistence_verified']) ||
-        ($data['view_readback']['fields']['revision']??null)!==2 ) throw new RuntimeException('AJAX_BAD_RECEIPT');
+        ($data['view_readback']['fields']['revision']??null)!==1 ) throw new RuntimeException('AJAX_BAD_RECEIPT');
     throw new RuntimeException( 'AJAX_OK' );
 }
 $live_status = $cls::status();
@@ -247,6 +269,6 @@ $ajax_success = false;
 try { $cls::save_ajax(); } catch ( RuntimeException $error ) {
     $ajax_success = 'AJAX_OK' === $error->getMessage();
 }
-expect( $ajax_success && $cls::status()['revision'] === 2,
-    'Shared Admin AJAX must persist, verify, and return a source-view contract' );
+expect( $ajax_success && $cls::status()['revision'] === 1,
+    'No-op Admin AJAX must verify the current view without redundant revision increments' );
 echo "OPTIONAL_GOVERNANCE: PASS (CAS lock, admin AJAX view parity, remote SHA, audit rollback, Production denial)\n";

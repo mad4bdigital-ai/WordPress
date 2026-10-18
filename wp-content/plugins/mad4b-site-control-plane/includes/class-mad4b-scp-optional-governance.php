@@ -318,12 +318,23 @@ final class MAD4B_SCP_Optional_Governance {
         if ( is_wp_error( $token ) ) return $token;
         $failure = '';
         $prior_loaded = false;
+        $write_started = false;
         $next = null;
         try {
             $current = self::state();
             if ( is_wp_error( $current ) || $current['revision'] !== $revision
                 || ! hash_equals( $current['definitions_sha256'], $fingerprint ) )
                 throw new RuntimeException( 'Optional policy changed under lock. Review a fresh plan.' );
+            // A complete no-op does not need an audit event, Write action or
+            // revision increment. The currently held lock still gives an exact
+            // stable readback for admin and remote callers.
+            if ( $current['modes'] == $modes ) {
+                return array( 'contract' => self::CONTRACT . '.receipt.v1',
+                    'revision' => $revision, 'policy_snapshot_sha256' => self::signature( $modes ),
+                    'readback_verified' => true, 'audit_recorded' => false,
+                    'advisory_preferences_saved' => false, 'no_change' => true,
+                    'authority_created' => false, 'production_authorized' => false );
+            }
             $old_raw = get_option( self::OPTION, null );
             $prior_loaded = true;
             $event = array( 'previous_revision' => $revision, 'next_revision' => $revision + 1,
@@ -332,8 +343,14 @@ final class MAD4B_SCP_Optional_Governance {
             $requested = MAD4B_SCP_Audit::record( 'mad4b/optional-governance-requested', $event, 'ok' );
             if ( is_wp_error( $requested ) )
                 throw new RuntimeException( 'Requested-option audit failed. Settings were not applied.' );
+            // Re-fence under the source-owned CAS lease after the audit.
+            // A timed-out request cannot write after another caller reclaimed it.
+            $fence = MAD4B_SCP_Managed_Skills_Lease::refresh( self::LOCK, 120, $token );
+            if ( is_wp_error( $fence ) || true !== $fence )
+                throw new RuntimeException( 'Optional settings lease lost before persistence; no write attempted.' );
             $next = array( 'contract' => self::CONTRACT,
                 'revision' => $revision + 1, 'modes' => $modes );
+            $write_started = true;
             update_option( self::OPTION, $next, false );
             if ( get_option( self::OPTION, null ) !== $next )
                 throw new RuntimeException( 'Optional settings failed persisted readback.' );
@@ -342,11 +359,13 @@ final class MAD4B_SCP_Optional_Governance {
                 throw new RuntimeException( 'Applied policy audit failed; attempting preference rollback.' );
         } catch ( Throwable $e ) {
             $failure = $e->getMessage();
-            if ( $prior_loaded ) {
-                if ( null === $old_raw ) delete_option( self::OPTION );
-                else update_option( self::OPTION, $old_raw, false );
-                if ( get_option( self::OPTION, null ) !== $old_raw )
-                    $failure = 'Policy rollback could not be verified; investigate operator settings and the audit log.';
+            if ( $prior_loaded && $write_started ) {
+                // Compare the exact recorded post-write state before reverting.
+                // Never restore a stale snapshot over a newer writer.
+                $restored = MAD4B_SCP_Managed_Skills_Lease::compare_and_swap_option(
+                    self::OPTION, $next, $old_raw );
+                if ( ! $restored || get_option( self::OPTION, null ) !== $old_raw )
+                    $failure = 'Policy outcome uncertain: CAS rollback was not verified; investigate option and audit before retrying.';
             }
         } finally {
             MAD4B_SCP_Managed_Skills_Lease::release( self::LOCK, $token );

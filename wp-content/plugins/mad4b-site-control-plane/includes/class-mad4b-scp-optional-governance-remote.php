@@ -114,6 +114,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             'blog_id'=>function_exists('get_current_blog_id') ? get_current_blog_id() : 0,
             'new_modes'=>$all, 'scope'=>'operator_advisory_only',
             'owner_approval_required'=>true,
+            'change_required'=>$row['configured_mode'] !== $values['mode'],
             'authorization_created'=>false, 'production_authorized'=>false,
             'mutation_performed'=>false
         );
@@ -194,8 +195,9 @@ final class MAD4B_SCP_Optional_Governance_Remote {
         return array( 'contract'=>self::RECEIPT_CONTRACT,
             'policy_id'=>$values['policy_id'], 'mode'=>$values['mode'],
             'plan_sha256'=>$plan['plan_sha256'], 'revision'=>$receipt['revision'],
-            'readback_verified'=>true, 'audit_recorded'=>true,
-            'preferences_mutated'=>true, 'authority_created'=>false,
+            'readback_verified'=>true, 'audit_recorded'=>! empty( $receipt['audit_recorded'] ),
+            'preferences_mutated'=>! empty( $receipt['advisory_preferences_saved'] ),
+            'no_change'=>! empty( $receipt['no_change'] ), 'authority_created'=>false,
             'production_authorized'=>false );
     }
 }
