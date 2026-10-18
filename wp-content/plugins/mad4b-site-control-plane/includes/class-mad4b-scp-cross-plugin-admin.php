@@ -8,6 +8,7 @@ final class MAD4B_SCP_Cross_Plugin_Admin {
     const INTAKE = 'mad4b_cross_plugin_intake';
 
     public static function boot() {
+        MAD4B_SCP_Admin_Route_Registry::register( self::PAGE, 'manage_options' );
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 32 );
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_preview' ) );
         add_action( 'admin_post_' . self::INTAKE, array( __CLASS__, 'handle_intake' ) );

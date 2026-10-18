@@ -37,9 +37,9 @@ check($catalog['items'][0]['installed']===false,'not-installed source detected')
 $sha=str_repeat('a',40);
 $input=array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'commit','reference'=>$sha);
 check(is_wp_error($cls::selection(array('source_id'=>'unknown','ref_type'=>'commit','reference'=>$sha))),'unknown repository admitted');
-check(is_wp_error($cls::selection(array_merge($input,array('reference'=>'HEAD'))))),'mutable non-sha commit admitted');
-check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'../escape'))))),'branch traversal admitted');
-check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'a//b'))))),'double slash branch admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('reference'=>'HEAD')))),'mutable non-sha commit admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'../escape')))),'branch traversal admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'a//b')))),'double slash branch admitted');
 $plan=$cls::plan($input);
 check(is_array($plan) && $plan['operation']==='install' && $plan['resolved_sha']===$sha,
     'new plugin install planning missing');
