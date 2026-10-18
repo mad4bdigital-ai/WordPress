@@ -22,6 +22,7 @@
     "MAD4B_SCP_JetFormBuilder_Adapter",
     "MAD4B_SCP_FluentForms_Adapter",
     "MAD4B_SCP_WP_Import_Export_Adapter",
+    "MAD4B_SCP_WP_Native_Build_Adapter",
     "MAD4B_SCP_ETG_DFSB_Adapter",
     "MAD4B_SCP_Acceptance_Target_Adapter",
     "MAD4B_SCP_Native_Provider_Bridge_Adapter",
@@ -67,7 +68,8 @@
     "MAD4B_SCP_LiteSpeed_Adapter",
     "MAD4B_SCP_JetFormBuilder_Adapter",
     "MAD4B_SCP_FluentForms_Adapter",
-    "MAD4B_SCP_WP_Import_Export_Adapter"
+    "MAD4B_SCP_WP_Import_Export_Adapter",
+    "MAD4B_SCP_WP_Native_Build_Adapter"
   ],
   "registered_hook_classes": [
     "MAD4B_SCP_ETG_DFSB_Adapter",
