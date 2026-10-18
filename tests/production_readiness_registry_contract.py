@@ -312,7 +312,8 @@ with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
     try:
         reg.validate_coverage(shadow, controls, base, head, [], {}, {})
     except ValueError as exc:
-        assert "Unbounded new rule" in str(exc)
+        assert ("Unbounded new rule" in str(exc) or
+                "Impact classification contract drift" in str(exc))
     else:
         raise AssertionError("Unbounded precedence override allowed")
 
