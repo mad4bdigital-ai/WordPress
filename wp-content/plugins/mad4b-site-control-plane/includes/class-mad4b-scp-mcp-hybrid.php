@@ -83,6 +83,25 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( $check_network && ( ! function_exists( 'wp_http_validate_url' ) || ! wp_http_validate_url( $url ) ) ) return false;
         return true;
     }
+    /** Block loops into WordPress MCP endpoints already suppressed by the
+     * canonical Provider Isolation policy. Never bypass through outbound HTTP.
+     */
+    private static function transport_isolation_guard( array $peer ) {
+        if ( ! class_exists( 'MAD4B_SCP_MCP_Provider_Isolation', false )
+            || ! MAD4B_SCP_MCP_Provider_Isolation::effective() ) return true;
+        if ( ! function_exists( 'site_url' ) )
+            return new WP_Error( 'mad4b_mcp_isolation_origin_unknown', 'Cannot verify site origin while provider isolation is enabled.' );
+        $site = parse_url( (string) site_url() );
+        $target = parse_url( (string) ( $peer['endpoint'] ?? '' ) );
+        if ( ! is_array( $site ) || ! is_array( $target )
+            || empty( $site['host'] ) || empty( $target['host'] ) )
+            return new WP_Error( 'mad4b_mcp_isolation_origin_unknown', 'Cannot verify canonical MCP origin.' );
+        if ( strtolower( $site['host'] ) === strtolower( $target['host'] )
+            && (int) ( $target['port'] ?? 443 ) === (int) ( $site['port'] ?? 443 ) )
+            return new WP_Error( 'mad4b_mcp_provider_isolated',
+                'Provider MCP endpoint belongs to this site and is isolated; use its reviewed local transport.' );
+        return true;
+    }
     private static function canonical( $value ) {
         if ( ! is_array( $value ) ) return $value;
         $keys = array_keys( $value );
@@ -154,6 +173,8 @@ final class MAD4B_SCP_MCP_Hybrid {
     }
     private static function rpc( array $peer, $method, $params, $version, $session = '' ) {
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return new WP_Error( 'mad4b_mcp_peer_url_unsafe', 'Pinned MCP endpoint is not eligible for HTTPS transport.' );
+        $isolation = self::transport_isolation_guard( $peer );
+        if ( is_wp_error( $isolation ) ) return $isolation;
         if ( ! function_exists( 'wp_safe_remote_post' ) ) return new WP_Error( 'mad4b_mcp_http_unavailable', 'Safe HTTP transport is unavailable.' );
         $id = substr( hash( 'sha256', $peer['id'] . "|" . $method . "|" . (string) wp_json_encode( $params ) ), 0, 16 );
         $headers = array(
@@ -227,6 +248,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         // Legacy MCP requires initialized notification after initialize. A
         // notification has no request id or reply payload.
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return false;
+        if ( is_wp_error( self::transport_isolation_guard( $peer ) ) ) return false;
         $headers = array( 'Content-Type' => 'application/json',
             'MCP-Protocol-Version' => $version, 'Accept' => 'application/json, text/event-stream' );
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
@@ -243,6 +265,7 @@ final class MAD4B_SCP_MCP_Hybrid {
     private static function negotiate( array $peer ) {
         $modern = self::rpc( $peer, 'server/discover', array(), '2026-07-28' );
         if ( ! is_wp_error( $modern ) && is_array( $modern['wire']['result'] ?? null )
+            && ( $modern['wire']['result']['resultType'] ?? '' ) === 'complete'
             && in_array( '2026-07-28', $modern['wire']['result']['supportedVersions'] ?? array(), true ) )
             return array( 'version' => '2026-07-28', 'session' => '', 'discovered' => $modern['wire']['result'] );
         // On modern credential failures, bad JSON/schema, 5xx etc. DO NOT
@@ -287,6 +310,8 @@ final class MAD4B_SCP_MCP_Hybrid {
             if ( is_wp_error( $response ) || ! is_array( $response['wire']['result'] ?? null ) )
                 return new WP_Error( 'mad4b_mcp_tools_list_failed', 'Provider MCP tools/list could not be verified.' );
             $part = $response['wire']['result'];
+            if ( '2026-07-28' === $session['version'] && ( $part['resultType'] ?? '' ) !== 'complete' )
+                return new WP_Error( 'mad4b_mcp_catalog_not_complete', 'Modern tools/list is not a complete result.' );
             if ( ! isset( $part['tools'] ) || ! is_array( $part['tools'] ) ) return new WP_Error( 'mad4b_mcp_tools_list_invalid', 'Invalid MCP tool collection.' );
             foreach ( $part['tools'] as $tool ) {
                 if ( ! is_array( $tool ) || ! is_string( $tool['name'] ?? null )
@@ -509,7 +534,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( is_wp_error( $reply ) ) return $reply;
         if ( ! is_array( $reply['wire']['result'] ?? null ) )
             return new WP_Error( 'mad4b_native_read_call_failed', 'The MCP tool call produced no verified result.' );
-        if ( ( $reply['wire']['result']['resultType'] ?? 'complete' ) !== 'complete'
+        if ( ( $reply['wire']['result']['resultType'] ?? ( '2026-07-28' === $session['version'] ? '' : 'complete' ) ) !== 'complete'
             || ! empty( $reply['wire']['result']['isError'] ) )
             return new WP_Error( 'mad4b_native_read_result_incomplete', 'MCP tool requires further interaction or returned an error; no automatic retries.' );
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
