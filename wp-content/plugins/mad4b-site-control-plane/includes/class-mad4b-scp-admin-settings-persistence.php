@@ -34,7 +34,9 @@ final class MAD4B_SCP_Admin_Settings_Persistence {
 	public static function enqueue() {
 		if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) return;
 		$page = isset( $_GET['page'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'page' ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- route selection only.
-		if ( '' === $page || 0 !== strpos( $page, 'mad4b-control-plane' ) ) return;
+		if ( '' === $page ||
+            ( 0 !== strpos( $page, 'mad4b-control-plane' )
+                && 'mad4b-optional-governance-options' !== $page ) ) return;
 
 		$asset_path = MAD4B_SCP_DIR . 'assets/admin-settings-persistence.js';
 		$asset_version = MAD4B_SCP_VERSION;

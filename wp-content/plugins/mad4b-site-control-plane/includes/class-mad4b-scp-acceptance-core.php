@@ -17,28 +17,12 @@ final class MAD4B_SCP_Acceptance_Core {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 39 );
-		add_action( 'mad4b_scp_register_adapters', array( __CLASS__, 'register_read_adapter' ), 21 );
 		MAD4B_SCP_Browser_Acceptance_Core::boot_early();
 	}
 
-	public static function register_read_adapter( $registry ) {
-		if ( ! is_object( $registry ) || ! method_exists( $registry, 'register' ) || ! class_exists( 'MAD4B_SCP_Adapter_Base' ) ) return;
-		$adapter = new class extends MAD4B_SCP_Adapter_Base {
-			public function id() { return 'acceptance-core'; }
-			public function label() { return 'Acceptance Core'; }
-			public function is_available() { return true; }
-			public function ability_names() {
-				return array(
-					'read' => array( 'mad4b/acceptance-capabilities', 'mad4b/acceptance-plan', 'mad4b/acceptance-run', 'mad4b/acceptance-result' ),
-					'content' => array(),
-					'admin' => array(),
-				);
-			}
-			public function register_abilities() {}
-			protected function mutation_requires_certification() { return false; }
-			protected function provider_certification( $available ) { return null; }
-		};
-		$registry->register( $adapter );
+	/** Source-owned, fixed read catalog; not a dynamically trusted adapter. */
+	public static function read_ability_names() {
+		return array( 'mad4b/acceptance-capabilities', 'mad4b/acceptance-plan', 'mad4b/acceptance-run', 'mad4b/acceptance-result' );
 	}
 
 	public static function register_abilities() {

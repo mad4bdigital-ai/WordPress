@@ -13,7 +13,7 @@ trait MAD4B_SCP_Server_Write_Catalog {
 			array(
                 // Existing Host Bridge is native signed-job and exact-approval
                 // fenced; cataloguing this does not grant Host authority.
-                'mad4b/host-operation-apply',
+                'mad4b/host-operation-apply', 'mad4b/optional-governance-apply',
                 'mad4b/native-recovery-start', 'mad4b/native-recovery-cleanup',
                 'mad4b/deployment-binding-setup-apply', 'mad4b/deployment-binding-native-apply',
                 // Exact Staging-native bootstrap was previously visible only

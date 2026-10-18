@@ -96,4 +96,27 @@ $old = $cls::resolve( $pr );
 $GLOBALS['http_body']['head']['sha'] = $sha2;
 $moved = $cls::resolve( $pr );
 expect( $old['resolved_sha'] !== $moved['resolved_sha'], 'moving PR head is observable and requires new approval' );
+// A specifically selected older commit is accepted only if it is a
+// verified ancestor of the named branch. No foreign source or false ancestry.
+$pair = array( 'repository' => $repo, 'type' => 'branch_commit',
+    'reference' => 'feature/next-candidate@' . $sha1 );
+$GLOBALS['http_body'] = array( 'status' => 'ahead',
+    'base_commit' => array( 'sha' => $sha1 ),
+    'merge_base_commit' => array( 'sha' => $sha1 ),
+    'head_commit' => array( 'sha' => $sha2 ) );
+$match = $cls::resolve( $pair );
+expect( is_array( $match ) && $match['resolved_sha'] === $sha1
+    && $match['branch_head_sha'] === $sha2, 'historical SHA remains pinned to branch ancestry' );
+expect( false !== strpos( end( $GLOBALS['requests'] )['url'],
+    '/compare/' . $sha1 . '...feature%2Fnext-candidate' ), 'only bounded GitHub compare origin' );
+$GLOBALS['http_body']['status'] = 'diverged';
+expect( is_wp_error( $cls::resolve( $pair ) ), 'non-member selected commit refused' );
+$GLOBALS['http_body']['status'] = 'ahead';
+$GLOBALS['http_body']['merge_base_commit']['sha'] = $sha2;
+expect( is_wp_error( $cls::resolve( $pair ) ), 'nonancestor selected commit refused' );
+$GLOBALS['http_body']['merge_base_commit']['sha'] = $sha1;
+$pair['reference'] = '../bad@' . $sha1;
+expect( is_wp_error( $cls::resolve( $pair ) ), 'branch traversal denied for paired commit' );
+$pair['reference'] = 'feature/next-candidate@notsha';
+expect( is_wp_error( $cls::resolve( $pair ) ), 'invalid paired commit refused' );
 echo 'MAD4B_DYNAMIC_STAGING_SOURCE: PASS ' . $GLOBALS['checks'] . " scenarios\n";

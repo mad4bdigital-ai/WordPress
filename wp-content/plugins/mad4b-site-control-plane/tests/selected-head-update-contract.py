@@ -37,7 +37,21 @@ assert "release_verdict_run_id" in selected
 assert "hash_equals( $zip_url, (string) $m['package_url'] )" in selected
 assert "hash_equals( $plan['plan_sha256'], $expected )" in selected
 assert "self::can_apply( $input )" in selected
-assert "MAD4B_SCP_Self_Update::can_upload_apply" in selected
+# Ensure the governed install backend exists without claiming the different
+# upload-apply owner's ticket to authorize selected-head-apply.
+assert "method_exists( 'MAD4B_SCP_Self_Update', 'can_upload_apply' )" in selected
+assert "MAD4B_SCP_Self_Update::can_upload_apply(" not in selected
+# Selected-head authorization is exact-Ability, owner-enrolled, OAuth step-up,
+# and execution-frame bound; do not loosen these when the upload lane evolves.
+for marker in (
+    "MAD4B_SCP_Site_Profile::user_is_enrolled( get_current_user_id() )",
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()",
+    "MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(",
+    "self::APPLY_ABILITY, 'mad4b-admin', 'core'",
+    "MAD4B_SCP_Authorization::execution_callback_started( self::APPLY_ABILITY )",
+    "MAD4B_SCP_Execution_Fence::has_active_frame()",
+):
+    assert marker in selected, f"selected-head governed authority boundary missing: {marker}"
 assert "MAD4B_SCP_Authorization::authorize_mutation" in selected
 assert "MAD4B_SCP_Self_Update::upload_plan" in selected
 assert "MAD4B_SCP_Self_Update::upload_apply( $upload )" in selected

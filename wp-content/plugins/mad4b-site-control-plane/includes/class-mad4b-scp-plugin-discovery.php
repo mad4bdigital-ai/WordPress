@@ -150,6 +150,362 @@ final class MAD4B_SCP_Plugin_Discovery {
 		return $counts;
 	}
 
+	/**
+	 * Dynamic, non-executing plugin capability graph.
+	 * WordPress itself supplies plugin headers and the registered ability set;
+	 * no vendor version, slug, route or method whitelist is embedded here.
+	 * A matching namespace is merely a CANDIDATE, never proof of ownership,
+	 * safety or permission to invoke an ability.
+	 */
+	private static function dependency_slug( $file ) {
+		$parts = explode( '/', self::normalize_plugin_file( $file ) );
+		$component = isset( $parts[1] ) ? $parts[0] : pathinfo( $parts[0], PATHINFO_FILENAME );
+		return sanitize_key( $component );
+	}
+
+	public static function capability_graph() {
+		$coverage = self::coverage();
+		if ( ! function_exists( 'get_plugins' ) ) require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		$headers = get_plugins();
+		$mu_plugins = function_exists( 'get_mu_plugins' ) ? get_mu_plugins() : array();
+		$dropins = function_exists( 'get_dropins' ) ? get_dropins() : array();
+		$abilities_ready = function_exists( 'wp_get_abilities' )
+			&& ( ! function_exists( 'did_action' ) || did_action( 'wp_abilities_api_init' ) > 0 );
+		$registered = $abilities_ready ? wp_get_abilities() : null;
+		return self::build_capability_graph(
+			is_array( $coverage ) ? $coverage : array(),
+			is_array( $headers ) ? $headers : array(),
+			is_array( $registered ) ? array_keys( $registered ) : array(),
+			is_array( $registered ),
+			is_array( $mu_plugins ) ? $mu_plugins : array(),
+			is_array( $dropins ) ? $dropins : array()
+		);
+	}
+
+	/**
+	 * Pure projection suitable for deterministic negative fixtures. Does not
+	 * execute callbacks, register abilities, grant access, or touch plugin data.
+	 */
+	public static function build_capability_graph(
+		array $coverage, array $headers, array $registered_names, $registry_available = true,
+		array $mu_plugins = array(), array $dropins = array()
+	) {
+		$ability_count = count( $registered_names );
+		$registered_names = array_slice( $registered_names, 0, 2000 );
+		$namespaces = array();
+		$registered_set = array();
+		foreach ( $registered_names as $name ) {
+			if ( ! is_string( $name )
+				|| ! preg_match( '~^[a-z0-9_-]{1,64}/[a-z0-9._/-]{1,191}$~D', $name ) ) continue;
+			$registered_set[ $name ] = true;
+			$parts = explode( '/', $name, 2 );
+			$namespaces[ $parts[0] ][ $name ] = true;
+		}
+		$plugins = isset( $coverage['plugins'] ) && is_array( $coverage['plugins'] )
+			? array_slice( $coverage['plugins'], 0, self::MAX_PLUGINS ) : array();
+		// WordPress core enumerates must-use plugins and drop-ins separately.
+		// Treat these as inventory-only: never infer plugin lifecycle or writes.
+		$special_count = 0;
+		foreach ( array( 'must_use' => $mu_plugins, 'dropin' => $dropins ) as $kind => $extras ) {
+			ksort( $extras, SORT_STRING );
+			foreach ( $extras as $filename => $metadata ) {
+				if ( count( $plugins ) >= self::MAX_PLUGINS ) break;
+				$file = self::normalize_plugin_file( $filename );
+				if ( '' === $file || ! is_array( $metadata ) ) continue;
+				$plugins[] = array(
+					'plugin_file' => $file,
+					'version' => (string) ( $metadata['Version'] ?? '' ),
+					'active' => true, 'family' => $kind,
+					'adapter_id' => '', 'adapter_registered' => false,
+					'coverage_state' => 'inventory_only',
+					'package_kind' => $kind,
+					'requires_plugins' => (string) ( $metadata['RequiresPlugins'] ?? '' ),
+					'adapter_read_abilities' => array(),
+				);
+				++$special_count;
+			}
+		}
+		$known_slugs = array();
+		$active_slugs = array();
+		foreach ( $plugins as $p ) {
+			if ( ! is_array( $p ) || empty( $p['plugin_file'] ) ) continue;
+			$slug = self::dependency_slug( $p['plugin_file'] );
+			$known_slugs[ $slug ] = true;
+			if ( ! empty( $p['active'] ) ) $active_slugs[ $slug ] = true;
+		}
+		$rows = array();
+		$registered_read_count = 0;
+		$unreviewed_count = 0;
+		foreach ( $plugins as $plugin ) {
+			if ( ! is_array( $plugin ) || empty( $plugin['plugin_file'] ) ) continue;
+			$file = self::normalize_plugin_file( $plugin['plugin_file'] );
+			$slug = self::dependency_slug( $file );
+			$header = isset( $headers[ $file ] ) && is_array( $headers[ $file ] ) ? $headers[ $file ] : array();
+			$dependencies = array();
+			$raw_dependencies = 'standard' === (string) ( $plugin['package_kind'] ?? 'standard' )
+				? (string) ( $header['RequiresPlugins'] ?? '' )
+				: (string) ( $plugin['requires_plugins'] ?? '' );
+			foreach ( explode( ',', $raw_dependencies ) as $dependency ) {
+				$dependency = sanitize_key( trim( $dependency ) );
+				if ( '' !== $dependency && $dependency !== $slug ) $dependencies[ $dependency ] = true;
+			}
+			$dependency_rows = array();
+			ksort( $dependencies, SORT_STRING );
+			foreach ( $dependencies as $dependency => $_ ) $dependency_rows[] = array(
+				'slug' => $dependency,
+				'installed' => isset( $known_slugs[ $dependency ] ),
+				'active' => isset( $active_slugs[ $dependency ] ),
+			);
+			$declared = isset( $plugin['adapter_read_abilities'] ) && is_array( $plugin['adapter_read_abilities'] )
+				? $plugin['adapter_read_abilities'] : array();
+			$declared = array_values( array_unique( array_filter( $declared, 'is_string' ) ) );
+			sort( $declared, SORT_STRING );
+			$mounted = ( ! empty( $plugin['active'] ) && ! empty( $plugin['adapter_registered'] )
+				&& ! empty( $plugin['adapter_runtime_available'] ) )
+				? array_values( array_filter( $declared, static function ( $name ) use ( $registered_set ) {
+					return isset( $registered_set[ $name ] );
+				} ) ) : array();
+			$writes = isset( $plugin['adapter_write_abilities'] ) && is_array( $plugin['adapter_write_abilities'] )
+				? array_values( array_unique( array_filter( $plugin['adapter_write_abilities'], 'is_string' ) ) ) : array();
+			sort( $writes, SORT_STRING );
+			$registered_writes = ( ! empty( $plugin['active'] ) && ! empty( $plugin['adapter_registered'] )
+				&& ! empty( $plugin['adapter_runtime_available'] ) )
+				? array_values( array_filter( $writes, static function ( $name ) use ( $registered_set ) {
+					return isset( $registered_set[ $name ] );
+				} ) ) : array();
+			$reversible = isset( $plugin['adapter_reversible_contracts'] ) && is_array( $plugin['adapter_reversible_contracts'] )
+				? $plugin['adapter_reversible_contracts'] : array();
+			ksort( $reversible, SORT_STRING );
+			$namespace_candidates = isset( $namespaces[ $slug ] ) ? array_keys( $namespaces[ $slug ] ) : array();
+			sort( $namespace_candidates, SORT_STRING );
+			$unreviewed = array_values( array_diff( $namespace_candidates, $declared ) );
+			$registered_read_count += count( $mounted );
+			$unreviewed_count += count( $unreviewed );
+			$rows[] = array(
+				'plugin_file' => $file,
+				'package_kind' => (string) ( $plugin['package_kind'] ?? 'standard' ),
+				'slug' => $slug,
+				'version' => (string) ( $plugin['version'] ?? '' ),
+				'active' => ! empty( $plugin['active'] ),
+				'family' => (string) ( $plugin['family'] ?? 'unknown' ),
+				'adapter_id' => (string) ( $plugin['adapter_id'] ?? '' ),
+				'coverage_state' => (string) ( $plugin['coverage_state'] ?? 'adapter_required' ),
+				'provider_certification_ok' => ! empty( $plugin['provider_certification_ok'] ),
+				'declared_adapter_read_abilities' => $declared,
+				'registered_adapter_read_abilities' => $mounted,
+				'declared_adapter_write_abilities' => $writes,
+				'registered_adapter_write_abilities' => $registered_writes,
+				'reversible_contracts' => $reversible,
+				'adapter_registered' => ! empty( $plugin['adapter_registered'] ),
+				'adapter_runtime_available' => ! empty( $plugin['adapter_runtime_available'] ),
+				'side_channel_blocker' => (string) ( $plugin['side_channel_blocker'] ?? '' ),
+				'unreviewed_namespace_candidates' => array_slice( $unreviewed, 0, 48 ),
+				'unreviewed_namespace_candidates_count' => count( $unreviewed ),
+				'declared_dependencies' => $dependency_rows,
+				'dependency_gap' => (bool) count( array_filter( $dependency_rows, static function ( $d ) {
+					return ! $d['active'];
+				} ) ),
+				'executable_from_graph' => false,
+				'write_auto_enabled' => false,
+				'next_step' => empty( $plugin['adapter_registered'] )
+					? 'review_vendor_contract_and_register_separately'
+					: ( ! empty( $plugin['provider_certification_ok'] )
+						? 'use_existing_governed_ability_with_its_own_permission_gate'
+						: 'inspect_behavioral_contract_and_certification_before_mutation' ),
+			);
+		}
+		usort( $rows, static function ( $a, $b ) {
+			return strcmp(
+				$a['plugin_file'] . "\0" . $a['package_kind'],
+				$b['plugin_file'] . "\0" . $b['package_kind']
+			);
+		} );
+		$complete = ! empty( $registry_available )
+			&& empty( $coverage['truncated'] )
+			&& count( $registered_names ) === $ability_count
+			&& ( count( $plugins ) < self::MAX_PLUGINS
+				|| $special_count === count( $mu_plugins ) + count( $dropins ) );
+		$dimensions = array(
+			'inventory_observed' => count( $rows ), 'inventory_only' => 0,
+			'active_reviewed_adapter' => 0, 'read_contract_registered' => 0,
+			'write_contract_registered' => 0, 'write_behavior_certified' => 0,
+			'reversible_contract_defined' => 0,
+			'missing_active_dependencies' => 0, 'unreviewed_capability_candidates' => 0,
+		);
+		foreach ( $rows as $row ) {
+			if ( 'standard' !== $row['package_kind'] ) ++$dimensions['inventory_only'];
+			if ( ! empty( $row['dependency_gap'] ) ) ++$dimensions['missing_active_dependencies'];
+			$dimensions['unreviewed_capability_candidates'] += (int) $row['unreviewed_namespace_candidates_count'];
+			if ( empty( $row['active'] ) || empty( $row['adapter_registered'] )
+				|| empty( $row['adapter_runtime_available'] ) ) continue;
+			++$dimensions['active_reviewed_adapter'];
+			if ( ! empty( $row['side_channel_blocker'] ) || ! empty( $row['dependency_gap'] )
+				|| 'excluded_high_risk' === $row['coverage_state'] ) continue;
+			if ( ! empty( $row['registered_adapter_read_abilities'] ) ) ++$dimensions['read_contract_registered'];
+			if ( ! empty( $row['registered_adapter_write_abilities'] )
+				&& in_array( $row['coverage_state'], array( 'supported_reversible', 'supported_governed' ), true ) ) {
+				++$dimensions['write_contract_registered'];
+				if ( ! empty( $row['provider_certification_ok'] ) ) {
+					++$dimensions['write_behavior_certified'];
+					if ( ! empty( $row['reversible_contracts'] ) ) ++$dimensions['reversible_contract_defined'];
+				}
+			}
+		}
+		$identity = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		return array(
+			'contract' => 'mad4b.plugin-capability-graph.v1',
+			'non_authorizing' => true, 'read_only' => true,
+			'complete' => $complete,
+			'state' => $complete ? 'DISCOVERY_COMPLETE' : 'DISCOVERY_PARTIAL',
+			'installed_plugin_count' => count( $rows ),
+			'must_use_and_dropin_count' => $special_count,
+			'registered_adapter_read_count' => $registered_read_count,
+			'unreviewed_namespace_candidate_count' => $unreviewed_count,
+			'functional_dimension_counts' => $dimensions,
+			'count_semantics' => 'read/write registration and provider certification are not per-request authorization',
+			'ability_registry_available' => (bool) $registry_available,
+			'registered_ability_count' => $ability_count,
+			'graph_sha256' => is_string( $identity ) ? hash( 'sha256', $identity ) : '',
+			'items' => $rows,
+			'executes_plugin_abilities' => false,
+			'automatic_write_registration' => false,
+			'unknown_plugin_write_allowed' => false,
+		);
+	}
+
+	/**
+	 * Plan a capability route from exact discovery evidence. Planning is purely
+	 * declarative: authorization and execution always stay in the existing
+	 * audited read/write/undo dispatchers, never in this graph.
+	 */
+	public static function route_plan( $input = array() ) {
+		$input = is_array( $input ) ? $input : array();
+		return self::plan_from_graph( self::capability_graph(), $input );
+	}
+
+	public static function plan_from_graph( array $graph, array $input ) {
+		$file = isset( $input['plugin_file'] ) && is_string( $input['plugin_file'] )
+			? self::normalize_plugin_file( $input['plugin_file'] ) : '';
+		$ability = isset( $input['ability'] ) && is_string( $input['ability'] )
+			? trim( $input['ability'] ) : '';
+		$dimension = isset( $input['dimension'] ) && is_string( $input['dimension'] )
+			? sanitize_key( $input['dimension'] ) : '';
+		$expected = isset( $input['expected_graph_sha256'] ) && is_string( $input['expected_graph_sha256'] )
+			? strtolower( $input['expected_graph_sha256'] ) : '';
+		$result = array(
+			'contract' => 'mad4b.plugin-capability-route-plan.v1',
+			'plugin_file' => $file, 'ability' => $ability, 'dimension' => $dimension,
+			'graph_sha256' => (string) ( $graph['graph_sha256'] ?? '' ),
+			'state' => 'INVALID_REQUEST',
+			'non_authorizing' => true, 'read_only' => true,
+			'execute_ability_from_graph' => false, 'mutation_performed' => false,
+			'grant_created' => false, 'owner_approval_reused' => false,
+			'dispatcher' => '', 'required_gates' => array(),
+		);
+		if ( ! in_array( $dimension, array( 'inventory', 'read', 'write', 'rollback' ), true )
+			|| '' === $file || strlen( $file ) > 191
+			|| false !== strpos( $file, '..' ) || 0 === strpos( $file, '/' )
+			|| ( 'inventory' !== $dimension && ( '' === $ability || strlen( $ability ) > 191 ) ) )
+			return $result;
+		if ( ! empty( $expected ) && ( ! preg_match( '/^[a-f0-9]{64}$/D', $expected )
+			|| ! preg_match( '/^[a-f0-9]{64}$/D', $result['graph_sha256'] )
+			|| ! hash_equals( $result['graph_sha256'], $expected ) ) ) {
+			$result['state'] = 'DISCOVERY_SNAPSHOT_CHANGED';
+			return $result;
+		}
+		if ( empty( $graph['complete'] ) ) {
+			$result['state'] = 'DISCOVERY_PARTIAL';
+			return $result;
+		}
+		$matches = array();
+		foreach ( isset( $graph['items'] ) && is_array( $graph['items'] ) ? $graph['items'] : array() as $row ) {
+			if ( ! is_array( $row ) || (string) ( $row['plugin_file'] ?? '' ) !== $file ) continue;
+			$matches[] = $row;
+		}
+		if ( count( $matches ) !== 1 ) {
+			$result['state'] = count( $matches ) ? 'PLUGIN_IDENTITY_AMBIGUOUS' : 'PLUGIN_NOT_FOUND';
+			return $result;
+		}
+		$row = $matches[0];
+		$result['package_kind'] = (string) ( $row['package_kind'] ?? 'standard' );
+		$result['installed_version'] = (string) ( $row['version'] ?? '' );
+		$result['adapter_id'] = (string) ( $row['adapter_id'] ?? '' );
+		$result['coverage_state'] = (string) ( $row['coverage_state'] ?? '' );
+		if ( 'inventory' === $dimension ) {
+			$result['state'] = 'INVENTORY_OBSERVED';
+			$result['dispatcher'] = 'mad4b/plugin-capability-graph';
+			return $result;
+		}
+		if ( 'standard' !== $result['package_kind'] ) {
+			$result['state'] = 'INVENTORY_ONLY_PACKAGE';
+			return $result;
+		}
+		if ( empty( $row['active'] ) ) { $result['state'] = 'PLUGIN_INACTIVE'; return $result; }
+		if ( ! empty( $row['dependency_gap'] ) ) { $result['state'] = 'DEPENDENCY_NOT_READY'; return $result; }
+		if ( empty( $row['adapter_registered'] ) || empty( $row['adapter_runtime_available'] ) ) {
+			$result['state'] = 'REVIEWED_ADAPTER_UNAVAILABLE';
+			return $result;
+		}
+		if ( 'excluded_high_risk' === $result['coverage_state'] ) {
+			$result['state'] = 'PROVIDER_EXCLUDED_BY_RISK';
+			return $result;
+		}
+		if ( ! empty( $row['side_channel_blocker'] ) ) {
+			$result['state'] = 'PARALLEL_TRANSPORT_UNREVIEWED';
+			return $result;
+		}
+		$read = isset( $row['declared_adapter_read_abilities'] ) && is_array( $row['declared_adapter_read_abilities'] )
+			? $row['declared_adapter_read_abilities'] : array();
+		$write = isset( $row['declared_adapter_write_abilities'] ) && is_array( $row['declared_adapter_write_abilities'] )
+			? $row['declared_adapter_write_abilities'] : array();
+		$declared = 'read' === $dimension ? $read : $write;
+		if ( ! in_array( $ability, $declared, true ) ) {
+			$result['state'] = 'ABILITY_UNREVIEWED';
+			return $result;
+		}
+		$mounted = isset( $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] )
+			&& is_array( $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] )
+			? $row['registered_adapter_' . ( 'read' === $dimension ? 'read' : 'write' ) . '_abilities'] : array();
+		if ( ! in_array( $ability, $mounted, true ) ) {
+			$result['state'] = 'ABILITY_NOT_REGISTERED';
+			return $result;
+		}
+		if ( 'read' === $dimension ) {
+			$result['state'] = 'READ_CONTRACT_AVAILABLE_AUTHORIZATION_REQUIRED';
+			$result['dispatcher'] = 'mad4b/read-execute';
+			$result['required_gates'] = array( 'registered_wp_ability_permission_callback', 'oauth_read_scope', 'transport_read_authority' );
+			return $result;
+		}
+		if ( ! in_array( $result['coverage_state'], array( 'supported_governed', 'supported_reversible' ), true ) ) {
+			$result['state'] = 'ADAPTER_WRITE_NOT_ELIGIBLE';
+			return $result;
+		}
+		if ( empty( $row['provider_certification_ok'] ) ) {
+			$result['state'] = 'WRITE_BEHAVIOR_NOT_CERTIFIED';
+			return $result;
+		}
+		if ( 'rollback' === $dimension ) {
+			$contracts = isset( $row['reversible_contracts'] ) && is_array( $row['reversible_contracts'] )
+				? $row['reversible_contracts'] : array();
+			if ( ! isset( $contracts[ $ability ] ) || ! is_string( $contracts[ $ability ] )
+				|| ! preg_match( '/^mad4b\\.rollback\\.[a-z0-9._-]+\\.v[0-9]+$/D', $contracts[ $ability ] ) ) {
+				$result['state'] = 'ROLLBACK_CONTRACT_UNAVAILABLE';
+				return $result;
+			}
+			$result['rollback_contract'] = $contracts[ $ability ];
+			$result['state'] = 'RECORDED_REVERSIBLE_OPERATION_REQUIRED';
+			$result['dispatcher'] = 'mad4b/mutation-undo';
+			$result['required_gates'] = array( 'recorded_operation_id', 'before_state_receipt', 'current_state_cas',
+				'exact_owner_approval', 'governed_write_grant', 'audit_and_rollback_verification' );
+			return $result;
+		}
+		$result['state'] = 'GOVERNED_WRITE_PATH_DEFINED_AUTHORIZATION_REQUIRED';
+		$result['dispatcher'] = 'mad4b/write-execute';
+		$result['required_gates'] = array( 'provider_capability_contract', 'exact_owner_approval',
+			'governed_write_grant', 'oauth_step_up', 'current_state_cas', 'journal_and_rollback_evidence' );
+		return $result;
+	}
+
 	public static function functional_coverage_report() {
 		$coverage = self::coverage();
 		$items = array();
@@ -456,6 +812,17 @@ final class MAD4B_SCP_Plugin_Discovery {
 		$declared_abilities = is_object( $adapter ) && method_exists( $adapter, 'ability_names' ) ? $adapter->ability_names() : array();
 		$declared_abilities = is_array( $declared_abilities ) ? $declared_abilities : array();
 		$read_abilities = isset( $declared_abilities['read'] ) && is_array( $declared_abilities['read'] ) ? array_values( array_filter( $declared_abilities['read'], 'is_string' ) ) : array();
+		$read_abilities = array_values( array_unique( $read_abilities ) );
+		sort( $read_abilities, SORT_STRING );
+		$write_abilities = array();
+		foreach ( array( 'content', 'admin', 'write' ) as $surface ) {
+			if ( ! empty( $declared_abilities[ $surface ] ) && is_array( $declared_abilities[ $surface ] ) )
+				$write_abilities = array_merge( $write_abilities, array_filter( $declared_abilities[ $surface ], 'is_string' ) );
+		}
+		$write_abilities = array_values( array_unique( $write_abilities ) );
+		sort( $write_abilities, SORT_STRING );
+		$rollback_abilities = is_array( $reversible ) ? $reversible : array();
+		ksort( $rollback_abilities, SORT_STRING );
 		return array(
 			'plugin_file' => $plugin_file,
 			'slug' => self::plugin_slug( $plugin_file ),
@@ -469,6 +836,9 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'adapter_registered' => is_object( $adapter ),
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
 			'adapter_read_ability_count' => count( $read_abilities ),
+			'adapter_read_abilities' => array_slice( $read_abilities, 0, 128 ),
+			'adapter_write_abilities' => array_slice( $write_abilities, 0, 128 ),
+			'adapter_reversible_contracts' => array_slice( $rollback_abilities, 0, 128, true ),
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,

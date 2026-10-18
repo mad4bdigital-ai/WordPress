@@ -49,6 +49,29 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify generalized read-only adapter discovery and reviewed registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php -l "$P/includes/class-mad4b-scp-adapter-registry.php"
+          php -l "$P/includes/class-mad4b-scp-plugin-discovery.php"
+          php "$P/tests/dynamic-adapter-registration-policy-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-external-adapter-trust.php"
+          php "$P/tests/dynamic-adapter-capability-graph-runtime.php"
+          php "$P/tests/dynamic-external-adapter-trust-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-header-parameters.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-read-behavior.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-peer-health.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-local-ability-trust.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-hybrid-authority.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-hybrid.php"
+          php "$P/tests/dynamic-mcp-hybrid-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-admin-native-mcp-view.php"
+          php "$P/tests/admin-native-mcp-view-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-admin-remote-parity.php"
+          php "$P/tests/admin-remote-parity-contract-runtime.php"
+
       - name: Verify discovery and reversible adapter contracts
         shell: bash
         run: |

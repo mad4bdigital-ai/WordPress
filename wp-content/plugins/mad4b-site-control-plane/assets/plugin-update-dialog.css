@@ -1,0 +1,31 @@
+.mad4b-ud-dialog{width:min(680px,calc(100vw - 28px));max-height:min(85vh,850px);overflow-y:auto;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.26);padding:0;background:#fff;color:#172b4d}
+.mad4b-ud-dialog::backdrop{background:rgba(15,23,42,.62)}
+.mad4b-ud-dialog:focus{outline:none}
+.mad4b-ud-dialog .mad4b-ud-header{background:#112840;color:#fff;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:24px}
+.mad4b-ud-dialog h2{margin:4px 0 0;color:inherit;font-size:21px;line-height:1.35}
+.mad4b-ud-dialog h3{margin:12px 24px 9px;font-size:15px}
+.mad4b-ud-dialog .mad4b-ud-eyebrow{margin:0;color:#c0f288;font-size:12px;font-weight:700;letter-spacing:.055em;text-transform:uppercase}
+.mad4b-ud-dialog .mad4b-ud-dismiss{flex:none;min-width:34px;font-size:23px;line-height:1.2}
+.mad4b-ud-dialog .mad4b-ud-intro{margin:18px 24px 8px;color:#42536a;line-height:1.6}
+.mad4b-ud-dialog .mad4b-ud-details{margin:14px 24px;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#d9e2e9;border:1px solid #d9e2e9;border-radius:10px;overflow:hidden}
+.mad4b-ud-dialog .mad4b-ud-meta{background:#f6f9fb;padding:12px;min-width:0}
+.mad4b-ud-dialog dt{font-size:12px;color:#526174;margin:0 0 5px}
+.mad4b-ud-dialog dd{margin:0;overflow-wrap:anywhere;font-weight:600;color:#112840}
+.mad4b-ud-dialog .mad4b-ud-actions{display:flex;flex-wrap:wrap;gap:9px;margin:16px 24px}
+.mad4b-ud-dialog .mad4b-ud-separator{border-top:1px solid #e2e8f0;margin:16px 24px}
+.mad4b-ud-dialog .mad4b-ud-form{display:grid;gap:12px;margin:12px 24px 18px}
+.mad4b-ud-dialog .mad4b-ud-form label{font-weight:600;display:grid;gap:6px;min-width:0}
+.mad4b-ud-dialog .mad4b-ud-form input,.mad4b-ud-dialog .mad4b-ud-form select{width:100%;max-width:100%;box-sizing:border-box}
+.mad4b-ud-dialog .mad4b-ud-form .button{justify-self:start}
+.mad4b-ud-dialog [hidden]{display:none!important}
+.mad4b-ud-dialog input:focus-visible,.mad4b-ud-dialog select:focus-visible,.mad4b-ud-dialog button:focus-visible,.mad4b-ud-dialog a:focus-visible{outline:2px solid #2b77c1;outline-offset:2px}
+.mad4b-ud-dialog .description{margin:8px 24px 12px;line-height:1.6}
+.mad4b-ud-dialog .mad4b-ud-footnote{margin:0;padding:16px 24px;background:#f3f6fa;color:#586777;font-size:12px;line-height:1.5}
+@media(max-width:580px){.mad4b-ud-dialog .mad4b-ud-header{padding:17px}.mad4b-ud-dialog .mad4b-ud-details{grid-template-columns:1fr}.mad4b-ud-dialog .mad4b-ud-intro,.mad4b-ud-dialog .mad4b-ud-details,.mad4b-ud-dialog .mad4b-ud-actions,.mad4b-ud-dialog .mad4b-ud-form{margin-left:16px;margin-right:16px}}
+@media(prefers-reduced-motion:reduce){.mad4b-ud-dialog{scroll-behavior:auto}}
+
+.mad4b-ud-dialog .mad4b-ud-preview-result{padding:12px 14px;border:1px solid #bfd2dd;background:#f6f9fc;border-radius:8px;overflow-wrap:anywhere;line-height:1.55;min-width:0}
+.mad4b-ud-dialog .mad4b-ud-preview-result ul{margin:8px 0;padding-inline-start:20px;list-style:disc}
+.mad4b-ud-dialog .mad4b-ud-preview-result p{margin:9px 0 0}
+.mad4b-ud-dialog[dir="rtl"],[dir="rtl"] .mad4b-ud-dialog{text-align:start}
+@media(max-width:375px){.mad4b-ud-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 20px);border-radius:10px}.mad4b-ud-dialog .mad4b-ud-header{gap:8px;padding:12px}.mad4b-ud-dialog h2{font-size:18px}.mad4b-ud-dialog h3{margin-inline:12px}.mad4b-ud-dialog .mad4b-ud-intro,.mad4b-ud-dialog .mad4b-ud-details,.mad4b-ud-dialog .mad4b-ud-actions,.mad4b-ud-dialog .mad4b-ud-form{margin-inline:12px}.mad4b-ud-dialog .description{margin-inline:12px}}

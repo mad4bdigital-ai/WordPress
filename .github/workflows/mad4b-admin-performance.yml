@@ -41,6 +41,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-workspace.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-plugin-admin-menu.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-popup.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-popup-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-popup-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-menu-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/native-plugin-management-setup-action-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/plugin-update-dialog.js
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-ui.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/admin-parity-diagnostics-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php

@@ -190,7 +190,8 @@ assert 'mad4b_wp_all_export_classification_required' in src
 assert 'mad4b_wp_all_export_retention_invalid' in src
 
 assert 'class-mad4b-scp-wp-import-export-adapter.php' in main
-assert 'MAD4B_SCP_WP_Import_Export_Adapter' in registry
+assert 'approved_bundled_adapter_classes' in registry
+assert 'MAD4B_SCP_WP_Import_Export_Adapter' in json.loads((ROOT / 'config/adapter-registration-policy.json').read_text('utf-8'))['approved_classes']
 
 provider = capability_catalog.get('providers', {}).get('wp-import-export', {})
 assert provider.get('adapter_id') == 'wp-import-export'

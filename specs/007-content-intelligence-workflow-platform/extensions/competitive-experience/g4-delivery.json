@@ -68,7 +68,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "84d53fd740f6db40ff837c78d86510daaefec23ed7638ffc69157cc9ae1cfa6f"
+      "sha256": "bd80d547c6a34256bc08f08dd534db2ef614eacd5d2fdda8c47c8a0b59b52068"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-contracts.php",
@@ -76,11 +76,11 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
-      "sha256": "44123551ae96606d5cd06191e87f87526e2b4daafede0a2a4203ff7164e170d4"
+      "sha256": "fefc219f5ff1f5dc109b597ba901568172f48bfd283ed9ba1e9649cb7a07e1f9"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php",
-      "sha256": "51481033f3cff1e4beb4c3ed80f286429fb0a4d3de0384157b9d95aebcd241ab"
+      "sha256": "efa2c762bd91f2d6ba1964d7b53993c3fadc6ba01977e0232142eb3e4198b782"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json",
@@ -248,6 +248,6 @@
     "Native guarded apply, disposable Staging canaries, stock/order/hook concurrency, independent financial/external effects, rendered/frontend readback and exact rollback/uncertainty acceptance.",
     "Real PII read/mask/consent/retention/export/delete and optional-provider readiness; actual Divi/Kadence/FSE/operational/WPML/ACF/BuddyPress/Events Calendar acceptance.",
     "Independent operator/browser/RTL/persisted readback through the established process; no direct live WordPress connection from this window.",
-    "G5\u2013G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
+    "G5–G9 and final release closure remain pending before #258 leaves Draft; Production remains unauthorized."
   ]
 }

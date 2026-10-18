@@ -120,8 +120,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "85e9e732c80dfbaff615eb2603b14eb40050e55cc9c31dcc30cce6400dcd1925",
-      "bytes": 28114
+      "sha256": "ddad1add5f1fedad52d74ea99501f37b507901efbf146a158e5271f2de2c5192",
+      "bytes": 31087
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g8-restore-convergence.php",
@@ -130,8 +130,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "84d53fd740f6db40ff837c78d86510daaefec23ed7638ffc69157cc9ae1cfa6f",
-      "bytes": 50572
+      "sha256": "bd80d547c6a34256bc08f08dd534db2ef614eacd5d2fdda8c47c8a0b59b52068",
+      "bytes": 51627
     }
   ],
   "test_paths": [
@@ -216,8 +216,8 @@
     },
     {
       "path": ".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-      "sha256": "c88b73eb142b208c7efd17beed93a085d511ee7a9f725b06550c4a0494880420",
-      "bytes": 57440
+      "sha256": "c2d45314f9abe77158779417b480faacd7069cf5c2fbdb0235c76e294ead31f7",
+      "bytes": 60212
     }
   ],
   "repository_foundations": [
@@ -277,7 +277,7 @@
       "pending": "Actual disposable WordPress/provider execution isolation, process/network fault injection and native review/canary evidence linkage"
     }
   ],
-  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091\u2013T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
+  "g9_integration_support": "G8 restore-convergence is passive prerequisite support; G9 owns T4091–T4095. It neither acknowledges restore, reconciles real grants, replays effects nor issues acceptance receipts.",
   "remaining_acceptance": [
     "Final exact-head PHP 7.4/8.3 Actions and disposable MySQL 8.4/MariaDB 11.4 CAS matrix must complete; source fixtures are not a passing runtime receipt",
     "Existing governed Staging host, identity, context, consent, signing-key and native journal boundaries require independent current readbacks",

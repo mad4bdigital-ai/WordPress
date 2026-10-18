@@ -1,0 +1,23 @@
+{
+  "contract": "mad4b.cross-plugin-sources.v1",
+  "default_execution": "deny_until_exact_artifact_certified",
+  "registration_policy": "reviewed_repository_manifest_only",
+  "supported_environments": ["staging", "production"],
+  "sources": [
+    {
+      "id": "etg-dynamic-filter-seo-bridge",
+      "label": "ETG Dynamic Filter SEO Bridge",
+      "repository": "mad4bdigital-ai/WordPress",
+      "plugin_subdirectory": "wp-content/plugins/etg-dynamic-filter-seo-bridge",
+      "plugin_file": "etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php",
+      "provider_id": "etg-dynamic-filter-seo-bridge",
+      "review_state": "source_reviewed_artifact_pending",
+      "source_commit_sha": "",
+      "artifact_sha256": "",
+      "artifact_version": "",
+      "package_certification": "pending",
+      "environments": ["staging", "production"],
+      "production_promotion_attestation": ""
+    }
+  ]
+}
