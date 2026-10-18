@@ -198,9 +198,20 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     reviews = coverage.get("reviewed_capabilities", [])
     # Reviews are a persistent versioned registry. A previously reviewed
     # capability remains in Git after its introduction PR is merged.
-    previous = json_file(base, COVERAGE) or {"reviewed_capabilities": []}
+    previous = json_file(base, COVERAGE) or {
+        "reviewed_capabilities": [], "lifecycle": [], "domain_rules": []
+    }
     previously_reviewed = {x.get("id") for x in previous.get("reviewed_capabilities", [])}
     ids = [x.get("id") for x in reviews]
+    ensure(previously_reviewed <= set(ids),
+           "Previously reviewed capability history must not be deleted")
+    previous_retired = {x.get("id") for x in previous.get("lifecycle", [])}
+    ensure(previous_retired <= {x.get("id") for x in coverage.get("lifecycle", [])},
+           "A historical decommission or supersession receipt was removed")
+    old_rules = {x["id"]: x for x in previous.get("domain_rules", [])}
+    new_rules = {x["id"]: x for x in coverage.get("domain_rules", [])}
+    ensure(all(new_rules.get(k) == v for k, v in old_rules.items()),
+           "Historical impact-mapping rules cannot be silently weakened")
     ensure(len(ids) == len(set(ids)), "Duplicate capability coverage IDs")
     changed_set = {p for _, p in changed}
     failures = []

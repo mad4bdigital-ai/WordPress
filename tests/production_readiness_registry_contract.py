@@ -100,4 +100,35 @@ with mock.patch.object(reg, "json_file", side_effect=previous_review):
         [("M", "docs/OTHER.md")], {}, {})
     assert not failures and not accepted, "Historical coverage survives later PRs"
 
+    try:
+        reg.validate_coverage(copy.deepcopy(policy), controls, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("Deleting historical reviewed coverage must fail")
+    except ValueError as exc:
+        assert "Previously reviewed capability history" in str(exc)
+
+    weakened = copy.deepcopy(covered)
+    weakened["domain_rules"][0]["pattern"] = "^$"
+    try:
+        reg.validate_coverage(weakened, controls, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("Weakening an inherited impact mapping must fail")
+    except ValueError as exc:
+        assert "impact-mapping rules" in str(exc)
+
+def previous_retirement(_commit, path):
+    if path == reg.CONTROLS:
+        return copy.deepcopy(controls)
+    if path == reg.COVERAGE:
+        return copy.deepcopy(retired)
+    raise AssertionError("Unexpected base catalog: " + path)
+
+with mock.patch.object(reg, "json_file", side_effect=previous_retirement):
+    try:
+        reg.validate_coverage(copy.deepcopy(policy), controls, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("Losing a historical retirement record must fail")
+    except ValueError as exc:
+        assert "historical decommission" in str(exc).lower()
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")
