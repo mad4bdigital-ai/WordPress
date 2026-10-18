@@ -21,7 +21,8 @@ function current_user_can( $cap ) { return ! empty( $GLOBALS['test_caps'][$cap] 
 function add_filter( $hook, $callback, $priority = 10, $accepted = 1 ) { $GLOBALS['test_hooks'][$hook][] = $callback; }
 function add_action( $hook, $callback, $priority = 10, $accepted = 1 ) { $GLOBALS['test_hooks'][$hook][] = $callback; }
 function plugin_basename( $file ) { return basename( dirname( $file ) ) . '/' . basename( $file ); }
-function wp_get_environment_type() { return 'staging'; }
+$GLOBALS['test_env'] = 'staging';
+function wp_get_environment_type() { return $GLOBALS['test_env']; }
 function admin_url( $path ) { return 'https://site.example.test/wp-admin/' . $path; }
 function plugins_url( $path, $plugin ) { return 'https://site.example.test/wp-content/plugins/mad4b-site-control-plane/' . $path; }
 function esc_url( $x ) { return htmlspecialchars( $x, ENT_QUOTES, 'UTF-8' ); }
@@ -73,6 +74,12 @@ verify_popup( strpos( $html, '0.4.0-alpha.13' ) !== false
 verify_popup( strpos( $html, 'data-mad4b-source-select' ) !== false
     && strpos( $html, 'data-mad4b-source-field="branch"' ) !== false,
     'Staging exact branch/commit preview fields missing' );
+$GLOBALS['test_env'] = 'production';
+ob_start(); $class::render(); $production_html = ob_get_clean();
+verify_popup( strpos( $production_html, 'mad4b_staging_source_preview' ) === false
+    && strpos( $production_html, 'mad4b_control_plane_refresh_update' ) !== false,
+    'Production modal exposed Staging-only selected commit action' );
+$GLOBALS['test_env'] = 'staging';
 verify_popup( strpos( $html, 'admin-post.php' ) !== false
     && substr_count( $html, 'name="_wpnonce"' ) === 3,
     'forms must be separate and protected by WordPress nonces' );

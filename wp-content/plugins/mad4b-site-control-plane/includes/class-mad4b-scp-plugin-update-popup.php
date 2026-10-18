@@ -39,6 +39,8 @@ final class MAD4B_SCP_Plugin_Update_Popup {
         self::$catalog = array();
         $path = MAD4B_SCP_DIR . 'config/cross-plugin-sources.json';
         if ( ! is_readable( $path ) ) return self::$catalog;
+        $bytes = filesize( $path );
+        if ( false === $bytes || $bytes > 256 * 1024 ) return self::$catalog;
         $json = file_get_contents( $path );
         if ( ! is_string( $json ) || strlen( $json ) > 256 * 1024 ) return self::$catalog;
         $source = json_decode( $json, true );
@@ -63,8 +65,8 @@ final class MAD4B_SCP_Plugin_Update_Popup {
     }
 
     public static function entry( $plugin_file ) {
-        $plugin_file = (string) $plugin_file;
-        if ( self::core_plugin( $plugin_file ) ) return array(
+        if ( ! is_string( $plugin_file ) || strlen( $plugin_file ) > 280 ) return array();
+        if ( self::core_plugin( $plugin_file ) ) return array();
             'id' => 'control-plane',
             'name' => 'MAD4B Site Control Plane',
             'version' => MAD4B_SCP_VERSION,
