@@ -55,6 +55,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '7.4'
+          extensions: pdo_sqlite, mbstring
           coverage: none
 
       # Evaluate change blast radius BEFORE expensive full runtime testing.
@@ -152,6 +153,7 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/selected-head-update-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/self-update-source-lineage-runtime.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/post-review-audit-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-regressions.py --output dist/mad4b-open-issue-regressions.json
           python3 -m py_compile tools/mad4b-local-ci-parity.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/local-ci-multi-environment-contract.py
           for scenario in disabled normal master missing uncertified drift bad-archive; do
@@ -567,6 +569,7 @@ jobs:
           path: |
             dist/pre-staging-hybrid-audit.json
             dist/mad4b-architecture-dependency-graph.json
+            dist/mad4b-open-issue-regressions.json
           if-no-files-found: error
           retention-days: 14
 
