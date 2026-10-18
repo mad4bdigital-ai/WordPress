@@ -413,6 +413,12 @@ final class MAD4B_SCP_MCP_Hybrid {
         return $record;
     }
     public static function catalog( $peer_id ) {
+        // Catalog disclosure carries provider credentials, tool names and
+        // schemas. It requires its own exact per-peer Agent grant before IO.
+        $allowed = MAD4B_SCP_MCP_Hybrid_Authority::authorize_read(
+            $peer_id, 'mad4b/native-mcp-catalog', 'native'
+        );
+        if ( is_wp_error( $allowed ) ) return $allowed;
         $prepared = self::prepared_catalog( $peer_id );
         return is_wp_error( $prepared ) ? $prepared : $prepared['catalog'];
     }
@@ -533,8 +539,13 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ! self::valid_ability( $ability ) || ! in_array( $dimension, array( 'read', 'write' ), true ) )
             return new WP_Error( 'mad4b_mcp_hybrid_request_invalid', 'Exact semantic Ability and dimension are required.' );
         $peers = self::manifest();
-        $native = ! empty( $peer_id ) && isset( $peers[$peer_id] )
-            ? self::catalog( $peer_id ) : new WP_Error( 'mad4b_mcp_peer_not_pinned', 'No owner-pinned native peer configured.' );
+        // No credentialed network discovery until the actual subject has an
+        // exact grant on the requested capability for this specific peer.
+        $allowed = ! empty( $peer_id ) && isset( $peers[$peer_id] )
+            ? MAD4B_SCP_MCP_Hybrid_Authority::authorize_read( $peer_id, $ability, 'native' )
+            : new WP_Error( 'mad4b_mcp_peer_not_pinned', 'No owner-pinned native peer configured.' );
+        $prepared = is_wp_error( $allowed ) ? $allowed : self::prepared_catalog( $peer_id );
+        $native = is_wp_error( $prepared ) ? $prepared : $prepared['catalog'];
         if ( is_wp_error( $native ) ) $native = array( 'complete' => false, 'bindings' => array(), 'peer_id' => $peer_id,
             'unavailable_reason' => $native->get_error_code() );
         $local = array();
