@@ -64,3 +64,6 @@ Remote Apply now validates the exact planned target and rejects unchanged/stale/
 
 ## Real WP Abilities acceptance strengthened
 The hermetic registration canary now imports the actual `MAD4B_SCP_Abilities::register_categories()` definitions before testing the missing-category denial and restored registration. The real Staging WP-CLI canary verifies `get_input_schema()` contains the source-injected approval ticket property and `get_meta()` contains source-owned governed-write, Authorization execution and final execution fence metadata. It tests a *valid exact changed-mode plan and confirmation* without the required one-time owner approval/OAuth ticket and requires a WordPress permission error and byte-identical saved options. This probes the registered runtime, not just malformed JSON schema. Real successful owner-approved MCP mutation remains a separately governed Staging acceptance action.
+
+## MCP catalog vs WordPress Ability parity
+The Staging-only, read-only WP-CLI canary now compares actual WordPress registrations with the current `MAD4B_SCP_Servers::core_tools('mad4b-read')`, `chatgpt_full_catalog_candidates()`, and runtime-eligible `write_tools()` lists, catching apparent discovery without a mounted target. This does not replace a real network MCP `tools/list` and separately approved one-time mutation acceptance from an authorized remote client.

@@ -22,6 +22,18 @@ foreach($required as $name=>$category) {
     if(!$ability || $ability->get_category()!==$category)
         throw new RuntimeException('Missing live Ability or wrong category: '.$name);
 }
+if ( ! class_exists( 'MAD4B_SCP_Servers', false ) )
+    throw new RuntimeException('The current MAD4B MCP server catalog is unavailable.');
+$read_catalog=MAD4B_SCP_Servers::core_tools('mad4b-read');
+$write_catalog=MAD4B_SCP_Servers::write_tools();
+$chatgpt_catalog=MAD4B_SCP_Servers::chatgpt_full_catalog_candidates();
+foreach ( array( 'status', 'plan', 'verify' ) as $read_name ) {
+    if ( ! in_array($prefix.$read_name,$read_catalog,true)
+        || ! in_array($prefix.$read_name,$chatgpt_catalog,true) )
+        throw new RuntimeException('Native Ability exists but MCP Read/ChatGPT catalog omits '.$read_name);
+}
+if ( ! in_array($prefix.'apply',$write_catalog,true) )
+    throw new RuntimeException('Native Apply exists but governed Write catalog did not mount it.');
 $status=wp_get_ability($prefix.'status')->execute(array());
 if(is_wp_error($status) || empty($status['valid']))
     throw new RuntimeException('Cannot read valid policy options from WordPress Ability.');
