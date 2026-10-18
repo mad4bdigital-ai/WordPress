@@ -42,6 +42,10 @@ $manifest = array(
         'plugin_basename' => 'demo/main.php',
         'source_relpath' => 'demo/main.php',
         'source_sha256' => hash( 'sha256', $php ),
+        'php_source_tree_sha256' => hash( 'sha256', json_encode(
+            array( 'main.php' => hash( 'sha256', $php ) ),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        ) ),
         'abilities' => array(
             'read' => array( 'external-ci/inspect' ),
             'content' => array(),
@@ -69,6 +73,13 @@ file_put_contents( $source, $php . "\n// source changed" );
 external_assert( ! MAD4B_SCP_External_Adapter_Trust::allows( $valid ), 'Source drift denied on each admission' );
 file_put_contents( $source, $php );
 external_assert( MAD4B_SCP_External_Adapter_Trust::allows( $valid ), 'Exact source digest restored' );
+$helper = $plugins . '/demo/helper.php';
+file_put_contents( $helper, '<?php function ci_added_helper() {}' );
+external_assert( ! MAD4B_SCP_External_Adapter_Trust::allows( $valid ),
+    'Adding a PHP dependency changes the source tree and revokes admission' );
+unlink( $helper );
+external_assert( MAD4B_SCP_External_Adapter_Trust::allows( $valid ),
+    'Restoring the complete PHP tree restores admission' );
 external_assert( $registry->register( $valid ), 'Reviewed external source can register without MAD4B core edit' );
 external_assert( ! $registry->register( $valid ), 'Duplicate external registration rejected' );
 external_assert( $registry->get( 'external-ci' ) === $valid, 'Registered object identity preserved' );
