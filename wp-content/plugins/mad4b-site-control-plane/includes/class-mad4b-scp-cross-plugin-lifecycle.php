@@ -42,7 +42,10 @@ final class MAD4B_SCP_Cross_Plugin_Lifecycle {
         if ( ! class_exists( 'MAD4B_SCP_Provider_Contracts' ) ) {
             $blockers[] = 'independent_provider_certificate_unavailable';
         } else {
-            $provider = MAD4B_SCP_Provider_Contracts::get( (string) ( $row['provider_id'] ?? '' ) );
+            $provider_id = (string) ( $row['provider_id'] ?? '' );
+            $provider = method_exists( 'MAD4B_SCP_Provider_Contracts', 'get_for_version' )
+                ? MAD4B_SCP_Provider_Contracts::get_for_version( $provider_id, $version )
+                : MAD4B_SCP_Provider_Contracts::get( $provider_id );
             if ( ! is_array( $provider ) || empty( $provider )
                 || (string) ( $provider['plugin_file'] ?? '' ) !== (string) $row['plugin_file']
                 || (string) ( $provider['archive_sha256'] ?? '' ) !== $archive_sha
