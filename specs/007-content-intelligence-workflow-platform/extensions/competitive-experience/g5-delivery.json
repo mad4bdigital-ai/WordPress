@@ -85,7 +85,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/admin-pages-wordpress.php",
-      "sha256": "e43d047fe0c878fe0d6eea5a1b25705225beb63f727e7a5e464b0284abd27f58"
+      "sha256": "e78cf0fdd8e6db766c457e90b069a6e0886ff9c0b5280757c358086c90def009"
     }
   ],
   "spec_paths": [
