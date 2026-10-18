@@ -207,21 +207,52 @@ function enable_optional_remote_owner_fixture() {
         const CHATGPT_CIMD_CLIENT_ID = 'mad4b-chatgpt';
     }
     class MAD4B_SCP_Authorization {
+        public static $in_claimed_callback = false;
+        public static $preflight_calls = 0;
         public static function authorize_mutation( $ability, $surface, $provider, $input ) {
+            self::$preflight_calls++;
             return $ability === MAD4B_SCP_Optional_Governance_Remote::APPLY
-                && $surface === 'mad4b-write' && $provider === 'core';
+                && $surface === 'mad4b-write' && $provider === 'core'
+                ? array( 'allowed'=>true, 'reason_code'=>'preflight_allowed' )
+                : new WP_Error('unauthorized','Unmatched authorization');
+        }
+        public static function execution_callback_started( $ability ) {
+            return self::$in_claimed_callback && $ability === MAD4B_SCP_Optional_Governance_Remote::APPLY;
+        }
+    }
+    class MAD4B_SCP_Execution_Fence {
+        public static function has_active_frame() {
+            return MAD4B_SCP_Authorization::$in_claimed_callback;
         }
     }
 }
 enable_optional_remote_owner_fixture();
+// Explicitly model WordPress Abilities: preflight happens before the
+// central claim; only the governed callback may invoke the provider.
+function governed_optional_apply_fixture( $input ) {
+    $checked = MAD4B_SCP_Optional_Governance_Remote::can_apply( $input );
+    expect( is_array($checked) && true === ($checked['allowed']??false),
+        'Governed Ability permission-time preflight did not permit reviewed Staging actor' );
+    MAD4B_SCP_Authorization::$in_claimed_callback = true;
+    try { return MAD4B_SCP_Optional_Governance_Remote::apply( $input ); }
+    finally { MAD4B_SCP_Authorization::$in_claimed_callback = false; }
+}
 $reviewed = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
 expect( ! is_wp_error( $reviewed ) && $reviewed['revision'] === 0,
     'Remote Staging plan must bind an unchanged revision' );
-$applied = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$direct = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+    'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
+expect( is_wp_error($direct) &&
+    $direct->get_error_code()==='mad4b_optional_remote_claimed_execution_required',
+    'Calling Apply directly without a central ticket claim must be refused' );
+$auth_calls_before = MAD4B_SCP_Authorization::$preflight_calls;
+$applied = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( ! is_wp_error($applied) && $applied['readback_verified']
     && $applied['audit_recorded'] && $applied['revision'] === 1
-    && false === $applied['authority_created'], 'Governed remote apply parity failed' );
+    && false === $applied['authority_created']
+    && MAD4B_SCP_Authorization::$preflight_calls === $auth_calls_before + 1,
+    'Governed remote apply must use a single central preflight; executor must not replay approval' );
 $stored_verify = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
 expect( ! is_wp_error( $stored_verify ) && $stored_verify['verified']
     && $stored_verify['revision'] === 1,
@@ -230,19 +261,19 @@ $unchanged_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'
 expect( ! is_wp_error($unchanged_plan) && false===$unchanged_plan['change_required'],
     'Remote preview must explicitly identify no-op changes' );
 $audit_before_noop = MAD4B_SCP_Audit::$count;
-$unchanged_apply = $remote::apply(array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+$unchanged_apply = governed_optional_apply_fixture(array( 'policy_id'=>'developer_lane', 'mode'=>'off',
     'expected_plan_sha256'=>$unchanged_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ));
-expect( ! is_wp_error($unchanged_apply) && ! $unchanged_apply['preferences_mutated']
-    && ! $unchanged_apply['audit_recorded'] && $unchanged_apply['no_change']
-    && $unchanged_apply['revision']===1 && MAD4B_SCP_Audit::$count===$audit_before_noop,
-    'No-op apply must not create audit entries or bump revision' );
-$stale = $remote::apply( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
+expect( is_wp_error($unchanged_apply) &&
+    $unchanged_apply->get_error_code()==='mad4b_optional_remote_no_change_use_verify'
+    && MAD4B_SCP_Audit::$count===$audit_before_noop,
+    'No-op Write must refuse the provider mutation and direct users to read-only Verify' );
+$stale = governed_optional_apply_fixture( array( 'policy_id'=>'developer_lane', 'mode'=>'off',
     'expected_plan_sha256'=>$reviewed['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($stale) && $stale->get_error_code()==='mad4b_optional_remote_plan_stale',
     'Stale remote plan must reject replay' );
 MAD4B_SCP_Site_Profile::$environment = 'production';
 $prod_plan = $remote::plan( array( 'policy_id'=>'machine_ingress', 'mode'=>'off' ) );
-$prod = $remote::apply( array( 'policy_id'=>'machine_ingress', 'mode'=>'off',
+$prod = governed_optional_apply_fixture( array( 'policy_id'=>'machine_ingress', 'mode'=>'off',
     'expected_plan_sha256'=>$prod_plan['plan_sha256'], 'confirmation'=>$remote::CONFIRM ) );
 expect( is_wp_error($prod) && $prod->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
     'Production remote policy mutation must be denied' );

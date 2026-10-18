@@ -50,7 +50,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
                 'label'=>$operation[1],
                 'description'=>$readonly ? 'Read-only advisory preview/readback.' :
                     'Staging-only exact-plan, enrolled-owner, OAuth step-up and ticket-governed advisory option mutation.',
-                'category'=>$readonly ? 'mad4b-read' : 'mad4b-governance',
+                'category'=>$readonly ? 'mad4b-read' : 'mad4b-write',
                 'execute_callback'=>array( __CLASS__, $operation[2] ),
                 'permission_callback'=>$readonly
                     ? array( 'MAD4B_SCP_Policy', 'can_read' )
@@ -145,7 +145,7 @@ final class MAD4B_SCP_Optional_Governance_Remote {
         return new WP_Error( 'mad4b_optional_verify_unknown', 'Unknown optional policy.' );
     }
 
-    public static function can_apply( $input = null ) {
+    private static function apply_actor_preflight() {
         if ( ! current_user_can( 'manage_options' ) ||
             ! class_exists( 'MAD4B_SCP_Site_Profile', false ) ||
             'staging' !== (string) MAD4B_SCP_Site_Profile::current_environment() ||
@@ -164,11 +164,33 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             ! class_exists( 'MAD4B_SCP_Authorization', false ) )
             return new WP_Error( 'mad4b_optional_remote_step_up_missing',
                 'Exact owner ChatGPT OAuth step-up and mutation authorizer are required.' );
+        return true;
+    }
+
+    /**
+     * Permission-time preflight only; the central WordPress Ability wrappers
+     * subsequently claim the approved one-time ticket and own the execution.
+     */
+    public static function can_apply( $input = null ) {
+        $actor = self::apply_actor_preflight();
+        if ( is_wp_error( $actor ) ) return $actor;
         return MAD4B_SCP_Authorization::authorize_mutation(
             self::APPLY, 'mad4b-write', 'core', is_array( $input ) ? $input : array() );
     }
 
     public static function apply( $input = array() ) {
+        // This callback is never an independent write entry point. The
+        // platform Authorization wrapper must have claimed its exact
+        // one-time ticket, and Execution Fence must own this call frame.
+        // Re-authorizing here would replay the already-claimed ticket.
+        if ( ! class_exists( 'MAD4B_SCP_Authorization', false )
+            || ! MAD4B_SCP_Authorization::execution_callback_started( self::APPLY )
+            || ! class_exists( 'MAD4B_SCP_Execution_Fence', false )
+            || ! MAD4B_SCP_Execution_Fence::has_active_frame() )
+            return new WP_Error( 'mad4b_optional_remote_claimed_execution_required',
+                'This preference can only be applied inside the exact governed WordPress Ability execution boundary.' );
+        $actor = self::apply_actor_preflight();
+        if ( is_wp_error( $actor ) ) return $actor;
         $values = self::normalize( $input, true );
         if ( is_wp_error( $values ) ||
             ! is_string( $input['expected_plan_sha256'] ?? null ) ||
@@ -176,14 +198,15 @@ final class MAD4B_SCP_Optional_Governance_Remote {
             ! is_string( $input['confirmation'] ?? null ) ||
             ! hash_equals( self::CONFIRM, $input['confirmation'] ) )
             return new WP_Error( 'mad4b_optional_remote_confirmation_denied', 'Exact typed confirmation required.' );
-        $allowed = self::can_apply( $input );
-        if ( is_wp_error( $allowed ) || true !== $allowed ) return $allowed;
         $plan = self::plan( $values );
         if ( is_wp_error( $plan ) ||
             ! hash_equals( (string) ( $plan['plan_sha256'] ?? '' ),
                 $input['expected_plan_sha256'] ) )
             return new WP_Error( 'mad4b_optional_remote_plan_stale',
                 'The current exact site, actor, policy, mode or revision differs from the reviewed plan.' );
+        if ( false === $plan['change_required'] )
+            return new WP_Error( 'mad4b_optional_remote_no_change_use_verify',
+                'The reviewed mode is already configured. Use the read-only Verify ability instead of consuming a new mutation ticket.' );
         $receipt = MAD4B_SCP_Optional_Governance::persist_modes(
             $plan['new_modes'], $plan['revision'], $plan['catalog_sha256'] );
         if ( is_wp_error( $receipt ) ) return $receipt;
