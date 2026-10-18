@@ -108,6 +108,7 @@ function check_admin_referer( $action ) { return true; }
 function wp_unslash( $value ) { return $value; }
 function wp_generate_uuid4() { return 'test-lease-token'; }
 final class MAD4B_SCP_Managed_Skills_Lease {
+    public static $reject_refresh = false;
     public static function acquire( $name, $ttl ) {
         $token = wp_generate_uuid4();
         if ( ! add_option( $name, array( 'owner'=>$token, 'expires_at_epoch'=>time()+$ttl ), '', false ) )
@@ -120,7 +121,7 @@ final class MAD4B_SCP_Managed_Skills_Lease {
     }
     public static function refresh( $name, $ttl, $owner ) {
         $lock = get_option($name,array());
-        return is_array($lock) && ($lock['owner']??null) === $owner
+        return ! self::$reject_refresh && is_array($lock) && ($lock['owner']??null) === $owner
             ? true : new WP_Error('fenced','lease lost');
     }
     public static function compare_and_swap_option( $name, $expected, $replacement = null ) {
@@ -156,6 +157,7 @@ $empty = $cls::status();
 expect( $empty['valid'] && $empty['revision'] === 0, 'Test requires no previously saved policy' );
 $save_modes = array();
 foreach ( $empty['gates'] as $gate ) $save_modes[$gate['id']] = 'inherit';
+$save_modes['developer_lane'] = 'off'; // ensure first-save failure exercises a real write
 $_POST = array( 'revision'=>0, 'definitions_sha256'=>$empty['definitions_sha256'], 'modes'=>$save_modes );
 $save_blocked = false;
 try { $cls::save(); } catch ( RuntimeException $error ) {
@@ -260,6 +262,22 @@ function wp_send_json_success( $data ) {
         ($data['view_readback']['fields']['revision']??null)!==1 ) throw new RuntimeException('AJAX_BAD_RECEIPT');
     throw new RuntimeException( 'AJAX_OK' );
 }
+// Once the requested audit was recorded, a lost lease must deny the
+// change before writing any option, with no speculative rollback.
+MAD4B_SCP_Site_Profile::$environment = 'staging';
+$live_before_loss = $cls::status();
+$lost_modes = array();
+foreach ( $live_before_loss['gates'] as $row ) $lost_modes[$row['id']] = $row['configured_mode'];
+$lost_modes['machine_ingress'] = 'off';
+$before_loss = get_option( $cls::OPTION, null );
+MAD4B_SCP_Managed_Skills_Lease::$reject_refresh = true;
+$lost_result = $cls::persist_modes(
+    $lost_modes, $live_before_loss['revision'], $live_before_loss['definitions_sha256'] );
+MAD4B_SCP_Managed_Skills_Lease::$reject_refresh = false;
+expect( is_wp_error( $lost_result ) &&
+    get_option( $cls::OPTION, null ) === $before_loss &&
+    ! array_key_exists( $cls::LOCK, $GLOBALS['options'] ),
+    'Lost lock must fail closed before writing and release owned lease' );
 $live_status = $cls::status();
 $form_modes = array();
 foreach( $live_status['gates'] as $row ) $form_modes[$row['id']] = $row['configured_mode'];
