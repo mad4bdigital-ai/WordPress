@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.change-slices.v2",
-  "reviewed_base_sha": "61e748676f85ddc4e0acdb2cb68bf026e37173f4",
-  "changed_file_count": 41,
+  "reviewed_base_sha": "6b5091ecbd02b2a99d9455c80b177839e7348d5e",
+  "changed_file_count": 100,
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
   "slices": [
@@ -2463,8 +2463,76 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-reversible-failure-evidence.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/wp-import-export-governed-adapter-contract.py"
       ]
+    },
+    {
+      "id": "pr422-optional-20261018",
+      "semantic_unit": "Optional Governance & remote parity",
+      "revert_boundary": "Revert the optional governance settings/remote read contracts as one owned slice without widening grants",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-optional-governance.yml",
+        "wp-content/plugins/mad4b-site-control-plane/config/optional-governance-catalog.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/DYNAMIC-OPTIONAL-GOVERNANCE-20261018.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-remote-parity.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-managed-skills-lease.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-remote-parity-contract-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-ability-registration-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-adapter-compatibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-wordpress-staging-canary.php"
+      ]
+    },
+    {
+      "id": "pr422-cross-20261018",
+      "semantic_unit": "Governed Cross-Plugin source planning",
+      "revert_boundary": "Revert reviewed source registry, package planning and read-only Admin/MCP preview as one owned slice; Production stays blocked",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-cross-plugin-candidate.yml",
+        "tools/mad4b-cross-plugin-package.py",
+        "wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json",
+        "wp-content/plugins/mad4b-site-control-plane/docs/CROSS-PLUGIN-DEPLOYMENT.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-admin-environment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-popup-inline-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/form-provider-read-adapters-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/universal-wordpress-operations-contract.py"
+      ]
+    },
+    {
+      "id": "pr422-popup-20261018",
+      "semantic_unit": "WordPress Plugins Popup and Staging selected-head controls",
+      "revert_boundary": "Revert popup and exact one-time Ability execution UX/fixtures as one owned slice; no authorization bypass",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/assets/plugin-update-dialog.css",
+        "wp-content/plugins/mad4b-site-control-plane/assets/plugin-update-dialog.js",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-update-popup.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-selected-head-admin.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-update-popup-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-selected-head-admin-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-selected-head-execution-runtime.php"
+      ]
+    },
+    {
+      "id": "pr422-integration-20261018",
+      "semantic_unit": "Shared integration evidence and nonauthorizing contracts",
+      "revert_boundary": "Revert remaining exact integration support tests, docs and workflow surfaces as one owned slice",
+      "certification": "exact_head",
+      "path_globs": [
+        ".github/workflows/mad4b-runtime-release-set.yml",
+        "wp-content/plugins/mad4b-site-control-plane/docs/INTEGRATION-PR415-416-420-421-20261018.md",
+        "wp-content/plugins/mad4b-site-control-plane/tests/integration-pr415-pr416-pr420-pr421-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/self-update-auto-update-state-runtime.php"
+      ]
     }
   ],
-  "changed_paths_sha256": "601741b66a5e836352c9b529484eb5fb4444a988ea0c2b6d00cdb52864a827d5",
+  "changed_paths_sha256": "fba0433c41b5d9213d8efd2fc1d7904d6d5d61ef2587a0773b023b41e9d9da9e",
   "changed_paths_sha256_mode": "sorted_pr_changed_filenames_newline_terminated_sha256"
 }
