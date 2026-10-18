@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class MAD4B_SCP_Provider_Compatibility_Certification {}
 function add_action( $hook, $callback = null, $priority = 10, $args = 1 ) { return true; }
+function add_filter( $hook, $callback = null, $priority = 10, $args = 1 ) { return true; }
 function do_action( $hook, $value = null ) { return null; }
 $GLOBALS['external_active_plugins'] = array();
 function get_option( $name, $fallback = array() ) {

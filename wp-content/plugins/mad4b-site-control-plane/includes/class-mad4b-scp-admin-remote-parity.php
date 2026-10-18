@@ -7,6 +7,9 @@ final class MAD4B_SCP_Admin_Remote_Parity {
     const TARGET = 'mad4b/plugin-capability-graph';
 
     public static function boot() {
+        // Standalone contract tests load the server catalog without WordPress.
+        // Hook only when the real WP event API exists; never emulate authority.
+        if ( ! function_exists( 'add_action' ) ) return;
         add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_ability' ), 43 );
     }
 
