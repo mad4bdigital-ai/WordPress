@@ -121,6 +121,33 @@ external_assert( ! MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
     $unsafe_metadata, $valid, 'external-ci/inspect' ),
     'Callback source pin does not substitute for read-only Ability annotations' );
 external_assert( ! MAD4B_SCP_External_Adapter_Trust::status()['write_authority_created'], 'External source pin creates no write grant' );
+// Read-only source tree cost measurement: do not replace exact PHP hashes
+// with an unchecked persistent cache. Record a deterministic bounded sample,
+// including within-request drift detection.
+$benchmark_dir = $root . '/digest-benchmark';
+external_assert( mkdir( $benchmark_dir, 0700 ), 'Performance fixture directory' );
+$fixture_files = array();
+for ( $n = 0; $n < 128; ++$n ) {
+    $file = $benchmark_dir . '/source-' . str_pad( (string) $n, 3, '0', STR_PAD_LEFT ) . '.php';
+    external_assert( false !== file_put_contents( $file, "<?php // deterministic digest input $n\n" ),
+        'Performance fixture file' );
+    $fixture_files[] = $file;
+}
+$benchmark_started = microtime( true );
+$hash_before = MAD4B_SCP_External_Adapter_Trust::php_source_tree_sha256( $benchmark_dir );
+$hash_repeat = MAD4B_SCP_External_Adapter_Trust::php_source_tree_sha256( $benchmark_dir );
+$benchmark_ms = round( 1000 * ( microtime( true ) - $benchmark_started ), 2 );
+external_assert( is_string( $hash_before ) && preg_match( '/^[a-f0-9]{64}$/D', $hash_before )
+    && hash_equals( $hash_before, $hash_repeat ), 'Bounded PHP tree digest is stable' );
+file_put_contents( $fixture_files[51], "<?php // changed within same request\n" );
+$hash_changed = MAD4B_SCP_External_Adapter_Trust::php_source_tree_sha256( $benchmark_dir );
+external_assert( is_string( $hash_changed ) && '' !== $hash_changed
+    && ! hash_equals( $hash_before, $hash_changed ),
+    'Same-request PHP source drift must never be hidden by digest caching' );
+foreach ( $fixture_files as $file ) unlink( $file );
+rmdir( $benchmark_dir );
+fwrite( STDOUT, 'EXTERNAL_PHP_TREE_DIGEST_SAMPLE: two scans of 128 files in '
+    . $benchmark_ms . " ms; exact drift detection PASS\n" );
 unlink( $reviewed_callback );
 unlink( $source );
 unlink( $manifest_path );
