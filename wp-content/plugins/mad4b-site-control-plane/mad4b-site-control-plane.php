@@ -390,6 +390,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-host-capabiliti
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-runtime.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-developer-workspace.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-registry.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-hybrid.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dependency-impact-graph.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-intent-router.php';
@@ -479,6 +480,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-polylang-adapter
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-litespeed-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-form-provider-adapters.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-wp-import-export-adapter.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-wp-native-build-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-full-content-operations-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-translation-bridge-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-repository-family-adapter.php';
@@ -542,6 +544,8 @@ MAD4B_SCP_G5_SEO_Provider_Families::boot();
 MAD4B_SCP_G5_Acceptance::boot();
 MAD4B_SCP_G6_Acceptance::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-settings-persistence.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-optional-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-optional-governance-remote.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-surface-coverage.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
@@ -580,6 +584,8 @@ MAD4B_SCP_Context_Admin_UI::boot();
 MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();
 MAD4B_SCP_Site_Profile_Admin::boot();
 MAD4B_SCP_Admin_Settings_Persistence::boot();
+MAD4B_SCP_Optional_Governance::boot();
+MAD4B_SCP_Optional_Governance_Remote::boot();
 MAD4B_SCP_Staging_OAuth_Autoconfig::boot_admin_actions_early();
 
 MAD4B_SCP_Site_Profile::bootstrap();
@@ -648,6 +654,7 @@ if ( ! $mad4b_passive_admin_read || '' !== $mad4b_diagnostic_catalog_target ) {
 	MAD4B_SCP_Context_Authority::boot();
 	MAD4B_SCP_AI_Approval::boot();
 	MAD4B_SCP_Provider_Transport_Registry::boot();
+	MAD4B_SCP_MCP_Hybrid::boot();
 	MAD4B_SCP_Dependency_Impact_Graph::boot();
 	MAD4B_SCP_Operation_Registry::boot();
 	MAD4B_SCP_Operation_Pipeline::boot();
