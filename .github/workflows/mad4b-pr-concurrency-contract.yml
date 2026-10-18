@@ -1,0 +1,35 @@
+name: MAD4B PR Concurrency Contract
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/scripts/mad4b_ci_latest_head_reaper.py'
+      - '.github/scripts/tests/test_ci_latest_head_reaper.py'
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/**'
+      - '.github/scripts/mad4b_ci_latest_head_reaper.py'
+      - '.github/scripts/tests/test_ci_latest_head_reaper.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-pr-concurrency-contract-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Latest PR head cancellation safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify reaper and all PR workflow concurrency guards
+        run: python3 -m unittest discover -s .github/scripts/tests -p 'test_ci_latest_head_reaper.py' -v
