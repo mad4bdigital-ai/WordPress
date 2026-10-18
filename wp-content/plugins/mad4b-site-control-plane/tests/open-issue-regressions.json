@@ -1,0 +1,136 @@
+{
+  "contract": "mad4b.open-issue-regressions.v1",
+  "authorizing": false,
+  "ledger_issues": [
+    71
+  ],
+  "issues": [
+    {
+      "issue": 424,
+      "tests": [
+        "self-update-source-lineage-runtime.php",
+        "self-update-auto-update-state-runtime.php",
+        "self-update-pointer-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Certified release pointer publication and archive provenance",
+        "ETG and ARE exact installed-build readback: ancestor/same/successor/unknown UI and native Plan"
+      ]
+    },
+    {
+      "issue": 413,
+      "tests": [
+        "staging-write-grant-canonical-order-runtime.php",
+        "staging-write-owner-grant-local-preview-runtime.php",
+        "staging-write-local-owner-preview-runtime.php",
+        "staging-write-owner-intent-runtime.php",
+        "staging-write-owner-transport-runtime.php",
+        "staging-write-authority-postcondition-runtime.php",
+        "elementor-font-css-origin-audit-runtime.php",
+        "provider-closure-fleet-runtime.php",
+        "provider-behavioral-recertification-runtime.php",
+        "provider-canary-authorization-surface-contract.php"
+      ],
+      "independent_acceptance_required": [
+        "ETG and ARE same-build Admin/OAuth exact-plan comparison",
+        "Fresh per-site signed owner review and OAuth step-up",
+        "Elementor and JetSmartFilters bounded write/readback/rollback canaries",
+        "Generated CSS font network/CORS/cache and frontend acceptance"
+      ]
+    },
+    {
+      "issue": 409,
+      "tests": [
+        "connector-resilience-runtime.php",
+        "connector-resilience-contract.py",
+        "observability-runtime.php",
+        "open-issue-transport-coverage-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "20 serial reads per site and 10 controlled cross-site reads without opaque errors",
+        "Host/gateway/origin correlation trace with PHP and wall timings separately"
+      ]
+    },
+    {
+      "issue": 384,
+      "tests": [
+        "write-dispatch-nested-transport-runtime.php",
+        "staging-write-candidate-binding-runtime.php",
+        "provider-behavioral-recertification-contract.php",
+        "context-remote-owner-review-runtime.php",
+        "wp-native-build-adapter-bootstrap-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Certified install/discover/connect/govern/approve/execute/verify/recover on each site",
+        "Provider consent, approved Brand Core, browser, performance and signed site receipts"
+      ]
+    },
+    {
+      "issue": 378,
+      "tests": [
+        "admin-surface-coverage-runtime.php",
+        "remote-operation-parity-contract.py",
+        "unified-capability-sources-runtime.php",
+        "dynamic-adapter-capability-graph-runtime.php",
+        "open-issue-transport-coverage-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Live inventory completeness for installed admin, REST, CLI, provider and host surfaces",
+        "Independently reviewed semantic adapter admission and paginated coverage proof"
+      ]
+    },
+    {
+      "issue": 300,
+      "tests": [
+        "assistant-task-journal-bridge-runtime.php",
+        "assistant-entrypoint-registration-runtime.php",
+        "assistant-planning-runtime.php",
+        "assistant-read-work-runtime.php",
+        "assistant-convergence-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Disposable WordPress/MCP and MySQL/MariaDB CAS crash/race acceptance",
+        "Signed provider observation and exact package dependency proof",
+        "Governed install/activate/configure/readback/rollback with certified host"
+      ]
+    },
+    {
+      "issue": 296,
+      "tests": [
+        "adaptive-search-runtime.php",
+        "adaptive-search-context-runtime.php",
+        "adaptive-search-profile-admin-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Direct API and operator browser acceptance for safe create then typed resume/unfreeze",
+        "Disposable WordPress/database integration and legacy active-profile compatibility"
+      ]
+    },
+    {
+      "issue": 292,
+      "tests": [
+        "effective-environment-runtime.php",
+        "deployment-binding-native-runtime.php",
+        "deployment-binding-claim-context-runtime.php",
+        "site-profile-host-environment-reconcile-runtime.php",
+        "runtime-generation-fence-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Server-origin explicit environment and same-origin clone binding proof",
+        "Current-build candidate/grants, kill-switch, restore/replay adverse cases and signed per-site receipt"
+      ]
+    },
+    {
+      "issue": 291,
+      "tests": [
+        "adaptive-search-runtime.php",
+        "adaptive-search-context-runtime.php",
+        "adaptive-search-cross-fault-runtime.php"
+      ],
+      "independent_acceptance_required": [
+        "Disposable database concurrency, legacy orphan/duplicate market migration and API readback",
+        "Current-build governed Staging/browser acceptance"
+      ]
+    }
+  ]
+}

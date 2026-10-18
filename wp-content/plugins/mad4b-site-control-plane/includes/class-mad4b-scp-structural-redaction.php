@@ -47,11 +47,14 @@ final class MAD4B_SCP_Structural_Redaction {
 		if ( ! is_string( $value ) ) return false;
 		$v = trim( $value );
 		if ( '' === $v ) return false;
-		if ( preg_match( '/^Bearer\s+[A-Za-z0-9._~+\/-]+=*$/i', $v ) ) return true;
-		if ( preg_match( '/^eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/', $v ) ) return true;
-		if ( preg_match( '/^-{5}BEGIN (?:RSA )?PRIVATE KEY-{5}/', $v ) ) return true;
-		if ( preg_match( '/^(?:sk|rk|pk|ghp|github_pat|xox[baprs])-[_A-Za-z0-9-]{16,}$/', $v ) ) return true;
-		if ( preg_match( '#^[a-z][a-z0-9+.-]*://[^/@\s:]+:[^/@\s]+@#i', $v ) ) return true;
+		// Metadata may embed credentials in an upstream error sentence. Redact
+		// the entire scalar, not just stand-alone values or sensitive key names.
+		if ( preg_match( '/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/i', $v ) ) return true;
+		if ( preg_match( '/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/', $v ) ) return true;
+		if ( preg_match( '/-{5}BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-{5}/', $v ) ) return true;
+		if ( preg_match( '/(?<![A-Za-z0-9_])(?:gh[pousr]_|github_pat_)[A-Za-z0-9_.-]{16,}/', $v ) ) return true;
+		if ( preg_match( '/(?<![A-Za-z0-9_])(?:sk|rk|pk|xox[baprs])-[A-Za-z0-9_-]{16,}/', $v ) ) return true;
+		if ( preg_match( '#[a-z][a-z0-9+.-]*://[^/@\s:]+:[^/@\s]+@#i', $v ) ) return true;
 		if ( preg_match( '/\bAKIA[0-9A-Z]{16}\b/', $v ) ) return true;
 		return false;
 	}

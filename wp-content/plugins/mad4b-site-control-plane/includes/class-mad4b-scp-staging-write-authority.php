@@ -1429,12 +1429,21 @@ final class MAD4B_SCP_Staging_Write_Authority {
 	 * Never discard rows: a duplicate or deny remains visible to fail-closed gates.
 	 */
 	public static function canonical_plan_rows( array $rows ) {
+		$rows = array_map( array( __CLASS__, 'canonical_plan_value' ), $rows );
 		usort( $rows, static function ( $a, $b ) {
 			$left = wp_json_encode( $a, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			$right = wp_json_encode( $b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 			return strcmp( (string) $left, (string) $right );
 		} );
 		return $rows;
+	}
+
+	/** Sort object keys recursively; preserve list order and every grant field. */
+	public static function canonical_plan_value( $value ) {
+		if ( ! is_array( $value ) ) return $value;
+		if ( ! empty( $value ) && array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) $value[ $key ] = self::canonical_plan_value( $item );
+		return $value;
 	}
 
 	public static function reconciliation_plan() {
@@ -1641,7 +1650,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$effective_ready = self::effective();
 		$grant_rows_fingerprint = hash( 'sha256', wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$grant_records = $grants; usort( $grant_records, static function ( $a, $b ) { return (int) ( $a['id'] ?? 0 ) <=> (int) ( $b['id'] ?? 0 ); } );
-		$persisted_grant_records_fingerprint = hash( 'sha256', wp_json_encode( $grant_records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+		$persisted_grant_records_fingerprint = hash( 'sha256', wp_json_encode( self::canonical_plan_value( $grant_records ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 		$grant_truth = class_exists( 'MAD4B_SCP_Truth_Projection' ) && method_exists( 'MAD4B_SCP_Truth_Projection', 'governed_write_grant_snapshot' )
 			? MAD4B_SCP_Truth_Projection::governed_write_grant_snapshot( array(
 				'persisted_ready' => $persisted_ready,

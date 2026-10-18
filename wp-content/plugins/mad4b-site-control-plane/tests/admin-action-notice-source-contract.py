@@ -85,10 +85,11 @@ verify(
     "MAD4B_SCP_Admin_Route_Registry::register( MAD4B_SCP_Browser_Acceptance_Admin_UI::PAGE_SLUG",
 )
 verify(
-    "class-mad4b-scp-admin-workspace.php",
+    "class-mad4b-scp-admin-navigation-manifest.php",
     "'mad4b-ai-knowledge-workspace' =>",
     "'mad4b-assistant-workspace' =>",
     "'mad4b-growth-providers' =>",
     "'mad4b-operational-remediation' =>",
 )
+verify("class-mad4b-scp-admin-workspace.php", "return MAD4B_SCP_Admin_Navigation_Manifest::definitions();")
 print("ADMIN_ACTION_NOTICE_SOURCE_CONTRACT: PASS (10 unique source files; browser/runtime not implied)")

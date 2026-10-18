@@ -60,6 +60,26 @@ with tempfile.TemporaryDirectory() as td:
         receipt=json.loads(next(dest1.glob('*.json')).read_text())
         assert receipt['source_id']==slug and receipt['archive_sha256']==actual
         assert receipt['version']==version and receipt['outcome_authorizes_deployment'] is False
+        # The independent certification preflight verifies the actual ZIP;
+        # it never upgrades a candidate receipt to deployment authority.
+        review_tool = root/'tools/mad4b-cross-plugin-certification-review.py'
+        verification = tmp/(slug+'-verification.json')
+        run([sys.executable,str(review_tool),'--manifest',str(manifest),
+             '--source-id',slug,'--zip',str(arc1),
+             '--receipt',str(next(dest1.glob('*.json'))),
+             '--out',str(verification)])
+        review=json.loads(verification.read_text())
+        assert review['state']=='VERIFIED_CANDIDATE_NEEDS_INDEPENDENT_REVIEW'
+        assert review['archive_sha256']==actual
+        assert review['staging_apply_authorized'] is False
+        assert review['production_promotion_authorized'] is False
+        wrong=tmp/(slug+'-wrong-receipt.json')
+        forged=dict(receipt,archive_sha256='0'*64)
+        wrong.write_text(json.dumps(forged))
+        assert run([sys.executable,str(review_tool),'--manifest',str(manifest),
+                 '--source-id',slug,'--zip',str(arc1),
+                 '--receipt',str(wrong),
+                 '--out',str(tmp/(slug+'-wrong-review.json'))],False).returncode!=0
         with zipfile.ZipFile(arc1) as z:
             assert slug+'/'+entry in z.namelist()
     sources.append(dict(sources[0]))

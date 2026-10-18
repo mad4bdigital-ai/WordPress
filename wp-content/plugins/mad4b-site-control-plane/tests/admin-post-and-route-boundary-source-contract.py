@@ -65,10 +65,13 @@ for token in ("$stale_release_pointer", "$missing_release_target",
         raise AssertionError("ADMIN_BOUNDARY_UPDATE_ADMISSION_MISSING:" + token)
 
 workspace = source("class-mad4b-scp-admin-workspace.php")
+if "return MAD4B_SCP_Admin_Navigation_Manifest::definitions();" not in workspace:
+    raise AssertionError("ADMIN_BOUNDARY_NAVIGATION_DELEGATION_MISSING")
+navigation = source("class-mad4b-scp-admin-navigation-manifest.php")
 for slug in ("mad4b-ai-knowledge-workspace", "mad4b-assistant-workspace",
              "mad4b-growth-providers", "mad4b-operational-remediation",
              "mad4b-browser-acceptance"):
-    if f"'{slug}' => array(" not in workspace:
+    if f"'{slug}' => array(" not in navigation:
         raise AssertionError("ADMIN_BOUNDARY_WORKSPACE_PAGE_METADATA_MISSING:" + slug)
 
 certification = source("class-mad4b-scp-staging-certification.php")
@@ -78,7 +81,7 @@ if "'readback_ability' => 'mad4b/skill-runtime-certification'" in certification:
     raise AssertionError("ADMIN_BOUNDARY_NONREGISTERED_SKILLS_READBACK")
 
 governance = source("class-mad4b-scp-admin-ui.php")
-if ("Exact Staging Write checkpoint ready" not in governance
+if ("'Per-ability authorization' => 'Not evaluated here; requires exact transport grant, plan and approval'" not in governance
         or "Per-ability authorization" not in governance):
     raise AssertionError("ADMIN_BOUNDARY_GLOBAL_GATE_FALSE_GREEN")
 
@@ -98,7 +101,12 @@ for forbidden in (
     if forbidden in updater:
         raise AssertionError("ADMIN_BOUNDARY_SELF_UPDATE_GET_LINK:" + forbidden)
 for action in ("mad4b_control_plane_native_update", "mad4b_control_plane_refresh_update"):
-    if action not in updater or "wp_nonce_field(" not in updater:
-        raise AssertionError("ADMIN_BOUNDARY_UPDATE_POST_FORM_MISSING:" + action)
+    if action not in updater or f"check_admin_referer( '{action}' )" not in updater:
+        raise AssertionError("ADMIN_BOUNDARY_UPDATE_POST_NONCE_MISSING:" + action)
+# The old direct native-install form is deliberately absent. The canonical
+# maintenance view owns the explicit release-check form, not the updater service.
+if ('name="action" value="mad4b_control_plane_refresh_update"' not in runtime or
+        "wp_nonce_field( 'mad4b_control_plane_refresh_update' )" not in runtime):
+    raise AssertionError("ADMIN_BOUNDARY_REFRESH_POST_FORM_MISSING")
 
 print("ADMIN_POST_AND_ROUTE_BOUNDARY_SOURCE_CONTRACT: PASS (14 POST handlers, 5 pages, no native GET-update links; live acceptance separate)")

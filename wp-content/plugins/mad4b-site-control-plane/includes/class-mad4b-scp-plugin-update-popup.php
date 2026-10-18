@@ -15,9 +15,15 @@ final class MAD4B_SCP_Plugin_Update_Popup {
     public static function boot() {
         if ( self::$booted || ! function_exists( 'add_filter' ) || ! function_exists( 'add_action' ) ) return;
         self::$booted = true;
+        add_action( 'init', array( __CLASS__, 'load_translations' ), 0 );
         add_filter( 'plugin_action_links', array( __CLASS__, 'plugin_action_links' ), 30, 4 );
         add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
         add_action( 'admin_footer-plugins.php', array( __CLASS__, 'render' ) );
+    }
+
+    public static function load_translations() {
+        load_plugin_textdomain( 'mad4b-site-control-plane', false,
+            dirname( plugin_basename( MAD4B_SCP_FILE ) ) . '/languages' );
     }
 
     public static function can_inspect() {
@@ -104,17 +110,38 @@ final class MAD4B_SCP_Plugin_Update_Popup {
         $links['mad4b_governed_update'] = '<a href="' . esc_url( $entry['target'] )
             . '" class="mad4b-update-dialog-trigger" data-mad4b-update-dialog="' . esc_attr( $id )
             . '" aria-haspopup="dialog" aria-controls="' . esc_attr( $id ) . '">'
-            . esc_html__( 'core' === $entry['kind'] ? 'Review MAD4B update' : 'Review plugin deployment', 'mad4b-site-control-plane' ) . '</a>';
+            . esc_html( 'core' === $entry['kind'] ? __( 'Review MAD4B update', 'mad4b-site-control-plane' ) : __( 'Review plugin deployment', 'mad4b-site-control-plane' ) ) . '</a>';
         return $links;
     }
 
     public static function enqueue( $hook ) {
         if ( 'plugins.php' !== $hook || ! self::can_inspect() ) return;
         $version = defined( 'MAD4B_SCP_VERSION' ) ? MAD4B_SCP_VERSION : '1';
+        // Exact builds can share an RC label. Reuse the entrypoint's bounded
+        // provenance digest so an installed correction cannot keep old UI JS.
+        if ( defined( 'MAD4B_SCP_BOOT_PROVENANCE_SHA256' )
+            && preg_match( '/^[a-f0-9]{64}$/D', (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256 ) )
+            $version .= '-' . substr( (string) MAD4B_SCP_BOOT_PROVENANCE_SHA256, 0, 12 );
         wp_enqueue_style( 'mad4b-plugin-update-dialog',
             plugins_url( 'assets/plugin-update-dialog.css', MAD4B_SCP_FILE ), array(), $version );
         wp_enqueue_script( 'mad4b-plugin-update-dialog',
             plugins_url( 'assets/plugin-update-dialog.js', MAD4B_SCP_FILE ), array(), $version, true );
+        wp_localize_script( 'mad4b-plugin-update-dialog', 'MAD4BUpdateDialog', array(
+            'checking' => __( 'Checking source and package eligibility...', 'mad4b-site-control-plane' ),
+            'changed' => __( 'Source changed. Preview again to check the current selection.', 'mad4b-site-control-plane' ),
+            'timeout' => __( 'The preview timed out. Check your connection and preview again.', 'mad4b-site-control-plane' ),
+            'eligible' => __( 'Eligible for separate approval', 'mad4b-site-control-plane' ),
+            'needsReview' => __( 'Needs review', 'mad4b-site-control-plane' ),
+            'notAuthorized' => __( 'Not authorized', 'mad4b-site-control-plane' ),
+            'blocked' => __( 'Blocked', 'mad4b-site-control-plane' ),
+            'operation' => __( 'Operation', 'mad4b-site-control-plane' ),
+            'commit' => __( 'Exact commit', 'mad4b-site-control-plane' ),
+            'plugin' => __( 'Plugin', 'mad4b-site-control-plane' ),
+            'guidance' => __( 'Open Plugin Deployment to review the missing certificate, site permissions or source evidence before requesting approval.', 'mad4b-site-control-plane' ),
+            'details' => __( 'Technical details', 'mad4b-site-control-plane' ),
+            'previewOnly' => __( 'Preview only. Installation requires a separately certified ZIP and exact approval.', 'mad4b-site-control-plane' ),
+            'failed' => __( 'Preview could not be completed. Use Open Plugin Deployment for a full review.', 'mad4b-site-control-plane' ),
+        ) );
     }
 
     private static function info( $term, $description ) {
@@ -135,80 +162,80 @@ final class MAD4B_SCP_Plugin_Update_Popup {
                 . '" aria-labelledby="' . esc_attr( $id . '-title' )
                 . '" aria-describedby="' . esc_attr( $id . '-description' ) . '">';
             echo '<div class="mad4b-ud-header"><div><p class="mad4b-ud-eyebrow">'
-                . esc_html( $core ? 'MAD4B verified release channel' : 'Reviewed plugin source' )
+                . esc_html( $core ? __( 'MAD4B verified release channel', 'mad4b-site-control-plane' ) : __( 'Reviewed plugin source', 'mad4b-site-control-plane' ) )
                 . '</p><h2 id="' . esc_attr( $id . '-title' ) . '">'
                 . esc_html( $entry['name'] ) . '</h2></div>';
-            echo '<button type="button" class="button mad4b-ud-dismiss" data-mad4b-dialog-close aria-label="Close update review">&times;</button></div>';
+            echo '<button type="button" class="button mad4b-ud-dismiss" data-mad4b-dialog-close aria-label="' . esc_attr__( 'Close update review', 'mad4b-site-control-plane' ) . '">&times;</button></div>';
             echo '<p id="' . esc_attr( $id . '-description' ) . '" class="mad4b-ud-intro">'
                 . esc_html( $core
-                    ? 'Inspect the release source and request a verified update. Checking does not install anything.'
-                    : 'Inspect installed state and reviewed Git source. A candidate is not an approved install.' )
+                    ? __( 'Inspect the release source and request a verified update. Checking does not install anything.', 'mad4b-site-control-plane' )
+                    : __( 'Inspect installed state and reviewed Git source. A candidate is not an approved install.', 'mad4b-site-control-plane' ) )
                 . '</p>';
             echo '<dl class="mad4b-ud-details">';
-            self::info( 'Installed version', $core ? $entry['version'] :
-                ( '' !== $entry['installed_version'] ? $entry['installed_version'] : 'Not determined' ) );
-            self::info( 'WordPress environment', $entry['environment'] );
+            self::info( __( 'Installed version', 'mad4b-site-control-plane' ), $core ? $entry['version'] :
+                ( '' !== $entry['installed_version'] ? $entry['installed_version'] : __( 'Not determined', 'mad4b-site-control-plane' ) ) );
+            self::info( __( 'WordPress environment', 'mad4b-site-control-plane' ), $entry['environment'] );
             if ( $core ) {
-                self::info( 'Update status', 'Not checked on this page; open the certified channel.' );
-                self::info( 'Source', 'Signed MAD4B release pointer, not arbitrary GitHub ZIP.' );
+                self::info( __( 'Update status', 'mad4b-site-control-plane' ), __( 'Not checked on this page; open the certified channel.', 'mad4b-site-control-plane' ) );
+                self::info( __( 'Source', 'mad4b-site-control-plane' ), __( 'Signed MAD4B release pointer, not arbitrary GitHub ZIP.', 'mad4b-site-control-plane' ) );
             } else {
-                self::info( 'GitHub repository', $entry['repository'] );
-                self::info( 'Source review', $entry['review'] );
-                self::info( 'ZIP certificate', $entry['certificate'] );
+                self::info( __( 'GitHub repository', 'mad4b-site-control-plane' ), $entry['repository'] );
+                self::info( __( 'Source review', 'mad4b-site-control-plane' ), $entry['review'] );
+                self::info( __( 'ZIP certificate', 'mad4b-site-control-plane' ), $entry['certificate'] );
             }
             echo '</dl><div class="mad4b-ud-actions">';
             echo '<a class="button button-secondary" href="' . esc_url( $entry['target'] ) . '">'
-                . esc_html( $core ? 'Open Runtime Update' : 'Open Plugin Deployment' ) . '</a>';
-            echo '<button type="button" class="button" data-mad4b-dialog-close>Close</button></div>';
+                . esc_html( $core ? __( 'Open Runtime Update', 'mad4b-site-control-plane' ) : __( 'Open Plugin Deployment', 'mad4b-site-control-plane' ) ) . '</a>';
+            echo '<button type="button" class="button" data-mad4b-dialog-close>' . esc_html__( 'Close', 'mad4b-site-control-plane' ) . '</button></div>';
             if ( $core ) {
-                echo '<div class="mad4b-ud-separator"></div><h3>Check official MAD4B release</h3>';
-                echo '<p class="description">An explicit nonce-protected check can contact the signed release channel. It does not install any plugin.</p>';
+                echo '<div class="mad4b-ud-separator"></div><h3>' . esc_html__( 'Check official MAD4B release', 'mad4b-site-control-plane' ) . '</h3>';
+                echo '<p class="description">' . esc_html__( 'An explicit nonce-protected check can contact the signed release channel. It does not install any plugin.', 'mad4b-site-control-plane' ) . '</p>';
                 echo '<form class="mad4b-ud-form" method="post" action="'
                     . esc_url( admin_url( 'admin-post.php' ) ) . '">';
                 echo '<input type="hidden" name="action" value="mad4b_control_plane_refresh_update">';
                 wp_nonce_field( 'mad4b_control_plane_refresh_update' );
-                echo '<button class="button button-primary" type="submit">Check certified updates</button></form>';
+                echo '<button class="button button-primary" type="submit">' . esc_html__( 'Check certified updates', 'mad4b-site-control-plane' ) . '</button></form>';
                 if ( 'staging' === $entry['environment'] && current_user_can( 'manage_options' ) ) {
-                    echo '<div class="mad4b-ud-separator"></div><h3>Preview Staging branch or commit</h3>';
-                    echo '<p class="description">The exact Git source is resolved and validated after submission. A preview does not install it.</p>';
+                    echo '<div class="mad4b-ud-separator"></div><h3>' . esc_html__( 'Preview Staging branch or commit', 'mad4b-site-control-plane' ) . '</h3>';
+                    echo '<p class="description">' . esc_html__( 'The exact Git source is resolved and validated after submission. A preview does not install it.', 'mad4b-site-control-plane' ) . '</p>';
                     echo '<form class="mad4b-ud-form" method="post" action="'
                         . esc_url( admin_url( 'admin-post.php' ) ) . '">';
                     echo '<input type="hidden" name="action" value="mad4b_staging_source_preview">';
                     wp_nonce_field( 'mad4b_staging_source_preview' );
-                    echo '<label>Source type<select name="source_type" data-mad4b-source-select>'
-                        . '<option value="branch">Branch HEAD</option>'
-                        . '<option value="branch_commit">Specific commit in branch</option>'
-                        . '<option value="commit">Exact commit SHA</option>'
-                        . '<option value="pull_request">PR HEAD</option></select></label>';
-                    echo '<label data-mad4b-source-field="branch">Branch name'
+                    echo '<label>' . esc_html__( 'Source type', 'mad4b-site-control-plane' ) . '<select name="source_type" data-mad4b-source-select>'
+                        . '<option value="branch">' . esc_html__( 'Branch HEAD', 'mad4b-site-control-plane' ) . '</option>'
+                        . '<option value="branch_commit">' . esc_html__( 'Specific commit in branch', 'mad4b-site-control-plane' ) . '</option>'
+                        . '<option value="commit">' . esc_html__( 'Exact commit SHA', 'mad4b-site-control-plane' ) . '</option>'
+                        . '<option value="pull_request">' . esc_html__( 'PR HEAD', 'mad4b-site-control-plane' ) . '</option></select></label>';
+                    echo '<label data-mad4b-source-field="branch">' . esc_html__( 'Branch name', 'mad4b-site-control-plane' )
                         . '<input class="regular-text" name="branch" maxlength="120" placeholder="feature/review"></label>';
-                    echo '<label data-mad4b-source-field="commit">Commit SHA'
-                        . '<input class="regular-text" name="commit" maxlength="40" placeholder="40-character SHA"></label>';
-                    echo '<label data-mad4b-source-field="reference">PR number'
+                    echo '<label data-mad4b-source-field="commit">' . esc_html__( 'Commit SHA', 'mad4b-site-control-plane' )
+                        . '<input class="regular-text" name="commit" maxlength="40" placeholder="' . esc_attr__( '40-character SHA', 'mad4b-site-control-plane' ) . '"></label>';
+                    echo '<label data-mad4b-source-field="reference">' . esc_html__( 'PR number', 'mad4b-site-control-plane' )
                         . '<input class="regular-text" name="reference" maxlength="9" inputmode="numeric"></label>';
-                    echo '<label>Reason'
+                    echo '<label>' . esc_html__( 'Reason', 'mad4b-site-control-plane' )
                         . '<input class="regular-text" name="reason" minlength="3" maxlength="500" required></label>';
-                    echo '<button class="button button-secondary" type="submit">Preview this source</button></form>';
+                    echo '<button class="button button-secondary" type="submit">' . esc_html__( 'Preview this source', 'mad4b-site-control-plane' ) . '</button></form>';
                 }
             } else {
-                echo '<div class="mad4b-ud-separator"></div><h3>Preview exact source</h3>';
-                echo '<p class="description">This read-only request resolves a Git reference against its reviewed repository; it cannot install a ZIP.</p>';
+                echo '<div class="mad4b-ud-separator"></div><h3>' . esc_html__( 'Preview exact source', 'mad4b-site-control-plane' ) . '</h3>';
+                echo '<p class="description">' . esc_html__( 'This read-only request resolves a Git reference against its reviewed repository; it cannot install a ZIP.', 'mad4b-site-control-plane' ) . '</p>';
                 echo '<form class="mad4b-ud-form" data-mad4b-async-preview data-mad4b-ajax-url="'
                     . esc_url( admin_url( 'admin-ajax.php' ) ) . '" method="post" action="'
                     . esc_url( admin_url( 'admin-post.php' ) ) . '">';
                 echo '<input type="hidden" name="action" value="mad4b_cross_plugin_preview">';
                 echo '<input type="hidden" name="source_id" value="' . esc_attr( $entry['id'] ) . '">';
                 wp_nonce_field( 'mad4b_cross_plugin_preview' );
-                echo '<label>Git reference type<select name="ref_type">'
-                    . '<option value="commit">Exact commit SHA</option><option value="branch">Branch HEAD</option>'
-                    . '<option value="pull_request">Pull Request</option><option value="branch_commit">Branch@SHA</option></select></label>';
-                echo '<label>Reference<input name="reference" class="regular-text" maxlength="161" required'
-                    . ' placeholder="branch, PR number, or 40-character SHA"></label>';
-                echo '<label>Reason<input name="reason" class="regular-text" minlength="3" maxlength="500" required></label>';
-                echo '<button class="button button-primary" type="submit">Preview certified source</button>'
+                echo '<label>' . esc_html__( 'Git reference type', 'mad4b-site-control-plane' ) . '<select name="ref_type">'
+                    . '<option value="commit">' . esc_html__( 'Exact commit SHA', 'mad4b-site-control-plane' ) . '</option><option value="branch">' . esc_html__( 'Branch HEAD', 'mad4b-site-control-plane' ) . '</option>'
+                    . '<option value="pull_request">' . esc_html__( 'Pull Request', 'mad4b-site-control-plane' ) . '</option><option value="branch_commit">' . esc_html__( 'Branch@SHA', 'mad4b-site-control-plane' ) . '</option></select></label>';
+                echo '<label>' . esc_html__( 'Reference', 'mad4b-site-control-plane' ) . '<input name="reference" class="regular-text" maxlength="161" required'
+                    . ' placeholder="' . esc_attr__( 'branch, PR number, or 40-character SHA', 'mad4b-site-control-plane' ) . '"></label>';
+                echo '<label>' . esc_html__( 'Reason', 'mad4b-site-control-plane' ) . '<input name="reason" class="regular-text" minlength="3" maxlength="500" required></label>';
+                echo '<button class="button button-primary" type="submit">' . esc_html__( 'Preview certified source', 'mad4b-site-control-plane' ) . '</button>'
                     . '<div class="mad4b-ud-preview-result" data-mad4b-preview-result role="status" aria-live="polite" aria-atomic="true" hidden></div></form>';
             }
-            echo '<p class="mad4b-ud-footnote">No automatic install. Staging and Production authorizations remain separate; the installer verifies provenance, permissions, backup and readback.</p></dialog>';
+            echo '<p class="mad4b-ud-footnote">' . esc_html__( 'No automatic install. Staging and Production authorizations remain separate; the installer verifies provenance, permissions, backup and readback.', 'mad4b-site-control-plane' ) . '</p></dialog>';
         }
     }
 }

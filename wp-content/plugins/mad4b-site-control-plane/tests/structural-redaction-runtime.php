@@ -38,4 +38,21 @@ $check($result['stats']['redacted']>=7&&$result['stats']['truncated']>=1,'redact
 $deep=array();$cursor=&$deep;for($i=0;$i<12;$i++){$cursor['level_'.$i]=array();$cursor=&$cursor['level_'.$i];}
 $bounded=MAD4B_SCP_Structural_Redaction::classify($deep,'fuzz');
 $check($bounded['stats']['truncated']>0,'deep nested structure was not bounded',$bounded);
+// Synthetic credentials only. Generic field names and surrounding prose must
+// not evade the same redactor consumed by audit/observability/certification.
+foreach ( array( 'ghp_', 'github_pat_', 'gho_', 'ghu_', 'ghs_', 'ghr_', 'sk-', 'xoxb-' ) as $prefix ) {
+    $fake = $prefix . str_repeat( 'A', 40 );
+    foreach ( array( $fake, 'Upstream rejected ' . $fake . ' during request.' ) as $detail ) {
+        $result = MAD4B_SCP_Structural_Redaction::classify( array( 'detail'=>$detail ) );
+        $check( '[REDACTED]' === $result['value']['detail'], 'credential format escaped generic metadata: ' . $prefix );
+        $check( 'sensitive_redacted' === $result['classification'], 'credential misclassified as public' );
+    }
+}
+foreach ( array( 'Error: Bearer abcdefghijklmnop', 'Invalid JWT eyJabc.def.ghi in response',
+    'Key -----BEGIN OPENSSH PRIVATE KEY----- rejected', 'URL https://user:pass@example.invalid/path failed' ) as $detail ) {
+    $clean = MAD4B_SCP_Structural_Redaction::redact( array( 'detail'=>$detail ) );
+    $check( '[REDACTED]' === $clean['detail'], 'embedded credential escaped redaction' );
+}
+$safe = array( 'detail'=>'Request failed with HTTP 503; retry after review.', 'count'=>3 );
+$check( $safe === MAD4B_SCP_Structural_Redaction::redact( $safe ), 'public operational data should remain readable' );
 echo "mad4b.structural-redaction.runtime.v1: PASS\n";

@@ -248,7 +248,9 @@ if min(preflight_index, download_index) < 0 or preflight_index >= download_index
     raise SystemExit("native wp-admin update must run read-only maintenance preflight before package download")
 for marker in (
     "self::persist_update_attempt( 'manifest_error'",
-    "self::persist_update_attempt( 'current'",
+    "self::persist_update_attempt( $lineage['state'], $manifest, $reason )",
+    "$lineage = self::native_release_state( $manifest, true );",
+    "'available' !== $lineage['state']",
     "self::persist_update_attempt( 'download_error'",
     "self::persist_update_attempt( 'verify_error'",
     "self::persist_update_attempt( 'applying'",

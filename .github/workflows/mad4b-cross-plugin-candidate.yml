@@ -40,6 +40,8 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-workflow-dynamic-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-source-matrix-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-lifecycle.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-lifecycle-gates-runtime.php
       - name: Select exact candidates from reviewed source registry
         id: selection
         env:
@@ -89,6 +91,19 @@ jobs:
             --trusted-manifest wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json \
             --checkout candidate --source-id "$SOURCE_ID" --sha "$SOURCE_SHA" \
             --out "$RUNNER_TEMP/candidate-artifact"
+      - name: Verify exact artifact and generate independent certification evidence
+        shell: bash
+        env:
+          SOURCE_ID: ${{ matrix.source_id }}
+          SOURCE_SHA: ${{ matrix.source_commit_sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/mad4b-cross-plugin-certification-review.py \
+            --manifest wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json \
+            --source-id "$SOURCE_ID" \
+            --zip "$RUNNER_TEMP/candidate-artifact/$SOURCE_ID-$SOURCE_SHA.zip" \
+            --receipt "$RUNNER_TEMP/candidate-artifact/$SOURCE_ID-$SOURCE_SHA.json" \
+            --out "$RUNNER_TEMP/candidate-artifact/$SOURCE_ID-$SOURCE_SHA.certification-evidence.json"
       - name: Retain non-authorizing candidate ZIP and receipt
         uses: actions/upload-artifact@v4
         with:

@@ -17,8 +17,9 @@ function guide_operator( $reasons = array(), $write = true, $providers = 0 ) {
 function guide_site( $enabled = true ) {
 	return array( 'authority_ready' => true, 'skills_enabled' => $enabled );
 }
-function guide_skills( $ready, $current ) {
-	return array( 'ready' => $ready, 'build_identity_current' => $current );
+function guide_skills( $ready, $current, $live = null ) {
+	return array( 'ready' => $ready, 'recorded_ready' => $ready,
+		'build_identity_current' => $current, 'live_skill_ready' => $live );
 }
 function guide_step( $model, $id ) {
 	foreach ( $model['steps'] as $row ) if ( $id === $row['id'] ) return $row;
@@ -38,27 +39,42 @@ $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), array( '
 verify_guide( 'NOT_CHECKED' === guide_step( $model, 'skills' )['state'], 'missing Skills evidence not treated as disabled' );
 $model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), array(), guide_skills( true, true ), array() );
 verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'site' )['state'] || 'NOT_CHECKED' === guide_step( $model, 'site' )['state'], 'missing site evidence cannot pass' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), guide_site(), guide_skills( true, true ), array( 'preference_valid' => false ) );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), guide_site(), guide_skills( true, true, true ), array( 'preference_valid' => false ) );
 verify_guide( 'browser' === $model['next_step'], 'invalid browser settings get explicit correction' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false, 2 ), guide_site(), guide_skills( true, true ), $browser );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false, 2 ), guide_site(), guide_skills( true, true, true ), $browser );
 verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'providers' )['state'], 'provider pending distinct' );
 verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'write' )['state'], 'write current authority gets dedicated diagnostic' );
 $enrolled = guide_site(); $enrolled['deployment_binding_configured'] = false;
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), $enrolled, guide_skills( true, true ), $browser );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), $enrolled, guide_skills( true, true, true ), $browser );
 verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'deployment' )['state'], 'independent missing deployment binding assigned to host operator' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false ), guide_site(), guide_skills( true, true ), $browser );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array(), false ), guide_site(), guide_skills( true, true, true ), $browser );
 verify_guide( 'NOT_CHECKED' === guide_step( $model, 'approvals' )['state'], 'write blocker must not fabricate pending approval' );
 $host_requested = guide_operator( array( 'developer_lane_not_ready' ) );
 $host_requested['operational']['lanes'] = array( 'client_action' => 'resolve_developer_host_execution_prerequisites' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( $host_requested, guide_site(), guide_skills( true, true ), $browser );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( $host_requested, guide_site(), guide_skills( true, true, true ), $browser );
 verify_guide( 'EXTERNAL_ACTION' === guide_step( $model, 'host' )['state'], 'host sandbox is external' );
-$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array( 'developer_lane_not_ready' ) ), guide_site(), guide_skills( true, true ), $browser );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator( array( 'developer_lane_not_ready' ) ), guide_site(), guide_skills( true, true, true ), $browser );
 verify_guide( null === guide_step( $model, 'host' ), 'optional disabled developer lane must not demand Host action' );
 verify_guide( 'OBSERVED_READY' === guide_step( $model, 'skills' )['state'], 'local Skills only observed ready' );
+// Matching saved certificate alone must not claim live verification.
+$model = MAD4B_SCP_Guided_Operator_Experience::model( guide_operator(), guide_site(), guide_skills( true, true ), $browser );
+verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'skills' )['state'], 'saved checkpoint alone is not live Skills validation' );
+verify_guide( 'skills' === $model['next_step'], 'live verification remains the next safe action' );
+$drift = guide_operator( array( 'runtime_authority_candidate_not_reconciled' ), false );
+$drift['operational']['write_authority']['candidate_binding_match'] = false;
+$drift['operational']['write_authority']['blockers'] = array( 'runtime_authority_candidate_not_reconciled', 'stale_write_grants_present' );
+$model = MAD4B_SCP_Guided_Operator_Experience::model( $drift, guide_site(), guide_skills( true, true, true ), $browser );
+verify_guide( 'drift' === $model['next_step'], 'drift leads to single exact owner review before Skills or Write' );
+verify_guide( 'NEEDS_ACTION' === guide_step( $model, 'drift' )['state'], 'drift not silently repaired' );
+verify_guide( false === guide_step( $model, 'drift' )['execution_performed'] && false === guide_step( $model, 'drift' )['authority_granted'], 'drift triage never bypasses approvals' );
+$drift['operational']['write_authority']['candidate_binding_match'] = true;
+$drift['operational']['write_authority']['blockers'] = array();
+$model = MAD4B_SCP_Guided_Operator_Experience::model( $drift, guide_site(), guide_skills( true, true, true ), $browser );
+verify_guide( null === guide_step( $model, 'drift' ), 'no duplicate drift warning once blockers clear' );
 $untrusted = guide_operator(); $untrusted['production_authorized'] = true;
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'] && empty( $model['steps'] ), 'forged authorization blocks journey' );
 $untrusted = guide_operator(); $untrusted['contract'] = 'forged';
 $model = MAD4B_SCP_Guided_Operator_Experience::model( $untrusted, guide_site(), guide_skills( true, true ), $browser );
 verify_guide( 'EVIDENCE_UNTRUSTED' === $model['state'], 'unknown contract cannot drive navigation' );
-fwrite( STDOUT, "PASS guided operator native behavior: 18 assertions\n" );
+fwrite( STDOUT, "PASS guided operator native behavior: original and drift/Skills verification assertions\n" );
