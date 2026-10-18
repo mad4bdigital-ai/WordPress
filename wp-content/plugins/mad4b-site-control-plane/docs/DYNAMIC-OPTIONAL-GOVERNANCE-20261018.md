@@ -40,3 +40,6 @@ The local Options Control now shows the three remote abilities separately, curre
 
 ## Phase 4 — Unified Admin Settings UX
 Options Control now opts into the existing `MAD4B_SCP_Admin_Settings_Persistence` browser workflow rather than building a second frontend. A narrow, explicitly allowlisted enqueue loads the standard assets on this one MAD4B admin screen. The nonce- and admin-capability-guarded AJAX handler and original `admin-post.php` fallback use the *same typed input validator* and `persist_modes` CAS/audit service. The browser must refresh the real options panel and match the source-issued `mad4b.admin-settings-view-readback.v1` field snapshot before reporting success; failed refreshes mark the form stale to prevent accidental repeated writes.
+
+## Phase 5 — Provider-neutral Operation Registry
+The semantic operation `wordpress.governance.optional-preference` is now registered with exact planner/executor names, an optional-operator-policy target, source-owned readback, owner confirmation, named Staging-only executor and no generic mutation dispatch. It is indexed in the existing provider-neutral `Operation Registry` and `Remote Operation Parity`; its presence is discoverability **not** authorization. Plan/Verify also enter both read projections.

@@ -7,6 +7,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-settings-persistence.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/optional-governance-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
@@ -44,4 +45,5 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-managed-skills-lease.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php
           php -l wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php
+          php -r '$d=json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json"),true); if(!is_array($d))exit(1); $found=false; foreach($d["operations"] as $r){ if(($r["id"]??"")==="wordpress.governance.optional-preference") $found=(($r["planner"]??"")==="mad4b/optional-governance-plan" && ($r["executor"]??"")==="mad4b/optional-governance-apply" && empty($r["production_allowed"])); } if(!$found)exit(2);'
           php wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php
