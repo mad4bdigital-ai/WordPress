@@ -9,7 +9,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function is_available() { return defined( 'ELEMENTOR_VERSION' ) || class_exists( '\\Elementor\\Plugin' ); }
 	public function ability_names() {
 		return array(
-			'read' => array( 'elementor/status', 'elementor/get-document', 'elementor/list-widgets', 'elementor/get-dynamic-tags', 'elementor/validate-document', 'elementor/compare-documents' ),
+			'read' => array( 'elementor/status', 'elementor/get-document', 'elementor/list-widgets', 'elementor/get-dynamic-tags', 'elementor/validate-document', 'elementor/compare-documents', 'elementor/font-css-origin-audit' ),
 			'content' => array( 'elementor/update-widget-settings', 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' ),
 			'admin' => array(),
 		);
@@ -28,6 +28,13 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 
 	public function register_abilities() {
 		$this->add_ability( 'elementor/status', 'Get Elementor Status', 'status', array( 'MAD4B_SCP_Policy', 'can_read' ) );
+		$this->add_ability(
+			'elementor/font-css-origin-audit', 'Audit Generated Elementor Font CSS Origins',
+			'font_css_origin_audit', array( $this, 'can_font_css_origin_audit' ),
+			$this->schema( array(
+				'production_host' => array( 'type' => 'string', 'minLength' => 4, 'maxLength' => 253 ),
+			), array( 'production_host' ) )
+		);
 		$post_schema = $this->schema( array( 'post_id' => array( 'type' => 'integer', 'minimum' => 1 ) ), array( 'post_id' ) );
 		$this->add_ability( 'elementor/get-document', 'Get Elementor Document', 'get_document', array( $this, 'can_read_post' ), $post_schema );
 		$this->add_ability( 'elementor/list-widgets', 'List Elementor Widgets', 'list_widgets', array( $this, 'can_read_post' ), $post_schema );
@@ -177,6 +184,107 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 				array( 'post_id', 'element_id', 'target_setting', 'tag_name', 'expected_sha256' )
 			),
 			'content', false, true, true
+		);
+	}
+
+	/**
+	 * Bounded Staging-only read. Scans existing generated CSS; never edits URLs,
+	 * downloads fonts, clears caches, triggers Elementor regeneration or writes.
+	 * A positive result is a remediation PRECONDITION, not a certified fix.
+	 */
+	public function can_font_css_origin_audit( $input ) {
+		return is_array( $input ) && current_user_can( 'manage_options' )
+			&& class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent', false )
+			&& MAD4B_SCP_Staging_Write_Owner_Intent::owner()
+			&& class_exists( 'MAD4B_SCP_Site_Profile' )
+			&& MAD4B_SCP_Site_Profile::configured()
+			&& 'staging' === sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() )
+			&& MAD4B_SCP_Site_Profile::origin_enrolled()
+			&& MAD4B_SCP_Site_Profile::site_urls_match_enrollment();
+	}
+
+	public function font_css_origin_audit( $input ) {
+		if ( ! $this->can_font_css_origin_audit( $input ) )
+			return new WP_Error( 'mad4b_elementor_font_css_owner_staging_required', 'Exact Staging owner read required.' );
+		$production_host = strtolower( trim( (string) ( $input['production_host'] ?? '' ) ) );
+		$staging_host = strtolower( (string) wp_parse_url( MAD4B_SCP_Site_Profile::current_origin(), PHP_URL_HOST ) );
+		if ( strlen( $production_host ) > 253
+			|| ! preg_match( '/^(?=.{4,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])$/D', $production_host )
+			|| false === strpos( $production_host, '.' ) || '' === $staging_host
+			|| $production_host === $staging_host )
+			return new WP_Error( 'mad4b_elementor_font_css_origin_invalid', 'Distinct explicit production hostname required; no URL or path accepted.' );
+		// WordPress read-only upload-dir discovery: never create a directory.
+		$uploads = function_exists( 'wp_get_upload_dir' ) ? wp_get_upload_dir() : wp_upload_dir( null, false );
+		$basedir = is_array( $uploads ) ? (string) ( $uploads['basedir'] ?? '' ) : '';
+		// Inspect the dedicated generated Google Fonts CSS first; it contains
+		// the absolute production font URLs seen on ETG Staging. Stay read-only.
+		$elementor_root = '' !== $basedir ? realpath( $basedir . '/elementor' ) : false;
+		$directories = array();
+		if ( false !== $elementor_root && is_dir( $elementor_root ) ) {
+			foreach ( array( 'google-fonts/css', 'css' ) as $relative ) {
+				$directory = realpath( $elementor_root . '/' . $relative );
+				if ( false === $directory || ! is_dir( $directory )
+					|| 0 !== strpos( $directory, $elementor_root . DIRECTORY_SEPARATOR ) ) continue;
+				$directories[ $relative ] = $directory;
+			}
+		}
+		if ( empty( $directories ) )
+			return array( 'state' => 'CSS_DIRECTORY_UNAVAILABLE', 'read_only' => true,
+				'production_font_references' => null, 'scan_complete' => false, 'mutation_performed' => false );
+		$paths = array();
+		$complete = true;
+		foreach ( $directories as $relative => $directory ) {
+			$found = glob( $directory . '/*.css' );
+			if ( ! is_array( $found ) ) { $complete = false; continue; }
+			sort( $found, SORT_STRING );
+			foreach ( $found as $path )
+				$paths[] = array( 'path' => $path, 'directory' => $directory,
+					'source_directory' => $relative );
+		}
+		$complete = $complete && count( $paths ) <= 48;
+		$files = array();
+		$total = 0;
+		$font_total = 0;
+		foreach ( array_slice( $paths, 0, 48 ) as $entry ) {
+			$real = realpath( $entry['path'] );
+			if ( false === $real || 0 !== strpos( $real, $entry['directory'] . DIRECTORY_SEPARATOR )
+				|| ! is_file( $real ) || ! is_readable( $real )
+				|| filesize( $real ) > 262144 ) { $complete = false; continue; }
+			$css = file_get_contents( $real );
+			if ( ! is_string( $css ) ) { $complete = false; continue; }
+			$matches = array();
+			$count = preg_match_all( '/url\\(\\s*([^)]{1,2048})\\s*\\)/i', $css, $matches );
+			if ( false === $count ) { $complete = false; continue; }
+			$leaks = 0;
+			$fonts = 0;
+			foreach ( $matches[1] as $raw ) {
+				$url = trim( trim( $raw ), "'\"" );
+				$parts = wp_parse_url( $url );
+				if ( ! is_array( $parts ) || empty( $parts['path'] )
+					|| ! preg_match( '/\\.(woff2?|ttf|otf|eot)$/i', (string) $parts['path'] ) ) continue;
+				++$fonts;
+				if ( isset( $parts['host'] ) && strtolower( (string) $parts['host'] ) === $production_host ) ++$leaks;
+			}
+			$font_total += $fonts;
+			$total += $leaks;
+			$files[] = array( 'file' => basename( $real ),
+				'source_directory' => $entry['source_directory'], 'font_urls' => $fonts,
+				'production_font_urls' => $leaks, 'css_sha256' => hash( 'sha256', $css ) );
+		}
+		return array(
+			'contract' => 'mad4b.elementor-font-css-origin-audit.v1',
+			'state' => ! $complete ? 'INCOMPLETE_SCAN' : ( $total ? 'PRODUCTION_FONT_ORIGIN_REFERENCES' : 'NO_PRODUCTION_FONT_ORIGINS_IN_SCANNED_CSS' ),
+			'production_host' => $production_host,
+			'staging_host' => $staging_host,
+			'files_scanned' => count( $files ),
+			'directories_scanned' => array_keys( $directories ),
+			'font_references' => $font_total,
+			'production_font_references' => $total,
+			'files' => $files,
+			'scan_complete' => $complete,
+			'read_only' => true, 'mutation_performed' => false,
+			'cache_invalidated' => false, 'fonts_network_verified' => false,
+			'regeneration_authorized' => false,
 		);
 	}
 

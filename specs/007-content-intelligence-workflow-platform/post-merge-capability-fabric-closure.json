@@ -1,7 +1,7 @@
 {
   "contract": "mad4b.capability-fabric-post-merge-closure.v1",
   "phase": 37,
-  "baseline_merge_commit": "bd19b692d37591eef8efe6b39e79ece98eb56099",
+  "baseline_merge_commit": "f85e89e14486b2c7f440f094007d4c7139be2c1d",
   "production_authorized": false,
   "breakglass_widened": false,
   "generic_shell_authorized": false,
