@@ -525,11 +525,14 @@ for marker in (
 # retaining the governed updater behind the visible actions.
 action_link = self_update.split("private static function native_update_action_link", 1)[1].split("private static function native_update_ui_state", 1)[0]
 for marker in (
-    "Check for updates",
-    "mad4b_control_plane_refresh_update",
+    "Check MAD4B updates",
+    "mad4b-runtime-components&tab=maintenance",
 ):
     if marker not in action_link:
         raise SystemExit(f"native update action-link UX marker missing: {marker}")
+for forbidden in ("<form", "mad4b_control_plane_refresh_update"):
+    if forbidden in action_link:
+        raise SystemExit(f"nested update-check form must stay outside Plugins row: {forbidden}")
 for forbidden in (
     "Retry MAD4B update check",
     "Update MAD4B to",
