@@ -64,6 +64,9 @@ jobs:
           assert p["totals"]["controls"] >= 170 and p["totals"]["domains"] >= 21
           assert p["totals"]["production_stages"] >= 14
           assert p["totals"]["feature_workstreams"] >= 23
+          assert len(p["independent_signoffs"]) >= 11
+          assert all(s["status"] == "PENDING_EXTERNAL_SIGNED_APPROVAL"
+                     for s in p["independent_signoffs"])
           assert p["historical_observations_non_authoritative"] is True
           print("PRODUCTION_MATRIX_NON_AUTHORIZING: PASS")
           PY

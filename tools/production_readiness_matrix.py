@@ -86,6 +86,19 @@ def validate(root=ROOT, source=SOURCE):
         # Historical observations can be retained; evidence never promotes from them.
         ensure(entry.get("evidence_url") in (None, "") or
                isinstance(entry["evidence_url"], str), "Invalid historical evidence URL")
+    signoff_file = source.parent / "signoffs.json"
+    signoff = load(signoff_file)
+    ensure(signoff.get("contract") == "mad4b.production-independent-signoffs.v1"
+           and signoff.get("authorizing") is False,
+           "Independent Production signoffs must be non-authorizing")
+    requirements = signoff.get("requirements", [])
+    ensure(len(requirements) >= 11 and
+           len({item.get("id") for item in requirements}) == len(requirements),
+           "Original 11 independent signoffs must be present and unique")
+    ensure(all(item.get("independent_approval_required") is True and
+               not item.get("evidence_url") and not item.get("approved_at")
+               for item in requirements),
+           "Historical signoff source cannot supply live approval")
     policy = load(root / "wp-content/plugins/mad4b-site-control-plane/config/production-readiness-policy.json")
     stages = load(root / "wp-content/plugins/mad4b-site-control-plane/config/production-certification-plan.json")
     feature = load(root / "wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json")
@@ -212,6 +225,13 @@ def snapshot(matrix, policy, stages, feature, closure, source_cfg,
 def render(matrix, report, output):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
+    signoffs = load(SOURCE.parent / "signoffs.json")["requirements"]
+    report["independent_signoffs"] = [{
+        "id": x["id"],
+        "acceptance": x["acceptance"],
+        "status": "PENDING_EXTERNAL_SIGNED_APPROVAL",
+        "authorizing": False,
+    } for x in signoffs]
     (output / "readiness.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     with (output / "controls.csv").open("w", encoding="utf-8-sig", newline="") as fh:
@@ -248,6 +268,10 @@ def render(matrix, report, output):
         ((s["workflow"], s["exact_head"], s["status"],
           s["conclusion"] or "", s["run_url"] or "")
          for s in report["required_workflows"]))
+    write_projection("independent-signoffs.csv",
+        ("Signoff", "Acceptance", "CI effective status", "Production authorized"),
+        ((s["id"], s["acceptance"], s["status"], "NO")
+         for s in report["independent_signoffs"]))
 
     lines = [
         "# MAD4B Production Readiness — dynamic CI projection",
