@@ -94,4 +94,21 @@ require_relation( 'needs_review' === $c::native_release_state( $new, true )['sta
 simulate_lineage( 'behind', 0, 273 );
 require_relation( 'needs_review' === $c::native_release_state( $target, true )['state'], 'Ancestor was mislabeled current' );
 require_relation( 'current' === $c::native_release_state( $current )['state'], 'Exact installed source must remain current' );
+$admission = new ReflectionMethod( $c, 'native_replacement_admission' );
+$admission->setAccessible( true );
+foreach ( array( 'governed_native_release_pull', 'governed_native_release_pull_bootstrap',
+    'governed_staging_recovery_cron', 'wordpress_admin_plugin_update', 'wordpress_admin_candidate_drift_bootstrap' ) as $channel ) {
+    $GLOBALS['lineage_cache'] = array();
+    simulate_lineage( 'ahead', 3, 0 );
+    require_relation( true === $admission->invoke( null, $new, $channel ), 'Verified native successor rejected: ' . $channel );
+    // Another completed installation overtakes the offered SHA while the
+    // first worker downloads; the disk identity is now newer than the target.
+    $overtaken = $new; $overtaken['source_commit_sha'] = str_repeat( 'f', 40 );
+    file_put_contents( $fixture . 'MAD4B-BUILD-PROVENANCE.json', json_encode( $overtaken ) );
+    simulate_lineage( 'behind', 0, 2 );
+    require_relation( is_wp_error( $admission->invoke( null, $new, $channel ) ), 'Native replacement overtook a newer installed build: ' . $channel );
+    file_put_contents( $fixture . 'MAD4B-BUILD-PROVENANCE.json', json_encode( $current ) );
+}
+require_relation( true === $admission->invoke( null, $target, 'governed_staging_candidate_upload' ),
+    'Native ancestry gate must not replace explicit owner-governed candidate rollback policy' );
 echo "NATIVE_SOURCE_LINEAGE: PASS (same, older, ancestor, successor, divergent, unknown and cache)\n";

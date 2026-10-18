@@ -71,6 +71,10 @@ def main():
             raise AssertionError('Explicit/eligible update path did not refresh exact ancestry: ' + method)
     if missing:
         raise AssertionError('Popup Arabic translations missing: ' + repr(missing))
+    replacement = updater.split('private static function apply_verified_archive(', 1)[1]
+    admission = replacement.index('self::native_replacement_admission( $target, $channel )')
+    if not replacement.index('MAD4B_SCP_Runtime_Maintenance_Lease::acquire(') < admission < replacement.index('self::backup_current()'):
+        raise AssertionError('Native ancestry must be checked under the lease before backup/continuation work')
     failed = [row for row in results if row['exit']]
     print(json.dumps({'contract': 'mad4b.post-review-audit.v1', 'tests': len(results),
                       'failed': failed, 'translated_messages': len(set(messages)),

@@ -1115,6 +1115,20 @@ final class MAD4B_SCP_Self_Update {
         );
     }
 
+    /** Recheck signed native channels under the replacement lease. Explicit
+     * owner-governed candidate uploads retain their independent rollback policy.
+     */
+    private static function native_replacement_admission( array $target, $channel ) {
+        if ( ! in_array( $channel, array( 'governed_native_release_pull',
+            'governed_native_release_pull_bootstrap', 'governed_staging_recovery_cron',
+            'wordpress_admin_plugin_update', 'wordpress_admin_candidate_drift_bootstrap' ), true ) ) return true;
+        if ( 'available' !== self::native_release_state( $target, true )['state'] )
+            return new WP_Error( 'mad4b_self_update_native_lineage_changed',
+                'The release is no longer a verified successor of the installed build.',
+                array( 'mutation_performed' => false, 'filesystem_replacement_attempted' => false ) );
+        return true;
+    }
+
 	public static function native_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$current = self::installed_identity();
@@ -1591,7 +1605,8 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
 			$details = is_array( $details ) ? $details : array();
-			$details['filesystem_replacement_attempted'] = true;
+			if ( ! array_key_exists( 'filesystem_replacement_attempted', $details ) )
+				$details['filesystem_replacement_attempted'] = true;
 			self::persist_update_attempt(
 				'apply_error',
 				$manifest,
@@ -2051,6 +2066,11 @@ final class MAD4B_SCP_Self_Update {
 		$core_maintenance_open = false;
 		$upgrader = null;
 		try {
+			// Download has finished and the shared replacement lease is held.
+			// Reject an overtaken native target before backup/continuation work;
+			// no other governed replacement can enter while this lease is owned.
+			$lineage_admission = self::native_replacement_admission( $target, $channel );
+			if ( is_wp_error( $lineage_admission ) ) return $lineage_admission;
 			$before = self::activation_state();
 			$backup = self::backup_current();
 			if ( is_wp_error( $backup ) ) return $backup;
