@@ -545,10 +545,14 @@ render_row = self_update.split("public static function render_update_row(", 1)[1
 for marker in (
     "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
     "There is a new version of %1$s available. Version %2$s.",
-    "Update now",
+    "Review certified update",
+    "mad4b-runtime-components&tab=maintenance",
 ):
     if marker not in render_row:
         raise SystemExit(f"WordPress-native update row marker missing: {marker}")
+for forbidden in ("Update now", "admin-post.php", "mad4b_control_plane_native_update", "<form"):
+    if forbidden in render_row:
+        raise SystemExit(f"direct install action must not appear in Plugins update row: {forbidden}")
 for forbidden in (
     "mad4b_self_update_manifest_not_cached",
     "manifest_unavailable",
@@ -834,10 +838,12 @@ print("mad4b.control-plane-self-update.v1 multi-channel contract: PASS")
 action_link_body = self_update.split("private static function native_update_action_link( array $links )", 1)[1].split("private static function native_update_ui_state", 1)[0]
 assert "self::fetch_manifest(" not in action_link_body
 for marker in (
-    "Check for updates",
-    "mad4b_control_plane_refresh_update",
+    "Check MAD4B updates",
+    "mad4b-runtime-components&tab=maintenance",
 ):
-    assert marker in action_link_body, f"WordPress-native update check action missing: {marker}"
+    assert marker in action_link_body, f"WordPress-native update check navigation missing: {marker}"
+for forbidden in ("<form", "admin-post.php", "mad4b_control_plane_refresh_update"):
+    assert forbidden not in action_link_body, f"Plugins action link must not submit a nested POST: {forbidden}"
 for forbidden in (
     "Retry MAD4B update check",
     "Update MAD4B to",
@@ -852,9 +858,12 @@ for marker in (
     "if ( 'available' !== $ui['state'] || ! is_array( $manifest ) ) return;",
     "$manifest['display_version']",
     "There is a new version of %1$s available. Version %2$s.",
-    "Update now",
+    "Review certified update",
+    "mad4b-runtime-components&tab=maintenance",
 ):
     assert marker in render_body, f"WordPress-native update row invariant missing: {marker}"
+for forbidden in ("Update now", "admin-post.php", "mad4b_control_plane_native_update", "<form"):
+    assert forbidden not in render_body, f"direct install action leaked into Plugins row: {forbidden}"
 for forbidden in (
     "mad4b_self_update_manifest_not_cached",
     "manifest_unavailable",
