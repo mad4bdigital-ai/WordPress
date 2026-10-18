@@ -60,6 +60,8 @@ jobs:
           php -l "$P/includes/class-mad4b-scp-external-adapter-trust.php"
           php "$P/tests/dynamic-adapter-capability-graph-runtime.php"
           php "$P/tests/dynamic-external-adapter-trust-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-header-parameters.php"
+          php -l "$P/includes/class-mad4b-scp-mcp-read-behavior.php"
           php -l "$P/includes/class-mad4b-scp-mcp-peer-health.php"
           php -l "$P/includes/class-mad4b-scp-mcp-local-ability-trust.php"
           php -l "$P/includes/class-mad4b-scp-mcp-hybrid-authority.php"
