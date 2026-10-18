@@ -54,3 +54,8 @@ A non-authorizing Actions candidate was successfully built and the emitted artif
 | Production promotion/executor | **Blocked** |
 
 The transient GitHub Actions artifact is NOT a permanent release URL. Never populate the authoritative `artifact_sha256` or set `package_certification=certified` solely from this candidate; an independently governed release publication and acceptance trail are required.
+
+
+## Provider-neutral candidate pipeline
+
+All source IDs and immutable candidate SHA/version pairs are resolved from the source registry. The workflow uses a bounded per-plugin matrix for multiple same-repository or external-repository sources; no plugin slug, ETG-only branch or mutable ref is hardcoded. Optional manual selection is by reviewed ID, not an arbitrary SHA. Tests use two independent synthetic plugin directories/versions and confirm deterministic archives, duplicate ID rejection, wrong source/version rejection and symlink denial. Build evidence remains non-authorizing; Production execution and certification stay blocked pending independently governed acceptance.
