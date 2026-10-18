@@ -7,6 +7,21 @@ class WP_Error {
     public function get_error_code() { return $this->code; }
 }
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
+$GLOBALS['mcp_registered_categories'] = array();
+$GLOBALS['mcp_registered_abilities'] = array();
+function wp_has_ability_category( $name ) {
+    return isset( $GLOBALS['mcp_registered_categories'][$name] );
+}
+function wp_register_ability_category( $name, $definition ) {
+    $GLOBALS['mcp_registered_categories'][$name] = $definition; return true;
+}
+function wp_has_ability( $name ) { return isset( $GLOBALS['mcp_registered_abilities'][$name] ); }
+function wp_register_ability( $name, $definition ) {
+    if ( ! wp_has_ability_category( $definition['category'] ?? '' ) )
+        return new WP_Error( 'missing_category', 'Ability category not pre-registered' );
+    $GLOBALS['mcp_registered_abilities'][$name] = $definition; return true;
+}
+
 $GLOBALS['mcp_audit_fail'] = false;
 $GLOBALS['mcp_audit_events'] = array();
 class MAD4B_SCP_Audit {
@@ -250,6 +265,11 @@ mcp_check( ! MAD4B_SCP_MCP_Read_Behavior::certified(
     $mutated_canary, 'test-peer', 'demo/inspect', 'read_inspect'
 ), 'Detected before/after drift denies read-only behavior certification' );
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
+$hybrid::register_category();
+$hybrid::register_abilities();
+mcp_check( wp_has_ability_category( 'mad4b-native-mcp' )
+    && count( $GLOBALS['mcp_registered_abilities'] ) === 5,
+    'Native MCP category is registered before all five real WordPress Ability definitions' );
 $GLOBALS['mcp_audit_fail'] = true;
 $before_audit_denial = count($GLOBALS['mcp_calls']);
 $audit_denied = $hybrid::catalog('test-peer');
