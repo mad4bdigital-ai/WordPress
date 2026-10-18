@@ -27,6 +27,22 @@ final class MAD4B_SCP_MCP_Hybrid {
     private static $rpc_budget_seconds = 6.0;
     private static $request_catalogs = array();
     const REQUEST_CATALOG_MAX_AGE_SECONDS = 1.0;
+    /** Audit v2 is the canonical durable, append-only record of read paths.
+     * Any absent/inconsistent journal blocks authenticated provider IO.
+     */
+    private static function audit( $stage, $peer_id, $ability = '', $arguments_sha256 = '', $response_sha256 = '' ) {
+        if ( ! class_exists( 'MAD4B_SCP_Audit', false )
+            || ! method_exists( 'MAD4B_SCP_Audit', 'record' ) )
+            return new WP_Error( 'mad4b_native_audit_unavailable', 'Audit v2 is required before provider access.' );
+        $event = MAD4B_SCP_Audit::record( 'mad4b/native-mcp-activity',
+            array( 'stage' => $stage, 'peer_id' => (string) $peer_id,
+                'ability' => (string) $ability,
+                'arguments_sha256' => $arguments_sha256,
+                'response_sha256' => $response_sha256,
+                'native_write_performed' => false ),
+            'ok' );
+        return is_wp_error( $event ) ? $event : true;
+    }
     public static function boot() {
         if ( ! function_exists( 'add_action' ) ) return;
         add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 21 );
@@ -416,10 +432,15 @@ final class MAD4B_SCP_MCP_Hybrid {
             && microtime( true ) - $cached['created_at'] < self::REQUEST_CATALOG_MAX_AGE_SECONDS )
             return $cached;
         unset( self::$request_catalogs[$cache_key] );
+        $journal = self::audit( 'catalog_attempt', $peer_id );
+        if ( is_wp_error( $journal ) ) return $journal;
         $session = self::negotiate( $peers[$peer_id] );
         if ( is_wp_error( $session ) ) return $session;
         $catalog = self::catalog_in_session( $peers[$peer_id], $session );
         if ( is_wp_error( $catalog ) ) return $catalog;
+        $journal = self::audit( 'catalog_verified', $peer_id, '',
+            '', $catalog['capability_snapshot_sha256'] );
+        if ( is_wp_error( $journal ) ) return $journal;
         MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id], 'catalog' );
         $record = array( 'session' => $session, 'catalog' => $catalog,
             'created_at' => microtime( true ), 'cache_key' => $cache_key );
@@ -703,6 +724,9 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_native_read_annotation_missing', 'Remote tool did not affirm non-destructive read-only behavior.' );
         // Invoke on the very same negotiated MCP session as the verified
         // tools/list snapshot; never substitute a stale session from a prior request.
+        $arguments_digest = self::digest( $arguments );
+        $journal = self::audit( 'tool_read_attempt', $peer_id, $ability, $arguments_digest );
+        if ( is_wp_error( $journal ) ) return $journal;
         $mirror_headers = '2026-07-28' === $session['version']
             ? MAD4B_SCP_MCP_Header_Parameters::from_schema( $tool['input_schema'], $arguments )
             : array();
@@ -725,6 +749,10 @@ final class MAD4B_SCP_MCP_Hybrid {
             if ( is_wp_error( $validated ) || true !== $validated )
                 return new WP_Error( 'mad4b_native_output_schema_mismatch', 'MCP response violates reviewed output schema.' );
         }
+        $result_digest = self::digest( $reply['wire']['result'] );
+        $journal = self::audit( 'tool_read_verified', $peer_id, $ability, $arguments_digest, $result_digest );
+        if ( is_wp_error( $journal ) )
+            return new WP_Error( 'mad4b_native_audit_receipt_failed', 'Provider read completed but its durable audit receipt failed.' );
         MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peers[$peer_id], 'read' );
         return array( 'contract' => self::CONTRACT . '.read-execution.v1',
             'peer_id' => $peer_id, 'ability' => $ability, 'tool' => $binding['tool'],
