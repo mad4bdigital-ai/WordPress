@@ -29,6 +29,8 @@
       if (!dialog || typeof dialog.showModal !== 'function') return;
       event.preventDefault();
       if (!dialog.open) dialog.showModal();
+      var sourceSelect = dialog.querySelector('[data-mad4b-source-select]');
+      if (sourceSelect) updateSourceFields(sourceSelect);
       var heading = dialog.querySelector('h2');
       if (heading) {
         heading.setAttribute('tabindex', '-1');
