@@ -67,6 +67,21 @@ jobs:
             --head-sha "$EXACT_HEAD" \
             --out artifacts/production-readiness
           cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify per-control history stays non-authorizing
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("artifacts/production-readiness/control-history.json").read_text())
+          assert p["contract"] == "mad4b.readiness-control-head-history.v1"
+          assert p["authorizing"] is False
+          assert p["all_live_evidence_unverified"] is True
+          assert len(p["controls"]) >= 170
+          assert all(x["live_evidence_status"] == "UNVERIFIED" and
+                     x["production_authorized"] is False
+                     for x in p["controls"])
+          print("PER_CONTROL_HISTORY_NON_AUTHORIZING: PASS")
+          PY
       - name: Generate exact-head read-only evaluation
         env:
           GITHUB_TOKEN: ${{ github.token }}

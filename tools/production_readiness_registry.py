@@ -346,6 +346,57 @@ def emit(report, out):
             w.writerow((x["path"], x["change"], x["area"], x["risk"],
                         ", ".join(x["suggested_controls"]),
                         ", ".join(x["introduced"]), ", ".join(x["removed"])))
+    # All control statuses are projected for the exact HEAD. They are never
+    # self-certified; CI coverage is distinct from signed live acceptance.
+    current_controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
+    previous_controls = json_file(report["source_base_sha"], CONTROLS)
+    previous_ids = {x["id"] for x in (previous_controls or {}).get("controls", [])}
+    uncovered_controls = {
+        control for gap in report["coverage_gaps"]
+        for control in gap.get("controls", [])
+    }
+    impacted_controls = {
+        control for row in report["impact"]
+        for control in row.get("suggested_controls", [])
+    }
+    control_rows = [{
+        "id": row["id"], "domain": row["domain"], "priority": row["priority"],
+        "source_base_sha": report["source_base_sha"],
+        "exact_head_sha": report["exact_head_sha"],
+        "introduced_in_diff": row["id"] not in previous_ids,
+        "source_change_impact": row["id"] in impacted_controls,
+        "ci_coverage_status": (
+            "BLOCKED_BY_UNCOVERED_CHANGE" if row["id"] in uncovered_controls
+            else "NO_UNCOVERED_CHANGE_DETECTED"
+        ),
+        "live_evidence_status": "UNVERIFIED",
+        "production_authorized": False,
+    } for row in current_controls["controls"]]
+    control_record = {
+        "contract": "mad4b.readiness-control-head-history.v1",
+        "base_sha": report["source_base_sha"],
+        "exact_head_sha": report["exact_head_sha"],
+        "authorizing": False,
+        "all_live_evidence_unverified": True,
+        "controls": control_rows,
+    }
+    (target / "control-history.json").write_text(
+        json.dumps(control_record, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8")
+    with (target / "control-history.csv").open(
+            "w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(("Control ID", "Domain", "Priority", "Exact HEAD",
+                         "New in diff", "Source impacted", "Coverage check",
+                         "Live evidence", "Production authorized"))
+        for row in control_rows:
+            writer.writerow((
+                row["id"], row["domain"], row["priority"],
+                row["exact_head_sha"],
+                "YES" if row["introduced_in_diff"] else "NO",
+                "YES" if row["source_change_impact"] else "NO",
+                row["ci_coverage_status"], "UNVERIFIED", "NO",
+            ))
     # Exact-head append-only logical event: immutable GitHub Actions artifact
     # tied to head+run ID. This never changes repository source or approvals.
     event = {key: report[key] for key in (
@@ -354,7 +405,10 @@ def emit(report, out):
         "production_authorized")}
     event.update({"contract": "mad4b.readiness-history-event.v1",
                   "github_run_id": os.environ.get("GITHUB_RUN_ID"),
-                  "retention_note": "Run-scoped artifact; durable source history remains in Git."})
+                  "retention_note": "Run-scoped artifact; durable source history remains in Git.",
+                  "control_history_count": len(control_rows),
+                  "new_control_ids": sorted(x["id"] for x in control_rows
+                                            if x["introduced_in_diff"])})
     (target / "capability-history-event.json").write_text(
         json.dumps(event, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = ["## Dynamic Readiness Coverage", "",
@@ -370,7 +424,7 @@ def emit(report, out):
     else:
         lines += ["", "No newly introduced uncovered capabilities detected.",
                   "Existing capabilities are NOT automatically certified."]
-    lines += ["", "Impact CSV and SHA-bound historical event are uploaded as artifacts.", ""]
+    lines += ["", "Per-control history and impact CSV are SHA-bound and remain non-authorizing.", ""]
     path = target / "capability-impact.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
