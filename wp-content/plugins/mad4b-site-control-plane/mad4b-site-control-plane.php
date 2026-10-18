@@ -490,6 +490,13 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-remediation-coverage.php'
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-root-cause-resolver.php';
 MAD4B_SCP_Root_Cause_Resolver::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adapter-registry.php';
+// The bundled native-build adapter is discovered on ALL admin read requests.
+// Its ability metadata references the source worker and self-approval class,
+// so their trusted definitions/registration must precede adapter projection.
+// Boot registers hooks only; it does not start a job, enable opt-in, grant
+// write authority, or authorize installation.
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-wp-native-build.php';
+MAD4B_SCP_WP_Native_Build::boot();
 MAD4B_SCP_Adapter_Registry::boot_ability_registration();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-servers.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-mcp-mu-bootstrap-refresh.php';

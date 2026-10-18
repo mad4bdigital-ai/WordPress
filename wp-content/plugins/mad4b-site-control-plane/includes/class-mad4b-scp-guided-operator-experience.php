@@ -34,10 +34,22 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			&& is_bool( $profile['deployment_binding_configured'] );
 		$deployment_ready = $deployment_observed && true === $profile['deployment_binding_configured'];
 		$has_site = isset( $profile['authority_ready'] );
-		$skills_ready = true === ( isset( $skills['ready'] ) ? $skills['ready'] : null )
-			&& true === ( isset( $skills['build_identity_current'] ) ? $skills['build_identity_current'] : null );
+		// A saved certificate can match the installed package without proving that
+		// Skills files were validated in the CURRENT runtime. Never call that Ready.
+		$skills_identity_current = true === ( $skills['build_identity_current'] ?? null )
+			|| true === ( $skills['current_candidate_match'] ?? null );
+		$skills_checkpoint_current = $skills_identity_current
+			&& true === ( $skills['recorded_ready'] ?? $skills['ready'] ?? null );
+		$skills_ready = $skills_identity_current && true === ( $skills['live_skill_ready'] ?? null );
 		$needs_skills = $site_ready && ! $skills_ready && ! empty( $profile['skills_enabled'] );
 		$write_blocked = isset( $write['ready'] ) && false === $write['ready'];
+		$write_blockers = isset( $write['blockers'] ) && is_array( $write['blockers'] ) ? $write['blockers'] : array();
+		$candidate_drift = ( array_key_exists( 'candidate_binding_match', $write ) && false === $write['candidate_binding_match'] )
+			|| in_array( 'runtime_authority_candidate_not_reconciled', $write_blockers, true );
+		$grant_drift = count( array_intersect( $write_blockers, array(
+			'exact_write_grants_incomplete', 'exact_write_grants_missing',
+			'stale_write_grants_present', 'unreviewed_stale_write_authority',
+		) ) ) > 0;
 		$browser_invalid = isset( $browser['preference_valid'] ) && false === $browser['preference_valid'];
 		$provider_blocked = isset( $provider['action_required_count'] ) && (int) $provider['action_required_count'] > 0;
 		$uncertain = count( array_intersect( $reasons, array( 'mutation_state_uncertain', 'recovery_required' ) ) ) > 0;
@@ -59,8 +71,12 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 				__( 'Complete OAuth consent and verify an external read. A configured profile alone is not certification.', 'mad4b-site-control-plane' ),
 				$site_ready ? 'NOT_CHECKED' : 'WAITING_FOR_SITE',
 				'mad4b-control-plane-connection', array( 'tab' => 'readiness' ), 'site_administrator', 'mad4b/connection-status', 30 ),
-			self::step( 'skills', __( 'Restore Managed Skills', 'mad4b-site-control-plane' ),
-				__( 'Reconcile managed seeds and providers, then verify the certificate for this exact build.', 'mad4b-site-control-plane' ),
+			self::step( 'skills', $skills_checkpoint_current
+				? __( 'Verify Skills against live files', 'mad4b-site-control-plane' )
+				: __( 'Restore Managed Skills', 'mad4b-site-control-plane' ),
+				$skills_checkpoint_current
+				? __( 'The saved checkpoint matches, but current file validation is still required. Inspect the live Skills check before any repair.', 'mad4b-site-control-plane' )
+				: __( 'Reconcile managed seeds and providers, then independently validate Skills for this exact build.', 'mad4b-site-control-plane' ),
 				isset( $profile['skills_enabled'] ) && false === $profile['skills_enabled'] && $site_ready ? 'NOT_APPLICABLE'
 				: ( $needs_skills ? 'NEEDS_ACTION' : ( $skills_ready ? 'OBSERVED_READY' : 'NOT_CHECKED' ) ),
 				'mad4b-control-plane-skills', array(), 'site_administrator', 'mad4b/skill-runtime-certification', 20 ),
@@ -76,6 +92,14 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 				'NOT_CHECKED',
 				'mad4b-approval-decisions', array( 'view' => 'actionable' ), 'authorized_approver', 'mad4b/approval-ticket-status', 40 ),
 		);
+		// Source/runtime drift is diagnosed automatically from the existing
+		// read-only snapshot. It never grants authority or auto-replays an approval.
+		if ( $site_ready && ( $candidate_drift || $grant_drift ) ) {
+			$steps[] = self::step( 'drift', __( 'Review runtime and grant drift', 'mad4b-site-control-plane' ),
+				__( 'Runtime identity, exact grants or their binding differ. Inspect the current plan and stale/missing grants in one owner review; opening it cannot apply changes.', 'mad4b-site-control-plane' ),
+				'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'overview' ),
+				'site_administrator', 'mad4b/staging-write-grant-reconciliation-plan', 14 );
+		}
 		if ( $write_blocked ) $steps[] = self::step( 'write', __( 'Review exact write readiness', 'mad4b-site-control-plane' ),
 			__( 'The write runtime is not ready. Verify grants and candidate binding before seeking approval; no grants are created here.', 'mad4b-site-control-plane' ),
 			'NEEDS_ACTION', 'mad4b-control-plane', array( 'tab' => 'overview' ), 'governed_operator', 'mad4b/staging-write-readiness', 15 );
@@ -141,6 +165,13 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 		foreach ( $model['steps'] as $step ) {
 			if ( $step['id'] !== $model['next_step'] ) { $deferred[] = $step; continue; }
 			$url = MAD4B_SCP_Admin_Workspace::link( $step['route'], $step['query'] );
+			// A single owner-review screen replaces several manual navigation hops.
+			// GET only presents a plan. Posting approval still requires its own
+			// nonce, exact identity and separately governed execution.
+			if ( 'drift' === $step['id'] && isset( $site['configured_environment'] )
+				&& 'staging' === (string) $site['configured_environment'] ) {
+				$url = admin_url( 'tools.php?page=mad4b-staging-write-owner-review' );
+			}
 			if ( '' === $url ) continue;
 			$is_next = $step['id'] === $model['next_step'];
 			echo '<li class="mad4b-guided-step' . ( $is_next ? ' is-next' : '' ) . '"' . ( $is_next ? ' aria-current="step"' : '' ) . '>';
@@ -155,6 +186,7 @@ final class MAD4B_SCP_Guided_Operator_Experience {
 			);
 			echo '<div><strong>' . esc_html( $step['title'] ) . '</strong> <span class="mad4b-guided-state">' . esc_html( isset( $state_labels[ $step['state'] ] ) ? $state_labels[ $step['state'] ] : __( 'Not checked', 'mad4b-site-control-plane' ) ) . '</span></div>';
 			echo '<p>' . esc_html( $step['summary'] ) . '</p>';
+			if ( 'drift' === $step['id'] ) echo '<p class="description">' . esc_html__( 'Automatic diagnosis only. Owner authorization, governed grants, installation and final live acceptance remain separate.', 'mad4b-site-control-plane' ) . '</p>';
 			echo '<p class="description"><strong>' . esc_html__( 'Responsible:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( str_replace( '_', ' ', $step['owner'] ) ) . '</p>';
 			echo '<a class="button ' . ( $is_next ? 'button-primary' : 'button-secondary' ) . '" href="' . esc_url( $url ) . '">' . esc_html( $is_next ? __( 'Continue with this step', 'mad4b-site-control-plane' ) : __( 'Open this step', 'mad4b-site-control-plane' ) ) . '</a>';
 			echo '</li>';
