@@ -32,3 +32,26 @@ python3 wp-content/plugins/mad4b-site-control-plane/tests/open-issue-regressions
 ```
 
 The report keeps each issue `OPEN_INDEPENDENT_ACCEPTANCE_REQUIRED` even when all source fixtures pass. Shared fixtures execute once, then their result is attributed to each relevant Issue. Live site validation, a provider certificate, owner approval, merge and deployment are separate actions. This branch changes no site, grants, protections or Production state. PR #425 and #426 remain separate readiness-governance workstreams and are not folded into this branch.
+
+## Live open Issue admission — source-neutral CI
+
+The prior catalog was an issue snapshot and did not detect newly opened GitHub
+issues. This integration now calls GitHub REST **read-only** in the exact-head
+Pre-Staging workflow, excludes pull requests, and compares all open Issues
+against `open-issue-regressions.json`. Missing/duplicate/unknown Issues fail
+CI; ledger exceptions are source-reviewed by `ledger_issues` and remain open.
+Open defects must retain explicit source regressions and independent-acceptance
+gates, and the generated `dist/mad4b-open-issue-live-coverage.json` reports
+their closure as still **OPEN_INDEPENDENT_ACCEPTANCE_REQUIRED**. A live API
+read error also fails closed; no old snapshot can certify current completeness.
+
+This is a dynamic coverage and review requirement, **not** automatic repair or
+issue closure. A new Issue should first receive reviewed ownership, mapped
+PHP/Python regressions, documented site/host/provider acceptance and exact-head
+CI. No GitHub token is written to the report. GitHub Actions needs only
+`issues: read` and `contents: read`, never write scopes.
+
+Two other open items (#425, #426) are pull requests, not defect Issues; they
+remain independent stacked readiness/capability work. Their future source
+cannot be claimed merged by this branch, and any later integration will need
+its own exact-head review and CI.
