@@ -59,3 +59,32 @@ The transient GitHub Actions artifact is NOT a permanent release URL. Never popu
 ## Provider-neutral candidate pipeline
 
 All source IDs and immutable candidate SHA/version pairs are resolved from the source registry. The workflow uses a bounded per-plugin matrix for multiple same-repository or external-repository sources; no plugin slug, ETG-only branch or mutable ref is hardcoded. Optional manual selection is by reviewed ID, not an arbitrary SHA. Tests use two independent synthetic plugin directories/versions and confirm deterministic archives, duplicate ID rejection, wrong source/version rejection and symlink denial. Build evidence remains non-authorizing; Production execution and certification stay blocked pending independently governed acceptance.
+
+## Enabled, governed three-phase lifecycle
+
+All sources now have read-only MCP/WordPress abilities: `mad4b/plugin-deployment-certification-plan`,
+`mad4b/plugin-deployment-staging-apply-plan`, and
+`mad4b/plugin-deployment-production-promotion-plan`. These expose blockers and
+next steps without modifying a site or granting authority.
+
+1. **Certification:** CI verifies ZIP SHA-256, safe file tree, canonical entrypoint,
+   file manifest, source commit, version and non-authorizing receipt. A new
+   `*.certification-evidence.json` is uploaded alongside every candidate.
+   Its state is `VERIFIED_CANDIDATE_NEEDS_INDEPENDENT_REVIEW`; an exact
+   provider certificate and a separately reviewed registry change are needed
+   before `certified` is legitimate.
+2. **Staging Apply:** After source, archive and independent provider certificates
+   match, a Staging-only plan exposes the **existing** central-ticket ability
+   `mad4b/plugin-package-apply` and exact `expected_plan_sha256`. The
+   operator must obtain site-specific owner review/OAuth step-up. Package
+   installation and rollback remain in the existing audited WordPress executor.
+   Candidate CI never calls Apply.
+3. **Production Promotion:** A separate read-only production preflight is available.
+   It requires exact deployed artifact continuity, live Staging acceptance,
+   new digest-bound Production owner approval and a separately certified
+   Production installer. The current installer is NOT certified, so this
+   phase remains blocked regardless of a manifest string or Staging approval.
+   No system automatically enables Production mutation.
+
+Thus the three-phase governance/discovery controls are active in source and CI;
+actual site execution is subject to independent approval and promotion gates.

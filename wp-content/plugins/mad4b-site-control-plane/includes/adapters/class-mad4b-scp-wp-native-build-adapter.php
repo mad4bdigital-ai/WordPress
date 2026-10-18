@@ -26,11 +26,21 @@ final class MAD4B_SCP_WP_Native_Build_Adapter extends MAD4B_SCP_Adapter_Base {
         return defined( 'MAD4B_SCP_VERSION' ) ? (string) MAD4B_SCP_VERSION : '';
     }
     public function ability_names() {
-        $name = MAD4B_SCP_WP_Native_Build::PREFIX . 'start';
+        // Adapter discovery may precede optional worker activation (or run
+        // while a partially upgraded Staging build is being repaired).
+        // Never dereference an unloaded source class during a read-only UI
+        // projection: absent dependencies contribute NO abilities.
+        $empty = array( 'read' => array(), 'content' => array(),
+            'admin' => array(), 'write' => array() );
+        if ( ! $this->is_available()
+            || ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval', false ) ) return $empty;
         return array(
             'read' => array(),
             'content' => array(),
-            'admin' => array( $name, MAD4B_SCP_WP_Native_Self_Approval::APPLY ),
+            'admin' => array(
+                MAD4B_SCP_WP_Native_Build::PREFIX . 'start',
+                MAD4B_SCP_WP_Native_Self_Approval::APPLY,
+            ),
             'write' => array(),
         );
     }
@@ -40,8 +50,9 @@ final class MAD4B_SCP_WP_Native_Build_Adapter extends MAD4B_SCP_Adapter_Base {
         // gate with adapter wrappers.
     }
     public function mutation_ability_runtime_eligibility( $ability_name ) {
-        if ( ! $this->is_available() ||
-            ! in_array( (string) $ability_name, array(
+        if ( ! $this->is_available()
+            || ! class_exists( 'MAD4B_SCP_WP_Native_Self_Approval', false )
+            || ! in_array( (string) $ability_name, array(
                 MAD4B_SCP_WP_Native_Build::PREFIX . 'start',
                 MAD4B_SCP_WP_Native_Self_Approval::APPLY,
             ), true ) ) {

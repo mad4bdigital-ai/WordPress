@@ -28,10 +28,13 @@ function plugins_url( $path, $plugin ) { return 'https://site.example.test/wp-co
 function esc_url( $x ) { return htmlspecialchars( $x, ENT_QUOTES, 'UTF-8' ); }
 function esc_html( $x ) { return htmlspecialchars( $x, ENT_QUOTES, 'UTF-8' ); }
 function esc_html__( $x, $domain = '' ) { return esc_html( $x ); }
+function __( $x, $domain = '' ) { return $x; }
+function esc_attr__( $x, $domain = '' ) { return esc_attr( $x ); }
 function esc_attr( $x ) { return htmlspecialchars( $x, ENT_QUOTES, 'UTF-8' ); }
 function wp_nonce_field( $action ) { echo '<input type="hidden" name="_wpnonce" value="test-only">'; }
 function wp_enqueue_script( $name, $url, $deps, $version, $footer ) { $GLOBALS['test_enqueue'][] = $name; }
 function wp_enqueue_style( $name, $url, $deps, $version ) { $GLOBALS['test_enqueue'][] = $name; }
+function wp_localize_script( $handle, $name, $messages ) { $GLOBALS['test_popup_messages'] = $messages; }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-plugin-update-popup.php';
 function verify_popup( $pass, $label ) {
     if ( ! $pass ) { fwrite( STDERR, 'FAIL: ' . $label . PHP_EOL ); exit( 1 ); }

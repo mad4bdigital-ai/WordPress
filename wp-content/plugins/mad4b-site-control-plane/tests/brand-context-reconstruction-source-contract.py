@@ -36,8 +36,10 @@ check(adapter.count("'context/brand-reconstruction-plan'") == 2,
 check("brand_reconstruction_plan(" in adapter, "Recovery handler missing")
 check("is_wp_error( $convergence )" in machine,
       "Provider/gap preflight must stop on error")
-check(machine.count("'mutation_performed' => false") == 1,
-      "Planning cannot pretend to mutate")
+check("'mutation_performed' => false" in machine and
+      "'mutation_performed' => true" not in machine and
+      "'writes_allowed_from_plan' => false" in machine,
+      "Normal and degraded planning must remain non-mutating")
 for phrase in (
     "'mad4b/external-source-rights-preflight'",
     "'commercial_reuse_authorized' => false",

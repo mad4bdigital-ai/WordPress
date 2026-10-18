@@ -132,8 +132,11 @@ final class MAD4B_SCP_Self_Update {
 			self::persist_recovery_status( $status );
 			return $status;
 		}
-		if ( ! self::update_available( $manifest ) ) {
-			$status['state'] = 'current';
+		$lineage = self::native_release_state( $manifest, true );
+		if ( 'available' !== $lineage['state'] ) {
+			$status['state'] = $lineage['state'];
+			$status['blocker'] = isset( $lineage['blockers'][0] ) ? $lineage['blockers'][0] : '';
+			$status['release_source_relationship'] = $lineage['release_source_relationship'];
 			self::persist_recovery_status( $status );
 			return $status;
 		}
@@ -1100,6 +1103,32 @@ final class MAD4B_SCP_Self_Update {
         }
     }
 
+    /** One state model for passive UI, explicit checks and eligible workers. */
+    public static function native_release_state( array $manifest, $allow_network = false ) {
+        $relationship = self::native_source_relationship( self::installed_identity(), $manifest, $allow_network );
+        $blocker = self::native_lineage_blocker( $relationship );
+        return array(
+            'state' => 'target_ahead' === $relationship ? 'available'
+                : ( 'same' === $relationship ? 'current' : 'needs_review' ),
+            'release_source_relationship' => $relationship,
+            'blockers' => '' === $blocker || 'same' === $relationship ? array() : array( $blocker ),
+        );
+    }
+
+    /** Recheck signed native channels under the replacement lease. Explicit
+     * owner-governed candidate uploads retain their independent rollback policy.
+     */
+    private static function native_replacement_admission( array $target, $channel ) {
+        if ( ! in_array( $channel, array( 'governed_native_release_pull',
+            'governed_native_release_pull_bootstrap', 'governed_staging_recovery_cron',
+            'wordpress_admin_plugin_update', 'wordpress_admin_candidate_drift_bootstrap' ), true ) ) return true;
+        if ( 'available' !== self::native_release_state( $target, true )['state'] )
+            return new WP_Error( 'mad4b_self_update_native_lineage_changed',
+                'The release is no longer a verified successor of the installed build.',
+                array( 'mutation_performed' => false, 'filesystem_replacement_attempted' => false ) );
+        return true;
+    }
+
 	public static function native_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$current = self::installed_identity();
@@ -1306,14 +1335,7 @@ final class MAD4B_SCP_Self_Update {
 			return array( 'state' => 'manifest_unavailable', 'blockers' => array_values( array_unique( $blockers ) ) );
 		}
 		if ( ! empty( $blockers ) ) return array( 'state' => 'policy_blocked', 'blockers' => array_values( array_unique( $blockers ) ) );
-        $relationship = self::native_source_relationship( self::installed_identity(), $manifest, false );
-        $blocker = self::native_lineage_blocker( $relationship );
-        return array(
-            'state' => 'target_ahead' === $relationship ? 'available'
-                : ( 'same' === $relationship ? 'current' : 'needs_review' ),
-            'release_source_relationship' => $relationship,
-            'blockers' => '' === $blocker ? array() : array( $blocker ),
-        );
+        return self::native_release_state( $manifest, false );
 	}
 
 	private static function wordpress_auto_update_state() {
@@ -1498,6 +1520,9 @@ final class MAD4B_SCP_Self_Update {
 		// outbound manifest I/O. The plugins table itself remains cache-only.
 		$manifest = self::fetch_manifest( true );
 		if ( is_wp_error( $manifest ) ) self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
+		// Explicit nonce-protected POST may warm the exact ancestry cache.
+		// Passive Plugins GET remains network-free even on a cold cache.
+		self::native_release_state( $manifest, true );
 		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-runtime-components&tab=maintenance' ) );
 		exit;
 	}
@@ -1513,9 +1538,11 @@ final class MAD4B_SCP_Self_Update {
 			self::persist_update_attempt( 'manifest_error', array(), $manifest->get_error_code() );
 			self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
 		}
-		if ( ! self::update_available( $manifest ) ) {
-			self::persist_update_attempt( 'current', $manifest );
-			self::redirect_native_result( 'current', '' );
+		$lineage = self::native_release_state( $manifest, true );
+		if ( 'available' !== $lineage['state'] ) {
+			$reason = isset( $lineage['blockers'][0] ) ? $lineage['blockers'][0] : '';
+			self::persist_update_attempt( $lineage['state'], $manifest, $reason );
+			self::redirect_native_result( $lineage['state'], $reason );
 		}
 
 		// Do the read-only maintenance/continuation checks before downloading the
@@ -1578,7 +1605,8 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
 			$details = is_array( $details ) ? $details : array();
-			$details['filesystem_replacement_attempted'] = true;
+			if ( ! array_key_exists( 'filesystem_replacement_attempted', $details ) )
+				$details['filesystem_replacement_attempted'] = true;
 			self::persist_update_attempt(
 				'apply_error',
 				$manifest,
@@ -1629,6 +1657,10 @@ final class MAD4B_SCP_Self_Update {
 		}
 		if ( 'current' === $state ) {
 			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane is up to date.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		if ( 'needs_review' === $state ) {
+			echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__( 'The release source could not be confirmed as a newer build. No plugin files were changed. Check certified updates and review the source relationship before retrying.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 
@@ -2034,6 +2066,11 @@ final class MAD4B_SCP_Self_Update {
 		$core_maintenance_open = false;
 		$upgrader = null;
 		try {
+			// Download has finished and the shared replacement lease is held.
+			// Reject an overtaken native target before backup/continuation work;
+			// no other governed replacement can enter while this lease is owned.
+			$lineage_admission = self::native_replacement_admission( $target, $channel );
+			if ( is_wp_error( $lineage_admission ) ) return $lineage_admission;
 			$before = self::activation_state();
 			$backup = self::backup_current();
 			if ( is_wp_error( $backup ) ) return $backup;

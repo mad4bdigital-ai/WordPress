@@ -151,6 +151,26 @@ final class MAD4B_SCP_Cross_Plugin_Admin {
         }
         if ( empty( $result['items'] ) ) echo '<tr><td colspan="4">No approved source entries.</td></tr>';
         echo '</tbody></table>';
+        // Source-neutral lifecycle dashboard. These statuses are read-only:
+        // never resolve GitHub refs, grant Write authority, or invoke Apply on GET.
+        if ( class_exists( 'MAD4B_SCP_Cross_Plugin_Lifecycle' ) ) {
+            echo '<h2>Governed deployment lifecycle</h2>';
+            echo '<p>Certification, Staging Apply and Production Promotion each require separate reviews. A green certificate is not an install approval.</p>';
+            echo '<table class="widefat striped"><thead><tr><th>Plugin</th><th>Certification</th><th>Staging Apply</th><th>Production Promotion</th></tr></thead><tbody>';
+            foreach ( $result['items'] as $item ) {
+                $source_id = (string) ( $item['source_id'] ?? '' );
+                $cert = MAD4B_SCP_Cross_Plugin_Lifecycle::certification_plan( array( 'source_id' => $source_id ) );
+                $certified = is_array( $cert ) && ! empty( $cert['candidate_is_certified'] );
+                $staging = $certified ? 'Needs exact site Owner Review and OAuth Step-Up' : 'Blocked until independent certification';
+                $production = 'Blocked: independent Production executor and approval required';
+                echo '<tr><td>' . esc_html( (string) ( $item['label'] ?? $source_id ) )
+                    . '</td><td>' . esc_html( $certified ? 'Certificate verified' : 'Certification pending' )
+                    . '</td><td>' . esc_html( $staging )
+                    . '</td><td>' . esc_html( $production ) . '</td></tr>';
+            }
+            if ( empty( $result['items'] ) ) echo '<tr><td colspan="4">No reviewed plugin sources.</td></tr>';
+            echo '</tbody></table>';
+        }
         if ( 'not_verified' === $environment ) {
             echo '<div class="notice notice-warning"><p>Environment and enrolled origin must match before planning.</p></div></div>';
             return;

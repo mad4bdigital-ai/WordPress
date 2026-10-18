@@ -28,6 +28,14 @@ $rows = array(
         'mounted' => true, 'exact_grant_present' => false, 'grant_state' => 'explicit_deny' ),
 );
 $reversed = array_reverse( $rows );
+$object_reordered = array_map( static function ( $row ) { return array_reverse( $row, true ); }, $rows );
+parity_assert( rows_sha( $rows ) === rows_sha( $object_reordered ),
+    'Associative key arrival order cannot invalidate exact owner grant evidence' );
+$nested = array( array( 'grant' => array( 'provider' => 'core', 'ability' => 'mad4b/sample' ), 'ids' => array( 4, 9 ) ) );
+$nested_reordered = array( array( 'ids' => array( 4, 9 ), 'grant' => array( 'ability' => 'mad4b/sample', 'provider' => 'core' ) ) );
+parity_assert( rows_sha( $nested ) === rows_sha( $nested_reordered ), 'Nested object keys are canonical' );
+$nested_reordered[0]['ids'] = array( 9, 4 );
+parity_assert( rows_sha( $nested ) !== rows_sha( $nested_reordered ), 'Semantic list order is preserved' );
 parity_assert( rows_sha( $rows ) === rows_sha( $reversed ),
     'Admin vs MCP read-order permutation cannot change grant fingerprint' );
 $canonical = MAD4B_SCP_Staging_Write_Authority::canonical_plan_rows( $rows );

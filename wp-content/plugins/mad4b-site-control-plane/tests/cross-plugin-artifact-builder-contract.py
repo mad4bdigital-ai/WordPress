@@ -74,6 +74,37 @@ with tempfile.TemporaryDirectory(prefix="cross-plugin-ci-") as scratch:
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
     )
     assert unreviewed.returncode != 0 and "exact reviewed registry SHA" in unreviewed.stderr
+    original = (target / "index.php").read_bytes()
+    (target / "index.php").write_bytes(original + b"// tracked drift\n")
+    dirty = subprocess.run(command + ["--out", str(tmp / "dirty")], capture_output=True, text=True)
+    assert dirty.returncode != 0 and "working tree differs" in dirty.stderr
+    (target / "index.php").write_bytes(original)
+    extra = target / "untracked.txt"
+    extra.write_text("not committed")
+    assert subprocess.run(command + ["--out", str(tmp / "untracked")], capture_output=True).returncode != 0
+    extra.unlink()
+    (repo / ".git/info/exclude").write_text("ignored.txt\n")
+    extra = target / "ignored.txt"
+    extra.write_text("ignored additions cannot silently enter a signed source package")
+    assert subprocess.run(command + ["--out", str(tmp / "ignored")], capture_output=True).returncode != 0
+    extra.unlink()
+    # A source changing after status/listing must still fail blob verification.
+    import importlib.util
+    from unittest.mock import patch
+    spec = importlib.util.spec_from_file_location("candidate_builder", SCRIPT)
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    read_bytes = pathlib.Path.read_bytes
+    def changed_read(path):
+        data = read_bytes(path)
+        return data + b"// raced after status\n" if path == target / "index.php" else data
+    with patch.object(pathlib.Path, "read_bytes", changed_read):
+        try:
+            builder.build(fixture_manifest, repo, "etg-dynamic-filter-seo-bridge", sha, tmp / "raced")
+        except ValueError as exc:
+            assert "source blob changed" in str(exc)
+        else:
+            raise AssertionError("race payload received exact-source provenance")
     (target / "escape-link.php").symlink_to(target / "index.php")
     symlinked = subprocess.run(command + ["--out", str(tmp / "symlinked")],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
