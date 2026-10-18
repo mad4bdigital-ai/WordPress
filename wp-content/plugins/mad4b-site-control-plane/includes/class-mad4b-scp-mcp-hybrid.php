@@ -3,6 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-mcp-hybrid-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-peer-health.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-header-parameters.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-read-behavior.php';
 require_once __DIR__ . '/class-mad4b-scp-external-adapter-trust.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-local-ability-trust.php';
 
@@ -181,6 +182,8 @@ final class MAD4B_SCP_MCP_Hybrid {
                     'ability' => $row['ability'], 'tool' => $row['tool'],
                     'dimension' => $row['dimension'], 'schema_sha256' => $row['schema_sha256'],
                     'read_execution_reviewed' => true === ( $row['read_execution_reviewed'] ?? false ),
+                    'read_behavior_certification' => is_array( $row['read_behavior_certification'] ?? null )
+                        ? $row['read_behavior_certification'] : null,
                     'output_schema_sha256' => isset( $row['output_schema_sha256'] ) && is_string( $row['output_schema_sha256'] )
                         && preg_match( '/^[a-f0-9]{64}$/D', $row['output_schema_sha256'] )
                         ? $row['output_schema_sha256'] : '',
@@ -477,6 +480,9 @@ final class MAD4B_SCP_MCP_Hybrid {
         foreach ( $peer['bindings'] as $ability => $binding ) {
             $tool = $result[$binding['tool']] ?? null;
             $matched = is_array( $tool ) && hash_equals( $binding['schema_sha256'], $tool['schema_sha256'] );
+            $behavior_certified = MAD4B_SCP_MCP_Read_Behavior::certified(
+                $binding, $peer_id, $ability, $binding['tool']
+            );
             if ( $matched && is_array( $tool['output_schema'] ?? null ) ) {
                 $expected_output = (string) ( $binding['output_schema_sha256'] ?? '' );
                 $matched = '' !== $expected_output
@@ -490,7 +496,8 @@ final class MAD4B_SCP_MCP_Hybrid {
                 'schema_sha256' => $binding['schema_sha256'],
                 'output_schema_sha256' => isset( $binding['output_schema_sha256'] ) ? $binding['output_schema_sha256'] : '',
                 'read_execution_reviewed' => $binding['read_execution_reviewed'],
-                'read_execution_eligible' => $matched
+                'read_behavior_certified' => $behavior_certified,
+                'read_execution_eligible' => $behavior_certified && $matched
                     && 'read' === $binding['dimension']
                     && ! empty( $binding['read_execution_reviewed'] )
                     && true === ( $tool['annotations']['readOnlyHint'] ?? null )
@@ -663,8 +670,10 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ! isset( $peers[$peer_id] ) || ! isset( $peers[$peer_id]['bindings'][$ability] ) )
             return new WP_Error( 'mad4b_native_read_binding_missing', 'No owner-pinned native tool binding for the Ability.' );
         $binding = $peers[$peer_id]['bindings'][$ability];
-        if ( 'read' !== $binding['dimension'] || empty( $binding['read_execution_reviewed'] ) )
-            return new WP_Error( 'mad4b_native_read_not_certified', 'Native MCP tool has no explicit read-execution certification.' );
+        if ( 'read' !== $binding['dimension'] || empty( $binding['read_execution_reviewed'] )
+            || ! MAD4B_SCP_MCP_Read_Behavior::certified( $binding, $peer_id, $ability, $binding['tool'] ) )
+            return new WP_Error( 'mad4b_native_read_not_certified',
+                'Exact owner-reviewed Staging read-behavior evidence is required for native tools/call.' );
         // The exact per-peer Agent grant must be checked BEFORE outbound IO.
         $authorized = MAD4B_SCP_MCP_Hybrid_Authority::authorize_read( $peer_id, $ability, 'native' );
         if ( is_wp_error( $authorized ) ) return $authorized;
