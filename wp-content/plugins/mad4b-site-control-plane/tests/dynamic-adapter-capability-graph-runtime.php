@@ -115,8 +115,18 @@ graph_ok( $undo['state'] === 'RECORDED_REVERSIBLE_OPERATION_REQUIRED'
     'Rollback requires recorded journal and reviewed reversible contract' );
 $unknown = $c::plan_from_graph( $g, array( 'plugin_file'=>'new-vendor/main.php',
     'dimension'=>'write', 'ability'=>'new-vendor/delete-all' ) );
-graph_ok( $unknown['state'] === 'REVIEWED_ADAPTER_UNAVAILABLE'
-    && $unknown['dispatcher'] === '', 'Discovered unknown provider ability cannot be executed' );
+graph_ok( $unknown['state'] === 'DEPENDENCY_NOT_READY'
+    && $unknown['dispatcher'] === '', 'Missing plugin dependency blocks an unknown provider before adapter admission' );
+$dependency_ready_plugins = $plugins;
+$dependency_ready_plugins['new-vendor/main.php']['RequiresPlugins'] = 'core-provider';
+$dependency_ready_graph = $c::build_capability_graph( $capable, $dependency_ready_plugins, $capable_abilities );
+$unreviewed = $c::plan_from_graph( $dependency_ready_graph, array(
+    'plugin_file'=>'new-vendor/main.php', 'dimension'=>'write', 'ability'=>'new-vendor/delete-all'
+) );
+graph_ok( $unreviewed['state'] === 'REVIEWED_ADAPTER_UNAVAILABLE'
+    && $unreviewed['dispatcher'] === ''
+    && $unreviewed['mutation_performed'] === false,
+    'Discovered unknown provider without dependency gaps still cannot execute an unreviewed write' );
 $uncertified = $capable;
 $uncertified['plugins'][1]['provider_certification_ok'] = false;
 $uncertified_graph = $c::build_capability_graph($uncertified,$plugins,$capable_abilities);
