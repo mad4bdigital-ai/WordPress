@@ -95,7 +95,7 @@ final class MAD4B_SCP_MCP_Hybrid_Authority {
         }
 
         if ( ! is_array( $entry ) || ! is_string( $entry['relative_path'] ?? null )
-            || ! preg_match( '~^[a-zA-Z0-9_.-]+(?:/[a-zA-Z0-9_.-]+)+[.]php$~D', $entry['relative_path'] )
+            || ! preg_match( '~^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*[.]php$~D', $entry['relative_path'] )
             || false !== strpos( $entry['relative_path'], '..' )
             || ! is_string( $entry['sha256'] ?? null )
             || ! preg_match( '/^[a-f0-9]{64}$/D', $entry['sha256'] ) ) return false;
