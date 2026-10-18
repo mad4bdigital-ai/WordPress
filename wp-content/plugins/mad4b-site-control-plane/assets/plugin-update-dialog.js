@@ -1,5 +1,26 @@
 (function () {
   'use strict';
+  function updateSourceFields(select) {
+    var form = select.closest('form');
+    if (!form) return;
+    var type = select.value;
+    form.querySelectorAll('[data-mad4b-source-field]').forEach(function (wrapper) {
+      var field = wrapper.getAttribute('data-mad4b-source-field');
+      var active = (field === 'branch' && (type === 'branch' || type === 'branch_commit')) ||
+        (field === 'commit' && (type === 'commit' || type === 'branch_commit')) ||
+        (field === 'reference' && type === 'pull_request');
+      wrapper.hidden = !active;
+      var input = wrapper.querySelector('input');
+      if (input) {
+        input.required = active;
+        if (!active) input.value = '';
+      }
+    });
+  }
+  document.querySelectorAll('[data-mad4b-source-select]').forEach(updateSourceFields);
+  document.addEventListener('change', function (event) {
+    if (event.target.matches('[data-mad4b-source-select]')) updateSourceFields(event.target);
+  });
   document.addEventListener('click', function (event) {
     var trigger = event.target.closest('[data-mad4b-update-dialog]');
     if (trigger) {

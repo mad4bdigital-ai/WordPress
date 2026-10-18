@@ -102,7 +102,7 @@ final class MAD4B_SCP_Plugin_Update_Popup {
         $links['mad4b_governed_update'] = '<a href="' . esc_url( $entry['target'] )
             . '" class="mad4b-update-dialog-trigger" data-mad4b-update-dialog="' . esc_attr( $id )
             . '" aria-haspopup="dialog" aria-controls="' . esc_attr( $id ) . '">'
-            . esc_html__( 'Review MAD4B update', 'mad4b-site-control-plane' ) . '</a>';
+            . esc_html__( 'core' === $entry['kind'] ? 'Review MAD4B update' : 'Review plugin deployment', 'mad4b-site-control-plane' ) . '</a>';
         return $links;
     }
 
@@ -161,8 +161,27 @@ final class MAD4B_SCP_Plugin_Update_Popup {
                 echo '<input type="hidden" name="action" value="mad4b_control_plane_refresh_update">';
                 wp_nonce_field( 'mad4b_control_plane_refresh_update' );
                 echo '<button class="button button-primary" type="submit">Check certified updates</button></form>';
-                if ( 'staging' === $entry['environment'] ) {
-                    echo '<p class="description">To preview a branch or exact commit, use the Staging selector in Runtime Update. Installation needs independent owner approval.</p>';
+                if ( 'staging' === $entry['environment'] && current_user_can( 'manage_options' ) ) {
+                    echo '<div class="mad4b-ud-separator"></div><h3>Preview Staging branch or commit</h3>';
+                    echo '<p class="description">The exact Git source is resolved and validated after submission. A preview does not install it.</p>';
+                    echo '<form class="mad4b-ud-form" method="post" action="'
+                        . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+                    echo '<input type="hidden" name="action" value="mad4b_staging_source_preview">';
+                    wp_nonce_field( 'mad4b_staging_source_preview' );
+                    echo '<label>Source type<select name="source_type" data-mad4b-source-select>'
+                        . '<option value="branch">Branch HEAD</option>'
+                        . '<option value="branch_commit">Specific commit in branch</option>'
+                        . '<option value="commit">Exact commit SHA</option>'
+                        . '<option value="pull_request">PR HEAD</option></select></label>';
+                    echo '<label data-mad4b-source-field="branch">Branch name'
+                        . '<input class="regular-text" name="branch" maxlength="120" placeholder="feature/review"></label>';
+                    echo '<label data-mad4b-source-field="commit">Commit SHA'
+                        . '<input class="regular-text" name="commit" maxlength="40" placeholder="40-character SHA"></label>';
+                    echo '<label data-mad4b-source-field="reference">PR number'
+                        . '<input class="regular-text" name="reference" maxlength="9" inputmode="numeric"></label>';
+                    echo '<label>Reason'
+                        . '<input class="regular-text" name="reason" minlength="3" maxlength="500" required></label>';
+                    echo '<button class="button button-secondary" type="submit">Preview this source</button></form>';
                 }
             } else {
                 echo '<div class="mad4b-ud-separator"></div><h3>Preview exact source</h3>';

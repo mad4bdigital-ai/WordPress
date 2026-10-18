@@ -61,7 +61,8 @@ ob_start(); $class::render(); $html = ob_get_clean();
 verify_popup( substr_count( $html, '<dialog ' ) === 2
     && substr_count( $html, '</dialog>' ) === 2, 'dialog markup failed' );
 verify_popup( strpos( $html, 'mad4b_control_plane_refresh_update' ) !== false
-    && strpos( $html, 'mad4b_cross_plugin_preview' ) !== false,
+    && strpos( $html, 'mad4b_cross_plugin_preview' ) !== false
+    && strpos( $html, 'mad4b_staging_source_preview' ) !== false,
     'separate certified and cross-plugin read-only handlers missing' );
 verify_popup( strpos( $html, 'mad4b_cross_plugin_apply' ) === false
     && strpos( $html, 'mad4b_control_plane_native_update' ) === false,
@@ -69,8 +70,11 @@ verify_popup( strpos( $html, 'mad4b_cross_plugin_apply' ) === false
 verify_popup( strpos( $html, '0.4.0-alpha.13' ) !== false
     && strpos( $html, 'source_reviewed_artifact_pending' ) !== false,
     'existing plugin version/certification labels inaccurate' );
+verify_popup( strpos( $html, 'data-mad4b-source-select' ) !== false
+    && strpos( $html, 'data-mad4b-source-field="branch"' ) !== false,
+    'Staging exact branch/commit preview fields missing' );
 verify_popup( strpos( $html, 'admin-post.php' ) !== false
-    && substr_count( $html, 'name="_wpnonce"' ) === 2,
+    && substr_count( $html, 'name="_wpnonce"' ) === 3,
     'forms must be separate and protected by WordPress nonces' );
 $GLOBALS['test_caps']['manage_options'] = false;
 verify_popup( $class::plugin_action_links( array(), 'unknown/unsafe.php' ) === array()
