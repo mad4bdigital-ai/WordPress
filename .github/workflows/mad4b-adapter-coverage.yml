@@ -69,6 +69,8 @@ jobs:
           php "$P/tests/dynamic-mcp-hybrid-runtime.php"
           php -l "$P/includes/class-mad4b-scp-admin-native-mcp-view.php"
           php "$P/tests/admin-native-mcp-view-runtime.php"
+          php -l "$P/includes/class-mad4b-scp-admin-remote-parity.php"
+          php "$P/tests/admin-remote-parity-contract-runtime.php"
 
       - name: Verify discovery and reversible adapter contracts
         shell: bash

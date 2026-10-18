@@ -14,6 +14,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         if ( self::$booted ) return;
         self::$booted = true;
         add_action( 'admin_post_mad4b_native_peer_diagnostic', array( __CLASS__, 'handle_diagnostic_post' ) );
+        add_action( 'admin_post_mad4b_admin_remote_parity', array( __CLASS__, 'handle_parity_post' ) );
     }
 
 
@@ -223,6 +224,24 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         exit;
     }
 
+    /** Administrator-requested read parity snapshot. Remote request is separate. */
+    public static function handle_parity_post() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
+        check_admin_referer( 'mad4b_admin_remote_parity' );
+        $result = MAD4B_SCP_Admin_Remote_Parity::capture( array() );
+        $record = is_wp_error( $result )
+            ? array( 'state'=>'Blocked', 'error_code'=>sanitize_key($result->get_error_code()) )
+            : array_intersect_key( $result, array_flip( array( 'state',
+                'site_sha256', 'wp_actor_sha256', 'subject_sha256',
+                'graph_sha256', 'read_result_sha256', 'transport_certified',
+                'parity_verified' ) ) );
+        set_transient( 'mad4b_admin_parity_' . get_current_user_id(), $record, 120 );
+        wp_safe_redirect( MAD4B_SCP_Admin_Experience::tab_url(
+            MAD4B_SCP_Adapter_Coverage_Admin_UI::PAGE_SLUG, 'native-peers'
+        ), 303 );
+        exit;
+    }
+
     public static function render_peers() {
         if ( ! current_user_can( 'manage_options' ) ) return;
         $inventory = class_exists( 'MAD4B_SCP_MCP_Hybrid', false )
@@ -259,6 +278,20 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
             echo '<p><label>Prior catalog SHA-256 <input name="expected_catalog_sha256" type="text" maxlength="64" size="64"></label></p>';
             echo '<p class="description">For catalog inspection leave the last two fields empty. For a read canary supply an already approved Ability and the exact catalog fingerprint. A failure is not retried as another route.</p>';
             echo '<p><button type="submit" class="button button-secondary">Run explicit diagnostic</button></p></form>';
+        }
+        echo '<h3>Admin / Remote read parity</h3>';
+        echo '<p>Capture a local WordPress Ability read snapshot, then execute <code>mad4b/admin-remote-parity-snapshot</code> independently on mad4b-read MCP. Compare site, actor, graph and read-result SHA-256. A matching digest is not proof of OAuth or MCP transport certification.</p>';
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        echo '<input type="hidden" name="action" value="mad4b_admin_remote_parity">';
+        wp_nonce_field( 'mad4b_admin_remote_parity' );
+        echo '<p><button type="submit" class="button button-secondary">Capture local parity evidence</button></p></form>';
+        $local = get_transient( 'mad4b_admin_parity_' . get_current_user_id() );
+        if ( is_array( $local ) ) {
+            echo '<p>Admin read state: <strong>' . esc_html( (string) ( $local['state'] ?? 'Needs Review' ) )
+                . '</strong>. Independent Remote MCP: <strong>Needs Review</strong>.</p>';
+            foreach ( array( 'site_sha256', 'wp_actor_sha256', 'subject_sha256', 'graph_sha256', 'read_result_sha256', 'error_code' ) as $key )
+                if ( isset( $local[$key] ) && is_string( $local[$key] ) )
+                    echo '<p>' . esc_html($key) . ': <code>' . esc_html($local[$key]) . '</code></p>';
         }
         $connection = MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane-connection', array( 'tab' => 'oauth' ) );
         $history = MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane', array( 'tab' => 'audit' ) );

@@ -14,6 +14,8 @@ require_once __DIR__ . '/class-mad4b-scp-full-staging-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-runtime-gates.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-catalog-diagnostics.php';
 require_once __DIR__ . '/class-mad4b-scp-server-registration-evidence.php';
+require_once __DIR__ . '/class-mad4b-scp-admin-remote-parity.php';
+MAD4B_SCP_Admin_Remote_Parity::boot();
 
 MAD4B_SCP_Site_Profile_Enrollment::boot();
 MAD4B_SCP_Site_Profile_Write_Enablement::boot();
@@ -162,6 +164,7 @@ final class MAD4B_SCP_Servers {
 		// Do not route them through anonymous Adapter_Base registrations: the
 		// reviewed class/path trust policy correctly rejects anonymous classes.
 		if ( 'mad4b-read' === $server_id ) {
+			$tools[] = MAD4B_SCP_Admin_Remote_Parity::ABILITY;
 			foreach ( array( 'MAD4B_SCP_Acceptance_Core', 'MAD4B_SCP_Browser_Acceptance_Core' ) as $core ) {
 				if ( class_exists( $core, false ) && method_exists( $core, 'read_ability_names' ) ) {
 					$tools = array_merge( $tools, $core::read_ability_names() );
