@@ -125,6 +125,11 @@ file_put_contents( $manifest_path, json_encode( $manifest ) );
 define( 'MAD4B_SCP_MCP_PEER_MANIFEST_PATH', $manifest_path );
 define( 'MAD4B_SCP_MCP_PEER_MANIFEST_SHA256', hash_file( 'sha256', $manifest_path ) );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-hybrid.php';
+function mcp_new_request_epoch() {
+    $cache = new ReflectionProperty( 'MAD4B_SCP_MCP_Hybrid', 'request_catalogs' );
+    $cache->setAccessible( true );
+    $cache->setValue( null, array() );
+}
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
 $GLOBALS['hybrid_isolation_effective'] = true;
 $before_isolation = count($GLOBALS['mcp_calls']);
@@ -135,6 +140,11 @@ mcp_check(is_wp_error($isolation_denied)
     'Provider isolation blocks same-origin MCP before any outbound call');
 $GLOBALS['hybrid_isolation_effective'] = false;
 $catalog = $hybrid::catalog('test-peer');
+$first_roundtrips = count($GLOBALS['mcp_calls']);
+$again = $hybrid::catalog('test-peer');
+mcp_check( ! is_wp_error( $again ) && count($GLOBALS['mcp_calls']) === $first_roundtrips
+    && $again['capability_snapshot_sha256'] === $catalog['capability_snapshot_sha256'],
+    'Request-local catalog caching avoids redundant native negotiations' );
 mcp_check( ! is_wp_error($catalog) && $catalog['protocol']==='2026-07-28' && $catalog['tool_count']===2,
     'Modern server/discover + paginated tools/list operational' );
 mcp_check( $catalog['bindings']['demo/inspect']['state'] === 'MCP_SCHEMA_REVIEWED'
@@ -190,6 +200,7 @@ $blocked = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/de
 mcp_check( is_wp_error($blocked) && $blocked->get_error_code()==='mad4b_native_read_not_certified',
     'Write-capable native tools cannot run through Read method' );
 $GLOBALS['mcp_revision']='legacy';
+mcp_new_request_epoch();
 $legacy = $hybrid::catalog('test-peer');
 mcp_check( ! is_wp_error($legacy) && $legacy['protocol']==='2025-11-25'
     && in_array('initialize',$GLOBALS['mcp_calls'],true)
@@ -205,17 +216,20 @@ $route = $hybrid::hybrid_plan_from_evidence(array('complete'=>false,'bindings'=>
 mcp_check( $route['selected'] === 'reviewed_adapter',
     'Hybrid fallback survives unavailable MCP endpoint' );
 $GLOBALS['mcp_sse'] = true;
+mcp_new_request_epoch();
 $GLOBALS['mcp_revision'] = 'modern';
 $sse = $hybrid::catalog('test-peer');
 mcp_check( ! is_wp_error($sse) && $sse['tool_count'] === 2,
     'Bounded Streamable HTTP event-stream responses are decoded' );
 $GLOBALS['mcp_sse'] = false;
 $GLOBALS['mcp_revision'] = 'bad_request';
+mcp_new_request_epoch();
 $bad = $hybrid::catalog('test-peer');
 mcp_check( is_wp_error($bad) && $bad->get_error_code() === 'mad4b_mcp_protocol_uncertain',
     'Ambiguous modern bad-request cannot trigger unsafe legacy downgrade' );
 $GLOBALS['mcp_revision'] = 'modern';
 $GLOBALS['mcp_tools'][0]['inputSchema']['properties']['q']['type'] = 'integer';
+mcp_new_request_epoch();
 $drift = $hybrid::catalog('test-peer');
 mcp_check( ! is_wp_error($drift) && $drift['bindings']['demo/inspect']['state'] === 'MCP_SCHEMA_DRIFT',
     'Remote native tool schema drift is detected without execution' );
@@ -270,6 +284,7 @@ mcp_check(is_wp_error($local_denied) && $local_denied->get_error_code()==='mad4b
     'Local fallback cannot bypass exact per-ability Agent grant');
 $GLOBALS['hybrid_grant'] = true;
 $GLOBALS['mcp_tools'][0]['inputSchema'] = $schema;
+mcp_new_request_epoch();
 $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
     'peer_id'=>'test-peer', 'arguments'=>array('q'=>'test')));
 mcp_check(is_wp_error($native_denied)
