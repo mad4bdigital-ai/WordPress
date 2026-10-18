@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -35,6 +36,9 @@ CAP_CATALOGS = {
     "workstream": CONFIG + "feature-007-workstream-certification.json",
 }
 PRIORITIES = {"P0", "P1"}
+REST_ROUTE = re.compile(r"""register_rest_route\s*\(\s*['"]([a-z0-9._/-]+)['"]\s*,\s*['"]([^'"]+)['"]""", re.I)
+AJAX_ROUTE = re.compile(r"""add_action\s*\(\s*['"](wp_ajax_(?:nopriv_)?[a-z0-9_-]+)['"]""", re.I)
+CRON_SCHEDULE = re.compile(r"""wp_schedule_(?:single_)?event\s*\(\s*[^,]+,\s*(?:[^,]+,\s*)?['"]([a-z0-9_-]+)['"]""", re.I)
 
 
 def git(*args, checked=True):
@@ -124,6 +128,41 @@ def php_capabilities(ref, path):
     return {identifier("ability", m) for m in CAP.findall(src)}
 
 
+def registered_surfaces(ref, path):
+    """Static candidate REST, AJAX and Cron interfaces; never runtime proof."""
+    src = git_text(ref, path)
+    if not src:
+        return set()
+    rows = {identifier("rest", ns + "/" + route.lstrip("/"))
+            for ns, route in REST_ROUTE.findall(src)}
+    rows.update(identifier("ajax", x) for x in AJAX_ROUTE.findall(src))
+    rows.update(identifier("cron", x) for x in CRON_SCHEDULE.findall(src))
+    return rows
+
+
+def is_reviewed_runtime_path(path, coverage):
+    cfg = coverage["code_change_rules"]
+    root = cfg["runtime_root"]
+    if not path.startswith(root):
+        return False
+    rel = path[len(root):]
+    if any(rel.startswith(x) for x in cfg["excluded_subtrees"]):
+        return False
+    if not any(rel.endswith(x) for x in cfg["covered_extensions"]):
+        return False
+    return (any(rel.startswith(x) for x in cfg["included_subtrees"])
+            or (cfg.get("root_php") and "/" not in rel and rel.endswith(".php")))
+
+
+def current_blob_sha(commit, path):
+    ensure(SHA.fullmatch(commit), "Invalid exact source commit")
+    sha = git("rev-parse", commit + ":" + path).stdout.decode().strip()
+    ensure(SHA.fullmatch(sha), "Invalid source blob for " + path)
+    ensure(git("cat-file", "-t", sha).stdout.decode().strip() == "blob",
+           "Reviewed object is not a Git blob: " + path)
+    return sha
+
+
 def new_source_ids(base, head, changed):
     old = catalog_snapshot(base)
     new = catalog_snapshot(head)
@@ -138,6 +177,11 @@ def new_source_ids(base, head, changed):
             added.setdefault(cap, path)
         for cap in before - after:
             removed.setdefault(cap, path)
+        old_routes, new_routes = registered_surfaces(base, path), registered_surfaces(head, path)
+        for route in new_routes - old_routes:
+            added.setdefault(route, path)
+        for route in old_routes - new_routes:
+            removed.setdefault(route, path)
         # Independently detectable new service, even without a literal
         # Ability identifier. No implicit capability on renames: renames are
         # represented as D+A and therefore require a reviewed migration.
@@ -173,10 +217,23 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     guards = coverage["guarantees"]
     ensure(all(guards.values()), "Coverage guard disabled")
     ensure(len(coverage.get("domain_rules", [])) >= 8, "Impact mapping incomplete")
+    growth = coverage.get("capability_growth_policy", {})
+    ensure(growth.get("contract") == "mad4b.readiness-control-growth.v1"
+           and all(v is True for k, v in growth.items() if k != "contract"),
+           "Explicit checklist growth policy missing")
+    code_rules = coverage.get("code_change_rules", {})
+    ensure(code_rules.get("contract") == "mad4b.readiness-reviewed-changes.v1"
+           and code_rules.get("authorizing") is False
+           and code_rules.get("production_authorized") is False
+           and code_rules.get("require_current_git_blob") is True
+           and code_rules.get("require_same_pr_regression_test") is True,
+           "Exact source-change review gate disabled")
     ctl_ids = {c["id"] for c in controls["controls"]}
     old_controls = json_file(base, CONTROLS)
     ensure(old_controls is not None, "Missing reviewed base controls")
-    disappeared = {x["id"] for x in old_controls["controls"]} - ctl_ids
+    old_control_ids = {x["id"] for x in old_controls["controls"]}
+    new_control_ids = ctl_ids - old_control_ids
+    disappeared = old_control_ids - ctl_ids
     ensure(not disappeared, "A historical control was deleted: " + repr(sorted(disappeared)))
     ensure(len(ctl_ids) >= 170, "Baseline controls removed")
     prior_control_rows = {x["id"]: x for x in old_controls["controls"]}
@@ -254,6 +311,16 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                    "Insufficient / unknown control coverage: " + capability)
             ensure(set(ctl) & set(rule["controls"]),
                    "Coverage does not address mapped impact: " + capability)
+            needs_new = rec.get("needs_new_control")
+            ensure(type(needs_new) is bool,
+                   "New capability requires explicit checklist growth decision: " + capability)
+            if needs_new:
+                additions = set(rec.get("new_control_ids", []))
+                ensure(additions and additions <= new_control_ids and additions <= set(ctl),
+                       "New checklist controls must be added and mapped in same PR: " + capability)
+            else:
+                ensure(len(rec.get("coverage_reuse_rationale", "")) >= 24,
+                       "Reused checklist coverage requires rationale: " + capability)
             ensure(isinstance(tests, list) and tests,
                    "A newly introduced capability must provide regression tests")
             for test in tests:
@@ -294,7 +361,57 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
                len(set(x["control_ids"])) == len(x["control_ids"]) and
                set(x["control_ids"]) <= ctl_ids,
                "Historical review must retain valid control IDs: " + str(x.get("id")))
-    return failures, accepted
+    # A changed existing runtime/config path is a changed behavior candidate
+    # even if no newly registered Ability or public endpoint can be seen.
+    records = coverage.get("reviewed_changes", [])
+    old_records = previous.get("reviewed_changes", [])
+    keys = [(x.get("path"), x.get("source_blob_sha")) for x in records]
+    ensure(len(keys) == len(set(keys)), "Duplicate exact-source review")
+    old_map = {(x["path"], x["source_blob_sha"]): x for x in old_records}
+    new_map = {(x.get("path"), x.get("source_blob_sha")): x for x in records}
+    ensure(set(old_map) <= set(new_map), "Reviewed source history must be preserved")
+    ensure(all(new_map.get(k) == v for k, v in old_map.items()),
+           "Reviewed historical code evidence cannot be rewritten")
+    for rec in records:
+        ensure(rec.get("status") == "reviewed_for_ci_only"
+               and rec.get("production_authorized") is False
+               and rec.get("live_evidence_required") is True
+               and rec.get("owner_role")
+               and len(rec.get("review_rationale", "")) >= 24,
+               "Invalid nonauthorizing code review record")
+        linked, tests = rec.get("control_ids", []), rec.get("regression_tests", [])
+        ensure(isinstance(linked, list) and len(linked) >= 2
+               and len(set(linked)) == len(linked) and set(linked) <= ctl_ids
+               and isinstance(tests, list) and len(tests) > 0,
+               "Code review requires mapped controls and tests")
+        ensure(isinstance(rec.get("path"), str)
+               and is_reviewed_runtime_path(rec["path"], coverage)
+               and SHA.fullmatch(str(rec.get("source_blob_sha", ""))),
+               "Invalid reviewed Git blob identity or source scope")
+    reviewed_behavior = []
+    for status, path in changed:
+        if status not in {"A", "M", "T"} or not is_reviewed_runtime_path(path, coverage):
+            continue
+        identity = (path, current_blob_sha(head, path))
+        rec = new_map.get(identity)
+        if rec is None:
+            rule = classify(path, path, coverage)
+            failures.append({"id": "behavior:" + path, "source": path,
+                             "risk": rule["risk"], "controls": rule["controls"],
+                             "reasons": ["exact_source_change_review_missing"]})
+            continue
+        rule = classify(path, path, coverage)
+        ensure(set(rec["control_ids"]) & set(rule["controls"]),
+               "Behavior review does not address impacted area: " + path)
+        if identity not in old_map:
+            ensure(all(isinstance(test, str) and
+                       (test.startswith("tests/") or test.startswith(PLUGIN + "tests/"))
+                       and test in changed_set and (ROOT / test).is_file()
+                       for test in rec["regression_tests"]),
+                   "Changed behavior requires a regression test in same PR: " + path)
+        reviewed_behavior.append({"path": path, "git_blob": identity[1],
+                                  "control_ids": rec["control_ids"]})
+    return failures, accepted, reviewed_behavior
 
 
 def impact_rows(changed, coverage, added, removed):
@@ -327,7 +444,7 @@ def evaluate(base, head):
     controls = json.loads((ROOT / CONTROLS).read_text(encoding="utf-8"))
     coverage = json.loads((ROOT / COVERAGE).read_text(encoding="utf-8"))
     old, current, added, removed = new_source_ids(base, head, changed)
-    failures, reviewed = validate_coverage(
+    failures, reviewed, behavior = validate_coverage(
         coverage, controls, base, head, changed, added, removed)
     impact = impact_rows(changed, coverage, added, removed)
     return {
@@ -342,12 +459,20 @@ def evaluate(base, head):
         "introduced": [{"id": k, "source": v} for k, v in sorted(added.items())],
         "retired": [{"id": k, "source": v} for k, v in sorted(removed.items())],
         "reviewed_for_ci_only": reviewed,
+        "reviewed_behavior_changes": behavior,
+        "suggested_checklist_growth": [
+            {"id": capability, "source": path,
+             "existing_controls": classify(path, capability, coverage)["controls"],
+             "explicit_growth_decision_required": True}
+            for capability, path in sorted(added.items())
+        ],
         "coverage_gaps": failures,
         "impact": impact,
         "counts": {"changed_paths": len(changed), "catalog_growth": len(current) - len(old),
                    "new_capabilities": len(added), "removed_capabilities": len(removed),
                    "coverage_gaps": len(failures),
-                   "impacted_files": len(impact)},
+                   "impacted_files": len(impact),
+                   "reviewed_behavior_changes": len(behavior)},
     }
 
 

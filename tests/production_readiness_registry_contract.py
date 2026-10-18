@@ -20,10 +20,11 @@ test_path = "tests/production_readiness_registry_contract.py"
 changed = [("A", path), ("A", test_path)]
 added = {cap: path}
 
-with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)):
-    failures, accepted = reg.validate_coverage(
+with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)), \
+     mock.patch.object(reg, "current_blob_sha", return_value="c" * 40):
+    failures, accepted, _ = reg.validate_coverage(
         copy.deepcopy(policy), controls, base, head, changed, added, {})
-    assert len(failures) == 1 and "reviewed_coverage_missing" in failures[0]["reasons"]
+    assert any("reviewed_coverage_missing" in x["reasons"] for x in failures)
     assert not accepted
 
     covered = copy.deepcopy(policy)
@@ -36,10 +37,47 @@ with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)):
         "status": "reviewed_for_ci_only",
         "production_authorized": False,
         "live_evidence_required": True,
+        "needs_new_control": False,
+        "coverage_reuse_rationale": "These existing security and OAuth controls cover the new ability.",
     }]
-    failures, accepted = reg.validate_coverage(
+    covered["reviewed_changes"] = [{
+        "path": path, "source_blob_sha": "c" * 40,
+        "control_ids": ["SECURITY-01", "OAUTH-01"],
+        "regression_tests": [test_path],
+        "owner_role": "Security Capability Owner",
+        "review_rationale": "New source is reviewed with corresponding executable security regression.",
+        "status": "reviewed_for_ci_only",
+        "production_authorized": False,
+        "live_evidence_required": True,
+    }]
+    failures, accepted, _ = reg.validate_coverage(
         covered, controls, base, head, changed, added, {})
     assert not failures and accepted == [cap]
+
+    without_growth = copy.deepcopy(covered)
+    without_growth["reviewed_capabilities"][0].pop("needs_new_control")
+    try:
+        reg.validate_coverage(without_growth, controls, base, head, changed, added, {})
+        raise AssertionError("No explicit checklist-growth decision must be denied")
+    except ValueError as exc:
+        assert "checklist growth decision" in str(exc)
+
+    without_source = copy.deepcopy(covered)
+    without_source["reviewed_changes"] = []
+    failures, _, _ = reg.validate_coverage(without_source, controls, base, head,
+                                           changed, added, {})
+    assert any("exact_source_change_review_missing" in x["reasons"] for x in failures)
+
+    # Modifying a registered source without adding a new capability still
+    # requires new tests bound to the exact source blob.
+    failures, _, _ = reg.validate_coverage(copy.deepcopy(policy), controls, base,
+                                           head, [("M", path)], {}, {})
+    assert any("exact_source_change_review_missing" in x["reasons"] for x in failures)
+    stale_blob = copy.deepcopy(covered)
+    stale_blob["reviewed_changes"][0]["source_blob_sha"] = "d" * 40
+    failures, _, _ = reg.validate_coverage(stale_blob, controls, base, head,
+                                           changed, added, {})
+    assert any("exact_source_change_review_missing" in x["reasons"] for x in failures)
 
     stale_test = copy.deepcopy(covered)
     stale_test["reviewed_capabilities"][0]["regression_tests"] = [
@@ -60,8 +98,9 @@ with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)):
         assert "Untrusted capability review status" in str(exc)
 
     gone = {cap: path}
-    failures, _ = reg.validate_coverage(
-        copy.deepcopy(policy), controls, base, head, changed, {}, gone)
+    retirement_changes = [("D", path), ("A", test_path)]
+    failures, _, _ = reg.validate_coverage(
+        copy.deepcopy(policy), controls, base, head, retirement_changes, {}, gone)
     assert failures and "decommission_or_supersession_review_missing" in failures[0]["reasons"]
 
     retired = copy.deepcopy(policy)
@@ -71,8 +110,8 @@ with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)):
         "rationale": "Explicit migration from prior approved capability to replacement.",
         "production_authorized": False,
     }]
-    failures, accepted = reg.validate_coverage(
-        retired, controls, base, head, changed, {}, gone)
+    failures, accepted, _ = reg.validate_coverage(
+        retired, controls, base, head, retirement_changes, {}, gone)
     assert not failures and not accepted
 
     controls_missing = copy.deepcopy(controls)
@@ -95,7 +134,7 @@ def previous_review(_commit, path):
     raise AssertionError("Unexpected base catalog: " + path)
 
 with mock.patch.object(reg, "json_file", side_effect=previous_review):
-    failures, accepted = reg.validate_coverage(
+    failures, accepted, _ = reg.validate_coverage(
         copy.deepcopy(covered), controls, base, head,
         [("M", "docs/OTHER.md")], {}, {})
     assert not failures and not accepted, "Historical coverage survives later PRs"
@@ -157,5 +196,17 @@ with mock.patch.object(reg, "json_file", side_effect=previous_retirement):
         raise AssertionError("An old decommission record cannot be rewritten")
     except ValueError as exc:
         assert "decommission evidence cannot be silently changed" in str(exc)
+
+# Static interface discovery broadens coverage without claiming runtime proof.
+interface_source = """<?php
+register_rest_route('mad4b/v1', '/exports', array());
+add_action('wp_ajax_mad4b_export', 'callback');
+wp_schedule_event(time(), 'hourly', 'mad4b_report_cron');
+"""
+with mock.patch.object(reg, "git_text", return_value=interface_source):
+    names = reg.registered_surfaces(head, path)
+    assert "rest:mad4b/v1/exports" in names
+    assert "ajax:wp_ajax_mad4b_export" in names
+    assert "cron:mad4b_report_cron" in names
 
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

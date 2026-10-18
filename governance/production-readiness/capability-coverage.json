@@ -10,7 +10,11 @@
     "retired_capability_requires_traceable_supersession": true,
     "unknown_change_kind_fails_closed": true,
     "new_capabilities_do_not_self_authorize": true,
-    "past_controls_remain_immutable_by_default": true
+    "past_controls_remain_immutable_by_default": true,
+    "existing_behavior_changes_require_reviewed_test_evidence": true,
+    "new_capability_control_growth_decision_required": true,
+    "registered_interface_additions_require_coverage": true,
+    "control_metadata_history_is_sha_bound": true
   },
   "domain_rules": [
     {
@@ -96,5 +100,41 @@
   ],
   "reviewed_capabilities": [],
   "lifecycle": [],
-  "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production."
+  "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
+  "reviewed_changes": [],
+  "code_change_rules": {
+    "contract": "mad4b.readiness-reviewed-changes.v1",
+    "authorizing": false,
+    "runtime_root": "wp-content/plugins/mad4b-site-control-plane/",
+    "covered_extensions": [
+      ".php",
+      ".js",
+      ".css",
+      ".json"
+    ],
+    "included_subtrees": [
+      "includes/",
+      "assets/",
+      "config/"
+    ],
+    "root_php": true,
+    "excluded_subtrees": [
+      "tests/",
+      "docs/",
+      "languages/"
+    ],
+    "require_current_git_blob": true,
+    "require_same_pr_regression_test": true,
+    "require_existing_control_mapping": true,
+    "live_evidence_required": true,
+    "production_authorized": false
+  },
+  "capability_growth_policy": {
+    "contract": "mad4b.readiness-control-growth.v1",
+    "require_explicit_new_control_decision": true,
+    "require_review_rationale_for_reuse": true,
+    "require_new_control_ids_for_expansion": true,
+    "preserve_existing_control_ids": true,
+    "automated_approval": false
+  }
 }
