@@ -215,11 +215,29 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
            coverage.get("production_promotion_from_ci") is False,
            "Coverage CI cannot authorize Production")
     guards = coverage["guarantees"]
-    ensure(all(guards.values()), "Coverage guard disabled")
+    required_guards = (
+        "new_capability_requires_reviewed_coverage",
+        "new_capability_requires_new_test_evidence",
+        "retired_capability_requires_traceable_supersession",
+        "unknown_change_kind_fails_closed",
+        "new_capabilities_do_not_self_authorize",
+        "past_controls_remain_immutable_by_default",
+        "existing_behavior_changes_require_reviewed_test_evidence",
+        "new_capability_control_growth_decision_required",
+        "registered_interface_additions_require_coverage",
+        "control_metadata_history_is_sha_bound",
+    )
+    ensure(all(guards.get(k) is True for k in required_guards),
+           "Required coverage guards missing or disabled")
     ensure(len(coverage.get("domain_rules", [])) >= 8, "Impact mapping incomplete")
     growth = coverage.get("capability_growth_policy", {})
     ensure(growth.get("contract") == "mad4b.readiness-control-growth.v1"
-           and all(v is True for k, v in growth.items() if k != "contract"),
+           and all(growth.get(k) is True for k in (
+               "require_explicit_new_control_decision",
+               "require_review_rationale_for_reuse",
+               "require_new_control_ids_for_expansion",
+               "preserve_existing_control_ids"))
+           and growth.get("automated_approval") is False,
            "Explicit checklist growth policy missing")
     code_rules = coverage.get("code_change_rules", {})
     ensure(code_rules.get("contract") == "mad4b.readiness-reviewed-changes.v1"

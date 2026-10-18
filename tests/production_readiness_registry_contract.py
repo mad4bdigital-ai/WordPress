@@ -20,7 +20,14 @@ test_path = "tests/production_readiness_registry_contract.py"
 changed = [("A", path), ("A", test_path)]
 added = {cap: path}
 
-with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)), \
+def initial_baseline(_commit, path):
+    if path == reg.CONTROLS:
+        return copy.deepcopy(controls)
+    if path == reg.COVERAGE:
+        return copy.deepcopy(policy)
+    raise AssertionError("Unexpected baseline source: " + path)
+
+with mock.patch.object(reg, "json_file", side_effect=initial_baseline), \
      mock.patch.object(reg, "current_blob_sha", return_value="c" * 40):
     failures, accepted, _ = reg.validate_coverage(
         copy.deepcopy(policy), controls, base, head, changed, added, {})
@@ -53,6 +60,22 @@ with mock.patch.object(reg, "json_file", return_value=copy.deepcopy(controls)), 
     failures, accepted, _ = reg.validate_coverage(
         covered, controls, base, head, changed, added, {})
     assert not failures and accepted == [cap]
+
+    missing_guard = copy.deepcopy(covered)
+    missing_guard["guarantees"].pop("control_metadata_history_is_sha_bound")
+    try:
+        reg.validate_coverage(missing_guard, controls, base, head, changed, added, {})
+        raise AssertionError("Removing a required guard must fail")
+    except ValueError as exc:
+        assert "Required coverage guards" in str(exc)
+
+    missing_growth = copy.deepcopy(covered)
+    missing_growth["capability_growth_policy"].pop("require_new_control_ids_for_expansion")
+    try:
+        reg.validate_coverage(missing_growth, controls, base, head, changed, added, {})
+        raise AssertionError("Removing a required growth rule must fail")
+    except ValueError as exc:
+        assert "growth policy" in str(exc)
 
     without_growth = copy.deepcopy(covered)
     without_growth["reviewed_capabilities"][0].pop("needs_new_control")
