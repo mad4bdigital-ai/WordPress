@@ -1,0 +1,100 @@
+{
+  "contract": "mad4b.readiness-capability-coverage.v1",
+  "authorizing": false,
+  "production_promotion_from_ci": false,
+  "scope": "repository_change_coverage_not_live_runtime_certification",
+  "treatment_of_existing_capabilities": "observed_baseline_not_automatically_certified",
+  "guarantees": {
+    "new_capability_requires_reviewed_coverage": true,
+    "new_capability_requires_new_test_evidence": true,
+    "retired_capability_requires_traceable_supersession": true,
+    "unknown_change_kind_fails_closed": true,
+    "new_capabilities_do_not_self_authorize": true,
+    "past_controls_remain_immutable_by_default": true
+  },
+  "domain_rules": [
+    {
+      "id": "authority",
+      "pattern": "authorization|approval|oauth|grant|security|policy|fence|identity|ticket",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ]
+    },
+    {
+      "id": "update",
+      "pattern": "plugin|package|update|rollback|deploy|release|recovery|restore",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ]
+    },
+    {
+      "id": "mcp",
+      "pattern": "mcp|provider|adapter|ability|tool|capability|transport",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ]
+    },
+    {
+      "id": "admin",
+      "pattern": "admin|popup|ui|workspace|page|browser",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ]
+    },
+    {
+      "id": "data",
+      "pattern": "database|schema|migration|query|cache|search",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ]
+    },
+    {
+      "id": "automation",
+      "pattern": "cron|schedule|queue|job|workflow|skill|flow",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ]
+    },
+    {
+      "id": "content",
+      "pattern": "content|research|brand|seo|wpml|translation|form",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ]
+    },
+    {
+      "id": "platform",
+      "pattern": ".*",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ]
+    }
+  ],
+  "reviewed_capabilities": [],
+  "lifecycle": [],
+  "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production."
+}

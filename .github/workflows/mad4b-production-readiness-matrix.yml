@@ -5,7 +5,7 @@ name: MAD4B Production Readiness Matrix
 on:
   pull_request:
   push:
-    branches: [master, 'develop/production-readiness-*']
+    branches: [master, 'develop/production-readiness-*', 'develop/readiness-registry-*']
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - name: Verify exact checkout identity
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -39,6 +40,33 @@ jobs:
           set -euo pipefail
           python3 tools/production_readiness_matrix.py validate
           python3 tools/production_readiness_matrix.py self-test
+      - name: Test dynamic coverage fail-closed scenarios
+        run: |
+          set -euo pipefail
+          python3 tools/production_readiness_registry.py self-test
+          python3 tests/production_readiness_registry_contract.py
+      - name: Resolve immutable PR base and enforce capability coverage
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="$PR_BASE_SHA"
+          if [[ ! "$BASE_SHA" =~ ^[a-f0-9]{40}$ || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$BASE_SHA" --depth=1
+          fi
+          git merge-base --is-ancestor "$BASE_SHA" "$EXACT_HEAD" || {
+            echo 'Reviewed base is not an ancestor of exact PR head'; exit 1;
+          }
+          python3 tools/production_readiness_registry.py evaluate \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$EXACT_HEAD" \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
       - name: Generate exact-head read-only evaluation
         env:
           GITHUB_TOKEN: ${{ github.token }}
