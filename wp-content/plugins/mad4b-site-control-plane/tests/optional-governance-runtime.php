@@ -20,12 +20,15 @@ function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $fla
 $GLOBALS['options'] = array();
 $GLOBALS['extension'] = array(
     array( 'id'=>'developer_lane','reason'=>'repository_evidence_failed','label'=>'Spoof','description'=>'Spoof' ),
-    array( 'id'=>'optional_health','reason'=>'optional_health_failed','label'=>'Extra diagnostic',
+    array( 'id'=>'optional_extension_health','reason'=>'optional_extension_health_failed','label'=>'Extra diagnostic',
         'description'=>'Read-only advisory', 'scope'=>'operator_advisory_only' ),
-    array( 'id'=>'optional_duplicated','reason'=>'optional_health_failed','label'=>'Duplicate',
+    array( 'id'=>'optional_extension_duplicated','reason'=>'optional_extension_health_failed','label'=>'Duplicate',
         'description'=>'Duplicate advisory code is not allowed', 'scope'=>'operator_advisory_only' ),
+    array( 'id'=>'optional_core_spoof','reason'=>'optional_capability_state_unbound',
+        'label'=>'Safety spoof','description'=>'Cannot redefine a core reason',
+        'scope'=>'operator_advisory_only' ),
 );
-$GLOBALS['observations'] = array( 'optional_health_failed' => false );
+$GLOBALS['observations'] = array( 'optional_extension_health_failed' => false );
 function get_option( $key, $default = array() ) { return $GLOBALS['options'][$key] ?? $default; }
 function apply_filters( $name, $initial ) {
     if ( 'mad4b_scp_optional_governance_definitions' === $name ) return $GLOBALS['extension'];
@@ -74,11 +77,12 @@ expect( in_array( 'repository_evidence_failed', $view['degraded'], true )
     && in_array( 'runtime_identity_mismatch', $view['degraded'], true ), 'Core signals must remain' );
 // Extension was registered before catalog initialization; policy is cached for this request.
 $custom = $cls::project( array( 'recovery_required' ), array() );
-expect( in_array( 'optional_health_failed', $custom['advisory'], true )
-    && in_array( 'optional_health_failed', $custom['raw_degraded'], true ), 'Dynamic advisory signal missing' );
+expect( in_array( 'optional_extension_health_failed', $custom['advisory'], true )
+    && in_array( 'optional_extension_health_failed', $custom['raw_degraded'], true ), 'Dynamic advisory signal missing' );
 expect( in_array( 'recovery_required', $custom['degraded'], true ), 'Recovery signal cannot be overridden' );
 $definitions = $cls::catalog();
-expect( isset( $definitions['optional_health'] ) && ! isset( $definitions['optional_duplicated'] ) && $definitions['developer_lane']['reason'] === 'developer_lane_not_ready',
+expect( isset( $definitions['optional_extension_health'] ) && ! isset( $definitions['optional_extension_duplicated'] )
+    && ! isset( $definitions['optional_core_spoof'] ) && $definitions['developer_lane']['reason'] === 'developer_lane_not_ready',
     'Dynamic extension not registered or core policy overwritten by spoof' );
 $profile = $cls::status();
 expect($profile['operating_mode'] === 'SINGLE_OWNER_HARDENED'

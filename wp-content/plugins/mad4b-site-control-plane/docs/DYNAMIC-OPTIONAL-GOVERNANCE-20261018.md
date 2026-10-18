@@ -10,7 +10,7 @@ The built-in `MAD4B_SCP_Policy_Resolution` operates with SINGLE_OWNER_HARDENED /
 - Read-only `mad4b/optional-governance-status` Ability for dynamic interface catalogs.
 - Four settings: `inherit` (follow current operating profile), `enforced` (preserve DEGRADED warning), `advisory` (show an optional notice without degrading health), `off` (mute optional notice; preserve raw evidence).
 - Built-in options cover noncritical developer lane, developer breakglass-lane availability, external machine diagnostic ingress and provider closure reminders.
-- New `optional_*` advisory definitions may be registered through `mad4b_scp_optional_governance_definitions`, and status signals through `mad4b_scp_optional_governance_observations`, subject to bounded schema and namespace checks; trusted source-owned built-in reason bindings cannot be overridden.
+- New `optional_extension_*` advisory definitions may be registered through `mad4b_scp_optional_governance_definitions`, and status signals through `mad4b_scp_optional_governance_observations`, subject to bounded schema and namespace checks; trusted source-owned built-in reason bindings cannot be overridden.
 - Missing preference storage inherits the verified operating profile; malformed options, catalog or operating-mode evidence preserve the original diagnostic severity.
 - Each policy displays a reason code, persisted mode and catalog digest. The options setting never changes any actual mutation/CI/certification policy.
 
@@ -23,7 +23,7 @@ Staging/Production permissions remain separately managed by the existing authori
 The operator reducer consumes the optional projection **only for DEGRADED advisory reasons** and includes `raw_degraded_reasons`, `optional_advisories`, `muted_optional_reasons`. Blocking/recovery arrays remain unchanged. A disabled warning must never be represented as completed certification. Test PHP 7.4/8.3, WordPress Admin nonce and audit, malformed saved configuration, dynamic extension identities, and unchanged hard blockers.
 
 ## Mode-aware optional policies
-The shared `MAD4B_SCP_Policy_Resolution::current_operating_mode()` is the **only** source for the operating profile: SINGLE_OWNER_HARDENED defaults optional operator warning severity to `advisory`; ENTERPRISE_MULTI_OPERATOR and EMERGENCY_RECOVERY default it to `enforced`. Unsupported/missing profiles preserve the original warnings. Per-optional-policy modes are `inherit`, `enforced`, `advisory`, `off`. Dynamic extensions remain limited to `optional_*` advisory reasons.
+The shared `MAD4B_SCP_Policy_Resolution::current_operating_mode()` is the **only** source for the operating profile: SINGLE_OWNER_HARDENED defaults optional operator warning severity to `advisory`; ENTERPRISE_MULTI_OPERATOR and EMERGENCY_RECOVERY default it to `enforced`. Unsupported/missing profiles preserve the original warnings. Per-optional-policy modes are `inherit`, `enforced`, `advisory`, `off`. Dynamic extensions remain limited to `optional_extension_*` advisory reasons.
 
 The Admin Options Control renders non-optional security and Release Verdict gates as locked guidance and exposes effective mode/current profile. A read-only `mad4b/optional-governance-status` Ability is mounted into `mad4b-read` and `mad4b-chatgpt`; WordPress Options do not change GitHub CI or owner approvals.
 
@@ -46,3 +46,6 @@ The semantic operation `wordpress.governance.optional-preference` is now registe
 
 ## Incremental review correction — stable no-op and CAS compensation
 A request which reproduces exactly the already stored advisory settings is now treated as a read-only verified no-op under the existing CAS lease: no redundant audit, revision bump, or mutation receipt. Remote Plan reports `change_required=false`, and Remote Apply's receipt correctly reflects zero mutation and no new audit. After writing the requested audit event, the save service refreshes its durable CAS lease before persisting. If persistence or its final audit fails, compensation uses compare-and-swap against the exact post-write option value; it refuses to overwrite another writer's newer state. The hermetic fixture covers no-op Remote Apply and admin AJAX view readback.
+
+## Review P1 — reserved safety reason namespace
+All externally registered advisory diagnostic IDs and reason codes must start with `optional_extension_`, not broad `optional_`. Existing core reasons such as `optional_capability_state_unbound` must not be shadowed or muted through the extension filter. Duplicate reasons and IDs are rejected, and the fixture exercises an attempted core-reason impersonation. This is a source contract change while PR #416 is still Draft and undeployed.

@@ -48,10 +48,11 @@ final class MAD4B_SCP_Optional_Governance {
             if ( ! isset( $row[$key] ) || ! is_string( $row[$key] ) || strlen( $row[$key] ) > 200 ) return false;
         if ( ! preg_match( '/^[a-z][a-z0-9_]{2,79}$/D', $row['id'] )
             || ! preg_match( '/^[a-z][a-z0-9_]{2,95}$/D', $row['reason'] ) ) return false;
-        // Built-in reasons are fixed in source; external plugins may only add
-        // optional_* diagnostics, never redefine a protected/core gate.
-        if ( $external ) return 0 === strpos( $row['id'], 'optional_' )
-            && 0 === strpos( $row['reason'], 'optional_' )
+        // Reserved namespace excludes core optional_capability_* safety
+        // diagnostics; never allow an external policy to silence a built-in
+        // DEGRADED reason by choosing a similarly prefixed identifier.
+        if ( $external ) return 0 === strpos( $row['id'], 'optional_extension_' )
+            && 0 === strpos( $row['reason'], 'optional_extension_' )
             && ! isset( self::$builtins[$row['id']] );
         return isset( self::$builtins[$row['id']] )
             && self::$builtins[$row['id']] === $row['reason'];
@@ -175,7 +176,7 @@ final class MAD4B_SCP_Optional_Governance {
             ? apply_filters( 'mad4b_scp_optional_governance_observations', array() ) : array();
         foreach ( $definitions as $id => $row ) {
             $reason = $row['reason'];
-            if ( 0 === strpos( $reason, 'optional_' ) && is_array( $observed )
+            if ( 0 === strpos( $reason, 'optional_extension_' ) && is_array( $observed )
                 && array_key_exists( $reason, $observed ) && false === $observed[$reason]
                 && ! in_array( $reason, $result['degraded'], true ) ) {
                 $result['degraded'][] = $reason;
