@@ -148,7 +148,7 @@ function mcp_canonical( $v ) {
     foreach($v as $key=>$item) $v[$key]=mcp_canonical($item);
     return $v;
 }
-$schema = array( 'type'=>'object', 'properties'=>array('q'=>array('type'=>'string','x-mcp-header'=>'Query')) );
+$schema = array( 'type'=>'object', 'properties'=>array('q'=>array('type'=>'string','x-mcp-header'=>'Query')), 'required'=>array('q') );
 $schema_digest = hash( 'sha256', json_encode( mcp_canonical($schema), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 $GLOBALS['mcp_tools'] = array(
     array( 'name'=>'read_inspect', 'inputSchema'=>$schema, 'annotations'=>array('readOnlyHint'=>true, 'destructiveHint'=>false) ),
