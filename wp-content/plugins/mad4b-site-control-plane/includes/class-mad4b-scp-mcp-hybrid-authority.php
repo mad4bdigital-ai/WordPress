@@ -36,7 +36,7 @@ final class MAD4B_SCP_MCP_Hybrid_Authority {
         return true;
     }
 
-    private static function callback_file( $callback ) {
+    public static function callback_file( $callback ) {
         try {
             if ( $callback instanceof Closure ) return ( new ReflectionFunction( $callback ) )->getFileName();
             if ( is_array( $callback ) && count( $callback ) === 2 && is_callable( $callback ) )
