@@ -17,6 +17,8 @@ function wp_register_ability( $name, $data ) { $GLOBALS['registered'][ $name ] =
 function sanitize_text_field( $s ) { return trim( (string) $s ); }
 function wp_json_encode( $s ) { return json_encode( $s ); }
 function wp_get_environment_type() { return 'staging'; }
+function current_user_can( $cap ) { return in_array( $cap, array( 'manage_options', 'update_plugins' ), true ); }
+function get_current_user_id() { return 1; }
 function wp_remote_retrieve_response_code( $r ) { return $r['code']; }
 function wp_remote_retrieve_body( $r ) { return $r['body']; }
 $GLOBALS['assertions'] = 0;
@@ -33,12 +35,39 @@ if ( 'disabled' !== $GLOBALS['case'] ) {
     define( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED', true );
     define( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED', true );
 }
-class MAD4B_SCP_Policy { public static function can_read() { return true; } }
+class MAD4B_SCP_Policy {
+    public static function can_read() { return true; }
+    public static function can_admin() { return true; }
+    public static function can_mutate() { return true; }
+}
 class MAD4B_SCP_Authorization {
-    public static function authorize_mutation() { return true; }
+    public static $claimed = false;
+    public static function execution_callback_started( $ability ) {
+        return self::$claimed && $ability === MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY;
+    }
+    public static function permission_result_from_authorization( $decision ) {
+        return is_array( $decision ) && true === ( $decision['allowed'] ?? false )
+            && 'preflight_allowed' === ( $decision['reason_code'] ?? '' );
+    }
+    public static function authorize_mutation( $ability, $actor, $provider, $input ) {
+        if ( ! self::$claimed || $ability !== MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY )
+            return new WP_Error( 'unclaimed_ability' );
+        return array( 'allowed' => true, 'reason_code' => 'preflight_allowed' );
+    }
+}
+class MAD4B_SCP_Execution_Fence {
+    public static function has_active_frame() { return MAD4B_SCP_Authorization::$claimed; }
+}
+class MAD4B_SCP_OAuth_Resource_Bridge {
+    const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
+    public static function verified_bearer_active() { return true; }
+    public static function verified_bearer_has_scope( $scope ) {
+        return self::AUTHORITY_STEP_UP_SCOPE === $scope;
+    }
 }
 class MAD4B_SCP_Site_Profile {
     public static function wordpress_environment_explicit() { return true; }
+    public static function user_is_enrolled( $id ) { return $id === 1; }
     public static function status() {
         return array( 'deployment_binding_configured' => true, 'same_origin_clone_protection' => true );
     }
@@ -131,6 +160,14 @@ if ( 'disabled' === $GLOBALS['case'] ) {
     $action = array_merge( $select, array(
         'confirmation' => $cls::CONFIRMATION, 'expected_plan_sha256' => $plan['plan_sha256'],
     ) );
+    $unclaimed = $cls::apply( $action );
+    expect( is_wp_error( $unclaimed ) &&
+        $unclaimed->get_error_code() === 'mad4b_selected_head_governed_execution_required' &&
+        $GLOBALS['apply_calls'] === 0 && $GLOBALS['download_calls'] === 0,
+        'Direct PHP install must be denied before download or mutation without claimed Ability' );
+    // Hermetic positive path represents a claimed, fenced, exact selected-head
+    // WordPress Ability execution, never a bypass of production authorization.
+    MAD4B_SCP_Authorization::$claimed = true;
     expect( is_wp_error( $cls::apply( array_merge( $action, array( 'confirmation' => 'YES' ) ) ) ),
         'missing typed approval accepted' );
     expect( is_wp_error( $cls::apply( array_merge( $action, array( 'expected_plan_sha256' => str_repeat( '0', 64 ) ) ) ) ),
