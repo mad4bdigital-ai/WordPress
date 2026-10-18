@@ -36,7 +36,14 @@ assert "release_root_trust_verified" in selected
 assert "release_verdict_run_id" in selected
 assert "hash_equals( $zip_url, (string) $m['package_url'] )" in selected
 assert "hash_equals( $plan['plan_sha256'], $expected )" in selected
-assert "self::can_apply( $input )" in selected
+assert "private static function actor_admission(" in selected
+assert "self::actor_admission()" in selected
+assert "mad4b_governed_write_authority" in selected
+assert "MAD4B_SCP_Authorization::execution_callback_started( self::APPLY_ABILITY )" in selected
+# The central WordPress Ability wrapper claims the one-time ticket; the
+# callback checks the current actor and execution frame without re-claiming it.
+apply_section = selected.split("public static function apply( $input )", 1)[1]
+assert "self::can_apply( $input )" not in apply_section
 # Ensure the governed install backend exists without claiming the different
 # upload-apply owner's ticket to authorize selected-head-apply.
 assert "method_exists( 'MAD4B_SCP_Self_Update', 'can_upload_apply' )" in selected

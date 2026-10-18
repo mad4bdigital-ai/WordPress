@@ -28,6 +28,7 @@ function wp_register_ability( $name, array $args ) {
 }
 function expect( $ok, $reason ) { if ( ! $ok ) throw new RuntimeException( $reason ); }
 class MAD4B_SCP_Policy { public static function can_read() { return true; } }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 // Prove the real MAD4B ability category source, not a hand-written fixture.
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-abilities.php';
 $categories = new MAD4B_SCP_Abilities();
@@ -52,12 +53,16 @@ expect( wp_has_ability($c::APPLY), 'Existing mad4b-write category must admit App
 $apply=$GLOBALS['registered_abilities'][$c::APPLY];
 expect( $apply['category']==='mad4b-write'
     && ($apply['meta']['mcp']['surface']??null)==='write'
-    && ($apply['meta']['annotations']['readonly']??true)===false,
+    && ($apply['meta']['annotations']['readonly']??true)===false
+    && ($apply['meta']['mcp']['mad4b_governed_write_authority']??false)===true,
     'Apply category, MCP surface or write boundary metadata drifted' );
 $required=$apply['input_schema']['required']??array();
 expect( in_array('expected_plan_sha256',$required,true)
     && in_array('confirmation',$required,true)
-    && empty( array_diff(array('policy_id','mode'),$required) ),
+    && empty( array_diff(array('policy_id','mode'),$required) )
+    && ($apply['input_schema']['properties']['_mad4b_approval_ticket_id']['pattern']??'')
+        === MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN
+    && ($apply['input_schema']['additionalProperties']??true)===false,
     'Apply must require exact plan SHA and typed confirmation' );
 $direct = call_user_func($apply['execute_callback'],array(
     'policy_id'=>'developer_lane', 'mode'=>'off',

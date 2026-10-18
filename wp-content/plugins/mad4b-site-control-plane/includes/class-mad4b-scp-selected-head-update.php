@@ -48,7 +48,10 @@ final class MAD4B_SCP_Selected_Head_Update {
                 'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
                 'meta' => array(
                     'public' => false, 'show_in_rest' => false,
-                    'mcp' => array( 'public' => false, 'type' => 'tool', 'surface' => $a[3] ? 'read' : 'admin' ),
+                    'mcp' => array( 'public' => false, 'type' => 'tool',
+                        'surface' => $a[3] ? 'read' : 'admin',
+                        // Canonical Authorization owns the ticket claim and execute callback.
+                        'mad4b_governed_write_authority' => ! $a[3] ),
                     'annotations' => array( 'readonly' => $a[3], 'destructive' => ! $a[3], 'idempotent' => $a[3] ),
                 ),
             ) );
@@ -84,7 +87,7 @@ final class MAD4B_SCP_Selected_Head_Update {
             && ! empty( MAD4B_SCP_Site_Profile::status()['same_origin_clone_protection'] );
     }
 
-    public static function can_apply( $input = null ) {
+    private static function actor_admission( $input = null ) {
         if ( ! self::opt_in() || ! self::exact_staging() )
             return new WP_Error( 'mad4b_selected_head_staging_opt_in_required', 'Exact enrolled Staging and explicit opt-in are required.' );
         if ( ! class_exists( 'MAD4B_SCP_Self_Update' ) ||
@@ -109,6 +112,16 @@ final class MAD4B_SCP_Selected_Head_Update {
                 MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE ) )
             return new WP_Error( 'mad4b_selected_head_staging_owner_step_up_required',
                 'Enrolled Staging administrator with verified OAuth step-up is required.' );
+        return true;
+    }
+
+    /** Permission-time only: the canonical Ability wrapper claims this ticket once.
+     * The callback must NOT preflight an already-claimed ticket again.
+     */
+    public static function can_apply( $input = null ) {
+        $actor = self::actor_admission();
+        if ( is_wp_error( $actor ) ) return $actor;
+        if ( true !== $actor ) return self::fail( 'actor_denied', 'Current owner admission is not allowed.' );
         if ( ! class_exists( 'MAD4B_SCP_Authorization' ) )
             return new WP_Error( 'mad4b_selected_head_authorization_missing', 'Central authorization unavailable.' );
         return MAD4B_SCP_Authorization::authorize_mutation(
@@ -403,11 +416,13 @@ final class MAD4B_SCP_Selected_Head_Update {
         $input = is_array( $input ) ? $input : array();
         if ( ( $input['confirmation'] ?? '' ) !== self::CONFIRMATION )
             return self::fail( 'confirmation_required', 'Explicit reviewed Staging update confirmation required.' );
-        $access = self::can_apply( $input );
-        if ( is_wp_error( $access ) ) return $access;
-        if ( ! MAD4B_SCP_Authorization::permission_result_from_authorization( $access ) )
-            return self::fail( 'authorization_denied',
-                'The exact selected-head owner authorization was not granted.' );
+        // The wrapper already claimed the immutable one-time ticket.
+        // Re-probing authorize_mutation() here would reject status=executing
+        // as a replay and abort every legitimately approved installation.
+        $actor = self::actor_admission();
+        if ( is_wp_error( $actor ) ) return $actor;
+        if ( true !== $actor )
+            return self::fail( 'actor_denied', 'Enrolled owner admission changed after the Ability claim.' );
         $expected = (string) ( $input['expected_plan_sha256'] ?? '' );
         if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $expected ) )
             return self::fail( 'plan_digest_required', 'Exact plan digest required.' );
@@ -436,14 +451,13 @@ final class MAD4B_SCP_Selected_Head_Update {
             strlen( $bytes ) !== (int) $plan['package_identity']['size_bytes'] ||
             ! hash_equals( $plan['package_identity']['archive_sha256'], hash( 'sha256', $bytes ) ) )
             return self::fail( 'archive_integrity_failed', 'Exact ZIP digest or byte length does not match the reviewed package.');
-        // Second admission check after potentially lengthy download.
-        // Use the same structured authorization decision as the first check,
-        // and fail closed if the exact selected-head grant was revoked.
-        $access = self::can_apply( $input );
-        if ( is_wp_error( $access ) ) return $access;
-        if ( ! MAD4B_SCP_Authorization::permission_result_from_authorization( $access ) )
-            return self::fail( 'authorization_revoked',
-                'Exact selected-head owner authorization is no longer valid after archive download.' );
+        // Recheck mutable owner / site / OAuth policy after download.
+        // The exact ticket was already claimed; never authorize it twice.
+        $actor = self::actor_admission();
+        if ( is_wp_error( $actor ) ) return $actor;
+        if ( true !== $actor )
+            return self::fail( 'actor_revoked_after_download',
+                'Enrolled Staging owner admission changed during archive download.' );
         $fresh = self::source( $plan_input['candidate_source'] );
         if ( is_wp_error( $fresh ) || ! hash_equals( $sha, is_array( $fresh ) ? (string) $fresh['resolved_sha'] : '' ) )
             return self::fail( 'selected_head_moved', 'Branch/PR moved after download. New approval required.' );
@@ -496,6 +510,10 @@ final class MAD4B_SCP_Selected_Head_Update {
         $s['required'][] = 'confirmation';
         $s['properties']['expected_plan_sha256'] = array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' );
         $s['properties']['confirmation'] = array( 'type' => 'string', 'enum' => array( self::CONFIRMATION ) );
+        $s['properties']['_mad4b_approval_ticket_id'] = array(
+            'type' => 'string',
+            'pattern' => MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN,
+        );
         return $s;
     }
 }

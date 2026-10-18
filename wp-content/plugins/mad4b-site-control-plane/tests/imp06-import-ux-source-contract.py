@@ -6,6 +6,7 @@ R = P.parent.parent.parent
 def read(p): return (P / p).read_text(encoding="utf8")
 ui = read("includes/class-mad4b-scp-activity-import-experience.php")
 review = read("includes/class-mad4b-scp-activity-import-review.php")
+fallback = read("includes/class-mad4b-scp-activity-import-fallback-view.php")
 snapshot = read("includes/class-mad4b-scp-activity-import-snapshot.php")
 loader = (read("includes/class-mad4b-scp-content-experience-profiles.php") + read("includes/trait-mad4b-scp-content-experience-ability-definitions.php"))
 preflight = read("tests/feature007-manual-preflight.py")
@@ -40,7 +41,11 @@ for token in ("MAD4B_SCP_Activity_Import_Experience::render()",
               "'wizard_step' => 4", "'wizard_step' => 2",
               "admin_post_mad4b_activity_import_csv",
               "admin_post_mad4b_activity_import_approve"):
-    require(token in review, "Legacy intake is not linked to the wizard: "+token)
+    require(token in (fallback if token == "MAD4B_SCP_Activity_Import_Experience::render()" else review),
+            "Legacy intake is not linked to the wizard: "+token)
+require("use MAD4B_SCP_Activity_Import_Fallback_View;" in review and
+        "return self::render_fallback_admin_page();" in review,
+        "Legacy route must delegate to the extracted guided fallback")
 for token in ("mad4b_import_warning_acknowledgement_mismatch",
               "acknowledged_warning_count", "explicit_full_warning_count_ack_required"):
     require(token in snapshot,

@@ -31,6 +31,7 @@ $GLOBALS['case'] = isset( $argv[1] ) ? $argv[1] : 'normal';
 $head = str_repeat( 'a', 40 );
 $other = str_repeat( 'b', 40 );
 define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-identifiers.php';
 if ( 'disabled' !== $GLOBALS['case'] ) {
     define( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED', true );
     define( 'MAD4B_SCP_STAGING_CANDIDATE_UPDATES_ENABLED', true );
@@ -50,6 +51,7 @@ class MAD4B_SCP_Authorization {
             && 'preflight_allowed' === ( $decision['reason_code'] ?? '' );
     }
     public static function authorize_mutation( $ability, $actor, $provider, $input ) {
+        $GLOBALS['reauthorization_in_callback'] = true;
         if ( ! self::$claimed || $ability !== MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY )
             return new WP_Error( 'unclaimed_ability' );
         // Simulate expiry of the original approval only after the ZIP has
@@ -64,7 +66,9 @@ class MAD4B_SCP_Execution_Fence {
 }
 class MAD4B_SCP_OAuth_Resource_Bridge {
     const AUTHORITY_STEP_UP_SCOPE = 'mad4b:authority:step-up';
-    public static function verified_bearer_active() { return true; }
+    public static function verified_bearer_active() {
+        return empty( $GLOBALS['deny_recheck'] ) || $GLOBALS['download_calls'] === 0;
+    }
     public static function verified_bearer_has_scope( $scope ) {
         return self::AUTHORITY_STEP_UP_SCOPE === $scope;
     }
@@ -140,6 +144,16 @@ require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-selected-head-updat
 $cls = 'MAD4B_SCP_Selected_Head_Update';
 $cls::boot();
 $cls::register_abilities();
+$apply_definition = $GLOBALS['registered'][ $cls::APPLY_ABILITY ] ?? array();
+$plan_definition = $GLOBALS['registered'][ $cls::PLAN_ABILITY ] ?? array();
+expect( true === ( $apply_definition['meta']['mcp']['mad4b_governed_write_authority'] ?? false )
+    && false === ( $plan_definition['meta']['mcp']['mad4b_governed_write_authority'] ?? true ),
+    'Selected HEAD must use canonical claimed write while Plan remains read-only' );
+expect( isset( $apply_definition['input_schema']['properties']['_mad4b_approval_ticket_id'] )
+    && ( $apply_definition['input_schema']['properties']['_mad4b_approval_ticket_id']['pattern'] ?? null )
+        === MAD4B_SCP_Identifiers::APPROVAL_TICKET_SCHEMA_PATTERN
+    && false === ( $apply_definition['input_schema']['additionalProperties'] ?? true ),
+    'Selected HEAD owner approval ticket must be declared under strict schema' );
 expect( count( $GLOBALS['registered'] ) === 2, 'both plan/apply abilities must be explicitly registered' );
 expect( $GLOBALS['registered'][$cls::PLAN_ABILITY]['meta']['annotations']['readonly'] === true, 'plan must be read-only' );
 expect( $GLOBALS['registered'][$cls::APPLY_ABILITY]['meta']['mcp']['public'] === false, 'apply must not be public' );
@@ -172,6 +186,7 @@ if ( 'disabled' === $GLOBALS['case'] ) {
     // Hermetic positive path represents a claimed, fenced, exact selected-head
     // WordPress Ability execution, never a bypass of production authorization.
     MAD4B_SCP_Authorization::$claimed = true;
+    $GLOBALS['reauthorization_in_callback'] = false;
     expect( is_wp_error( $cls::apply( array_merge( $action, array( 'confirmation' => 'YES' ) ) ) ),
         'missing typed approval accepted' );
     expect( is_wp_error( $cls::apply( array_merge( $action, array( 'expected_plan_sha256' => str_repeat( '0', 64 ) ) ) ) ),
@@ -180,10 +195,12 @@ if ( 'disabled' === $GLOBALS['case'] ) {
         $GLOBALS['deny_recheck'] = true;
         $revoked = $cls::apply( $action );
         expect( is_wp_error( $revoked )
-            && 'permission_revoked_after_download' === $revoked->get_error_code()
+            && 'mad4b_selected_head_staging_owner_step_up_required' === $revoked->get_error_code()
             && $GLOBALS['apply_calls'] === 0 && $GLOBALS['download_calls'] === 1,
-            'Revoked approval after archive download must not install' );
+            'Revoked owner OAuth step-up after archive download must not install' );
         $GLOBALS['deny_recheck'] = false;
+        expect( empty( $GLOBALS['reauthorization_in_callback'] ),
+            'Claimed one-time ticket must never be reauthorized after claim' );
     }
     $result = $cls::apply( $action );
     if ( $GLOBALS['case'] === 'drift' || $GLOBALS['case'] === 'bad-archive' ) {

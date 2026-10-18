@@ -32,7 +32,15 @@ with tempfile.TemporaryDirectory(prefix="cross-plugin-ci-") as scratch:
     run(["git", "-C", str(repo), "add", "."])
     run(["git", "-C", str(repo), "commit", "-qm", "fixture"])
     sha = run(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip()
-    command = [sys.executable, str(SCRIPT), "--trusted-manifest", str(MANIFEST),
+    # Hermetic git fixture uses a disposable source registry with an exact
+    # reviewed candidate pin, never the production source record.
+    fixture_manifest = tmp / "sources.json"
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    entry = next(x for x in data["sources"] if x["id"] == "etg-dynamic-filter-seo-bridge")
+    entry["candidate_source_commit_sha"] = sha
+    entry["candidate_artifact_version"] = "0.4.0-alpha.13"
+    fixture_manifest.write_text(json.dumps(data), encoding="utf-8")
+    command = [sys.executable, str(SCRIPT), "--trusted-manifest", str(fixture_manifest),
         "--checkout", str(repo), "--source-id", "etg-dynamic-filter-seo-bridge", "--sha", sha]
     a = tmp / "a"
     b = tmp / "b"
@@ -49,6 +57,54 @@ with tempfile.TemporaryDirectory(prefix="cross-plugin-ci-") as scratch:
     bad_sha = subprocess.run(command[:-2] + ["--sha", "0" * 40, "--out", str(tmp / "bad")],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert bad_sha.returncode != 0
+    # An existing but different signed Git commit is also rejected by the
+    # registered immutable source pin, not merely by checkout HEAD mismatch.
+    other_repo = tmp / "other-checkout"
+    run(["git", "clone", "-q", str(repo), str(other_repo)])
+    (other_repo / "etg-candidate-change.txt").write_text("different commit", encoding="utf-8")
+    run(["git", "-C", str(other_repo), "config", "user.email", "ci@example.invalid"])
+    run(["git", "-C", str(other_repo), "config", "user.name", "Fixture"])
+    run(["git", "-C", str(other_repo), "add", "."])
+    run(["git", "-C", str(other_repo), "commit", "-qm", "different commit"])
+    other_sha = run(["git", "-C", str(other_repo), "rev-parse", "HEAD"]).stdout.strip()
+    unreviewed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--trusted-manifest", str(fixture_manifest),
+         "--checkout", str(other_repo), "--source-id", "etg-dynamic-filter-seo-bridge",
+         "--sha", other_sha, "--out", str(tmp / "unreviewed")],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+    assert unreviewed.returncode != 0 and "exact reviewed registry SHA" in unreviewed.stderr
+    original = (target / "index.php").read_bytes()
+    (target / "index.php").write_bytes(original + b"// tracked drift\n")
+    dirty = subprocess.run(command + ["--out", str(tmp / "dirty")], capture_output=True, text=True)
+    assert dirty.returncode != 0 and "working tree differs" in dirty.stderr
+    (target / "index.php").write_bytes(original)
+    extra = target / "untracked.txt"
+    extra.write_text("not committed")
+    assert subprocess.run(command + ["--out", str(tmp / "untracked")], capture_output=True).returncode != 0
+    extra.unlink()
+    (repo / ".git/info/exclude").write_text("ignored.txt\n")
+    extra = target / "ignored.txt"
+    extra.write_text("ignored additions cannot silently enter a signed source package")
+    assert subprocess.run(command + ["--out", str(tmp / "ignored")], capture_output=True).returncode != 0
+    extra.unlink()
+    # A source changing after status/listing must still fail blob verification.
+    import importlib.util
+    from unittest.mock import patch
+    spec = importlib.util.spec_from_file_location("candidate_builder", SCRIPT)
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    read_bytes = pathlib.Path.read_bytes
+    def changed_read(path):
+        data = read_bytes(path)
+        return data + b"// raced after status\n" if path == target / "index.php" else data
+    with patch.object(pathlib.Path, "read_bytes", changed_read):
+        try:
+            builder.build(fixture_manifest, repo, "etg-dynamic-filter-seo-bridge", sha, tmp / "raced")
+        except ValueError as exc:
+            assert "source blob changed" in str(exc)
+        else:
+            raise AssertionError("race payload received exact-source provenance")
     (target / "escape-link.php").symlink_to(target / "index.php")
     symlinked = subprocess.run(command + ["--out", str(tmp / "symlinked")],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

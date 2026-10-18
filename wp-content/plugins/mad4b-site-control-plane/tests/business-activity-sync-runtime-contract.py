@@ -4,6 +4,7 @@ from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 get=lambda path:(r/path).read_text(encoding="utf-8")
 runtime=get("includes/class-mad4b-scp-activity-sync-runtime.php")
+binding=get("includes/class-mad4b-scp-activity-sync-binding.php")
 docs=get("includes/class-mad4b-scp-activity-google-docs-adapter.php")
 managed=get("includes/class-mad4b-scp-google-drive-context.php")
 facet=get("includes/class-mad4b-scp-business-activity-contracts.php")
@@ -46,7 +47,9 @@ ck("mad4b_activity_google_oauth_access_token" not in docs and "Bearer " not in d
 ck("drive_sheet" not in docs and "sheets.googleapis.com" not in docs,
  "Non-conditional Google Sheets cells must not be advertised as guarded writes")
 for k in ("entity_post_meta","resource_binding_meta_key","resource_binding_mode"):
- ck(k in facet and k in runtime,"Per-entity resource reference not supported "+k)
+ ck(k in facet and k in binding,"Per-entity resource reference not supported "+k)
+ck("use MAD4B_SCP_Activity_Sync_Binding;" in runtime,
+   "Sync runtime must execute the exact binding trait")
 for k in ("checkpoint_initialized","Divergent initial sources lack exact owner-reviewed bootstrap plan",
  "Unapproved external Drive edit overwritten","Uncertain write not journaled",
  "Recovered write did not converge checkpoint",

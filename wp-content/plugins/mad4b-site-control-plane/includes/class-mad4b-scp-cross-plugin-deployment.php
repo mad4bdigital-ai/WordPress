@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-cross-plugin-lifecycle.php';
 
 /**
  * Reviewed multi-repository WordPress plugin deployment discovery and planning.
@@ -35,6 +36,32 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
                         'plugin_file' => array( 'type' => 'string', 'maxLength' => 150 ),
                         'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
                     ) ),
+            ),
+            'mad4b/plugin-deployment-certification-plan' => array(
+                'label' => 'Check Exact Package Certification',
+                'description' => 'Read independent source/archive/provider certificate blockers; never certifies by itself.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'certification_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array( 'source_id' => array( 'type' => 'string', 'maxLength' => 64 ) ) ),
+            ),
+            'mad4b/plugin-deployment-staging-apply-plan' => array(
+                'label' => 'Review Governed Staging Plugin Apply',
+                'description' => 'Prepare exact existing package Apply input only after certification and Staging checks; no mutation.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'staging_apply_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array(
+                        'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+                        'reason' => array( 'type' => 'string', 'maxLength' => 500 ) ) ),
+            ),
+            'mad4b/plugin-deployment-production-promotion-plan' => array(
+                'label' => 'Review Independent Production Promotion',
+                'description' => 'Read Production promotion gates; a Staging approval never promotes a package.',
+                'execute_callback' => array( 'MAD4B_SCP_Cross_Plugin_Lifecycle', 'production_promotion_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id' ),
+                    'properties' => array( 'source_id' => array( 'type' => 'string', 'maxLength' => 64 ) ) ),
             ),
             'mad4b/plugin-deployment-plan' => array( 'label' => 'Plan Cross-Plugin Deployment',
                 'description' => 'Preview exact Git source, plugin install/replace, artifact and environment gates. Never mutates.',
@@ -300,14 +327,22 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
             $blockers[] = 'production_package_executor_not_yet_certified';
         }
         $native = array();
-        if ( 'staging' === $environment && empty( $blockers )
-            && class_exists( 'MAD4B_SCP_Plugin_Package' ) ) {
+        if ( 'staging' === $environment
+            && ( ! class_exists( 'MAD4B_SCP_Plugin_Package' )
+                || ! is_callable( array( 'MAD4B_SCP_Plugin_Package', 'plan' ) ) ) )
+            $blockers[] = 'native_package_planner_unavailable';
+        if ( 'staging' === $environment && empty( $blockers ) ) {
             $native = MAD4B_SCP_Plugin_Package::plan( array(
                 'provider_id' => $source['provider_id'],
                 'source' => 'auto_certified',
                 'reason' => (string) ( $input['reason'] ?? 'Exact reviewed cross-plugin deployment' ) ) );
             if ( is_wp_error( $native ) ) {
                 $blockers[] = $native->get_error_code();
+                $native = array();
+            } elseif ( ! is_array( $native )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $native['plan_sha256'] ?? '' ) )
+                || ! isset( $native['eligible'] ) ) {
+                $blockers[] = 'native_package_plan_invalid';
                 $native = array();
             } elseif ( ! hash_equals( (string) ( $native['plugin_file'] ?? '' ), $source['plugin_file'] )
                 || ! hash_equals( (string) ( $native['certified_archive_sha256'] ?? '' ), $artifact_sha )

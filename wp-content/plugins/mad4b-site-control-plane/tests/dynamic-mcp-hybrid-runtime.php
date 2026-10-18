@@ -344,6 +344,9 @@ $ambiguous = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/
 mcp_check( is_wp_error($ambiguous) && $ambiguous->get_error_code()==='mad4b_mcp_peer_invalid_rpc',
     'Conflicting JSON-RPC result/error envelope must not pass as a successful read' );
 $GLOBALS['mcp_both_result_error'] = false;
+$invalid_rpc_health = $hybrid::candidate_inventory()['peer_transport_health']['test-peer']['read'];
+mcp_check( $invalid_rpc_health['failures'] >= 1,
+    'Malformed JSON-RPC envelope must count as a read-phase circuit breaker failure' );
 $blocked = $hybrid::read_tool(array( 'peer_id'=>'test-peer', 'ability'=>'demo/delete',
     'expected_catalog_sha256'=>$catalog['capability_snapshot_sha256'] ));
 mcp_check( is_wp_error($blocked) && $blocked->get_error_code()==='mad4b_native_read_not_certified',
@@ -555,5 +558,27 @@ mcp_check( is_wp_error($blocked_call)
     && $blocked_call->get_error_code() === 'mad4b_mcp_peer_circuit_open'
     && $count_before_read_circuit === $count_after_read_circuit,
     'Read call circuit blocks new tools/call before outbound IO' );
+// Repeated well-formed HTTP 200 carrying contradictory JSON-RPC envelopes
+// must trip the same phase-specific breaker as transport failures.
+foreach ( $GLOBALS['mcp_transients'] as $key => $status ) {
+    $GLOBALS['mcp_transients'][$key]['open_until'] = time() - 1;
+    $GLOBALS['mcp_transients'][$key]['started'] = time() - 200;
+}
+$GLOBALS['mcp_both_result_error'] = true;
+mcp_new_request_epoch();
+for ( $trial = 0; $trial < 3; ++$trial ) {
+    $healthy = $hybrid::catalog('test-peer');
+    mcp_check( ! is_wp_error($healthy), 'Healthy catalog must not be blocked by invalid read replies' );
+    $invalid = $hybrid::read_tool(array(
+        'peer_id'=>'test-peer', 'ability'=>'demo/inspect',
+        'expected_catalog_sha256'=>$healthy['capability_snapshot_sha256'],
+        'arguments'=>array('q'=>'rpc-invalid') ));
+    mcp_check( is_wp_error($invalid) && $invalid->get_error_code()==='mad4b_mcp_peer_invalid_rpc',
+        'Contradictory JSON-RPC envelope was not denied' );
+}
+$invalid_breaker=$hybrid::candidate_inventory()['peer_transport_health']['test-peer'];
+mcp_check( $invalid_breaker['catalog']['state']==='CLOSED' && $invalid_breaker['read']['state']==='OPEN',
+    'Malformed replies must open the read-only circuit without closing catalog diagnostics' );
+$GLOBALS['mcp_both_result_error'] = false;
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";

@@ -132,8 +132,11 @@ final class MAD4B_SCP_Self_Update {
 			self::persist_recovery_status( $status );
 			return $status;
 		}
-		if ( ! self::update_available( $manifest ) ) {
-			$status['state'] = 'current';
+		$lineage = self::native_release_state( $manifest, true );
+		if ( 'available' !== $lineage['state'] ) {
+			$status['state'] = $lineage['state'];
+			$status['blocker'] = isset( $lineage['blockers'][0] ) ? $lineage['blockers'][0] : '';
+			$status['release_source_relationship'] = $lineage['release_source_relationship'];
 			self::persist_recovery_status( $status );
 			return $status;
 		}
@@ -1032,6 +1035,100 @@ final class MAD4B_SCP_Self_Update {
 		return $result;
 	}
 
+    /**
+     * Verify exact release ancestry, not only the WordPress version label.
+     * This compares two immutable hashes within the fixed owned repository.
+     * Unknown/network failures fail closed; a cached verified relationship may
+     * be read by the Plugins UI without starting a GitHub request there.
+     */
+    public static function native_source_relationship( array $current, array $target, $allow_network = true ) {
+        $installed = strtolower( trim( (string) ( $current['source_commit_sha'] ?? '' ) ) );
+        $offered = strtolower( trim( (string) ( $target['source_commit_sha'] ?? '' ) ) );
+        if ( ! preg_match( '/^[a-f0-9]{40}$/D', $installed )
+            || ! preg_match( '/^[a-f0-9]{40}$/D', $offered ) ) return 'unknown';
+        if ( hash_equals( $installed, $offered ) ) return 'same';
+        if ( ! empty( $current['version'] ) && ! empty( $target['version'] )
+            && version_compare( (string) $current['version'], (string) $target['version'], '>' ) )
+            return 'target_behind';
+
+        $key = 'mad4b_native_lineage_' . hash( 'sha256', $installed . ':' . $offered );
+        if ( function_exists( 'get_transient' ) ) {
+            $cached = get_transient( $key );
+            if ( in_array( $cached, array( 'target_ahead', 'target_behind', 'same', 'diverged' ), true ) )
+                return $cached;
+        }
+        if ( ! $allow_network || ! function_exists( 'wp_safe_remote_get' ) ) return 'unknown';
+
+        // Do not use caller-provided URLs, a mutable branch, or an unbounded
+        // GitHub response. Even HTTP 200 with invalid/truncated JSON is UNKNOWN.
+        $url = 'https://api.github.com/repos/mad4bdigital-ai/WordPress/compare/'
+            . $installed . '...' . $offered . '?per_page=1';
+        $response = wp_safe_remote_get( $url, array(
+            'timeout' => 7, 'redirection' => 0, 'sslverify' => true,
+            'limit_response_size' => 262145,
+            'headers' => array(
+                'Accept' => 'application/vnd.github+json',
+                'User-Agent' => 'MAD4B-Exact-Native-Release-Lineage',
+            ),
+        ) );
+        if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) )
+            return 'unknown';
+        $body = wp_remote_retrieve_body( $response );
+        if ( ! is_string( $body ) || strlen( $body ) < 10 || strlen( $body ) > 262144 )
+            return 'unknown';
+        $data = json_decode( $body, true );
+        if ( ! is_array( $data ) || ! isset( $data['status'], $data['ahead_by'], $data['behind_by'] )
+            || ! is_int( $data['ahead_by'] ) || ! is_int( $data['behind_by'] ) )
+            return 'unknown';
+        $status = (string) $data['status'];
+        $ahead = $data['ahead_by'];
+        $behind = $data['behind_by'];
+        $relation = 'unknown';
+        if ( 'ahead' === $status && $ahead > 0 && 0 === $behind ) $relation = 'target_ahead';
+        elseif ( 'behind' === $status && $behind > 0 && 0 === $ahead ) $relation = 'target_behind';
+        elseif ( 'diverged' === $status && $ahead > 0 && $behind > 0 ) $relation = 'diverged';
+        elseif ( 'identical' === $status && 0 === $ahead && 0 === $behind ) $relation = 'same';
+        if ( 'unknown' !== $relation && function_exists( 'set_transient' ) )
+            set_transient( $key, $relation, 300 );
+        return $relation;
+    }
+
+    private static function native_lineage_blocker( $relationship ) {
+        switch ( $relationship ) {
+            case 'same': return 'already_on_exact_source_commit';
+            case 'target_behind': return 'native_release_target_ancestor_or_older';
+            case 'diverged': return 'native_release_source_diverged';
+            case 'target_ahead': return '';
+            default: return 'native_release_source_lineage_unverified';
+        }
+    }
+
+    /** One state model for passive UI, explicit checks and eligible workers. */
+    public static function native_release_state( array $manifest, $allow_network = false ) {
+        $relationship = self::native_source_relationship( self::installed_identity(), $manifest, $allow_network );
+        $blocker = self::native_lineage_blocker( $relationship );
+        return array(
+            'state' => 'target_ahead' === $relationship ? 'available'
+                : ( 'same' === $relationship ? 'current' : 'needs_review' ),
+            'release_source_relationship' => $relationship,
+            'blockers' => '' === $blocker || 'same' === $relationship ? array() : array( $blocker ),
+        );
+    }
+
+    /** Recheck signed native channels under the replacement lease. Explicit
+     * owner-governed candidate uploads retain their independent rollback policy.
+     */
+    private static function native_replacement_admission( array $target, $channel ) {
+        if ( ! in_array( $channel, array( 'governed_native_release_pull',
+            'governed_native_release_pull_bootstrap', 'governed_staging_recovery_cron',
+            'wordpress_admin_plugin_update', 'wordpress_admin_candidate_drift_bootstrap' ), true ) ) return true;
+        if ( 'available' !== self::native_release_state( $target, true )['state'] )
+            return new WP_Error( 'mad4b_self_update_native_lineage_changed',
+                'The release is no longer a verified successor of the installed build.',
+                array( 'mutation_performed' => false, 'filesystem_replacement_attempted' => false ) );
+        return true;
+    }
+
 	public static function native_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$current = self::installed_identity();
@@ -1045,8 +1142,9 @@ final class MAD4B_SCP_Self_Update {
 			$target = array();
 		} else {
 			$target = self::public_manifest( $manifest );
-			if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) $blockers[] = 'already_on_exact_source_commit';
-			if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) $blockers[] = 'target_version_older_than_runtime';
+            $relationship = self::native_source_relationship( $current, $manifest, true );
+            $lineage_blocker = self::native_lineage_blocker( $relationship );
+            if ( '' !== $lineage_blocker ) $blockers[] = $lineage_blocker;
 		}
 
 		$continuation_projection = self::continuation_policy_projection();
@@ -1061,6 +1159,7 @@ final class MAD4B_SCP_Self_Update {
 			'channel' => 'governed_native_release_pull',
 			'current' => $current,
 			'target' => $target,
+            'release_source_relationship' => isset( $relationship ) ? $relationship : 'unknown',
 			'fixed_manifest_url' => self::MANIFEST_URL,
 			'fixed_pointer_url' => self::POINTER_URL,
 			'pointer_first' => true,
@@ -1121,6 +1220,15 @@ final class MAD4B_SCP_Self_Update {
 			@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			return $verified;
 		}
+        // Guard the final mutation against a new installed build or a
+        // different, unverified release lineage after the network download.
+        $latest = self::installed_identity();
+        if ( (string) ( $latest['source_commit_sha'] ?? '' ) !== (string) ( $plan['current']['source_commit_sha'] ?? '' )
+            || 'target_ahead' !== self::native_source_relationship( $latest, $manifest, true ) ) {
+            @unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+            return new WP_Error( 'mad4b_self_update_native_lineage_changed',
+                'Installed identity or verified release ancestry changed before installation.' );
+        }
 
 		// Bootstrap authority is intentionally narrow and can become invalid while
 		// the governed release is being downloaded and verified. Re-evaluate the
@@ -1227,10 +1335,7 @@ final class MAD4B_SCP_Self_Update {
 			return array( 'state' => 'manifest_unavailable', 'blockers' => array_values( array_unique( $blockers ) ) );
 		}
 		if ( ! empty( $blockers ) ) return array( 'state' => 'policy_blocked', 'blockers' => array_values( array_unique( $blockers ) ) );
-		return array(
-			'state' => self::update_available( $manifest ) ? 'available' : 'current',
-			'blockers' => array(),
-		);
+        return self::native_release_state( $manifest, false );
 	}
 
 	private static function wordpress_auto_update_state() {
@@ -1415,6 +1520,9 @@ final class MAD4B_SCP_Self_Update {
 		// outbound manifest I/O. The plugins table itself remains cache-only.
 		$manifest = self::fetch_manifest( true );
 		if ( is_wp_error( $manifest ) ) self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
+		// Explicit nonce-protected POST may warm the exact ancestry cache.
+		// Passive Plugins GET remains network-free even on a cold cache.
+		self::native_release_state( $manifest, true );
 		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-runtime-components&tab=maintenance' ) );
 		exit;
 	}
@@ -1430,9 +1538,11 @@ final class MAD4B_SCP_Self_Update {
 			self::persist_update_attempt( 'manifest_error', array(), $manifest->get_error_code() );
 			self::redirect_native_result( 'manifest_error', $manifest->get_error_code() );
 		}
-		if ( ! self::update_available( $manifest ) ) {
-			self::persist_update_attempt( 'current', $manifest );
-			self::redirect_native_result( 'current', '' );
+		$lineage = self::native_release_state( $manifest, true );
+		if ( 'available' !== $lineage['state'] ) {
+			$reason = isset( $lineage['blockers'][0] ) ? $lineage['blockers'][0] : '';
+			self::persist_update_attempt( $lineage['state'], $manifest, $reason );
+			self::redirect_native_result( $lineage['state'], $reason );
 		}
 
 		// Do the read-only maintenance/continuation checks before downloading the
@@ -1495,7 +1605,8 @@ final class MAD4B_SCP_Self_Update {
 		if ( is_wp_error( $result ) ) {
 			$details = method_exists( $result, 'get_error_data' ) ? $result->get_error_data() : array();
 			$details = is_array( $details ) ? $details : array();
-			$details['filesystem_replacement_attempted'] = true;
+			if ( ! array_key_exists( 'filesystem_replacement_attempted', $details ) )
+				$details['filesystem_replacement_attempted'] = true;
 			self::persist_update_attempt(
 				'apply_error',
 				$manifest,
@@ -1546,6 +1657,10 @@ final class MAD4B_SCP_Self_Update {
 		}
 		if ( 'current' === $state ) {
 			echo '<div class="notice notice-info is-dismissible"><p>' . esc_html__( 'MAD4B Site Control Plane is up to date.', 'mad4b-site-control-plane' ) . '</p></div>';
+			return;
+		}
+		if ( 'needs_review' === $state ) {
+			echo '<div class="notice notice-warning is-dismissible"><p>' . esc_html__( 'The release source could not be confirmed as a newer build. No plugin files were changed. Check certified updates and review the source relationship before retrying.', 'mad4b-site-control-plane' ) . '</p></div>';
 			return;
 		}
 
@@ -1605,10 +1720,8 @@ final class MAD4B_SCP_Self_Update {
 	}
 
 	private static function update_available( array $manifest ) {
-		$current = self::installed_identity();
-		if ( ! empty( $current['source_commit_sha'] ) && hash_equals( $current['source_commit_sha'], $manifest['source_commit_sha'] ) ) return false;
-		if ( ! empty( $current['version'] ) && version_compare( $current['version'], $manifest['version'], '>' ) ) return false;
-		return true;
+		return 'target_ahead' === self::native_source_relationship(
+            self::installed_identity(), $manifest, false );
 	}
 
 	private static function maintenance_status_projection() {
@@ -1953,6 +2066,11 @@ final class MAD4B_SCP_Self_Update {
 		$core_maintenance_open = false;
 		$upgrader = null;
 		try {
+			// Download has finished and the shared replacement lease is held.
+			// Reject an overtaken native target before backup/continuation work;
+			// no other governed replacement can enter while this lease is owned.
+			$lineage_admission = self::native_replacement_admission( $target, $channel );
+			if ( is_wp_error( $lineage_admission ) ) return $lineage_admission;
 			$before = self::activation_state();
 			$backup = self::backup_current();
 			if ( is_wp_error( $backup ) ) return $backup;

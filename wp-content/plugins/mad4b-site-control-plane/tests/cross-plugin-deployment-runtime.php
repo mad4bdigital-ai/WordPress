@@ -35,6 +35,8 @@ $catalog=$cls::discover();
 check($catalog['count']===1 && !$catalog['mutation_performed'],'source registry inventory');
 check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
 check($catalog['items'][0]['repository']==='mad4bdigital-ai/WordPress','ETG same-repository source present');
+check($catalog['items'][0]['package_certification']==='pending',
+    'candidate metadata may not promote ETG package certification');
 check($catalog['items'][0]['installed']===false,'not-installed source detected');
 $sha=str_repeat('a',40);
 $input=array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'commit','reference'=>$sha);
@@ -49,6 +51,8 @@ check(!$plan['eligible'] && empty($plan['native_executor'])
     && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true)
     && in_array('source_review_promotion_required',$plan['blockers'],true),
     'uncertified or unreviewed source offered as executable package');
+check(in_array('native_package_planner_unavailable', $plan['blockers'], true),
+    'Missing native Staging package planner must be a hard blocker' );
 check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
     'read-only planning claimed execution');
 $GLOBALS['wp_environment']='production';
