@@ -389,6 +389,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-registry.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-semantic-intent-router.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-pipeline.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-transaction.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cross-plugin-deployment.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-operation-resume.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-execution-state-view.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-plugin-activation-state.php';
@@ -526,6 +527,7 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-permission-changes.php
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-connection-ability.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-experience.php';
 MAD4B_SCP_Admin_Experience::boot();
+MAD4B_SCP_Cross_Plugin_Deployment::boot();
 MAD4B_SCP_G5_External_Providers::boot();
 MAD4B_SCP_G5_Growth_Evidence::boot();
 MAD4B_SCP_G5_SEO_Provider_Families::boot();
