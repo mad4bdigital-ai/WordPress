@@ -28,6 +28,7 @@ $pages = array(
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
 	'mad4b-adapter-coverage' => array( 'MAD4B_SCP_Adapter_Coverage_Admin_UI', 'render_page', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
 	'mad4b-operator-control-center' => array( 'MAD4B_SCP_Operator_Control_Center', 'render_page', array( '' ) ),
+	'mad4b-optional-governance-options' => array( 'MAD4B_SCP_Optional_Governance', 'page', array( '' ) ),
 	'mad4b-approval-decisions' => array( 'MAD4B_SCP_Approval_Decision_Admin', 'render_page', array( 'actionable', 'history' ) ),
 	'mad4b-search-intelligence' => array( 'MAD4B_SCP_Search_Experience', 'render', MAD4B_SCP_Search_Context::policy()['section_order'] ),
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
@@ -48,6 +49,7 @@ $_GET = array( 'page' => array( 'mad4b-control-plane' ) );
 $check( '' === MAD4B_SCP_Admin_Workspace::current_page(), 'Nested route input is rejected.' );
 $before_profile = get_option( MAD4B_SCP_Site_Profile::OPTION );
 $before_pipeline = get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION );
+$before_optional = get_option( MAD4B_SCP_Optional_Governance::OPTION, null );
 $malformed = array();
 foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'saved', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
 $render = static function ( $slug, array $page, array $query ) use ( &$renders, &$rendered_control_counts, $check ) {
@@ -105,6 +107,7 @@ $check( false === strpos( $html, 'MAD4B runtime release set: committed' ), 'A GE
 $html = $render( 'mad4b-control-plane-performance', $pages['mad4b-control-plane-performance'], array( 'mad4b_performance_apply' => 'queued' ) );
 $check( false === strpos( $html, 'Maintenance request: queued' ), 'A GET flag cannot fabricate worker admission.' );
 $check( $before_profile === get_option( MAD4B_SCP_Site_Profile::OPTION ) && $before_pipeline === get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION ), 'GET rendering preserves Site Profile and pipeline settings.' );
+$check( $before_optional === get_option( MAD4B_SCP_Optional_Governance::OPTION, null ), 'Optional Governance GET rendering must not persist settings or grants.' );
 $old_home = get_option( 'home' ); $old_siteurl = get_option( 'siteurl' );
 update_option( 'home', 'https://asi-disposable.test' ); update_option( 'siteurl', 'https://asi-disposable.test' );
 $enrolled = MAD4B_SCP_Site_Profile::save_current_site( array( 'environment' => 'staging', 'display_name' => 'Disposable admin acceptance', 'oauth_enabled' => false, 'skills_enabled' => false, 'write_enabled' => false ) );
