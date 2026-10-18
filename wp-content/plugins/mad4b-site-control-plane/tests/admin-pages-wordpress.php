@@ -26,8 +26,9 @@ $pages = array(
 	'mad4b-browser-acceptance' => array( 'MAD4B_SCP_Browser_Acceptance_Admin_UI', 'render_page', array( '' ) ),
 	'mad4b-control-plane-oauth-canary' => array( 'MAD4B_SCP_Local_OAuth_Browser_Canary', 'render_page', array( '' ) ),
 	'mad4b-runtime-components' => array( 'MAD4B_SCP_Runtime_Components_Admin_UI', 'render_page', array( 'overview', 'core', 'plugins', 'mu-plugins', 'drop-ins', 'themes', 'astra', 'maintenance' ) ),
-	'mad4b-adapter-coverage' => array( 'MAD4B_SCP_Adapter_Coverage_Admin_UI', 'render_page', array( 'overview', 'installed', 'priority', 'functional', 'requests' ) ),
+	'mad4b-adapter-coverage' => array( 'MAD4B_SCP_Adapter_Coverage_Admin_UI', 'render_page', array( 'overview', 'installed', 'priority', 'functional', 'mcp-routes', 'capabilities', 'native-peers', 'route-preview', 'requests' ) ),
 	'mad4b-operator-control-center' => array( 'MAD4B_SCP_Operator_Control_Center', 'render_page', array( '' ) ),
+	'mad4b-optional-governance-options' => array( 'MAD4B_SCP_Optional_Governance', 'page', array( '' ) ),
 	'mad4b-approval-decisions' => array( 'MAD4B_SCP_Approval_Decision_Admin', 'render_page', array( 'actionable', 'history' ) ),
 	'mad4b-search-intelligence' => array( 'MAD4B_SCP_Search_Experience', 'render', MAD4B_SCP_Search_Context::policy()['section_order'] ),
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
@@ -35,6 +36,11 @@ $pages = array(
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );
+// Keep discovered provider tabs synchronized with their rendered callback smoke cases.
+$nav_definitions = MAD4B_SCP_Admin_Navigation_Manifest::definitions();
+$adapter_manifest_tabs = $nav_definitions['mad4b-adapter-coverage'][4] ?? array();
+$check( $adapter_manifest_tabs === $pages['mad4b-adapter-coverage'][2],
+    'Provider Coverage tab manifest and disposable WordPress render cases must match exactly.' );
 $workspaces = MAD4B_SCP_Admin_Workspace::inventory();
 $check( ! array_diff( array_keys( $routes ), array_keys( $workspaces ) ) && ! array_diff( array_keys( $workspaces ), array_keys( $routes ) ), 'Every registered page is discoverable in the workspace directory.' );
 foreach ( $workspaces as $slug => $workspace ) {
@@ -48,8 +54,9 @@ $_GET = array( 'page' => array( 'mad4b-control-plane' ) );
 $check( '' === MAD4B_SCP_Admin_Workspace::current_page(), 'Nested route input is rejected.' );
 $before_profile = get_option( MAD4B_SCP_Site_Profile::OPTION );
 $before_pipeline = get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION );
+$before_optional = get_option( MAD4B_SCP_Optional_Governance::OPTION, null );
 $malformed = array();
-foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'saved', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
+foreach ( array( 'agent', 'folder', 'mode_filter', 'category_filter', 'review_filter', 'status_filter', 'asset_search', 'intel_action', '_wpnonce', 'category', 'query', 'task_scope', 'asset_id', 'skill', 'level', 'target', 'paged', 'profile_id', 'section', 'mad4b_notice', 'mad4b_error', 'mad4b_pipeline_saved', 'mad4b_pipeline_error', 'mad4b_site_profile', 'mad4b_skill_notice', 'mad4b_skill_error', 'saved', 'mad4b_decision_result', 'mad4b_decision_status', 'mad4b_notice_receipt', 'mad4b_performance_apply', 'mad4b_runtime_release_set', 'mad4b_runtime_release_detail', 'mad4b_provider_notice', 'mad4b_provider_operation', 'plugin_file', 'ability', 'dimension', 'expected_graph_sha256', 'offset' ) as $key ) $malformed[ $key ] = array( 'nested' => array( 'invalid' ) );
 $render = static function ( $slug, array $page, array $query ) use ( &$renders, &$rendered_control_counts, $check ) {
 	$_GET = array_merge( array( 'page' => $slug ), $query ); $_POST = array(); $_REQUEST = $_GET;
 	set_current_screen( 'mad4b-control-plane_page_' . $slug );
@@ -93,6 +100,13 @@ $check( MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'stat
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-b' ) && ! MAD4B_SCP_Admin_Experience::notice_verified( 'other-page', 'saved', 'state-a' ), 'Stale view and cross-page notices denied.' );
 $_GET['mad4b_notice_receipt'] .= '0';
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-a' ), 'Tampered notice denied.' );
+// A query flag is not a verified successful save or an Audit v2 receipt.
+foreach ( array( '1', 'unchanged' ) as $saved_flag ) {
+    $html = $render( 'mad4b-optional-governance-options', $pages['mad4b-optional-governance-options'], array( 'saved' => $saved_flag ) );
+    $check( false === strpos( $html, 'Advisory options saved and audited.' )
+        && false === strpos( $html, 'No new mutation, audit or revision was needed.' ),
+        'Forged Optional Governance saved URL must not manufacture success or audit evidence.' );
+}
 $html = $render( 'mad4b-browser-acceptance', $pages['mad4b-browser-acceptance'], array( 'saved' => '1' ) );
 $check( false === strpos( $html, 'Preference saved; execution and browser acceptance remain separately unverified.' ), 'Forged Browser Acceptance URL success denied.' );
 $check( false !== strpos( $html, 'expected_configuration_revision' ), 'Browser preference form binds current revision.' );
@@ -105,6 +119,7 @@ $check( false === strpos( $html, 'MAD4B runtime release set: committed' ), 'A GE
 $html = $render( 'mad4b-control-plane-performance', $pages['mad4b-control-plane-performance'], array( 'mad4b_performance_apply' => 'queued' ) );
 $check( false === strpos( $html, 'Maintenance request: queued' ), 'A GET flag cannot fabricate worker admission.' );
 $check( $before_profile === get_option( MAD4B_SCP_Site_Profile::OPTION ) && $before_pipeline === get_option( MAD4B_SCP_Dynamic_Content_Pipeline::OPTION ), 'GET rendering preserves Site Profile and pipeline settings.' );
+$check( $before_optional === get_option( MAD4B_SCP_Optional_Governance::OPTION, null ), 'Optional Governance GET rendering must not persist settings or grants.' );
 $old_home = get_option( 'home' ); $old_siteurl = get_option( 'siteurl' );
 update_option( 'home', 'https://asi-disposable.test' ); update_option( 'siteurl', 'https://asi-disposable.test' );
 $enrolled = MAD4B_SCP_Site_Profile::save_current_site( array( 'environment' => 'staging', 'display_name' => 'Disposable admin acceptance', 'oauth_enabled' => false, 'skills_enabled' => false, 'write_enabled' => false ) );
