@@ -52,6 +52,10 @@ class MAD4B_SCP_Authorization {
     public static function authorize_mutation( $ability, $actor, $provider, $input ) {
         if ( ! self::$claimed || $ability !== MAD4B_SCP_Selected_Head_Update::APPLY_ABILITY )
             return new WP_Error( 'unclaimed_ability' );
+        // Simulate expiry of the original approval only after the ZIP has
+        // already been downloaded. The production recheck must reject it.
+        if ( ! empty( $GLOBALS['deny_recheck'] ) && $GLOBALS['download_calls'] > 0 )
+            return new WP_Error( 'permission_revoked_after_download' );
         return array( 'allowed' => true, 'reason_code' => 'preflight_allowed' );
     }
 }
@@ -172,6 +176,15 @@ if ( 'disabled' === $GLOBALS['case'] ) {
         'missing typed approval accepted' );
     expect( is_wp_error( $cls::apply( array_merge( $action, array( 'expected_plan_sha256' => str_repeat( '0', 64 ) ) ) ) ),
         'stale approval accepted' );
+    if ( 'normal' === $GLOBALS['case'] ) {
+        $GLOBALS['deny_recheck'] = true;
+        $revoked = $cls::apply( $action );
+        expect( is_wp_error( $revoked )
+            && 'permission_revoked_after_download' === $revoked->get_error_code()
+            && $GLOBALS['apply_calls'] === 0 && $GLOBALS['download_calls'] === 1,
+            'Revoked approval after archive download must not install' );
+        $GLOBALS['deny_recheck'] = false;
+    }
     $result = $cls::apply( $action );
     if ( $GLOBALS['case'] === 'drift' || $GLOBALS['case'] === 'bad-archive' ) {
         expect( is_wp_error( $result ) && $GLOBALS['apply_calls'] === 0,

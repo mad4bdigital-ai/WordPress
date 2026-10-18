@@ -437,8 +437,13 @@ final class MAD4B_SCP_Selected_Head_Update {
             ! hash_equals( $plan['package_identity']['archive_sha256'], hash( 'sha256', $bytes ) ) )
             return self::fail( 'archive_integrity_failed', 'Exact ZIP digest or byte length does not match the reviewed package.');
         // Second admission check after potentially lengthy download.
+        // Use the same structured authorization decision as the first check,
+        // and fail closed if the exact selected-head grant was revoked.
         $access = self::can_apply( $input );
-        if ( is_wp_error( $access ) || true !== $access ) return $access;
+        if ( is_wp_error( $access ) ) return $access;
+        if ( ! MAD4B_SCP_Authorization::permission_result_from_authorization( $access ) )
+            return self::fail( 'authorization_revoked',
+                'Exact selected-head owner authorization is no longer valid after archive download.' );
         $fresh = self::source( $plan_input['candidate_source'] );
         if ( is_wp_error( $fresh ) || ! hash_equals( $sha, is_array( $fresh ) ? (string) $fresh['resolved_sha'] : '' ) )
             return self::fail( 'selected_head_moved', 'Branch/PR moved after download. New approval required.' );
