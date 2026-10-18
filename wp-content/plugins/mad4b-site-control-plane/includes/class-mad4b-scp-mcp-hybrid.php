@@ -17,6 +17,9 @@ final class MAD4B_SCP_MCP_Hybrid {
     const MAX_PAGES = 4;
     const MAX_BYTES = 262144;
     private static $manifest = null;
+    private static $rpc_started_at = null;
+    private static $rpc_sequence = 0;
+    private static $rpc_budget_seconds = 6.0;
     public static function boot() {
         if ( function_exists( 'add_action' ) )
             add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 33 );
@@ -179,7 +182,13 @@ final class MAD4B_SCP_MCP_Hybrid {
         $isolation = self::transport_isolation_guard( $peer );
         if ( is_wp_error( $isolation ) ) return $isolation;
         if ( ! function_exists( 'wp_safe_remote_post' ) ) return new WP_Error( 'mad4b_mcp_http_unavailable', 'Safe HTTP transport is unavailable.' );
-        $id = substr( hash( 'sha256', $peer['id'] . "|" . $method . "|" . (string) wp_json_encode( $params ) ), 0, 16 );
+        if ( null === self::$rpc_started_at ) self::$rpc_started_at = microtime( true );
+        $elapsed = microtime( true ) - self::$rpc_started_at;
+        if ( $elapsed >= self::$rpc_budget_seconds || ++self::$rpc_sequence > 100 )
+            return new WP_Error( 'mad4b_mcp_request_budget_exceeded', 'Bounded native MCP request budget exceeded; use reviewed local fallback.' );
+        $remaining = self::$rpc_budget_seconds - $elapsed;
+        $timeout = max( 1, min( 2, (int) ceil( $remaining ) ) );
+        $id = substr( hash( 'sha256', $peer['id'] . "|" . $method . "|" . self::$rpc_sequence . "|" . (string) wp_json_encode( $params ) ), 0, 16 );
         $headers = array(
             'Accept' => 'application/json, text/event-stream',
             'Content-Type' => 'application/json',
@@ -204,7 +213,7 @@ final class MAD4B_SCP_MCP_Hybrid {
         $request = array( 'jsonrpc' => '2.0', 'id' => $id, 'method' => $method, 'params' => $params );
         $response = wp_safe_remote_post( $peer['endpoint'], array(
             'headers' => $headers, 'body' => wp_json_encode( $request ),
-            'timeout' => 7, 'redirection' => 0, 'sslverify' => true,
+            'timeout' => $timeout, 'redirection' => 0, 'sslverify' => true,
             'limit_response_size' => self::MAX_BYTES, 'blocking' => true,
         ) );
         if ( is_wp_error( $response ) ) return new WP_Error( 'mad4b_mcp_peer_transport_failed', 'Peer MCP transport failed; no route can be certified.' );
@@ -257,10 +266,13 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
         $token = self::peer_token( $peer['id'] );
         if ( '' !== $token ) $headers['Authorization'] = 'Bearer ' . $token;
+        if ( null === self::$rpc_started_at ) self::$rpc_started_at = microtime( true );
+        $remaining = self::$rpc_budget_seconds - ( microtime( true ) - self::$rpc_started_at );
+        if ( $remaining <= 0 ) return false;
         $reply = wp_safe_remote_post( $peer['endpoint'], array(
             'headers' => $headers,
             'body' => wp_json_encode( array( 'jsonrpc' => '2.0', 'method' => 'notifications/initialized' ) ),
-            'timeout' => 7, 'redirection' => 0, 'sslverify' => true,
+            'timeout' => max( 1, min( 2, (int) ceil( $remaining ) ) ), 'redirection' => 0, 'sslverify' => true,
             'limit_response_size' => 1024, 'blocking' => true,
         ) );
         return ! is_wp_error( $reply ) && in_array( (int) wp_remote_retrieve_response_code( $reply ), array( 200, 202, 204 ), true );
