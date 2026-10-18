@@ -149,9 +149,13 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
         ) );
         self::save( array(
             'profile_digest' => (string) ( $site['profile_digest'] ?? '' ),
-            'status' => is_wp_error( $result ) ? 'INSTALL_BLOCKED' : 'APPLY_RETURNED_VERIFY_READBACK',
+            'status' => is_wp_error( $result ) ? 'INSTALL_BLOCKED'
+                : ( is_array( $result ) && ! empty( $result['applied'] )
+                    ? 'APPLY_RETURNED_VERIFY_READBACK' : 'INSTALL_NOT_CONFIRMED' ),
             'blockers' => is_wp_error( $result ) ? array( $result->get_error_code() ) : array(),
-            'eligible' => false, 'source' => array(), 'mutation_performed' => ! is_wp_error( $result ),
+            'eligible' => false, 'source' => array(),
+            'apply_returned' => ! is_wp_error( $result ),
+            'readback_required' => true, 'authorizing' => false,
         ) );
         self::redirect();
     }
@@ -199,6 +203,15 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
             }
             if ( ! empty( $record['eligible'] ) && current_user_can( 'update_plugins' ) ) {
                 echo '<p>This preview does not authorize installation. Actual execution requires current enrolled owner, OAuth step-up, exact grants, signed archive and post-install verification.</p>';
+                $bearer = class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' )
+                    && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active()
+                    && MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope(
+                        MAD4B_SCP_OAuth_Resource_Bridge::AUTHORITY_STEP_UP_SCOPE );
+                if ( ! $bearer ) {
+                    echo '<div class="notice notice-warning inline"><p>'
+                        . esc_html__( 'This browser does not carry the required verified owner OAuth Step-Up. Use the governed Remote MCP selected-head apply for this exact plan; wp-admin cannot schedule a privileged install through WP-Cron.', 'mad4b-site-control-plane' )
+                        . '</p></div>';
+                } else {
                 echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
                     . '<input type="hidden" name="action" value="' . esc_attr( self::APPLY_ACTION ) . '">'
                     . '<input type="hidden" name="expected_plan_sha256" value="' . esc_attr( $record['plan_sha256'] ) . '">';
@@ -206,6 +219,7 @@ final class MAD4B_SCP_Staging_Selected_Head_Admin {
                 echo '<label>Exact confirmation <input class="regular-text" autocomplete="off" name="confirmation" required placeholder="'
                     . esc_attr( MAD4B_SCP_Selected_Head_Update::CONFIRMATION ) . '"></label>';
                 echo '<p><button type="submit" class="button button-primary">Request governed Staging install</button></p></form>';
+                }
             }
         }
         echo '<p class="description">WP-Cron recovery handles the signed stable master channel only, never the selected commit. If the local browser does not carry the required OAuth step-up, execute the same selected-head plan via the already-authorized Remote MCP lane. No Cron mutation is scheduled from this page.</p></section>';
