@@ -182,3 +182,30 @@ has `live_site_verified=false` and `production_authorized=false`. The
 inventory is a review backlog, not a migration that silently certifies all
 older features. Dynamic WordPress registration still needs authenticated
 read-only runtime census when external trust is independently available.
+
+## Remediation: guarded risk mapping, executed regressions, safe reports
+
+The mandatory regression policy locks the minimum runtime root,
+`includes/`, `assets/`, `config/`, root PHP, and PHP/JS/CSS/JSON
+extensions independently from editable coverage rules. Widening coverage
+is possible, but silently shrinking the minimum source perimeter is not.
+Six source classification probes must remain correct on every pull request.
+Rules cannot add a generic shadow before existing domains.
+
+Source-only review is not sufficient for new capabilities: the
+`tools/readiness_test_execution.py` executor reads the exact-head
+`required_regression_tests` plan and actually executes mapped standalone
+Python regressions in the CI job; PHP requires a trusted PHPUnit runner.
+Unsupported executors fail closed. A trivial test passing is *not* a proof
+of correct behavior, and independently governed review is still needed.
+
+All exported CSVs use `readiness_csv.safe_writer` to protect Excel users
+against formula injection from untrusted descriptions and paths.
+
+The repository workflow snapshot is provisional and nonauthorizing.
+The GitHub Actions query uses bounded pagination and latest-attempt
+selection; missing/truncated API data must never be reported as successful
+final release CI. Completion reconciliation and authenticated Staging
+evidence remain distinct release gates.
+
+Neither passing CI nor a changed test file represents Production approval.

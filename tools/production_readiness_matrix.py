@@ -124,40 +124,59 @@ def validate(root=ROOT, source=SOURCE):
 
 
 def github_workflow_results(repo, exact_sha):
-    """Best-effort live GitHub metadata, NEVER a live-site acceptance receipt."""
+    """Read exact-head workflow runs, latest attempt and bounded pagination.
+
+    An incomplete API inventory is unknown, never a PASS certificate.
+    This is provisional while other workflows may still be running.
+    """
     token = os.environ.get("GITHUB_TOKEN", "")
     if not token or not repo or not SHA.fullmatch(exact_sha):
         return {}, "not_fetched"
-    url = "https://api.github.com/repos/{}/actions/runs?head_sha={}&per_page=100".format(
-        repo, exact_sha)
-    req = request.Request(url, headers={
-        "Accept": "application/vnd.github+json",
-        "Authorization": "Bearer " + token,
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "mad4b-readiness-matrix-ci",
-    })
-    try:
-        with request.urlopen(req, timeout=12) as response:
-            data = json.load(response)
-    except (error.HTTPError, error.URLError, TimeoutError, ValueError):
-        return {}, "unavailable"
     outcomes = {}
-    for run in data.get("workflow_runs", []):
-        if run.get("head_sha") != exact_sha:
-            continue
-        name = run.get("name", "")
-        record = {
-            "status": run.get("status", "unknown"),
-            "conclusion": run.get("conclusion"),
-            "run_id": run.get("id"),
-            "url": run.get("html_url"),
-        }
-        old = outcomes.get(name)
-        if not old or int(run.get("run_attempt", 1)) >= int(old.get("run_attempt", 0)):
-            record["run_attempt"] = int(run.get("run_attempt", 1))
-            outcomes[name] = record
-    return outcomes, "github_actions_exact_head"
-
+    provenance = "github_actions_exact_head"
+    for page in range(1, 6):
+        url = ("https://api.github.com/repos/{}/actions/runs"
+               "?head_sha={}&per_page=100&page={}").format(repo, exact_sha, page)
+        req = request.Request(url, headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": "Bearer " + token,
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "mad4b-readiness-matrix-ci",
+        })
+        try:
+            with request.urlopen(req, timeout=12) as response:
+                data = json.load(response)
+        except (error.HTTPError, error.URLError, TimeoutError, ValueError):
+            return {}, "github_actions_unavailable"
+        runs = data.get("workflow_runs")
+        if not isinstance(runs, list):
+            return {}, "github_actions_invalid_payload"
+        for run in runs:
+            if run.get("head_sha") != exact_sha:
+                continue
+            name = run.get("name")
+            if not isinstance(name, str) or not name:
+                continue
+            record = {
+                "status": run.get("status", "unknown"),
+                "conclusion": run.get("conclusion"),
+                "run_id": run.get("id"),
+                "url": run.get("html_url"),
+                "created_at": run.get("created_at") or "",
+                "run_attempt": int(run.get("run_attempt") or 1),
+            }
+            prior = outcomes.get(name)
+            score = (record["created_at"], int(record["run_id"] or 0),
+                     record["run_attempt"])
+            old_score = ((prior.get("created_at", ""), int(prior.get("run_id") or 0),
+                          prior.get("run_attempt", 0)) if prior else ("", 0, 0))
+            if score > old_score:
+                outcomes[name] = record
+        if len(runs) < 100:
+            break
+        if page == 5:
+            provenance = "github_actions_truncated"
+    return outcomes, provenance
 
 def snapshot(matrix, policy, stages, feature, closure, source_cfg,
              head, repo, workflows, provenance):
@@ -169,8 +188,9 @@ def snapshot(matrix, policy, stages, feature, closure, source_cfg,
         "run_url": workflows.get(name, {}).get("url"),
         "exact_head": head,
     } for name in required]
-    ci_ok = bool(checks) and all(c["conclusion"] == "success" and
-                                 c["status"] == "completed" for c in checks)
+    ci_ok = provenance == "github_actions_exact_head" and bool(checks) and all(
+        c["conclusion"] == "success" and c["status"] == "completed"
+        for c in checks)
     sources = source_cfg.get("sources", [])
     unresolved_sources = [s.get("id", "unknown") for s in sources if
                           s.get("package_certification") != "certified" or
