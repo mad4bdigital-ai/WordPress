@@ -113,6 +113,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-adapter-registration-policy-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-external-adapter-trust.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-adapter-capability-graph-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-external-adapter-trust-runtime.php
+          php -l "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-header-parameters.php"
+          php -l "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-read-behavior.php"
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-health.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-local-ability-trust.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid-authority.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-mcp-hybrid-runtime.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/admin-native-mcp-view-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/provider-opt-in-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-wpcron-acceptance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/native-hybrid-acceptance-runtime.php
@@ -573,6 +588,10 @@ jobs:
             php: '8.3'
             database: mariadb:11.8
             health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
+          - wordpress: '7.1.3'
+            php: '8.5.11'
+            database: mariadb:11.8
+            health_command: mariadb-admin ping -h 127.0.0.1 -uroot -proot
 
     services:
       mysql:
@@ -618,6 +637,15 @@ jobs:
           set -euo pipefail
           curl -fsSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
 
+      - name: Assert exact deployed PHP/WP compatibility target
+        if: matrix.wordpress == '7.1.3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r 'if (PHP_VERSION !== "8.5.11") { fwrite(STDERR, "Expected PHP 8.5.11, got ".PHP_VERSION.PHP_EOL); exit(1); }'
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php
+
       - name: Provision disposable Staging WordPress
         shell: bash
         env:
@@ -633,6 +661,9 @@ jobs:
           php /tmp/wp-cli.phar option update home 'https://mad4b-catalog.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar option update siteurl 'https://mad4b-catalog.test' --path="$WP_PATH"
           php /tmp/wp-cli.phar config set WP_ENVIRONMENT_TYPE staging --type=constant --path="$WP_PATH"
+          if [[ "$WP_VERSION" == '7.1.3' ]]; then
+            test "$(php /tmp/wp-cli.phar core version --path="$WP_PATH")" = '7.1.3'
+          fi
 
       - name: Install exact MCP Adapter and Control Plane
         shell: bash
@@ -797,7 +828,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.3']
+        php: ['7.4', '8.3', '8.4', '8.5']
     services:
       mysql:
         image: mysql:8.0
@@ -915,10 +946,16 @@ jobs:
           - php: '8.3'
             database: 'mariadb:11.4'
             database-health-cmd: 'healthcheck.sh --connect --innodb_initialized'
+          - php: '8.5'
+            database: 'mariadb:11.4'
+            database-health-cmd: 'healthcheck.sh --connect --innodb_initialized'
           - php: '7.4'
             database: 'mysql:8.4'
             database-health-cmd: 'mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret'
           - php: '8.3'
+            database: 'mysql:8.4'
+            database-health-cmd: 'mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret'
+          - php: '8.5'
             database: 'mysql:8.4'
             database-health-cmd: 'mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -pg8_ci_only_not_a_site_secret'
     services:
