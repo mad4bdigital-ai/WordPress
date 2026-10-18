@@ -110,6 +110,12 @@ function wp_safe_remote_post( $url, $args ) {
             $result = array( 'tools' => array( $GLOBALS['mcp_tools'][1] ) );
         }
     } elseif ( $method === 'tools/call' ) {
+        if ( $revision === 'modern' && $GLOBALS['mcp_forced_call_failures'] === 0 ) {
+            $args_value = $json['params']['arguments']['q'] ?? null;
+            $expected_header = is_string( $args_value ) ? $args_value : '';
+            mcp_check( ( $args['headers']['Mcp-Param-Query'] ?? '' ) === $expected_header,
+                'SEP-2243 custom Mcp-Param-Query header matches reviewed input schema value' );
+        }
         $result = array( 'content' => array( array('type'=>'text', 'text'=>'SAFE_DATA') ), 'isError'=>false );
     } else return new WP_Error( 'unexpected_call', 'unknown method' );
     if ( 'legacy' !== $revision ) $result['resultType'] = 'complete';
@@ -130,7 +136,7 @@ function mcp_canonical( $v ) {
     foreach($v as $key=>$item) $v[$key]=mcp_canonical($item);
     return $v;
 }
-$schema = array( 'type'=>'object', 'properties'=>array('q'=>array('type'=>'string')) );
+$schema = array( 'type'=>'object', 'properties'=>array('q'=>array('type'=>'string','x-mcp-header'=>'Query')) );
 $schema_digest = hash( 'sha256', json_encode( mcp_canonical($schema), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 $GLOBALS['mcp_tools'] = array(
     array( 'name'=>'read_inspect', 'inputSchema'=>$schema, 'annotations'=>array('readOnlyHint'=>true, 'destructiveHint'=>false) ),
@@ -186,6 +192,26 @@ function mcp_new_request_epoch() {
     $cache->setAccessible( true );
     $cache->setValue( null, array() );
 }
+$mirrored = MAD4B_SCP_MCP_Header_Parameters::from_schema( $schema, array('q'=>"Hello, 世界") );
+mcp_check( ! is_wp_error($mirrored) && $mirrored['Mcp-Param-Query'] ===
+    '=?base64?' . base64_encode("Hello, 世界") . '?=',
+    'Non-ASCII MCP routing headers use the exact Base64 sentinel' );
+$invalid_header_schema = array('type'=>'object','properties'=>array(
+    'q'=>array('type'=>'number','x-mcp-header'=>'Unsafe')
+));
+mcp_check( is_wp_error(MAD4B_SCP_MCP_Header_Parameters::definition($invalid_header_schema)),
+    'Floating point and invalid custom header annotations are rejected' );
+$duplicate_header_schema = array('type'=>'object','properties'=>array(
+    'x'=>array('type'=>'string','x-mcp-header'=>'Tenant'),
+    'y'=>array('type'=>'string','x-mcp-header'=>'tenant')
+));
+mcp_check( is_wp_error(MAD4B_SCP_MCP_Header_Parameters::definition($duplicate_header_schema)),
+    'Case-insensitive duplicate mirrored headers are rejected' );
+$unreachable_header_schema = array('type'=>'object','properties'=>array(
+    'x'=>array('type'=>'array','items'=>array('type'=>'string','x-mcp-header'=>'Region'))
+));
+mcp_check( is_wp_error(MAD4B_SCP_MCP_Header_Parameters::definition($unreachable_header_schema)),
+    'Annotations inside items/ref/composition are not valid statically reachable parameters' );
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
 $GLOBALS['hybrid_isolation_effective'] = true;
 $before_isolation = count($GLOBALS['mcp_calls']);
