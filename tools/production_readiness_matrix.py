@@ -343,8 +343,17 @@ def self_test():
                       "artifact_sha256": ""}]},
         "a" * 40, "owner/repo",
         {"Required 1": {"status": "completed", "conclusion": "success"}},
-        "unit_test")
+        "github_actions_exact_head")
     assert report["ci_exact_head_all_required_pass"]
+    truncated = snapshot(
+        {"controls": [{"domain": "QA", "priority": "P0"}]},
+        {"required_repository_workflows": ["Required 1"]},
+        {"stages": [{"id": "s"}]}, {"workstreams": [{"id": "w"}]},
+        {"profiles": {CORE: {"workstream_ids": [], "open_or_partial": []}}},
+        {"sources": []}, "a" * 40, "owner/repo",
+        {"Required 1": {"status": "completed", "conclusion": "success"}},
+        "github_actions_truncated")
+    assert truncated["ci_exact_head_all_required_pass"] is False
     assert report["decision"] == "NO-GO" and not report["production_authorized"]
     assert report["unpromoted_cross_plugin_sources"] == ["uncertified"]
     report2 = snapshot(
