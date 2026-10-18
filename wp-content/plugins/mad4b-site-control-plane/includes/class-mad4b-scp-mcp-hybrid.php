@@ -325,6 +325,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             'MCP-Protocol-Version' => $version, 'Accept' => 'application/json, text/event-stream' );
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
         $token = self::peer_token( $peer['id'] );
+        if ( is_wp_error( $token ) ) return false;
         if ( '' !== $token ) $headers['Authorization'] = 'Bearer ' . $token;
         if ( null === self::$rpc_started_at ) self::$rpc_started_at = microtime( true );
         $remaining = self::$rpc_budget_seconds - ( microtime( true ) - self::$rpc_started_at );
