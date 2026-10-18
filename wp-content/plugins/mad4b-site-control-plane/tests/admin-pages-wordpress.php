@@ -95,6 +95,13 @@ $check( MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'stat
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-b' ) && ! MAD4B_SCP_Admin_Experience::notice_verified( 'other-page', 'saved', 'state-a' ), 'Stale view and cross-page notices denied.' );
 $_GET['mad4b_notice_receipt'] .= '0';
 $check( ! MAD4B_SCP_Admin_Experience::notice_verified( 'test-page', 'saved', 'state-a' ), 'Tampered notice denied.' );
+// A query flag is not a verified successful save or an Audit v2 receipt.
+foreach ( array( '1', 'unchanged' ) as $saved_flag ) {
+    $html = $render( 'mad4b-optional-governance-options', $pages['mad4b-optional-governance-options'], array( 'saved' => $saved_flag ) );
+    $check( false === strpos( $html, 'Advisory options saved and audited.' )
+        && false === strpos( $html, 'No new mutation, audit or revision was needed.' ),
+        'Forged Optional Governance saved URL must not manufacture success or audit evidence.' );
+}
 $html = $render( 'mad4b-browser-acceptance', $pages['mad4b-browser-acceptance'], array( 'saved' => '1' ) );
 $check( false === strpos( $html, 'Preference saved; execution and browser acceptance remain separately unverified.' ), 'Forged Browser Acceptance URL success denied.' );
 $check( false !== strpos( $html, 'expected_configuration_revision' ), 'Browser preference form binds current revision.' );

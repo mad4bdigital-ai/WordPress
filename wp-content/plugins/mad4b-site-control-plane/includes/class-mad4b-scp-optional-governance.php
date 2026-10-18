@@ -235,9 +235,11 @@ final class MAD4B_SCP_Optional_Governance {
             echo '<div class="notice notice-error"><p>Invalid configuration. Strict defaults remain active.</p></div></div>';
             return;
         }
-        if ( isset( $_GET['saved'] ) && '1' === $_GET['saved'] ) echo '<div class="notice notice-success"><p>Advisory options saved and audited.</p></div>';
-        if ( isset( $_GET['saved'] ) && 'unchanged' === $_GET['saved'] )
-            echo '<div class="notice notice-info"><p>Options are already current. No new mutation, audit or revision was needed.</p></div>';
+        // GET flags are not signed Audit receipts. Never let a forged URL
+        // claim that a preference was written or an audit event was recorded.
+        if ( isset( $_GET['saved'] ) && is_string( $_GET['saved'] )
+            && in_array( $_GET['saved'], array( '1', 'unchanged' ), true ) )
+            echo '<div class="notice notice-info"><p>Review the current saved settings below. The URL is not proof of a mutation or audit event.</p></div>';
         echo '<p><strong>Operating profile:</strong> ' . esc_html( $state['operating_mode'] ) .
             '. Inherited optional warning mode: ' . esc_html( self::$profile_defaults[$state['operating_mode']] ) . '.</p>';
         echo '<p>Owner intent does not replace exact-target approval. The controls below change only advisory severity.</p>';
