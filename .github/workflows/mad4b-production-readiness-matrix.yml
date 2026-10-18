@@ -1,25 +1,11 @@
 name: MAD4B Production Readiness Matrix
 
+# Every PR head is evaluated, including source changes outside the checklist.
+# Reports are read-only and do not certify live site or authorize a deployment.
 on:
   pull_request:
-    paths:
-      - 'governance/production-readiness/**'
-      - 'tools/production_readiness_matrix.py'
-      - '.github/workflows/mad4b-production-readiness-matrix.yml'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/production-*.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
-      - 'specs/007-content-intelligence-workflow-platform/release-closure-readiness.json'
   push:
     branches: [master, 'develop/production-readiness-*']
-    paths:
-      - 'governance/production-readiness/**'
-      - 'tools/production_readiness_matrix.py'
-      - '.github/workflows/mad4b-production-readiness-matrix.yml'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/production-*.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/feature-007-workstream-certification.json'
-      - 'wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json'
-      - 'specs/007-content-intelligence-workflow-platform/release-closure-readiness.json'
   workflow_dispatch:
 
 permissions:
