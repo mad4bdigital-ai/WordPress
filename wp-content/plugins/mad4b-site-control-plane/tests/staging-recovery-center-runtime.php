@@ -31,8 +31,12 @@ assert_recovery( false === $state['production_allowed'] && false === $state['bre
 $state = $klass::decide( $site, $bound, $verified, array(
     'write_ready' => false, 'candidate_binding' => array('match' => false) ));
 assert_recovery( 'WRITE_REVIEW_REQUIRED' === $state['state']
-    && 'mad4b/staging-write-authority-convergence-handshake' === $state['next_ability'],
-    'upgrade rechecks write without re-enrolling host identity' );
+    && 'mad4b/staging-write-authority-convergence-handshake' === $state['next_ability']
+    && 'tools.php?page=mad4b-staging-write-owner-review' === $state['next_url'],
+    'upgrade offers single GET-only existing review without re-enrolling host identity' );
+assert_recovery( ! $state['binding_recreated'] && ! $state['binding_approval_generated']
+    && ! $state['mutation_performed'] && ! $state['authorizing'],
+    'simplified recovery cannot silently approve or mutate' );
 $state = $klass::decide( $site, $bound, array(), $current_write );
 assert_recovery( 'BINDING_READBACK_REQUIRED' === $state['state'],
     'binding must have independent readback' );

@@ -70,7 +70,10 @@ final class MAD4B_SCP_Staging_Recovery_Center {
         if ( ! $write_ready ) return array_merge( $base, array(
             'state' => 'WRITE_REVIEW_REQUIRED',
             'reason' => 'Existing host identity stays unchanged. Review the fresh exact Write plan after host binding verification.',
-            'next_action' => 'Review governed Write',
+            // Direct GET into the EXISTING owner review removes navigation hops.
+            // It does not create an intent, ticket or grant, and cannot run an apply.
+            'next_action' => 'Inspect exact Write plan (no changes)',
+            'next_url' => 'tools.php?page=mad4b-staging-write-owner-review',
             'next_ability' => 'mad4b/staging-write-authority-convergence-handshake',
         ) );
         if ( ! empty( $context['revocation_pending'] ) ) return array_merge( $base, array(
@@ -161,7 +164,7 @@ final class MAD4B_SCP_Staging_Recovery_Center {
         echo '<p>' . esc_html( $state['reason'] ) . '</p>';
         echo '<p><strong>Host binding:</strong> <code>' . esc_html( $state['binding_state'] )
             . '</code> <strong>Write:</strong> <code>' . esc_html( $state['write_state'] ) . '</code></p>';
-        echo '<p class="description">Identity and permissions are separate checks, not repeated approvals. No key rotation, grants or provider changes are made by opening this page.</p>';
+        echo '<p class="description">Identity and permissions are separate checks, not repeated approvals. The current safe preflight runs automatically when this page opens; it never rotates keys, changes grants, or starts a build.</p>';
         if ( ! empty( $state['next_url'] ) ) {
             echo '<p><a class="button button-secondary" href="' . esc_url( admin_url( $state['next_url'] ) ) . '">'
                 . esc_html( $state['next_action'] ) . '</a></p>';
