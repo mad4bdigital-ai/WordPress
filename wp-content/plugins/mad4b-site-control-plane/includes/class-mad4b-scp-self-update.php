@@ -2979,8 +2979,8 @@ final class MAD4B_SCP_Self_Update {
 				'channel' => array( 'type' => 'string', 'enum' => array( 'governed_file_upload', 'staging_candidate_upload', 'wordpress_native_candidate_upload' ) ),
 				'candidate_source' => array( 'type' => 'object', 'properties' => array(
 					'repository' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 140 ),
-					'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit' ) ),
-					'reference' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 120 ),
+					'type' => array( 'type' => 'string', 'enum' => array( 'pull_request', 'branch', 'commit', 'branch_commit' ) ),
+					'reference' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 161 ),
 				), 'required' => array( 'repository', 'type', 'reference' ), 'additionalProperties' => false ),
 			),
 			'required' => array( 'version', 'source_commit_sha', 'archive_sha256', 'build_fingerprint', 'package_manifest_digest', 'size_bytes', 'reason' ),

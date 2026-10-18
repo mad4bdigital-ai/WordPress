@@ -11,6 +11,8 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		if ( self::$booted ) return;
 		self::$booted = true;
 		MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'register_menu' ), 31 );
+        require_once __DIR__ . '/class-mad4b-scp-staging-selected-head-admin.php';
+        MAD4B_SCP_Staging_Selected_Head_Admin::boot();
 	}
 
 	public static function register_menu() {
@@ -97,6 +99,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<h2>' . esc_html__( 'Certified runtime update', 'mad4b-site-control-plane' ) . '</h2>';
 		echo '<p class="mad4b-scp-section-lead">' . esc_html__( 'Update MAD4B Site Control Plane and the official MCP Adapter only as one certified compatible runtime set. The operation re-plans the exact release pair before mutation and preserves the existing governed verification, rollback and readback boundaries.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<div class="notice notice-info inline"><p>' . esc_html__( 'The WordPress Plugins update channel is the stable Release-Verdict channel published from master only. Pull-request candidate builds are intentionally not offered there before merge.', 'mad4b-site-control-plane' ) . '</p></div>';
+        MAD4B_SCP_Staging_Selected_Head_Admin::render();
         // A passive GET must not make outbound update-channel requests.
         // Place the read-only refresh in its own admin screen (not inside
         // the WordPress Plugins bulk-action form).

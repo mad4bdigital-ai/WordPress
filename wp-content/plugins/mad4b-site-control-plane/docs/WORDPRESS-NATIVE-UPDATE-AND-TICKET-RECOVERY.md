@@ -23,3 +23,9 @@ Tests: deployment-binding-wordpress-update-runtime.php (wrong context, missing n
 Live Staging must separately demonstrate: actual WordPress-update UX, pending ticket creation and authorized approval, independent binding readback, re-planned Write, Context onboarding and browser acceptance. A successful local test is not real MCP client registration or a Production release decision.
 
 **No change to Production authorization, Developer, Breakglass, raw SQL, external Google grants, or automatic WordPress core updates.**
+
+## Staging branch / exact commit workspace
+
+Runtime Components > Runtime Update offers an opt-in Staging-only source picker. It accepts branch HEAD, exact commit, PR HEAD, or an exact commit proven as an ancestor of a named branch (GitHub compare read: `compare/<SHA>...<branch>`). The preview pins source SHA, independently certified GitHub release manifest, existing upload plan digest and Site Profile digest. A nonce-protected administrator action only **previews**; selected-head install remains a separate administrator POST which delegates to the existing `Selected_Head_Update::apply` and therefore must satisfy the enrolled owner, OAuth Step-Up, exact authorizing ticket, archive digest, independent evidence, backup, rollback and readback checks. No caller-supplied package URL/archive and no arbitrary source tarballs. The site never caches OAuth tokens. Staging-only UI is hidden outside exact staging Site Profile + WordPress environment.
+
+The existing recurring WP-Cron recovery is bound to the signed stable master release channel; it does not pick arbitrary PR/branch/commit or convey the owner's OAuth Step-Up. This Staging picker does not enqueue a Cron mutation or reinterpret a read-only preview as authorization.
