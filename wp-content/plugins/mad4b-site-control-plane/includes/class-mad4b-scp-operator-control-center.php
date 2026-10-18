@@ -238,6 +238,14 @@ final class MAD4B_SCP_Operator_Control_Center {
 		if ( false === self::tri( $signals, 'live_evidence_ready' ) ) $degraded[] = 'live_evidence_not_ready';
 		if ( false === self::tri( $signals, 'external_machine_ingress_reachable' ) ) $degraded[] = 'external_machine_ingress_not_reachable';
 
+		// Only non-authorizing DEGRADED operator notices can be optional.
+		// Blockers and recovery outcomes are deliberately never projected.
+		$optional_policy = class_exists( 'MAD4B_SCP_Optional_Governance', false )
+			? MAD4B_SCP_Optional_Governance::project( $degraded, $signals ) : array(
+				'degraded' => $degraded, 'raw_degraded' => $degraded,
+				'advisory' => array(), 'muted' => array(), 'active_policy' => false );
+		$degraded = $optional_policy['degraded'];
+
 		$state = 'HEALTHY';
 		if ( ! empty( $degraded ) ) $state = 'DEGRADED';
 		if ( ! empty( $blocking ) ) $state = 'BLOCKED';
@@ -250,6 +258,10 @@ final class MAD4B_SCP_Operator_Control_Center {
 			'reasons' => $reasons,
 			'next_actions' => self::next_actions( $reasons ),
 			'signals' => $signals,
+			'raw_degraded_reasons' => $optional_policy['raw_degraded'],
+			'optional_advisories' => $optional_policy['advisory'],
+			'muted_optional_reasons' => $optional_policy['muted'],
+			'optional_policy_active' => $optional_policy['active_policy'],
 			'authorizing' => false,
 			'production_authorized' => false,
 			'mutation_performed' => false,
