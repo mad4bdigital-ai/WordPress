@@ -107,6 +107,24 @@ with mock.patch.object(reg, "json_file", side_effect=previous_review):
     except ValueError as exc:
         assert "Previously reviewed capability history" in str(exc)
 
+    narrower = copy.deepcopy(covered)
+    narrower["reviewed_capabilities"][0]["control_ids"] = ["SECURITY-01"]
+    try:
+        reg.validate_coverage(narrower, controls, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("Old controls must not disappear from reviewed coverage")
+    except ValueError as exc:
+        assert "review coverage cannot shrink" in str(exc)
+
+    downgrade = copy.deepcopy(controls)
+    next(x for x in downgrade["controls"] if x["id"] == "GOVERNANCE-01")["priority"] = "P1"
+    try:
+        reg.validate_coverage(copy.deepcopy(covered), downgrade, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("Old P0 must not silently become P1")
+    except ValueError as exc:
+        assert "silently downgraded" in str(exc)
+
     weakened = copy.deepcopy(covered)
     weakened["domain_rules"][0]["pattern"] = "^$"
     try:
@@ -130,5 +148,14 @@ with mock.patch.object(reg, "json_file", side_effect=previous_retirement):
         raise AssertionError("Losing a historical retirement record must fail")
     except ValueError as exc:
         assert "historical decommission" in str(exc).lower()
+
+    changed_retirement = copy.deepcopy(retired)
+    changed_retirement["lifecycle"][0]["state"] = "deprecated"
+    try:
+        reg.validate_coverage(changed_retirement, controls, base, head,
+                              [("M", "docs/OTHER.md")], {}, {})
+        raise AssertionError("An old decommission record cannot be rewritten")
+    except ValueError as exc:
+        assert "decommission evidence cannot be silently changed" in str(exc)
 
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

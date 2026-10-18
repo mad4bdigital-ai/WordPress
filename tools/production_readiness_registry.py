@@ -179,7 +179,13 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     disappeared = {x["id"] for x in old_controls["controls"]} - ctl_ids
     ensure(not disappeared, "A historical control was deleted: " + repr(sorted(disappeared)))
     ensure(len(ctl_ids) >= 170, "Baseline controls removed")
+    prior_control_rows = {x["id"]: x for x in old_controls["controls"]}
     for entry in controls["controls"]:
+        old_row = prior_control_rows.get(entry["id"])
+        if old_row and old_row.get("priority") == "P0":
+            ensure(entry.get("priority") == "P0",
+                   "A historical P0 control must not be silently downgraded: " +
+                   entry["id"])
         if "lifecycle" not in entry:
             continue
         ensure(entry["lifecycle"] in {"active", "deprecated", "superseded"},
@@ -205,9 +211,21 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
     ids = [x.get("id") for x in reviews]
     ensure(previously_reviewed <= set(ids),
            "Previously reviewed capability history must not be deleted")
+    old_review_rows = {x["id"]: x for x in previous.get("reviewed_capabilities", [])}
+    current_review_rows = {x["id"]: x for x in reviews}
+    for old_id, old_entry in old_review_rows.items():
+        newer = current_review_rows[old_id]
+        ensure(set(old_entry.get("control_ids", [])) <= set(newer.get("control_ids", []))
+               and set(old_entry.get("regression_tests", [])) <=
+               set(newer.get("regression_tests", [])),
+               "Historical capability review coverage cannot shrink: " + old_id)
     previous_retired = {x.get("id") for x in previous.get("lifecycle", [])}
     ensure(previous_retired <= {x.get("id") for x in coverage.get("lifecycle", [])},
            "A historical decommission or supersession receipt was removed")
+    old_retired_rows = {x["id"]: x for x in previous.get("lifecycle", [])}
+    new_retired_rows = {x["id"]: x for x in coverage.get("lifecycle", [])}
+    ensure(all(new_retired_rows.get(k) == v for k, v in old_retired_rows.items()),
+           "Historical decommission evidence cannot be silently changed")
     old_rules = {x["id"]: x for x in previous.get("domain_rules", [])}
     new_rules = {x["id"]: x for x in coverage.get("domain_rules", [])}
     ensure(all(new_rules.get(k) == v for k, v in old_rules.items()),
