@@ -276,6 +276,23 @@ def validate_coverage(coverage, controls, base, head, changed, added, removed):
         ensure(rule.get("controls") and set(rule["controls"]) <= ctl_ids,
                "Impact rule references absent controls")
         re.compile(rule["pattern"])
+    # Deterministic invariant tests run against every proposed policy change,
+    # not only during the test suite. New broad patterns cannot shadow existing
+    # security, MCP, data, Admin, or update categories unnoticed.
+    category_probes = (
+        ("includes/class-mad4b-scp-admin-options.php", "admin"),
+        ("includes/class-mad4b-scp-database-schema.php", "data"),
+        ("includes/class-mad4b-scp-mcp-hybrid.php", "mcp"),
+        ("includes/class-mad4b-scp-authentication.php", "authority"),
+        ("includes/class-mad4b-scp-plugin-rollback.php", "update"),
+        ("assets/js/admin-ui.js", "admin"),
+    )
+    for relative, expected in category_probes:
+        actual = classify(REQUIRED_SOURCE_ROOT + relative,
+                          REQUIRED_SOURCE_ROOT + relative, coverage)["id"]
+        ensure(actual == expected,
+               "Impact classification contract drift: " + relative +
+               " expected " + expected + " got " + actual)
     reviews = coverage.get("reviewed_capabilities", [])
     # Reviews are a persistent versioned registry. A previously reviewed
     # capability remains in Git after its introduction PR is merged.

@@ -274,4 +274,45 @@ with mock.patch.object(reg, "json_file", side_effect=old_policy):
     except ValueError as exc:
         assert "remove linked controls" in str(exc)
 
+# Protect the scanner scope against mutable policy bypasses.
+for field, value in (
+    ("runtime_root", "wp-content/plugins/no-longer-used/"),
+    ("included_subtrees", []),
+    ("covered_extensions", [".php"]),
+    ("root_php", False),
+    ("excluded_subtrees", ["includes/", "tests/"]),
+):
+    weakened = copy.deepcopy(policy)
+    weakened["code_change_rules"][field] = value
+    with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
+        try:
+            reg.validate_coverage(weakened, controls, base, head, [], {}, {})
+        except ValueError as exc:
+            assert "Protected runtime coverage scope" in str(exc)
+        else:
+            raise AssertionError("Scope bypass succeeded: " + field)
+
+# Existing update risk must not capture the generic wp-content/plugins folder.
+for suffix, expected in (
+    ("includes/class-mad4b-scp-admin-options.php", "admin"),
+    ("includes/class-mad4b-scp-database-schema.php", "data"),
+    ("includes/class-mad4b-scp-mcp-hybrid.php", "mcp"),
+    ("includes/class-mad4b-scp-authentication.php", "authority"),
+    ("assets/js/admin-ui.js", "admin"),
+):
+    assert reg.classify(reg.PLUGIN + suffix, reg.PLUGIN + suffix, policy)["id"] == expected
+
+shadow = copy.deepcopy(policy)
+shadow["domain_rules"].insert(0, {
+    "id": "shadow-all", "pattern": ".*", "risk": "P1",
+    "controls": ["ADMIN-01", "BROWSER-01"],
+})
+with mock.patch.object(reg, "json_file", side_effect=initial_baseline):
+    try:
+        reg.validate_coverage(shadow, controls, base, head, [], {}, {})
+    except ValueError as exc:
+        assert "Unbounded new rule" in str(exc)
+    else:
+        raise AssertionError("Unbounded precedence override allowed")
+
 print("DYNAMIC_READINESS_NEGATIVE_REGRESSIONS: PASS")

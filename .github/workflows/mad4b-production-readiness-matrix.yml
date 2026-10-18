@@ -93,6 +93,28 @@ jobs:
             --head-sha "$EXACT_HEAD" \
             --out artifacts/production-readiness
           cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Execute required mapped regression tests, not merely check filenames
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_test_execution.py self-test
+          python3 tools/readiness_test_execution.py evaluate \
+            --head-sha "$EXACT_HEAD" \
+            --impact artifacts/production-readiness/capability-impact.json \
+            --out artifacts/production-readiness
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("artifacts/production-readiness/executed-regressions.json").read_text())
+          impact=json.loads(Path("artifacts/production-readiness/capability-impact.json").read_text())
+          assert report["contract"] == "mad4b.readiness-executed-regressions.v1"
+          assert report["authorizing"] is False and report["production_authorized"] is False
+          assert report["exact_head_sha"] == impact["exact_head_sha"]
+          assert sorted(x["path"] for x in report["tests"]) == sorted(impact["required_regression_tests"])
+          assert report["passed_count"] == report["required_count"]
+          print("MAPPED_REGRESSION_EXECUTION_GATE: PASS")
+          PY
       - name: Verify per-control history stays non-authorizing
         run: |
           python3 - <<'PY'

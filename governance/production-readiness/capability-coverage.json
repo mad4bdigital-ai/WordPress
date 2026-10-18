@@ -19,7 +19,7 @@
   "domain_rules": [
     {
       "id": "authority",
-      "pattern": "authorization|approval|oauth|grant|security|policy|fence|identity|ticket",
+      "pattern": "authorization|approval|oauth|grant|security|policy|fence|identity|ticket|authenticat(?:ion|e|ing)",
       "risk": "P0",
       "controls": [
         "GOVERNANCE-02",
