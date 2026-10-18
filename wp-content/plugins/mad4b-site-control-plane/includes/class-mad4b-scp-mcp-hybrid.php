@@ -2,6 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-mcp-hybrid-authority.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-peer-health.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-header-parameters.php';
 require_once __DIR__ . '/class-mad4b-scp-external-adapter-trust.php';
 require_once __DIR__ . '/class-mad4b-scp-mcp-local-ability-trust.php';
 
@@ -235,7 +236,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_mcp_credential_unsafe', 'Provider bearer value is unsafe.' );
         return $token;
     }
-    private static function rpc( array $peer, $method, $params, $version, $session = '' ) {
+    private static function rpc( array $peer, $method, $params, $version, $session = '', $mirror_headers = array() ) {
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return new WP_Error( 'mad4b_mcp_peer_url_unsafe', 'Pinned MCP endpoint is not eligible for HTTPS transport.' );
         $isolation = self::transport_isolation_guard( $peer );
         if ( is_wp_error( $isolation ) ) return $isolation;
@@ -260,6 +261,15 @@ final class MAD4B_SCP_MCP_Hybrid {
             && is_array( $params ) && is_string( $params['name'] ?? null )
             && preg_match( '/^[A-Za-z0-9_.:-]{1,128}$/D', $params['name'] ) )
             $headers['Mcp-Name'] = $params['name'];
+        if ( '2026-07-28' === $version && 'tools/call' === $method ) {
+            if ( ! is_array( $mirror_headers ) ) return new WP_Error( 'mad4b_mcp_invalid_mirror_headers', 'MCP custom routing headers must be reviewed.' );
+            foreach ( $mirror_headers as $name => $value ) {
+                if ( ! is_string( $name ) || ! preg_match( '/^Mcp-Param-[!#$%&\\x27*+.^_\\x60|~0-9A-Za-z-]{1,64}$/D', $name )
+                    || ! is_string( $value ) || strlen( $value ) > 12000 )
+                    return new WP_Error( 'mad4b_mcp_invalid_mirror_header', 'Unreviewed tool routing header denied.' );
+                $headers[$name] = $value;
+            }
+        }
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
         $token = self::peer_token( $peer['id'] );
         if ( is_wp_error( $token ) ) return $token;
@@ -440,6 +450,10 @@ final class MAD4B_SCP_MCP_Hybrid {
                     || ! preg_match( '/^[a-zA-Z0-9_.:-]{1,128}$/D', $tool['name'] )
                     || ! is_array( $tool['inputSchema'] ?? null ) || isset( $result[$tool['name']]) )
                     return new WP_Error( 'mad4b_mcp_tools_list_ambiguous', 'Duplicate or malformed MCP tool identity.' );
+                $annotations_valid = MAD4B_SCP_MCP_Header_Parameters::definition( $tool['inputSchema'] );
+                // MCP requires malformed annotated tools to be excluded,
+                // rather than allowing one invalid tool to poison other peers.
+                if ( is_wp_error( $annotations_valid ) ) continue;
                 $result[$tool['name']] = array(
                     'name' => $tool['name'],
                     'input_schema' => $tool['inputSchema'],
@@ -680,9 +694,13 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_native_read_annotation_missing', 'Remote tool did not affirm non-destructive read-only behavior.' );
         // Invoke on the very same negotiated MCP session as the verified
         // tools/list snapshot; never substitute a stale session from a prior request.
+        $mirror_headers = '2026-07-28' === $session['version']
+            ? MAD4B_SCP_MCP_Header_Parameters::from_schema( $tool['input_schema'], $arguments )
+            : array();
+        if ( is_wp_error( $mirror_headers ) ) return $mirror_headers;
         $reply = self::rpc( $peers[$peer_id], 'tools/call',
             array( 'name' => $binding['tool'], 'arguments' => $arguments ),
-            $session['version'], $session['session'] );
+            $session['version'], $session['session'], $mirror_headers );
         unset( self::$request_catalogs[$prepared['cache_key']] );
         if ( is_wp_error( $reply ) ) return $reply;
         if ( ! is_array( $reply['wire']['result'] ?? null ) )
