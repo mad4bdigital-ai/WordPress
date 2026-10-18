@@ -9,6 +9,11 @@ class WP_Error {
 function is_wp_error( $value ) { return $value instanceof WP_Error; }
 function wp_json_encode( $value, $options = 0 ) { return json_encode( $value, $options ); }
 function wp_http_validate_url( $url ) { return strpos( $url, 'https://reviewed.example/' ) === 0; }
+$GLOBALS['hybrid_isolation_effective'] = false;
+class MAD4B_SCP_MCP_Provider_Isolation {
+    public static function effective() { return ! empty( $GLOBALS['hybrid_isolation_effective'] ); }
+}
+function site_url() { return 'https://reviewed.example'; }
 abstract class MAD4B_SCP_Adapter_Base {}
 class MAD4B_SCP_Policy { public static function can_read() { return ! empty( $GLOBALS['hybrid_wp_read'] ); } }
 class MAD4B_SCP_Identity_Context { public static function current() {
@@ -64,6 +69,7 @@ function wp_safe_remote_post( $url, $args ) {
     } elseif ( $method === 'tools/call' ) {
         $result = array( 'content' => array( array('type'=>'text', 'text'=>'SAFE_DATA') ), 'isError'=>false );
     } else return new WP_Error( 'unexpected_call', 'unknown method' );
+    if ( 'legacy' !== $revision ) $result['resultType'] = 'complete';
     $wire = array( 'jsonrpc'=>'2.0', 'id'=>$json['id'], 'result'=>$result );
     if ( $method === 'tools/call' && ! empty( $GLOBALS['mcp_both_result_error'] ) )
         $wire['error'] = array( 'code'=>-32000, 'message'=>'Contradictory RPC result and error' );
@@ -106,6 +112,14 @@ define( 'MAD4B_SCP_MCP_PEER_MANIFEST_PATH', $manifest_path );
 define( 'MAD4B_SCP_MCP_PEER_MANIFEST_SHA256', hash_file( 'sha256', $manifest_path ) );
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-mcp-hybrid.php';
 $hybrid = 'MAD4B_SCP_MCP_Hybrid';
+$GLOBALS['hybrid_isolation_effective'] = true;
+$before_isolation = count($GLOBALS['mcp_calls']);
+$isolation_denied = $hybrid::catalog('test-peer');
+mcp_check(is_wp_error($isolation_denied)
+    && $isolation_denied->get_error_code()==='mad4b_mcp_provider_isolated'
+    && count($GLOBALS['mcp_calls'])===$before_isolation,
+    'Provider isolation blocks same-origin MCP before any outbound call');
+$GLOBALS['hybrid_isolation_effective'] = false;
 $catalog = $hybrid::catalog('test-peer');
 mcp_check( ! is_wp_error($catalog) && $catalog['protocol']==='2026-07-28' && $catalog['tool_count']===2,
     'Modern server/discover + paginated tools/list operational' );
