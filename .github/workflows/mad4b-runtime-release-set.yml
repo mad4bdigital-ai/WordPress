@@ -66,6 +66,8 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-admin.php
           php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-admin-environment-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-popup-inline-runtime.php
+          node --check wp-content/plugins/mad4b-site-control-plane/assets/plugin-update-dialog.js
           python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json >/dev/null
           python3 wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-artifact-builder-contract.py
           python3 -m py_compile tools/mad4b-cross-plugin-package.py
