@@ -123,6 +123,79 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         echo '<p><a href="' . esc_url( self::tab_url( 'capabilities' ) ) . '">Back to capability graph</a></p>';
     }
 
+    /** Strict user-request shape; a passive GET never calls provider endpoints. */
+    public static function diagnostic_request( array $raw ) {
+        $peer = isset( $raw['peer_id'] ) && is_string( $raw['peer_id'] ) ? $raw['peer_id'] : '';
+        $mode = isset( $raw['mode'] ) && is_string( $raw['mode'] ) ? $raw['mode'] : '';
+        $ability = isset( $raw['ability'] ) && is_string( $raw['ability'] ) ? $raw['ability'] : '';
+        $sha = isset( $raw['expected_catalog_sha256'] ) && is_string( $raw['expected_catalog_sha256'] )
+            ? strtolower( $raw['expected_catalog_sha256'] ) : '';
+        if ( ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $peer )
+            || ! in_array( $mode, array( 'catalog', 'read' ), true ) ) return null;
+        if ( 'read' === $mode && ( ! preg_match( '/^[A-Za-z0-9_./:-]{1,191}$/D', $ability )
+            || ! preg_match( '/^[a-f0-9]{64}$/D', $sha ) ) ) return null;
+        if ( 'catalog' === $mode && ( '' !== $ability || '' !== $sha ) ) return null;
+        return array( 'peer_id' => $peer, 'mode' => $mode,
+            'ability' => $ability, 'expected_catalog_sha256' => $sha );
+    }
+
+    /** Explicit nonce-protected POST only. Auth, pins, OAuth, schema,
+     * grants and read behavior remain enforced by the existing MCP Hybrid. */
+    public static function handle_diagnostic_post() {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
+        check_admin_referer( 'mad4b_native_peer_diagnostic' );
+        $raw = array();
+        foreach ( array( 'peer_id', 'mode', 'ability', 'expected_catalog_sha256' ) as $key ) {
+            $raw[ $key ] = isset( $_POST[ $key ] ) && is_string( $_POST[ $key ] )
+                ? (string) wp_unslash( $_POST[ $key ] ) : '';
+        }
+        $input = self::diagnostic_request( $raw );
+        $record = array( 'state' => 'Blocked', 'phase' => 'input', 'peer_id' => '',
+            'checked_at' => time(), 'error_code' => 'invalid_request',
+            'catalog_sha256' => '', 'response_sha256' => '', 'tool_count' => 0 );
+        if ( null !== $input && class_exists( 'MAD4B_SCP_MCP_Hybrid', false ) ) {
+            $record['peer_id'] = $input['peer_id'];
+            $record['phase'] = $input['mode'];
+            // No unpinned peer, anonymous caller or credentials-from-form.
+            $pinned = MAD4B_SCP_MCP_Hybrid::manifest();
+            if ( isset( $pinned[ $input['peer_id'] ] ) ) {
+                $result = 'catalog' === $input['mode']
+                    ? MAD4B_SCP_MCP_Hybrid::catalog( $input['peer_id'] )
+                    : MAD4B_SCP_MCP_Hybrid::read_tool( array(
+                        'peer_id' => $input['peer_id'], 'ability' => $input['ability'],
+                        'expected_catalog_sha256' => $input['expected_catalog_sha256'],
+                        'arguments' => array(),
+                    ) );
+                if ( is_wp_error( $result ) ) {
+                    $record['error_code'] = sanitize_key( $result->get_error_code() );
+                } elseif ( is_array( $result ) ) {
+                    if ( 'catalog' === $input['mode'] ) {
+                        $sha = isset( $result['capability_snapshot_sha256'] )
+                            ? (string) $result['capability_snapshot_sha256'] : '';
+                        if ( preg_match( '/^[a-f0-9]{64}$/D', $sha ) ) {
+                            $record['state'] = 'Available';
+                            $record['catalog_sha256'] = $sha;
+                            $record['tool_count'] = isset( $result['tools'] ) && is_array( $result['tools'] ) ? count( $result['tools'] ) : 0;
+                            $record['error_code'] = '';
+                        } else $record['error_code'] = 'catalog_fingerprint_invalid';
+                    } else {
+                        $record['state'] = 'Verified';
+                        $record['error_code'] = '';
+                        $response = wp_json_encode( $result );
+                        $record['response_sha256'] = is_string( $response ) ? hash( 'sha256', $response ) : '';
+                    }
+                } else $record['error_code'] = 'diagnostic_response_invalid';
+            } else $record['error_code'] = 'peer_not_pinned';
+        }
+        // Only a bounded, redacted outcome is cached for the same operator;
+        // full provider output, OAuth material and schemas never persist here.
+        set_transient( 'mad4b_native_diag_' . get_current_user_id(), $record, 120 );
+        wp_safe_redirect( MAD4B_SCP_Admin_Experience::tab_url(
+            MAD4B_SCP_Adapter_Coverage_Admin_UI::PAGE_SLUG, 'native-peers'
+        ), 303 );
+        exit;
+    }
+
     public static function render_peers() {
         if ( ! current_user_can( 'manage_options' ) ) return;
         $inventory = class_exists( 'MAD4B_SCP_MCP_Hybrid', false )
@@ -137,6 +210,29 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         foreach ( $model['rows'] as $row ) echo '<tr><th scope="row"><code>' . esc_html( $row['id'] ) . '</code></th><td>' . esc_html( $row['catalog_state'] ) . '</td><td>' . esc_html( $row['read_state'] ) . '</td><td>' . esc_html( (string) $row['retry_after_seconds'] ) . ' s</td></tr>';
         if ( ! $model['rows'] ) echo '<tr><td colspan="4">No owner-pinned native peer is available on this build.</td></tr>';
         echo '</tbody></table></div>';
+        $recent = get_transient( 'mad4b_native_diag_' . get_current_user_id() );
+        if ( is_array( $recent ) && isset( $recent['state'], $recent['phase'] ) ) {
+            echo '<p>Last operator-requested ' . esc_html( (string) $recent['phase'] ) . ' check: <strong>'
+                . esc_html( (string) $recent['state'] ) . '</strong> · Peer: <code>'
+                . esc_html( (string) ( $recent['peer_id'] ?? '' ) ) . '</code> · Error: <code>'
+                . esc_html( (string) ( $recent['error_code'] ?? '' ) ) . '</code></p>';
+            if ( ! empty( $recent['catalog_sha256'] ) ) echo '<p>Reviewed catalog SHA-256: <code>' . esc_html( $recent['catalog_sha256'] ) . '</code></p>';
+            if ( ! empty( $recent['response_sha256'] ) ) echo '<p>Read response digest: <code>' . esc_html( $recent['response_sha256'] ) . '</code></p>';
+        }
+        if ( $model['rows'] ) {
+            echo '<h3>Request native MCP diagnostic</h3><p>Only this POST performs a provider network check. The existing exact peer, per-Agent grant, OAuth and reviewed read guards apply. A successful catalog check is not read certification.</p>';
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+            echo '<input type="hidden" name="action" value="mad4b_native_peer_diagnostic">';
+            wp_nonce_field( 'mad4b_native_peer_diagnostic' );
+            echo '<p><label>Owner-pinned peer <select name="peer_id">';
+            foreach ( $model['rows'] as $row ) echo '<option value="' . esc_attr( $row['id'] ) . '">' . esc_html( $row['id'] ) . '</option>';
+            echo '</select></label></p>';
+            echo '<p><label>Diagnostic <select name="mode"><option value="catalog">Catalog / OAuth / schema</option><option value="read">Reviewed read canary (empty arguments)</option></select></label></p>';
+            echo '<p><label>Exact read Ability <input name="ability" type="text" maxlength="191"></label></p>';
+            echo '<p><label>Prior catalog SHA-256 <input name="expected_catalog_sha256" type="text" maxlength="64" size="64"></label></p>';
+            echo '<p class="description">For catalog inspection leave the last two fields empty. For a read canary supply an already approved Ability and the exact catalog fingerprint. A failure is not retried as another route.</p>';
+            echo '<p><button type="submit" class="button button-secondary">Run explicit diagnostic</button></p></form>';
+        }
         $connection = MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane-connection', array( 'tab' => 'oauth' ) );
         $history = MAD4B_SCP_Admin_Workspace::link( 'mad4b-control-plane', array( 'tab' => 'audit' ) );
         echo '<p>Auth audience, scope, expiry and canary freshness are not probed in this passive view. Inspect the governed connection and audit surfaces for independent evidence.</p>';
