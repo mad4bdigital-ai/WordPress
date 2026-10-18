@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/optional-governance-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
@@ -30,6 +33,9 @@ jobs:
       - run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-server-write-catalog.php
+          php -l wp-content/plugins/mad4b-site-control-plane/config/remote-operation-catalog.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-navigation-manifest.php

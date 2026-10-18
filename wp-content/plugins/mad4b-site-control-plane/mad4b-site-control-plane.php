@@ -533,6 +533,7 @@ MAD4B_SCP_G5_Acceptance::boot();
 MAD4B_SCP_G6_Acceptance::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-settings-persistence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-optional-governance.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-optional-governance-remote.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-dynamic-content-pipeline-admin.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-surface-coverage.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-admin-ui.php';
@@ -572,6 +573,7 @@ MAD4B_SCP_Browser_Acceptance_Admin_UI::boot();
 MAD4B_SCP_Site_Profile_Admin::boot();
 MAD4B_SCP_Admin_Settings_Persistence::boot();
 MAD4B_SCP_Optional_Governance::boot();
+MAD4B_SCP_Optional_Governance_Remote::boot();
 MAD4B_SCP_Staging_OAuth_Autoconfig::boot_admin_actions_early();
 
 MAD4B_SCP_Site_Profile::bootstrap();

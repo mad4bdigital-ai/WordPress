@@ -3,6 +3,20 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 return array(
+            'optional_governance_preference_update' => array(
+                'feature_id' => 'optional-governance-options-control',
+                'capability_tags' => array( 'options', 'advisory', 'governance', 'profile', 'readback', 'policy' ),
+                'provider' => 'core',
+                'status_ability' => 'mad4b/optional-governance-verify',
+                'local_surface' => 'wp-admin:MAD4B/Options Control',
+                'remote_ability' => 'mad4b/optional-governance-apply',
+                'authority_surface' => 'mad4b-write',
+                'executor' => 'wordpress_native',
+                'remote_mode' => 'exact_staging_owner_reviewed_one_policy_plan_apply_verify',
+                'remote_caller_role' => 'owner',
+                'production_policy' => 'deny',
+                'human_decision_required' => true,
+            ),
 			'managed_skills_reconciliation' => array(
 				'feature_id' => 'dynamic-skills',
 				'capability_tags' => array( 'skills', 'seed', 'provider-reconciliation', 'maintenance', 'bootstrap' ),

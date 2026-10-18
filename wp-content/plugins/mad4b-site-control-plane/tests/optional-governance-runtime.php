@@ -2,7 +2,15 @@
 /** Hermetic optional governance diagnostics; no WordPress install required. */
 define( 'ABSPATH', __DIR__ );
 define( 'MAD4B_SCP_DIR', dirname( __DIR__ ) . '/' );
-class WP_Error { public function __construct( $code, $message ) {} }
+class WP_Error {
+    private $code; private $message;
+    public function __construct( $code, $message ) { $this->code=$code; $this->message=$message; }
+    public function get_error_message() { return $this->message; }
+    public function get_error_code() { return $this->code; }
+}
+function get_current_user_id() { return 1; }
+function get_current_blog_id() { return 1; }
+function home_url( $path = '/' ) { return 'https://example.test' . $path; }
 $GLOBALS['operating_mode'] = 'SINGLE_OWNER_HARDENED';
 class MAD4B_SCP_Policy_Resolution {
     public static function current_operating_mode() { return $GLOBALS['operating_mode']; }
@@ -26,9 +34,20 @@ function apply_filters( $name, $initial ) {
 }
 function expect( $test, $message ) { if ( ! $test ) throw new RuntimeException( $message ); }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-optional-governance.php';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-optional-governance-remote.php';
 $cls = 'MAD4B_SCP_Optional_Governance';
+$remote = 'MAD4B_SCP_Optional_Governance_Remote';
 $initial = $cls::status();
 expect( $initial['valid'] && count( $initial['gates'] ) === 5, 'Built-in + dynamic advisory policy catalog missing' );
+$remote_plan = $remote::plan( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+expect( ! is_wp_error( $remote_plan ) &&
+    preg_match( '/^[a-f0-9]{64}$/', $remote_plan['plan_sha256'] ) &&
+    empty( $remote_plan['mutation_performed'] ), 'Remote plan must not mutate and must bind SHA' );
+$remote_read = $remote::verify( array( 'policy_id'=>'developer_lane', 'mode'=>'off' ) );
+expect( ! is_wp_error( $remote_read ) && false === $remote_read['verified'],
+    'Remote verify must report a mismatched stored setting without changing it' );
+$remote_unknown = $remote::plan( array( 'policy_id'=>'unknown_policy', 'mode'=>'off' ) );
+expect( is_wp_error( $remote_unknown ), 'Unknown remote policy must be refused' );
 $hard = array( 'repository_evidence_failed', 'runtime_identity_mismatch', 'developer_lane_not_ready' );
 $project = $cls::project( $hard, array() );
 expect( in_array('developer_lane_not_ready',$project['advisory'],true)
@@ -80,6 +99,11 @@ expect( $invalid['degraded'] === $hard && ! $invalid['active_policy'], 'Invalid 
 // Save-path regression: an append-only audit failure after the first-ever
 // persistence must remove the newly added option, not leave it half applied.
 function current_user_can( $capability ) { return 'manage_options' === $capability; }
+$unauthorized = $remote::apply(array( 'policy_id'=>'developer_lane','mode'=>'off',
+    'confirmation'=>$remote::CONFIRM,'expected_plan_sha256'=>$remote_plan['plan_sha256'] ));
+expect( is_wp_error($unauthorized) &&
+    $unauthorized->get_error_code()==='mad4b_optional_remote_staging_authority_denied',
+    'Remote Apply must deny an unauthenticated/no-Site-Profile WordPress request' );
 function check_admin_referer( $action ) { return true; }
 function wp_unslash( $value ) { return $value; }
 function wp_generate_uuid4() { return 'test-lease-token'; }
