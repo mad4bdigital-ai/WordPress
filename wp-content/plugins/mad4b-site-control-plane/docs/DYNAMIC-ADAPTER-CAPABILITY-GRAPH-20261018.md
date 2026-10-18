@@ -227,3 +227,39 @@ Each owner-pinned peer manifest may optionally declare:
 The `audience` must match the HTTPS origin in the pinned endpoint. If any required scopes are declared and no trusted credential resolver is configured, the peer fails closed; legacy static token constants are only accepted for peers without required scopes. This is a compatibility path, **not** independent OAuth expiration assurance. The resolver can be implemented by a reviewed external credential integration without adding new MAD4B core adapters, secrets, or WordPress options.
 
 No credentials are returned through the candidate inventory, catalog results, hybrid plan, audit digests, or circuit breaker. Existing exact per-user/Agent grants still control every read execution separately from provider OAuth authorization.
+
+## October 18 governance closure: category, grants, transport, canary and audit
+
+**P0 registration:** `MAD4B_SCP_MCP_Hybrid::boot()` registers `mad4b-native-mcp` during `wp_abilities_api_categories_init`, before five corresponding `wp_abilities_api_init` abilities. The hermetic fixture models WordPress rejection of missing categories; live WordPress acceptance remains required.
+
+**No credentialed discovery without a grant:** `mad4b/native-mcp-catalog` now requires an authenticated Agent with an exact `mad4b-read` / `mad4b/native-mcp-catalog` / `native_mcp_<peer_id>` grant before any outbound call. The per-ability hybrid planner similarly checks `mad4b-read` / requested semantic ability / native peer provider before `tools/list`; on denial it can still plan separately reviewed local fallback **without outbound native access**. Native `tools/call` rechecks the grant immediately before invocation. The peer credential resolver remains an independent provider authentication check, never equivalent to Agent authorization.
+
+**Independent circuit phases:** native catalog and native read calls maintain separate bounded breaker counters and cooldowns. Successful `tools/list` clears only the catalog phase; it cannot reset consecutive `tools/call` outages. Catalog remains independently inspectable during a native read breaker; execution cannot route around an open read breaker. The hermetic regression exercises three consecutive failed tool calls while catalogs remain healthy.
+
+**2026-07-28 SEP-2243 custom headers:** `MCP_Header_Parameters` validates statically reachable `x-mcp-header` schema annotations, header-name uniqueness (case-insensitive), primitive type and safe integer range; disallows annotations within array/composition/ref paths. Invalid annotated tools are excluded from the catalog. Reviewed calls reflect safe arguments into `Mcp-Param-*` headers using exact Base64 sentinel encoding when needed. No `tools/call` retry after a protocol/header mismatch because partial side effects are unknown. This compatibility feature is tested with ordinary required properties, UTF-8 encoding, duplicate and invalid header declarations.
+
+**Behavioral read authorization, not trust in annotations alone:** `read_execution_reviewed=true` and server `readOnlyHint` are no longer sufficient. The operator-pinned manifest must also include an **unexpired exact per-tool** `read_behavior_certification` object under each executable read binding, with:
+
+```json
+{
+  "contract": "mad4b.native-mcp-read-behavior.v1",
+  "owner_reviewed": true,
+  "no_side_effects_observed": true,
+  "environment": "staging",
+  "peer_id": "my-peer",
+  "ability": "vendor/inspect",
+  "tool": "inspect",
+  "schema_sha256": "<actual 64-digit lowercase tool input schema digest>",
+  "observed_at": 1790000000,
+  "valid_until": 1790080000,
+  "before_state_sha256": "<actual independently scoped state digest>",
+  "after_state_sha256": "<same independently scoped state digest>",
+  "independent_evidence_sha256": "<actual Staging canary evidence artifact digest>"
+}
+```
+
+The `observed_at`/`valid_until` timestamps are illustrative and must be replaced with actual observed values. Admission enforces a 30-day maximum evidence age and exact Staging source, peer, ability, tool and schema. This is **an operator-reviewed assertion with artifact reference**, not automatic proof that an arbitrary external service is read-only. The actual evidence artifact, observation scope, and independent before/after state must be verified by the owner before pinning. Hermetic tests use **synthetic, non-production observations**. No real provider has been behaviorally certified by these tests.
+
+**Audit v2 receipts:** the hybrid client's new credentialed `tools/list` attempt and verified completion and native `tools/call` attempt and verified result use the existing append-only `MAD4B_SCP_Audit::record`; unavailable audit storage fails closed **before** provider I/O. Logs contain only stage, peer ID, ability and bounded SHA-256 digests, never bearer tokens, tool argument bodies or provider return bodies. This creates audited evidence, not a reversible operation journal for external writes.
+
+**Release boundary:** no native MCP Write / compensation executor, no current-head CI PASS, no deployment of PR #415, and no live per-provider behavioral Staging certificate. Native read remains disabled until independent source-pinned behavioral evidence and exact grants exist. Staging ETG diagnostics reported runtime `0.4.0-rc.102` and partial session-safe evidence, not this PR's new head; All Royal Egypt connector returned an internal error. Neither certifies new native MCP behavior or qualifies for Production rollout.
