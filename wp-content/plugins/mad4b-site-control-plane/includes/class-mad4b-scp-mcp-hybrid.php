@@ -1,6 +1,7 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-mcp-hybrid-authority.php';
+require_once __DIR__ . '/class-mad4b-scp-mcp-peer-health.php';
 
 /**
  * Owner-pinned native MCP discovery and hybrid routing.
@@ -183,6 +184,8 @@ final class MAD4B_SCP_MCP_Hybrid {
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return new WP_Error( 'mad4b_mcp_peer_url_unsafe', 'Pinned MCP endpoint is not eligible for HTTPS transport.' );
         $isolation = self::transport_isolation_guard( $peer );
         if ( is_wp_error( $isolation ) ) return $isolation;
+        $circuit = MAD4B_SCP_MCP_Peer_Health::check( $peer );
+        if ( is_wp_error( $circuit ) ) return $circuit;
         if ( ! function_exists( 'wp_safe_remote_post' ) ) return new WP_Error( 'mad4b_mcp_http_unavailable', 'Safe HTTP transport is unavailable.' );
         if ( null === self::$rpc_started_at ) self::$rpc_started_at = microtime( true );
         $elapsed = microtime( true ) - self::$rpc_started_at;
@@ -218,9 +221,16 @@ final class MAD4B_SCP_MCP_Hybrid {
             'timeout' => $timeout, 'redirection' => 0, 'sslverify' => true,
             'limit_response_size' => self::MAX_BYTES, 'blocking' => true,
         ) );
-        if ( is_wp_error( $response ) ) return new WP_Error( 'mad4b_mcp_peer_transport_failed', 'Peer MCP transport failed; no route can be certified.' );
+        if ( is_wp_error( $response ) ) {
+            MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer );
+            return new WP_Error( 'mad4b_mcp_peer_transport_failed', 'Peer MCP transport failed; no route can be certified.' );
+        }
         $status = wp_remote_retrieve_response_code( $response );
-        if ( $status < 200 || $status >= 300 ) return new WP_Error( 'mad4b_mcp_peer_http_' . (int) $status, 'Peer MCP HTTP status prevents catalog verification.' );
+        if ( $status < 200 || $status >= 300 ) {
+            if ( 429 === (int) $status || (int) $status >= 500 )
+                MAD4B_SCP_MCP_Peer_Health::transport_failed( $peer );
+            return new WP_Error( 'mad4b_mcp_peer_http_' . (int) $status, 'Peer MCP HTTP status prevents catalog verification.' );
+        }
         $body = wp_remote_retrieve_body( $response );
         if ( ! is_string( $body ) || strlen( $body ) >= self::MAX_BYTES ) return new WP_Error( 'mad4b_mcp_peer_response_unbounded', 'Peer MCP response was incomplete or too large.' );
         $type = strtolower( (string) wp_remote_retrieve_header( $response, 'content-type' ) );
@@ -256,6 +266,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             return new WP_Error( 'mad4b_mcp_peer_invalid_rpc', 'MCP JSON-RPC envelope does not match the request.' );
         $next_session = (string) wp_remote_retrieve_header( $response, 'mcp-session-id' );
         if ( strlen( $next_session ) > 191 || false !== strpos( $next_session, "\n" ) ) $next_session = '';
+        MAD4B_SCP_MCP_Peer_Health::transport_succeeded( $peer );
         return array( 'wire' => $wire, 'session' => $next_session, 'http_status' => (int) $status );
     }
     private static function notify_legacy_initialized( array $peer, $version, $session ) {
@@ -638,8 +649,11 @@ final class MAD4B_SCP_MCP_Hybrid {
                 $runtime_ready = true;
             }
         }
+        $health = array();
+        foreach ( self::manifest() as $peer ) $health[$peer['id']] = MAD4B_SCP_MCP_Peer_Health::status( $peer );
         return array( 'contract' => self::CONTRACT . '.candidates.v1',
             'pinned_peer_ids' => $pinned, 'pinned_count' => count( $pinned ),
+            'peer_transport_health' => $health,
             'source_reviewed_provider_patterns' => $known,
             'observed_unreviewed_rest_routes' => $foreign,
             'runtime_rest_inventory_ready' => $runtime_ready,
