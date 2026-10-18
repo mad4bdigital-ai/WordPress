@@ -32,4 +32,7 @@ check_view( null === MAD4B_SCP_Admin_Native_MCP_View::diagnostic_request( array(
 check_view( null === MAD4B_SCP_Admin_Native_MCP_View::diagnostic_request( array('peer_id'=>'peer_good','mode'=>'write') ), 'write diagnostic accepted' );
 check_view( null === MAD4B_SCP_Admin_Native_MCP_View::diagnostic_request( array('peer_id'=>'peer_good','mode'=>'read','ability'=>'safe/read','expected_catalog_sha256'=>'stale') ), 'stale catalog accepted' );
 check_view( null === MAD4B_SCP_Admin_Native_MCP_View::diagnostic_request( array('peer_id'=>'peer_good','mode'=>'catalog','ability'=>'safe/read') ), 'catalog mode smuggled read' );
+check_view( MAD4B_SCP_Admin_Native_MCP_View::state_for_diagnostic_error('mad4b_hybrid_exact_grant_required') === 'Not Authorized', 'Per-agent grant denial presented as a generic block' );
+check_view( MAD4B_SCP_Admin_Native_MCP_View::state_for_diagnostic_error('mad4b_native_read_not_certified') === 'Needs Review', 'Unreviewed read did not request review' );
+check_view( MAD4B_SCP_Admin_Native_MCP_View::state_for_diagnostic_error('mad4b_mcp_peer_circuit_open') === 'Blocked', 'Circuit breaker denial not blocked' );
 echo "Admin Native MCP view projection: PASS\n";

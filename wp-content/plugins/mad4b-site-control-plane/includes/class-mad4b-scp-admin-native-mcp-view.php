@@ -167,6 +167,33 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
             'ability' => $ability, 'expected_catalog_sha256' => $sha );
     }
 
+    /** Public status vocabulary shared with the operator parity UI. */
+    public static function state_for_diagnostic_error( $code ) {
+        $code = is_string( $code ) ? sanitize_key( $code ) : '';
+        if ( preg_match( '/(?:permission|not_authorized|subject|agent_unbound|exact_grant|oauth|credential_required)/', $code ) )
+            return 'Not Authorized';
+        if ( preg_match( '/(?:not_pinned|not_certified|binding_missing|catalog_drift|schema|fingerprint|review)/', $code ) )
+            return 'Needs Review';
+        return 'Blocked';
+    }
+
+    /** Durable, redacted outcome even for denial before any outbound IO. */
+    private static function audit_diagnostic( $stage, array $record ) {
+        if ( ! class_exists( 'MAD4B_SCP_Audit', false )
+            || ! method_exists( 'MAD4B_SCP_Audit', 'record' ) )
+            return new WP_Error( 'mad4b_native_diagnostic_audit_missing', 'Audit v2 is required for operator diagnostics.' );
+        return MAD4B_SCP_Audit::record( 'mad4b/native-mcp-activity', array(
+            'stage' => $stage,
+            'peer_id' => $record['peer_id'],
+            'diagnostic_phase' => $record['phase'],
+            'diagnostic_state' => $record['state'],
+            'error_code' => $record['error_code'],
+            'catalog_sha256' => $record['catalog_sha256'],
+            'read_response_sha256' => $record['response_sha256'],
+            'native_write_performed' => false,
+        ), 'ok' );
+    }
+
     /** Explicit nonce-protected POST only. Auth, pins, OAuth, schema,
      * grants and read behavior remain enforced by the existing MCP Hybrid. */
     public static function handle_diagnostic_post() {
@@ -181,9 +208,14 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         $record = array( 'state' => 'Blocked', 'phase' => 'input', 'peer_id' => '',
             'checked_at' => time(), 'error_code' => 'invalid_request',
             'catalog_sha256' => '', 'response_sha256' => '', 'tool_count' => 0 );
-        if ( null !== $input && class_exists( 'MAD4B_SCP_MCP_Hybrid', false ) ) {
+        if ( null !== $input ) {
             $record['peer_id'] = $input['peer_id'];
             $record['phase'] = $input['mode'];
+        }
+        $preflight_audit = self::audit_diagnostic( 'admin_requested', $record );
+        if ( is_wp_error( $preflight_audit ) ) {
+            $record['error_code'] = 'diagnostic_audit_unavailable';
+        } elseif ( null !== $input && class_exists( 'MAD4B_SCP_MCP_Hybrid', false ) ) {
             // No unpinned peer, anonymous caller or credentials-from-form.
             $pinned = MAD4B_SCP_MCP_Hybrid::manifest();
             if ( isset( $pinned[ $input['peer_id'] ] ) ) {
@@ -214,6 +246,18 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
                     }
                 } else $record['error_code'] = 'diagnostic_response_invalid';
             } else $record['error_code'] = 'peer_not_pinned';
+        }
+        if ( '' !== $record['error_code'] ) {
+            $record['state'] = self::state_for_diagnostic_error( $record['error_code'] );
+        }
+        if ( ! is_wp_error( $preflight_audit ) ) {
+            $receipt = self::audit_diagnostic( 'admin_result', $record );
+            if ( is_wp_error( $receipt ) ) {
+                $record['state'] = 'Blocked';
+                $record['error_code'] = 'diagnostic_audit_receipt_unavailable';
+                $record['catalog_sha256'] = '';
+                $record['response_sha256'] = '';
+            }
         }
         // Only a bounded, redacted outcome is cached for the same operator;
         // full provider output, OAuth material and schemas never persist here.
