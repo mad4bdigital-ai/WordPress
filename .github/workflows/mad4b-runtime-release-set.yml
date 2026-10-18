@@ -33,6 +33,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  selected-head-php-compatibility:
+    name: Selected HEAD browser / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.4', '8.5']
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint and exercise governed update UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          P=wp-content/plugins/mad4b-site-control-plane
+          php -l "$P/includes/class-mad4b-scp-selected-head-update.php"
+          php -l "$P/includes/class-mad4b-scp-staging-selected-head-admin.php"
+          php -l "$P/includes/class-mad4b-scp-staging-source-selector.php"
+          php -l "$P/includes/class-mad4b-scp-plugin-update-popup.php"
+          php "$P/tests/staging-source-selector-runtime.php"
+          php "$P/tests/staging-selected-head-admin-runtime.php"
+          php "$P/tests/staging-selected-head-execution-runtime.php"
+          php "$P/tests/plugin-update-popup-runtime.php"
+
   contract:
     name: Runtime release-set contract
     runs-on: ubuntu-latest
