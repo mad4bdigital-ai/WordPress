@@ -33,6 +33,7 @@ $pages = array(
 	'mad4b-search-intelligence' => array( 'MAD4B_SCP_Search_Experience', 'render', MAD4B_SCP_Search_Context::policy()['section_order'] ),
 	'mad4b-growth-providers' => array( 'MAD4B_SCP_G5_External_Providers', 'render', array( '' ) ),
 	'mad4b-ai-knowledge-workspace' => array( 'MAD4B_SCP_G6_Acceptance', 'render', array( '' ) ),
+	'mad4b-plugin-deployment' => array( 'MAD4B_SCP_Cross_Plugin_Admin', 'render', array( '' ) ),
 );
 $routes = MAD4B_SCP_Admin_Route_Registry::routes();
 $check( ! array_diff( array_keys( $routes ), array_keys( $pages ) ) && ! array_diff( array_keys( $pages ), array_keys( $routes ) ), 'Every declared page must have a smoke case. Missing: ' . implode( ', ', array_diff( array_keys( $routes ), array_keys( $pages ) ) ) . '; stale: ' . implode( ', ', array_diff( array_keys( $pages ), array_keys( $routes ) ) ) );

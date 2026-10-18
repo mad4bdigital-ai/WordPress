@@ -62,7 +62,7 @@
       dialog._mad4bOrigin.focus();
     }
   }, true);
-}  // Only the explicit Cross-Plugin preview uses AJAX. Without fetch, the
+  // Only the explicit Cross-Plugin preview uses AJAX. Without fetch, the
   // original admin-post form remains a functioning accessible fallback.
   document.addEventListener('submit', function (event) {
     var form = event.target.closest('form[data-mad4b-async-preview]');
