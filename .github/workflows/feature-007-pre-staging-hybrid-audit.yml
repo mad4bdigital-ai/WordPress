@@ -587,6 +587,7 @@ jobs:
             dist/pre-staging-hybrid-audit.json
             dist/mad4b-architecture-dependency-graph.json
             dist/mad4b-open-issue-regressions.json
+            dist/mad4b-open-issue-live-coverage.json
           if-no-files-found: error
           retention-days: 14
 
