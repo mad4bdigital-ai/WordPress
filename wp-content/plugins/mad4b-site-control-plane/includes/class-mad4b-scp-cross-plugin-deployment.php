@@ -22,6 +22,20 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
                 'description' => 'Read reviewed same/external repository sources and plugin installation state.',
                 'execute_callback' => array( __CLASS__, 'discover' ),
                 'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ) ),
+            'mad4b/plugin-deployment-intake-plan' => array(
+                'label' => 'Review New External Plugin Source',
+                'description' => 'Validate a repository/source proposal without storing, fetching or installing it.',
+                'execute_callback' => array( __CLASS__, 'onboarding_plan' ),
+                'input_schema' => array( 'type' => 'object', 'additionalProperties' => false,
+                    'required' => array( 'source_id', 'repository', 'plugin_subdirectory', 'plugin_file' ),
+                    'properties' => array(
+                        'source_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+                        'repository' => array( 'type' => 'string', 'maxLength' => 172 ),
+                        'plugin_subdirectory' => array( 'type' => 'string', 'maxLength' => 240 ),
+                        'plugin_file' => array( 'type' => 'string', 'maxLength' => 150 ),
+                        'provider_id' => array( 'type' => 'string', 'maxLength' => 64 ),
+                    ) ),
+            ),
             'mad4b/plugin-deployment-plan' => array( 'label' => 'Plan Cross-Plugin Deployment',
                 'description' => 'Preview exact Git source, plugin install/replace, artifact and environment gates. Never mutates.',
                 'execute_callback' => array( __CLASS__, 'plan' ),
@@ -46,6 +60,52 @@ final class MAD4B_SCP_Cross_Plugin_Deployment {
                     'annotations' => array( 'readonly' => true, 'destructive' => false, 'idempotent' => true ) ),
             ) ) );
         }
+    }
+
+
+    /**
+     * Accept an external/new repository as a review REQUEST only.
+     * No GitHub requests, WordPress settings writes, credentials or zip loads.
+     */
+    public static function onboarding_plan( $input ) {
+        if ( ! is_array( $input ) ) return new WP_Error( 'cross_plugin_intake_invalid', 'Expected an object.' );
+        $id = (string) ( $input['source_id'] ?? '' );
+        $repo = (string) ( $input['repository'] ?? '' );
+        $directory = (string) ( $input['plugin_subdirectory'] ?? '' );
+        $plugin = (string) ( $input['plugin_file'] ?? '' );
+        $provider = (string) ( $input['provider_id'] ?? $id );
+        $folder = basename( $directory );
+        if ( ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $id )
+            || ! preg_match( '/^[a-z][a-z0-9_-]{0,63}$/D', $provider )
+            || ! preg_match( '#^[A-Za-z0-9_.-]{1,70}/[A-Za-z0-9_.-]{1,100}$#D', $repo )
+            || false !== strpos( $repo, '..' )
+            || ! preg_match( '#^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+){0,12}$#D', $directory )
+            || false !== strpos( $directory, '..' )
+            || ! preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.php$#D', $plugin )
+            || 0 !== strpos( $plugin, $folder . '/' ) )
+            return new WP_Error( 'cross_plugin_intake_untrusted_path', 'Use canonical repository, directory and plugin file names.' );
+        $existing = self::sources();
+        if ( isset( $existing[$id] ) )
+            return new WP_Error( 'cross_plugin_intake_source_exists', 'Source ID is already reviewed; amend it through repository code review.' );
+        $candidate = array(
+            'id' => $id, 'label' => $id, 'repository' => $repo,
+            'plugin_subdirectory' => $directory,
+            'plugin_file' => $plugin, 'provider_id' => $provider,
+            'review_state' => 'needs_repository_owner_review',
+            'source_commit_sha' => '', 'artifact_sha256' => '',
+            'artifact_version' => '', 'package_certification' => 'pending',
+            'environments' => array( 'staging', 'production' ),
+            'production_promotion_attestation' => '',
+        );
+        return array(
+            'contract' => 'mad4b.cross-plugin-onboarding-plan.v1',
+            'state' => 'NEEDS_SOURCE_REVIEW',
+            'candidate' => $candidate,
+            'candidate_digest' => hash( 'sha256', (string) json_encode( $candidate, JSON_UNESCAPED_SLASHES ) ),
+            'next_step' => 'review_registry_and_publish_exact_certified_artifact',
+            'github_request_performed' => false, 'mutation_performed' => false,
+            'installation_authorized' => false, 'production_authorized' => false,
+        );
     }
 
     /** Strict source manifest. External repositories are first-class, but owner-reviewed in source. */

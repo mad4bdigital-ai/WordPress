@@ -65,4 +65,25 @@ check($cls::verified_sha_from_response($pair,$reply)===$sha,'true ancestor was d
 $reply['merge_base_commit']['sha']=str_repeat('b',40);
 check(is_wp_error($cls::verified_sha_from_response($pair,$reply)),'wrong merge-base accepted');
 check(is_wp_error($cls::selection(array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'pull_request','reference'=>'0'))),'invalid PR');
+$request=$cls::onboarding_plan(array(
+    'source_id'=>'external-demo', 'repository'=>'external-owner/another-plugin',
+    'plugin_subdirectory'=>'plugin-directory', 'plugin_file'=>'plugin-directory/plugin.php',
+    'provider_id'=>'external-demo'
+));
+check(is_array($request) && $request['state']==='NEEDS_SOURCE_REVIEW'
+    && !$request['installation_authorized'] && !$request['production_authorized'],
+    'unreviewed external plugin should be proposed, never installed');
+check(is_wp_error($cls::onboarding_plan(array(
+    'source_id'=>'bad', 'repository'=>'https://evil.example/file.zip',
+    'plugin_subdirectory'=>'plugin-directory',
+    'plugin_file'=>'plugin-directory/plugin.php'))), 'arbitrary package URL accepted');
+check(is_wp_error($cls::onboarding_plan(array(
+    'source_id'=>'bad', 'repository'=>'external-owner/good',
+    'plugin_subdirectory'=>'../plugins',
+    'plugin_file'=>'plugins/main.php'))), 'plugin traversal candidate accepted');
+check(is_wp_error($cls::onboarding_plan(array(
+    'source_id'=>'etg-dynamic-filter-seo-bridge',
+    'repository'=>'external-owner/good',
+    'plugin_subdirectory'=>'plugin-directory',
+    'plugin_file'=>'plugin-directory/plugin.php'))), 'existing source overwritten by intake');
 echo "CROSS_PLUGIN_DEPLOYMENT: PASS\n";

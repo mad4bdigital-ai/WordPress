@@ -5,10 +5,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Cross_Plugin_Admin {
     const PAGE = 'mad4b-plugin-deployment';
     const ACTION = 'mad4b_cross_plugin_preview';
+    const INTAKE = 'mad4b_cross_plugin_intake';
 
     public static function boot() {
         MAD4B_SCP_Admin_Route_Registry::schedule_submenu( array( __CLASS__, 'menu' ), 32 );
         add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_preview' ) );
+        add_action( 'admin_post_' . self::INTAKE, array( __CLASS__, 'handle_intake' ) );
     }
 
     public static function menu() {
@@ -50,6 +52,27 @@ final class MAD4B_SCP_Cross_Plugin_Admin {
             'plan' => is_wp_error( $result ) ? array() : $result,
             'blockers' => is_wp_error( $result ) ? array( $result->get_error_code() )
                 : (array) ( $result['blockers'] ?? array() ),
+        ), 600 );
+        wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE ) );
+        exit;
+    }
+
+
+    public static function handle_intake() {
+        if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' )
+            || ! current_user_can( 'manage_options' ) || 'not_verified' === self::environment() )
+            wp_die( 'Verified administrator is required.', '', array( 'response' => 403 ) );
+        check_admin_referer( self::INTAKE );
+        $input = array();
+        foreach ( array( 'source_id', 'repository', 'plugin_subdirectory', 'plugin_file', 'provider_id' ) as $name ) {
+            $value = isset( $_POST[$name] ) && is_string( $_POST[$name] ) ? wp_unslash( $_POST[$name] ) : '';
+            $input[$name] = strlen( $value ) < 250 ? trim( $value ) : '';
+        }
+        $result = MAD4B_SCP_Cross_Plugin_Deployment::onboarding_plan( $input );
+        set_transient( self::key() . '_intake', array(
+            'time' => time(), 'profile_digest' => MAD4B_SCP_Site_Profile::profile_digest(),
+            'environment' => self::environment(), 'result' => is_wp_error( $result ) ? array(
+                'state' => 'BLOCKED', 'reason' => $result->get_error_code() ) : $result,
         ), 600 );
         wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE ) );
         exit;
@@ -119,6 +142,35 @@ final class MAD4B_SCP_Cross_Plugin_Admin {
                 echo '</ul>';
             }
             echo '<p>Plan is not approval. When eligible, the existing governed Remote MCP package executor requires its own exact approval and revalidation.</p>';
+        }
+
+        echo '<h2>Propose another repository / plugin for review</h2>';
+        echo '<p>Same-repository or external GitHub owner/repo sources are accepted as proposals only. Review the source and publish its certified ZIP before installation.</p>';
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+        wp_nonce_field( self::INTAKE );
+        echo '<input type="hidden" name="action" value="' . esc_attr( self::INTAKE ) . '">';
+        foreach ( array(
+            'source_id' => 'Source ID (lowercase slug)',
+            'repository' => 'GitHub owner/repository',
+            'plugin_subdirectory' => 'Repository source subdirectory',
+            'plugin_file' => 'WordPress plugin main file',
+            'provider_id' => 'Provider ID'
+        ) as $field => $caption ) {
+            echo '<p><label>' . esc_html( $caption ) . ' <input class="regular-text" name="'
+                . esc_attr( $field ) . '" maxlength="240" required></label></p>';
+        }
+        echo '<p><button type="submit" class="button">Prepare source-review request</button></p></form>';
+        $intake = get_transient( self::key() . '_intake' );
+        if ( is_array( $intake ) && time() - (int) ( $intake['time'] ?? 0 ) <= 600
+            && hash_equals( (string) ( $intake['environment'] ?? '' ), $environment )
+            && hash_equals( (string) ( $intake['profile_digest'] ?? '' ),
+                (string) MAD4B_SCP_Site_Profile::profile_digest() ) ) {
+            $review = (array) ( $intake['result'] ?? array() );
+            echo '<p>Intake: <code>' . esc_html( (string) ( $review['state'] ?? 'UNKNOWN' ) ) . '</code></p>';
+            if ( ! empty( $review['candidate_digest'] ) )
+                echo '<p>Review digest: <code>' . esc_html( $review['candidate_digest'] ) . '</code></p>';
+            if ( ! empty( $review['reason'] ) )
+                echo '<p>Reason: <code>' . esc_html( $review['reason'] ) . '</code></p>';
         }
         if ( 'production' === $environment )
             echo '<p>Production is supported for discovery and planning. Execution remains blocked pending a separate certified Production promotion and executor; Staging grants never carry over.</p>';
