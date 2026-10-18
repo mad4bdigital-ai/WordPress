@@ -62,6 +62,12 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-class-provenance.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-package.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-deployment.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-cross-plugin-admin.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-deployment-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/cross-plugin-admin-environment-runtime.php
+          python3 -m json.tool wp-content/plugins/mad4b-site-control-plane/config/cross-plugin-sources.json >/dev/null
+
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php
 
       - name: Verify exact upstream MCP Adapter release

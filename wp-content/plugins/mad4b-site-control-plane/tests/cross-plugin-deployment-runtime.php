@@ -1,0 +1,68 @@
+<?php
+if (!defined('ABSPATH')) define('ABSPATH','/tmp/mad4b-test/');
+class WP_Error {
+    private $code;
+    public function __construct($code,$message='') { $this->code=$code; }
+    public function get_error_code() { return $this->code; }
+}
+function is_wp_error($x) { return $x instanceof WP_Error; }
+$GLOBALS['environment']='staging';
+$GLOBALS['remote_calls']=0;
+$GLOBALS['remote_result']=array('sha'=>str_repeat('a',40));
+class MAD4B_SCP_Site_Profile {
+    public static function origin_enrolled() { return true; }
+    public static function current_environment() { return $GLOBALS['environment']; }
+}
+function get_plugins() { return array(); }
+function wp_safe_remote_get($url,$opts) {
+    ++$GLOBALS['remote_calls'];
+    if (0!==strpos($url,'https://api.github.com/repos/mad4bdigital-ai/WordPress/'))
+        return new WP_Error('github_origin_unexpected');
+    if (($opts['redirection']??-1)!==0 || ($opts['limit_response_size']??0)>65536)
+        return new WP_Error('unsafe_http_options');
+    return array('code'=>200,'body'=>json_encode($GLOBALS['remote_result']));
+}
+function wp_remote_retrieve_response_code($x) { return $x['code']; }
+function wp_remote_retrieve_body($x) { return $x['body']; }
+require_once dirname(__DIR__).'/includes/class-mad4b-scp-cross-plugin-deployment.php';
+function check($yes,$reason) {
+    if (!$yes) { fwrite(STDERR,"CROSS_PLUGIN_FAIL: ".$reason."\n"); exit(1); }
+}
+$cls='MAD4B_SCP_Cross_Plugin_Deployment';
+$catalog=$cls::discover();
+check($catalog['count']===1 && !$catalog['mutation_performed'],'source registry inventory');
+check($GLOBALS['remote_calls']===0,'passive discover triggers no GitHub request');
+check($catalog['items'][0]['repository']==='mad4bdigital-ai/WordPress','ETG same-repository source present');
+check($catalog['items'][0]['installed']===false,'not-installed source detected');
+$sha=str_repeat('a',40);
+$input=array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'commit','reference'=>$sha);
+check(is_wp_error($cls::selection(array('source_id'=>'unknown','ref_type'=>'commit','reference'=>$sha))),'unknown repository admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('reference'=>'HEAD'))))),'mutable non-sha commit admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'../escape'))))),'branch traversal admitted');
+check(is_wp_error($cls::selection(array_merge($input,array('ref_type'=>'branch','reference'=>'a//b'))))),'double slash branch admitted');
+$plan=$cls::plan($input);
+check(is_array($plan) && $plan['operation']==='install' && $plan['resolved_sha']===$sha,
+    'new plugin install planning missing');
+check(!$plan['eligible'] && empty($plan['native_executor'])
+    && in_array('exact_zip_artifact_not_certified',$plan['blockers'],true),
+    'uncertified source offered as executable package');
+check(!$plan['mutation_performed'] && !$plan['wpcron_auto_execute'],
+    'read-only planning claimed execution');
+$GLOBALS['environment']='production';
+$prod=$cls::plan($input);
+check(!$prod['eligible'] && in_array('production_package_executor_not_yet_certified',$prod['blockers'],true)
+    && in_array('independent_production_promotion_attestation_required',$prod['blockers'],true),
+    'Production applied Staging permissions');
+$GLOBALS['environment']='staging';
+$pair=$cls::selection(array('source_id'=>'etg-dynamic-filter-seo-bridge',
+    'ref_type'=>'branch_commit','reference'=>'feature/release@'.$sha));
+check(is_array($pair),'valid branch+commit rejected');
+$reply=array('status'=>'diverged','base_commit'=>array('sha'=>$sha),
+    'merge_base_commit'=>array('sha'=>$sha),'head_commit'=>array('sha'=>str_repeat('b',40)));
+check(is_wp_error($cls::verified_sha_from_response($pair,$reply)),'diverged commit accepted');
+$reply['status']='ahead';
+check($cls::verified_sha_from_response($pair,$reply)===$sha,'true ancestor was denied');
+$reply['merge_base_commit']['sha']=str_repeat('b',40);
+check(is_wp_error($cls::verified_sha_from_response($pair,$reply)),'wrong merge-base accepted');
+check(is_wp_error($cls::selection(array('source_id'=>'etg-dynamic-filter-seo-bridge','ref_type'=>'pull_request','reference'=>'0'))),'invalid PR');
+echo "CROSS_PLUGIN_DEPLOYMENT: PASS\n";
