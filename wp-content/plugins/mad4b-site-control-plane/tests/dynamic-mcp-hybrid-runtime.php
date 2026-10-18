@@ -23,6 +23,14 @@ function rest_validate_value_from_schema( $value, $schema, $key = '' ) {
 }
 
 function wp_http_validate_url( $url ) { return strpos( $url, 'https://reviewed.example/' ) === 0; }
+$GLOBALS['mcp_transients'] = array();
+function get_transient( $key ) { return $GLOBALS['mcp_transients'][$key] ?? false; }
+function set_transient( $key, $value, $ttl ) {
+    $GLOBALS['mcp_transients'][$key] = $value;
+    return true;
+}
+function delete_transient( $key ) { unset( $GLOBALS['mcp_transients'][$key] ); return true; }
+$GLOBALS['mcp_forced_transport_failures'] = 0;
 $GLOBALS['hybrid_isolation_effective'] = false;
 class MAD4B_SCP_MCP_Provider_Isolation {
     public static function effective() { return ! empty( $GLOBALS['hybrid_isolation_effective'] ); }
@@ -61,6 +69,10 @@ function wp_safe_remote_post( $url, $args ) {
     $method = (string) ( $json['method'] ?? '' );
     $revision = $GLOBALS['mcp_revision'];
     $GLOBALS['mcp_calls'][] = $method;
+    if ( $GLOBALS['mcp_forced_transport_failures'] > 0 ) {
+        --$GLOBALS['mcp_forced_transport_failures'];
+        return new WP_Error( 'mock_network_down', 'Simulated transport outage' );
+    }
     $session = 'legacy' === $revision ? 'test-session' : '';
     if ( $method === 'server/discover' && 'legacy' === $revision )
         return array( 'status'=>404, 'headers'=>array( 'content-type'=>'application/json' ), 'body'=>'{}' );
@@ -290,5 +302,38 @@ $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
 mcp_check(is_wp_error($native_denied)
     && $native_denied->get_error_code() === 'mad4b_hybrid_read_snapshot_unacknowledged',
     'Hybrid read does not trigger native call without client-acknowledged catalog hash');
+// Repeated peer transport failures trip a bounded circuit. The native
+// transport is skipped while open, but the separately reviewed local
+// route remains selectable without any extra outbound request.
+mcp_new_request_epoch();
+$GLOBALS['mcp_forced_transport_failures'] = 3;
+for ( $attempt = 0; $attempt < 3; ++$attempt ) {
+    $failed = $hybrid::catalog( 'test-peer' );
+    mcp_check( is_wp_error( $failed ), 'Unavailable native peer must not return a false catalog' );
+}
+$breaker_status = $hybrid::candidate_inventory();
+mcp_check( $breaker_status['peer_transport_health']['test-peer']['state'] === 'OPEN',
+    'Three transport failures open only the affected pinned peer circuit' );
+$before_open_call = count( $GLOBALS['mcp_calls'] );
+$open = $hybrid::catalog( 'test-peer' );
+mcp_check( is_wp_error( $open ) && count( $GLOBALS['mcp_calls'] ) === $before_open_call,
+    'Open circuit prevents external HTTP rather than repeatedly hammering provider' );
+$local_during_outage = $hybrid::hybrid_plan_from_evidence(
+    array('complete'=>false,'bindings'=>array()),
+    array('demo/offline'=>array('registered'=>true,'reviewed'=>true,'dimension'=>'read','source'=>'adapter')),
+    'demo/offline', 'read'
+);
+mcp_check( $local_during_outage['selected'] === 'reviewed_adapter',
+    'Approved local fallback survives native transport outage' );
+// Simulate expiry of the bounded breaker window, not an actual clock wait.
+foreach ( $GLOBALS['mcp_transients'] as $key => $status ) {
+    $GLOBALS['mcp_transients'][$key]['open_until'] = time() - 1;
+    $GLOBALS['mcp_transients'][$key]['started'] = time() - 200;
+}
+mcp_new_request_epoch();
+$recovered = $hybrid::catalog( 'test-peer' );
+mcp_check( ! is_wp_error( $recovered )
+    && $hybrid::candidate_inventory()['peer_transport_health']['test-peer']['state'] === 'CLOSED',
+    'Healthy provider recovers after breaker cooldown without persistent credential changes' );
 unlink($manifest_path);rmdir($manifest_dir);
 echo "DYNAMIC_MCP_HYBRID: PASS (modern, legacy, read, denied writes, hybrid fallback)\n";
