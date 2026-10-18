@@ -147,6 +147,18 @@ final class MAD4B_SCP_MCP_Hybrid {
                 || ! self::is_plain_https( $peer['endpoint'] ?? null, false )
                 || ! isset( $peer['bindings'] ) || ! is_array( $peer['bindings'] )
                 || count( $peer['bindings'] ) > self::MAX_TOOLS || isset( $rows[$peer['id']] ) ) return self::$manifest;
+            $origin_parts = parse_url( $peer['endpoint'] );
+            $origin = 'https://' . strtolower( (string) ( $origin_parts['host'] ?? '' ) );
+            $audience = isset( $peer['audience'] ) ? $peer['audience'] : $origin;
+            $required_scopes = isset( $peer['required_scopes'] ) ? $peer['required_scopes'] : array();
+            if ( ! is_string( $audience ) || ! hash_equals( $origin, $audience )
+                || ! is_array( $required_scopes ) || count( $required_scopes ) > 16 ) return self::$manifest;
+            $scopes = array();
+            foreach ( $required_scopes as $scope ) {
+                if ( ! is_string( $scope ) || ! preg_match( '~^[a-zA-Z0-9:._/-]{1,128}$~D', $scope )
+                    || isset( $scopes[$scope] ) ) return self::$manifest;
+                $scopes[$scope] = true;
+            }
             $bindings = array();
             foreach ( $peer['bindings'] as $row ) {
                 if ( ! is_array( $row ) || ! self::valid_ability( $row['ability'] ?? null )
@@ -166,6 +178,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             }
             ksort( $bindings, SORT_STRING );
             $rows[$peer['id']] = array( 'id' => $peer['id'], 'endpoint' => $peer['endpoint'],
+                'audience' => $audience, 'required_scopes' => array_keys( $scopes ),
                 'bindings' => $bindings );
         }
         ksort( $rows, SORT_STRING );
@@ -173,14 +186,45 @@ final class MAD4B_SCP_MCP_Hybrid {
         return self::$manifest;
     }
     private static function peer_token( $id ) {
-        // Credentials are operator-provided, never read from plugin options or
-        // copied from the user's MAD4B bearer. Never include in evidence.
-        if ( ! defined( 'MAD4B_SCP_MCP_PEER_TOKENS' ) ) return '';
-        $tokens = MAD4B_SCP_MCP_PEER_TOKENS;
-        if ( ! is_array( $tokens ) || ! isset( $tokens[$id] ) || ! is_string( $tokens[$id] ) ) return '';
-        $token = $tokens[$id];
-        return strlen( $token ) <= 4096 && false === strpos( $token, "\r" )
-            && false === strpos( $token, "\n" ) ? $token : '';
+        // Explicit operator-owned resolver can refresh credentials externally.
+        // WordPress filters, plugin options and MCP payloads never supply a
+        // credential resolver. No access token is persisted in MAD4B.
+        $peers = self::manifest();
+        $peer = $peers[$id] ?? null;
+        if ( ! is_array( $peer ) )
+            return new WP_Error( 'mad4b_mcp_unknown_credential_peer', 'Provider credential audience is unrecognized.' );
+        if ( defined( 'MAD4B_SCP_MCP_PEER_AUTH_RESOLVER' ) ) {
+            $resolver = MAD4B_SCP_MCP_PEER_AUTH_RESOLVER;
+            if ( ! is_string( $resolver ) || ! is_callable( $resolver ) )
+                return new WP_Error( 'mad4b_mcp_credential_resolver_unavailable', 'Operator credential resolver is unavailable.' );
+            try {
+                $credential = call_user_func( $resolver, $id, $peer['audience'], $peer['required_scopes'] );
+            } catch ( Throwable $error ) {
+                return new WP_Error( 'mad4b_mcp_credential_resolver_failed', 'Operator credential resolver failed.' );
+            }
+            if ( ! is_array( $credential ) || ! is_string( $credential['access_token'] ?? null )
+                || ! is_int( $credential['expires_at'] ?? null )
+                || $credential['expires_at'] <= time() + 30
+                || ! is_string( $credential['audience'] ?? null )
+                || ! hash_equals( $peer['audience'], $credential['audience'] )
+                || ! is_array( $credential['scopes'] ?? null ) )
+                return new WP_Error( 'mad4b_mcp_credential_invalid', 'Provider bearer is expired or its audience cannot be verified.' );
+            foreach ( $peer['required_scopes'] as $scope ) {
+                if ( ! in_array( $scope, $credential['scopes'], true ) )
+                    return new WP_Error( 'mad4b_mcp_credential_scope_missing', 'Provider bearer lacks an explicitly required scope.' );
+            }
+            $token = $credential['access_token'];
+        } else {
+            if ( $peer['required_scopes'] )
+                return new WP_Error( 'mad4b_mcp_scoped_credential_required', 'Scoped provider authorization requires a trusted expiring credential resolver.' );
+            if ( ! defined( 'MAD4B_SCP_MCP_PEER_TOKENS' ) ) return '';
+            $tokens = MAD4B_SCP_MCP_PEER_TOKENS;
+            $token = is_array( $tokens ) && is_string( $tokens[$id] ?? null ) ? $tokens[$id] : '';
+        }
+        if ( ! is_string( $token ) || strlen( $token ) > 4096 || false !== strpos( $token, "\r" )
+            || false !== strpos( $token, "\n" ) )
+            return new WP_Error( 'mad4b_mcp_credential_unsafe', 'Provider bearer value is unsafe.' );
+        return $token;
     }
     private static function rpc( array $peer, $method, $params, $version, $session = '' ) {
         if ( ! self::is_plain_https( $peer['endpoint'] ) ) return new WP_Error( 'mad4b_mcp_peer_url_unsafe', 'Pinned MCP endpoint is not eligible for HTTPS transport.' );
@@ -208,6 +252,7 @@ final class MAD4B_SCP_MCP_Hybrid {
             $headers['Mcp-Name'] = $params['name'];
         if ( '' !== $session ) $headers['Mcp-Session-Id'] = $session;
         $token = self::peer_token( $peer['id'] );
+        if ( is_wp_error( $token ) ) return $token;
         if ( '' !== $token ) $headers['Authorization'] = 'Bearer ' . $token;
         if ( '2026-07-28' === $version ) {
             $params = is_array( $params ) ? $params : array();
