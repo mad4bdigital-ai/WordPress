@@ -120,6 +120,7 @@ jobs:
           php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-adapter-capability-graph-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-external-adapter-trust-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-peer-health.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-local-ability-trust.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid-authority.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-hybrid.php
           php wp-content/plugins/mad4b-site-control-plane/tests/dynamic-mcp-hybrid-runtime.php
