@@ -70,3 +70,9 @@ The Staging-only, read-only WP-CLI canary now compares actual WordPress registra
 
 ## Prevent a generic CAS mutation API
 The managed-lease generic `compare_and_swap_option` method is PRIVATE again. The Options Control may call only `compensate_optional_governance_option`, a bounded helper that checks administrator capability, the exact option name and an unexpired same-owner lease before attempting CAS rollback. This prevents the new optional governance feature from exporting a generic arbitrary-option CAS interface.
+
+## Phased cross-PR integration contract
+PR #415 remains independently Draft. A source coexistence guard `tests/optional-governance-adapter-compatibility-runtime.php` asserts the Optional Options Control runtime/bootstrap, native MCP catalogs and Action Center on the current tree, and **explicitly prints DEFERRED** if PR #415's hybrid runtime is absent. Once #415 is merged, it requires both hook families to be present. This is not a real live transport certificate; merged candidate must still pass MCP network negotiation, server tools/list, WordPress abilities registration and approved Staging execution readback. Four shared paths require source-aware reconciliation: `class-mad4b-scp-admin-navigation-manifest.php`, `class-mad4b-scp-operator-workspace.php`, `class-mad4b-scp-servers.php`, `mad4b-site-control-plane.php`.
+
+## Latest-head CI concurrency
+The dedicated `MAD4B Optional Governance Policy` workflow now has a PR-number-scoped concurrency group without SHA, with cancellation of superseded optional-policy workflow runs only. It does not touch protected Release Verdict, GitHub branch rules or other mandatory CI. GitHub Actions execution remains dependent on the runner/platform queue; this does not certify successful tests.

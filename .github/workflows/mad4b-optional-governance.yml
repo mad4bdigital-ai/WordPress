@@ -11,6 +11,7 @@ on:
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-ability-registration-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-wordpress-staging-canary.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-adapter-compatibility-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/optional-governance-catalog.json'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php'
@@ -21,9 +22,18 @@ on:
       - '.github/workflows/mad4b-optional-governance.yml'
 permissions:
   contents: read
+
+# Latest exact PR head only. This cancels obsolete runs of this SAME
+# optional-policy workflow, never another workflow, Release Verdict, or
+# protected master checks. Immutable CI checks are still required.
+concurrency:
+  group: mad4b-optional-governance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   optional-policy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -50,4 +60,5 @@ jobs:
           php -r '$d=json_decode(file_get_contents("wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json"),true); if(!is_array($d))exit(1); $found=false; foreach($d["operations"] as $r){ if(($r["id"]??"")==="wordpress.governance.optional-preference") $found=(($r["planner"]??"")==="mad4b/optional-governance-plan" && ($r["executor"]??"")==="mad4b/optional-governance-apply" && empty($r["production_allowed"])); } if(!$found)exit(2);'
           php wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-ability-registration-runtime.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-adapter-compatibility-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-wordpress-staging-canary.php
