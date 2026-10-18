@@ -174,6 +174,26 @@ final class MAD4B_SCP_Optional_Governance_Remote {
     public static function can_apply( $input = null ) {
         $actor = self::apply_actor_preflight();
         if ( is_wp_error( $actor ) ) return $actor;
+        // Reject malformed, stale and no-op requests *before* an exact
+        // one-time ticket is preflighted/claimed by central Authorization.
+        // The source-owned augmented approval metadata is intentionally
+        // outside the provider input and must not be forwarded to plan().
+        if ( ! is_array( $input )
+            || ! is_string( $input['policy_id'] ?? null )
+            || ! is_string( $input['mode'] ?? null )
+            || ! is_string( $input['expected_plan_sha256'] ?? null )
+            || ! is_string( $input['confirmation'] ?? null )
+            || ! hash_equals( self::CONFIRM, $input['confirmation'] )
+            || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $input['expected_plan_sha256'] ) )
+            return new WP_Error( 'mad4b_optional_remote_confirmation_denied',
+                'An exact policy, mode, reviewed plan SHA and confirmation are required.' );
+        $preview = self::plan( array( 'policy_id'=>$input['policy_id'], 'mode'=>$input['mode'] ) );
+        if ( is_wp_error( $preview ) ) return $preview;
+        if ( ! hash_equals( $preview['plan_sha256'], $input['expected_plan_sha256'] ) )
+            return new WP_Error( 'mad4b_optional_remote_plan_stale', 'Reviewed policy plan is stale.' );
+        if ( empty( $preview['change_required'] ) )
+            return new WP_Error( 'mad4b_optional_remote_no_change_use_verify',
+                'Nothing would change. Use read-only Verify; do not consume an approval ticket.' );
         return MAD4B_SCP_Authorization::authorize_mutation(
             self::APPLY, 'mad4b-write', 'core', is_array( $input ) ? $input : array() );
     }
