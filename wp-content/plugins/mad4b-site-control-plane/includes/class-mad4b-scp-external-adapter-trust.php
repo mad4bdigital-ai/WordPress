@@ -45,6 +45,9 @@ final class MAD4B_SCP_External_Adapter_Trust {
                 || ! self::safe_relpath( $row['plugin_basename'] )
                 || ! self::safe_relpath( $row['source_relpath'] )
                 || ! is_string( $row['source_sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/D', $row['source_sha256'] )
+                || ! is_string( $row['php_source_tree_sha256'] ?? null )
+                || ! preg_match( '/^[a-f0-9]{64}$/D', $row['php_source_tree_sha256'] )
+                || 0 !== strpos( $row['source_relpath'], dirname( $row['plugin_basename'] ) . '/' )
                 || ! is_array( $row['abilities'] ) || ! is_array( $row['reversible_contracts'] ) ) return self::$verified_manifest;
             $seen[$class] = $row;
         }
@@ -58,6 +61,38 @@ final class MAD4B_SCP_External_Adapter_Trust {
             && false === strpos( $value, '..' )
             && false === strpos( $value, '/./' )
             && false === strpos( $value, '//' );
+    }
+
+    /**
+     * Exact tree digest of all plugin PHP sources (bounded, no symlinks).
+     * Binds registration to the installed PHP package rather than to one
+     * entry file while allowing a new owner-reviewed manifest after upgrade.
+     */
+    public static function php_source_tree_sha256( $plugin_root ) {
+        $root = realpath( $plugin_root );
+        if ( false === $root || ! is_dir( $root ) ) return '';
+        $files = array();
+        try {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator( $root, FilesystemIterator::SKIP_DOTS )
+            );
+            foreach ( $iterator as $item ) {
+                if ( $item->isLink() ) return '';
+                if ( ! $item->isFile() ) continue;
+                if ( strtolower( $item->getExtension() ) !== 'php' ) continue;
+                if ( count( $files ) >= 4096 || $item->getSize() > 16777216 ) return '';
+                $path = $item->getRealPath();
+                if ( false === $path || 0 !== strpos( $path, $root . DIRECTORY_SEPARATOR ) ) return '';
+                $digest = hash_file( 'sha256', $path );
+                if ( ! is_string( $digest ) ) return '';
+                $relative = str_replace( DIRECTORY_SEPARATOR, '/', substr( $path, strlen( $root ) + 1 ) );
+                $files[$relative] = $digest;
+            }
+        } catch ( Throwable $error ) { return ''; }
+        if ( ! $files ) return '';
+        ksort( $files, SORT_STRING );
+        $json = json_encode( $files, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+        return is_string( $json ) ? hash( 'sha256', $json ) : '';
     }
 
     private static function sorted_contract( $value ) {
@@ -90,6 +125,11 @@ final class MAD4B_SCP_External_Adapter_Trust {
         if ( ! class_exists( $class, false ) ) return false;
         $root = realpath( WP_PLUGIN_DIR );
         if ( false === $root ) return false;
+        $plugin_root = realpath( $root . DIRECTORY_SEPARATOR . dirname( $row['plugin_basename'] ) );
+        if ( false === $plugin_root || 0 !== strpos( $plugin_root, $root . DIRECTORY_SEPARATOR ) )
+            return false;
+        $tree = self::php_source_tree_sha256( $plugin_root );
+        if ( '' === $tree || ! hash_equals( $row['php_source_tree_sha256'], $tree ) ) return false;
         $source = realpath( $root . DIRECTORY_SEPARATOR . $row['source_relpath'] );
         $reflection = new ReflectionClass( $class );
         $actual = $reflection->getFileName();
