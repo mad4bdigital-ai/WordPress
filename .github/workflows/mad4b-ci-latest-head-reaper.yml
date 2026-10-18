@@ -17,12 +17,13 @@ permissions:
 
 concurrency:
   group: mad4b-superseded-pr-reaper-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   cleanup:
     name: Cancel superseded PR checks without touching the current head
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       # Always use trusted default-branch code; never check out the untrusted PR head.
       - uses: actions/checkout@v4
