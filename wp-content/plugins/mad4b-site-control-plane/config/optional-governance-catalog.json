@@ -16,12 +16,6 @@
       "description": "Show optional developer breakglass availability warnings; does not enable breakglass."
     },
     {
-      "id": "provider_closure",
-      "reason": "provider_closure_actions_pending",
-      "label": "Provider closure reminders",
-      "description": "Show missing provider certification as an operator reminder; actual mutation certification is never bypassed."
-    },
-    {
       "id": "machine_ingress",
       "reason": "external_machine_ingress_not_reachable",
       "label": "External machine diagnostic ingress",

@@ -28,7 +28,6 @@ final class MAD4B_SCP_Optional_Governance {
     private static $builtins = array(
         'developer_lane' => 'developer_lane_not_ready',
         'developer_breakglass_lane' => 'developer_breakglass_lane_not_ready',
-        'provider_closure' => 'provider_closure_actions_pending',
         'machine_ingress' => 'external_machine_ingress_not_reachable',
         'machine_ingress_evidence' => 'external_machine_ingress_unbound',
     );
@@ -76,9 +75,12 @@ final class MAD4B_SCP_Optional_Governance {
                 return self::$catalog;
         self::$profile_defaults = $defaults;
         $result = array();
+        $reasons = array();
         foreach ( $data['gates'] as $row ) {
-            if ( ! self::valid_definition( $row ) || isset( $result[$row['id']] ) ) return self::$catalog;
+            if ( ! self::valid_definition( $row ) || isset( $result[$row['id']] )
+                || isset( $reasons[$row['reason']] ) ) return self::$catalog;
             $result[$row['id']] = $row;
+            $reasons[$row['reason']] = true;
         }
         // Additional modules may register diagnostics without editing MAD4B.
         // They cannot repurpose core reasons, alter authority or disable checks.
@@ -86,8 +88,11 @@ final class MAD4B_SCP_Optional_Governance {
             ? apply_filters( 'mad4b_scp_optional_governance_definitions', array() ) : array();
         if ( is_array( $extensions ) && count( $extensions ) <= 64 ) {
             foreach ( $extensions as $row )
-                if ( self::valid_definition( $row, true ) && ! isset( $result[$row['id']] ) )
+                if ( self::valid_definition( $row, true ) && ! isset( $result[$row['id']] )
+                    && ! isset( $reasons[$row['reason']] ) ) {
                     $result[$row['id']] = $row;
+                    $reasons[$row['reason']] = true;
+                }
         }
         ksort( $result, SORT_STRING );
         self::$catalog = $result;
@@ -271,20 +276,12 @@ final class MAD4B_SCP_Optional_Governance {
         }
         if ( ! class_exists( 'MAD4B_SCP_Audit', false ) || ! function_exists( 'add_option' ) )
             wp_die( 'Audited optional policy persistence is unavailable.' );
-        $token = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : bin2hex( random_bytes( 16 ) );
-        $lease = array( 'token' => $token, 'expires_at' => time() + 120 );
-        // Concurrent writes never use a stale revision. A crashed previous
-        // lease can be recovered after expiry, then the full plan is rechecked.
-        $locked = add_option( self::LOCK, $lease, '', false );
-        if ( ! $locked ) {
-            $stale = get_option( self::LOCK, array() );
-            if ( is_array( $stale ) && isset( $stale['expires_at'] )
-                && is_int( $stale['expires_at'] ) && $stale['expires_at'] < time() ) {
-                delete_option( self::LOCK );
-                $locked = add_option( self::LOCK, $lease, '', false );
-            }
-        }
-        if ( ! $locked ) wp_die( 'Another policy save is active. Retry after it completes.' );
+        // Reuse the platform's atomic compare-and-swap managed lease.
+        if ( ! class_exists( 'MAD4B_SCP_Managed_Skills_Lease', false ) )
+            require_once __DIR__ . '/class-mad4b-scp-managed-skills-lease.php';
+        $token = MAD4B_SCP_Managed_Skills_Lease::acquire( self::LOCK, 120 );
+        if ( is_wp_error( $token ) )
+            wp_die( 'Another policy save is active or its recovery lease is contested.' );
         $failure = '';
         $prior_loaded = false;
         try {
@@ -319,9 +316,7 @@ final class MAD4B_SCP_Optional_Governance {
                     $failure = 'Policy rollback could not be verified; inspect operator settings and audit before retrying.';
             }
         } finally {
-            $held = get_option( self::LOCK, array() );
-            if ( is_array( $held ) && hash_equals( $token, (string) ( $held['token'] ?? '' ) ) )
-                delete_option( self::LOCK );
+            MAD4B_SCP_Managed_Skills_Lease::release( self::LOCK, $token );
         }
         if ( '' !== $failure ) wp_die( $failure );
         wp_safe_redirect( add_query_arg( 'saved', '1', admin_url( 'admin.php?page=' . self::SLUG ) ) );

@@ -28,3 +28,6 @@ The shared `MAD4B_SCP_Policy_Resolution::current_operating_mode()` is the **only
 The Admin Options Control renders non-optional security and Release Verdict gates as locked guidance and exposes effective mode/current profile. A read-only `mad4b/optional-governance-status` Ability is mounted into `mad4b-read` and `mad4b-chatgpt`; WordPress Options do not change GitHub CI or owner approvals.
 
 Action Center renders optional advisory reasons separately and muted reasons in a collapsed evidence list, with a link to Options Control. Core blockers, recovery reasons, and independent release scopes remain unchanged.
+
+## Phase 1 integration and risk corrections
+Options Control now reuses the existing atomic CAS managed lease, including atomic expired-lock reclamation and fenced release; no unprotected expired lock delete. Registered dynamic policies cannot duplicate a diagnostic reason. The canonical Admin Navigation Manifest explicitly describes Options Control. Provider closure is no longer treated as a globally optional operator signal: whether a provider is optional depends on the live operation, so the current source preserves the original provider closure warning until an independent operation-specific classification is established. Existing security and release gates remain mandatory.
