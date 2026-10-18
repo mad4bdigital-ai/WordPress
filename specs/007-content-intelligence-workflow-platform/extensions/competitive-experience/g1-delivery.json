@@ -49,7 +49,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-workspace.php",
-      "sha256": "85e9e732c80dfbaff615eb2603b14eb40050e55cc9c31dcc30cce6400dcd1925"
+      "sha256": "ddad1add5f1fedad52d74ea99501f37b507901efbf146a158e5271f2de2c5192"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-evidence-collectors.php",
