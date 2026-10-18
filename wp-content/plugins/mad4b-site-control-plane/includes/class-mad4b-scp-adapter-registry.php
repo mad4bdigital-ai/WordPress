@@ -78,10 +78,12 @@ final class MAD4B_SCP_Adapter_Registry {
 	/**
 	 * Exact reviewed class identity AND trusted on-disk bundled source.
 	 * Does not autoload the class or infer permission from a namespace.
+	 * is_subclass_of() must accept the already-loaded class NAME as a string;
+	 * allow_string=false rejects every approved class even after class_exists(..., false).
 	 */
 	private static function is_trusted_bundled_class( $class ) {
 		if ( ! is_string( $class ) || ! class_exists( $class, false )
-			|| ! is_subclass_of( $class, 'MAD4B_SCP_Adapter_Base', false ) ) return false;
+			|| ! is_subclass_of( $class, 'MAD4B_SCP_Adapter_Base', true ) ) return false;
 		$root = realpath( __DIR__ . '/adapters' );
 		if ( false === $root ) return false;
 		$reflection = new ReflectionClass( $class );

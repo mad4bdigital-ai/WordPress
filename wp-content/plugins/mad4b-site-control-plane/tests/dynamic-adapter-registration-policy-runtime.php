@@ -3,6 +3,7 @@
 if ( ! defined( 'ABSPATH' ) ) define( 'ABSPATH', __DIR__ . '/' );
 class MAD4B_SCP_Provider_Compatibility_Certification {}
 function add_action( $hook, $callback = null, $priority = 10, $args = 1 ) { return true; }
+function add_filter( $hook, $callback = null, $priority = 10, $args = 1 ) { return true; }
 function do_action( $hook, $value = null ) { return null; }
 function registration_assert( $ok, $why ) {
     if ( ! $ok ) { fwrite( STDERR, 'FAIL: ' . $why . "\n" ); exit( 1 ); }
@@ -25,6 +26,9 @@ registration_assert( ! in_array( 'Unreviewed_Third_Party_Adapter', $discovered, 
     'External subclass cannot pose as bundled adapter' );
 registration_assert( ! in_array( 'Unreviewed_Third_Party_Adapter', $approved, true ),
     'Unreviewed external adapter is never silently approved' );
+registration_assert( class_exists( 'MAD4B_SCP_Core_Content_Modeling_Adapter', false )
+    && is_subclass_of( 'MAD4B_SCP_Core_Content_Modeling_Adapter', 'MAD4B_SCP_Adapter_Base', true ),
+    'Exact loaded reviewed adapter subclass identity is accepted without autoload' );
 registration_assert( in_array( 'MAD4B_SCP_Core_Content_Modeling_Adapter', $approved, true ),
     'Source-reviewed registration policy is read successfully' );
 registration_assert( count( $approved ) >= 18,
@@ -32,6 +36,7 @@ registration_assert( count( $approved ) >= 18,
 $registry->register_defaults();
 registration_assert( in_array( 'mad4b/plugin-capability-graph', $registry->ability_names( 'read' ), true ),
     'Registered plugin capability graph is discoverable via canonical read inventory' );
+registration_assert( count( $registry->all() ) > 0, 'Reviewed default adapters actually register after trust check' );
 registration_assert( $registry->get( 'core-content-modeling' ) !== null
     || $registry->get( 'content-modeling' ) !== null,
     'Known bundled functional adapter registered' );
