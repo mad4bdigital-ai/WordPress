@@ -27,6 +27,8 @@ final class MAD4B_SCP_Provider_Connections_Admin_UI {
         $result = MAD4B_SCP_Provider_Connection_Center::discover();
         echo '<div class="wrap"><h1>' . esc_html__( 'Provider Connections', 'mad4b-site-control-plane' ) . '</h1>';
         echo '<p>' . esc_html__( 'Live connection health and recommended recovery. Discovery is read-only; owner OAuth consent, exact one-time approval and post-operation verification are separate.', 'mad4b-site-control-plane' ) . '</p>';
+        $peer_link = MAD4B_SCP_Admin_Workspace::link( 'mad4b-adapter-coverage', array( 'tab' => 'native-peers' ) );
+        if ( '' !== $peer_link ) echo '<p><a href="' . esc_url( $peer_link ) . '">' . esc_html__( 'Inspect Native MCP peer health (no network probe)', 'mad4b-site-control-plane' ) . '</a></p>';
         if ( is_wp_error( $result ) || empty( $result['providers'] ) ) {
             echo '<div class="notice notice-warning inline"><p>' . esc_html__( 'No verified provider adapters are available to inspect.', 'mad4b-site-control-plane' ) . '</p></div></div>';
             return;

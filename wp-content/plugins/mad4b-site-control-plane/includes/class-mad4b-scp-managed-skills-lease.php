@@ -15,6 +15,21 @@ final class MAD4B_SCP_Managed_Skills_Lease {
 		if ( 1 === (int) $changed ) { wp_cache_delete( (string) $name, 'options' ); return true; }
 		return false;
 	}
+    /**
+     * One narrowly named compensation helper for optional advisory preferences.
+     * The global CAS primitive remains PRIVATE and may not be used as a generic
+     * publicly callable WordPress Options mutation API.
+     */
+    public static function compensate_optional_governance_option( $owner, $expected, $replacement = null ) {
+        if ( ! function_exists( 'current_user_can' ) || ! current_user_can( 'manage_options' ) ) return false;
+        $lock = get_option( 'mad4b_scp_optional_governance_settings_lock_v1', array() );
+        if ( ! is_array( $lock ) || ! isset( $lock['owner'], $lock['expires_at_epoch'] )
+            || ! is_string( $owner ) || '' === $owner
+            || ! hash_equals( (string) $lock['owner'], $owner )
+            || time() > (int) $lock['expires_at_epoch'] ) return false;
+        return self::compare_and_swap_option(
+            'mad4b_scp_optional_governance_options_v1', $expected, $replacement );
+    }
 	public static function refresh( $option_name, $ttl, $owner ) {
 		$current = get_option( $option_name, array() );
 		if ( ! is_array( $current ) || empty( $current['owner'] ) || ! hash_equals( (string) $current['owner'], (string) $owner ) ) return new WP_Error( 'mad4b_remote_skill_lock_fenced', 'Managed Skill reconciliation lost its durable lock ownership.' );

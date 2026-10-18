@@ -1,0 +1,41 @@
+{
+  "contract": "mad4b.optional-governance-catalog.v1",
+  "default_mode": "inherit",
+  "scope": "operator_advisory_only",
+  "gates": [
+    {
+      "id": "developer_lane",
+      "reason": "developer_lane_not_ready",
+      "label": "Developer lane availability",
+      "description": "Diagnostic visibility when optional developer runtime is unavailable."
+    },
+    {
+      "id": "developer_breakglass_lane",
+      "reason": "developer_breakglass_lane_not_ready",
+      "label": "Developer Breakglass lane diagnostics",
+      "description": "Show optional developer breakglass availability warnings; does not enable breakglass."
+    },
+    {
+      "id": "machine_ingress",
+      "reason": "external_machine_ingress_not_reachable",
+      "label": "External machine diagnostic ingress",
+      "description": "Optional reachability warning for assisted host diagnostics."
+    },
+    {
+      "id": "machine_ingress_evidence",
+      "reason": "external_machine_ingress_unbound",
+      "label": "Machine ingress evidence pending",
+      "description": "Optional reminder to bind diagnostics reachability evidence."
+    }
+  ],
+  "operating_mode_defaults": {
+    "ENTERPRISE_MULTI_OPERATOR": "enforced",
+    "SINGLE_OWNER_HARDENED": "advisory",
+    "EMERGENCY_RECOVERY": "enforced"
+  },
+  "semantics": {
+    "presentation_only": true,
+    "core_authorization_immutable": true,
+    "clear_intent_never_substitutes_exact_approval": true
+  }
+}

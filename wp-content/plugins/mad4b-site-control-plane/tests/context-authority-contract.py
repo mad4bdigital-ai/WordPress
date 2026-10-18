@@ -44,7 +44,8 @@ require(main, "class-mad4b-scp-context-preflight.php", "Context Preflight runtim
 require(main, "class-mad4b-scp-context-adapter.php", "context adapter wiring")
 require(main, "class-mad4b-scp-context-admin-ui.php", "context admin wiring")
 require(main, "MAD4B_SCP_Context_Admin_UI::boot();", "context admin boot")
-require(registry, "'MAD4B_SCP_Context_Adapter'", "context adapter registry registration")
+require(registry, "approved_bundled_adapter_classes", "reviewed adapter registration boundary")
+require(json.dumps(json.loads((root / "config/adapter-registration-policy.json").read_text("utf-8"))), "MAD4B_SCP_Context_Adapter", "context adapter source-reviewed approval")
 
 # Context Authority semantics.
 require(authority, "'governed'", "governed source mode")
