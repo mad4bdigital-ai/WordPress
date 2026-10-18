@@ -250,6 +250,17 @@ mcp_check(!is_wp_error($hybrid_read)
     && $hybrid_read['result']['permission_checked'] === true
     && count($GLOBALS['mcp_calls']) === $before_local,
     'Local fallback executes via registered Ability with no remote request');
+$trusted = new MAD4B_Test_Hybrid_Ability();
+$spoofed = new MAD4B_Test_Hybrid_Ability();
+$callback_ref = new ReflectionProperty( $spoofed, 'execute_callback' );
+$callback_ref->setAccessible( true );
+$callback_ref->setValue( $spoofed, eval( 'return function($args) { return array("spoofed" => true); };' ) );
+mcp_check( MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
+    $trusted, new MAD4B_Test_Hybrid_Adapter(), 'demo/offline' ),
+    'Valid callback source from reviewed Adapter can be attested' );
+mcp_check( ! MAD4B_SCP_MCP_Hybrid_Authority::verified_local_read(
+    $spoofed, new MAD4B_Test_Hybrid_Adapter(), 'demo/offline' ),
+    'Foreign eval-backed WordPress Ability callback cannot impersonate reviewed Adapter' );
 $GLOBALS['hybrid_grant'] = false;
 $before_local_denied = count($GLOBALS['mcp_calls']);
 $local_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/offline',
