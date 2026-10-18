@@ -23,6 +23,16 @@ function rest_validate_value_from_schema( $value, $schema, $key = '' ) {
 }
 
 function wp_http_validate_url( $url ) { return strpos( $url, 'https://reviewed.example/' ) === 0; }
+$GLOBALS['mcp_auth_mode'] = 'valid';
+function ci_mcp_test_credential_resolver( $peer_id, $audience, $required_scopes ) {
+    if ( 'test-peer' !== $peer_id ) throw new RuntimeException( 'Unknown peer' );
+    $mode = $GLOBALS['mcp_auth_mode'];
+    return array( 'access_token'=>'TEST_REDACTED_TOKEN',
+        'expires_at' => time() + ( 'expired' === $mode ? -20 : 3600 ),
+        'audience' => 'wrong-audience' === $mode ? 'https://different.example' : $audience,
+        'scopes' => 'missing-scope' === $mode ? array() : array( 'tools.read' ) );
+}
+define( 'MAD4B_SCP_MCP_PEER_AUTH_RESOLVER', 'ci_mcp_test_credential_resolver' );
 $GLOBALS['mcp_transients'] = array();
 function get_transient( $key ) { return $GLOBALS['mcp_transients'][$key] ?? false; }
 function set_transient( $key, $value, $ttl ) {
@@ -65,6 +75,8 @@ $GLOBALS['mcp_tools'] = array();
 function wp_safe_remote_post( $url, $args ) {
     mcp_check( $url === 'https://reviewed.example/mcp', 'Remote URL must remain operator-pinned' );
     mcp_check( $args['redirection'] === 0 && $args['sslverify'] === true && $args['timeout'] <= 7, 'Safe bounded HTTP enforced' );
+    mcp_check( ( $args['headers']['Authorization'] ?? '' ) === 'Bearer TEST_REDACTED_TOKEN',
+        'Only operator-resolved scoped expiring provider bearer is sent to pinned HTTPS origin' );
     $json = json_decode( $args['body'], true );
     $method = (string) ( $json['method'] ?? '' );
     $revision = $GLOBALS['mcp_revision'];
@@ -141,6 +153,7 @@ $native_local_tree = array(
 $manifest_path = $manifest_dir . '/reviewed.json';
 $manifest = array( 'contract'=>'mad4b.mcp-hybrid.v1', 'peers'=>array( array(
     'id'=>'test-peer', 'endpoint'=>'https://reviewed.example/mcp',
+    'audience'=>'https://reviewed.example', 'required_scopes'=>array('tools.read'),
     'bindings'=>array(
         array('ability'=>'demo/inspect', 'tool'=>'read_inspect', 'dimension'=>'read',
             'schema_sha256'=>$schema_digest, 'read_execution_reviewed'=>true),
@@ -353,6 +366,19 @@ $native_denied = $hybrid::execute_hybrid_read(array('ability'=>'demo/inspect',
 mcp_check(is_wp_error($native_denied)
     && $native_denied->get_error_code() === 'mad4b_hybrid_read_snapshot_unacknowledged',
     'Hybrid read does not trigger native call without client-acknowledged catalog hash');
+$before_auth_rejection = count( $GLOBALS['mcp_calls'] );
+foreach ( array( 'expired' => 'mad4b_mcp_credential_invalid',
+    'wrong-audience' => 'mad4b_mcp_credential_invalid',
+    'missing-scope' => 'mad4b_mcp_credential_scope_missing' ) as $mode => $error_code ) {
+    $GLOBALS['mcp_auth_mode'] = $mode;
+    mcp_new_request_epoch();
+    $auth_denied = $hybrid::catalog( 'test-peer' );
+    mcp_check( is_wp_error( $auth_denied ) && $auth_denied->get_error_code() === $error_code
+        && count($GLOBALS['mcp_calls']) === $before_auth_rejection,
+        'Expired, mismatched-audience or insufficient-scope credentials deny all provider IO' );
+}
+$GLOBALS['mcp_auth_mode'] = 'valid';
+mcp_new_request_epoch();
 // Repeated peer transport failures trip a bounded circuit. The native
 // transport is skipped while open, but the separately reviewed local
 // route remains selectable without any extra outbound request.
