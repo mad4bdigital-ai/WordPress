@@ -40,7 +40,7 @@ $PythonCommand = if (Get-Command python -ErrorAction SilentlyContinue) { "python
 if (-not $PythonCommand) {
     throw "GOVERNANCE_APPLY_FAIL_CLOSED: Python is required for governed readback."
 }
-foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py", "tools/verify_repository_ruleset_restore.py", "tools/build_repository_ruleset_attestation.py", "tools/publish_repository_ruleset_attestation.py")) {
+foreach ($RequiredPath in @($TemplatePath, $PolicyPath, "tools/verify_repository_governance.py", "tools/verify_repository_ruleset_template.py", "tools/verify_repository_ruleset_restore.py", "tools/verify_repository_ruleset_readiness_migration.py", "tools/build_repository_ruleset_attestation.py", "tools/publish_repository_ruleset_attestation.py")) {
     if (-not (Test-Path -LiteralPath $RequiredPath -PathType Leaf)) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: required file not found: $RequiredPath"
     }
@@ -165,6 +165,23 @@ if ($named.Count -gt 1) {
     if ([string]$before.source_type -ne "Repository" -or [string]$before.source -ne $Repository) {
         throw "GOVERNANCE_APPLY_FAIL_CLOSED: selected canonical ruleset is not repository-owned by $Repository."
     }
+    # One-time governed migration: refuse the template PUT if it would
+    # change any protection other than adding the exact Readiness check.
+    $MinimalDeltaPath = Join-Path $env:TEMP "mad4b-readiness-ruleset-minimal-delta.json"
+    & $PythonCommand "tools/verify_repository_ruleset_readiness_migration.py" `
+        --before $BeforeReadbackPath `
+        --template $TemplatePath `
+        --policy $PolicyPath `
+        --repository $Repository `
+        --output $MinimalDeltaPath
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $MinimalDeltaPath -PathType Leaf)) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: minimal-delta preflight rejected the proposed ruleset update."
+    }
+    $minimalDelta = Get-Content -LiteralPath $MinimalDeltaPath -Raw | ConvertFrom-Json
+    if ($minimalDelta.ready -ne $true -or $minimalDelta.other_mutable_fields_identical -ne $true) {
+        throw "GOVERNANCE_APPLY_FAIL_CLOSED: ruleset minimal-delta evidence is incomplete."
+    }
+    Write-Host "ruleset_minimal_delta=$($minimalDelta.transition)"
     $rollbackRules = @()
     foreach ($rule in @($before.rules)) {
         $rollbackRule = ([string]($rule | ConvertTo-Json -Depth 100)) | ConvertFrom-Json
