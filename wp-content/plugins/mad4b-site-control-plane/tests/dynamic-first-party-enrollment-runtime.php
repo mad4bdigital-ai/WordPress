@@ -16,6 +16,7 @@ class WP_Error {
 class WP_Ability {
     protected $name, $meta, $input_schema, $execute_callback, $permission_callback;
     public $calls = 0;
+    public static $test_result = null;
     public function __construct( $name, array $definition ) {
         $this->name = $name;
         $this->meta = $definition['meta'] ?? array();
@@ -28,7 +29,9 @@ class WP_Ability {
     public function get_input_schema() { return $this->input_schema; }
     public function execute( $payload = null ) {
         ++$this->calls;
-        // Stub returns a non-authorizing result: callbacks are not executed.
+        // Stub never executes real WordPress callbacks; optionally simulate a
+        // redacted target error to verify the governed transport contract.
+        if ( null !== self::$test_result ) return self::$test_result;
         return array( 'state' => 'stub_only', 'mutation_performed' => false );
     }
 }
@@ -119,6 +122,37 @@ mad4b_check( $entry['operation_id'] === $pre[ $owner ]['operation_id'],
 $info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $entry['operation_id'] ) );
 mad4b_check( ! is_wp_error( $info ) && $info['remote_ability'] === $owner,
     'info did not resolve exact registered ability' );
+// The first-party Owner Intent lane must report a bounded unknown outcome
+// rather than handing WP_Error to the MCP transport after a possible write.
+class MAD4B_SCP_Execution_Fence {
+    public static function with_governed_child( $name, $payload, $callback, $reason = '' ) {
+        return call_user_func( $callback );
+    }
+}
+WP_Ability::$test_result = new WP_Error( 'mad4b_owner_review_mismatch', 'SENSITIVE_ATTEST_MESSAGE',
+    array( 'secret' => 'PRIVATE_ATTEST_TOKEN' ) );
+$owner_error_response = MAD4B_SCP_Enrollment_Dispatch::execute( array(
+    'operation_id' => $entry['operation_id'],
+    'expected_registration_digest' => $info['registration_digest'],
+    'expected_dispatch_policy_digest' => $info['dispatch_policy_digest'],
+    'expected_input_schema_sha256' => $info['input_schema_sha256'],
+    'input' => array( 'review_digest' => str_repeat( 'a', 64 ),
+        'confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE' ),
+) );
+mad4b_check( is_array( $owner_error_response )
+    && 'target_error_reconciliation_required' === $owner_error_response['state']
+    && $owner_error_response['target_error_code'] === 'mad4b_owner_review_mismatch'
+    && $owner_error_response['human_decision_required']
+    && $owner_error_response['reconciliation_required']
+    && $owner_error_response['authority_not_proven']
+    && false === $owner_error_response['blind_retry_allowed']
+    && null === $owner_error_response['mutation_performed']
+    && ! isset( $owner_error_response['result'] )
+    && ! array_key_exists( 'operation_succeeded', $owner_error_response )
+    && false === strpos( wp_json_encode( $owner_error_response ), 'SENSITIVE_ATTEST_MESSAGE' )
+    && false === strpos( wp_json_encode( $owner_error_response ), 'PRIVATE_ATTEST_TOKEN' ),
+    'Dynamic first-party owner WP_Error was not a bounded unknown outcome' );
+WP_Ability::$test_result = null;
 // Real WordPress wraps each original MAD4B callable through audit and
 // execution-admission closures, rather than retaining the raw class method.
 $unwrapped = $GLOBALS['registered'][ $owner ];

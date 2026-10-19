@@ -66,13 +66,13 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         if ( ! is_wp_error( $error ) || ! method_exists( $error, 'get_error_message' ) )
             return 'unknown_transport_failure';
         $message = strtolower( (string) $error->get_error_message() );
-        if ( preg_match( '/curl error 6|could not resolve|name or service not known|dns lookup/i', $message ) )
+        if ( preg_match( '/curl error 6(?![0-9])|could not resolve|name or service not known|dns lookup/i', $message ) )
             return 'dns_resolution_failure';
-        if ( preg_match( '/curl error 60|ssl certificate|tls certificate|certificate verify/i', $message ) )
+        if ( preg_match( '/curl error 60(?![0-9])|ssl certificate|tls certificate|certificate verify/i', $message ) )
             return 'tls_verification_failure';
-        if ( preg_match( '/curl error 28|timed out|timeout/i', $message ) )
+        if ( preg_match( '/curl error 28(?![0-9])|timed out|timeout/i', $message ) )
             return 'network_timeout';
-        if ( preg_match( '/curl error 7|connection refused|could not connect/i', $message ) )
+        if ( preg_match( '/curl error 7(?![0-9])|connection refused|could not connect/i', $message ) )
             return 'tcp_connection_failure';
         if ( preg_match( '/not a valid url|blocked external|blocked request|disallowed/i', $message ) )
             return 'local_http_policy_block';

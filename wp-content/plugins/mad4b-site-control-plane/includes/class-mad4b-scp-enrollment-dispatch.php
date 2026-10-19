@@ -630,12 +630,18 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			);
 		}
 		if ( is_wp_error( $result ) ) {
-			// Only the bounded managed-Skills operation returns a non-authorizing
-			// diagnostic envelope. The generic dispatcher otherwise preserves WP_Error.
-			// Do not lose the target code behind a transport-level error or report
-			// a failed/uncertain checkpoint as a successful reconciliation.
-			if ( 'managed_skills_reconciliation' !== $operation_id ) return $result;
-			return array(
+			// Owner Intent and Staging Write converge through the same bounded
+			// reconciliation channel as managed Skills. Returning their raw
+			// WP_Error would let the MCP transport hide the exact failure code
+			// behind an opaque post-mutation exception. Never infer failure or
+			// success of the target: its durable journal and owner-intent status
+			// are the only authoritative recovery evidence.
+			$skills_operation = 'managed_skills_reconciliation' === $operation_id;
+			$owner_operation = 'staging_write_authority_convergence' === $operation_id
+				|| ( ! empty( $row['owner_intent_only'] )
+					&& 'owner_attestation_v1' === (string) ( $row['broker_dispatch_policy'] ?? '' ) );
+			if ( ! $skills_operation && ! $owner_operation ) return $result;
+			$envelope = array(
 				'contract' => self::CONTRACT,
 				'operation_id' => $row['operation_id'],
 				'remote_ability' => $row['remote_ability'],
@@ -644,18 +650,29 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'input_schema_sha256' => $row['input_schema_sha256'],
 				'state' => 'target_error_reconciliation_required',
 				'ready' => false,
-				'failed' => true,
 				'target_error_code' => substr( sanitize_key( (string) $result->get_error_code() ), 0, 96 ),
 				'target_error_details_redacted' => true,
 				'reconciliation_required' => true,
 				'blind_retry_allowed' => false,
 				'operation_invoked' => true,
-				'operation_succeeded' => false,
 				'production_mutation' => false,
 				'breakglass_included' => false,
 				'mutation_performed' => null,
 				'mutation_evidence_source' => 'unknown_after_target_error',
 			);
+			if ( $skills_operation ) {
+				// Retain the existing managed-Skills consumer contract.
+				$envelope['failed'] = true;
+				$envelope['operation_succeeded'] = false;
+			} else {
+				// Owner decision remains a human gate even after the child errored.
+				$envelope['human_decision_required'] = true;
+				$envelope['outcome_verified'] = false;
+				$envelope['authority_not_proven'] = true;
+				$envelope['owner_review_required_for_reexecution'] = true;
+				$envelope['next_action'] = 'read_owner_intent_and_exact_operation_journal_no_replay';
+			}
+			return $envelope;
 		}
 
 		$target_reported_mutation = is_array( $result ) && array_key_exists( 'mutation_performed', $result );
