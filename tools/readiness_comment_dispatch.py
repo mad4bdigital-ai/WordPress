@@ -130,6 +130,32 @@ def process(kind: str, event: dict, policy: dict, repo: str, get, post) -> dict:
                 "The previous run is not eligible for safe retry")
         outcome = "RERUN_REQUESTED"
     if outcome == "RERUN_REQUESTED":
+        # TOCTOU fence: the source PR and original run must still identify
+        # the same head/base immediately before this side effect.
+        live_pr = get(f"repos/{repo}/pulls/{pr_number}")
+        live_head, live_base = live_pr.get("head") or {}, live_pr.get("base") or {}
+        require(live_pr.get("state") == "open"
+                and live_head.get("sha") == sha
+                and live_head.get("ref") == pr["head"]["ref"]
+                and (live_head.get("repo") or {}).get("full_name") == repo
+                and live_base.get("ref") == "master"
+                and live_base.get("sha") == pr["base"]["sha"],
+                "PR moved while preparing readiness rerun")
+        live_run = get(f"repos/{repo}/actions/runs/{run_id}")
+        associated = [
+            item for item in (live_run.get("pull_requests") or [])
+            if item.get("number") == pr_number
+            and (item.get("head") or {}).get("sha") == sha
+            and (item.get("base") or {}).get("sha") == pr["base"]["sha"]
+        ]
+        require(live_run.get("id") == run_id
+                and live_run.get("event") == "pull_request"
+                and live_run.get("head_sha") == sha
+                and live_run.get("head_branch") == pr["head"]["ref"]
+                and live_run.get("status") == "completed"
+                and live_run.get("conclusion") in {"failure", "cancelled", "timed_out"}
+                and associated,
+                "Run moved or no longer retryable")
         post(f"repos/{repo}/actions/runs/{run_id}/rerun")
     return {
         "contract": "mad4b.readiness-comment-dispatch.v1",
