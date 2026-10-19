@@ -19,7 +19,7 @@ use WP_Term;
 
 final class FilterContextBuilder {
     private $parser; private $ajaxParser; private $languages; private $meta; private $content; private $scope; private $resultCounts; private $readiness; private $combinations; private $contentReadiness; private $postTypes;
-    public function __construct( FilterUrlParser $parser, LanguageResolverInterface $languages, TermMetaReader $meta, ContentComposer $content, RequestScope $scope, ResultCountResolver $resultCounts, Readiness $readiness, CombinationRegistry $combinations, ContentReadiness $contentReadiness, PostTypeObserver $postTypes, AjaxFilterStateParser $ajaxParser = null ) {
+    public function __construct( FilterUrlParser $parser, LanguageResolverInterface $languages, TermMetaReader $meta, ContentComposer $content, RequestScope $scope, ResultCountResolver $resultCounts, Readiness $readiness, CombinationRegistry $combinations, ContentReadiness $contentReadiness, PostTypeObserver $postTypes, ?AjaxFilterStateParser $ajaxParser = null ) {
         $this->parser=$parser;$this->languages=$languages;$this->meta=$meta;$this->content=$content;$this->scope=$scope;$this->resultCounts=$resultCounts;$this->readiness=$readiness;$this->combinations=$combinations;$this->contentReadiness=$contentReadiness;$this->postTypes=$postTypes;$this->ajaxParser=$ajaxParser ?: new AjaxFilterStateParser();
     }
     public function build( ?string $uri = null ): array { return $this->buildInternal( $uri, false, null, 'authorizing_request' ); }

@@ -9,7 +9,7 @@ final class MediaLabPage {
     const SLUG='etg-dfsb-media-lab';
 
     private $registry;private $inspector;private $gallery;private $previewContextProvider;
-    public function __construct(MediaDiscoveryRegistry$registry,MediaInspector$inspector,GalleryComposer$gallery,callable$previewContextProvider=null){$this->registry=$registry;$this->inspector=$inspector;$this->gallery=$gallery;$this->previewContextProvider=$previewContextProvider;}
+    public function __construct(MediaDiscoveryRegistry$registry,MediaInspector$inspector,GalleryComposer$gallery,?callable$previewContextProvider=null){$this->registry=$registry;$this->inspector=$inspector;$this->gallery=$gallery;$this->previewContextProvider=$previewContextProvider;}
 
     public function register():void{
         add_action('admin_menu',array($this,'menu'));

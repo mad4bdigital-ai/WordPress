@@ -15,7 +15,7 @@ final class MetadataAdapter {
 	private $canonical;
 	private $publication;
 
-	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, IndexingPolicy $indexing, CanonicalBuilder $canonical, PublicationRegistry $publication = null ) {
+	public function __construct( callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, IndexingPolicy $indexing, CanonicalBuilder $canonical, ?PublicationRegistry $publication = null ) {
 		$this->contextProvider = $contextProvider;
 		$this->content = $content;
 		$this->gallery = $gallery;

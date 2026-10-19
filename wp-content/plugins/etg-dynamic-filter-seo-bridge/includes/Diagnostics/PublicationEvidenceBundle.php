@@ -13,8 +13,10 @@ final class PublicationEvidenceBundle {
 		$previewLimit=max(1,min(100,$previewLimit));
 		$inventory=$this->inventory->collect(); $readiness=$this->readiness->report(); $summary=$this->publication->publicationSummary($previewLimit); $buildIdentity=BuildIdentity::collect(); $profileEvidence=array(); $activationBlockers=array();
 		$ajaxPersistentCache=function_exists('wp_using_ext_object_cache')&&wp_using_ext_object_cache()&&function_exists('wp_cache_add')&&function_exists('wp_cache_incr');
+		$edgeVerified=defined('ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED')&&true===ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED;
 		$ajaxRateProtection=array(
-			'mode'=>$ajaxPersistentCache?'persistent_object_cache':'external_waf_required',
+			'mode'=>$ajaxPersistentCache?'persistent_object_cache':($edgeVerified?'external_waf_attested':'rate_limit_backend_unavailable'),
+			'edge_attestation_present'=>$edgeVerified,
 			'built_in_cross_request_limit'=>$ajaxPersistentCache,
 			'external_evidence_required'=>!$ajaxPersistentCache,
 			'endpoint'=>'/wp-json/etg-dfsb/v1/ajax-presentation',

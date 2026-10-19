@@ -18,7 +18,7 @@ final class FilterDefinitionInspector {
     private $filterProvider;
     private static $nativeMemoryCache = null;
 
-    public function __construct( callable $templateProvider = null, callable $filterProvider = null ) {
+    public function __construct( ?callable $templateProvider = null, ?callable $filterProvider = null ) {
         $this->templateProvider = $templateProvider;
         $this->filterProvider = $filterProvider;
     }

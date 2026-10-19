@@ -79,6 +79,8 @@ final class EvidenceProvider {
                 'filters',
                 'profile_reconciliation',
                 'provider_group_drift',
+                'query_builder_identities',
+                'drift_triage',
             ),
             'limits' => array(
                 'default_page_size' => self::DEFAULT_PAGE_SIZE,
@@ -100,7 +102,7 @@ final class EvidenceProvider {
      */
     public function query( array $request ): array {
         $section = $this->cleanKey( $request['section'] ?? 'summary' );
-        $allowed = array( 'summary', 'unresolved_surfaces', 'filters', 'profile_reconciliation', 'provider_group_drift' );
+        $allowed = array( 'summary', 'unresolved_surfaces', 'filters', 'profile_reconciliation', 'provider_group_drift', 'query_builder_identities', 'drift_triage' );
         if ( ! in_array( $section, $allowed, true ) ) {
             return $this->envelope( $section, 'invalid_request', array(), array( 'unsupported_section' ) );
         }
@@ -133,6 +135,15 @@ final class EvidenceProvider {
                 break;
             case 'provider_group_drift':
                 $payload = $this->providerGroupDriftPayload( $snapshot, $request );
+                break;
+            case 'query_builder_identities':
+                $payload = $this->queryBuilderIdentitiesPayload( $snapshot, $request );
+                if ( isset( $payload['error'] ) ) {
+                    return $this->envelope( $section, 'provider_unavailable', $payload, array( (string) $payload['error'] ), $snapshot );
+                }
+                break;
+            case 'drift_triage':
+                $payload = $this->driftTriagePayload( $snapshot, $request );
                 break;
             default:
                 $payload = array();
@@ -324,6 +335,92 @@ final class EvidenceProvider {
             'source_provider_group_drift_truncated' => ! empty( $topology['provider_group_drift_truncated'] ),
             'filter_template_id' => $templateId,
             'filter_node_id' => $nodeId,
+        ) );
+    }
+
+    /**
+     * Page the full bounded identity index, not the shorter presentation query
+     * sample (MAX_QUERIES). A truncated identity index remains explicitly partial.
+     */
+    private function queryBuilderIdentitiesPayload( array $snapshot, array $request ): array {
+        $inventory = (array) ( $snapshot['inventory'] ?? array() );
+        $queries = (array) ( $inventory['query_builder'] ?? array() );
+        if ( empty( $queries['available'] ) || ! isset( $queries['identity_index'] ) || ! is_array( $queries['identity_index'] ) ) {
+            return array( 'error' => 'query_builder_identity_index_unavailable' );
+        }
+        $complete = ! empty( $queries['identity_index_complete'] );
+        $items = (array) $queries['identity_index'];
+        return $this->page( $items, $request, array(
+            'identity_index_complete' => $complete,
+            'source_records_available' => count( $items ),
+            'source_truncated' => ! $complete,
+            'query_sample_count' => count( (array) ( $queries['queries'] ?? array() ) ),
+            'complete_identity_coverage_claimed' => $complete,
+            'authorizing' => false,
+        ) );
+    }
+
+    /**
+     * Source-aware triage: findings from different sources may overlap.
+     * In particular, this must never present category totals as distinct defects
+     * or automatically decide whether a finding affects an enabled profile.
+     */
+    private function driftTriagePayload( array $snapshot, array $request ): array {
+        $inventory = (array) ( $snapshot['inventory'] ?? array() );
+        $filters = (array) ( $inventory['jet_smart_filters'] ?? array() );
+        $topology = (array) ( $inventory['elementor_topology'] ?? array() );
+        $buckets = array(
+            'unresolved_surface' => array(),
+            'missing_filter_definition' => array(),
+            'filter_semantic_drift' => array(),
+            'provider_group_drift' => array(),
+        );
+        foreach ( (array) ( $filters['surfaces'] ?? array() ) as $row ) {
+            if ( ! is_array( $row ) || empty( $row['filter_identity_expected'] )
+                || 'resolved' === (string) ( $row['identity_resolution_status'] ?? '' ) ) { continue; }
+            $buckets['unresolved_surface'][] = $row;
+        }
+        foreach ( (array) ( $filters['definition_unavailable'] ?? array() ) as $row ) {
+            if ( is_array( $row ) ) { $buckets['missing_filter_definition'][] = $row; }
+        }
+        foreach ( (array) ( $filters['drift'] ?? array() ) as $row ) {
+            if ( is_array( $row ) ) { $buckets['filter_semantic_drift'][] = $row; }
+        }
+        foreach ( (array) ( $topology['provider_group_drift'] ?? array() ) as $row ) {
+            if ( is_array( $row ) ) { $buckets['provider_group_drift'][] = $row; }
+        }
+        $items = array();
+        $counts = array();
+        foreach ( $buckets as $category => $rows ) {
+            $counts[ $category ] = count( $rows );
+            foreach ( $rows as $row ) {
+                $rawReason = (string) ( $row['reason'] ?? ( $row['definition_reason'] ?? ( $row['identity_resolution_reason'] ?? 'review_required' ) ) );
+                $reason = $this->cleanKey( $rawReason );
+                $severityHint = $this->cleanKey( $row['severity_hint'] ?? '' );
+                $items[] = array(
+                    'category' => $category,
+                    'severity' => 'missing_filter_definition' === $category || 'blocking' === $severityHint ? 'blocking_candidate' : 'review_required',
+                    'reason' => $reason,
+                    'filter_id' => (int) ( $row['filter_id'] ?? 0 ),
+                    'template_id' => (int) ( $row['template_id'] ?? 0 ),
+                    'node_id' => $this->cleanText( $row['node_id'] ?? '' ),
+                    'scope_confirmation_required' => true,
+                    'authorizing' => false,
+                );
+            }
+        }
+        $truncated = ! empty( $filters['surfaces_truncated'] )
+            || ! empty( $filters['definition_unavailable_truncated'] )
+            || ! empty( $filters['drift_truncated'] )
+            || ! empty( $topology['provider_group_drift_truncated'] );
+        return $this->page( $items, $request, array(
+            'source_category_counts' => $counts,
+            'source_records_count' => count( $items ),
+            'findings_may_overlap_across_categories' => true,
+            'profile_scope_evaluated' => false,
+            'source_truncated' => $truncated,
+            'classification_complete' => ! $truncated,
+            'safe_to_auto_fix' => false,
         ) );
     }
 

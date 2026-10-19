@@ -54,6 +54,10 @@ jobs:
           set -euo pipefail
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           for test_file in \
+            indexflow-managed-url-smoke.php \
+            indexflow-route-environment-smoke.php \
+            indexflow-route-storage-smoke.php \
+            indexflow-managed-runtime-smoke.php \
             indexflow-configuration-smoke.php \
             indexflow-legacy-profile-compat-smoke.php \
             indexflow-semantic-acceptance-smoke.php \
@@ -61,6 +65,7 @@ jobs:
             indexflow-foundation-architecture-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
+          python3 "$PLUGIN/tests/indexflow-vendor-handoff.py"
 
   browser-core-contract:
     name: Browser/Core JS contract
@@ -82,3 +87,5 @@ jobs:
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           node --check "$PLUGIN/assets/js/browser-acceptance-observer.js"
           node "$PLUGIN/tests/indexflow-browser-observer-smoke.js"
+          node --check "$PLUGIN/assets/js/indexflow-managed-routes.js"
+          node "$PLUGIN/tests/indexflow-managed-routes-browser-smoke.js"

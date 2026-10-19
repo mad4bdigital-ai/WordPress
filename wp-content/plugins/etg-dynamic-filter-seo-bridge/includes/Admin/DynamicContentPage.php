@@ -8,6 +8,7 @@ use ETG\DynamicFilterSEOBridge\JetEngine\ListingIntegration;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSourceResolver;
 use ETG\DynamicFilterSEOBridge\Presentation\InventoryContentCatalog;
+use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate;
 
 final class DynamicContentPage {
     const SLUG = 'etg-dfsb-dynamic-content';
@@ -18,7 +19,7 @@ final class DynamicContentPage {
     private $profiles;
     private $sources;
 
-    public function __construct(RuntimeInventory $inventory, InventoryContentCatalog $catalog, ContentSlotRegistry $slots, ProfileRegistry $profiles, ContentSourceResolver $sources = null) {
+    public function __construct(RuntimeInventory $inventory, InventoryContentCatalog $catalog, ContentSlotRegistry $slots, ProfileRegistry $profiles, ?ContentSourceResolver $sources = null) {
         $this->inventory = $inventory;
         $this->catalog = $catalog;
         $this->slots = $slots;
@@ -56,7 +57,17 @@ final class DynamicContentPage {
             'fallback_chain' => $this->post('fallback_chain'),
             'source_inventory_fingerprint' => (string) ($snapshot['snapshot_fingerprint'] ?? ''),
         );
-        $result = $this->slots->save($slot);
+        $revision = isset($_POST['slot_revision']) ? sanitize_text_field(wp_unslash((string) $_POST['slot_revision'])) : '';
+        $lease = OptionMutationGate::acquire(ContentSlotRegistry::OPTION_NAME);
+        if (is_wp_error($lease)) {
+            $result = array('saved' => false, 'reason' => $lease->get_error_code(), 'slot' => $slot);
+        } else {
+            try {
+                $result = $this->slots->save($slot, $revision);
+            } finally {
+                OptionMutationGate::release($lease);
+            }
+        }
         $url = AdminUi::pageUrl(self::SLUG, array(
             'tab' => 'editor',
             'saved' => !empty($result['saved']) ? '1' : '0',
@@ -72,7 +83,17 @@ final class DynamicContentPage {
         check_admin_referer('etg_dfsb_delete_dynamic_slot');
         $id = isset($_POST['slot_id']) ? sanitize_key(wp_unslash((string) $_POST['slot_id'])) : '';
         $wasDefault = $this->slots->isDefault($id);
-        $deleted = $this->slots->delete($id);
+        $revision = isset($_POST['slot_revision']) ? sanitize_text_field(wp_unslash((string) $_POST['slot_revision'])) : '';
+        $lease = OptionMutationGate::acquire(ContentSlotRegistry::OPTION_NAME);
+        if (is_wp_error($lease)) {
+            $deleted = false;
+        } else {
+            try {
+                $deleted = $this->slots->delete($id, $revision);
+            } finally {
+                OptionMutationGate::release($lease);
+            }
+        }
         wp_safe_redirect(AdminUi::pageUrl(self::SLUG, array('tab' => 'slots', 'deleted' => $deleted ? '1' : '0', 'restored' => $deleted && $wasDefault ? '1' : '0')));
         exit;
     }
@@ -128,7 +149,7 @@ final class DynamicContentPage {
             <?php if (isset($_GET['saved'])): ?>
                 <div class="notice notice-<?php echo '1' === (string) $_GET['saved'] ? 'success' : 'error'; ?> is-dismissible"><p><?php echo esc_html('1' === (string) $_GET['saved'] ? 'Dynamic content slot saved.' : 'Slot was not saved: ' . sanitize_text_field((string) ($_GET['reason'] ?? 'unknown'))); ?></p></div>
             <?php endif; ?>
-            <?php if (isset($_GET['deleted'])): ?><div class="notice notice-success is-dismissible"><p><?php echo !empty($_GET['restored']) ? 'Built-in slot override reset.' : 'Custom slot deleted.'; ?></p></div><?php endif; ?>
+            <?php if (isset($_GET['deleted'])): ?><div class="notice notice-<?php echo '1' === (string) $_GET['deleted'] ? 'success' : 'error'; ?> is-dismissible"><p><?php echo '1' !== (string) $_GET['deleted'] ? 'Slot was not deleted (stale revision or persistence failure).' : (!empty($_GET['restored']) ? 'Built-in slot override reset.' : 'Custom slot deleted.'); ?></p></div><?php endif; ?>
 
             <?php $this->renderStatus($metrics, $queryOptions, $relationOptions, $sourceCatalog); ?>
             <?php AdminUi::renderTabs(self::SLUG, $tabs, $tab); ?>
@@ -210,7 +231,7 @@ final class DynamicContentPage {
                 <td><?php echo esc_html((string) count((array) ($slot['sources'] ?? array()))); ?></td>
                 <td><span class="etg-slot-origin etg-slot-origin--<?php echo esc_attr($origin); ?>"><?php echo esc_html(str_replace('_', ' ', $origin)); ?></span></td>
                 <td><span class="etg-badge <?php echo !empty($slot['enabled']) ? 'etg-badge--safe' : 'etg-badge--warn'; ?>"><?php echo !empty($slot['enabled']) ? 'Enabled' : 'Disabled'; ?></span></td>
-                <td><a class="button button-small" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG, array('tab' => 'editor', 'slot' => $slot['id']))); ?>">Edit</a><?php if ('built_in' !== $origin): ?> <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline"><input type="hidden" name="action" value="etg_dfsb_delete_dynamic_slot"><input type="hidden" name="slot_id" value="<?php echo esc_attr((string) $slot['id']); ?>"><?php wp_nonce_field('etg_dfsb_delete_dynamic_slot'); ?><button class="button button-small" type="submit"><?php echo 'override' === $origin ? 'Reset' : 'Delete'; ?></button></form><?php endif; ?></td>
+                <td><a class="button button-small" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG, array('tab' => 'editor', 'slot' => $slot['id']))); ?>">Edit</a><?php if ('built_in' !== $origin): ?> <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline"><input type="hidden" name="action" value="etg_dfsb_delete_dynamic_slot"><input type="hidden" name="slot_id" value="<?php echo esc_attr((string) $slot['id']); ?>"><?php wp_nonce_field('etg_dfsb_delete_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>"><button class="button button-small" type="submit"><?php echo 'override' === $origin ? 'Reset' : 'Delete'; ?></button></form><?php endif; ?></td>
             </tr>
         <?php endforeach; ?>
         </tbody></table></div></div></section>
@@ -224,7 +245,7 @@ final class DynamicContentPage {
         <div class="etg-editor-sections">
             <div class="etg-editor-main">
                 <section id="etg-slot-editor" class="etg-panel"><div class="etg-panel__head"><div><h2><?php echo $edit['id'] ? 'Edit Content Combination' : 'Create Content Combination'; ?></h2><p class="description">Use <code>{{token}}</code>, <code>{{source:alias}}</code>, or <code>{{resolved}}</code>. Image/Gallery slots resolve ordered source fallbacks to normalized attachment IDs.</p></div></div><div class="etg-panel__body">
-                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="etg_dfsb_save_dynamic_slot"><?php wp_nonce_field('etg_dfsb_save_dynamic_slot'); ?>
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"><input type="hidden" name="action" value="etg_dfsb_save_dynamic_slot"><?php wp_nonce_field('etg_dfsb_save_dynamic_slot'); ?><input type="hidden" name="slot_revision" value="<?php echo esc_attr($this->slots->revision()); ?>">
                     <h3 class="etg-kicker">Basic & Output</h3>
                     <table class="form-table" role="presentation">
                         <tr><th><label for="etg-slot-id">Slot ID</label></th><td><input id="etg-slot-id" name="slot_id" class="regular-text code" required value="<?php echo esc_attr((string) $edit['id']); ?>"></td></tr>

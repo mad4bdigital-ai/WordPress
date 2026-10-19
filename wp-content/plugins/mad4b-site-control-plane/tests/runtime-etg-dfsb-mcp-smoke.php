@@ -42,6 +42,7 @@ $mad4b_owned_read_abilities = array(
 	'etg-dfsb/profiles',
 	'etg-dfsb/profile-blueprint',
 	'etg-dfsb/profile-plan',
+	'etg-dfsb/object-cache-status',
 	'etg-dfsb/content-catalog',
 );
 foreach ( $mad4b_owned_read_abilities as $name ) {
@@ -133,6 +134,10 @@ $check( empty( $blueprint['profile']['enabled'] ), 'ETG profile blueprint unexpe
 $plan = $dispatch_read( 'etg-dfsb/profile-plan' );
 $check( ! is_wp_error( $plan ) && ! empty( $plan['read_only'] ) && empty( $plan['authorizing'] ) && empty( $plan['profile_mutation'] ), 'ETG profile plan is not read-only.' );
 $check( ! empty( $plan['requires_operator_review'] ), 'ETG profile plan omitted operator review.' );
+
+$cache = $dispatch_read( 'etg-dfsb/object-cache-status' );
+$check( is_array( $cache ) && 'mad4b.object-cache-diagnostics.v1' === (string) ( $cache['contract'] ?? '' ), 'ETG Object Cache passive diagnostic contract missing.' );
+$check( ! empty( $cache['read_only'] ) && empty( $cache['mutation_performed'] ) && empty( $cache['cross_request_proven'] ), 'Passive Object Cache status must never claim cross-request certification.' );
 
 $catalog = $dispatch_read( 'etg-dfsb/content-catalog' );
 $check( ! is_wp_error( $catalog ) && ! empty( $catalog['read_only'] ) && empty( $catalog['authorizing'] ), 'ETG content catalog authority boundary failed.' );

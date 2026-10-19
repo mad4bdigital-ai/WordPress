@@ -4,6 +4,15 @@ on:
   pull_request:
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
@@ -20,6 +29,15 @@ on:
     branches: [master]
     paths:
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-provider-isolation.php'
       - 'wp-content/plugins/mad4b-site-control-plane/config/adapter-support-catalog.json'
@@ -61,9 +79,20 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php
 
   php-compatibility:
@@ -213,6 +242,56 @@ jobs:
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php" \
             --path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin
+      - name: Certify real WP/MariaDB option mutex across separate PHP processes
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ETG_LOCK_MARKER="/tmp/etg-gate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          script="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/etg-option-lock-concurrency-worker.php"
+          wp_args=(--path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin)
+          rm -f "${ETG_LOCK_MARKER}."{lease,locked,release,done}
+          ETG_LOCK_MODE=hold php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}" > "${ETG_LOCK_MARKER}.log" 2>&1 &
+          holder_pid=$!
+          cleanup() {
+            touch "${ETG_LOCK_MARKER}.release"
+            if kill -0 "$holder_pid" 2>/dev/null; then wait "$holder_pid" || true; fi
+            if test -f "${ETG_LOCK_MARKER}.log"; then cat "${ETG_LOCK_MARKER}.log"; fi
+          }
+          trap cleanup EXIT
+          for n in $(seq 1 100); do
+            if test -f "${ETG_LOCK_MARKER}.locked"; then break; fi
+            if ! kill -0 "$holder_pid" 2>/dev/null; then echo "::error::holder died before acquiring mutex"; exit 1; fi
+            sleep 0.1
+          done
+          test -f "${ETG_LOCK_MARKER}.locked"
+          ETG_LOCK_MODE=deny php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}"
+          touch "${ETG_LOCK_MARKER}.release"
+          wait "$holder_pid"
+          test -f "${ETG_LOCK_MARKER}.done"
+          ETG_LOCK_MODE=handover php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}"
+          echo "REAL_DB_CONCURRENT_ETG_MUTEX: PASS"
+      - name: Certify current PR ETG source against disposable WordPress and real SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-etg-wordpress
+          PLUGIN=wp-content/plugins/etg-dynamic-filter-seo-bridge
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$WP_PATH" = /tmp/mad4b-etg-wordpress
+          # The earlier Alpha13 fixture step overlays the PR working tree.
+          # Never copy that legacy checkout into the current-source acceptance.
+          # Materialize the immutable PR git tree directly instead.
+          test "$SOURCE_SHA" = "$(git rev-parse HEAD)"
+          rm -rf "$WP_PATH/$PLUGIN"
+          git archive --format=tar "$SOURCE_SHA" "$PLUGIN" | tar -xf - -C "$WP_PATH"
+          git show "$SOURCE_SHA:$PLUGIN/includes/Runtime/OptionMutationGate.php" | cmp - "$WP_PATH/$PLUGIN/includes/Runtime/OptionMutationGate.php"
+          git show "$SOURCE_SHA:$PLUGIN/includes/Presentation/ContentSlotRegistry.php" | cmp - "$WP_PATH/$PLUGIN/includes/Presentation/ContentSlotRegistry.php"
+          echo "ETG_CURRENT_SOURCE_MATERIALIZED_SHA=$SOURCE_SHA"
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/etg-current-source-db-acceptance.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+          echo "CURRENT_HEAD_ETG_SOURCE_DB_ACCEPTANCE: PASS"
+
       - name: Upload premium package normalization evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.3']
+        php: ['7.4', '8.3', '8.5']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,9 +64,26 @@ jobs:
           set -euo pipefail
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           find "$PLUGIN" -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+          php "$PLUGIN/tests/php85-explicit-nullable-smoke.php"
+          # PHP lint may exit zero even when PHP 8.5 emits a deprecation.
+          # Fail only on the explicit-nullable class of notice seen on ETG.
+          if [[ "${{ matrix.php }}" == '8.5' ]]; then
+            remaining=0
+            while IFS= read -r -d '' file; do
+              output=$(php -d error_reporting=-1 -d display_errors=stderr -l "$file" 2>&1)
+              if grep -Fq 'Implicitly marking parameter' <<< "$output"; then
+                echo "::error file=$file::Implicit nullable parameter detected on PHP 8.5"
+                printf '%s\n' "$output" >&2
+                remaining=$((remaining+1))
+              fi
+            done < <(find "$PLUGIN/includes" -type f -name '*.php' -print0)
+            if (( remaining > 0 )); then echo "::error::Found $remaining PHP files with implicit nullable signatures"; exit 1; fi
+          fi
           for test_file in \
             parser-smoke.php \
             operational-smoke.php \
+            content-slot-persistence-smoke.php \
+            profile-plan-noop-smoke.php \
             result-count-adapter-smoke.php \
             profile-runtime-smoke.php \
             post-type-observer-smoke.php \
@@ -78,15 +95,20 @@ jobs:
             inventory-reconciliation-smoke.php \
             pre-staging-authority-hardening-smoke.php \
             publication-layer-smoke.php \
+            seo-output-ownership-smoke.php \
             build-identity-smoke.php \
             alpha9-governance-smoke.php \
             alpha10-query-identity-smoke.php \
             alpha11-runtime-topology-dynamic-content-smoke.php \
             alpha12-inventory-control-smoke.php \
             alpha13-ajax-state-smoke.php \
+            ajax-rate-limit-smoke.php \
+            option-mutation-gate-smoke.php \
             alpha13-usage-guide-smoke.php \
             alpha13-frontend-runtime-smoke.php \
-            alpha13-deep-audit-smoke.php; do
+            alpha13-deep-audit-smoke.php \
+            evidence-triage-pagination-smoke.php \
+            configuration-studio-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
 
@@ -263,8 +285,13 @@ jobs:
               --head-branch "$PR_HEAD_BRANCH" --pr-number "$PR_NUMBER"
             exit 0
           fi
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-integration-evidence-scope.py \
+            --base "$MERGE_BASE" --head "$SOURCE_SHA"
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/architecture-maintainability-contract.py \
+            --base "$MERGE_BASE" --head "$SOURCE_SHA" --pr-number "$PR_NUMBER"
           git diff --name-only "$MERGE_BASE...HEAD" | while IFS= read -r path; do
             case "$path" in
+              governance/production-readiness/capability-coverage.json|specs/007-content-intelligence-workflow-platform/feature.json|specs/007-content-intelligence-workflow-platform/change-slices.json|specs/007-content-intelligence-workflow-platform/implementation-closure.json|specs/007-content-intelligence-workflow-platform/implementation-closure.md|specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json|specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g[2-9]-delivery.json) ;;
               wp-content/plugins/etg-dynamic-filter-seo-bridge/*|specs/001-etg-dynamic-filter-seo-operational/*|specs/008-dynamic-content-runtime-hardening/*|.specify/*|.github/workflows/etg-dfsb-ci.yml|.github/workflows/etg-dfsb-jetengine-ci.yml|.github/workflows/indexflow-foundation-ci.yml|.github/workflows/mad4b-*|plugins/mad4b-wordpress/*|wp-content/plugins/mad4b-site-control-plane/*|docs/MAD4B-*|docs/evidence/ETG-STAGING-RC41-PROVIDER-RUNTIME-ALIGNMENT.json|tools/capture-provider-recertification-evidence.py|tools/provider-semantic-delta.py|tools/capture-functional-gap-contract-evidence.py|tools/evaluate-functional-gap-contract-promotion.py|tools/browser-acceptance/*|tests/premium-provider-semantic-review-request-contract.py) ;;
               *) echo "Unexpected path in ETG PR: $path"; exit 1 ;;
             esac

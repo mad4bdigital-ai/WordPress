@@ -22,7 +22,7 @@ final class TermMetaReader {
 
 	private $mediaRegistry;
 
-	public function __construct( MediaDiscoveryRegistry $mediaRegistry = null ) { $this->mediaRegistry = $mediaRegistry; }
+	public function __construct( ?MediaDiscoveryRegistry $mediaRegistry = null ) { $this->mediaRegistry = $mediaRegistry; }
 
 	public function read( WP_Term $term, array $profileFieldMap = array() ): array {
 		$map = $this->mergedFieldMap( $profileFieldMap, $term );

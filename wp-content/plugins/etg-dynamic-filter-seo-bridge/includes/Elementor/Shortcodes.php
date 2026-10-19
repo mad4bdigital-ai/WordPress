@@ -17,7 +17,7 @@ final class Shortcodes {
     private $gallery;
     private $presentation;
 
-    public function __construct(callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, callable $evidenceContextProvider = null, PresentationResolver $presentation = null) {
+    public function __construct(callable $contextProvider, ContentComposer $content, GalleryComposer $gallery, ?callable $evidenceContextProvider = null, ?PresentationResolver $presentation = null) {
         $this->contextProvider = $contextProvider;
         $this->content = $content;
         $this->gallery = $gallery;

@@ -337,14 +337,14 @@ final class ContainerDynamicBackground {
         $element->add_render_attribute('_wrapper', $attrs);
     }
 
-    private function initialImageItems($element, string $slotId, array $context = null): array {
+    private function initialImageItems($element, string $slotId, ?array $context = null): array {
         $value = method_exists($element, 'get_settings_for_display') ? $element->get_settings_for_display('etg_dfsb_background_image') : array();
         $image = $this->normalizeImage($value);
         if (!$this->hasImage($image)) { $image = $this->resolver->slotImage($slotId, $context); }
         return $this->hasImage($image) ? array($image) : array();
     }
 
-    private function initialGalleryItems($element, string $slotId, array $context = null, int $limit = 8, int $minimum = 2, string $source = 'collection'): array {
+    private function initialGalleryItems($element, string $slotId, ?array $context = null, int $limit = 8, int $minimum = 2, string $source = 'collection'): array {
         $source = in_array($source, array('collection', 'dynamic_gallery'), true) ? $source : 'collection';
         $items = array();
 

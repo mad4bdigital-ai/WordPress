@@ -45,7 +45,9 @@
     "MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter",
-    "MAD4B_CI_Failure_Evidence_Adapter"
+    "MAD4B_CI_Failure_Evidence_Adapter",
+    "MAD4B_SCP_ETG_DFSB_Write_Adapter",
+    "MAD4B_SCP_IndexFlow_Routes_Adapter"
   ],
   "unknown_plugin_mutation": "deny",
   "unknown_plugin_discovery": "read_only",
@@ -93,7 +95,9 @@
     "MAD4B_SCP_JetEngine_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_Features_Registration_Diagnostics_Adapter",
     "MAD4B_SCP_JetEngine_Features_API_Branch_Diagnostics_Adapter",
-    "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter"
+    "MAD4B_SCP_JetEngine_REST_Lifecycle_Diagnostics_Adapter",
+    "MAD4B_SCP_ETG_DFSB_Write_Adapter",
+    "MAD4B_SCP_IndexFlow_Routes_Adapter"
   ],
   "hook_contract": "hooks_may_register_only_exact_reviewed_trusted_bundle_classes",
   "test_only_source_classes": [

@@ -12,7 +12,7 @@ final class SemanticQueryEvaluator {
     private $bindingResolver;
     private $bindingProvider;
 
-    public function __construct( RuntimeQueryBindingResolver $bindingResolver = null, callable $bindingProvider = null ) {
+    public function __construct( ?RuntimeQueryBindingResolver $bindingResolver = null, ?callable $bindingProvider = null ) {
         $this->bindingResolver = $bindingResolver;
         $this->bindingProvider = $bindingProvider;
     }

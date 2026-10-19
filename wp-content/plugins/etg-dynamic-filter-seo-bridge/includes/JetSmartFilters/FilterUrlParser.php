@@ -9,8 +9,10 @@ final class FilterUrlParser {
 	private $allowedTaxonomies;
 	private $allowedQueryParams;
 	private $trackingQueryParams;
+	private $managedResolver;
 
-	public function __construct( array $allowedTaxonomies = array(), array $allowedQueryParams = array(), array $trackingQueryParams = array() ) {
+	public function __construct( array $allowedTaxonomies = array(), array $allowedQueryParams = array(), array $trackingQueryParams = array(), ?callable $managedResolver = null ) {
+		$this->managedResolver = $managedResolver;
 		$this->allowedTaxonomies = array_values( array_unique( array_filter( array_map( 'sanitize_key', $allowedTaxonomies ) ) ) );
 		$this->allowedQueryParams = array_values( array_filter( array_map( 'sanitize_key', $allowedQueryParams ) ) );
 		$this->trackingQueryParams = $trackingQueryParams ?: array( 'gclid', 'fbclid', 'msclkid' );
@@ -19,6 +21,10 @@ final class FilterUrlParser {
 	public function parse( ?string $uri = null ): array {
 		if ( null === $uri ) {
 			$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( (string) $_SERVER['REQUEST_URI'] ) : '';
+		}
+		if ($this->managedResolver) {
+			$technical = call_user_func($this->managedResolver, $uri);
+			if (is_string($technical) && '' !== $technical) $uri = $technical;
 		}
 		$path = parse_url( $uri, PHP_URL_PATH );
 		$path = is_string( $path ) ? rawurldecode( $path ) : '';

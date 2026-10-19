@@ -1,0 +1,207 @@
+name: IndexFlow PR435 Exact-Source GitHub Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/indexflow-pr435-official-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: indexflow-pr435-official-release
+  cancel-in-progress: false
+
+env:
+  SOURCE_SHA: '0b1af33d51c85ccee49b4432f03eab8d429b9b0b'
+  MERGE_SHA: '60ca1c3252a7a1583163f581114e9aa5c2a8d866'
+  PLUGIN_TREE_SHA: 'f86129bb0be4e8de8369325d9c5e4362e3adc3ce'
+  PLUGIN_VERSION: '0.4.0-alpha.13'
+  ARTIFACT_RUN_ID: '39229821433'
+  ARTIFACT_NAME: 'etg-dfsb-operational-candidate-0b1af33d51c85ccee49b4432f03eab8d429b9b0b'
+  TAG: 'indexflow-v0.4.0-alpha.13-build.0b1af33d'
+
+jobs:
+  release:
+    name: Validate and publish immutable IndexFlow prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout verified master
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify source ancestry, plugin tree and owner approval
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'mad4bdigital-ai/WordPress'
+          git merge-base --is-ancestor "$SOURCE_SHA" HEAD
+          git merge-base --is-ancestor "$MERGE_SHA" HEAD
+          test "$(git rev-parse "$SOURCE_SHA:wp-content/plugins/etg-dynamic-filter-seo-bridge")" = "$PLUGIN_TREE_SHA"
+          test "$(git rev-parse "$MERGE_SHA:wp-content/plugins/etg-dynamic-filter-seo-bridge")" = "$PLUGIN_TREE_SHA"
+          test "$(git rev-parse "HEAD:wp-content/plugins/etg-dynamic-filter-seo-bridge")" = "$PLUGIN_TREE_SHA"
+          source_version="$(git show "$SOURCE_SHA:wp-content/plugins/etg-dynamic-filter-seo-bridge/etg-dynamic-filter-seo-bridge.php" | sed -n 's/^ \* Version: //p' | head -1)"
+          test "$source_version" = "$PLUGIN_VERSION"
+          gh api "repos/$GITHUB_REPOSITORY/pulls/435" > "$RUNNER_TEMP/indexflow-pr.json"
+          jq -e --arg source "$SOURCE_SHA" --arg merge "$MERGE_SHA" \
+            '.merged == true and .head.sha == $source and .merge_commit_sha == $merge' \
+            "$RUNNER_TEMP/indexflow-pr.json"
+          gh api "repos/$GITHUB_REPOSITORY/issues/435/comments?per_page=100" > "$RUNNER_TEMP/indexflow-attestation.json"
+          expected="$(printf 'OWNER_ATTEST_SINGLE_OWNER\nexact_head_sha: %s' "$SOURCE_SHA")"
+          jq -e --arg expected "$expected" \
+            'any(.[]; .user.login == "mad4bdigital-ai" and .body == $expected)' \
+            "$RUNNER_TEMP/indexflow-attestation.json"
+
+      - name: Enforce successful exact-head CI on source and merged master
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SOURCE_SHA&per_page=100" > "$RUNNER_TEMP/indexflow-source-ci.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$MERGE_SHA&per_page=100" > "$RUNNER_TEMP/indexflow-merge-ci.json"
+          jq -e --arg source "$SOURCE_SHA" '
+            [.workflow_runs[] | select(.head_sha == $source)] as $runs |
+            ($runs | length) == 59 and
+            ($runs | all(.conclusion == "success")) and
+            ($runs | any(.name == "MAD4B Release Verdict" and .conclusion == "success"))
+          ' "$RUNNER_TEMP/indexflow-source-ci.json"
+          jq -e --arg merge "$MERGE_SHA" '
+            [.workflow_runs[] | select(.head_sha == $merge and .event == "push")] as $runs |
+            ($runs | length) == 31 and
+            ($runs | all(.conclusion == "success"))
+          ' "$RUNNER_TEMP/indexflow-merge-ci.json"
+          # Never replace or silently amend a previously published release.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Immutable release tag already published: $TAG"
+            exit 1
+          fi
+
+      - name: Retrieve the certified PR-head build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/indexflow-package"
+          gh run download "$ARTIFACT_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$ARTIFACT_NAME" \
+            --dir "$RUNNER_TEMP/indexflow-package"
+          test -f "$RUNNER_TEMP/indexflow-package/etg-dynamic-filter-seo-bridge-$PLUGIN_VERSION.zip"
+          test -f "$RUNNER_TEMP/indexflow-package/etg-dfsb-provenance.txt"
+
+      - name: Verify provenance v7, immutable ZIP digest and build identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_TREE_SHA
+          SOURCE_TREE_SHA="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          python3 - "$RUNNER_TEMP/indexflow-package/etg-dynamic-filter-seo-bridge-$PLUGIN_VERSION.zip" \
+            "$RUNNER_TEMP/indexflow-package/etg-dfsb-provenance.txt" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          import zipfile
+          from pathlib import Path
+          archive_path, provenance_path = map(Path, sys.argv[1:3])
+          rows = provenance_path.read_text(encoding="utf-8").splitlines()
+          pairs = [row.split("=", 1) for row in rows if "=" in row]
+          data = dict(pairs)
+          assert len(data) == len(pairs), "Duplicate provenance field"
+          expected = {
+              "contract": "etg.dfsb.release-provenance.v7",
+              "git_sha": os.environ["SOURCE_SHA"],
+              "tree_sha": os.environ["SOURCE_TREE_SHA"],
+              "plugin_tree_sha": os.environ["PLUGIN_TREE_SHA"],
+              "plugin_version": os.environ["PLUGIN_VERSION"],
+              "certification_mode": "pull_request_candidate",
+              "current_event": "pull_request",
+              "current_run_id": os.environ["ARTIFACT_RUN_ID"],
+              "pr_run_id": os.environ["ARTIFACT_RUN_ID"],
+              "historical_alpha13_plugin_tree_match": "false",
+              "embedded_identity_contract": "etg.dfsb.embedded-build-identity.v1",
+          }
+          for key, value in expected.items():
+              assert data.get(key) == value, (key, data.get(key), value)
+          sha = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+          assert data.get("package_sha256") == sha, "Artifact integrity mismatch"
+          root = "etg-dynamic-filter-seo-bridge/"
+          with zipfile.ZipFile(archive_path) as archive:
+              assert archive.testzip() is None, "Corrupt ZIP"
+              members = [name for name in archive.namelist() if not name.endswith("/")]
+              assert members and all(name.startswith(root) for name in members), "Unsafe ZIP path"
+              assert not any(name.startswith(root + "tests/") for name in members), "Tests inside installable ZIP"
+              embedded = json.loads(archive.read(root + "build-identity.json"))
+              assert embedded == {
+                  "contract": "etg.dfsb.embedded-build-identity.v1",
+                  "git_sha": os.environ["SOURCE_SHA"],
+                  "tree_sha": os.environ["SOURCE_TREE_SHA"],
+                  "plugin_version": os.environ["PLUGIN_VERSION"],
+              }, "Embedded identity mismatch"
+              assert hashlib.sha256(archive.read(root + "build-identity.json")).hexdigest() == data.get("embedded_identity_sha256")
+          print(f"IndexFlow installable package verified: sha256={sha}")
+          PY
+
+      - name: Publish GitHub prerelease with exact-source assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/indexflow-notes.md" <<EOF
+          ## IndexFlow — ETG Dynamic Filter SEO Bridge
+
+          Official GitHub **prerelease** of the IndexFlow code merged via PR #435.
+          The WordPress plugin header remains at **0.4.0-alpha.13**.
+          This is a NEW, exactly identified build; it is **not** the historical Alpha13 certified ZIP.
+
+          - Source commit: \`$SOURCE_SHA\`
+          - Merged into master by: \`$MERGE_SHA\`
+          - Plugin subtree: \`$PLUGIN_TREE_SHA\`
+          - Provenance: \`etg.dfsb.release-provenance.v7\`
+          - CI source gate: 59/59 success; merged master gate: 31/31 success
+          - Installable ZIP and provenance receipt attached as release assets
+
+          **Publication scope:** GitHub download only. This release does not
+          authorize or perform ETG/ARE Staging installation, Production activation,
+          SEO publication, data mutation, or site-level authority grants.
+
+          See PR #435 and the attached provenance receipt for source and archive identity.
+          EOF
+          cd "$RUNNER_TEMP/indexflow-package"
+          gh release create "$TAG" \
+            "etg-dynamic-filter-seo-bridge-$PLUGIN_VERSION.zip" \
+            "etg-dfsb-provenance.txt" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_SHA" \
+            --title "IndexFlow 0.4.0-alpha.13 — PR #435 build 0b1af33d" \
+            --notes-file "$RUNNER_TEMP/indexflow-notes.md" \
+            --prerelease
+
+      - name: Read-back verify immutable release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json tagName,isPrerelease,assets,url > "$RUNNER_TEMP/indexflow-release.json"
+          jq -e --arg tag "$TAG" --arg version "$PLUGIN_VERSION" '
+            .tagName == $tag and .isPrerelease == true and
+            ([.assets[].name] | index("etg-dynamic-filter-seo-bridge-" + $version + ".zip") != null) and
+            ([.assets[].name] | index("etg-dfsb-provenance.txt") != null)
+          ' "$RUNNER_TEMP/indexflow-release.json"
+          cat "$RUNNER_TEMP/indexflow-release.json"

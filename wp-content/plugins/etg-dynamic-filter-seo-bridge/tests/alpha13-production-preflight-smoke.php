@@ -10,13 +10,14 @@ $endpoint=file_get_contents($root.'/includes/Presentation/AjaxPresentationEndpoi
 $readme=file_get_contents($root.'/readme.md');
 
 etg_pf_has("'ajax_rate_protection'=>\$ajaxRateProtection",$bundle,'Evidence Bundle exposes AJAX rate-protection state');
-etg_pf_has("'mode'=>\$ajaxPersistentCache?'persistent_object_cache':'external_waf_required'",$bundle,'Evidence Bundle distinguishes built-in persistent-cache protection from external WAF requirement');
+etg_pf_has("'mode'=>\$ajaxPersistentCache?'persistent_object_cache':(\$edgeVerified?'external_waf_attested':'rate_limit_backend_unavailable')",$bundle,'Evidence Bundle reports attested WAF vs missing backend');
+etg_pf_has("'edge_attestation_present'=>\$edgeVerified",$bundle,'Evidence Bundle exposes WAF attestation without claiming external verification');
 etg_pf_has('ajax_rate_protection_persistent_cache_or_waf_evidence',$bundle,'Production evidence list requires AJAX rate-protection proof');
 etg_pf_has("'internal_evidence_complete'=>\$internalEvidenceComplete",$bundle,'Bundle separates internal gate completeness from full runtime evidence');
 etg_pf_has("'external_evidence_complete'=>false",$bundle,'Bundle cannot self-certify external runtime evidence');
 etg_pf_has("'evidence_complete'=>false",$bundle,'Bundle cannot claim full evidence completeness without ingested external evidence');
 etg_pf_has('external_runtime_evidence_not_ingested',$bundle,'Incomplete full-evidence state has an explicit reason');
-etg_pf_has("return'external_waf_required'",preg_replace('/\s+/','',$endpoint),'Endpoint retains explicit external-WAF boundary without persistent object cache');
+etg_pf_has("return 'rate_limit_backend_unavailable'",$endpoint,'Endpoint fails closed without persistent backend and attested WAF');
 etg_pf_expect(false===strpos($endpoint,'get_transient(')&&false===strpos($endpoint,'set_transient('),'Anonymous AJAX protection must not fall back to per-visitor transient/database writes');
 etg_pf_has('Operational Alpha `0.4.0-alpha.13`',$readme,'README version is synchronized to Alpha13');
 etg_pf_has('presentation state != SEO/indexing authority',$readme,'README preserves the presentation/SEO authority separation');
