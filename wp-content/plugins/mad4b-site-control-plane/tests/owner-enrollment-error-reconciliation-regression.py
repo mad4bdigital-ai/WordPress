@@ -1,18 +1,30 @@
 #!/usr/bin/env python3
-"""Execute both bounded Owner Enrollment PHP behavioral fixtures in CI.
+"""Execute a bounded operational error regression matrix on exact Git HEAD.
 
-This is a real, fail-closed runtime invocation, not a source contract
-assertion or a PHP syntax-only check. Both fixture paths are immutable,
-repository-owned and cannot be replaced by caller input.
+Hermetic fixtures only: actual live ETG/ARE acceptance remains independent.
+No network, administrator login, site write, owner claim, or Production action.
+Tests remain fixed repo-owned paths and are subprocess-executed, not only linted.
 """
 from pathlib import Path
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent
+# Every path is repository-owned; callers cannot supply arbitrary scripts.
 FIXTURES = (
     "enrollment-dispatch-runtime.php",
     "dynamic-first-party-enrollment-runtime.php",
+    "staging-write-owner-intent-runtime.php",
+    "staging-write-owner-transport-runtime.php",
+    "staging-write-authority-postcondition-runtime.php",
+    "frontend-origin-diagnostic-runtime.php",
+    "native-incident-mu-runtime.php",
+    "native-incident-early-runtime.php",
+    "mcp-connection-failsoft-runtime.php",
+    "session-safe-transport-resilience-runtime.php",
+    "error-contract-registry-runtime.php",
+    "connector-resilience-runtime.php",
+    "mcp-preflight-registration-failure-runtime.php",
 )
 
 
@@ -20,7 +32,7 @@ def main():
     for name in FIXTURES:
         path = (ROOT / name).resolve()
         if path.parent != ROOT or not path.is_file():
-            print("OWNER_ENROLLMENT_REGRESSION_FAIL: missing trusted fixture", file=sys.stderr)
+            print("MAD4B_OPERATIONAL_ERROR_REGRESSION_FAIL: missing trusted fixture", file=sys.stderr)
             return 2
         try:
             result = subprocess.run(
@@ -28,13 +40,13 @@ def main():
                 text=True, check=False, timeout=60,
             )
         except (OSError, subprocess.TimeoutExpired):
-            print("OWNER_ENROLLMENT_REGRESSION_FAIL: PHP unavailable or timeout", file=sys.stderr)
+            print("MAD4B_OPERATIONAL_ERROR_REGRESSION_FAIL: PHP unavailable or timeout", file=sys.stderr)
             return 2
         if result.returncode != 0:
-            print("OWNER_ENROLLMENT_REGRESSION_FAIL: " + name, file=sys.stderr)
+            print("MAD4B_OPERATIONAL_ERROR_REGRESSION_FAIL: " + name, file=sys.stderr)
             print((result.stdout + "\n" + result.stderr)[-2000:], file=sys.stderr)
             return 1
-        print("OWNER_ENROLLMENT_REGRESSION_PASS: " + name)
+        print("MAD4B_OPERATIONAL_ERROR_REGRESSION_PASS: " + name)
     return 0
 
 
