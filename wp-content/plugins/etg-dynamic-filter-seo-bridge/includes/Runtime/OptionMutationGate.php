@@ -7,7 +7,7 @@ namespace ETG\DynamicFilterSEOBridge\Runtime;
  * This serializes the ETG Admin and MAD4B MCP writers of the same WP option.
  */
 final class OptionMutationGate {
-    private const ALLOWED = array('etg_dfsb_settings', 'etg_dfsb_dynamic_content_slots');
+    private const ALLOWED = array('etg_dfsb_settings', 'etg_dfsb_dynamic_content_slots', 'etg_indexflow_routes');
 
     public static function acquire(string $option) {
         if (!in_array($option, self::ALLOWED, true)) {

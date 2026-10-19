@@ -17,7 +17,8 @@ final class NormalizedFilterState {
         }
         foreach (array('profile_id', 'provider', 'query_id', 'locale') as $key) {
             $value = $state[$key] ?? null;
-            if (!is_string($value) || !preg_match('/^[a-zA-Z0-9_-]{1,80}$/D', $value)) {
+            $pattern = in_array($key, array('profile_id', 'provider'), true) ? '/^[a-z0-9_-]{1,80}$/D' : '/^[a-zA-Z0-9_-]{1,80}$/D';
+            if (!is_string($value) || !preg_match($pattern, $value)) {
                 throw new \InvalidArgumentException('invalid_state_' . $key);
             }
             $out[$key] = $value;

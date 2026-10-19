@@ -106,7 +106,15 @@ final class Bootstrap {
         $languages=$needsWpml&&$compatibility->wpml()?new LanguageResolver():new LocaleLanguageResolver();
 
         $parserTaxonomies=array_values(array_unique(array_merge($profiles->allowedTaxonomies(),(array)$this->config->get('allowed_taxonomies',array()))));
-        $parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()));
+        $managedRoutes=null;
+        // Vendor settings initialize on init; do not inspect them prematurely
+        // during plugins_loaded. The parser closure sees this same later value.
+        add_action('init',function()use(&$managedRoutes,$profiles):void{
+            $managedRoutes=\ETG\DynamicFilterSEOBridge\IndexFlow\ManagedRoutesRuntime::fromEnvironment($this->config,$profiles);
+            if($managedRoutes){$managedRoutes->register();}
+        },10);
+        $managedResolver=static function(string$uri)use(&$managedRoutes):?string{return$managedRoutes?$managedRoutes->technicalUriFor($uri):null;};
+        $parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()),$managedResolver);
         $ajaxParser=new AjaxFilterStateParser($parserTaxonomies);
         $combinations=new CombinationRegistry($this->config);
         $this->builder=new FilterContextBuilder($parser,$languages,new TermMetaReader($mediaRegistry),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver($queryBindingResolver),$ajaxParser);

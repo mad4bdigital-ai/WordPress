@@ -30,7 +30,8 @@ final class ManagedUrlArchitecture {
             throw new \InvalidArgumentException('origin_only_required');
         }
         $this->origin = rtrim($origin, '/');
-        if (($document['version'] ?? null) !== 1 || !is_array($document['profiles'] ?? null)
+        if (array_diff(array_keys($document), array('version', 'profiles', 'routes'))
+            || ($document['version'] ?? null) !== 1 || !is_array($document['profiles'] ?? null)
             || !is_array($document['routes'] ?? null) || count($document['routes']) > 500 || count($document['profiles']) > 100) {
             throw new \InvalidArgumentException('invalid_route_document');
         }
@@ -109,6 +110,15 @@ final class ManagedUrlArchitecture {
             if ('published' === $row['status'] && $row['identity'] === $identity && $row['state']['locale'] === $locale) return $row;
         }
         return array();
+    }
+
+    public function technicalUrl(array $state): string {
+        $state = $this->normalize($state);
+        $profile = $this->profile($state['profile_id'], $state['locale']);
+        $profile['strategy'] = 'native';
+        $url = call_user_func($this->native, 'build', $state, $profile);
+        if (!is_string($url)) throw new \InvalidArgumentException('native_url_unavailable');
+        return $this->cleanUrl($url);
     }
 
     public function resolve(string $url): array {

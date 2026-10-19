@@ -2,9 +2,8 @@
 namespace ETG\DynamicFilterSEOBridge\Admin;
 
 use ETG\DynamicFilterSEOBridge\IndexFlow\ManagedUrlArchitecture;
-use ETG\DynamicFilterSEOBridge\IndexFlow\NativeFilterUrlAdapter;
-use ETG\DynamicFilterSEOBridge\IndexFlow\WordPressRouteEnvironment;
 use ETG\DynamicFilterSEOBridge\IndexFlow\WordPressRouteResolver;
+use ETG\DynamicFilterSEOBridge\IndexFlow\RouteDocumentStore;
 
 /** Draft planning UI. POST evaluates in memory; it is deliberately not a save. */
 final class UrlArchitecturePage {
@@ -22,7 +21,8 @@ final class UrlArchitecturePage {
                 $draft = $this->input('route_document');
                 $service = $this->service($this->decode($draft));
                 $preview = $service->preview();
-                $preview['wordpress_rewrite_plan'] = (new WordPressRouteResolver($service, (string)parse_url(home_url('/'), PHP_URL_PATH)))->rewritePlan();
+                $preview['governed_storage_plan'] = (new RouteDocumentStore())->plan($this->decode($draft));
+                $preview['wordpress_rewrite_plan'] = (new WordPressRouteResolver($service, (string)parse_url((string)get_option('home'), PHP_URL_PATH)))->rewritePlan();
                 $old = $this->input('previous_document');
                 if ('' !== trim($old)) $migration = $this->service($this->decode($old))->planMigration($service);
             } catch (\InvalidArgumentException $e) { $error = $e->getMessage(); }
@@ -42,7 +42,7 @@ final class UrlArchitecturePage {
             echo '<h2>Route, canonical, hreflang and rewrite candidates</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($preview, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '</pre>';
         }
         if (is_array($migration)) echo '<h2>Migration plan — no redirects applied</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($migration, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '</pre>';
-        echo '<h2>Execution remains separately gated</h2><p>A reviewed migration must use MAD4B Plan → Apply → Verify → Undo with a certified provider and exact revision. This screen exposes no Apply endpoint. Browser acceptance must prove complete result IDs, widget state, Direct/AJAX/Mixed, Reload, Back/Forward and SEO ownership before route activation.</p></div>';
+        echo '<h2>Governed storage</h2><p>Use the authorized MAD4B routes-plan → routes-apply → routes-verify operations and central mutation-undo. The plan binds the stored revision, proposed document, live dependencies and migration. Storage does not activate routes or SEO. This screen exposes no direct write endpoint.</p></div>';
     }
 
     private function input(string $key): string {
@@ -60,10 +60,6 @@ final class UrlArchitecturePage {
     }
 
     private function service(array $document): ManagedUrlArchitecture {
-        $environment = new WordPressRouteEnvironment();
-        $native = new NativeFilterUrlAdapter(array($environment, 'term'));
-        $home = parse_url(home_url('/'));
-        $origin = $home['scheme'] . '://' . $home['host'] . (isset($home['port']) ? ':' . $home['port'] : '');
-        return new ManagedUrlArchitecture($document, $origin, array($environment, 'term'), array($environment, 'page'), array($environment, 'collisions'), array($native, 'dispatch'));
+        return RouteDocumentStore::architecture($document);
     }
 }

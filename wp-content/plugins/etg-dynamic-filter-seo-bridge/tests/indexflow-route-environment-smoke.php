@@ -30,6 +30,7 @@ function get_terms($args) { return array(new WP_Term(1, 'cairo')); }
 function get_term_link($term) { return 'https://example.test/location/cairo/'; }
 function is_wp_error($v) { return false; }
 function home_url($path) { return 'https://example.test'.$path; }
+function get_option($key, $default=false) { return $GLOBALS['wpOptions'][$key] ?? $default; }
 $count=0;
 function check($condition, $message) { $GLOBALS['count']++;if(!$condition)throw new RuntimeException($message); }
 $env=new WordPressRouteEnvironment();
@@ -41,6 +42,9 @@ check(!$env->page(10,'ar'), 'wrong language page denied');
 $status='draft';check(!$env->page(10,'en'), 'draft template denied');$status='publish';
 check(!$env->collisions('https://example.test/new/',0), 'unoccupied path');
 $owner=10;check((bool)$env->collisions('https://example.test/page-10/',0), 'native post collision');check(!$env->collisions('https://example.test/page-10/',10), 'native owner exception');$owner=0;
+$wpOptions = array('home'=>'https://example.test', 'rewrite_rules'=>array('^tours/location/cairo/?$'=>'index.php?page_id=10&indexflow_route=cairo-en'));
+$owner=10;check(!$env->collisions('https://example.test/tours/location/cairo/',0), 'Existing managed rewrite does not collide with its own template');
+check((bool)$env->collisions('https://example.test/page-10/',0), 'Managed rule exception cannot hide a real native permalink');$owner=0;
 check((bool)$env->collisions('https://example.test/location/cairo/',0), 'native taxonomy collision');
 $wpml=false;check((bool)$env->term('location',1,'en'), 'single-language site reads native term');check(!$env->term('location',1,'ar'), 'cannot invent translations without WPML');
 check(!$env->page(10,'ar'), 'cannot invent page language without WPML');

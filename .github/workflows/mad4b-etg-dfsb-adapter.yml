@@ -75,6 +75,8 @@ jobs:
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php
+          php wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php
           php wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php

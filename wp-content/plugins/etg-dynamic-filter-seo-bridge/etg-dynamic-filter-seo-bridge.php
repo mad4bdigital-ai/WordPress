@@ -46,6 +46,15 @@ spl_autoload_register(static function ( $class ) {
 
 require_once ETG_DFSB_DIR . 'includes/Presentation/functions.php';
 
+// Keep orphaned managed rewrite rules fail-closed even during Safe Boot hold.
+// These guards perform no activation, query execution or persistent writes.
+ETG\DynamicFilterSEOBridge\IndexFlow\ManagedRoutesRuntime::registerSafetyGuards();
+register_deactivation_hook(__FILE__, static function () {
+    // Explicit WordPress plugin deactivation invalidates the derived rewrite
+    // cache; the next request rebuilds it from the remaining active plugins.
+    delete_option('rewrite_rules');
+});
+
 // Installed packages key Safe Boot to their exact embedded source identity. The
 // legacy label remains only as a deterministic source/dev fallback when no
 // build-identity.json exists.
