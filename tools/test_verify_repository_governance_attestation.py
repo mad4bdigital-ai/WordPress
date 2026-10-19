@@ -156,3 +156,38 @@ for label, mutation in (
     else:
         raise AssertionError(f"readiness required-check migration accepted {label}")
 print("MAD4B_READINESS_REQUIRED_CHECK_MIGRATION: PASS")
+
+# Only this exact additive live migration (or a converged 3-check ruleset)
+# may reach the privileged PUT. Noncheck fields must remain identical.
+mig_spec = importlib.util.spec_from_file_location(
+    "mad4b_readiness_ruleset_migration",
+    ROOT / "verify_repository_ruleset_readiness_migration.py",
+)
+mig = importlib.util.module_from_spec(mig_spec)
+assert mig_spec.loader is not None
+mig_spec.loader.exec_module(mig)
+before = copy.deepcopy(template_data)
+before.update(id=23968498, source_type="Repository", source=REPOSITORY)
+before["rules"][3]["parameters"]["required_status_checks"] = copy.deepcopy(mig.LEGACY)
+assert mig.preflight(before, template_data, policy_data, REPOSITORY)["transition"] == "append_readiness_only"
+converged = copy.deepcopy(before)
+converged["rules"][3]["parameters"]["required_status_checks"].append(copy.deepcopy(mig.NEW))
+assert mig.preflight(converged, template_data, policy_data, REPOSITORY)["transition"] == "already_converged"
+for label, mutator in (
+    ("wrong_repository", lambda d: d.update(source="untrusted/WordPress")),
+    ("missing_bypass_evidence", lambda d: d.pop("bypass_actors")),
+    ("injected_bypass", lambda d: d.update(bypass_actors=[{"actor_type":"OrganizationAdmin","actor_id":1,"bypass_mode":"always"}])),
+    ("removed_release", lambda d: d["rules"][3]["parameters"]["required_status_checks"].pop(0)),
+    ("weakened_strict", lambda d: d["rules"][3]["parameters"].update(strict_required_status_checks_policy=False)),
+    ("weakened_review", lambda d: d["rules"][2]["parameters"].update(required_review_thread_resolution=False)),
+    ("different_target", lambda d: d["conditions"]["ref_name"].update(include=["refs/heads/dev"])),
+):
+    mutated = copy.deepcopy(before)
+    mutator(mutated)
+    try:
+        mig.preflight(mutated, template_data, policy_data, REPOSITORY)
+    except (ValueError, KeyError):
+        pass
+    else:
+        raise AssertionError(f"minimal-delta preflight permitted {label}")
+print("MAD4B_READINESS_MINIMAL_DELTA_NEGATIVE_CONTRACT: PASS")
