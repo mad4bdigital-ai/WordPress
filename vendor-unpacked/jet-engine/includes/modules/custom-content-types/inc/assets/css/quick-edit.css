@@ -1,0 +1,109 @@
+table.wp-list-table tbody tr.quick-edit-row {
+	background: #fff;
+}
+
+tr.quick-edit-row td form {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: flex-end;
+}
+
+tr.quick-edit-row td {
+	border-top: 1px solid #c3c4c7;
+	border-bottom: 1px solid #c3c4c7;
+	padding: 12px;
+}
+
+tbody tr:first-child + tr.quick-edit-row td {
+	border-top: none;
+}
+
+tbody tr.quick-edit-row:last-child td {
+	border-bottom: none;
+}
+
+tr.quick-edit-row td .cx-settings__content {
+	display: flex;
+	flex-wrap: wrap;
+	margin-right: -6px;
+	margin-left: -6px;
+	margin-bottom: -12px;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-control {
+	padding-right: 6px;
+	padding-left: 6px;
+	margin-bottom: 12px;
+	box-sizing: border-box;
+}
+
+tr.quick-edit-row td .settings_top {
+	margin-bottom: 12px;
+}
+
+tr.quick-edit-row td .settings_top .cx-settings__content .cx-control {
+	flex-basis: 25%;
+	max-width: 25%;
+}
+
+tr.quick-edit-row td .settings_bottom .cx-settings__content .cx-control,
+tr.quick-edit-row td .settings_bottom {
+	flex-basis: 50%;
+	max-width: 50%;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-control__required {
+	color: #e54343;
+}
+
+tr.quick-edit-row td .fields-count-1 .cx-settings__content .cx-control {
+	width: 100%;
+}
+
+tr.quick-edit-row td .fields-count-2 .cx-settings__content .cx-control {
+	width: 50%;
+}
+
+tr.quick-edit-row td .fields-count-3 .cx-settings__content .cx-control {
+	width: 33.3333%;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-control select[multiple] {
+	height: 120px;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-ui-kit__name,
+tr.quick-edit-row td .cx-settings__content .cx-ui-kit__description {
+	font-size: 12px;
+	font-style: italic;
+	opacity: .7;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-ui-container,
+tr.quick-edit-row td .cx-settings__content .cx-ui-kit__name {
+	margin-bottom: 4px;
+}
+
+tr.quick-edit-row td .cx-settings__content .cx-control textarea,
+tr.quick-edit-row td .cx-settings__content .cx-ui-stepper-input {
+	width: 100%;
+}
+
+tr.quick-edit-row div.notice.notice-error {
+	margin: 12px 0 0 0;
+}
+
+tr.quick-edit-row div.notice.notice-error p {
+	margin: 10px 0;
+}
+
+tr.quick-edit-row .submit.inline-edit-save {
+	margin: 0;
+	padding: 5px 0;
+	gap: 10px;
+}
+
+tr.quick-edit-row .inline-edit-save.submit .button {
+	margin: 0;
+}
