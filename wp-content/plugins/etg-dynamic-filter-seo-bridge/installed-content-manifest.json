@@ -58,7 +58,7 @@
     "includes/Diagnostics/InventoryReconcilerDriftTrait.php": "c7023d82ded201a98a12592d3b9c463b27a81a6bd664ba83aea932023926023b",
     "includes/Diagnostics/InventoryReconcilerSupportTrait.php": "3ce57bb3d16e970b388b4c2127752da916dede4823122597fc230beb66347cfd",
     "includes/Diagnostics/ListingConfigurationInspector.php": "cad39948ad295c45b413350b2328fa9a81b3e17dd5af58d27e82a58ab6c7c5dd",
-    "includes/Diagnostics/PublicationEvidenceBundle.php": "005ef8486c0bd730d65c1faa0c876c566761dd3c6c042eea4198688f98082c2f",
+    "includes/Diagnostics/PublicationEvidenceBundle.php": "6a3e6c6d950d2722932512dfa58bb0742ca6dd443ad8031a9c1d77757819dfad",
     "includes/Diagnostics/RuntimeInventory.php": "bd5aec450587f202744ea557e763160d9508ab89e33926257abd80a2d57a47a4",
     "includes/Diagnostics/RuntimeInventoryQueryTrait.php": "5abbd6a35cb1071935cf00ac0e357f1be29909a45f426916f6b86a4000330931",
     "includes/Diagnostics/RuntimeInventoryStructureTrait.php": "bfa8765f8890b455f97727a19e0ccd97d403ce8301b68d5e59ceaf33c4104da4",
