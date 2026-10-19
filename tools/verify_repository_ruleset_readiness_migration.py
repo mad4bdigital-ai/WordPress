@@ -33,6 +33,15 @@ def preflight(before: dict, template: dict, policy: dict, repository: str) -> di
         raise ValueError("current ruleset identity is missing")
     if policy.get("required_repository_ruleset_name") != "MAD4B master release governance":
         raise ValueError("canonical ruleset name mismatch")
+    live_pr = next(
+        (row for row in (before.get("rules") or []) if row.get("type") == "pull_request"),
+        None,
+    )
+    if not isinstance(live_pr, dict) or (
+        (live_pr.get("parameters") or {}).get("require_extra_approval_for_unattributed_changes")
+        is not True
+    ):
+        raise ValueError("live unattributed-change approval protection is not independently visible")
     target = mutable_ruleset(template)
     required = next(x for x in target["rules"] if x["type"] == "required_status_checks")
     expected = sorted(LEGACY + [NEW], key=lambda x: (x["context"], x["integration_id"]))
