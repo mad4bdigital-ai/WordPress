@@ -2,7 +2,9 @@
 
 This bootstrap is independent of the Production Readiness control baseline in
 PR #429 and dynamic registry in PR #426. The receiver must be merged to
-`master` before GitHub will run `issue_comment` or `commit_comment` events.
+`master` before GitHub will run supported `issue_comment` events.
+GitHub Actions removed `commit_comment` as a supported workflow trigger;
+an exact commit SHA is instead included in a new top-level PR issue comment.
 A code review of this PR is not a live end-to-end test.
 
 ## ChatGPT-operable PR command
@@ -15,11 +17,11 @@ owner, containing exactly:
 /run-production-readiness <current 40-character PR-head SHA>
 ```
 
-This is an ordinary PR issue comment, **not an edit of the PR description**.
-The same command on a GitHub commit comment is also accepted when attached
-to the precise current PR head and when that commit identifies exactly one
-open PR. The connected ChatGPT GitHub app can post PR conversation comments;
-commit-comment creation is not exposed by this connection.
+This is an ordinary newly created **PR issue comment**, **not an edit of
+the PR description**, a review comment, or a commit-comment webhook.
+The exact HEAD is bound by its 40-character SHA in the PR comment body.
+The connected ChatGPT GitHub app can post these PR conversation comments
+directly. Any comment on a stale head or a different PR is rejected.
 
 The trusted default-branch job validates the owner and sender identities
 using the base-owned governance policy. It reads live PR identity, source
