@@ -319,6 +319,45 @@ jobs:
               if mutable_ruleset(after) != mutable_ruleset(target_template):
                   raise RuntimeError("three-check ruleset readback mismatch")
               (TEMP / "readiness-bootstrap-after.json").write_text(json.dumps(after, indent=2))
+              # Trusted master executables bind exact candidate source bytes
+              # to an owner-authored ruleset attestation before claiming GO.
+              attestation_path = TEMP / "readiness-bootstrap-attestation.json"
+              publication_path = TEMP / "readiness-bootstrap-publication.json"
+              governance_path = TEMP / "readiness-bootstrap-governance.json"
+              subprocess.run([
+                  "python3", "tools/build_repository_ruleset_attestation.py",
+                  "--readback", str(TEMP / "readiness-bootstrap-after.json"),
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--repository", REPO,
+                  "--output", str(attestation_path),
+              ], check=True, timeout=65)
+              subprocess.run([
+                  "python3", "tools/publish_repository_ruleset_attestation.py",
+                  "--repository", REPO,
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--attestation", str(attestation_path),
+                  "--output", str(publication_path),
+              ], check=True, timeout=65)
+              published = json.loads(publication_path.read_text())
+              if (published.get("published") is not True
+                  or published.get("readback_verified") is not True
+                  or published.get("authenticated_owner_login") != "mad4bdigital-ai"
+                  or published.get("comment_author_login") != "mad4bdigital-ai"):
+                  raise RuntimeError("target-policy attestation publication unverified")
+              subprocess.run([
+                  "python3", "tools/verify_repository_governance.py",
+                  "--repository", REPO,
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--require-ruleset-attestation",
+                  "--output", str(governance_path),
+              ], check=True, timeout=90)
+              governance = json.loads(governance_path.read_text())
+              if (governance.get("ready") is not True
+                  or governance.get("ruleset_attestation_verified") is not True):
+                  raise RuntimeError("three-check governance attestation is not ready")
           except Exception:
               # Even an HTTP failure may follow a server-side write.
               # Recover only from a recognizable base/target state.
