@@ -159,21 +159,16 @@ print("MAD4B_READINESS_REQUIRED_CHECK_MIGRATION: PASS")
 
 # Only this exact additive live migration (or a converged 3-check ruleset)
 # may reach the privileged PUT. Noncheck fields must remain identical.
-mig_spec = importlib.util.spec_from_file_location(
-    "mad4b_readiness_ruleset_migration",
-    ROOT / "verify_repository_ruleset_readiness_migration.py",
-)
-mig = importlib.util.module_from_spec(mig_spec)
-assert mig_spec.loader is not None
-mig_spec.loader.exec_module(mig)
+# The minimal-delta verifier is root-trusted; do not import PR-added helper code.
+mig = ruleset_mod
 before = copy.deepcopy(template_data)
 before.update(id=23968498, source_type="Repository", source=REPOSITORY)
 before["rules"][2]["parameters"]["require_extra_approval_for_unattributed_changes"] = True
 before["rules"][3]["parameters"]["required_status_checks"] = copy.deepcopy(mig.LEGACY)
-assert mig.preflight(before, template_data, policy_data, REPOSITORY)["transition"] == "append_readiness_only"
+assert mig.preflight_readiness_migration(before, template_data, policy_data, REPOSITORY)["transition"] == "append_readiness_only"
 converged = copy.deepcopy(before)
 converged["rules"][3]["parameters"]["required_status_checks"].append(copy.deepcopy(mig.NEW))
-assert mig.preflight(converged, template_data, policy_data, REPOSITORY)["transition"] == "already_converged"
+assert mig.preflight_readiness_migration(converged, template_data, policy_data, REPOSITORY)["transition"] == "already_converged"
 for label, mutator in (
     ("wrong_repository", lambda d: d.update(source="untrusted/WordPress")),
     ("missing_bypass_evidence", lambda d: d.pop("bypass_actors")),
@@ -187,7 +182,7 @@ for label, mutator in (
     mutated = copy.deepcopy(before)
     mutator(mutated)
     try:
-        mig.preflight(mutated, template_data, policy_data, REPOSITORY)
+        mig.preflight_readiness_migration(mutated, template_data, policy_data, REPOSITORY)
     except (ValueError, KeyError):
         pass
     else:
