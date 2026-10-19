@@ -67,9 +67,9 @@ final class MAD4B_Native_Incident_MU {
     /** Metadata-only best effort; never replace WordPress Recovery Mode. */
     public static function record( $error ) {
         if ( ! self::$enabled || ! function_exists( 'get_option' ) || ! function_exists( 'update_option' ) ) return false;
-        $event = self::classify( $error );
-        if ( ! $event ) return false;
         try {
+            $event = self::classify( $error );
+            if ( ! $event ) return false;
             $now = time();
             $stored = get_option( self::OPTION, array() );
             $history = is_array( $stored ) && isset( $stored['events'] ) && is_array( $stored['events'] ) ? $stored['events'] : array();
@@ -77,10 +77,13 @@ final class MAD4B_Native_Incident_MU {
                 return is_array( $row ) && isset( $row['last_at'] )
                     && (int) $row['last_at'] <= $now && (int) $row['last_at'] >= $now - 7 * DAY_IN_SECONDS;
             } ) );
-            $last = count( $history ) - 1;
-            if ( $last >= 0 && isset( $history[ $last ]['incident_fingerprint'] )
-                && hash_equals( (string) $history[ $last ]['incident_fingerprint'], $event['incident_fingerprint'] )
-                && $now - (int) ( $history[ $last ]['last_at'] ?? 0 ) < 60 ) return false;
+            // Throttle each distinct fingerprint, not only the most recent row:
+            // two alternating faults must not cause an unbounded write storm.
+            foreach ( $history as $previous ) {
+                if ( isset( $previous['incident_fingerprint'] )
+                    && hash_equals( (string) $previous['incident_fingerprint'], $event['incident_fingerprint'] )
+                    && $now - (int) ( $previous['last_at'] ?? 0 ) < 60 ) return false;
+            }
             $event['last_at'] = $now;
             $history[] = $event;
             $history = array_slice( $history, -self::MAX_EVENTS );
