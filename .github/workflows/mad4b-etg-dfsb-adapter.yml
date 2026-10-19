@@ -262,9 +262,15 @@ jobs:
           PLUGIN=wp-content/plugins/etg-dynamic-filter-seo-bridge
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test "$WP_PATH" = /tmp/mad4b-etg-wordpress
+          # The earlier Alpha13 fixture step overlays the PR working tree.
+          # Never copy that legacy checkout into the current-source acceptance.
+          # Materialize the immutable PR git tree directly instead.
+          test "$SOURCE_SHA" = "$(git rev-parse HEAD)"
           rm -rf "$WP_PATH/$PLUGIN"
-          cp -R "$GITHUB_WORKSPACE/$PLUGIN" "$WP_PATH/$PLUGIN"
-          cmp "$GITHUB_WORKSPACE/$PLUGIN/includes/Runtime/OptionMutationGate.php" "$WP_PATH/$PLUGIN/includes/Runtime/OptionMutationGate.php"
+          git archive --format=tar "$SOURCE_SHA" "$PLUGIN" | tar -xf - -C "$WP_PATH"
+          git show "$SOURCE_SHA:$PLUGIN/includes/Runtime/OptionMutationGate.php" | cmp - "$WP_PATH/$PLUGIN/includes/Runtime/OptionMutationGate.php"
+          git show "$SOURCE_SHA:$PLUGIN/includes/Presentation/ContentSlotRegistry.php" | cmp - "$WP_PATH/$PLUGIN/includes/Presentation/ContentSlotRegistry.php"
+          echo "ETG_CURRENT_SOURCE_MATERIALIZED_SHA=$SOURCE_SHA"
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/etg-current-source-db-acceptance.php" \
             --path="$WP_PATH" --user=mad4b-ci-admin
