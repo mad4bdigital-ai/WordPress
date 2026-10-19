@@ -1,0 +1,75 @@
+{
+  "contract": "mad4b.staging-vendor-repair-recipes.v1",
+  "deployment_authorized": false,
+  "patches": [
+    {
+      "plugin": "jet-engine",
+      "entry": "includes/components/blocks-views/dynamic-content/manager.php",
+      "input_entry_sha256": "cd2287a4bc0157d65d03f3f371939a3564187f75d5fb07022fbe22d95ac4f279",
+      "old": "\tpublic function get_block( $block_name ) {\n\t\treturn",
+      "new": "\tpublic function get_block( $block_name ) {\n\t\t// Invalid block identities must not reach an array offset (PHP 8.5).\n\t\tif ( ! is_string( $block_name ) && ! is_int( $block_name ) ) {\n\t\t\treturn false;\n\t\t}\n\t\treturn"
+    },
+    {
+      "plugin": "elementor",
+      "entry": "elementor/core/dynamic-tags/manager.php",
+      "input_entry_sha256": "b18bd1ba9e4a400f4f6f74812d84ad097dba3a772d4e49494233f6c0f97891b1",
+      "old": "\t\t\t\treturn $this->parse_tag_text( $tag_text_match[0], $settings, $parse_callback );",
+      "new": "\t\t\t\t$value = $this->parse_tag_text( $tag_text_match[0], $settings, $parse_callback );\n\t\t\t\t// Text replacement cannot represent arrays or non-stringable objects.\n\t\t\t\t// The structured returnType=object branch above remains unchanged.\n\t\t\t\treturn is_scalar( $value ) || ( is_object( $value ) && method_exists( $value, '__toString' ) )\n\t\t\t\t\t? (string) $value : '';"
+    },
+    {
+      "plugin": "jet-smart-filters",
+      "entry": "assets/js/public.js",
+      "input_entry_sha256": "7b08ca590cf7c1ce006c786a8b007774927495bb7f72ca86795357d721d4d8a7",
+      "old": "key:\"getPageUrl\",value:function(e){var t=this.filterGroup.siteUrl+this.filterGroup.baseUrl,r=this.provider;switch(this.queryId&&\"default\"!==this.queryId&&(r+=\":\"+this.queryId),this.filterGroup.urlType){case\"plain\":this.currentUrlParams?t+=this.currentUrlParams+\"&pagenum=\"+e:t+=\"?jsf=\"+r+\"&pagenum=\"+e;break;case\"permalink\":this.currentUrlParams?t+=this.currentUrlParams+\"pagenum/\"+e+\"/\":t+=\"jsf/\"+r+\"/pagenum/\"+e+\"/\"}return t}",
+      "new": "key:\"getPageUrl\",value:function(e){var t=this.filterGroup.siteUrl+this.filterGroup.baseUrl,r=this.provider;switch(this.queryId&&\"default\"!==this.queryId&&(r+=\":\"+this.queryId),this.filterGroup.urlType){case\"plain\":this.currentUrlParams?t+=this.currentUrlParams+\"&pagenum=\"+e:t+=\"?jsf=\"+r+\"&pagenum=\"+e;break;case\"permalink\":var state=this.currentUrlParams||\"\",hashIndex=state.indexOf(\"#\"),fragment=hashIndex<0?\"\":state.slice(hashIndex);state=hashIndex<0?state:state.slice(0,hashIndex);var queryIndex=state.indexOf(\"?\"),query=queryIndex<0?\"\":state.slice(queryIndex),path=queryIndex<0?state:state.slice(0,queryIndex);t+=(path||\"jsf/\"+r+\"/\").replace(/\\/?$/,\"/\")+\"pagenum/\"+e+\"/\"+query+fragment}return t}"
+    },
+    {
+      "plugin": "jet-smart-filters",
+      "entry": "includes/utils.php",
+      "input_entry_sha256": "8a2c3a706f0b1b5f356d4fbe0465c71174cb01aa4363833634d837643dcab509",
+      "old": "\t\t\t$result        = trailingslashit( $base_url );",
+      "new": "\t\t\t// Append filter path segments before the original query and fragment.\n\t\t\t$base_parts = explode( '#', $base_url, 2 );\n\t\t\t$base_fragment = isset( $base_parts[1] ) ? '#' . $base_parts[1] : '';\n\t\t\t$base_parts = explode( '?', $base_parts[0], 2 );\n\t\t\t$base_query = isset( $base_parts[1] ) ? $base_parts[1] : '';\n\t\t\t$result = trailingslashit( $base_parts[0] );"
+    },
+    {
+      "plugin": "jet-smart-filters",
+      "entry": "includes/utils.php",
+      "input_entry_sha256": "8a2c3a706f0b1b5f356d4fbe0465c71174cb01aa4363833634d837643dcab509",
+      "old": "\t\t\t\t\t$result     = add_query_arg( $query_args, $result );",
+      "new": "\t\t\t\t\t$result = add_query_arg( $query_args, $result . ( '' !== $base_query ? '?' . $base_query : '' ) );\n\t\t\t\t\t$base_query = '';"
+    },
+    {
+      "plugin": "jet-smart-filters",
+      "entry": "includes/utils.php",
+      "input_entry_sha256": "8a2c3a706f0b1b5f356d4fbe0465c71174cb01aa4363833634d837643dcab509",
+      "old": "\t\t\treturn jet_smart_filters()->URL_aliases->use_url_aliases",
+      "new": "\t\t\tif ( '' !== $base_query ) {\n\t\t\t\t$result .= ( false === strpos( $result, '?' ) ? '?' : '&' ) . $base_query;\n\t\t\t}\n\t\t\t$result .= $base_fragment;\n\n\t\t\treturn jet_smart_filters()->URL_aliases->use_url_aliases"
+    },
+    {
+      "plugin": "jet-smart-filters",
+      "entry": "includes/utils.php",
+      "input_entry_sha256": "8a2c3a706f0b1b5f356d4fbe0465c71174cb01aa4363833634d837643dcab509",
+      "old": "\t\t\t\t$query_var = $arg['query_var'];",
+      "new": "\t\t\t\t$query_var = $arg['query_var'];\n\t\t\t\t$query_type = $arg['query_type'];"
+    },
+    {
+      "plugin": "jet-search",
+      "entry": "jet-search/includes/compatibility/jet-engine/manager.php",
+      "input_entry_sha256": "9e4a871b0bcdd14494fed2754c1953540f3584d97b87ac83c9c140f6136ffd76",
+      "old": "\t\tadd_action( 'jet-engine/register-macros', array( $this, 'register_macros' ) );",
+      "new": "\t\tadd_action( 'jet-engine/register-macros', array( $this, 'register_macros' ) );\n\t\tadd_filter( 'jet-smart-filters/filters/localized-data', array( $this, 'preserve_search_context' ) );"
+    },
+    {
+      "plugin": "jet-search",
+      "entry": "jet-search/includes/compatibility/jet-engine/manager.php",
+      "input_entry_sha256": "9e4a871b0bcdd14494fed2754c1953540f3584d97b87ac83c9c140f6136ffd76",
+      "old": "\t/**\n\t * Register JetEngine macros related to JetSearch.",
+      "new": "\t/** Carry the current public search into AJAX requests without copying unrelated query data. */\n\tpublic function preserve_search_context( $data ) {\n\t\tif ( ! is_array( $data ) || ! function_exists( 'jet_search_ajax_handlers' ) ) {\n\t\t\treturn $data;\n\t\t}\n\t\t$key = jet_search_ajax_handlers()->get_custom_search_query_param();\n\t\tif ( ! is_string( $key ) || ! preg_match( '/^[A-Za-z0-9_-]{1,64}$/', $key )\n\t\t\t|| ! isset( $_GET[ $key ] ) || ! is_string( $_GET[ $key ] ) || strlen( $_GET[ $key ] ) > 8192 ) {\n\t\t\treturn $data;\n\t\t}\n\t\t$extra = isset( $data['extra_props'] ) ? (array) $data['extra_props'] : array();\n\t\tforeach ( array( $key, 'jet_ajax_search_settings', 'jet_ajax_search_categories', 'jet_search_suggestions_settings' ) as $param ) {\n\t\t\tif ( ! array_key_exists( $param, $extra ) && isset( $_GET[ $param ] )\n\t\t\t\t&& is_string( $_GET[ $param ] ) && strlen( $_GET[ $param ] ) <= 8192 ) {\n\t\t\t\t$extra[ $param ] = wp_unslash( $_GET[ $param ] );\n\t\t\t}\n\t\t}\n\t\t$data['extra_props'] = $extra;\n\t\treturn $data;\n\t}\n\n\t/**\n\t * Register JetEngine macros related to JetSearch."
+    }
+  ],
+  "archives": {
+    "elementor": "0de809b0e2d82244576993869b84c7653abbdd20ad19f18254de3429fe0ddc60",
+    "jet-engine": "9f7d2711deb0d2b9dac5d07d0bd96000e7bcd698a3614454f53b534e94935e97",
+    "jet-search": "4a97fe726293e00807c6133dd00357d80d919225402fa589d5b4dfb993996670",
+    "jet-smart-filters": "9d82887a95728f824f53efa9ac59101ca609dfd1321e4639030e4dff3dcc3354"
+  }
+}

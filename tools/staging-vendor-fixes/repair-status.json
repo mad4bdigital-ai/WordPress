@@ -1,0 +1,41 @@
+{
+  "contract": "mad4b.staging-live-repair-status.v1",
+  "source_base_sha": "1fed486708a475edc72aea67482d4ec970dcf41f",
+  "tests": {
+    "php_behavior_cases": 22,
+    "javascript_pagination_cases": 5,
+    "original_regressions_reproduced": 2,
+    "archive_drift_rejection": true,
+    "deterministic_build": true,
+    "payload_files_verified": 5804,
+    "modified_source_files": 5,
+    "php_runtime": "8.3",
+    "live_php85_validation": false
+  },
+  "live_deployment_performed": false,
+  "tour_created": false,
+  "etg_write_authority": {
+    "state": "blocked_current_drift",
+    "effective_authority_ready": false,
+    "candidate_binding_match": false,
+    "current_grant_snapshot_ready": false,
+    "stored_source_commit_sha": "1edf2a13575801b191516cd026b00c90ddce14c0",
+    "current_source_commit_sha": "1fed486708a475edc72aea67482d4ec970dcf41f",
+    "owner_gate": "EXACT_OWNER_REVIEW_REQUIRED",
+    "expected_plan_sha256": "b4ff4a519ac2d8fe8eef1e3a2ebdd2970a4f79a7ba554248c131f1d314bb3f74",
+    "owner_review_digest": "84babcc827aaffeebcd7e2f03626134480fbe35974d387b52fd92791eb830b3b",
+    "developer_requested": false,
+    "breakglass_requested": false,
+    "production_allowed": false
+  },
+  "remaining": [
+    "Live governed authority reconciliation",
+    "Read installed vendor versions and hashes before replacing candidates",
+    "Site-owned template labels and broken ETG link",
+    "Raw verification text",
+    "Form text encoding",
+    "Live PHP 8.5 and browser acceptance",
+    "Tour create/publish/restore-to-draft exact tickets"
+  ],
+  "are_runtime_read": "MCP -32603; effective write authority not established"
+}
