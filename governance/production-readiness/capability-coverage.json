@@ -793,6 +793,23 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "c71eecffeaafe02bdb19e4fc679d6484106d9761",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-pre-pluggable-runtime.php"
+      ],
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "CI-only review of the exact PHP source blob for the signed Staging frontend diagnostic. WordPress pluggable wp_salt can be unavailable in early request classification; return an absent signature rather than a guessed key, deny unsigned loopback requests before network I/O, and report actual paired request counts. A newly added same-PR pre-pluggable regression is executed in MCP compatibility CI; normal signed-request tests remain in that workflow. The prior source-line PHP incident does not establish the complete cause of homepage HTTP 500. Require separately certified Staging deployment and independent external browser, PHP and request-correlated readback. No Production authorization or site mutation."
     }
   ],
   "code_change_rules": {
