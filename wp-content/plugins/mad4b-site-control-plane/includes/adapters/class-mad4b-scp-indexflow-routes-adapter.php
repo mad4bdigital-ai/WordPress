@@ -76,6 +76,14 @@ final class MAD4B_SCP_IndexFlow_Routes_Adapter extends MAD4B_SCP_Adapter_Base {
         if ($target !== array('kind' => 'indexflow_routes', 'id' => 'registry')) return new WP_Error('indexflow_undo_target_invalid', 'Unexpected undo target.');
         return $this->acquire_reversible_scope($ability, array());
     }
+    /** Retain an uncertain IndexFlow journal mutex until governed reconciliation. */
+    public function retain_reversible_scope($lease) {
+        if (!is_array($lease) || !is_array($this->lease)
+            || !isset($lease['key'], $lease['token'])
+            || !hash_equals((string)$this->lease['key'], (string)$lease['key'])
+            || !hash_equals((string)$this->lease['token'], (string)$lease['token'])) return false;
+        return \ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate::retain($this->lease);
+    }
     public function release_reversible_scope($lease) {
         if (!is_array($lease) || $lease !== $this->lease) return;
         \ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate::release($lease); $this->lease = null;

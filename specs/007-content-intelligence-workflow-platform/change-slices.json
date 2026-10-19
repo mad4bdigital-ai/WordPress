@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b9ffd800239d40cbc1147dffe7106ad5e5323655",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 106,
-  "changed_paths_sha256": "b8278eac98af3356a5c8a3e1730085380202be8eb8e389ef6a6f0b20cd7e84dd",
+  "changed_file_count": 107,
+  "changed_paths_sha256": "be98c35ccaf1e10c9d7d1a9318aebf8912245648a03858ccfea845a59ce20221",
   "slices": [
     {
       "id": "ci-and-evidence",
@@ -59,7 +59,8 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/live-object-cache-acceptance.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-mcp-smoke.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php"
       ]
     },
     {

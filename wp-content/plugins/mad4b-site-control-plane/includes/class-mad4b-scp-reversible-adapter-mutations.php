@@ -34,6 +34,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 
 
 		$scope = null;
+		$journal_scope_uncertain = false;
 		if ( method_exists( $adapter, 'acquire_reversible_scope' ) && method_exists( $adapter, 'release_reversible_scope' ) ) {
 			$scope = $adapter->acquire_reversible_scope( $ability_name, $input );
 			if ( is_wp_error( $scope ) ) return $scope;
@@ -129,11 +130,14 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			$error = new WP_Error( 'mad4b_reversible_provider_exception', 'Adapter mutation threw before successful verification.' );
 			$failure = self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $error, 'provider_exception' );
 			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-failed', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'error_type' => get_class( $e ), 'mutation_status' => self::failure_status_from_error( $failure ) ), 'failure' );
+			if ( is_wp_error( $failure ) && 'mad4b_mutation_journal_recovery_required' === $failure->get_error_code() ) $journal_scope_uncertain = true;
 			return $failure;
 		}
 		array_pop( self::$execution_context_stack );
 		if ( is_wp_error( $result ) ) {
-			return self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $result, $result->get_error_code() );
+			$failure = self::finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, $before, $before_hash, $result, $result->get_error_code() );
+			if ( is_wp_error( $failure ) && 'mad4b_mutation_journal_recovery_required' === $failure->get_error_code() ) $journal_scope_uncertain = true;
+			return $failure;
 		}
 
 		$readback_call = static function() use ( $adapter, $ability_name, $before ) {
@@ -147,17 +151,18 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			) )
 			: $readback_call();
 		if ( is_wp_error( $after_state ) ) {
-			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) ) )  return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) ) ) { $journal_scope_uncertain = true; return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' ); }
 			$error = new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'provider_error' => $after_state->get_error_code() ) );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		if ( ! is_array( $after_state ) ) {
-			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) ) )  return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) ) ) { $journal_scope_uncertain = true; return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' ); }
 			$error = new WP_Error( 'mad4b_reversible_readback_invalid', 'Provider reversible readback did not return a bounded state object.' );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		$after_hash = self::state_hash( $after_state );
 		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) ) ) {
+			$journal_scope_uncertain = true;
 			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-journal-recovery', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'after_sha256' => $after_hash ), 'failure' );
 			return new WP_Error( 'mad4b_mutation_journal_recovery_required', 'Provider write was observed, but its verification journal could not be persisted. Manual reconciliation required; blind retry denied.', array( 'mutation_id' => $mutation_id, 'observed_after_sha256' => $after_hash, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
 		}
@@ -175,6 +180,10 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( is_array( $result ) ) return array_merge( $result, $evidence );
 		return array_merge( array( 'result' => $result ), $evidence );
 		} finally {
+			// Provider side effects with an uncommitted journal must remain fenced.
+			if ( $journal_scope_uncertain && null !== $scope && method_exists( $adapter, 'retain_reversible_scope' ) ) {
+				$adapter->retain_reversible_scope( $scope );
+			}
 			if ( null !== $scope ) $adapter->release_reversible_scope( $scope );
 		}
 	}

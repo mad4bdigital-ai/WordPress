@@ -79,5 +79,14 @@ namespace {
     $env='production';check(!$adapter->is_available() && is_wp_error($adapter->acquire_reversible_scope($adapter::APPLY,$input)),'Production denied');$env='staging';
     $admin=false;check(is_wp_error($adapter->routes_plan(array('document'=>$doc))),'Non-administrator denied');$admin=true;
     $globalOn=true;check(is_wp_error($adapter->acquire_reversible_scope($adapter::APPLY,$input)),'Global ON denies writes');$globalOn=false;
+    // Uncertain journal cannot unlock through ordinary PHP cleanup.
+    $retained=$adapter->acquire_reversible_scope($adapter::APPLY,$input);
+    check(is_array($retained),'IndexFlow recovery mutex acquired');
+    check(!$adapter->retain_reversible_scope(array('key'=>$retained['key'],'token'=>'foreign')),
+        'Foreign token cannot retain IndexFlow lock');
+    check($adapter->retain_reversible_scope($retained),'Exact IndexFlow owner retains uncertain lease');
+    $adapter->release_reversible_scope($retained);
+    check(is_wp_error($other->acquire_reversible_scope($adapter::APPLY,$input)),
+        'Retained route lock denies next writer after normal cleanup');
     echo "IndexFlow governed adapter: $n checks PASS (fixture authority only; live certification absent)\n";
 }
