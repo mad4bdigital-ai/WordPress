@@ -323,6 +323,18 @@ jobs:
               raise SystemExit('tools/list returned an empty tool inventory')
           names = sorted({tool.get('name') for tool in tools if isinstance(tool, dict) and isinstance(tool.get('name'), str)})
 
+          # Source Ability and the MCP tools/list wire schema must converge.
+          # A stale client-side tool manifest may still need a reconnect,
+          # but a release must never publish an older schema from the server.
+          session_safe = next((tool for tool in tools if isinstance(tool, dict)
+                               and tool.get('name') == 'mad4b-session-safe-diagnostics'), None)
+          if not session_safe:
+              raise SystemExit('Session-safe tool absent from MCP tools/list')
+          schema = session_safe.get('inputSchema', {})
+          scopes = schema.get('properties', {}).get('diagnostic_scope', {}).get('enum', []) if isinstance(schema, dict) else []
+          if not {'full', 'identity', 'triage'}.issubset(set(scopes)):
+              raise SystemExit(f'Stale session-safe tools/list diagnostic scope: {scopes!r}')
+
           required = {
               'mad4b-site-info',
               'mad4b-site-profile-status',
