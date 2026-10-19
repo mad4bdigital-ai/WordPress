@@ -16,6 +16,7 @@ FIXTURES = (
     "dynamic-first-party-enrollment-runtime.php",
     "staging-write-owner-intent-runtime.php",
     "staging-write-owner-transport-runtime.php",
+    "staging-write-one-step-review-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
     "frontend-origin-diagnostic-runtime.php",
     "native-incident-mu-runtime.php",
