@@ -146,3 +146,296 @@ jobs:
             ${{ runner.temp }}/mad4b-repository-governance-status.json
           if-no-files-found: ignore
           retention-days: 30
+
+
+  bootstrap-readiness-required-check:
+    name: Append Readiness check from exact owner ledger command
+    if: >-
+      github.event.comment.user.login == 'mad4bdigital-ai' &&
+      github.event.sender.login == 'mad4bdigital-ai' &&
+      github.event.issue.number == 71 &&
+      startsWith(github.event.comment.body, 'APPLY_MAD4B_READINESS_CHECK_BOOTSTRAP')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted master only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Verify owner command and apply one app-pinned check
+        env:
+          GH_TOKEN: ${{ secrets.MAD4B_OWNER_GOVERNANCE_TOKEN }}
+          COMMAND_BODY: ${{ github.event.comment.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_LOGIN: ${{ github.event.comment.user.login }}
+          SENDER_LOGIN: ${{ github.event.sender.login }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, copy, json, os, re, subprocess
+          from pathlib import Path
+          from tools.verify_repository_ruleset_template import mutable_ruleset, verify
+
+          REPO = "mad4bdigital-ai/WordPress"
+          ADD = {"context": "Production readiness matrix contract", "integration_id": 15368}
+          TEMP = Path(os.environ["RUNNER_TEMP"])
+          if (os.environ.get("GITHUB_REPOSITORY") != REPO
+              or os.environ.get("ISSUE_NUMBER") != "71"
+              or os.environ.get("COMMENT_LOGIN") != "mad4bdigital-ai"
+              or os.environ.get("SENDER_LOGIN") != "mad4bdigital-ai"
+              or not os.environ.get("GH_TOKEN")):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: identity/token invalid")
+          pattern = (r"APPLY_MAD4B_READINESS_CHECK_BOOTSTRAP\r?\n"
+                     r"expected_master_sha:\s*([0-9a-f]{40})\r?\n"
+                     r"target_pr_number:\s*(\d+)\r?\n"
+                     r"target_head_sha:\s*([0-9a-f]{40})\s*")
+          match = re.fullmatch(pattern, os.environ.get("COMMAND_BODY", ""))
+          if not match:
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: exact owner command invalid")
+          master_sha, pr_number, head_sha = match.groups()
+          number = int(pr_number)
+          if number < 1:
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: PR number invalid")
+
+          def gh(path, method=None, data=None):
+              cmd = ["gh", "api", "-H", "Accept: application/vnd.github+json"]
+              if method:
+                  cmd += ["--method", method]
+              if data:
+                  cmd += ["--input", str(data)]
+              result = subprocess.run(cmd + [f"repos/{REPO}/{path}"],
+                                      capture_output=True, text=True, timeout=40)
+              if result.returncode:
+                  raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: authenticated API rejected request")
+              return json.loads(result.stdout) if result.stdout.strip() else {}
+
+          login = subprocess.check_output(["gh", "api", "user", "--jq", ".login"], text=True).strip()
+          if login != "mad4bdigital-ai":
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: not owner-admin credential")
+          ledger = gh("issues/71")
+          if (ledger.get("title") != "MAD4B Repository Governance Attestations"
+              or (ledger.get("user") or {}).get("login") != "mad4bdigital-ai"
+              or "pull_request" in ledger):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: incorrect owner ledger")
+          master_now = gh("commits/master").get("sha")
+          checked_out = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if master_now != master_sha or checked_out != master_sha:
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: master HEAD changed")
+          pr = gh(f"pulls/{number}")
+          if (pr.get("state") != "open"
+              or (pr.get("head") or {}).get("sha") != head_sha
+              or (pr.get("base") or {}).get("ref") != "master"
+              or ((pr.get("head") or {}).get("repo") or {}).get("full_name") != REPO):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: PR identity drift")
+          required_files = {
+              ".github/mad4b-master-ruleset-template.json",
+              ".github/mad4b-repository-governance-policy.json",
+              ".github/workflows/mad4b-governance-remote-apply.yml",
+              "tools/Apply-Mad4bMasterRuleset.ps1",
+              "tools/test_verify_repository_governance_attestation.py",
+              "tools/verify_repository_ruleset_template.py",
+          }
+          changed = gh(f"pulls/{number}/files?per_page=100")
+          if (not isinstance(changed, list)
+              or len(changed) != len(required_files)
+              or {x.get("filename") for x in changed} != required_files
+              or any(x.get("status") != "modified" for x in changed)):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: unexpected target PR scope")
+          check_runs = gh(f"commits/{head_sha}/check-runs?per_page=100").get("check_runs") or []
+          root_checks = sorted(
+              (x for x in check_runs if x.get("name") == "Repository feature boundary"),
+              key=lambda x: int(x.get("id") or 0), reverse=True
+          )
+          if (not root_checks
+              or root_checks[0].get("status") != "completed"
+              or root_checks[0].get("conclusion") != "success"
+              or (root_checks[0].get("app") or {}).get("id") != 15368):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: latest trusted boundary is not green")
+          comments = gh(f"issues/{number}/comments?per_page=100")
+          exact_owner_comment = f"OWNER_ATTEST_SINGLE_OWNER\nexact_head_sha: {head_sha}"
+          if not any((x.get("user") or {}).get("login") == "mad4bdigital-ai"
+                     and (x.get("body") or "").strip() == exact_owner_comment for x in comments):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: exact target owner attestation missing")
+
+          def candidate_json(path):
+              row = gh(f"contents/{path}?ref={head_sha}")
+              if row.get("encoding") != "base64":
+                  raise ValueError("Candidate data must use base64")
+              raw_bytes = base64.b64decode(row.get("content") or "")
+              return json.loads(raw_bytes), raw_bytes
+
+          policy = json.loads(Path(".github/mad4b-repository-governance-policy.json").read_text())
+          template = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text())
+          target_policy, target_template = copy.deepcopy(policy), copy.deepcopy(template)
+          target_policy["required_status_checks"]["contexts"].append(ADD)
+          next_rule = next(x for x in target_template["rules"] if x["type"] == "required_status_checks")
+          next_rule["parameters"]["required_status_checks"].append(ADD)
+          candidate_policy, candidate_policy_bytes = candidate_json(".github/mad4b-repository-governance-policy.json")
+          candidate_template, candidate_template_bytes = candidate_json(".github/mad4b-master-ruleset-template.json")
+          if candidate_policy != target_policy or candidate_template != target_template:
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: target policy/template drift")
+          verify(target_template, target_policy)
+          # Attestation hashes bind exact reviewed PR bytes, never reserialized JSON.
+          target_policy_file = TEMP / "readiness-bootstrap-target-policy.json"
+          target_template_file = TEMP / "readiness-bootstrap-target-template.json"
+          target_policy_file.write_bytes(candidate_policy_bytes)
+          target_template_file.write_bytes(candidate_template_bytes)
+
+          active_repository_rulesets = gh("rulesets?includes_parents=false")
+          if (not isinstance(active_repository_rulesets, list)
+              or len(active_repository_rulesets) != 1
+              or active_repository_rulesets[0].get("id") != 23968498
+              or active_repository_rulesets[0].get("name") != "MAD4B master release governance"):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: unexpected additional repository rulesets")
+          before = gh("rulesets/23968498?includes_parents=true")
+          if (before.get("id") != 23968498
+              or before.get("source_type") != "Repository"
+              or before.get("source") != REPO
+              or before.get("bypass_actors") != []):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: live identity/bypass drift")
+          live_pr = next((x for x in before.get("rules", []) if x.get("type") == "pull_request"), {})
+          if (live_pr.get("parameters") or {}).get(
+              "require_extra_approval_for_unattributed_changes"
+          ) is not True:
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: approval evidence missing")
+          if mutable_ruleset(before) != mutable_ruleset(template):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: old live template mismatch")
+          before_file = TEMP / "readiness-bootstrap-before.json"
+          target_file = TEMP / "readiness-bootstrap-target.json"
+          rollback_file = TEMP / "readiness-bootstrap-rollback.json"
+          before_file.write_text(json.dumps(before, indent=2))
+          target_file.write_text(json.dumps(target_template, indent=2))
+          rollback_file.write_text(json.dumps(template, indent=2))
+          second = gh("rulesets/23968498?includes_parents=true")
+          if (second.get("updated_at") != before.get("updated_at")
+              or mutable_ruleset(second) != mutable_ruleset(before)
+              or gh("commits/master").get("sha") != master_sha):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: concurrent state change")
+          try:
+              gh("rulesets/23968498", method="PUT", data=target_file)
+              after = gh("rulesets/23968498?includes_parents=true")
+              if mutable_ruleset(after) != mutable_ruleset(target_template):
+                  raise RuntimeError("three-check ruleset readback mismatch")
+              (TEMP / "readiness-bootstrap-after.json").write_text(json.dumps(after, indent=2))
+              # Trusted master executables bind exact candidate source bytes
+              # to an owner-authored ruleset attestation before claiming GO.
+              attestation_path = TEMP / "readiness-bootstrap-attestation.json"
+              publication_path = TEMP / "readiness-bootstrap-publication.json"
+              governance_path = TEMP / "readiness-bootstrap-governance.json"
+              subprocess.run([
+                  "python3", "tools/build_repository_ruleset_attestation.py",
+                  "--readback", str(TEMP / "readiness-bootstrap-after.json"),
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--repository", REPO,
+                  "--output", str(attestation_path),
+              ], check=True, timeout=65)
+              subprocess.run([
+                  "python3", "tools/publish_repository_ruleset_attestation.py",
+                  "--repository", REPO,
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--attestation", str(attestation_path),
+                  "--output", str(publication_path),
+              ], check=True, timeout=65)
+              published = json.loads(publication_path.read_text())
+              if (published.get("published") is not True
+                  or published.get("readback_verified") is not True
+                  or published.get("authenticated_owner_login") != "mad4bdigital-ai"
+                  or published.get("comment_author_login") != "mad4bdigital-ai"):
+                  raise RuntimeError("target-policy attestation publication unverified")
+              subprocess.run([
+                  "python3", "tools/verify_repository_governance.py",
+                  "--repository", REPO,
+                  "--policy", str(target_policy_file),
+                  "--template", str(target_template_file),
+                  "--require-ruleset-attestation",
+                  "--output", str(governance_path),
+              ], check=True, timeout=90)
+              governance = json.loads(governance_path.read_text())
+              if (governance.get("ready") is not True
+                  or governance.get("ruleset_attestation_verified") is not True):
+                  raise RuntimeError("three-check governance attestation is not ready")
+          except Exception:
+              # Even an HTTP failure may follow a server-side write.
+              # Recover only from a recognizable base/target state.
+              try:
+                  observed = gh("rulesets/23968498?includes_parents=true")
+              except Exception as error:
+                  raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: post-write readback unavailable") from error
+              rollback_performed = False
+              if mutable_ruleset(observed) == mutable_ruleset(target_template):
+                  gh("rulesets/23968498", method="PUT", data=rollback_file)
+                  rollback_performed = True
+              elif mutable_ruleset(observed) != mutable_ruleset(template):
+                  raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: unexpected post-write state")
+              restored = gh("rulesets/23968498?includes_parents=true")
+              if mutable_ruleset(restored) != mutable_ruleset(template):
+                  raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: rollback not verified")
+              if rollback_performed:
+                  # Rollback itself changes ruleset updated_at, invalidating
+                  # historical owner attestations. Re-attest trusted old master.
+                  recovered_path = TEMP / "readiness-bootstrap-rollback-readback.json"
+                  recovered_path.write_text(json.dumps(restored, indent=2))
+                  recovered_attestation = TEMP / "readiness-bootstrap-rollback-attestation.json"
+                  recovered_publication = TEMP / "readiness-bootstrap-rollback-publication.json"
+                  base_policy_path = Path(".github/mad4b-repository-governance-policy.json")
+                  base_template_path = Path(".github/mad4b-master-ruleset-template.json")
+                  try:
+                      subprocess.run([
+                          "python3", "tools/build_repository_ruleset_attestation.py",
+                          "--readback", str(recovered_path),
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--repository", REPO,
+                          "--output", str(recovered_attestation),
+                      ], check=True, timeout=65)
+                      subprocess.run([
+                          "python3", "tools/publish_repository_ruleset_attestation.py",
+                          "--repository", REPO,
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--attestation", str(recovered_attestation),
+                          "--output", str(recovered_publication),
+                      ], check=True, timeout=65)
+                      published_restore = json.loads(recovered_publication.read_text())
+                      if (published_restore.get("published") is not True
+                          or published_restore.get("readback_verified") is not True):
+                          raise RuntimeError("rollback attestation publication incomplete")
+                      subprocess.run([
+                          "python3", "tools/verify_repository_governance.py",
+                          "--repository", REPO,
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--require-ruleset-attestation",
+                          "--output", str(TEMP / "readiness-bootstrap-rollback-governance.json"),
+                      ], check=True, timeout=90)
+                  except Exception as recovery_error:
+                      raise RuntimeError(
+                          "RULESET_BOOTSTRAP_RECOVERY_REQUIRED: previous ruleset restored but owner attestation unavailable"
+                      ) from recovery_error
+              raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: apply/readback rejected; original ruleset and attestation recovered")
+          print("READINESS_RULESET_BOOTSTRAP: PASS; one required check added; Production NO-GO")
+          PY
+      - name: Retain exact bootstrap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-readiness-ruleset-bootstrap-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/readiness-bootstrap-before.json
+            ${{ runner.temp }}/readiness-bootstrap-target.json
+            ${{ runner.temp }}/readiness-bootstrap-after.json
+            ${{ runner.temp }}/readiness-bootstrap-target-policy.json
+            ${{ runner.temp }}/readiness-bootstrap-target-template.json
+            ${{ runner.temp }}/readiness-bootstrap-attestation.json
+            ${{ runner.temp }}/readiness-bootstrap-publication.json
+            ${{ runner.temp }}/readiness-bootstrap-governance.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-readback.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-attestation.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-publication.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-governance.json
+          if-no-files-found: ignore
+          retention-days: 30
