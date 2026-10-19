@@ -25,7 +25,7 @@ final class AjaxPresentationEndpoint {
     // response boundaries remain 'url_authority' => false and 'seo_mutation' => false.
 
     private $builder; private $resolver; private $slots; private $catalogProvider; private $catalogTokens = null; private $catalogTokenMeta = null;
-    public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider = null ) {$this->builder=$builder;$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;}
+    public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, ?callable $catalogProvider = null ) {$this->builder=$builder;$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;}
     public function register():void{add_action('rest_api_init',array($this,'routes'));add_action('wp_enqueue_scripts',array($this,'assets'),30);}
     public function routes():void{register_rest_route('etg-dfsb/v1','/ajax-presentation',array('methods'=>'POST','callback'=>array($this,'handle'),'permission_callback'=>'__return_true'));}
 

@@ -25,6 +25,12 @@ $cases = array(
     'includes/Admin/DynamicContentPage.php' => array( 'sources' => 1 ),
     'includes/Admin/MediaLabPage.php' => array( 'previewContextProvider' => 1 ),
     'includes/Admin/JetEngineInspectorPage.php' => array( 'previewContextProvider' => 1 ),
+    'includes/Elementor/ContainerDynamicBackground.php' => array( 'context' => 2 ),
+    'includes/Elementor/Shortcodes.php' => array( 'evidenceContextProvider' => 1, 'presentation' => 1 ),
+    'includes/Elementor/DynamicTagRegistrar.php' => array( 'previewContextProvider' => 1 ),
+    'includes/Elementor/DynamicTags/DynamicTagRuntime.php' => array( 'previewContextProvider' => 1 ),
+    'includes/RankMath/MetadataAdapter.php' => array( 'publication' => 1 ),
+    'includes/Presentation/AjaxPresentationEndpoint.php' => array( 'catalogProvider' => 1 ),
 );
 $manifest_path = $root . '/installed-content-manifest.json';
 $manifest = json_decode( (string) file_get_contents( $manifest_path ), true );
@@ -51,5 +57,5 @@ foreach ( $cases as $relative => $parameters ) {
         $checked += $observed;
     }
 }
-if ( 40 !== $checked || 18 !== count( $cases ) ) throw new RuntimeException( 'Unexpected ETG deprecation evidence coverage' );
-echo "PASS ETG explicit nullable PHP signatures: 40 parameters / 18 files; installed-content SHA-256 verified; no site mutation\n";
+if ( 48 !== $checked || 24 !== count( $cases ) ) throw new RuntimeException( 'Unexpected ETG deprecation evidence coverage' );
+echo "PASS ETG explicit nullable PHP signatures: 48 parameters / 24 files; installed-content SHA-256 verified; no site mutation\n";
