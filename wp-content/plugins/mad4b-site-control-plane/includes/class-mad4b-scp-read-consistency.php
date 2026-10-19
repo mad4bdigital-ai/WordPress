@@ -535,6 +535,10 @@ final class MAD4B_SCP_Read_Consistency {
 					array(
 						'budget_ms' => min( self::MAX_BUNDLE_BUDGET_MS, max( 1000, $remaining_ms ) ),
 						'retry_transient' => $retry,
+						// Do not retain unbounded provider objects between checks.
+						'result_projector' => static function ( $name, $data ) {
+							return self::compact_status_data( $name, $data );
+						},
 					)
 				);
 				if ( ! is_array( $result ) ) throw new UnexpectedValueException( 'session_bundle_not_array' );
@@ -809,7 +813,10 @@ final class MAD4B_SCP_Read_Consistency {
 				'category' => isset( $check['category'] ) ? sanitize_key( (string) $check['category'] ) : '',
 				'elapsed_ms' => isset( $check['elapsed_ms'] ) ? max( 0, (int) $check['elapsed_ms'] ) : 0,
 				'summary' => $summary,
-				'evidence_digest' => self::digest( $data ),
+				// This hash represents the returned bounded summary, not the
+				// provider's raw data or an authority-bearing evidence receipt.
+				'evidence_digest' => self::digest( $summary ),
+				'evidence_digest_scope' => 'bounded_status_summary',
 			);
 		}
 		return array(
@@ -822,7 +829,13 @@ final class MAD4B_SCP_Read_Consistency {
 			'session_termination_count' => isset( $result['session_termination_count'] ) ? max( 0, (int) $result['session_termination_count'] ) : 0,
 			'check_count' => count( $checks ),
 			'checks' => $checks,
-			'evidence_digest' => self::digest( array( 'bundle' => $bundle, 'result' => $result ) ),
+			'evidence_digest' => self::digest( array(
+				'bundle' => $bundle,
+				'state' => isset( $result['state'] ) ? (string) $result['state'] : '',
+				'failed_checks' => self::bounded_scalar_list( isset( $result['failed_checks'] ) ? $result['failed_checks'] : array(), 16 ),
+				'checks' => $checks,
+			) ),
+			'evidence_digest_scope' => 'bounded_bundle_summary',
 		);
 	}
 
@@ -892,7 +905,9 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function bounded_scalar_list( $value, $max_items ) {
-		$value = is_array( $value ) ? array_values( $value ) : array();
+		// Copying an entire provider list to read its first 12 elements
+		// defeats the memory bound. Iterate directly and stop at the cap.
+		$value = is_array( $value ) ? $value : array();
 		$out = array();
 		foreach ( $value as $item ) {
 			if ( ! is_scalar( $item ) && null !== $item ) continue;
