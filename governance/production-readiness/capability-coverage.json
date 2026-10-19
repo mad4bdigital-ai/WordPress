@@ -236,8 +236,7 @@
     },
     {
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
       ],
       "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
       "status": "reviewed_for_ci_only",
@@ -253,7 +252,7 @@
         "EXECUTION-01",
         "PROVIDERS-02"
       ],
-      "review_rationale": "Existing owner-attestation and Staging Write convergence callbacks preserve their exact authorization gates and journal boundaries. Only bounded post-child WP_Error observability changes; no authority or success is inferred, and each affected owner transport has same-PR negative runtime regression coverage. Independent Staging readback and owner step-up remain mandatory. The dispatch adapter also maintains the existing provider isolation perimeter, covered by PROVIDERS-02; this is CI-only evidence, not runtime certification."
+      "review_rationale": "Existing owner-attestation and Staging Write convergence callbacks preserve their exact authorization gates and journal boundaries. Only bounded post-child WP_Error observability changes; no authority or success is inferred, and each affected owner transport has same-PR negative runtime regression coverage. Independent Staging readback and owner step-up remain mandatory. The dispatch adapter also maintains the existing provider isolation perimeter, covered by PROVIDERS-02; this is CI-only evidence, not runtime certification. The exact-head Readiness gate executes both standalone PHP runtime fixtures through a fixed-path Python subprocess regression runner; absence of PHP, timeout, or any fixture failure fails the CI job."
     }
   ],
   "code_change_rules": {
