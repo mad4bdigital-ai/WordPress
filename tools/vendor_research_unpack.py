@@ -103,7 +103,20 @@ def main():
         remote_ref = "refs/remotes/origin/" + branch
         observed = git("rev-parse", remote_ref)
         if observed != SOURCE:
-            raise SystemExit(f"{branch}: head changed; refusal to overwrite {observed}")
+            # A prior run can have completed this isolated branch before a
+            # later branch failed; re-verify provenance rather than overwriting.
+            try:
+                existing = json.loads(git("show", f"{observed}:vendor-unpacked/PROVENANCE.json"))
+            except (subprocess.CalledProcessError, json.JSONDecodeError):
+                raise SystemExit(f"{branch}: diverged without valid source provenance")
+            actual_archives = [x.get("archive") for x in existing.get("archives", [])]
+            expected_archives = ["wp-content/plugins/" + p for p in packages]
+            if (existing.get("source_commit") != SOURCE or existing.get("branch") != branch
+                or actual_archives != expected_archives
+                or existing.get("non_authorizing") is not True):
+                raise SystemExit(f"{branch}: provenance mismatch; refusing overwrite")
+            print(f"SKIP VERIFIED: {branch} already unpacked at {observed}", flush=True)
+            continue
         print(f"Unpacking {branch}: {', '.join(packages)}", flush=True)
         git("checkout", "-B", branch, SOURCE)
         manifest = {
@@ -116,7 +129,13 @@ def main():
         }
         destination = Path("vendor-unpacked")
         if destination.exists():
-            raise SystemExit(f"{branch}: destination already exists; no overwrite allowed")
+            # Worktree can retain unpacked ignored/untracked files from the
+            # previous branch; only remove our ephemeral research directory.
+            # The pinned source tree must not contain this directory at all.
+            source_files = git("ls-tree", "-r", "--name-only", SOURCE, "--", "vendor-unpacked")
+            if source_files:
+                raise SystemExit("Pinned source already contains vendor-unpacked; no cleanup allowed")
+            shutil.rmtree(destination)
         for package in packages:
             root = destination / package.removesuffix(".zip")
             root.mkdir(parents=True, exist_ok=False)
