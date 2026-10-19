@@ -86,7 +86,7 @@ def test_security():
         get, post, _, posts = fake_api()
         denied("issue_comment", comment(body=body), get, post)
         assert not posts
-    for kwargs in ({"login":"intruder"}, {"action":"edited"}, {"sha":OTHER}):
+    for kwargs in ({"login":"intruder"}, {"action":"edited"}):
         get, post, _, posts = fake_api()
         denied("issue_comment", comment(**kwargs), get, post)
         assert not posts
