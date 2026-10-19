@@ -1,0 +1,42 @@
+{
+  "schema": "mad4b.research-unpacked-vendor-archives.v1",
+  "non_authorizing": true,
+  "no_runtime_certs": true,
+  "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+  "branch": "research/vendor-wpml-20261019",
+  "archives": [
+    {
+      "archive": "wp-content/plugins/sitepress-multilingual-cms.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "8a0c914673d8155b482f2b0684cdc6c379bdd37d",
+      "archive_sha256": "01fdf19515a2f28831d4f67127450f6668ce664da0b6e668fddbae689c2aef39",
+      "archive_bytes": 13932454,
+      "files": 6839,
+      "uncompressed_bytes": 39573260,
+      "extract_root": "vendor-unpacked/sitepress-multilingual-cms",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    },
+    {
+      "archive": "wp-content/plugins/wp-seo-multilingual.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "b3c8ce7a4fc7719d639db492b638857b1a3a67a2",
+      "archive_sha256": "fd3b8fdecdbf5f45006b4ec9b2323533e7bd1dd93cb0ee94ef71e69ae024a596",
+      "archive_bytes": 891271,
+      "files": 197,
+      "uncompressed_bytes": 1262973,
+      "extract_root": "vendor-unpacked/wp-seo-multilingual",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    },
+    {
+      "archive": "wp-content/plugins/wpml-string-translation.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "8bf432ee0eff8a3e50ea86006681b5d4672bb12d",
+      "archive_sha256": "c2736d39fa79db1c01d2022a509019b9064a6d9dd9831c0374aba78f4de343ab",
+      "archive_bytes": 3713172,
+      "files": 1180,
+      "uncompressed_bytes": 12073573,
+      "extract_root": "vendor-unpacked/wpml-string-translation",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    }
+  ]
+}
