@@ -38,6 +38,8 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			'etg-dfsb/profiles',
 			'etg-dfsb/profile-blueprint',
 			'etg-dfsb/profile-plan',
+			'etg-dfsb/profile-diff',
+			'etg-dfsb/slot-plan',
 			'etg-dfsb/content-catalog',
 		);
 		$read = array_merge( $read, $this->native_evidence_read_abilities() );
@@ -135,6 +137,16 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			)
 		);
 		$this->add_ability( 'etg-dfsb/profile-plan', 'Plan ETG DFSB Profiles from Runtime Inventory', 'profile_plan', $read );
+		$this->add_ability(
+			'etg-dfsb/profile-diff', 'Compare ETG Profile Against Verified Runtime Plan',
+			'profile_diff', $read,
+			$this->schema( array( 'profile_id' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 64 ) ), array( 'profile_id' ) )
+		);
+		$this->add_ability(
+			'etg-dfsb/slot-plan', 'Preview ETG Dynamic Content Slot Without Saving',
+			'slot_plan', $read,
+			$this->schema( array( 'slot' => array( 'type' => 'object', 'maxProperties' => 24, 'additionalProperties' => true ) ), array( 'slot' ) )
+		);
 		$this->add_ability( 'etg-dfsb/content-catalog', 'Read ETG DFSB Dynamic Content Catalog', 'content_catalog', $read );
 	}
 
@@ -240,6 +252,84 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			return $planner->plan( $inventory->collect(), $registry->all() );
 		} catch ( Throwable $error ) {
 			return $this->runtime_error( 'profile_plan_unavailable' );
+		}
+	}
+
+	/**
+	 * Governed read planning only. An inventory proposal is not a write grant
+	 * or a signal that publication or indexing is safe.
+	 */
+	public function profile_diff( $input = array() ) {
+		$guard = $this->guard_runtime();
+		if ( is_wp_error( $guard ) ) return $guard;
+		$input = is_array( $input ) ? $input : array();
+		$id = isset( $input['profile_id'] ) ? sanitize_key( (string) $input['profile_id'] ) : '';
+		if ( '' === $id ) return new WP_Error( 'mad4b_etg_profile_id_required', 'A Profile ID is required.' );
+		try {
+			$config = new \ETG\DynamicFilterSEOBridge\Config\Configuration();
+			$profiles = new \ETG\DynamicFilterSEOBridge\Config\ProfileRegistry( $config );
+			$inventory = new \ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory();
+			$snapshot = $inventory->collect();
+			$planner = new \ETG\DynamicFilterSEOBridge\Diagnostics\InventoryProfilePlanner();
+			$plan = $planner->plan( $snapshot, $profiles->all() );
+			$proposal = isset( $plan['proposals'][ $id ] ) && is_array( $plan['proposals'][ $id ] ) ? $plan['proposals'][ $id ] : array();
+			if ( ! $proposal ) return new WP_Error( 'mad4b_etg_profile_not_found', 'No verified proposal exists for this Profile.' );
+			$changes = is_array( $proposal['changes'] ?? null ) ? array_values( $proposal['changes'] ) : array();
+			if ( count( $changes ) > 50 ) return new WP_Error( 'mad4b_etg_diff_too_large', 'Profile diff exceeds the bounded read contract.' );
+			return array(
+				'contract' => 'mad4b.etg-dfsb.profile-diff.v1',
+				'profile_id' => $id, 'revision' => $config->revision(),
+				'snapshot_fingerprint' => (string) ( $snapshot['snapshot_fingerprint'] ?? '' ),
+				'state' => $changes ? 'review_required' : 'aligned',
+				'structural_plan_eligible' => ! empty( $proposal['safe_to_apply'] ),
+				'blocking_reasons' => array_values( (array) ( $proposal['blocking_reasons'] ?? array() ) ),
+				'changes' => $changes, 'authorizing' => false,
+				'read_only' => true, 'apply_authorized' => false,
+				'mutation_performed' => false,
+			);
+		} catch ( Throwable $error ) {
+			return $this->runtime_error( 'profile_diff_unavailable' );
+		}
+	}
+
+	/** Dry-run Content Slot normalization and compare hashes, never write options. */
+	public function slot_plan( $input = array() ) {
+		$guard = $this->guard_runtime();
+		if ( is_wp_error( $guard ) ) return $guard;
+		$input = is_array( $input ) ? $input : array();
+		$raw = isset( $input['slot'] ) && is_array( $input['slot'] ) ? $input['slot'] : array();
+		$encoded = function_exists( 'wp_json_encode' ) ? wp_json_encode( $raw ) : json_encode( $raw );
+		if ( ! is_string( $encoded ) || strlen( $encoded ) > 32768 ) {
+			return new WP_Error( 'mad4b_etg_slot_plan_too_large', 'Slot planning payload exceeds bounded limits.' );
+		}
+		try {
+			if ( ! class_exists( '\ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry' ) ) return $this->runtime_error( 'slot_registry_unavailable' );
+			$slots = new \ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry();
+			$proposed = $slots->normalize( $raw );
+			$id = (string) ( $proposed['id'] ?? '' );
+			if ( '' === $id || 0 === strpos( $id, 'etg_background_' ) ) {
+				return new WP_Error( 'mad4b_etg_slot_id_invalid', 'A non-reserved Slot ID is required.' );
+			}
+			$current = $slots->get( $id );
+			unset( $current['origin'], $current['internal'] );
+			$keys = array_values( array_unique( array_merge( array_keys( $current ), array_keys( $proposed ) ) ) );
+			$changed = array();
+			foreach ( $keys as $key ) {
+				if ( ( $current[ $key ] ?? null ) !== ( $proposed[ $key ] ?? null ) ) $changed[] = $key;
+			}
+			return array(
+				'contract' => 'mad4b.etg-dfsb.slot-plan.v1',
+				'slot_id' => $id, 'revision' => $slots->revision(),
+				'state' => ! $current ? 'create_candidate' : ( $changed ? 'update_candidate' : 'aligned' ),
+				'changed_fields' => array_slice( $changed, 0, 24 ),
+				'current_sha256' => hash( 'sha256', function_exists( 'wp_json_encode' ) ? wp_json_encode( $current ) : json_encode( $current ) ),
+				'proposed_sha256' => hash( 'sha256', function_exists( 'wp_json_encode' ) ? wp_json_encode( $proposed ) : json_encode( $proposed ) ),
+				'authorizing' => false, 'read_only' => true,
+				'apply_authorized' => false, 'seo_publication_authorized' => false,
+				'mutation_performed' => false,
+			);
+		} catch ( Throwable $error ) {
+			return $this->runtime_error( 'slot_plan_unavailable' );
 		}
 	}
 
