@@ -233,6 +233,26 @@
         "PROVIDERS-02"
       ],
       "review_rationale": "Review require and boot of the package-owned diagnostics class; preserve legacy recovery bootstrap through Operational Remediation and do not load untrusted provider implementations."
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-dispatch-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/dynamic-first-party-enrollment-runtime.php"
+      ],
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "fff2db845256a8a831c4eb850797391af20732ff",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "review_rationale": "Existing owner-attestation and Staging Write convergence callbacks preserve their exact authorization gates and journal boundaries. Only bounded post-child WP_Error observability changes; no authority or success is inferred, and each affected owner transport has same-PR negative runtime regression coverage. Independent Staging readback and owner step-up remain mandatory."
     }
   ],
   "code_change_rules": {
