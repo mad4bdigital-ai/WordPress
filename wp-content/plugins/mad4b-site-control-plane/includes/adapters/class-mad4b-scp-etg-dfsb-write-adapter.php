@@ -169,6 +169,8 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         if(self::SLOT_APPLY===$ability_name){
             $slot=$input['slot']??array();
             if(!is_array($slot))return new WP_Error('mad4b_etg_slot_invalid','Slot must be an object.');
+            $serialized=wp_json_encode($slot);
+            if(!is_string($serialized)||strlen($serialized)>32768)return new WP_Error('mad4b_etg_slot_payload_too_large','Slot mutation payload exceeds the bounded limit.');
             $id=$this->clean_id($slot['id']??'');
             if(''===$id||0===strpos($id,'etg_background_')){
                 return new WP_Error('mad4b_etg_reserved_slot','Reserved or missing slot identifier.');
