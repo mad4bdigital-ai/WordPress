@@ -36,7 +36,7 @@ function wp_safe_remote_get( $url, $args ) {
     if ( ! is_string( $args['headers']['X-MAD4B-Synthetic-Probe'] ) )
         throw new RuntimeException( 'Synthetic marker missing' );
     return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host' )
-        : array( 'response' => array( 'code' => $GLOBALS['http_code'] ) );
+        : array( 'response' => array( 'code' => $GLOBALS['http_code_by_path'][ $GLOBALS['last_probe_path'] ] ?? $GLOBALS['http_code'] ) );
 }
 class MAD4B_SCP_Policy {
     public static function can_read() { return $GLOBALS['permitted']; }
@@ -120,4 +120,40 @@ $assert( MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
 $_GET['mad4b_synthetic_probe'] = 'invalid';
 $assert( ! MAD4B_SCP_Frontend_Origin_Diagnostic::is_signed_synthetic_request(),
     'Unsigned query parameter contaminated frontend sample classification' );
+// A single governed read can now compare two fixed-origin routes without
+// doubling connector prepare/dispatch round trips. This is NOT browser proof.
+$GLOBALS['http_error'] = false;
+$GLOBALS['http_code_by_path'] = array( '/' => 500, '/wp-json/' => 200 );
+$before = $GLOBALS['outbound_requests'];
+$pair_plan = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'target' => 'paired' ) );
+$assert( 'READY_FOR_EXPLICIT_PROBE' === $pair_plan['state'] && 2 === $pair_plan['max_requests']
+    && $before === $GLOBALS['outbound_requests'], 'Paired plan unexpectedly probed network' );
+$paired = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'target' => 'paired', 'mode' => 'probe' ) );
+$assert( 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE' === $paired['state']
+    && 2 === $paired['network_requests_performed']
+    && $GLOBALS['outbound_requests'] === $before + 2
+    && 500 === $paired['results']['homepage']['http_status']
+    && 200 === $paired['results']['rest_root']['http_status']
+    && false === $paired['root_cause_proven']
+    && false === $paired['external_browser_attestation']
+    && false === $paired['frontend_acceptance_certificate_issued'],
+    'Paired 500/200 misclassified frontend vs REST or claimed external browser acceptance' );
+$GLOBALS['http_code_by_path'] = array( '/' => 200, '/wp-json/' => 200 );
+$assert( 'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED' === MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+    array( 'target' => 'paired', 'mode' => 'probe' ) )['state'], 'Paired 200/200 did not remain uncertified' );
+$GLOBALS['http_code_by_path'] = array( '/' => 500, '/wp-json/' => 502 );
+$assert( 'BOTH_LOOPBACK_PATHS_5XX' === MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+    array( 'target' => 'paired', 'mode' => 'probe' ) )['state'], 'Paired 500/502 incorrectly classified as frontend-only' );
+unset( $GLOBALS['http_code_by_path'] );
+$before = $GLOBALS['outbound_requests'];
+$GLOBALS['environment'] = 'production';
+$assert( is_wp_error( MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+    array( 'target' => 'paired', 'mode' => 'probe' ) ) ) && $GLOBALS['outbound_requests'] === $before,
+    'Paired probe bypassed Production prohibition' );
+$GLOBALS['environment'] = 'staging';
+$GLOBALS['permitted'] = false;
+$assert( is_wp_error( MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+    array( 'target' => 'paired', 'mode' => 'probe' ) ) ) && $GLOBALS['outbound_requests'] === $before,
+    'Paired probe bypassed governed read permission' );
+$GLOBALS['permitted'] = true;
 echo "PASS staging origin probe: default zero-network, bounded GET, HTTPS-only, no redirects, no credentials, non-browser, denied production, signed proxy-safe marker and REST root isolation\n";
