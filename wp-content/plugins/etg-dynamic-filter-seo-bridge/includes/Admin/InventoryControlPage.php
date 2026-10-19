@@ -6,6 +6,7 @@ use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryProfilePlanner;
 use ETG\DynamicFilterSEOBridge\Diagnostics\EvidenceProvider;
 use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
+use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate;
 
 final class InventoryControlPage {
     const SLUG = 'etg-dfsb-inventory-control';
@@ -13,6 +14,7 @@ final class InventoryControlPage {
     private $profiles;
     private $inventory;
     private $planner;
+    private $optionLease = null;
 
     public function __construct(Configuration $config, ProfileRegistry $profiles, RuntimeInventory $inventory, InventoryProfilePlanner $planner) {
         $this->config=$config;$this->profiles=$profiles;$this->inventory=$inventory;$this->planner=$planner;
@@ -158,17 +160,21 @@ final class InventoryControlPage {
     }
 
     public function apply(): void {
-        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_apply_inventory_profile_plan');if(empty($_POST['confirm_fail_closed'])){$this->redirectError('Explicit fail-closed confirmation is required.');}$config=$this->config->all();if(!empty($config['enabled'])){$this->redirectError('Global bridge must be OFF before applying an Inventory profile patch.');}$expectedRevision=isset($_POST['config_revision'])?sanitize_text_field(wp_unslash((string)$_POST['config_revision'])):'';if(''===$expectedRevision||!hash_equals($expectedRevision,$this->config->revision())){$this->redirectError('Configuration changed after the proposal was generated. Refresh and review again.');}
+        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_apply_inventory_profile_plan');$this->optionLease=OptionMutationGate::acquire(Configuration::OPTION_NAME);if(is_wp_error($this->optionLease)){$this->redirectError('Shared option lock is unavailable; no change executed.');}if(empty($_POST['confirm_fail_closed'])){$this->redirectError('Explicit fail-closed confirmation is required.');}$config=$this->config->all();if(!empty($config['enabled'])){$this->redirectError('Global bridge must be OFF before applying an Inventory profile patch.');}$expectedRevision=isset($_POST['config_revision'])?sanitize_text_field(wp_unslash((string)$_POST['config_revision'])):'';if(''===$expectedRevision||!hash_equals($expectedRevision,$this->config->revision())){$this->redirectError('Configuration changed after the proposal was generated. Refresh and review again.');}
         $snapshot=$this->inventory->collect();$expectedFingerprint=isset($_POST['snapshot_fingerprint'])?sanitize_text_field(wp_unslash((string)$_POST['snapshot_fingerprint'])):'';$actualFingerprint=(string)($snapshot['snapshot_fingerprint']??'');if(''===$expectedFingerprint||!hash_equals($expectedFingerprint,$actualFingerprint)){$this->redirectError('Runtime Inventory changed after the proposal was generated. Refresh and review again.');}
         $profileId=isset($_POST['profile_id'])?sanitize_key(wp_unslash((string)$_POST['profile_id'])):'';$plan=$this->planner->plan($snapshot,$this->profiles->all());$proposal=(array)($plan['proposals'][$profileId]??array());if(!$proposal||empty($proposal['safe_to_apply'])){$this->redirectError('The selected profile does not have a safe verified Inventory proposal.');}
         $rawProfiles=json_decode((string)($config['profiles_json']??''),true);if(!is_array($rawProfiles)){$this->redirectError('Surface Profiles JSON is unavailable.');}$index=null;foreach($rawProfiles as $i=>$profile){if(is_array($profile)&&$profileId===sanitize_key((string)($profile['id']??''))){$index=$i;break;}}if(null===$index){$this->redirectError('Profile no longer exists.');}
         $raw=(array)$rawProfiles[$index];$originalRaw=$raw;$proposed=(array)($proposal['proposed_profile']??array());foreach(array('post_types','require_post_type_binding','post_type_authority','routes') as $field){if(array_key_exists($field,$proposed)){$raw[$field]=$proposed[$field];}}if(empty($raw['archive_paths'])&&!empty($proposed['archive_paths'])){$raw['archive_paths']=$proposed['archive_paths'];}$raw['enabled']=false;
         $rules=is_array($raw['taxonomy_rules']??null)?$raw['taxonomy_rules']:array();$priority=0;foreach($rules as $rule){if(is_array($rule)){$priority=max($priority,(int)($rule['priority']??0));}}$selected=isset($_POST['taxonomy_select'])?(array)wp_unslash($_POST['taxonomy_select']):array();$roles=isset($_POST['taxonomy_role'])&&is_array($_POST['taxonomy_role'])?wp_unslash($_POST['taxonomy_role']):array();$candidates=(array)($proposal['taxonomy_candidates']??array());foreach(array_slice($selected,0,20) as $taxonomy){$taxonomy=sanitize_key((string)$taxonomy);if(''===$taxonomy||!isset($candidates[$taxonomy])||!empty($candidates[$taxonomy]['configured'])){continue;}$role=sanitize_key((string)($roles[$taxonomy]??$candidates[$taxonomy]['suggested_role']??$taxonomy));if(''===$role){$role=$taxonomy;}$priority+=10;$rules[$taxonomy]=array('role'=>$role,'priority'=>$priority,'gallery_priority'=>$priority,'index_single'=>false,'min_results'=>3,'required_meta_key'=>'','required_meta_values'=>array(),'meta_constraint_scope'=>'single','field_map'=>array());}$raw['taxonomy_rules']=$rules;
         // An aligned plan is a no-op. Never revoke publication evidence without a structural diff.
-        if($raw===$originalRaw){wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'unchanged'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;}
+        if($raw===$originalRaw){$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'unchanged'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;}
         $publication=is_array($raw['publication']??null)?$raw['publication']:array();foreach(array('elementor_content_verified','provider_observation_verified','result_count_parity_verified') as $flag){$publication[$flag]=false;}foreach(array('elementor_verification_evidence_id','provider_observation_evidence_id','result_count_parity_evidence_id') as $field){$publication[$field]='';}$raw['publication']=$publication;$rawProfiles[$index]=$raw;
-        $config['enabled']=false;$config['profiles_json']=wp_json_encode($rawProfiles,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);$target=$this->config->sanitizeForStorage($config);update_option(Configuration::OPTION_NAME,$target,false);if(get_option(Configuration::OPTION_NAME,array())!==$target){$this->redirectError('WordPress did not persist the Inventory profile patch.');}wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'applied'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;
+        $config['enabled']=false;$config['profiles_json']=wp_json_encode($rawProfiles,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);$target=$this->config->sanitizeForStorage($config);update_option(Configuration::OPTION_NAME,$target,false);if(get_option(Configuration::OPTION_NAME,array())!==$target){$this->redirectError('WordPress did not persist the Inventory profile patch.');}$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'applied'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;
     }
 
-    private function redirectError(string $message): void {wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'error'=>$message),admin_url('options-general.php')));exit;}
+    private function releaseOptionLease(): void {
+        if(is_array($this->optionLease)) OptionMutationGate::release($this->optionLease);
+        $this->optionLease=null;
+    }
+    private function redirectError(string $message): void {$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'error'=>$message),admin_url('options-general.php')));exit;}
 }

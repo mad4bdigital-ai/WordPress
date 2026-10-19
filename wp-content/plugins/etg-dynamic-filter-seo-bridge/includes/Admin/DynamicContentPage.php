@@ -8,6 +8,7 @@ use ETG\DynamicFilterSEOBridge\JetEngine\ListingIntegration;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry;
 use ETG\DynamicFilterSEOBridge\Presentation\ContentSourceResolver;
 use ETG\DynamicFilterSEOBridge\Presentation\InventoryContentCatalog;
+use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate;
 
 final class DynamicContentPage {
     const SLUG = 'etg-dfsb-dynamic-content';
@@ -57,7 +58,16 @@ final class DynamicContentPage {
             'source_inventory_fingerprint' => (string) ($snapshot['snapshot_fingerprint'] ?? ''),
         );
         $revision = isset($_POST['slot_revision']) ? sanitize_text_field(wp_unslash((string) $_POST['slot_revision'])) : '';
-        $result = $this->slots->save($slot, $revision);
+        $lease = OptionMutationGate::acquire(ContentSlotRegistry::OPTION_NAME);
+        if (is_wp_error($lease)) {
+            $result = array('saved' => false, 'reason' => $lease->get_error_code(), 'slot' => $slot);
+        } else {
+            try {
+                $result = $this->slots->save($slot, $revision);
+            } finally {
+                OptionMutationGate::release($lease);
+            }
+        }
         $url = AdminUi::pageUrl(self::SLUG, array(
             'tab' => 'editor',
             'saved' => !empty($result['saved']) ? '1' : '0',
@@ -74,7 +84,16 @@ final class DynamicContentPage {
         $id = isset($_POST['slot_id']) ? sanitize_key(wp_unslash((string) $_POST['slot_id'])) : '';
         $wasDefault = $this->slots->isDefault($id);
         $revision = isset($_POST['slot_revision']) ? sanitize_text_field(wp_unslash((string) $_POST['slot_revision'])) : '';
-        $deleted = $this->slots->delete($id, $revision);
+        $lease = OptionMutationGate::acquire(ContentSlotRegistry::OPTION_NAME);
+        if (is_wp_error($lease)) {
+            $deleted = false;
+        } else {
+            try {
+                $deleted = $this->slots->delete($id, $revision);
+            } finally {
+                OptionMutationGate::release($lease);
+            }
+        }
         wp_safe_redirect(AdminUi::pageUrl(self::SLUG, array('tab' => 'slots', 'deleted' => $deleted ? '1' : '0', 'restored' => $deleted && $wasDefault ? '1' : '0')));
         exit;
     }

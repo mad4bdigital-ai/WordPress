@@ -30,8 +30,8 @@
     "includes/Admin/AdminAssets.php": "5a324fa17be7a1326a5da400abd3df23eae7a08b7a1eb61aadde5cfcf47e0f10",
     "includes/Admin/AdminDiscoveryController.php": "e3f784ece7e25fe2cb84b1db28fd68812ed06c8080bd374f2e143339063852bf",
     "includes/Admin/AdminUi.php": "5741ff49b48d7cb10dc52e056bde8fedcf80a919e035fb97243cd9d083ed096c",
-    "includes/Admin/DynamicContentPage.php": "d59222e0e2a6187f6f899693e10729aa6b0028cf76b48dd4ae046ff53fb53911",
-    "includes/Admin/InventoryControlPage.php": "90a1e62a68e4b5499e8ddf2f2dc60f041cd5f61bd9aeda88e6d8f23e2e8a4be3",
+    "includes/Admin/DynamicContentPage.php": "9498b56145259aa0edbe42775dee739e58ecaacb1382ff12fb0ac164d758b877",
+    "includes/Admin/InventoryControlPage.php": "cee79c90b772e19a6c6d25269b287be66dbd4722f3ba48e2314e27a04b507766",
     "includes/Admin/JetEngineInspectorPage.php": "d40da0218ac3f9bcf78a33807b8a476b65a5baae98e69a3c2dcb445ab0bce701",
     "includes/Admin/MediaLabPage.php": "42e3d5ea0ea2dce0a7160ced5b6bc09c3cc52c13aae6224365ae9d628850fd44",
     "includes/Admin/OperationalPage.php": "6129d4d26fd6b83587ffbc5ee4cc737539d7dd29f53f35dbcdd5317aca53b52f",
@@ -140,6 +140,7 @@
     "includes/WPML/HreflangAdapter.php": "048a2622fe8c74f02f56fe000edcbcfe970d312f3ae1316ccf05efb1527a018c",
     "includes/WPML/LanguageResolver.php": "9746b227ade54a1b72c14062df7185e5b4c87b0e55c3ec0859b053bdb3ca421c",
     "readme.md": "7343dc24e186caf43eefff620d474a56204513ca4fe373aa0e01fcaa2a9a0e72",
-    "uninstall.php": "987e15977bf0eeeb170161e86d90f8876371de773715dbd1b9ab8edf9b3a1848"
+    "uninstall.php": "987e15977bf0eeeb170161e86d90f8876371de773715dbd1b9ab8edf9b3a1848",
+    "includes/Runtime/OptionMutationGate.php": "dad3deed2fe34d4ac2d06ef816cc52f1e809417167f2d54a47e6eeb81a67eb60"
   }
 }

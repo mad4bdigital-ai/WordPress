@@ -44,6 +44,7 @@ namespace ETG\DynamicFilterSEOBridge\Presentation {
     }
 }
 namespace {
+    require_once dirname(__DIR__, 2).'/etg-dynamic-filter-seo-bridge/includes/Runtime/OptionMutationGate.php';
     define('ABSPATH',__DIR__);
     define('ETG_DFSB_VERSION','0.4.0-alpha.13');
     $GLOBALS['etg_test_env']='staging';

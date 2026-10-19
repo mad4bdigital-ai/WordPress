@@ -110,22 +110,20 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
     private function is_hex($v,$len){return is_string($v)&&strlen($v)===$len&&1===preg_match('/^[a-f0-9]+$/D',$v);}
     private function lock($kind,$id){
         $resource='slot'===$kind?'etg_dfsb_dynamic_content_slots':
-            ('profile'===$kind?'etg_dfsb_settings':$kind.'|'.$id);
+            ('profile'===$kind?'etg_dfsb_settings':'');
+        if(''===$resource)return new WP_Error('mad4b_etg_scope_target_invalid','Unsupported ETG storage resource.');
         $key='mad4b_etg_lock_'.substr(hash('sha256','option|'.$resource),0,36);
         if(is_array($this->reversibleScope)&&$this->reversibleScope['key']===$key){
-            return array('key'=>$key,'token'=>$this->reversibleScope['token'],'borrowed'=>true);
+            return array('key'=>$key,'token'=>$this->reversibleScope['token'],'resource'=>$resource,'borrowed'=>true);
         }
-        $token=wp_generate_uuid4();
-        if(!function_exists('add_option')||!add_option($key,$token,'','no')){
-            return new WP_Error('mad4b_etg_target_locked','Shared ETG WordPress option is locked; operator reconciliation required.');
+        if(!class_exists('\\ETG\\DynamicFilterSEOBridge\\Runtime\\OptionMutationGate')){
+            return new WP_Error('mad4b_etg_option_gate_missing','Shared ETG option mutex is not available.');
         }
-        return array('key'=>$key,'token'=>$token);
+        return \ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate::acquire($resource);
     }
     private function unlock($lock){
         if(!is_array($lock)||!empty($lock['borrowed']))return;
-        if(isset($lock['key'],$lock['token'])&&hash_equals((string)$lock['token'],(string)get_option($lock['key'],''))){
-            delete_option($lock['key']);
-        }
+        \ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate::release($lock);
     }
     public function acquire_reversible_scope($ability,array $input){
         if(null!==$this->reversibleScope)return new WP_Error('mad4b_etg_nested_scope_denied','Nested ETG mutation scope denied.');
