@@ -294,7 +294,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		}
 		$restored_hash = self::state_hash( $readback );
 		if ( empty( $record['before_sha256'] ) || ! hash_equals( (string) $record['before_sha256'], $restored_hash ) ) {
-			return self::undo_recovery_required( $mutation_id, $recovery_id, 'Restore readback does not match the recorded before-state.' );
+			return self::undo_recovery_required( $mutation_id, $recovery_id, 'Restore readback does not match the recorded before-state.', 'mad4b_undo_verification_failed' );
 		}
 
 		if ( 1 !== self::update_record( $recovery_id, array(
@@ -464,12 +464,12 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		return hash( 'sha256', wp_json_encode( $state, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
 	}
 
-	private static function undo_recovery_required( $mutation_id, $recovery_id, $message ) {
+	private static function undo_recovery_required( $mutation_id, $recovery_id, $message, $error_code = 'mad4b_undo_recovery_required' ) {
 		MAD4B_SCP_Audit::record( 'mad4b/undo-intent-reconciliation-required', array(
 			'mutation_id' => (string) $mutation_id,
 			'recovery_mutation_id' => (string) $recovery_id,
 		), 'failure' );
-		return new WP_Error( 'mad4b_undo_recovery_required', (string) $message,
+		return new WP_Error( (string) $error_code, (string) $message,
 			array( 'mutation_id' => (string) $mutation_id,
 				'recovery_mutation_id' => (string) $recovery_id,
 				'recovery_required' => true, 'blind_retry_allowed' => false )
