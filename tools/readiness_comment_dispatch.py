@@ -13,10 +13,9 @@ import re
 import subprocess
 import sys
 
-COMMAND = re.compile(r"/run-production-readiness ([0-9a-f]{40})\\Z")
+COMMAND = re.compile(r"/run-production-readiness ([0-9a-f]{40})\Z")
 WORKFLOW = "mad4b-production-readiness-matrix.yml"
-FULL_REPO = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\Z")
-SHA = re.compile(r"[0-9a-f]{40}\\Z")
+FULL_REPO = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
 
 
 class Denied(ValueError):
@@ -153,9 +152,9 @@ def main() -> int:
         print(json.dumps(outcome, sort_keys=True))
         with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
             output.write(
-                "### Read-only Readiness rerun\\n"
-                + f"PR #{outcome['pr_number']} — {outcome['exact_head_sha']}\\n\\n"
-                + f"Result: **{outcome['outcome']}**; Production: **NO-GO**.\\n"
+                "### Read-only Readiness rerun\n"
+                + f"PR #{outcome['pr_number']} — {outcome['exact_head_sha']}\n\n"
+                + f"Result: **{outcome['outcome']}**; Production: **NO-GO**.\n"
             )
         return 0
     except (Denied, OSError, KeyError, TypeError, ValueError, subprocess.TimeoutExpired) as exc:
