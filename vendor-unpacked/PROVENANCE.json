@@ -1,0 +1,31 @@
+{
+  "schema": "mad4b.research-unpacked-vendor-archives.v1",
+  "non_authorizing": true,
+  "no_runtime_certs": true,
+  "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+  "branch": "research/vendor-rank-math-20261019",
+  "archives": [
+    {
+      "archive": "wp-content/plugins/seo-by-rank-math.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "e932e6dde2bbbf3b5cff096c9159ee8420df0550",
+      "archive_sha256": "a3cf09e301cf1dcadbf5ed233034f18a20810f0ea907fb81e42f9b4961d08ae0",
+      "archive_bytes": 3439597,
+      "files": 1098,
+      "uncompressed_bytes": 11629307,
+      "extract_root": "vendor-unpacked/seo-by-rank-math",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    },
+    {
+      "archive": "wp-content/plugins/seo-by-rank-math-pro.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "1d3638f509c0f4c7cbe6778817a38df3fd15f1c3",
+      "archive_sha256": "179aaf4f3e9910feca4e1e04ecb05e6790df617a58d79014a420a55095f71d9b",
+      "archive_bytes": 2860288,
+      "files": 504,
+      "uncompressed_bytes": 10272444,
+      "extract_root": "vendor-unpacked/seo-by-rank-math-pro",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    }
+  ]
+}
