@@ -13,9 +13,15 @@ ROOT = Path(__file__).resolve().parent
 # Every path is repository-owned; callers cannot supply arbitrary scripts.
 FIXTURES = (
     "enrollment-dispatch-runtime.php",
+    "capability-traits-contract.php",
+    "ci-outage-dynamic-enrollment-runtime.php",
+    "governed-draft-contract.php",
+    "imp01-import-preview-runtime.php",
+    "wp-native-self-approval-runtime.php",
     "dynamic-first-party-enrollment-runtime.php",
     "staging-write-owner-intent-runtime.php",
     "staging-write-owner-transport-runtime.php",
+    "staging-write-one-step-review-runtime.php",
     "staging-write-authority-postcondition-runtime.php",
     "frontend-origin-diagnostic-runtime.php",
     "native-incident-mu-runtime.php",

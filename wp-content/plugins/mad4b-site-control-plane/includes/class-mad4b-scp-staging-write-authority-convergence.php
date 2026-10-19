@@ -475,24 +475,29 @@ final class MAD4B_SCP_Staging_Write_Authority_Convergence {
 		}
 		$receipt = isset( $input['owner_intent_sha256'] ) ? (string) $input['owner_intent_sha256'] : '';
 		$review = isset( $input['owner_review_digest'] ) ? (string) $input['owner_review_digest'] : '';
-		if ( ( '' === $receipt && '' === $review ) || ( '' !== $receipt && '' !== $review ) ) {
-			return new WP_Error( 'mad4b_staging_owner_proof_ambiguous', 'Choose one exact owner proof, not both.' );
+		if ( '' === $receipt && '' === $review ) {
+			return new WP_Error( 'mad4b_staging_owner_proof_required', 'At least one exact owner proof is required.' );
 		}
+		// Both broker proofs can corroborate the SAME exact plan. The signed
+		// receipt is still validated and claimed once; a supplied receipt MUST
+		// NOT generate a new attestation or extend the owner's intent TTL.
 		if ( '' !== $review ) {
 			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $review )
 				|| ! hash_equals( MAD4B_SCP_Staging_Write_Owner_Intent::digest( $plan ), $review ) ) {
 				return new WP_Error( 'mad4b_staging_owner_review_stale', 'Owner review does not match the exact current plan.' );
 			}
-			$permission = MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest();
-			if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
-			$attested = MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(
-				'review_digest' => $review,
-				'confirmation' => MAD4B_SCP_Staging_Write_Owner_Intent::CONFIRM,
-			) );
-			if ( is_wp_error( $attested ) ) return $attested;
-			$receipt = is_array( $attested ) ? (string) ( $attested['receipt_sha256'] ?? '' ) : '';
-			if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $receipt ) ) {
-				return new WP_Error( 'mad4b_staging_owner_attestation_unverified', 'Signed owner intent was not persisted.' );
+			if ( '' === $receipt ) {
+				$permission = MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest();
+				if ( is_wp_error( $permission ) || true !== $permission ) return $permission;
+				$attested = MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(
+					'review_digest' => $review,
+					'confirmation' => MAD4B_SCP_Staging_Write_Owner_Intent::CONFIRM,
+				) );
+				if ( is_wp_error( $attested ) ) return $attested;
+				$receipt = is_array( $attested ) ? (string) ( $attested['receipt_sha256'] ?? '' ) : '';
+				if ( 1 !== preg_match( '/^[a-f0-9]{64}$/D', $receipt ) ) {
+					return new WP_Error( 'mad4b_staging_owner_attestation_unverified', 'Signed owner intent was not persisted.' );
+				}
 			}
 		}
 				$proof = array( 'owner_intent_sha256' => $receipt );

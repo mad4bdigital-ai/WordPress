@@ -169,7 +169,7 @@ $lease = MAD4B_SCP_Batch_Atomic_Mutex::acquire( 'offline-attestor', 'approve' );
 attestor_expect( !is_wp_error( $lease ), 'A trust owner acquires the SQL mutex' );
 $denied = MAD4B_SCP_CI_Outage_Attestation::enroll_apply( $apply );
 attestor_expect( is_wp_error( $denied ) &&
-    $denied->get_error_code() === 'mad4b_enroll_admission_locked',
+    $denied->get_error_code() === 'mad4b_offline_enroll_admission_locked',
     'A competing trust enrollment cannot overwrite the current owner' );
 attestor_expect( true === MAD4B_SCP_Batch_Atomic_Mutex::release( $lease ),
     'Exact owner releases trust mutex' );
@@ -189,7 +189,7 @@ $apply['expected_plan_sha256'] = $retry_plan['plan_sha256'];
 $GLOBALS['attestor_audit_fail'] = true;
 $blocked = MAD4B_SCP_CI_Outage_Attestation::enroll_apply( $apply );
 attestor_expect( is_wp_error( $blocked ) &&
-    $blocked->get_error_code() === 'mad4b_enroll_audit_failed' &&
+    $blocked->get_error_code() === 'mad4b_offline_enroll_audit_failed' &&
     !isset( $GLOBALS['attestor_opts'][ MAD4B_SCP_CI_Outage_Attestation::KEY_OPTION ] ),
     'Failed audit removes only the newly enrolled exact key by SQL CAS' );
 $GLOBALS['attestor_audit_fail'] = false;

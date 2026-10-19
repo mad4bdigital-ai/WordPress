@@ -462,7 +462,19 @@ final class MAD4B_SCP_Connector_Resilience {
 				$skipped[] = $name;
 				continue;
 			}
-			$results[ $name ] = self::safe_read( $name, $callback, array(
+			// Project inside the bounded callback: holding raw provider trees
+			// across sibling checks can exhaust memory before response-size
+			// guards run. Callers without a projector retain existing behavior.
+			$read_callback = $callback;
+			if ( isset( $options['result_projector'] ) && is_callable( $options['result_projector'] ) ) {
+				$projector = $options['result_projector'];
+				$read_callback = static function () use ( $callback, $projector, $name ) {
+					$value = call_user_func( $callback );
+					if ( is_wp_error( $value ) ) return $value;
+					return call_user_func( $projector, $name, $value );
+				};
+			}
+			$results[ $name ] = self::safe_read( $name, $read_callback, array(
 				'retry_transient' => $retry_transient,
 				'max_attempts' => self::DEFAULT_READ_ATTEMPTS,
 			) );

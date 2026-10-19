@@ -45,6 +45,8 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
           php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
           php -l "$root/tools/catalog-decommission.php"
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
+          php "$root/tests/staging-write-one-step-review-runtime.php"
           php "$root/tests/catalog-transport-runtime.php"
           node "$root/tests/catalog-transport-client.mjs"
           node "$root/tests/network-catalog-client.mjs"
@@ -72,6 +74,27 @@ jobs:
           python3 "$root/tests/unified-capability-gateway-contract.py"
           python3 "$root/tests/gateway-mutation-guards.py"
 
+  diagnostic-regressions:
+    name: Bounded diagnostics and owner proof (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Exercise bounded summaries and exact one-use owner proofs
+        run: |
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
+          php "$root/tests/staging-write-one-step-review-runtime.php"
+
   catalog-compatibility:
     name: Catalog runtime (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
@@ -93,6 +116,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
@@ -204,6 +228,12 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove bounded session-safe identity, triage and full reads in live WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-session-safe-diagnostic-acceptance.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove arbitrary registered Abilities can be dynamically projected
         shell: bash
         run: |
@@ -314,6 +344,18 @@ jobs:
           if not isinstance(tools, list) or not tools:
               raise SystemExit('tools/list returned an empty tool inventory')
           names = sorted({tool.get('name') for tool in tools if isinstance(tool, dict) and isinstance(tool.get('name'), str)})
+
+          # Source Ability and the MCP tools/list wire schema must converge.
+          # A stale client-side tool manifest may still need a reconnect,
+          # but a release must never publish an older schema from the server.
+          session_safe = next((tool for tool in tools if isinstance(tool, dict)
+                               and tool.get('name') == 'mad4b-session-safe-diagnostics'), None)
+          if not session_safe:
+              raise SystemExit('Session-safe tool absent from MCP tools/list')
+          schema = session_safe.get('inputSchema', {})
+          scopes = schema.get('properties', {}).get('diagnostic_scope', {}).get('enum', []) if isinstance(schema, dict) else []
+          if not {'full', 'identity', 'triage'}.issubset(set(scopes)):
+              raise SystemExit(f'Stale session-safe tools/list diagnostic scope: {scopes!r}')
 
           required = {
               'mad4b-site-info',

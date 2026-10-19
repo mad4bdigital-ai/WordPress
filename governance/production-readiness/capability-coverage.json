@@ -684,6 +684,60 @@
       "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
     },
     {
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "500603e3a9df5ad0c8f2f35937c0894c3790a643",
+      "control_ids": [
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-coverage-regression.py"
+      ],
+      "review_rationale": "Review backward-compatible opt-in result projector for session-safe read callbacks: large provider data is reduced before sibling check accumulation. WP_Error and exception classification remain fail-closed, no raw diagnostic payload or mutation is emitted, and existing run_checks callers without a projector retain their behavior. Hermetic 64MB regression plus WordPress identity/triage/full integration are executed in same-PR CI. CI-only source coverage, not live runtime certification or Production authorization. The WordPress WP-CLI acceptance test is independently executed in the MCP Client Compatibility integration workflow; the governance mapped-test runner executes only the hermetic 64MB fixture, not tests requiring an installed WordPress database."
+    },
+    {
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_blob_sha": "3b41db5fdd553d7e68362bfcf9339f8e01bc3a8e",
+      "control_ids": [
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-coverage-regression.py"
+      ],
+      "review_rationale": "Review bounded diagnostic projection and hashing: digests explicitly represent non-authorizing bounded summaries, not full raw provider evidence or signed receipts. Scalar-list extraction avoids whole-array copies; blocked/unknown authority remains blocked/unknown and the read output remains generation-fenced and <=16KB. Same-PR PHP 7.4/8.3 hermetic stress and disposable WP MCP tests enforce redaction and scope compatibility. External client schema refresh and two-site live readback remain required. The WordPress WP-CLI acceptance test is independently executed in the MCP Client Compatibility integration workflow; the governance mapped-test runner executes only the hermetic 64MB fixture, not tests requiring an installed WordPress database."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php",
+      "source_blob_sha": "79051feca7af5e169dbd58440fd69fb6130012d9",
+      "control_ids": [
+        "OAUTH-01",
+        "SECURITY-01",
+        "TICKETS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reconcile exact owner proof contract: a previously committed signed single-use owner_intent_sha256 and matching exact-plan read-only owner_review_digest may be supplied together by the authenticated Staging enrollment broker. Validate the digest against the current plan; do not reattest, change TTL or bypass claimable/readback/audit/replay controls. Missing and mismatching reviews fail closed. Same-PR hermetic test executes via MCP client compatibility CI. Does not authorize Production, Breakglass or Staging mutation."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
       "source_blob_sha": "e2cba28567b83b8ded0292baf5a1b5d0010debbb",
       "control_ids": [

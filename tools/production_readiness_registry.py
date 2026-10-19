@@ -208,7 +208,13 @@ def new_source_ids(base, head, changed):
 def classify(path, cap, coverage):
     # Match the relative feature name, never the global wp-content/plugins prefix.
     relative = path[len(REQUIRED_SOURCE_ROOT):] if path.startswith(REQUIRED_SOURCE_ROOT) else path
-    cap_name = cap[len("service:" + REQUIRED_SOURCE_ROOT):] if cap.startswith("service:" + REQUIRED_SOURCE_ROOT) else cap
+    # Both a changed source path and a new service ID can be expressed as
+    # repository-absolute paths. Strip the global wp-content/ prefix in BOTH
+    # cases; otherwise every changed PHP file spuriously matches the "content"
+    # domain and a correct risk review is rejected as unrelated.
+    cap_name = cap[len("service:" + REQUIRED_SOURCE_ROOT):] if cap.startswith("service:" + REQUIRED_SOURCE_ROOT) else (
+        cap[len(REQUIRED_SOURCE_ROOT):] if cap.startswith(REQUIRED_SOURCE_ROOT) else cap
+    )
     text = (relative + " " + cap_name).lower()
     rules = coverage["domain_rules"]
     for rule in rules:

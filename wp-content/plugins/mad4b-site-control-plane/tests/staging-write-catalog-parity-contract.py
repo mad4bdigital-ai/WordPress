@@ -18,7 +18,14 @@ assert c.index("::reserve( $plan )") < c.index("MAD4B_SCP_Staging_Write_Owner_In
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest()" in c
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(" in c
 assert "'owner_review_digest' => array(" in c
-assert "'mad4b_staging_owner_proof_ambiguous'" in c
+# Matching review + signed receipt now corroborate one exact plan. Missing
+# proofs and stale reviews must still fail closed; an existing receipt must
+# bypass new attestation and retain the validate/claim path asserted above.
+assert "'mad4b_staging_owner_proof_required'" in c
+assert "'mad4b_staging_owner_review_stale'" in c
+assert "if ( '' === $receipt && '' === $review )" in c
+assert "if ( '' === $receipt )" in c
+assert "'mad4b_staging_owner_proof_ambiguous'" not in c
 assert "add_option( $claim_key" in o
 assert "'staging' !== MAD4B_SCP_Site_Profile::current_environment()" in o
 assert "'owner' === (string) ( $r['remote_caller_role']" in p
