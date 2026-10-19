@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Governed PR/commit-comment rerun of an exact-head Readiness CI attempt.
+"""Governed PR issue-comment rerun of an exact-head Readiness CI attempt.
 
 Only reruns an existing PR-sourced workflow. No checkout of PR content,
 shell evaluation of comment text, grant, release, or Production write.
@@ -33,8 +33,8 @@ def read_command(value: str) -> str:
     return match.group(1)
 
 
-def event_scope(kind: str, event: dict, owner_logins: set[str]) -> tuple[str, int | None, str]:
-    require(kind in {"issue_comment", "commit_comment"}, "Unsupported comment event")
+def event_scope(kind: str, event: dict, owner_logins: set[str]) -> tuple[str, int, str]:
+    require(kind == "issue_comment", "Only GitHub-supported PR issue_comment events are executable")
     require(event.get("action") == "created", "Only newly created comments are executable")
     comment = event.get("comment") or {}
     sender = (event.get("sender") or {}).get("login", "")
@@ -42,31 +42,16 @@ def event_scope(kind: str, event: dict, owner_logins: set[str]) -> tuple[str, in
     require(isinstance(login, str) and login.lower() in owner_logins
             and sender == login, "Requester is not an enrolled owner")
     requested = read_command(str(comment.get("body") or ""))
-    if kind == "issue_comment":
-        issue = event.get("issue") or {}
-        pr_number = issue.get("number")
-        require(isinstance(pr_number, int) and pr_number > 0
-                and isinstance(issue.get("pull_request"), dict),
-                "Command must appear in a Pull Request conversation")
-        return requested, pr_number, "pr_comment"
-    require(comment.get("commit_id") == requested,
-            "Commit comment must be attached to the requested exact HEAD")
-    return requested, None, "commit_comment"
+    issue = event.get("issue") or {}
+    pr_number = issue.get("number")
+    require(isinstance(pr_number, int) and pr_number > 0
+            and isinstance(issue.get("pull_request"), dict),
+            "Command must appear in a Pull Request conversation")
+    return requested, pr_number, "pr_comment"
 
 
-def select_pr(repo: str, requested: str, number: int | None, get) -> tuple[int, dict]:
-    if number is None:
-        found = get(f"repos/{repo}/commits/{requested}/pulls?per_page=100")
-        require(isinstance(found, list) and len(found) < 100,
-                "Commit association missing or unbounded")
-        eligible = []
-        for item in found:
-            if item.get("state") == "open" and (item.get("head") or {}).get("sha") == requested:
-                eligible.append(item)
-        require(len(eligible) == 1, "Commit must identify exactly one open PR at exact HEAD")
-        pr = get(f"repos/{repo}/pulls/{eligible[0]['number']}")
-    else:
-        pr = get(f"repos/{repo}/pulls/{number}")
+def select_pr(repo: str, requested: str, number: int, get) -> tuple[int, dict]:
+    pr = get(f"repos/{repo}/pulls/{number}")
     head, base = pr.get("head") or {}, pr.get("base") or {}
     require(pr.get("state") == "open" and isinstance(pr.get("number"), int),
             "PR must be open")
