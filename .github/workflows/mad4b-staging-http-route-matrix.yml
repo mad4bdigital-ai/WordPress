@@ -66,8 +66,18 @@ jobs:
                   error = ('dns' if isinstance(err,socket.gaierror) else 'tls' if isinstance(err,ssl.SSLError) else 'timeout' if isinstance(err,(socket.timeout,TimeoutError)) else 'tcp' if isinstance(err,ConnectionRefusedError) else 'transport')
               low = {k.lower():v for k,v in hdr.items()}
               challenge = bool(re.search('hcdn-cgi/jschallenge|Checking your browser before accessing',body[:2048].decode('utf-8','ignore'),re.I))
-              row = {'route':key, 'path':path, 'status':code, 'elapsed_ms':round((time.monotonic()-began)*1000,1), 'error_class':error, 'content_type':low.get('content-type','').split(';')[0][:64], 'server':low.get('server','')[:70], 'hcdn_challenge':challenge, 'body_recorded':False}
-              print(f"{host} {key}: HTTP {code} ({row['elapsed_ms']} ms) error={error} challenge={challenge}",flush=True)
+              def cache_class(header):
+                  value = str(low.get(header, '')).lower()
+                  m = re.search(r'(?<![a-z])(hit|miss|bypass|dynamic|stale|expired|no-cache)(?![a-z])',value)
+                  return m.group(1) if m else ('other' if value else 'not_reported')
+              age = str(low.get('age',''))
+              upstream = str(low.get('x-hcdn-upstream-rt',''))
+              row = {'route':key, 'path':path, 'status':code, 'elapsed_ms':round((time.monotonic()-began)*1000,1), 'error_class':error, 'content_type':low.get('content-type','').split(';')[0][:64], 'server':low.get('server','')[:70], 'hcdn_challenge':challenge, 'body_recorded':False,
+                'cache': {'hcdn':cache_class('x-hcdn-cache-status'), 'litespeed':cache_class('x-litespeed-cache'), 'generic':cache_class('x-cache'), 'age_seconds':min(int(age),86400) if age.isdigit() else None,
+                  'upstream_seconds':round(float(upstream),3) if re.fullmatch(r'[0-9]{1,4}(?:\.[0-9]{1,5})?',upstream) else None,
+                  'cache_control_no_store':'no-store' in low.get('cache-control','').lower(), 'litespeed_cache_control_present':'x-litespeed-cache-control' in low,
+                  'cdn_request_id_present':'x-hcdn-request-id' in low}}
+              print(f"{host} {key}: HTTP {code} ({row['elapsed_ms']} ms) error={error} challenge={challenge} hcdn={row['cache']['hcdn']} litespeed={row['cache']['litespeed']}",flush=True)
               return row,body
           report = {'contract':'mad4b.staging-http-public-route-matrix.v1','read_only':True,'mutation_performed':False,'site_acceptance_certified':False,'browser_certified':False,'sites':{}}
           for label,host in SITES.items():
