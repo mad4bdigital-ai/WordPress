@@ -99,6 +99,16 @@ namespace {
         'expected_proposed_sha256'=>hash('sha256',wp_json_encode($normalized)));
     assert_etg(error_etg($writer->capture_reversible_state($writer::SLOT_APPLY,
         array_merge($slotInput,array('expected_revision'=>str_repeat('a',64)))),'mad4b_etg_slot_stale'),'stale slot plan denied');
+    $scope=$writer->acquire_reversible_scope($writer::SLOT_APPLY,$slotInput);
+    assert_etg(is_array($scope),'slot option scope acquired');
+    $other=new MAD4B_SCP_ETG_DFSB_Write_Adapter();
+    $otherInput=$slotInput;$otherInput['slot']['id']='another_slot';
+    assert_etg(error_etg($other->acquire_reversible_scope($other::SLOT_APPLY,$otherInput),
+        'mad4b_etg_target_locked'),'separate slot ids serialize on shared option');
+    $writer->release_reversible_scope($scope);
+    $scope2=$other->acquire_reversible_scope($other::SLOT_APPLY,$otherInput);
+    assert_etg(is_array($scope2),'slot option scope released by owner');
+    $other->release_reversible_scope($scope2);
     $before=$writer->capture_reversible_state($writer::SLOT_APPLY,$slotInput);
     assert_etg(is_array($before)&&$before['target_id']==='intro'&&$before['state']['slot']===array(),'slot before-state captured');
     $GLOBALS['etg_test_context']=false;

@@ -16,6 +16,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
     const SLOT_ROLLBACK='mad4b.rollback.etg-dfsb-slot.v1';
     const PROFILE_ROLLBACK='mad4b.rollback.etg-dfsb-profile.v1';
     const MAX_PROFILE_OPTION_BYTES=160000;
+    private $reversibleScope=null;
 
     public function id(){return 'etg-dfsb-write';}
     public function label(){return 'ETG DFSB Staging Mutation Operations';}
@@ -108,18 +109,49 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
     private function clean_id($v){return is_scalar($v)?sanitize_key((string)$v):'';}
     private function is_hex($v,$len){return is_string($v)&&strlen($v)===$len&&1===preg_match('/^[a-f0-9]+$/D',$v);}
     private function lock($kind,$id){
-        $key='mad4b_etg_lock_'.substr(hash('sha256',$kind.'|'.$id),0,36);
+        $resource='slot'===$kind?'etg_dfsb_dynamic_content_slots':
+            ('profile'===$kind?'etg_dfsb_settings':$kind.'|'.$id);
+        $key='mad4b_etg_lock_'.substr(hash('sha256','option|'.$resource),0,36);
+        if(is_array($this->reversibleScope)&&$this->reversibleScope['key']===$key){
+            return array('key'=>$key,'token'=>$this->reversibleScope['token'],'borrowed'=>true);
+        }
         $token=wp_generate_uuid4();
         if(!function_exists('add_option')||!add_option($key,$token,'','no')){
-            return new WP_Error('mad4b_etg_target_locked','Target has a prior/unreleased mutation lock; operator reconciliation required.');
+            return new WP_Error('mad4b_etg_target_locked','Shared ETG WordPress option is locked; operator reconciliation required.');
         }
         return array('key'=>$key,'token'=>$token);
     }
     private function unlock($lock){
-        if(is_array($lock)&&isset($lock['key'],$lock['token'])&&
-            hash_equals((string)$lock['token'],(string)get_option($lock['key'],''))){
+        if(!is_array($lock)||!empty($lock['borrowed']))return;
+        if(isset($lock['key'],$lock['token'])&&hash_equals((string)$lock['token'],(string)get_option($lock['key'],''))){
             delete_option($lock['key']);
         }
+    }
+    public function acquire_reversible_scope($ability,array $input){
+        if(null!==$this->reversibleScope)return new WP_Error('mad4b_etg_nested_scope_denied','Nested ETG mutation scope denied.');
+        $kind=self::SLOT_APPLY===$ability?'slot':(self::PROFILE_APPLY===$ability?'profile':'');
+        $id=$this->clean_id('slot'===$kind?($input['slot']['id']??''):($input['profile_id']??''));
+        if(''===$kind||''===$id)return new WP_Error('mad4b_etg_scope_target_invalid','Cannot lock an invalid ETG target.');
+        $lock=$this->lock($kind,$id);
+        if(is_wp_error($lock))return $lock;
+        $this->reversibleScope=$lock;
+        return $lock;
+    }
+    public function acquire_reversible_undo_scope($ability,array $target){
+        $kind=(string)($target['kind']??'');
+        $id=$this->clean_id($target['id']??'');
+        if(($kind==='slot'&&$ability!==self::SLOT_APPLY)||($kind==='profile'&&$ability!==self::PROFILE_APPLY)
+            ||!in_array($kind,array('slot','profile'),true)||''===$id){
+            return new WP_Error('mad4b_etg_undo_scope_invalid','Undo target does not match ETG ability.');
+        }
+        return $this->acquire_reversible_scope($ability,array('slot'=>array('id'=>$id),'profile_id'=>$id));
+    }
+    public function release_reversible_scope($lock){
+        if(!is_array($lock)||!is_array($this->reversibleScope)||!isset($lock['token'],$lock['key'])
+            ||$lock['key']!==$this->reversibleScope['key']
+            ||!hash_equals((string)$this->reversibleScope['token'],(string)$lock['token']))return;
+        $this->unlock($this->reversibleScope);
+        $this->reversibleScope=null;
     }
     private function snapshot($kind,$id){
         if('slot'===$kind){

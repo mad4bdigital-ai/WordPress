@@ -32,6 +32,13 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		$callable = is_string( $method ) ? array( $adapter, $method ) : $method;
 		if ( ! is_callable( $callable ) ) return new WP_Error( 'mad4b_reversible_execute_missing', 'Adapter mutation implementation is unavailable.' );
 
+
+		$scope = null;
+		if ( method_exists( $adapter, 'acquire_reversible_scope' ) && method_exists( $adapter, 'release_reversible_scope' ) ) {
+			$scope = $adapter->acquire_reversible_scope( $ability_name, $input );
+			if ( is_wp_error( $scope ) ) return $scope;
+		}
+		try {
 		$before = $adapter->capture_reversible_state( $ability_name, $input );
 		if ( is_wp_error( $before ) ) return $before;
 		$validated = self::validate_snapshot( $before );
@@ -100,7 +107,9 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'updated_at' => $now,
 		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return new WP_Error( 'mad4b_mutation_record_failed', 'Unable to persist reversible adapter mutation evidence before provider execution.', array( 'db_error' => $wpdb->last_error ) );
-		self::update_record( $mutation_id, array( 'status' => 'executing' ) );
+		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'executing' ) ) ) {
+			return new WP_Error( 'mad4b_mutation_execution_journal_failed', 'Journal failed before provider execution; do not retry before reconciliation.', array( 'mutation_id' => $mutation_id, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
+		}
 
 		self::$execution_context_stack[] = array(
 			'contract' => 'mad4b.reversible-execution-context.v1',
@@ -148,7 +157,10 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		$after_hash = self::state_hash( $after_state );
-		self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) );
+		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) ) {
+			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-journal-recovery', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'after_sha256' => $after_hash ), 'failure' );
+			return new WP_Error( 'mad4b_mutation_journal_recovery_required', 'Provider write was observed, but its verification journal could not be persisted. Manual reconciliation required; blind retry denied.', array( 'mutation_id' => $mutation_id, 'observed_after_sha256' => $after_hash, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
+		}
 		MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-verified', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'provider' => $provider, 'target_type' => $before['target_type'], 'target_id' => $before['target_id'], 'before_sha256' => $before_hash, 'after_sha256' => $after_hash ) );
 		$record = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
 		$evidence = array(
@@ -162,6 +174,9 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		);
 		if ( is_array( $result ) ) return array_merge( $result, $evidence );
 		return array_merge( array( 'result' => $result ), $evidence );
+		} finally {
+			if ( null !== $scope ) $adapter->release_reversible_scope( $scope );
+		}
 	}
 
 	public static function can_undo_record( array $record ) {
@@ -196,6 +211,15 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( is_wp_error( $agent ) ) return $agent;
 		if ( (int) $agent['id'] !== (int) $record['agent_id'] && ! apply_filters( 'mad4b_scp_allow_cross_agent_undo', false, $record, $agent ) ) return new WP_Error( 'mad4b_undo_agent_denied', 'A different agent cannot undo this mutation by default.' );
 
+		$undo_scope = null;
+		if ( method_exists( $adapter, 'acquire_reversible_undo_scope' ) && method_exists( $adapter, 'release_reversible_scope' ) ) {
+			$undo_scope = $adapter->acquire_reversible_undo_scope( $record['ability_name'], $payload['target'] );
+			if ( is_wp_error( $undo_scope ) ) return $undo_scope;
+		}
+		try {
+		$fresh = MAD4B_SCP_Mutation_Manager::get( $mutation_id );
+		if ( ! $fresh || ! self::can_undo_record( $fresh ) ) return new WP_Error( 'mad4b_undo_journal_changed', 'Undo journal changed before provider lock was acquired.' );
+		$record = $fresh;
 		$current = $adapter->read_reversible_state( $record['ability_name'], $payload['target'] );
 		if ( is_wp_error( $current ) ) return $current;
 		$current_hash = self::state_hash( $current );
@@ -241,9 +265,14 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'updated_at' => $now,
 		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( false === $inserted ) return new WP_Error( 'mad4b_undo_record_failed', 'Provider state was restored but recovery evidence could not be persisted.', array( 'db_error' => $wpdb->last_error ) );
-		self::update_record( $mutation_id, array( 'status' => 'undone' ) );
+		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'undone' ) ) ) {
+			return new WP_Error( 'mad4b_undo_journal_recovery_required', 'Provider restore succeeded but original journal status could not be finalized.', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
+		}
 		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'provider' => $record['provider'], 'target_type' => $record['target_type'], 'target_id' => $record['target_id'], 'restored_sha256' => $restored_hash, 'approval_ticket_id' => $undo_approval_ticket_id ) );
 		return array( 'status' => 'undone', 'original_mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'restored_sha256' => $restored_hash, 'verified' => true, 'restore_contract' => $payload['restore_contract'] );
+		} finally {
+			if ( null !== $undo_scope ) $adapter->release_reversible_scope( $undo_scope );
+		}
 	}
 
 	private static function finalize_provider_failure( $adapter, $ability_name, $provider, $mutation_id, array $before, $before_hash, $error, $error_code ) {
