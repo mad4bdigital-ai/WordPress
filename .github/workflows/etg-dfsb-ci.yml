@@ -83,6 +83,7 @@ jobs:
             parser-smoke.php \
             operational-smoke.php \
             content-slot-persistence-smoke.php \
+            profile-plan-noop-smoke.php \
             result-count-adapter-smoke.php \
             profile-runtime-smoke.php \
             post-type-observer-smoke.php \
