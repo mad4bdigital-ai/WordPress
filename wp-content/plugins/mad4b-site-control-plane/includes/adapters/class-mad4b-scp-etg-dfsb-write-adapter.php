@@ -303,7 +303,16 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         }finally{$this->unlock($lock);}
     }
     public function restore_reversible_state($ability_name,array$target,array$state,array$record){
-        $guard=$this->guard();if(is_wp_error($guard))return $guard;
+        // Undo must remain possible when a failed apply leaves invalid config;
+        // require Staging/admin/Global OFF, but do not require the after-state
+        // to pass the normal forward-write validation gate.
+        if(!$this->is_available()||!current_user_can('manage_options')){
+            return new WP_Error('mad4b_etg_undo_staging_admin_required','ETG undo requires Staging administrator.');
+        }
+        $restoreConfig=new \ETG\DynamicFilterSEOBridge\Config\Configuration();
+        if($restoreConfig->enabled()){
+            return new WP_Error('mad4b_etg_undo_global_on','Global Bridge must be OFF before ETG undo.');
+        }
         if(!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate()){
             return new WP_Error('mad4b_etg_undo_authority_required','Central MAD4B mutation authority required for undo.');
         }
