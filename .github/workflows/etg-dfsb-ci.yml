@@ -105,7 +105,8 @@ jobs:
             alpha13-usage-guide-smoke.php \
             alpha13-frontend-runtime-smoke.php \
             alpha13-deep-audit-smoke.php \
-            evidence-triage-pagination-smoke.php; do
+            evidence-triage-pagination-smoke.php \
+            configuration-studio-smoke.php; do
               php "$PLUGIN/tests/$test_file"
           done
 

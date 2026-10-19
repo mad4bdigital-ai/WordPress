@@ -4,6 +4,7 @@ namespace ETG\DynamicFilterSEOBridge\Admin;
 use ETG\DynamicFilterSEOBridge\Config\Configuration;
 use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryProfilePlanner;
+use ETG\DynamicFilterSEOBridge\Diagnostics\EvidenceProvider;
 use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
 
 final class InventoryControlPage {
@@ -28,7 +29,7 @@ final class InventoryControlPage {
         $globalOn=!empty($config['enabled']);
         $proposals=(array)($plan['proposals']??array());
         $readyCount=0;foreach($proposals as $proposal){if(!empty($proposal['safe_to_apply'])){$readyCount++;}}
-        $tabs=array('overview'=>'Overview','plans'=>'Profile Plans','safety'=>'Safety Contract');
+        $tabs=array('overview'=>'Overview','plans'=>'Profile Plans','drift'=>'Drift Triage','safety'=>'Safety Contract');
         $tab=AdminUi::activeTab($tabs,'overview');
         if(isset($_GET['profile'])||isset($_GET['applied'])||isset($_GET['unchanged'])||isset($_GET['error'])){$tab='plans';}
         ?>
@@ -48,7 +49,7 @@ final class InventoryControlPage {
                 <div class="etg-status-card"><span class="etg-status-label">Authority</span><span class="etg-status-value"><span class="etg-badge etg-badge--readonly">NON-AUTHORIZING PLAN</span></span><span class="etg-status-help">No taxonomy set or combination is approved here.</span></div>
             </div>
             <?php AdminUi::renderTabs(self::SLUG,$tabs,$tab); ?>
-            <?php if('overview'===$tab):$this->renderOverview($proposals,$readyCount,$globalOn);elseif('safety'===$tab):$this->renderSafety();else:$this->renderPlans($plan,$proposals,$revision,$globalOn);endif; ?>
+            <?php if('overview'===$tab):$this->renderOverview($proposals,$readyCount,$globalOn);elseif('safety'===$tab):$this->renderSafety();elseif('drift'===$tab):$this->renderDriftTriage($snapshot);else:$this->renderPlans($plan,$proposals,$revision,$globalOn);endif; ?>
         </div>
         <?php
     }
@@ -90,6 +91,57 @@ final class InventoryControlPage {
                 <div class="etg-submit-row"><span class="description"><?php echo $globalOn?'Global is ON, so apply is locked.':($safe?'Proposal is eligible for disabled-profile apply.':'Resolve the blocking evidence before apply.'); ?></span><button type="submit" class="button button-primary" <?php disabled($globalOn||!$safe); ?>>Apply Safe Disabled Profile Patch</button></div>
             </form>
         </div></section>
+        <?php
+    }
+
+    /**
+     * Read-only Configuration Studio evidence: no implicit recommendation is a
+     * permission to edit a profile, to activate it or to change publication.
+     * Uses the same bounded native EvidenceProvider contract as remote MCP.
+     */
+    private function renderDriftTriage(array $snapshot):void{
+        $offset=isset($_GET['etg_drift_offset'])?max(0,min(500,(int)$_GET['etg_drift_offset'])):0;
+        $provider=new EvidenceProvider(
+            static function()use($snapshot){return $snapshot;},
+            static function(){return array();},
+            static function(){return array();}
+        );
+        $response=$provider->query(array('section'=>'drift_triage','offset'=>$offset,'limit'=>50));
+        $payload=(array)($response['payload']??array());
+        $summary=(array)($payload['source_category_counts']??array());
+        $records=(array)($payload['items']??array());
+        ?>
+        <section class="etg-panel" data-etg-evidence-contract="etg.dfsb.evidence-provider.v1">
+            <div class="etg-panel__head"><div><h2>Dynamic Configuration Studio — Drift Triage</h2><p class="description">Read-only evidence. Categories can overlap; scope must be confirmed per Profile before any repair. No SEO publication is authorized.</p></div></div>
+            <div class="etg-panel__body">
+                <p><strong>Inventory:</strong> <code><?php echo esc_html(substr((string)($snapshot['snapshot_fingerprint']??''),0,16)); ?></code>
+                <strong>Evidence:</strong> <?php echo !empty($payload['source_truncated'])?'PARTIAL / TRUNCATED':'BOUNDED'; ?>
+                <strong>Potential findings:</strong> <?php echo esc_html((string)($payload['source_records_count']??0)); ?> (not distinct defects)</p>
+                <div class="etg-status-grid">
+                <?php foreach($summary as $group=>$count): ?>
+                    <div class="etg-status-card"><span class="etg-status-label"><?php echo esc_html(str_replace('_',' ',$group)); ?></span><span class="etg-status-value"><?php echo esc_html((string)$count); ?></span></div>
+                <?php endforeach; ?>
+                </div>
+                <div class="etg-table-scroll"><table class="widefat striped"><thead><tr><th>Class</th><th>Severity</th><th>Reason</th><th>Template</th><th>Node</th><th>Filter</th><th>Next step</th></tr></thead><tbody>
+                <?php if(!$records):?><tr><td colspan="7">No findings in this evidence page; review source completeness before treating it as clean.</td></tr><?php endif; ?>
+                <?php foreach($records as $item): ?>
+                    <tr><td><?php echo esc_html(str_replace('_',' ',(string)($item['category']??''))); ?></td>
+                    <td><?php echo esc_html((string)($item['severity']??'')); ?></td>
+                    <td><code><?php echo esc_html((string)($item['reason']??'')); ?></code></td>
+                    <td><?php echo esc_html((string)($item['template_id']??0)); ?></td>
+                    <td><code><?php echo esc_html((string)($item['node_id']??'')); ?></code></td>
+                    <td><?php echo esc_html((string)($item['filter_id']??0)); ?></td>
+                    <td><span class="etg-badge etg-badge--warn">Confirm Profile scope</span></td></tr>
+                <?php endforeach; ?>
+                </tbody></table></div>
+                <p>Showing <?php echo esc_html((string)($payload['returned']??0)); ?> of <?php echo esc_html((string)($payload['total']??0)); ?> source records.</p>
+                <div class="etg-actions">
+                    <?php if($offset>0):?><a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'drift','etg_drift_offset'=>(string)max(0,$offset-50)))); ?>">Previous 50</a><?php endif; ?>
+                    <?php if(!empty($payload['has_more'])):?><a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'drift','etg_drift_offset'=>(string)$payload['next_offset']))); ?>">Next 50</a><?php endif; ?>
+                    <a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'plans'))); ?>">Review Profile Plans</a>
+                </div>
+            </div>
+        </section>
         <?php
     }
 
