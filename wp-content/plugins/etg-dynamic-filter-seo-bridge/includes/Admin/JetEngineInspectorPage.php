@@ -9,7 +9,7 @@ final class JetEngineInspectorPage {
     private $sources;
     private $previewContextProvider;
 
-    public function __construct(ContentSourceResolver $sources, callable $previewContextProvider = null) {
+    public function __construct(ContentSourceResolver $sources, ?callable $previewContextProvider = null) {
         $this->sources = $sources;
         $this->previewContextProvider = $previewContextProvider;
     }

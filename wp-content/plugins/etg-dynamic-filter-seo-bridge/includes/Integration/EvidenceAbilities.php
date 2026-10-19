@@ -71,7 +71,7 @@ final class EvidenceAbilities {
                         'properties' => array(
                             'section' => array(
                                 'type' => 'string',
-                                'enum' => array( 'summary', 'unresolved_surfaces', 'filters', 'profile_reconciliation', 'provider_group_drift' ),
+                                'enum' => array( 'summary', 'unresolved_surfaces', 'filters', 'profile_reconciliation', 'provider_group_drift', 'query_builder_identities', 'drift_triage' ),
                             ),
                             'offset' => array( 'type' => 'integer', 'minimum' => 0 ),
                             'limit' => array( 'type' => 'integer', 'minimum' => 1, 'maximum' => EvidenceProvider::MAX_PAGE_SIZE ),

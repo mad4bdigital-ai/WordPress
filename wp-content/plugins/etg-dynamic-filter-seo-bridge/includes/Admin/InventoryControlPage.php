@@ -4,7 +4,9 @@ namespace ETG\DynamicFilterSEOBridge\Admin;
 use ETG\DynamicFilterSEOBridge\Config\Configuration;
 use ETG\DynamicFilterSEOBridge\Config\ProfileRegistry;
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryProfilePlanner;
+use ETG\DynamicFilterSEOBridge\Diagnostics\EvidenceProvider;
 use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
+use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate;
 
 final class InventoryControlPage {
     const SLUG = 'etg-dfsb-inventory-control';
@@ -12,6 +14,7 @@ final class InventoryControlPage {
     private $profiles;
     private $inventory;
     private $planner;
+    private $optionLease = null;
 
     public function __construct(Configuration $config, ProfileRegistry $profiles, RuntimeInventory $inventory, InventoryProfilePlanner $planner) {
         $this->config=$config;$this->profiles=$profiles;$this->inventory=$inventory;$this->planner=$planner;
@@ -28,9 +31,9 @@ final class InventoryControlPage {
         $globalOn=!empty($config['enabled']);
         $proposals=(array)($plan['proposals']??array());
         $readyCount=0;foreach($proposals as $proposal){if(!empty($proposal['safe_to_apply'])){$readyCount++;}}
-        $tabs=array('overview'=>'Overview','plans'=>'Profile Plans','safety'=>'Safety Contract');
+        $tabs=array('overview'=>'Overview','plans'=>'Profile Plans','drift'=>'Drift Triage','safety'=>'Safety Contract');
         $tab=AdminUi::activeTab($tabs,'overview');
-        if(isset($_GET['profile'])||isset($_GET['applied'])||isset($_GET['error'])){$tab='plans';}
+        if(isset($_GET['profile'])||isset($_GET['applied'])||isset($_GET['unchanged'])||isset($_GET['error'])){$tab='plans';}
         ?>
         <div class="wrap etg-dfsb-admin etg-dfsb-inventory-control">
             <?php AdminUi::renderHeader(self::SLUG,'ETG Inventory Control','Review Runtime Inventory evidence and apply only fail-closed structural profile bindings. This surface never grants combination or publication authority.',array(
@@ -38,6 +41,7 @@ final class InventoryControlPage {
                 array('label'=>'Dynamic Content','url'=>AdminUi::pageUrl(DynamicContentPage::SLUG)),
             )); ?>
             <?php if(isset($_GET['applied'])):?><div class="notice notice-success is-dismissible"><p>Inventory profile patch applied in disabled/fail-closed mode. Re-run Reconciliation before any activation decision.</p></div><?php endif; ?>
+            <?php if(isset($_GET['unchanged'])):?><div class="notice notice-info is-dismissible"><p>Profile is already aligned. No configuration change or publication evidence reset was performed.</p></div><?php endif; ?>
             <?php if(isset($_GET['error'])):?><div class="notice notice-error"><p><?php echo esc_html(sanitize_text_field((string)wp_unslash($_GET['error']))); ?></p></div><?php endif; ?>
             <div class="etg-status-grid">
                 <div class="etg-status-card"><span class="etg-status-label">Global Bridge</span><span class="etg-status-value"><span class="etg-badge <?php echo $globalOn?'etg-badge--danger':'etg-badge--safe'; ?>"><?php echo $globalOn?'ON · APPLY LOCKED':'OFF · SAFE PLANNING'; ?></span></span><span class="etg-status-help">Structural apply is only available while Global is OFF.</span></div>
@@ -47,7 +51,7 @@ final class InventoryControlPage {
                 <div class="etg-status-card"><span class="etg-status-label">Authority</span><span class="etg-status-value"><span class="etg-badge etg-badge--readonly">NON-AUTHORIZING PLAN</span></span><span class="etg-status-help">No taxonomy set or combination is approved here.</span></div>
             </div>
             <?php AdminUi::renderTabs(self::SLUG,$tabs,$tab); ?>
-            <?php if('overview'===$tab):$this->renderOverview($proposals,$readyCount,$globalOn);elseif('safety'===$tab):$this->renderSafety();else:$this->renderPlans($plan,$proposals,$revision,$globalOn);endif; ?>
+            <?php if('overview'===$tab):$this->renderOverview($proposals,$readyCount,$globalOn);elseif('safety'===$tab):$this->renderSafety();elseif('drift'===$tab):$this->renderDriftTriage($snapshot);else:$this->renderPlans($plan,$proposals,$revision,$globalOn);endif; ?>
         </div>
         <?php
     }
@@ -92,6 +96,57 @@ final class InventoryControlPage {
         <?php
     }
 
+    /**
+     * Read-only Configuration Studio evidence: no implicit recommendation is a
+     * permission to edit a profile, to activate it or to change publication.
+     * Uses the same bounded native EvidenceProvider contract as remote MCP.
+     */
+    private function renderDriftTriage(array $snapshot):void{
+        $offset=isset($_GET['etg_drift_offset'])?max(0,min(500,(int)$_GET['etg_drift_offset'])):0;
+        $provider=new EvidenceProvider(
+            static function()use($snapshot){return $snapshot;},
+            static function(){return array();},
+            static function(){return array();}
+        );
+        $response=$provider->query(array('section'=>'drift_triage','offset'=>$offset,'limit'=>50));
+        $payload=(array)($response['payload']??array());
+        $summary=(array)($payload['source_category_counts']??array());
+        $records=(array)($payload['items']??array());
+        ?>
+        <section class="etg-panel" data-etg-evidence-contract="etg.dfsb.evidence-provider.v1">
+            <div class="etg-panel__head"><div><h2>Dynamic Configuration Studio — Drift Triage</h2><p class="description">Read-only evidence. Categories can overlap; scope must be confirmed per Profile before any repair. No SEO publication is authorized.</p></div></div>
+            <div class="etg-panel__body">
+                <p><strong>Inventory:</strong> <code><?php echo esc_html(substr((string)($snapshot['snapshot_fingerprint']??''),0,16)); ?></code>
+                <strong>Evidence:</strong> <?php echo !empty($payload['source_truncated'])?'PARTIAL / TRUNCATED':'BOUNDED'; ?>
+                <strong>Potential findings:</strong> <?php echo esc_html((string)($payload['source_records_count']??0)); ?> (not distinct defects)</p>
+                <div class="etg-status-grid">
+                <?php foreach($summary as $group=>$count): ?>
+                    <div class="etg-status-card"><span class="etg-status-label"><?php echo esc_html(str_replace('_',' ',$group)); ?></span><span class="etg-status-value"><?php echo esc_html((string)$count); ?></span></div>
+                <?php endforeach; ?>
+                </div>
+                <div class="etg-table-scroll"><table class="widefat striped"><thead><tr><th>Class</th><th>Severity</th><th>Reason</th><th>Template</th><th>Node</th><th>Filter</th><th>Next step</th></tr></thead><tbody>
+                <?php if(!$records):?><tr><td colspan="7">No findings in this evidence page; review source completeness before treating it as clean.</td></tr><?php endif; ?>
+                <?php foreach($records as $item): ?>
+                    <tr><td><?php echo esc_html(str_replace('_',' ',(string)($item['category']??''))); ?></td>
+                    <td><?php echo esc_html((string)($item['severity']??'')); ?></td>
+                    <td><code><?php echo esc_html((string)($item['reason']??'')); ?></code></td>
+                    <td><?php echo esc_html((string)($item['template_id']??0)); ?></td>
+                    <td><code><?php echo esc_html((string)($item['node_id']??'')); ?></code></td>
+                    <td><?php echo esc_html((string)($item['filter_id']??0)); ?></td>
+                    <td><span class="etg-badge etg-badge--warn">Confirm Profile scope</span></td></tr>
+                <?php endforeach; ?>
+                </tbody></table></div>
+                <p>Showing <?php echo esc_html((string)($payload['returned']??0)); ?> of <?php echo esc_html((string)($payload['total']??0)); ?> source records.</p>
+                <div class="etg-actions">
+                    <?php if($offset>0):?><a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'drift','etg_drift_offset'=>(string)max(0,$offset-50)))); ?>">Previous 50</a><?php endif; ?>
+                    <?php if(!empty($payload['has_more'])):?><a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'drift','etg_drift_offset'=>(string)$payload['next_offset']))); ?>">Next 50</a><?php endif; ?>
+                    <a class="button" href="<?php echo esc_url(AdminUi::pageUrl(self::SLUG,array('tab'=>'plans'))); ?>">Review Profile Plans</a>
+                </div>
+            </div>
+        </section>
+        <?php
+    }
+
     private function renderSafety():void{
         ?>
         <section class="etg-panel"><div class="etg-panel__head"><div><h2>Inventory Safety Contract</h2><p class="description">What this page can and cannot change.</p></div></div><div class="etg-panel__body"><table class="widefat striped"><thead><tr><th>Capability</th><th>Allowed here?</th><th>Rule</th></tr></thead><tbody>
@@ -105,15 +160,21 @@ final class InventoryControlPage {
     }
 
     public function apply(): void {
-        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_apply_inventory_profile_plan');if(empty($_POST['confirm_fail_closed'])){$this->redirectError('Explicit fail-closed confirmation is required.');}$config=$this->config->all();if(!empty($config['enabled'])){$this->redirectError('Global bridge must be OFF before applying an Inventory profile patch.');}$expectedRevision=isset($_POST['config_revision'])?sanitize_text_field(wp_unslash((string)$_POST['config_revision'])):'';if(''===$expectedRevision||!hash_equals($expectedRevision,$this->config->revision())){$this->redirectError('Configuration changed after the proposal was generated. Refresh and review again.');}
+        if(!current_user_can('manage_options')){wp_die('Forbidden','Forbidden',array('response'=>403));}check_admin_referer('etg_dfsb_apply_inventory_profile_plan');$this->optionLease=OptionMutationGate::acquire(Configuration::OPTION_NAME);if(is_wp_error($this->optionLease)){$this->redirectError('Shared option lock is unavailable; no change executed.');}if(empty($_POST['confirm_fail_closed'])){$this->redirectError('Explicit fail-closed confirmation is required.');}$config=$this->config->all();if(!empty($config['enabled'])){$this->redirectError('Global bridge must be OFF before applying an Inventory profile patch.');}$expectedRevision=isset($_POST['config_revision'])?sanitize_text_field(wp_unslash((string)$_POST['config_revision'])):'';if(''===$expectedRevision||!hash_equals($expectedRevision,$this->config->revision())){$this->redirectError('Configuration changed after the proposal was generated. Refresh and review again.');}
         $snapshot=$this->inventory->collect();$expectedFingerprint=isset($_POST['snapshot_fingerprint'])?sanitize_text_field(wp_unslash((string)$_POST['snapshot_fingerprint'])):'';$actualFingerprint=(string)($snapshot['snapshot_fingerprint']??'');if(''===$expectedFingerprint||!hash_equals($expectedFingerprint,$actualFingerprint)){$this->redirectError('Runtime Inventory changed after the proposal was generated. Refresh and review again.');}
         $profileId=isset($_POST['profile_id'])?sanitize_key(wp_unslash((string)$_POST['profile_id'])):'';$plan=$this->planner->plan($snapshot,$this->profiles->all());$proposal=(array)($plan['proposals'][$profileId]??array());if(!$proposal||empty($proposal['safe_to_apply'])){$this->redirectError('The selected profile does not have a safe verified Inventory proposal.');}
         $rawProfiles=json_decode((string)($config['profiles_json']??''),true);if(!is_array($rawProfiles)){$this->redirectError('Surface Profiles JSON is unavailable.');}$index=null;foreach($rawProfiles as $i=>$profile){if(is_array($profile)&&$profileId===sanitize_key((string)($profile['id']??''))){$index=$i;break;}}if(null===$index){$this->redirectError('Profile no longer exists.');}
-        $raw=(array)$rawProfiles[$index];$proposed=(array)($proposal['proposed_profile']??array());foreach(array('post_types','require_post_type_binding','post_type_authority','routes') as $field){if(array_key_exists($field,$proposed)){$raw[$field]=$proposed[$field];}}if(empty($raw['archive_paths'])&&!empty($proposed['archive_paths'])){$raw['archive_paths']=$proposed['archive_paths'];}$raw['enabled']=false;
+        $raw=(array)$rawProfiles[$index];$originalRaw=$raw;$proposed=(array)($proposal['proposed_profile']??array());foreach(array('post_types','require_post_type_binding','post_type_authority','routes') as $field){if(array_key_exists($field,$proposed)){$raw[$field]=$proposed[$field];}}if(empty($raw['archive_paths'])&&!empty($proposed['archive_paths'])){$raw['archive_paths']=$proposed['archive_paths'];}$raw['enabled']=false;
         $rules=is_array($raw['taxonomy_rules']??null)?$raw['taxonomy_rules']:array();$priority=0;foreach($rules as $rule){if(is_array($rule)){$priority=max($priority,(int)($rule['priority']??0));}}$selected=isset($_POST['taxonomy_select'])?(array)wp_unslash($_POST['taxonomy_select']):array();$roles=isset($_POST['taxonomy_role'])&&is_array($_POST['taxonomy_role'])?wp_unslash($_POST['taxonomy_role']):array();$candidates=(array)($proposal['taxonomy_candidates']??array());foreach(array_slice($selected,0,20) as $taxonomy){$taxonomy=sanitize_key((string)$taxonomy);if(''===$taxonomy||!isset($candidates[$taxonomy])||!empty($candidates[$taxonomy]['configured'])){continue;}$role=sanitize_key((string)($roles[$taxonomy]??$candidates[$taxonomy]['suggested_role']??$taxonomy));if(''===$role){$role=$taxonomy;}$priority+=10;$rules[$taxonomy]=array('role'=>$role,'priority'=>$priority,'gallery_priority'=>$priority,'index_single'=>false,'min_results'=>3,'required_meta_key'=>'','required_meta_values'=>array(),'meta_constraint_scope'=>'single','field_map'=>array());}$raw['taxonomy_rules']=$rules;
+        // An aligned plan is a no-op. Never revoke publication evidence without a structural diff.
+        if($raw===$originalRaw){$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'unchanged'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;}
         $publication=is_array($raw['publication']??null)?$raw['publication']:array();foreach(array('elementor_content_verified','provider_observation_verified','result_count_parity_verified') as $flag){$publication[$flag]=false;}foreach(array('elementor_verification_evidence_id','provider_observation_evidence_id','result_count_parity_evidence_id') as $field){$publication[$field]='';}$raw['publication']=$publication;$rawProfiles[$index]=$raw;
-        $config['enabled']=false;$config['profiles_json']=wp_json_encode($rawProfiles,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);$saved=update_option(Configuration::OPTION_NAME,$this->config->sanitizeForStorage($config),false);if(false===$saved&&$this->config->revision()===$expectedRevision){$this->redirectError('WordPress did not persist the Inventory profile patch.');}wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'applied'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;
+        $config['enabled']=false;$config['profiles_json']=wp_json_encode($rawProfiles,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);$target=$this->config->sanitizeForStorage($config);update_option(Configuration::OPTION_NAME,$target,false);if(get_option(Configuration::OPTION_NAME,array())!==$target){$this->redirectError('WordPress did not persist the Inventory profile patch.');}$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'applied'=>'1','profile'=>$profileId),admin_url('options-general.php')));exit;
     }
 
-    private function redirectError(string $message): void {wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'error'=>$message),admin_url('options-general.php')));exit;}
+    private function releaseOptionLease(): void {
+        if(is_array($this->optionLease)) OptionMutationGate::release($this->optionLease);
+        $this->optionLease=null;
+    }
+    private function redirectError(string $message): void {$this->releaseOptionLease();wp_safe_redirect(add_query_arg(array('page'=>self::SLUG,'error'=>$message),admin_url('options-general.php')));exit;}
 }

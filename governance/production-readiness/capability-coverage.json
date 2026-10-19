@@ -142,6 +142,152 @@
       "new_control_ids": [
         "PLATFORM-10"
       ]
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "First-party reviewed Staging writer service is backed by existing mutation and reversible-adapter controls; execution remains uncertified and blocked.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval.",
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Passive diagnostic service and bounded Staging cache probe reuse existing database/performance controls without cache activation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval.",
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "id": "operation:wordpress.etg-dfsb.slot.apply",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Explicit governed slot operation is discoverable but still requires independent provider/NHI certification and user approval before mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "operation:wordpress.etg-dfsb.profile.apply",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Explicit governed disabled-profile operation cannot enable SEO or Production and still requires runtime acceptance and independent review.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "ability:mad4b/mutation-undo",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Static scanner observes an existing central undo ability referenced by the new adapter; it is not a newly registered undo endpoint or an authority grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval.",
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "operation:wordpress.indexflow.routes.apply",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01",
+        "PLATFORM-01",
+        "AUTOMATION-01"
+      ],
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
     }
   ],
   "lifecycle": [],
@@ -235,6 +381,271 @@
       "review_rationale": "Review require and boot of the package-owned diagnostics class; preserve legacy recovery bootstrap through Operational Remediation and do not load untrusted provider implementations."
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
+      "source_blob_sha": "9813c94ddc911754270322ad5ec4017a8dea0faf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Existing read-only ETG adapter expanded with cache and dry-run planning; existing MCP/provider/execution controls remain sufficient for read surface review, not mutation grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "37b2038b2597b599481007e1d6f67b2f40bfa64c",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "New independent ETG Staging writer requires existing NHI, provider certification, admin authorization, exact-state SHA readback and central reversible journal; no production authority inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "source_blob_sha": "7bea1c5a096b41a231201c4cdc454d264bfe9d13",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Memcached/LSMCD passive diagnostics and temporary Staging-only probe reuse database safety, performance and security controls while leaving cache provider uncertified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "9512338f4490b63eaf612bf4a2d20175cee25e4c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Reviewed inclusion of a second ETG adapter in immutable bundled bootstrap; source approval does not imply a write grant or deployment permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source_blob_sha": "8b165e72cd84554ce180a90f8bf27196b3852e84",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Exact bundled-class whitelist is updated under existing authority and security controls; registration allows observation but cannot bypass policy, certification or NHI.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "ab4ef0e7b56d42b0051b6e59eef0ce9ab01af354",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Two bounded semantic operations explicitly deny Production and generic dispatch; governance and platform controls cover discovery without adding authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "c99d856cc5996b2b7682f31eaa7d316d8305a21e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Merged current master runtime-incident bootstrap with the independently reviewed ETG Staging mutation adapter require; retained all prior source-hash history and runtime controls.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source_blob_sha": "611c27a5516aba6f7055b2b142c5272cc2dbdb1d",
+      "control_ids": [
+        "DATABASE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "CI-only review of shared reversible journal lifetime, scope lock from snapshot through readback, terminal status persistence and explicit recovery-required errors; fault-injection and real Staging approval remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "cc32b91d9ef2a41d251653055e4867356a5de0d5",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "CI-only review of shared option-scoped lock identity, use of ETG provider lock and central governed journal, Staging-only permission fence and rollback drift guard. Does not certify Provider or grant execution.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "execution_note": "The owned Python wrapper executes the original standalone PHP harnesses and propagates failure; these files are not PHPUnit suites."
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "600edb96b6592fb8da4d418997c03452e6bdf801",
+      "control_ids": [
+        "PLATFORM-01",
+        "MCP-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ]
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source_blob_sha": "d9b72c52a5dfa0acfc2cb36d3be210ebb0e8f5aa",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ]
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "b9a0ea35aea10b8625836defead21b042d2510c5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "PLATFORM-01",
+        "PROVIDERS-02"
+      ]
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review distinct Staging IndexFlow storage scope, bounded plan fingerprints, native readback and central reversible undo. Runtime activation and provider certification remain independent.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php",
+      "source_blob_sha": "8585f34fa80fbfca85d340d6105473e007cff202",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ]
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "review_rationale": "Review fresh authoritative option snapshots under the shared lease and accurate storage-only verification metadata; preserve separate runtime certification and central undo authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php",
+      "source_blob_sha": "529d1dbb637f38ab9c64f1e30aed59c62626d95f",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ]
+    },
+    {
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
       ],
@@ -271,6 +682,63 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "e2cba28567b83b8ded0292baf5a1b5d0010debbb",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "review_rationale": "CI-only review of ETG option-scoped owner-token lock, independent Admin/MCP write fence, guarded profile/slot CAS readback, retention of uncertain undo lease and refusal of cross-adapter unjournaled writes. Native write smoke and shared transaction checks are included in this PR; independent Staging HTTP concurrency and reconciled lock release are still required. The mapped Python wrapper executes the standalone PHP CLI regression fixtures including write, undo fault injection, and cache diagnostics; absence of PHP or failing fixtures fails this exact-head CI evaluation closed.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php",
+      "source_blob_sha": "7a446692aa3a1411e105ac960206dfca786a6cc4",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
+      ],
+      "review_rationale": "CI-only review of separate Staging-only IndexFlow route-storage authority, provider certification, plan-digest CAS apply/readback/undo, and retention of a resource lease after uncertain journal outcome. Route adapter behavioral tests and no-activation contract are present; this review does not certify live rewrite routing, vendor SEO output, provider grants or Production. The mapped IndexFlow Python contract actually executes the standalone adapter and storage PHP smoke tests using PHP CLI, failing closed on missing PHP or failed subprocess; the raw PHP fixture is not a PHPUnit suite.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source_blob_sha": "6138b3472a1e8542dc481e83042529fc42b64341",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "DATABASE-01",
+        "RECOVERY-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
+      ],
+      "review_rationale": "CI-only source review of durable pre-restore parent CAS and child undo-intent journaling, exact before/after SHA evidence, SQL field-format regression, rejection of unsafe replay, and retention of provider option lock when post-side-effect journal status cannot be committed. Fault injection tests include claim, insert, provider, readback and journal-finalization failures; real live operator reconciliation remains an independent gate. The mapped Python wrapper executes the standalone PHP CLI regression fixtures including write, undo fault injection, and cache diagnostics; absence of PHP or failing fixtures fails this exact-head CI evaluation closed.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {

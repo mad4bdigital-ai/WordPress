@@ -56,16 +56,46 @@ final class ContentSlotRegistry {
         $slot['origin']='virtual';$slot['internal']=true;return$slot;
     }
 
-    public function save(array$slot):array{
-        $stored=$this->stored();$slot=$this->normalize($slot,(string)($slot['id']??''));
-        if(''==$slot['id']){return array('saved'=>false,'reason'=>'slot_id_required','slot'=>array());}
-        if(0===strpos($slot['id'],'etg_background_')){return array('saved'=>false,'reason'=>'reserved_slot_id','slot'=>$slot);}
-        $all=$this->all();if(!isset($stored[$slot['id']])&&!isset($all[$slot['id']])&&count($all)>=self::MAX_SLOTS){return array('saved'=>false,'reason'=>'slot_limit_exceeded','slot'=>$slot);}
-        unset($slot['origin']);$stored[$slot['id']]=$slot;ksort($stored,SORT_STRING);if(function_exists('update_option')){update_option(self::OPTION_NAME,$stored,false);} $slot['origin']=$this->isDefault($slot['id'])?'override':'custom';
-        return array('saved'=>true,'reason'=>'saved','slot'=>$slot,'authorizing'=>false,'profile_mutation'=>false);
+    /**
+     * Snapshot revision for stale-form rejection. Does not grant write authority.
+     * The admin POST must supply this revision alongside its WordPress nonce.
+     */
+    public function revision():string{
+        $stored=$this->stored();
+        $encoded=function_exists('wp_json_encode')?wp_json_encode($stored):json_encode($stored);
+        return hash('sha256',is_string($encoded)?$encoded:'');
     }
 
-    public function delete(string$id):bool{$id=sanitize_key($id);$stored=$this->stored();if(!isset($stored[$id])){return false;}unset($stored[$id]);if(function_exists('update_option')){update_option(self::OPTION_NAME,$stored,false);}return true;}
+    public function save(array$slot,?string$expectedRevision=null):array{
+        $stored=$this->stored();$slot=$this->normalize($slot,(string)($slot['id']??''));
+        if(''===$slot['id']){return array('saved'=>false,'reason'=>'slot_id_required','slot'=>array());}
+        if(0===strpos($slot['id'],'etg_background_')){return array('saved'=>false,'reason'=>'reserved_slot_id','slot'=>$slot);}
+        if(null!==$expectedRevision&&!hash_equals($this->revision(),$expectedRevision)){return array('saved'=>false,'reason'=>'stale_revision','slot'=>$slot);}
+        $all=$this->all();
+        if(!isset($stored[$slot['id']])&&!isset($all[$slot['id']])&&count($all)>=self::MAX_SLOTS){return array('saved'=>false,'reason'=>'slot_limit_exceeded','slot'=>$slot);}
+        unset($slot['origin']);
+        $unchanged=isset($stored[$slot['id']])&&$stored[$slot['id']]===$slot;
+        $stored[$slot['id']]=$slot;ksort($stored,SORT_STRING);
+        if(!$unchanged&&!$this->persist($stored)){return array('saved'=>false,'reason'=>'persistence_failed','slot'=>$slot);}
+        $slot['origin']=$this->isDefault($slot['id'])?'override':'custom';
+        return array('saved'=>true,'reason'=>$unchanged?'unchanged':'saved','slot'=>$slot,'authorizing'=>false,'profile_mutation'=>false);
+    }
+
+    public function delete(string$id,?string$expectedRevision=null):bool{
+        $id=sanitize_key($id);$stored=$this->stored();
+        if(!isset($stored[$id])){return false;}
+        if(null!==$expectedRevision&&!hash_equals($this->revision(),$expectedRevision)){return false;}
+        unset($stored[$id]);
+        return $this->persist($stored);
+    }
+
+    private function persist(array$stored):bool{
+        if(!function_exists('update_option')){return false;}
+        update_option(self::OPTION_NAME,$stored,false);
+        // update_option() can return false for unchanged values or a failed write.
+        // Only a matching normalized readback is accepted as persisted.
+        return $this->stored()===$stored;
+    }
 
     public function normalize(array$slot,string$fallbackId=''):array{
         $id=sanitize_key((string)($slot['id']??$fallbackId));$type=sanitize_key((string)($slot['type']??'text'));

@@ -105,7 +105,7 @@ foreach(array($descriptorAbility,$queryAbility) as $ability){
 
 $descriptor=call_user_func($descriptorAbility['execute_callback']);
 etg_ability_same(EvidenceProvider::CONTRACT,$descriptor['contract'],'descriptor delegates to canonical provider');
-etg_ability_same(array('summary','unresolved_surfaces','filters','profile_reconciliation','provider_group_drift'),$descriptor['sections'],'all five bounded sections are discoverable');
+etg_ability_same(array('summary','unresolved_surfaces','filters','profile_reconciliation','provider_group_drift','query_builder_identities','drift_triage'),$descriptor['sections'],'all seven bounded sections are discoverable');
 
 $query=call_user_func($queryAbility['execute_callback'],array('section'=>'summary'));
 etg_ability_same('ok',$query['state'],'ability query delegates to canonical provider');

@@ -106,7 +106,15 @@ final class Bootstrap {
         $languages=$needsWpml&&$compatibility->wpml()?new LanguageResolver():new LocaleLanguageResolver();
 
         $parserTaxonomies=array_values(array_unique(array_merge($profiles->allowedTaxonomies(),(array)$this->config->get('allowed_taxonomies',array()))));
-        $parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()));
+        $managedRoutes=null;
+        // Vendor settings initialize on init; do not inspect them prematurely
+        // during plugins_loaded. The parser closure sees this same later value.
+        add_action('init',function()use(&$managedRoutes,$profiles):void{
+            $managedRoutes=\ETG\DynamicFilterSEOBridge\IndexFlow\ManagedRoutesRuntime::fromEnvironment($this->config,$profiles);
+            if($managedRoutes){$managedRoutes->register();}
+        },10);
+        $managedResolver=static function(string$uri)use(&$managedRoutes):?string{return$managedRoutes?$managedRoutes->technicalUriFor($uri):null;};
+        $parser=new FilterUrlParser($parserTaxonomies,(array)$this->config->get('allowed_query_params',array()),(array)$this->config->get('tracking_query_params',array()),$managedResolver);
         $ajaxParser=new AjaxFilterStateParser($parserTaxonomies);
         $combinations=new CombinationRegistry($this->config);
         $this->builder=new FilterContextBuilder($parser,$languages,new TermMetaReader($mediaRegistry),$content,$scope,$resultCounts,$this->readiness,$combinations,new ContentReadiness($this->config),new PostTypeObserver($queryBindingResolver),$ajaxParser);
@@ -170,6 +178,7 @@ final class Bootstrap {
         (new JetEngineInspectorPage($sourceResolver,$previewContextProvider))->register();
         (new UsageGuidePage($runtimeInventory,$catalog,$slots,$profiles))->register();
         (new InventoryControlPage($this->config,$profiles,$runtimeInventory,$profilePlanner))->register();
+        (new \ETG\DynamicFilterSEOBridge\Admin\UrlArchitecturePage())->register();
 
         if($globalRuntimeEnabled&&$needsRankMath&&$compatibility->rankMath()){
             (new MetadataAdapter($provider,$content,$gallery,$this->policy,$canonical,$publication))->register();
@@ -191,8 +200,8 @@ final class Bootstrap {
     public function context():array{if(null!==$this->context){return$this->context;}if(!$this->builder){return array();}$context=$this->builder->build();$stable=empty($context['active'])||empty($context['in_scope'])||!empty($context['result_count_authoritative'])||!$this->config||!$this->config->get('require_result_count_for_index',true);if($stable){$this->context=$context;}return$context;}
     public function readiness():array{$report=$this->readiness?$this->readiness->report():array();$report['safe_boot']=BootGuard::status();return$report;}
     public function indexingDecision():array{return$this->policy?$this->policy->decide($this->context()):array();}
-    public function presentationValue(string$token,array$context=null){return$this->presentation?$this->presentation->value($token,$context):'';}
-    public function presentationSlot(string$slotId,array$context=null):string{return$this->presentation?$this->presentation->slot($slotId,$context):'';}
+    public function presentationValue(string$token,?array$context=null){return$this->presentation?$this->presentation->value($token,$context):'';}
+    public function presentationSlot(string$slotId,?array$context=null):string{return$this->presentation?$this->presentation->slot($slotId,$context):'';}
     public function presentationResolver(){return$this->presentation;}
 
     private function previewEvidenceContext(string$previewUrl):array{

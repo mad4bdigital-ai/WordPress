@@ -18,7 +18,7 @@ final class DynamicTagRuntime {
     private static $imageFallbackDepth = 0;
     private static $editorRenderDepth = 0;
 
-    public static function configure(PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider, callable $previewContextProvider = null): void {
+    public static function configure(PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider, ?callable $previewContextProvider = null): void {
         self::$resolver=$resolver;self::$slots=$slots;self::$catalogProvider=$catalogProvider;self::$previewContextProvider=$previewContextProvider;self::$catalogCache=null;self::$imageFallbackDepth=0;
     }
     public static function resolver():?PresentationResolver{return self::$resolver instanceof PresentationResolver?self::$resolver:null;}

@@ -9,6 +9,7 @@ use ETG\DynamicFilterSEOBridge\Diagnostics\RuntimeInventory;
 use ETG\DynamicFilterSEOBridge\Diagnostics\InventoryReconciler;
 use ETG\DynamicFilterSEOBridge\SEO\IndexingPolicy;
 use ETG\DynamicFilterSEOBridge\Simulation\ScenarioSimulator;
+use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate;
 
 final class OperationalPage {
     private $config;
@@ -48,6 +49,24 @@ final class OperationalPage {
     }
 
     public function settings(): void {
+        // options.php invokes admin_init before its native update_option() call.
+        // Hold the same storage mutex as MCP until PHP request shutdown.
+        if (isset($_POST['option_page']) && 'etg_dfsb' === (string)$_POST['option_page']) {
+            if (!current_user_can('manage_options')) {
+                wp_die('Forbidden', 'Forbidden', array('response' => 403));
+            }
+            check_admin_referer('etg_dfsb-options');
+            $lease = OptionMutationGate::acquire(Configuration::OPTION_NAME);
+            if (is_wp_error($lease)) {
+                wp_die('Configuration is being modified elsewhere.', 'Conflict', array('response' => 409));
+            }
+            $expected = isset($_POST['etg_dfsb_expected_revision'])
+                ? sanitize_text_field(wp_unslash((string)$_POST['etg_dfsb_expected_revision'])) : '';
+            if ('' === $expected || !hash_equals($expected, $this->config->revision())) {
+                OptionMutationGate::release($lease);
+                wp_die('Configuration revision changed. Refresh before saving.', 'Conflict', array('response' => 409));
+            }
+        }
         register_setting('etg_dfsb', Configuration::OPTION_NAME, array('sanitize_callback' => array($this->config, 'sanitizeForStorage')));
     }
 
@@ -252,6 +271,7 @@ final class OperationalPage {
         ?>
         <form method="post" action="options.php" class="etg-settings-form">
             <?php settings_fields('etg_dfsb'); ?>
+            <input type="hidden" name="etg_dfsb_expected_revision" value="<?php echo esc_attr($this->config->revision()); ?>" />
 
             <div class="etg-card">
                 <h2>Configuration lifecycle</h2>

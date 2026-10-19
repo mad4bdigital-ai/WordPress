@@ -25,7 +25,7 @@ final class AjaxPresentationEndpoint {
     // response boundaries remain 'url_authority' => false and 'seo_mutation' => false.
 
     private $builder; private $resolver; private $slots; private $catalogProvider; private $catalogTokens = null; private $catalogTokenMeta = null;
-    public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, callable $catalogProvider = null ) {$this->builder=$builder;$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;}
+    public function __construct( FilterContextBuilder $builder, PresentationResolver $resolver, ContentSlotRegistry $slots, ?callable $catalogProvider = null ) {$this->builder=$builder;$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;}
     public function register():void{add_action('rest_api_init',array($this,'routes'));add_action('wp_enqueue_scripts',array($this,'assets'),30);}
     public function routes():void{register_rest_route('etg-dfsb/v1','/ajax-presentation',array('methods'=>'POST','callback'=>array($this,'handle'),'permission_callback'=>'__return_true'));}
 
@@ -41,7 +41,7 @@ final class AjaxPresentationEndpoint {
     public function handle($request){
         $params=is_object($request)&&method_exists($request,'get_json_params')?$request->get_json_params():array();$params=is_array($params)?$params:array();$encoded=function_exists('wp_json_encode')?wp_json_encode($params):json_encode($params);
         if(!is_string($encoded)||strlen($encoded)>self::MAX_PAYLOAD_BYTES){return$this->response('blocked',array(),array(),array('payload_too_large'));}
-        $rate=$this->consumeRateLimit();if(empty($rate['allowed'])){return$this->response('blocked',array(),array(),array('rate_limited'),429,(int)($rate['retry_after']??self::RATE_LIMIT_WINDOW_SECONDS));}
+        $rate=$this->consumeRateLimit();if(empty($rate['allowed'])){$backendUnavailable='rate_limit_backend_unavailable'===($rate['source']??'');return$this->response('blocked',array(),array(),array($backendUnavailable?'rate_limit_backend_unavailable':'rate_limited'),$backendUnavailable?503:429,(int)($rate['retry_after']??self::RATE_LIMIT_WINDOW_SECONDS));}
         $context=$this->builder->buildAjaxEvidence($params);$blocking=$this->contextBlockingReasons($context);if($blocking){return$this->response('blocked',array(),$context,$blocking);}
         if(empty($context['global_enabled'])&&empty($context['dark_presentation_allowed'])){return$this->response('blocked_dark_rendering',array(),$context,array('dark_presentation_policy_blocked'));}
         $tokenResult=$this->tokenList($params['tokens']??array(),$context);if(!empty($tokenResult['rejected'])){return$this->response('blocked',array(),$context,array('token_not_allowlisted'));}
@@ -92,8 +92,74 @@ final class AjaxPresentationEndpoint {
         if(function_exists('rest_ensure_response')){$response=rest_ensure_response($body);if(is_object($response)&&method_exists($response,'set_status')&&200!==$httpStatus){$response->set_status($httpStatus);}if(is_object($response)&&method_exists($response,'header')){$response->header('Cache-Control','no-store, no-cache, must-revalidate, max-age=0');$response->header('X-Robots-Tag','noindex, nofollow, noarchive');if($retryAfter>0){$response->header('Retry-After',(string)$retryAfter);}}return$response;}return$body;
     }
 
-    private function rateLimitMode():string{if(function_exists('wp_using_ext_object_cache')&&wp_using_ext_object_cache()&&function_exists('wp_cache_add')&&function_exists('wp_cache_incr')){return'persistent_object_cache';}return'external_waf_required';}
-    private function consumeRateLimit():array{if('persistent_object_cache'!==$this->rateLimitMode()){return array('allowed'=>true,'count'=>0,'retry_after'=>0,'source'=>'external_waf_required');}$remote=isset($_SERVER['REMOTE_ADDR'])&&is_scalar($_SERVER['REMOTE_ADDR'])?trim((string)$_SERVER['REMOTE_ADDR']):'';if(''===$remote||false===filter_var($remote,FILTER_VALIDATE_IP)){return array('allowed'=>true,'count'=>0,'retry_after'=>0,'source'=>'remote_addr_unavailable');}$limit=self::RATE_LIMIT_REQUESTS;if(function_exists('apply_filters')){$limit=(int)apply_filters('etg_dfsb_ajax_rate_limit',$limit,self::RATE_LIMIT_WINDOW_SECONDS);}$limit=max(10,min(300,$limit));$window=self::RATE_LIMIT_WINDOW_SECONDS;$now=time();$bucket=(int)floor($now/$window);$salt=function_exists('wp_salt')?wp_salt('nonce'):'etg-dfsb-rate-limit';$key='etg_dfsb_rl_'.substr(hash_hmac('sha256',$remote.'|'.$bucket,$salt),0,32);$retry=max(1,$window-($now%$window));if(wp_cache_add($key,1,'etg-dfsb',$window)){return array('allowed'=>true,'count'=>1,'retry_after'=>$retry,'source'=>'object_cache');}$count=wp_cache_incr($key,1,'etg-dfsb');$count=false===$count?$limit+1:(int)$count;return array('allowed'=>$count<=$limit,'count'=>$count,'retry_after'=>$retry,'source'=>'object_cache');}
+    /**
+     * Public AJAX must not silently trust an unverified edge.
+     * Operators can attest an independently enforced WAF limit in wp-config.php.
+     */
+    private function rateLimitMode():string{
+        // A working drop-in is NOT proof of atomic increments or cross-worker coordination.
+        // An independently enforced edge policy takes precedence over all cache hints.
+        if(defined('ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED')
+            &&true===ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED){return 'external_waf_attested';}
+        if(!function_exists('wp_using_ext_object_cache')||!wp_using_ext_object_cache()
+            ||!function_exists('wp_cache_add')||!function_exists('wp_cache_incr')){
+            return 'rate_limit_backend_unavailable';
+        }
+        // A site operator must provide recent, externally obtained concurrency and
+        // backend-failure evidence through a trusted local callback. Merely detecting
+        // Memcached, Redis or a LiteSpeed drop-in never establishes certification.
+        $proof=function_exists('apply_filters')
+            ?apply_filters('etg_dfsb_atomic_rate_limit_backend_proof',array()):array();
+        if(!is_array($proof)
+            ||($proof['contract']??'')!=='etg.dfsb.rate-limit-backend-proof.v1'
+            ||($proof['source']??'')!=='wp_cache_api'
+            ||!isset($proof['tested_at'])||!is_numeric($proof['tested_at'])
+            ||(int)$proof['tested_at']>time()||(int)$proof['tested_at']<time()-86400){
+            return 'rate_limit_backend_unavailable';
+        }
+        foreach(array('atomic_add','atomic_increment','shared_across_workers',
+            'ttl_verified','backend_write_failures_detected')as$claim){
+            if(true!==($proof[$claim]??null))return 'rate_limit_backend_unavailable';
+        }
+        foreach(array('backend_identity_sha256','concurrency_test_sha256')as$fingerprint){
+            if(!isset($proof[$fingerprint])||!is_string($proof[$fingerprint])
+                ||1!==preg_match('/^[a-f0-9]{64}$/D',$proof[$fingerprint])){
+                return 'rate_limit_backend_unavailable';
+            }
+        }
+        return 'certified_atomic_cache';
+    }
+
+    private function consumeRateLimit():array{
+        $mode=$this->rateLimitMode();
+        $window=self::RATE_LIMIT_WINDOW_SECONDS;
+        if('external_waf_attested'===$mode){
+            return array('allowed'=>true,'count'=>0,'retry_after'=>0,'source'=>'external_waf_attested');
+        }
+        if('certified_atomic_cache'!==$mode){
+            return array('allowed'=>false,'count'=>0,'retry_after'=>$window,'source'=>'rate_limit_backend_unavailable');
+        }
+        $remote=isset($_SERVER['REMOTE_ADDR'])&&is_scalar($_SERVER['REMOTE_ADDR'])?trim((string)$_SERVER['REMOTE_ADDR']):'';
+        if(''===$remote||false===filter_var($remote,FILTER_VALIDATE_IP)){
+            return array('allowed'=>false,'count'=>0,'retry_after'=>$window,'source'=>'invalid_client_ip');
+        }
+        $limit=self::RATE_LIMIT_REQUESTS;
+        if(function_exists('apply_filters')){$limit=(int)apply_filters('etg_dfsb_ajax_rate_limit',$limit,$window);}
+        $limit=max(10,min(300,$limit));
+        $now=time();$bucket=(int)floor($now/$window);
+        $salt=function_exists('wp_salt')?wp_salt('nonce'):'etg-dfsb-rate-limit';
+        $key='etg_dfsb_rl_'.substr(hash_hmac('sha256',$remote.'|'.$bucket,$salt),0,32);
+        $retry=max(1,$window-($now%$window));
+        if(wp_cache_add($key,1,'etg-dfsb',$window)){
+            return array('allowed'=>true,'count'=>1,'retry_after'=>$retry,'source'=>'object_cache');
+        }
+        $count=wp_cache_incr($key,1,'etg-dfsb');
+        if(false===$count){
+            return array('allowed'=>false,'count'=>0,'retry_after'=>$retry,'source'=>'cache_counter_failed');
+        }
+        $count=(int)$count;
+        return array('allowed'=>$count<=$limit,'count'=>$count,'retry_after'=>$retry,'source'=>'object_cache');
+    }
     private function jetSmartFiltersVersion():string{foreach(array('JET_SMART_FILTERS_VERSION','JET_SMART_FILTERS_VER')as$constant){if(defined($constant)){$value=trim((string)constant($constant));if(''!==$value){return$value;}}}if(defined('WP_PLUGIN_DIR')&&function_exists('get_file_data')){$file=rtrim((string)WP_PLUGIN_DIR,'/\\').'/jet-smart-filters/jet-smart-filters.php';if(is_file($file)){$data=get_file_data($file,array('Version'=>'Version'),'plugin');$version=is_array($data)?trim((string)($data['Version']??'')):'';if(''!==$version){return$version;}}}return'unknown';}
     private function tokenList($value,array$context):array{$allowed=array();$rejected=array();foreach(array_slice(is_array($value)?$value:array(),0,self::MAX_TOKENS)as$raw){$token=PresentationToken::normalize($raw);if(''===$token||!$this->tokenAllowed($token,$context)){if(''!==trim((string)$raw)){$rejected[]=trim((string)$raw);}continue;}$allowed[]=$token;}return array('allowed'=>array_values(array_unique($allowed)),'rejected'=>array_values(array_unique($rejected)));}
     private function tokenAllowed(string$token,array$context):bool{if(in_array($token,array('title','intro','keyword','result_count','result_summary','breadcrumb','gallery_ids','image_id','image_url'),true)){return true;}if(0===strpos($token,'context:')){return in_array(substr($token,8),array('language','profile_id','provider','query_id','query_builder_query_id','state_transport','ajax_only'),true);}if(0===strpos($token,'url:')){return in_array(substr($token,4),array('current','archive'),true);}$profile=(array)($context['profile']??array());$roles=array();foreach((array)($profile['taxonomy_rules']??array())as$taxonomy=>$rule){$role=sanitize_key((string)(is_array($rule)?($rule['role']??$taxonomy):$taxonomy));if(''!==$role){$roles[$role]=true;}}if(0===strpos($token,'term:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&in_array(sanitize_key($parts[2]),array('name','slug','description','short_description','seo_title','meta_description','focus_keyword','image_id','image_url','count','location_level'),true);}if(0===strpos($token,'terms:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&in_array(sanitize_key($parts[2]),array('ids','names','slugs','count','descriptions','short_descriptions','seo_titles','meta_descriptions','focus_keywords'),true);}if(0===strpos($token,'termmeta:')){$parts=explode(':',$token,3);return 3===count($parts)&&isset($roles[sanitize_key($parts[1])])&&$this->catalogContains($token);}if(0===strpos($token,'topology:')){$parts=explode(':',$token,3);$queryKey=QueryId::tokenKey($context['query_id']??'');return 3===count($parts)&&''!==$queryKey&&$parts[1]===$queryKey&&'query_builder_query_id'===sanitize_key($parts[2])&&$this->catalogContains($token);}return false;}

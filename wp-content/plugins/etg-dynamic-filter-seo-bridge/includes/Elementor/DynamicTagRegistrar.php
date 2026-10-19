@@ -26,7 +26,7 @@ use ETG\DynamicFilterSEOBridge\Presentation\PresentationResolver;
 
 final class DynamicTagRegistrar {
     private $resolver;private $slots;private $catalogProvider;private $previewContextProvider;
-    public function __construct(PresentationResolver$resolver,ContentSlotRegistry$slots,callable$catalogProvider,callable$previewContextProvider=null){$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;$this->previewContextProvider=$previewContextProvider;}
+    public function __construct(PresentationResolver$resolver,ContentSlotRegistry$slots,callable$catalogProvider,?callable$previewContextProvider=null){$this->resolver=$resolver;$this->slots=$slots;$this->catalogProvider=$catalogProvider;$this->previewContextProvider=$previewContextProvider;}
     public function registerHooks():void{
         add_action('elementor/dynamic_tags/register',array($this,'register'));
         add_action('elementor/dynamic_tags/before_render',array(DynamicTagRuntime::class,'beginEditorRenderPass'));
