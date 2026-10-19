@@ -13,7 +13,7 @@ final class LiveAcceptanceProvider {
     private $caseRunner;
     private $reducer;
 
-    public function __construct(callable $profilesProvider,callable $directEvaluator,callable $ajaxEvaluator,SemanticQueryEvaluator $queryEvaluator,CaseSelector $caseSelector=null,CanonicalStateNormalizer $normalizer=null,VerdictReducer $reducer=null){
+    public function __construct(callable $profilesProvider,callable $directEvaluator,callable $ajaxEvaluator,SemanticQueryEvaluator $queryEvaluator,?CaseSelector $caseSelector=null,?CanonicalStateNormalizer $normalizer=null,?VerdictReducer $reducer=null){
         $this->profilesProvider=$profilesProvider;
         $this->caseSelector=$caseSelector?:new CaseSelector();
         $this->normalizer=$normalizer?:new CanonicalStateNormalizer();

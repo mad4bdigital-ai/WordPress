@@ -22,7 +22,7 @@ final class RuntimeTopologyDiscoverer {
     private $templateReferenceProvider;
     private static $memoryCache = null;
 
-    public function __construct( callable $templateProvider = null, callable $queryProvider = null, callable $templateReferenceProvider = null ) {
+    public function __construct( ?callable $templateProvider = null, ?callable $queryProvider = null, ?callable $templateReferenceProvider = null ) {
         $this->templateProvider = $templateProvider;
         $this->queryProvider = $queryProvider;
         $this->templateReferenceProvider = $templateReferenceProvider;

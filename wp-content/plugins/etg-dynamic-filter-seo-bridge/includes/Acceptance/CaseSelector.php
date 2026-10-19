@@ -8,7 +8,7 @@ final class CaseSelector {
 
     private $termsProvider;
 
-    public function __construct( callable $termsProvider = null ) {
+    public function __construct( ?callable $termsProvider = null ) {
         $this->termsProvider = $termsProvider;
     }
 

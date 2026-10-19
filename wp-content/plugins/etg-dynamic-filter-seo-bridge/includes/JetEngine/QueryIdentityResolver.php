@@ -8,7 +8,7 @@ use ETG\DynamicFilterSEOBridge\Identifiers\QueryId;
 final class QueryIdentityResolver {
 	private $queryProvider;
 
-	public function __construct( callable $queryProvider = null ) {
+	public function __construct( ?callable $queryProvider = null ) {
 		$this->queryProvider = $queryProvider;
 	}
 

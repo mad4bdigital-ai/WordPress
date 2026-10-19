@@ -191,8 +191,8 @@ final class Bootstrap {
     public function context():array{if(null!==$this->context){return$this->context;}if(!$this->builder){return array();}$context=$this->builder->build();$stable=empty($context['active'])||empty($context['in_scope'])||!empty($context['result_count_authoritative'])||!$this->config||!$this->config->get('require_result_count_for_index',true);if($stable){$this->context=$context;}return$context;}
     public function readiness():array{$report=$this->readiness?$this->readiness->report():array();$report['safe_boot']=BootGuard::status();return$report;}
     public function indexingDecision():array{return$this->policy?$this->policy->decide($this->context()):array();}
-    public function presentationValue(string$token,array$context=null){return$this->presentation?$this->presentation->value($token,$context):'';}
-    public function presentationSlot(string$slotId,array$context=null):string{return$this->presentation?$this->presentation->slot($slotId,$context):'';}
+    public function presentationValue(string$token,?array$context=null){return$this->presentation?$this->presentation->value($token,$context):'';}
+    public function presentationSlot(string$slotId,?array$context=null):string{return$this->presentation?$this->presentation->slot($slotId,$context):'';}
     public function presentationResolver(){return$this->presentation;}
 
     private function previewEvidenceContext(string$previewUrl):array{

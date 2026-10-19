@@ -12,7 +12,7 @@ final class RuntimeQueryBindingResolver {
     private $topology;
     private $identity;
 
-    public function __construct( RuntimeTopologyDiscoverer $topology = null, QueryIdentityResolver $identity = null ) {
+    public function __construct( ?RuntimeTopologyDiscoverer $topology = null, ?QueryIdentityResolver $identity = null ) {
         $this->topology = $topology ?: new RuntimeTopologyDiscoverer();
         $this->identity = $identity ?: new QueryIdentityResolver();
     }

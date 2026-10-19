@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['7.4', '8.3']
+        php: ['7.4', '8.3', '8.5']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,6 +64,19 @@ jobs:
           set -euo pipefail
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           find "$PLUGIN" -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+          php "$PLUGIN/tests/php85-explicit-nullable-smoke.php"
+          # PHP lint may exit zero even when PHP 8.5 emits a deprecation.
+          # Fail only on the explicit-nullable class of notice seen on ETG.
+          if [[ "${{ matrix.php }}" == '8.5' ]]; then
+            while IFS= read -r -d '' file; do
+              output=$(php -d error_reporting=-1 -d display_errors=stderr -l "$file" 2>&1)
+              if grep -Fq 'Implicitly marking parameter' <<< "$output"; then
+                echo "::error file=$file::Implicit nullable parameter detected on PHP 8.5"
+                printf '%s\n' "$output" >&2
+                exit 1
+              fi
+            done < <(find "$PLUGIN/includes" -type f -name '*.php' -print0)
+          fi
           for test_file in \
             parser-smoke.php \
             operational-smoke.php \

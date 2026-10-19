@@ -18,7 +18,7 @@ final class DynamicContentPage {
     private $profiles;
     private $sources;
 
-    public function __construct(RuntimeInventory $inventory, InventoryContentCatalog $catalog, ContentSlotRegistry $slots, ProfileRegistry $profiles, ContentSourceResolver $sources = null) {
+    public function __construct(RuntimeInventory $inventory, InventoryContentCatalog $catalog, ContentSlotRegistry $slots, ProfileRegistry $profiles, ?ContentSourceResolver $sources = null) {
         $this->inventory = $inventory;
         $this->catalog = $catalog;
         $this->slots = $slots;

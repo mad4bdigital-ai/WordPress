@@ -16,7 +16,7 @@ final class ContentSourceResolver {
     const MAX_ITEMS=100;
 
     private $listing;private $queries;private $relations;private $normalizer;private $fields;
-    public function __construct(ListingContextResolver$listing,QueryRunner$queries,RelationResolver$relations,ValueNormalizer$normalizer,FieldDiscovery$fields=null){$this->listing=$listing;$this->queries=$queries;$this->relations=$relations;$this->normalizer=$normalizer;$this->fields=$fields;}
+    public function __construct(ListingContextResolver$listing,QueryRunner$queries,RelationResolver$relations,ValueNormalizer$normalizer,?FieldDiscovery$fields=null){$this->listing=$listing;$this->queries=$queries;$this->relations=$relations;$this->normalizer=$normalizer;$this->fields=$fields;}
 
     public function normalizeSource(array$source):array{
         $type=sanitize_key((string)($source['type']??'listing_field'));$allowed=array('term_field','term_meta','context','listing_field','listing_meta','repeater','query','relation','relation_meta');if(!in_array($type,$allowed,true)){$type='listing_field';}

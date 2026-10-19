@@ -16,7 +16,7 @@ final class PublicationResultCountProbe {
     private $bindingResolver;
     private $languages;
 
-    public function __construct( $resolver = null, LanguageResolverInterface $languages = null ) {
+    public function __construct( $resolver = null, ?LanguageResolverInterface $languages = null ) {
         if ( $resolver instanceof RuntimeQueryBindingResolver ) { $this->bindingResolver = $resolver; }
         elseif ( $resolver instanceof QueryIdentityResolver ) { $this->bindingResolver = new RuntimeQueryBindingResolver( null, $resolver ); }
         else { $this->bindingResolver = new RuntimeQueryBindingResolver(); }
