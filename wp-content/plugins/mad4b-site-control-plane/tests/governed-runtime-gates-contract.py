@@ -156,3 +156,17 @@ for marker in [
         raise SystemExit("runtime gate boot wiring missing: " + marker)
 
 print("mad4b.governed-runtime-gates.v1: PASS")
+
+# This existing CI entry point also exercises the actual policy transactions,
+# native queue and RSA verifier. Each fixture runs in its own PHP process.
+import os
+import shutil
+import subprocess
+php = os.environ.get("MAD4B_TEST_PHP_BIN") or shutil.which("php")
+if not php:
+    raise SystemExit("PHP is required for Production automation runtime verification")
+for fixture in ("production-runtime-admin-runtime.php", "production-automation-runtime.php", "signed-test-attestation-runtime.php", "reconciliation-batch-policy-runtime.php"):
+    result = subprocess.run([php, str(ROOT / "tests" / fixture)], capture_output=True, text=True)
+    if result.returncode or "Warning:" in result.stdout or result.stderr:
+        raise SystemExit(f"{fixture} failed:\n{result.stdout}\n{result.stderr}")
+    print(f"{fixture}: PASS")

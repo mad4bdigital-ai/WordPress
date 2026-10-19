@@ -187,7 +187,7 @@
   "implementation_closure_ledger": "implementation-closure.json",
   "implementation_closure_contract": "mad4b.feature007-implementation-closure.v2",
   "baseline_model": "mad4b.feature007-reviewed-parent-and-runtime-release.v1",
-  "last_reviewed_master_parent_sha": "ac8a20fb0551bf1eab94b1facd498edbadacbbee",
+  "last_reviewed_master_parent_sha": "1fed486708a475edc72aea67482d4ec970dcf41f",
   "repository_baseline_semantics": "committed metadata records the exact master parent reviewed by the PR; current master HEAD is external evidence and is intentionally not self-referential",
   "runtime_release_identity": {
     "contract": "mad4b.runtime-release-identity.v1",
@@ -201,7 +201,7 @@
     "general_distribution_artifact_id": 10838403565,
     "runtime_affecting_changes_since_release": true,
     "repository_changes_since_release_are_non_runtime": false,
-    "recapture_reason": "rc.95 repairs parent/submenu registration, typed Context save readback, active Google connection UX and scoped rejection diagnostics, core/add-on identity, bounded provider status and periodic zero-delta authority observation; recapture the exact post-merge package before deployment. The rc.96 admin workspace UI and Arabic catalog require exact post-merge package recapture; no live deployment is claimed."
+    "recapture_reason": "rc.95 repairs parent/submenu registration, typed Context save readback, active Google connection UX and scoped rejection diagnostics, core/add-on identity, bounded provider status and periodic zero-delta authority observation; recapture the exact post-merge package before deployment. The rc.96 admin workspace UI and Arabic catalog require exact post-merge package recapture; no live deployment is claimed. PR443 adds bounded Production runtime/batch automation and exact artifact test-certificate verification; recapture the reviewed post-merge package before any deployment. No live activation or Production certification is claimed."
   },
   "runtime_identity_paths": [
     "wp-content/plugins/mad4b-site-control-plane/",

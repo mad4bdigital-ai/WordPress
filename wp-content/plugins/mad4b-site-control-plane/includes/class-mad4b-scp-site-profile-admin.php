@@ -419,6 +419,9 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
 			<?php MAD4B_SCP_WordPress_Native_Opt_In::render_admin( $status ); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) MAD4B_SCP_Governed_Runtime_Gates::render_admin_policy(); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Production_Automation' ) ) MAD4B_SCP_Production_Automation::render_admin(); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Test_Attestation' ) ) MAD4B_SCP_Test_Attestation::render_admin(); ?>
 			<?php if ( class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' ) && class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) && MAD4B_SCP_Staging_Write_Owner_Intent::owner() ) :
 				$reconciliation = MAD4B_SCP_Auto_Reconcile_Scenarios::batch_policy(); ?>
 			<div class="card" style="max-width:950px">

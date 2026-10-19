@@ -5,10 +5,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 /**
  * Bounded AI approval for exact governed mutation tickets.
  *
- * This is not a generic auto-approve switch. It is a Staging-only standing
- * delegation for one configured AI Agent. Every decision is bound to the exact
+ * This is not a generic auto-approve switch. It supports a Staging standing
+ * delegation and separately owner-preapproved exact Production content batches. Every decision is bound to the exact
  * pending ticket, payload, operation input, deterministic classification and
- * current Site Profile/build candidate. Production and Breakglass remain human-only.
+ * current Site Profile/build candidate. Production supports separately owner-preapproved exact content batches; Breakglass remains human-only.
  */
 final class MAD4B_SCP_AI_Approval {
 	const CONTRACT = 'mad4b.ai-approval.v1';
@@ -60,7 +60,7 @@ final class MAD4B_SCP_AI_Approval {
 			self::ABILITY,
 			array(
 				'label' => 'AI Agent Approval Decision',
-				'description' => 'Approve or reject one exact pending governed mutation ticket under the Staging-only AI approval policy. Production and Breakglass are never auto-approved.',
+				'description' => 'Approve or reject one exact pending governed mutation ticket under the bounded AI approval policy. Production requires a separate exact owner batch; Breakglass is never auto-approved.',
 				'category' => 'mad4b-admin',
 				'execute_callback' => array( __CLASS__, 'decide' ),
 				'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_admin' ) : '__return_false',
@@ -111,6 +111,7 @@ final class MAD4B_SCP_AI_Approval {
 	}
 
 	public static function configured_agent_public_id() {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment() ) return class_exists( 'MAD4B_SCP_Production_Automation' ) ? MAD4B_SCP_Production_Automation::agent_id() : '';
 		$policy = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::review_policy() : array();
 		if ( 'human_and_ai' !== ( isset( $policy['mode'] ) ? (string) $policy['mode'] : 'human_only' ) ) return '';
 		$id = isset( $policy['ai_agent_public_id'] ) ? strtolower( trim( (string) $policy['ai_agent_public_id'] ) ) : '';
@@ -119,7 +120,7 @@ final class MAD4B_SCP_AI_Approval {
 
 	public static function catalog_eligible() {
 		if ( '' === self::configured_agent_public_id() ) return false;
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || 'staging' !== MAD4B_SCP_Site_Profile::current_environment() ) return false;
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! in_array( MAD4B_SCP_Site_Profile::current_environment(), array( 'staging', 'production' ), true ) ) return false;
 		return true;
 	}
 
@@ -188,11 +189,11 @@ final class MAD4B_SCP_AI_Approval {
 			'oauth_current_request_verified' => $current,
 			'remote_chatgpt_token_grant_status' => $current ? 'verified_this_request' : 'not_observed_in_admin_request',
 			'reconsent_required_for_new_scope' => $oauth_supported,
-			'delegation_applies_to' => 'governed_exact_staging_approval_tickets',
+			'delegation_applies_to' => 'production' === $environment ? 'owner_preapproved_exact_production_content_batch' : 'governed_exact_staging_approval_tickets',
 			'brand_asset_ai_review_separately_configured' => true,
 			'original_owner_human_attestation_separate' => true,
 			'raw_sql_breakglass_included' => false,
-			'production_ai_auto_approval_included' => false,
+			'production_ai_auto_approval_included' => 'production' === $environment && $standing_configured,
 			'mutation_performed' => false,
 			'read_only' => true,
 		);
@@ -246,6 +247,9 @@ final class MAD4B_SCP_AI_Approval {
 		$ticket = array();
 		$executor_agent = array();
 		$bounded_developer_ticket = false;
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' ) ? MAD4B_SCP_Site_Profile::current_environment() : 'unknown';
+		$production = 'production' === $environment;
+		$production_batch = false;
 		if ( null === $identity ) $identity = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
 		if ( is_wp_error( $identity ) ) $identity = array();
 		$oauth_auto_all = self::oauth_auto_all_delegation_active( $identity );
@@ -291,7 +295,9 @@ final class MAD4B_SCP_AI_Approval {
 				// the governed Staging catalog, including high-risk/human lanes.
 				// Execution remains under the same exact grant, candidate and
 				// provider/runtime gates; Production/Breakglass stay separate.
-				if ( ! $oauth_auto_all && ( empty( $classification['ai_approval_eligible'] ) || 'ai_autonomous' !== ( isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : '' ) ) ) $blockers[] = 'ai_approval_operation_human_only';
+				$production_batch = $production && class_exists( 'MAD4B_SCP_Production_Automation' ) && MAD4B_SCP_Production_Automation::approval_allowed( $ability, $provider, $exact['operation_input'] );
+				if ( $production && ! $production_batch ) $blockers[] = 'ai_approval_exact_production_batch_required';
+				if ( ! $production_batch && ! $oauth_auto_all && ( empty( $classification['ai_approval_eligible'] ) || 'ai_autonomous' !== ( isset( $classification['approval_lane'] ) ? (string) $classification['approval_lane'] : '' ) ) ) $blockers[] = 'ai_approval_operation_human_only';
 				if ( $oauth_auto_all && 'mad4b-write' !== $ticket_server && ! $bounded_developer_ticket ) $blockers[] = 'ai_approval_oauth_auto_all_server_denied';
 				if ( $oauth_auto_all && in_array( $ability, array( 'context/remote-owner-review-apply', 'mad4b/approval-plan', 'mad4b/approval-ai-decide', 'mad4b/database-raw-query' ), true ) ) $blockers[] = 'ai_approval_reserved_human_or_governance_operation';
 				if ( $oauth_auto_all && ( 'breakglass' === ( $classification['ticket_class'] ?? '' ) || 'exceptional' === ( $classification['operation_type'] ?? '' ) ) ) $blockers[] = 'ai_approval_breakglass_scope_is_separate';
@@ -331,9 +337,9 @@ final class MAD4B_SCP_AI_Approval {
 					$site_agent_slug = method_exists( 'MAD4B_SCP_Site_Profile', 'agent_slug' ) ? sanitize_key( (string) MAD4B_SCP_Site_Profile::agent_slug() ) : '';
 					if ( '' === $site_agent_slug || $site_agent_slug !== sanitize_key( (string) ( $agent['slug'] ?? '' ) ) ) $blockers[] = 'ai_approval_oauth_agent_not_site_owned';
 				}
-				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || 'staging' !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_approval_agent_ineligible';
+				if ( 'enabled' !== ( isset( $agent['status'] ) ? (string) $agent['status'] : '' ) || $environment !== ( isset( $agent['environment'] ) ? (string) $agent['environment'] : '' ) ) $blockers[] = 'ai_approval_agent_ineligible';
 				$grant = MAD4B_SCP_Agent_Registry::exact_grant( (int) $agent['id'], 'mad4b-write', self::ABILITY, 'core' );
-				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || 'staging' !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_approval_exact_nhi_grant_missing';
+				if ( ! is_array( $grant ) || 'allow' !== ( isset( $grant['effect'] ) ? (string) $grant['effect'] : '' ) || $environment !== ( isset( $grant['environment'] ) ? (string) $grant['environment'] : '' ) ) $blockers[] = 'ai_approval_exact_nhi_grant_missing';
 				if ( $bounded_developer_ticket && is_array( $executor_agent ) && ! empty( $executor_agent['public_id'] ) && hash_equals( strtolower( (string) $executor_agent['public_id'] ), strtolower( (string) $agent['public_id'] ) ) ) {
 					$blockers[] = 'ai_approval_developer_executor_separation_required';
 				}
@@ -348,7 +354,7 @@ final class MAD4B_SCP_AI_Approval {
 			'allowed' => empty( $blockers ),
 			'blockers' => $blockers,
 			'configured_agent_public_id' => self::configured_agent_public_id(),
-			'authorization_mode' => $oauth_auto_all ? 'owner_oauth_scope_auto_all' : 'standing_agent_policy',
+			'authorization_mode' => $production_batch ? 'owner_preapproved_exact_production_batch' : ( $oauth_auto_all ? 'owner_oauth_scope_auto_all' : 'standing_agent_policy' ),
 			'owner_oauth_delegation_verified' => $oauth_auto_all,
 			'resolved_agent_public_id' => isset( $agent['public_id'] ) ? strtolower( (string) $agent['public_id'] ) : '',
 			'ticket_id' => isset( $exact['ticket_id'] ) ? $exact['ticket_id'] : '',
@@ -359,7 +365,7 @@ final class MAD4B_SCP_AI_Approval {
 			'candidate_binding_required' => true,
 			'budget_required' => true,
 			'audit_required' => true,
-			'production_authorized' => false,
+			'production_authorized' => $production_batch && empty( $blockers ),
 			'breakglass_authorized' => false,
 		);
 	}

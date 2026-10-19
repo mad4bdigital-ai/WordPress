@@ -307,15 +307,15 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$policy['remote_write_prior_approval_exceptions'][] = $ai_approval_ability;
 		$policy['environment'] = $environment;
 		// Reassert the environment-bound Production policy after baseline defaults.
-		$policy['production_exact_approval_only'] = $production;
+		$policy['production_exact_approval_only'] = $production && ! $ai_approval_configured;
 		if ( $production ) {
-			$policy['remote_write_prior_approval_exceptions'] = array();
+			$policy['remote_write_prior_approval_exceptions'] = $ai_approval_configured ? array( $ai_approval_ability ) : array();
 		}
 		if ( $resolved ) {
 			$exceptions = array();
 			if ( ! $production && $active ) $exceptions[] = self::CANDIDATE_BOOTSTRAP_ABILITY;
 			if ( ! $production && $ai_configured ) $exceptions[] = $ai_ability;
-			if ( ! $production && ( $ai_approval_configured || $ai_approval_scoped_request ) ) $exceptions[] = $ai_approval_ability;
+			if ( $ai_approval_configured || $ai_approval_scoped_request ) $exceptions[] = $ai_approval_ability;
 			$policy['candidate_bootstrap_exception_active'] = ! $production && $active;
 			$policy['all_remote_writes_require_exact_approval'] = empty( $exceptions );
 			$policy['remote_write_approval_policy'] = empty( $exceptions ) ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
@@ -323,8 +323,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		} else {
 			// Definition scope declares the bounded possible exceptions without
 			// claiming that request-time identity/grant/candidate checks are satisfied.
-			$policy['all_remote_writes_require_exact_approval'] = $production;
-			$policy['remote_write_approval_policy'] = $production ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
+			$policy['all_remote_writes_require_exact_approval'] = $production && ! $ai_approval_configured;
+			$policy['remote_write_approval_policy'] = $production && ! $ai_approval_configured ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
 		}
 		return $policy;
 	}
@@ -1340,7 +1340,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$production = 'production' === self::current_environment();
 		if ( ! $production && $bootstrap ) return true;
 		if ( ! $production && self::ai_review_delegation_allowed( $ability_name, $input, $identity ) ) return true;
-		if ( ! $production && class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input, $identity ) ) return true;
+		if ( class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input, $identity ) ) return true;
 		if ( ! self::effective() || ! self::is_write_ability( $ability_name ) ) return false;
 		return '' !== self::approval_ticket_from_input( $input );
 	}
@@ -1351,7 +1351,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) || ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ) return $required;
 		$current = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $current, array( 'mad4b-chatgpt', 'mad4b-write' ), true ) ) return $required;
-		if ( 'production' === self::current_environment() ) return self::effective() ? true : $required;
+		if ( 'production' === self::current_environment() ) {
+			if ( class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input ) ) return false;
+			return self::effective() ? true : $required;
+		}
 		if ( self::candidate_bootstrap_allowed( $ability_name, $input ) ) return false;
 		if ( self::ai_review_delegation_allowed( $ability_name, $input ) ) return false;
 		if ( class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::delegation_allowed( $ability_name, $input ) ) return false;
@@ -1376,7 +1379,8 @@ final class MAD4B_SCP_Staging_Write_Authority {
 
 		$ai_review = class_exists( 'MAD4B_SCP_Context_Authority' ) && MAD4B_SCP_Context_Authority::AI_REVIEW_ABILITY === (string) $name;
 		$ai_approval = class_exists( 'MAD4B_SCP_AI_Approval' ) && MAD4B_SCP_AI_Approval::ABILITY === (string) $name;
-		$standing_ai_delegation = 'production' !== self::current_environment() && ( $ai_review || $ai_approval );
+		$production_batch_configured = class_exists( 'MAD4B_SCP_Production_Automation' ) && '' !== MAD4B_SCP_Production_Automation::agent_id();
+		$standing_ai_delegation = ( 'production' !== self::current_environment() && ( $ai_review || $ai_approval ) ) || ( $ai_approval && $production_batch_configured );
 		if ( ! $standing_ai_delegation && isset( $args['input_schema'] ) && is_array( $args['input_schema'] ) ) {
 			if ( ! isset( $args['input_schema']['properties'] ) || ! is_array( $args['input_schema']['properties'] ) ) $args['input_schema']['properties'] = array();
 			$args['input_schema']['properties'][ self::APPROVAL_INPUT_KEY ] = array(
@@ -1413,7 +1417,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			$args['meta']['mcp']['mad4b_ai_approval_standing_delegation'] = MAD4B_SCP_AI_Approval::DELEGATION_CONTRACT;
 			$args['meta']['mcp']['mad4b_ai_approval_exact_agent_required'] = true;
 			$args['meta']['mcp']['mad4b_ai_approval_operation_classification_required'] = true;
-			$args['meta']['mcp']['mad4b_ai_approval_production_authorized'] = false;
+			$args['meta']['mcp']['mad4b_ai_approval_production_authorized'] = $production_batch_configured;
 			$args['meta']['mcp']['mad4b_ai_approval_breakglass_authorized'] = false;
 		}
 		if ( self::CANDIDATE_BOOTSTRAP_ABILITY === (string) $name ) {
@@ -1992,10 +1996,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['duplicate_exact_allow_grants_revoked'] = $duplicate_grants_revoked;
 		$status['unknown_stale_authority_fail_closed'] = true;
 		$status['grant_blockers'] = $all_blockers;
-		$status['all_remote_writes_require_exact_approval'] = 'production' === $environment;
-		$status['normal_remote_writes_require_exact_approval'] = true;
-		$status['remote_write_approval_policy'] = 'production' === $environment ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
-		$status['remote_write_prior_approval_exceptions'] = 'production' === $environment ? array() : array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review', 'mad4b/approval-ai-decide' );
+		$status = array_merge( $status, self::approval_policy_projection( false ) );
 		$status['production_write_confirmed'] = 'production' === $environment && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
 		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
 		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
@@ -2098,10 +2099,7 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$status['exact_grants_created'] = 0;
 		$status['stale_allow_grants_revoked'] = 0;
 		$status['grant_blockers'] = $all_blockers;
-		$status['all_remote_writes_require_exact_approval'] = 'production' === $environment;
-		$status['normal_remote_writes_require_exact_approval'] = true;
-		$status['remote_write_approval_policy'] = 'production' === $environment ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions';
-		$status['remote_write_prior_approval_exceptions'] = 'production' === $environment ? array() : array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review', 'mad4b/approval-ai-decide' );
+		$status = array_merge( $status, self::approval_policy_projection( false ) );
 		$status['production_write_confirmed'] = 'production' === $environment && class_exists( 'MAD4B_SCP_Site_Profile' ) && MAD4B_SCP_Site_Profile::write_enabled();
 		$status['breakglass_included'] = in_array( 'mad4b/database-raw-query', $tools, true );
 		$status['ready'] = empty( $all_blockers ) && ! $status['breakglass_included'];
@@ -2308,10 +2306,10 @@ final class MAD4B_SCP_Staging_Write_Authority {
 			'production_write_confirmed' => 'production' === $environment && $write_enabled,
 			'breakglass_auto_enable' => false,
 			'breakglass_included' => false,
-			'all_remote_writes_require_exact_approval' => 'production' === $environment,
+			'all_remote_writes_require_exact_approval' => self::approval_policy_projection()['all_remote_writes_require_exact_approval'],
 			'normal_remote_writes_require_exact_approval' => true,
-			'remote_write_approval_policy' => 'production' === $environment ? 'exact_approval_required' : 'exact_approval_with_bounded_standing_exceptions',
-			'remote_write_prior_approval_exceptions' => 'production' === $environment ? array() : array( self::CANDIDATE_BOOTSTRAP_ABILITY, 'mad4b/context-ai-review', 'mad4b/approval-ai-decide' ),
+			'remote_write_approval_policy' => self::approval_policy_projection()['remote_write_approval_policy'],
+			'remote_write_prior_approval_exceptions' => self::approval_policy_projection()['remote_write_prior_approval_exceptions'],
 			'candidate_bootstrap_contract' => self::CANDIDATE_BOOTSTRAP_CONTRACT,
 			'remote_transport' => 'mad4b-chatgpt',
 			'authority_server' => 'mad4b-write',

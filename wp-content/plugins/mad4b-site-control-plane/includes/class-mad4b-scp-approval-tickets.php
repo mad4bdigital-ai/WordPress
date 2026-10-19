@@ -233,6 +233,11 @@ final class MAD4B_SCP_Approval_Tickets {
 			if ( is_wp_error( $fresh ) ) return $fresh;
 		}
 
+		if ( ! empty( $guard['production_authorized'] ) ) {
+			$intent = MAD4B_SCP_Audit::record( 'mad4b/production-batch-ai-decision-intent', array( 'ticket_id' => $ticket_id, 'payload_sha256' => $expected_payload_sha256, 'decision' => $decision ), 'intent' );
+			if ( is_wp_error( $intent ) || ! MAD4B_SCP_Production_Automation::claim_approval( (string) $ticket['ability_name'], (string) $ticket['provider'], $operation_input, $ticket_id ) ) return new WP_Error( 'mad4b_production_batch_claim_failed', 'Exact Production batch item was revoked, consumed or could not be audited.' );
+		}
+
 		$t = MAD4B_SCP_Schema::tables();
 		$now = gmdate( 'Y-m-d H:i:s', self::now_epoch() );
 		if ( 'approve' === $decision ) {
@@ -522,6 +527,7 @@ final class MAD4B_SCP_Approval_Tickets {
 	}
 
 	private static function validate_ticket_candidate_binding( array $ticket, $payload_hash ) {
+		if ( in_array( $ticket['status'] ?? '', array( 'approved', 'executing' ), true ) && class_exists( 'MAD4B_SCP_Production_Automation' ) && ! MAD4B_SCP_Production_Automation::ticket_delegation_valid( $ticket ) ) return new WP_Error( 'mad4b_production_ticket_delegation_revoked', 'Production batch consent expired or was revoked before execution.' );
 		$saved = self::candidate_binding_from_ticket( $ticket );
 		if ( empty( $saved ) ) return new WP_Error( 'mad4b_approval_candidate_binding_missing', 'Remote governed-write ticket is missing v2 Site Profile/build binding evidence.' );
 		$current = self::current_candidate_binding( $ticket['ticket_id'], $payload_hash );

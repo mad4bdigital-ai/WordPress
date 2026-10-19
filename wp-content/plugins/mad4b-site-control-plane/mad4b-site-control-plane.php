@@ -261,6 +261,8 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-release-acceptance-aud
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g7-workload-measurement.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-compatibility-certification.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-auto-reconcile-scenarios.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-production-automation.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-test-attestation.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-adaptive-runtime-convergence.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-circuit-breaker.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-provider-transport-eligibility.php';
@@ -620,6 +622,8 @@ unset( $mad4b_upgrade_continuity );
 MAD4B_SCP_MCP_Request_Scope::bootstrap();
 MAD4B_SCP_Site_Profile::boot();
 MAD4B_SCP_Staging_Autopilot::boot();
+MAD4B_SCP_Test_Attestation::boot();
+MAD4B_SCP_Production_Automation::boot();
 MAD4B_SCP_Governed_Runtime_Gates::boot();
 MAD4B_SCP_Governed_Runtime_Gates::bootstrap_runtime();
 MAD4B_SCP_Upgrade_Continuity::boot();

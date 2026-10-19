@@ -288,6 +288,88 @@
       ],
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-trust-owner-consent",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-verify",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
     }
   ],
   "lifecycle": [],
@@ -790,6 +872,226 @@
       ],
       "review_rationale": "CI-only source review of durable pre-restore parent CAS and child undo-intent journaling, exact before/after SHA evidence, SQL field-format regression, rejection of unsafe replay, and retention of provider option lock when post-side-effect journal status cannot be committed. Fault injection tests include claim, insert, provider, readback and journal-finalization failures; real live operator reconciliation remains an independent gate. The mapped Python wrapper executes the standalone PHP CLI regression fixtures including write, undo fault injection, and cache diagnostics; absence of PHP or failing fixtures fails this exact-head CI evaluation closed.",
       "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
+      "source_blob_sha": "123c763665eaa5f0ddb056e3c8acb6e0215d2eeb",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+      "source_blob_sha": "e76ebd812b121ccae94dd88063124a2aa57e07e9",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-auto-reconcile-scenarios.php",
+      "source_blob_sha": "626901f7797fc2793b1b44a7d5b3aa4256f59204",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-runtime-gates.php",
+      "source_blob_sha": "c401447819799b76c5f56dd4c10287faa38fbdd3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "source_blob_sha": "1e82353ed6ce5c8ae074288e2105cdd519a178c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-plugin-update.php",
+      "source_blob_sha": "20797949f5fcfe0409fb222799ddd4b7c55b74da",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "a14e609b91ff3782387b6c2d915a862cfb2dd66c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-admin.php",
+      "source_blob_sha": "fc1b6888529fd627a5b86d83a587a1d7b1739dc3",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "a4f9fdaaa18e60ee6314e86dfe0c78d45d9e13c3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
+      "source_blob_sha": "f6e6f4227bee23a8886a822a81f8fd12bb972f46",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "f1776a19ea2bf6dd259007d86d45b31b774044e5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

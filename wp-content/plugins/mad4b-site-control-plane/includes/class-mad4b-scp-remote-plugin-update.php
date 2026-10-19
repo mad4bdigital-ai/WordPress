@@ -72,6 +72,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 	}
 
 	public static function can_apply( $input = null ) {
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment() ) return new WP_Error( 'mad4b_production_native_batch_required', 'Use the exact native Production batch; direct remote update execution is unavailable.' );
 		$granted = MAD4B_SCP_Policy::can_admin();
 		if ( is_wp_error( $granted ) || ! $granted ) return $granted;
 		if ( ! MAD4B_SCP_Policy::can_mutate() ) return new WP_Error( 'mad4b_mutation_disabled', 'MAD4B mutation surfaces are disabled.' );
@@ -86,6 +87,8 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 
 	public static function apply( $input ) {
 		$input = is_array( $input ) ? $input : array();
+		if ( class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment()
+			&& ( ! class_exists( 'MAD4B_SCP_Production_Automation' ) || ! MAD4B_SCP_Production_Automation::deployment_authorized( $input ) ) ) return new WP_Error( 'mad4b_production_native_batch_required', 'Production plugin deployment requires the exact native owner-approved batch worker.' );
 		$expected_plan = isset( $input['expected_plan_sha256'] ) ? strtolower( trim( (string) $input['expected_plan_sha256'] ) ) : '';
 		if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected_plan ) ) {
 			return new WP_Error( 'mad4b_remote_plugin_update_plan_digest_required', 'expected_plan_sha256 from a reviewed remote plugin update plan is required.' );
@@ -122,6 +125,13 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			return $backup;
 		}
 
+		if ( isset( $input['test_attestation'] ) || 'production' === MAD4B_SCP_Site_Profile::current_environment() ) {
+			$verified = MAD4B_SCP_Test_Attestation::verify( $input['test_attestation'] ?? null, $plan );
+			if ( is_wp_error( $verified ) || ( 'production' === MAD4B_SCP_Site_Profile::current_environment() && ! MAD4B_SCP_Production_Automation::deployment_authorized( $input ) ) ) {
+				self::cleanup_package( $package );
+				return is_wp_error( $verified ) ? $verified : new WP_Error( 'mad4b_production_batch_revoked', 'Production batch revoked before install.' );
+			}
+		}
 		$install = self::install_package( $package['path'] );
 		self::cleanup_package( $package );
 		if ( is_wp_error( $install ) ) {
@@ -206,7 +216,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'backup_id' => $backup['backup_id'],
 			'readback_verified' => true,
 			'activation_state_preserved' => true,
-			'production_mutation' => false,
+			'production_mutation' => class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment(),
 		) );
 
 		return array(
@@ -222,7 +232,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'backup_id' => $backup['backup_id'],
 			'readback_verified' => true,
 			'activation_state_preserved' => true,
-			'production_mutation' => false,
+			'production_mutation' => class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment(),
 			'runtime_reboot_required' => true,
 			'next_readback' => array( 'mad4b/list-plugins', 'mad4b/runtime-self-test' ),
 			'authorizing' => false,
@@ -252,7 +262,8 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 		}
 		$blockers = array();
 
-		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' ) ) {
+		if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) || ( ! MAD4B_SCP_Site_Profile::environment_allowed( array( 'staging' ), 'write' )
+			&& ( ! class_exists( 'MAD4B_SCP_Production_Automation' ) || ! MAD4B_SCP_Production_Automation::deployment_planning_allowed( $plugin_file ) ) ) ) {
 			$blockers[] = 'staging_enrolled_write_profile_required';
 		}
 		if ( ! $installed ) $blockers[] = 'plugin_not_installed';
@@ -321,7 +332,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'archive_manifest_sha256' => ! empty( $package['manifest_sha256'] ) ? $package['manifest_sha256'] : '',
 			'archive_file_count' => ! empty( $package['file_count'] ) ? (int) $package['file_count'] : 0,
 			'source' => $source,
-			'production_allowed' => false,
+			'production_allowed' => class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment(),
 			'backup_required' => true,
 			'activation_state_preserved' => true,
 			'rollback_on_failed_install' => true,
@@ -334,6 +345,12 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'authority_created' => false,
 			'authorizing' => false,
 		);
+		$production = class_exists( 'MAD4B_SCP_Site_Profile' ) && 'production' === MAD4B_SCP_Site_Profile::current_environment();
+		if ( $production || isset( $input['test_attestation'] ) ) {
+			$verified = class_exists( 'MAD4B_SCP_Test_Attestation' ) ? MAD4B_SCP_Test_Attestation::verify( $input['test_attestation'] ?? null, $plan ) : new WP_Error( 'mad4b_test_attestation_unavailable' );
+			if ( is_wp_error( $verified ) ) { $plan['blockers'][] = $verified->get_error_code(); $plan['eligible'] = false; }
+			$plan['test_attestation_sha256'] = class_exists( 'MAD4B_SCP_Production_Automation' ) ? MAD4B_SCP_Production_Automation::digest( $input['test_attestation'] ?? null ) : '';
+		}
 		sort( $plan['blockers'], SORT_STRING );
 		$plan['plan_sha256'] = self::digest( $plan );
 		$plan['write_binding'] = array(
@@ -669,6 +686,7 @@ final class MAD4B_SCP_Remote_Plugin_Update {
 			'properties' => array(
 				'plugin_file' => array( 'type' => 'string', 'minLength' => 5, 'maxLength' => 191, 'pattern' => '^[A-Za-z0-9._+\\/-]+\\.php$' ),
 				'reason' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 500 ),
+				'test_attestation' => array( 'type' => 'object', 'additionalProperties' => true, 'description' => 'Trusted signed exact-artifact test certificate. Required for Production; verified whenever supplied in any supported environment.' ),
 			),
 			'required' => array( 'plugin_file', 'reason' ),
 			'additionalProperties' => false,
