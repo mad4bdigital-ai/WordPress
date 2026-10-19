@@ -112,3 +112,47 @@ print("freshness_binding=ruleset_updated_at")
 print("policy_binding=sha256")
 print("template_binding=sha256")
 print("hidden_protection_binding=bypass+unattributed_approval")
+
+
+# Migration #430: neither canonical source nor template may weaken existing
+# master protections while adding the GitHub-Actions-owned Readiness check.
+spec = importlib.util.spec_from_file_location(
+    "mad4b_repository_ruleset_template",
+    ROOT / "verify_repository_ruleset_template.py",
+)
+ruleset_mod = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(ruleset_mod)
+policy_data = json.loads(Path(".github/mad4b-repository-governance-policy.json").read_text())
+template_data = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text())
+expected_checks = {
+    ("Repository release verdict", 15368),
+    ("Repository feature boundary", 15368),
+    ("Production readiness matrix contract", 15368),
+}
+assert ruleset_mod.required_checks(policy_data) == expected_checks
+assert ruleset_mod.verify(template_data, policy_data)["ready"] is True
+assert template_data["bypass_actors"] == []
+assert template_data["enforcement"] == "active"
+assert template_data["conditions"]["ref_name"]["include"] == ["refs/heads/master"]
+rules = {row["type"]: row for row in template_data["rules"]}
+assert set(rules) == {"deletion", "non_fast_forward", "pull_request", "required_status_checks"}
+assert rules["required_status_checks"]["parameters"]["strict_required_status_checks_policy"] is True
+assert rules["pull_request"]["parameters"]["allowed_merge_methods"] == ["merge"]
+
+import copy
+for label, mutation in (
+    ("drop_readiness", lambda d: d["rules"][3]["parameters"]["required_status_checks"].pop()),
+    ("wrong_app", lambda d: d["rules"][3]["parameters"]["required_status_checks"][-1].update(integration_id=999)),
+    ("weaken_strict", lambda d: d["rules"][3]["parameters"].update(strict_required_status_checks_policy=False)),
+    ("create_bypass", lambda d: d["bypass_actors"].append({"actor_id": 1, "actor_type": "OrganizationAdmin", "bypass_mode": "always"})),
+):
+    bad = copy.deepcopy(template_data)
+    mutation(bad)
+    try:
+        ruleset_mod.verify(bad, policy_data)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"readiness required-check migration accepted {label}")
+print("MAD4B_READINESS_REQUIRED_CHECK_MIGRATION: PASS")
