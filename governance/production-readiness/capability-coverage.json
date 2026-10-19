@@ -309,6 +309,24 @@
         "wp-content/plugins/mad4b-site-control-plane/tests/runtime-session-safe-diagnostic-acceptance.php"
       ],
       "review_rationale": "Review bounded diagnostic projection and hashing: digests explicitly represent non-authorizing bounded summaries, not full raw provider evidence or signed receipts. Scalar-list extraction avoids whole-array copies; blocked/unknown authority remains blocked/unknown and the read output remains generation-fenced and <=16KB. Same-PR PHP 7.4/8.3 hermetic stress and disposable WP MCP tests enforce redaction and scope compatibility. External client schema refresh and two-site live readback remain required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority-convergence.php",
+      "source_blob_sha": "79051feca7af5e169dbd58440fd69fb6130012d9",
+      "control_ids": [
+        "OAUTH-01",
+        "SECURITY-01",
+        "TICKETS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-one-step-review-runtime.php"
+      ],
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reconcile exact owner proof contract: a previously committed signed single-use owner_intent_sha256 and matching exact-plan read-only owner_review_digest may be supplied together by the authenticated Staging enrollment broker. Validate the digest against the current plan; do not reattest, change TTL or bypass claimable/readback/audit/replay controls. Missing and mismatching reviews fail closed. Same-PR hermetic test executes via MCP client compatibility CI. Does not authorize Production, Breakglass or Staging mutation."
     }
   ],
   "code_change_rules": {
