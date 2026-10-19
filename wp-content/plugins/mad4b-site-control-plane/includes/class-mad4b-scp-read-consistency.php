@@ -840,7 +840,7 @@ final class MAD4B_SCP_Read_Consistency {
 	}
 
 	private static function compact_status_data( $name, $data ) {
-		if ( ! is_array( $data ) ) return is_scalar( $data ) || null === $data ? $data : null;
+		if ( ! is_array( $data ) ) return self::bounded_status_scalar( $data );
 		$name = sanitize_key( (string) $name );
 		$scalar_keys = array(
 			'contract', 'ready', 'state', 'supported', 'configured', 'environment', 'revision',
@@ -878,7 +878,7 @@ final class MAD4B_SCP_Read_Consistency {
 		foreach ( $scalar_keys as $key ) {
 			if ( ! array_key_exists( $key, $data ) ) continue;
 			$value = $data[ $key ];
-			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = $value;
+			if ( is_scalar( $value ) || null === $value ) $out[ $key ] = self::bounded_status_scalar( $value );
 		}
 		foreach ( array( 'missing_abilities', 'blockers', 'current_readiness_blockers', 'local_blockers', 'remote_preflight_blockers', 'certification_blockers', 'blocking_gates', 'provenance_mismatch', 'deferred_checks' ) as $key ) {
 			if ( array_key_exists( $key, $data ) ) $out[ $key ] = self::bounded_scalar_list( $data[ $key ], 12 );
@@ -892,7 +892,8 @@ final class MAD4B_SCP_Read_Consistency {
 				'ready', 'state', 'candidate_binding_match', 'current_source_commit_sha', 'candidate_source_commit_sha'
 			) as $key ) {
 				if ( array_key_exists( $key, $data[ $nested_key ] ) && ( is_scalar( $data[ $nested_key ][ $key ] ) || null === $data[ $nested_key ][ $key ] ) ) {
-					$nested[ $key ] = $data[ $nested_key ][ $key ];
+					$value = $data[ $nested_key ][ $key ];
+					$nested[ $key ] = self::bounded_status_scalar( $value );
 				}
 			}
 			$out[ $nested_key ] = $nested;
@@ -902,6 +903,18 @@ final class MAD4B_SCP_Read_Consistency {
 			$out['provider_count'] = isset( $data['provider_count'] ) ? max( 0, (int) $data['provider_count'] ) : 0;
 		}
 		return $out;
+	}
+
+	private static function bounded_status_scalar( $value ) {
+		if ( ! is_string( $value ) ) return is_scalar( $value ) || null === $value ? $value : null;
+		// Bound labels before hashing/encoding. Preserve complete UTF-8 at
+		// the byte boundary without requiring the optional mbstring extension.
+		$value = substr( $value, 0, 512 );
+		for ( $i = 0; $i < 4; $i++ ) {
+			if ( 1 === preg_match( '//u', $value ) ) return $value;
+			$value = substr( $value, 0, -1 );
+		}
+		return '';
 	}
 
 	private static function bounded_scalar_list( $value, $max_items ) {

@@ -237,8 +237,8 @@ assert_self_approval( is_string( $bootstrap_servers ) &&
     strpos( $bootstrap_servers, "'mad4b/approval-plan', 'mad4b/approval-ai-decide'" ) !== false &&
     strpos( $bootstrap_servers, 'final_execution_wrapper_verified( $ability_name )' ) !== false &&
     strpos( $bootstrap_servers, "self::chatgpt_approval_bootstrap_tools(), true" ) !== false &&
-    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-write', $ability_name )" ) !== false &&
-    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-chatgpt', $ability_name )" ) !== false,
+    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-write', \$ability_name )" ) !== false &&
+    strpos( $bootstrap_servers, "self::ability_is_mounted( 'mad4b-chatgpt', \$ability_name )" ) !== false,
     'Only the enrolled Staging approval-bootstrap pair may pass a fenced direct-schema exception' );
 assert_self_approval( is_string( $bootstrap_truth ) && is_string( $bootstrap_cert ) &&
     strpos( $bootstrap_truth, 'verified_direct_approval_bootstrap_tool( $ability_name )' ) !== false &&

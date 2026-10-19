@@ -10,6 +10,12 @@ function sanitize_key( $value ) {
 }
 function sanitize_text_field( $value ) { return trim( (string) $value ); }
 function wp_json_encode( $value, $flags = 0 ) { return json_encode( $value, $flags ); }
+class WP_Error {
+	private $code;
+	public function __construct( $code, $message = '' ) { $this->code = $code; }
+	public function get_error_code() { return $this->code; }
+}
+function is_wp_error( $value ) { return $value instanceof WP_Error; }
 
 final class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONTRACT = 'mad4b.capability-descriptor.v2';
@@ -105,7 +111,7 @@ foreach((array)($catalog['providers']??array()) as $provider_id=>$provider){
   }
  }
 }
-$check(33===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
+$check(40===$catalog_capability_count,'catalog capability count changed without updating conformance expectation');
 $check('bounded_write'===($catalog['providers']['litespeed']['capabilities']['cache_url.bounded-write']['risk']??''),'LiteSpeed URL purge risk classification drifted');
 $check(false===($catalog['providers']['litespeed']['capabilities']['cache_url.bounded-write']['reversible']??null),'LiteSpeed URL purge unexpectedly became reversible');
 $check('high_risk_write'===($catalog['providers']['litespeed']['capabilities']['cache_all.high-risk-write']['risk']??''),'LiteSpeed full purge must remain high risk');
@@ -275,12 +281,18 @@ foreach ( $catalog['providers'] as $provider_id => $provider ) {
 			$check( 'same_observation' === $traits['retry_semantics'], 'read capability retry semantics are not explicit: ' . $provider_id . '/' . $capability_id );
 			$check( false === $traits['compensation_support'], 'read capability unexpectedly declares compensation: ' . $provider_id . '/' . $capability_id );
 		} else {
-			$check( 'mad4b_guarded' === $traits['idempotency_model'], 'write capability lacks guarded idempotency: ' . $provider_id . '/' . $capability_id );
-			$check( 'reconciliation_required_on_uncertain' === $traits['retry_semantics'], 'write capability can retry uncertainty blindly: ' . $provider_id . '/' . $capability_id );
+			$document_cas = 'elementor' === $provider_id;
+			$expected_idempotency = $document_cas ? 'mad4b_expected_document_sha' : 'mad4b_guarded';
+			$expected_retry = $document_cas && 'high_risk_write' === $risk
+				? 'owner_reconciliation_required' : 'reconciliation_required_on_uncertain';
+			$check( $expected_idempotency === $traits['idempotency_model'], 'write capability lacks guarded idempotency: ' . $provider_id . '/' . $capability_id );
+			$check( $expected_retry === $traits['retry_semantics'], 'write capability can retry uncertainty blindly: ' . $provider_id . '/' . $capability_id );
+			if ( $document_cas ) $check( 'mad4b_expected_document_sha' === $traits['concurrency_model'], 'Elementor write lost document CAS concurrency' );
 			$expected_compensation = ! empty( $capability['reversible'] );
 			$check( $expected_compensation === $traits['compensation_support'], 'compensation trait disagrees with reversible contract: ' . $provider_id . '/' . $capability_id );
 		}
-		$check( 'local_wordpress' === $traits['local_or_remote'], 'packaged provider execution locality is not explicit: ' . $provider_id . '/' . $capability_id );
+		$expected_locality = 'google_drive_context' === $provider_id ? 'remote_api' : 'local_wordpress';
+		$check( $expected_locality === $traits['local_or_remote'], 'packaged provider execution locality is not explicit: ' . $provider_id . '/' . $capability_id );
 	}
 }
 

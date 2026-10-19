@@ -59,4 +59,17 @@ mad4b_bound_assert( ! empty( $failed['partial'] ) && empty( $failed['checks']['p
 mad4b_bound_assert( false === strpos( json_encode( $failed ), 'SECRET-DO-NOT-EXPORT' ), 'Projection exception leaked' );
 mad4b_bound_assert( empty( $failed['checks']['projection']['automatic_retry_performed'] ), 'Projection failure must not replay automatically' );
 
+// Allowlisted scalar fields must also be bounded BEFORE bundle hashing.
+// A field name allowlist alone does not constrain a provider's string size.
+$large_scalar = str_repeat( 'x', 8 * 1024 * 1024 );
+$scalar_summary = $compact_status->invoke( null, 'provider', array(
+  'state' => $large_scalar, 'ready' => false,
+  'current' => array( 'version' => $large_scalar, 'ready' => null ),
+) );
+mad4b_bound_assert( strlen( json_encode( $scalar_summary ) ) < 2000, 'Allowlisted scalar data bypassed projection bound' );
+mad4b_bound_assert( false === $scalar_summary['ready'] && null === $scalar_summary['current']['ready'], 'Scalar bounding changed readiness truth' );
+mad4b_bound_assert( strlen( (string) $compact_status->invoke( null, 'provider', $large_scalar ) ) <= 512, 'Scalar-only provider bypassed projection bound' );
+$unicode_summary = $compact_status->invoke( null, 'provider', array( 'state' => str_repeat( "\xe2\x82\xac", 512 ) ) );
+mad4b_bound_assert( false !== json_encode( $unicode_summary ) && strlen( $unicode_summary['state'] ) <= 512, 'Scalar bound split UTF-8 and invalidated JSON' );
+
 echo "mad4b.session-safe-memory-regression: PASS\n";

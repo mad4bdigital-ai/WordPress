@@ -74,6 +74,27 @@ jobs:
           python3 "$root/tests/unified-capability-gateway-contract.py"
           python3 "$root/tests/gateway-mutation-guards.py"
 
+  diagnostic-regressions:
+    name: Bounded diagnostics and owner proof (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.1', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Exercise bounded summaries and exact one-use owner proofs
+        run: |
+          root='wp-content/plugins/mad4b-site-control-plane'
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
+          php "$root/tests/staging-write-one-step-review-runtime.php"
+
   catalog-compatibility:
     name: Catalog runtime (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest

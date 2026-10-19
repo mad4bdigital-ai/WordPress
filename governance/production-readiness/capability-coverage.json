@@ -707,7 +707,7 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
-      "source_blob_sha": "706ce1ecb92da7f040faf1b1a85c48757006bfee",
+      "source_blob_sha": "3b41db5fdd553d7e68362bfcf9339f8e01bc3a8e",
       "control_ids": [
         "MCP-01",
         "PERFORMANCE-01",
