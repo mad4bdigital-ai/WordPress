@@ -16,7 +16,9 @@ require dirname( __DIR__ ) . '/includes/class-mad4b-scp-read-consistency.php';
 
 $reflection = new ReflectionClass( 'MAD4B_SCP_Read_Consistency' );
 $compact_status = $reflection->getMethod( 'compact_status_data' );
+$compact_status->setAccessible( true );
 $compact_bundle = $reflection->getMethod( 'compact_bundle_result' );
+$compact_bundle->setAccessible( true );
 $huge = array(
   'state' => 'blocked_current_drift', 'ready' => false,
   'source_commit_sha' => str_repeat( 'a', 40 ),
