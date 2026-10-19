@@ -13,9 +13,20 @@ final class MAD4B_Native_Incident_MU {
     const MAX_EVENTS = 12;
     private static $enabled = false;
     private static $registered = false;
+    private static $early_secret = '';
 
     public static function boot( $staging_enrolled = false ) {
         if ( self::$registered || true !== $staging_enrolled ) return false;
+        // wp_salt() is pluggable and is not available while ordinary plugins
+        // are being included. Use only already configured strong secrets;
+        // never load pluggable.php early or create a public/default HMAC key.
+        if ( defined( 'AUTH_KEY' ) && defined( 'AUTH_SALT' )
+            && is_string( AUTH_KEY ) && is_string( AUTH_SALT )
+            && strlen( AUTH_KEY ) >= 32 && strlen( AUTH_SALT ) >= 32
+            && false === stripos( AUTH_KEY, 'put your unique phrase here' )
+            && false === stripos( AUTH_SALT, 'put your unique phrase here' ) ) {
+            self::$early_secret = hash_hmac( 'sha256', self::CONTRACT . '|' . AUTH_SALT, AUTH_KEY, true );
+        }
         self::$enabled = true;
         self::$registered = true;
         register_shutdown_function( array( __CLASS__, 'shutdown' ) );
@@ -44,7 +55,8 @@ final class MAD4B_Native_Incident_MU {
                 $slug = strtolower( $first );
         }
         $message = isset( $error['message'] ) && is_string( $error['message'] ) ? $error['message'] : '';
-        $secret = function_exists( 'wp_salt' ) ? (string) wp_salt( 'auth' ) : '';
+        $secret = '' !== self::$early_secret ? self::$early_secret
+            : ( function_exists( 'wp_salt' ) ? (string) wp_salt( 'auth' ) : '' );
         if ( '' === $secret ) return array(); // Never persist an unsalted guess about sensitive source text.
         $request = ( defined( 'DOING_CRON' ) && DOING_CRON ) ? 'cron'
             : ( defined( 'REST_REQUEST' ) && REST_REQUEST ? 'rest'
@@ -77,8 +89,7 @@ final class MAD4B_Native_Incident_MU {
                 return is_array( $row ) && isset( $row['last_at'] )
                     && (int) $row['last_at'] <= $now && (int) $row['last_at'] >= $now - 7 * DAY_IN_SECONDS;
             } ) );
-            // Throttle each distinct fingerprint, not only the most recent row:
-            // two alternating faults must not cause an unbounded write storm.
+            // Throttle each distinct fingerprint, including alternating faults.
             foreach ( $history as $previous ) {
                 if ( isset( $previous['incident_fingerprint'] )
                     && hash_equals( (string) $previous['incident_fingerprint'], $event['incident_fingerprint'] )
@@ -89,7 +100,9 @@ final class MAD4B_Native_Incident_MU {
             $history = array_slice( $history, -self::MAX_EVENTS );
             // WordPress option storage is available only after core DB bootstrap.
             // A hard outage before that point is explicitly NOT captured.
-            return (bool) update_option( self::OPTION, array( 'contract' => self::CONTRACT, 'events' => $history ), false );
+            $next = array( 'contract' => self::CONTRACT, 'events' => $history );
+            if ( ! update_option( self::OPTION, $next, false ) ) return false;
+            return get_option( self::OPTION, array() ) === $next;
         } catch ( Throwable $ignored ) {
             return false; // Incident handling must never crash the request again.
         }
@@ -118,6 +131,7 @@ final class MAD4B_Native_Incident_MU {
             );
         }
         return array( 'contract' => self::CONTRACT, 'recorder_loaded' => self::$enabled,
+            'pre_pluggable_capture_available' => self::$enabled && '' !== self::$early_secret,
             'state' => ! self::$enabled ? 'RECORDER_NOT_ACTIVE' : ( $safe ? 'CAPTURED' : 'NO_CAPTURED_INCIDENTS' ),
             'events' => $safe, 'count' => count( $safe ), 'read_only' => true );
     }

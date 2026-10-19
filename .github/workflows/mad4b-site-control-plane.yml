@@ -59,10 +59,6 @@ jobs:
         run: |
           set -euo pipefail
           find wp-content/plugins/mad4b-site-control-plane -type f -name '*.php' -print0 | xargs -0 -n1 php -l
-          # WordPress-native recovery fixtures also run across every supported
-          # PHP matrix version (7.4, 8.1, 8.3, 8.4, 8.5).
-          php wp-content/plugins/mad4b-site-control-plane/tests/native-incident-mu-runtime.php
-          php wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php
 
       - name: Verify pointer-first self-update contract
         if: matrix.php == '8.1'

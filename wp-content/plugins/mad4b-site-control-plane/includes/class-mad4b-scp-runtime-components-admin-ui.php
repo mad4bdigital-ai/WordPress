@@ -248,11 +248,11 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 
 	/** Observational native WordPress diagnostics. GET never triggers network probes or writes. */
 	private static function render_diagnostics() {
-		if ( ! class_exists( 'MAD4B_SCP_Native_Recovery', false ) ) {
+		if ( ! class_exists( 'MAD4B_SCP_Native_Runtime_Diagnostics', false ) ) {
 			echo '<div class="notice notice-warning"><p>Native recovery evidence is not loaded.</p></div>';
 			return;
 		}
-		$status = MAD4B_SCP_Native_Recovery::status();
+		$status = MAD4B_SCP_Native_Runtime_Diagnostics::status();
 		if ( is_wp_error( $status ) ) {
 			echo '<div class="notice notice-error"><p>' . esc_html( $status->get_error_message() ) . '</p></div>';
 			return;
@@ -273,12 +273,12 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<p class="description">' . esc_html__( 'Site Health runs its own core tests in WordPress. Query Monitor captures request-specific warnings and DB/HTTP telemetry only when loaded for that request; a missing collector does not prove the plugin is uninstalled.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! empty( $status['site_profile_staging_enrolled'] ) && ! empty( $status['paired_probe']['available'] ) ) {
 			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
-			echo '<input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_Native_Recovery::POST_ACTION ) . '">';
-			wp_nonce_field( MAD4B_SCP_Native_Recovery::NONCE_ACTION );
+			echo '<input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_Native_Runtime_Diagnostics::POST_ACTION ) . '">';
+			wp_nonce_field( MAD4B_SCP_Native_Runtime_Diagnostics::NONCE_ACTION );
 			submit_button( __( 'Check homepage + REST (read-only)', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
 			echo '</form>';
 		}
-		$last = MAD4B_SCP_Native_Recovery::last_local_probe();
+		$last = MAD4B_SCP_Native_Runtime_Diagnostics::last_local_probe();
 		if ( $last ) {
 			echo '<h3>' . esc_html__( 'Latest local HTTP probe', 'mad4b-site-control-plane' ) . '</h3><p><code>' . esc_html( (string) ( $last['state'] ?? '' ) ) . '</code> '
 				. esc_html( 'Homepage HTTP ' . (int) ( $last['homepage']['http_status'] ?? 0 ) . ' / REST HTTP ' . (int) ( $last['rest_root']['http_status'] ?? 0 ) ) . '</p>';
