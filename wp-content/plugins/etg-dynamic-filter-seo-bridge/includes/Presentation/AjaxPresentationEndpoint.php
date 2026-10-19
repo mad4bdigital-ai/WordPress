@@ -97,11 +97,37 @@ final class AjaxPresentationEndpoint {
      * Operators can attest an independently enforced WAF limit in wp-config.php.
      */
     private function rateLimitMode():string{
-        if(function_exists('wp_using_ext_object_cache')&&wp_using_ext_object_cache()
-            &&function_exists('wp_cache_add')&&function_exists('wp_cache_incr')){return 'persistent_object_cache';}
+        // A working drop-in is NOT proof of atomic increments or cross-worker coordination.
+        // An independently enforced edge policy takes precedence over all cache hints.
         if(defined('ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED')
             &&true===ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED){return 'external_waf_attested';}
-        return 'rate_limit_backend_unavailable';
+        if(!function_exists('wp_using_ext_object_cache')||!wp_using_ext_object_cache()
+            ||!function_exists('wp_cache_add')||!function_exists('wp_cache_incr')){
+            return 'rate_limit_backend_unavailable';
+        }
+        // A site operator must provide recent, externally obtained concurrency and
+        // backend-failure evidence through a trusted local callback. Merely detecting
+        // Memcached, Redis or a LiteSpeed drop-in never establishes certification.
+        $proof=function_exists('apply_filters')
+            ?apply_filters('etg_dfsb_atomic_rate_limit_backend_proof',array()):array();
+        if(!is_array($proof)
+            ||($proof['contract']??'')!=='etg.dfsb.rate-limit-backend-proof.v1'
+            ||($proof['source']??'')!=='wp_cache_api'
+            ||!isset($proof['tested_at'])||!is_numeric($proof['tested_at'])
+            ||(int)$proof['tested_at']>time()||(int)$proof['tested_at']<time()-86400){
+            return 'rate_limit_backend_unavailable';
+        }
+        foreach(array('atomic_add','atomic_increment','shared_across_workers',
+            'ttl_verified','backend_write_failures_detected')as$claim){
+            if(true!==($proof[$claim]??null))return 'rate_limit_backend_unavailable';
+        }
+        foreach(array('backend_identity_sha256','concurrency_test_sha256')as$fingerprint){
+            if(!isset($proof[$fingerprint])||!is_string($proof[$fingerprint])
+                ||1!==preg_match('/^[a-f0-9]{64}$/D',$proof[$fingerprint])){
+                return 'rate_limit_backend_unavailable';
+            }
+        }
+        return 'certified_atomic_cache';
     }
 
     private function consumeRateLimit():array{
@@ -110,7 +136,7 @@ final class AjaxPresentationEndpoint {
         if('external_waf_attested'===$mode){
             return array('allowed'=>true,'count'=>0,'retry_after'=>0,'source'=>'external_waf_attested');
         }
-        if('persistent_object_cache'!==$mode){
+        if('certified_atomic_cache'!==$mode){
             return array('allowed'=>false,'count'=>0,'retry_after'=>$window,'source'=>'rate_limit_backend_unavailable');
         }
         $remote=isset($_SERVER['REMOTE_ADDR'])&&is_scalar($_SERVER['REMOTE_ADDR'])?trim((string)$_SERVER['REMOTE_ADDR']):'';

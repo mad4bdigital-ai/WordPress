@@ -106,7 +106,7 @@
     "includes/Language/LanguageResolverInterface.php": "b141c16fb3eda44ab312733f913d1c52b1178dbd4808a62cac09acdbbc314bec",
     "includes/Language/LocaleLanguageResolver.php": "8d5651eefe3043f4308d88285c6fca1ac88d1b2aae8fe2cd66967d47b0eeea88",
     "includes/Lifecycle/UninstallPolicy.php": "27d6a7f4892486109a06749b8fd9a67508b9bf82b0a6d9565597a46dc64994b1",
-    "includes/Presentation/AjaxPresentationEndpoint.php": "461386eed20423a2cf61fb101d7bb0c15d7bff8958165f64c39f5d2b1c1291df",
+    "includes/Presentation/AjaxPresentationEndpoint.php": "efc2e3b0a5b0f72f5a60a43b7c5570794a6fef8c47b3e73c66d19f9eb62ef226",
     "includes/Presentation/ContentSlotRegistry.php": "eaf72b07bb2c80a98e8a0c07f72f2c95465dded706749dd2e1b97f5cd246e451",
     "includes/Presentation/ContentSourceResolver.php": "42c908a9b79b6c07a4b7a73f1b6f449c12b53b0c53236e314c890a0d0a91197c",
     "includes/Presentation/InventoryContentCatalog.php": "45ec14a0a8c3be9110c66d59057c2c24fbd2d8b6ddf354e119cedc84e8c1c44a",
