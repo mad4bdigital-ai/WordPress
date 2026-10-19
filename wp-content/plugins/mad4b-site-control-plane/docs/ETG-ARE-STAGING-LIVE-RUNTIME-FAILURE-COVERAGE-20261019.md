@@ -24,9 +24,27 @@ The public browser / external HTTPS requests from the diagnostic client were **n
 | Developer host prerequisites | proc_open, resource limiter, network isolation unavailable in prior handshake | Same class of unresolved prerequisites in prior handshake | Existing developer runtime contracts | Host-admin independent assessment; Developer/Breakglass remain disabled |
 | Hostinger / Desktop external fallback | Hostinger last returned HTTP 401; desktop previously offline | Same external access limitation | Not testable by WordPress local fixture | Reconnect separately without credential exposure; no SSH claim |
 
+## Additional 2026-10-19 live REST/WPML readback
+
+Both Staging sites independently returned `mad4b/rest-compatibility-status` with
+`ready=true`, `local_rest_isolation_ready=true`, and no Control Plane callback
+globally disabling REST. In the **passive request-local WPML route snapshot**,
+both had `wpml_active=true` but `route_registered=false` and
+`wpml_route_missing`. This passive observation cannot alone establish a
+visitor-facing WPML failure. Neither site's external WPML response acceptance
+was verified: ETG has stale evidence from a different package; ARE has no
+completed external evidence.
+
+Repository-family readback confirms ETG WPML Multilingual CMS **4.9.5**
+and ARE **4.9.7**, both active; this version difference is **not** proof
+that either WPML build caused the homepage 500. Regressions must forbid
+promotion of passive `REST enabled` or `WPML active` observations to
+external acceptance. The suite adds exact canonical WPML receipt and
+authority/composition fail-closed tests.
+
 ## New PR #438 operational-error regression suite
 
-The fixed-path CI runner `tests/owner-enrollment-error-reconciliation-regression.py` executes **13 actual standalone PHP behavioral fixtures** and fails on a nonzero exit, PHP absence, missing fixture or timeout:
+The fixed-path CI runner `tests/owner-enrollment-error-reconciliation-regression.py` executes **16 actual standalone PHP behavioral fixtures** and fails on a nonzero exit, PHP absence, missing fixture or timeout:
 
 1. `enrollment-dispatch-runtime.php`
 2. `dynamic-first-party-enrollment-runtime.php`
@@ -41,6 +59,9 @@ The fixed-path CI runner `tests/owner-enrollment-error-reconciliation-regression
 11. `error-contract-registry-runtime.php`
 12. `connector-resilience-runtime.php`
 13. `mcp-preflight-registration-failure-runtime.php`
+14. `wpml-response-contract-runtime.php`
+15. `live-acceptance-wpml-authority-runtime.php`
+16. `live-acceptance-wpml-composition-runtime.php`
 
 Added negative cases distinguish DNS, TLS, timeout, TCP, local HTTP policy and unknown transport failures. The paired 500/200 result **never** certifies a browser, guesses the responsible plugin, or asserts an incident-free runtime.
 

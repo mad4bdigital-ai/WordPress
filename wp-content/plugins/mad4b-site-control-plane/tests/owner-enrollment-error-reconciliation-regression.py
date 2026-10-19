@@ -25,6 +25,9 @@ FIXTURES = (
     "error-contract-registry-runtime.php",
     "connector-resilience-runtime.php",
     "mcp-preflight-registration-failure-runtime.php",
+    "wpml-response-contract-runtime.php",
+    "live-acceptance-wpml-authority-runtime.php",
+    "live-acceptance-wpml-composition-runtime.php",
 )
 
 
