@@ -46,7 +46,8 @@ jobs:
                   if u.scheme != 'https' or u.hostname != host or u.port not in (None,443) or u.username or u.password or u.fragment: return None
               except ValueError: return None
               if not u.path.startswith('/') or u.path.startswith('//') or '\\' in u.path or re.search('%2f|%5c|%0[ad]', u.path, re.I): return None
-              return u.path + ('?' + u.query if u.query else '')
+              if u.query or u.path.startswith(('/wp-', '/cgi-bin/', '/.well-known/')) or u.path.endswith('.php'): return None
+              return u.path
           assert safe(SITES['ETG'], 'https://staging.egypttourgates.com/about/') == '/about/'
           for target in ('http://staging.egypttourgates.com/', 'https://evil.com/', 'https://staging.egypttourgates.com.evil.net/', 'https://x:y@staging.egypttourgates.com/', 'https://staging.egypttourgates.com:8888/'):
               assert safe(SITES['ETG'],target) is None
