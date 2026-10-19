@@ -665,6 +665,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				$envelope['failed'] = true;
 				$envelope['operation_succeeded'] = false;
 			} else {
+				// Owner decision remains a human gate even after the child errored.
+				$envelope['human_decision_required'] = true;
 				$envelope['outcome_verified'] = false;
 				$envelope['authority_not_proven'] = true;
 				$envelope['owner_review_required_for_reexecution'] = true;
