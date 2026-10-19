@@ -4,8 +4,8 @@
   "reviewed_base_sha": "9723edd8bd7a9b1d4245c6cf77c4c2c17d00d15e",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 110,
-  "changed_paths_sha256": "20112b74fdc97457167f878095b2c989a8ee80bedcd1d06fe2c74f165bf9ceea",
+  "changed_file_count": 111,
+  "changed_paths_sha256": "38ec73453609d48ea64a9fb92cfcd0b9ad06709cc9ec61b752516da3804d417b",
   "slices": [
     {
       "id": "ci-and-evidence",
@@ -30,6 +30,7 @@
         "specs/007-content-intelligence-workflow-platform/feature.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
         "wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-ajax-reset-smoke.js"
       ]
     },
