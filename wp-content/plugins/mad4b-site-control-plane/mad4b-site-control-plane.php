@@ -467,6 +467,7 @@ require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-context-adapter.
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-skills-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-runtime-component-adapters.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php';
+require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-approval-handoff-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-elementor-adapter.php';
 require_once MAD4B_SCP_DIR . 'includes/adapters/class-mad4b-scp-jetengine-adapter.php';
