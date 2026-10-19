@@ -64,3 +64,11 @@ Client-observed response times were approximately 6.8–17.8 seconds; these incl
 ## Actual sitemap route samples
 
 The sitemap exposed the configured archive `/tours-and-activities/` and the detail page `/tours-and-activities/giza-pyramids-half-day-tour/`. Both returned HTTP 200 with one self-referencing canonical and no sampled fatal-error marker. No hreflang link was present in either sampled HTML document; whether a translated counterpart exists must be established before classifying this as a WPML defect. HTML samples were approximately 875 KB and 1.08 MB respectively (client-decoded text size, not compressed transfer bytes). No AJAX or browser interaction was executed by this HTTP-only sample.
+
+## Closure follow-up
+
+- The actual archive HTML exposes `jet-engine` and query ID `tours_query_archive`, but no `ETGDFSB_AJAX` client configuration was found in the sampled document.
+- A single read-only presentation request to `POST /wp-json/etg-dfsb/v1/ajax-presentation` returned HTTP 404 with `rest_no_route`. This proves that this route/method is not exposed in the sampled live runtime. It does not distinguish an inactive/uninstalled bridge, Safe Boot, disabled bootstrap or a transport/router issue. AJAX presentation parity cannot pass while this route is absent.
+- Exact candidate planning through the WordPress MCP tool again terminated with opaque `-32603 Internal error`; no installation was attempted or inferred.
+- CI exposed stale reviewed-parent values in the implementation closure JSON/Markdown and post-merge capability ledger. Synchronize these three repository-baseline references to `ac8a20fb0551bf1eab94b1facd498edbadacbbee`, matching the already-reviewed feature metadata. Runtime-release identity and all release/Production authorization flags remain unchanged. `validate_spec.py`, task-ledger reconciliation and 227 delivery fingerprint bindings pass locally.
+- Repository release verdict explicitly reports missing exact-head `OWNER_ATTEST_SINGLE_OWNER`; no owner attestation was fabricated by the audit.
