@@ -404,6 +404,14 @@ jobs:
                       if (published_restore.get("published") is not True
                           or published_restore.get("readback_verified") is not True):
                           raise RuntimeError("rollback attestation publication incomplete")
+                      subprocess.run([
+                          "python3", "tools/verify_repository_governance.py",
+                          "--repository", REPO,
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--require-ruleset-attestation",
+                          "--output", str(TEMP / "readiness-bootstrap-rollback-governance.json"),
+                      ], check=True, timeout=90)
                   except Exception as recovery_error:
                       raise RuntimeError(
                           "RULESET_BOOTSTRAP_RECOVERY_REQUIRED: previous ruleset restored but owner attestation unavailable"
@@ -428,5 +436,6 @@ jobs:
             ${{ runner.temp }}/readiness-bootstrap-rollback-readback.json
             ${{ runner.temp }}/readiness-bootstrap-rollback-attestation.json
             ${{ runner.temp }}/readiness-bootstrap-rollback-publication.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-governance.json
           if-no-files-found: ignore
           retention-days: 30
