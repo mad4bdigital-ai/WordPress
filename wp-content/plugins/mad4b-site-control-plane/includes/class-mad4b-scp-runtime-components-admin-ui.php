@@ -44,6 +44,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			'themes' => __( 'Themes', 'mad4b-site-control-plane' ),
 			'astra' => __( 'Astra / Child', 'mad4b-site-control-plane' ),
 			'maintenance' => __( 'Runtime Update', 'mad4b-site-control-plane' ),
+			'diagnostics' => __( 'Diagnostics & Recovery', 'mad4b-site-control-plane' ),
 		);
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( MAD4B_SCP_Admin_Experience::query_string( 'tab' ) ) : 'overview'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only navigation.
 		if ( ! isset( $tabs[ $tab ] ) ) $tab = 'overview';
@@ -64,6 +65,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		if ( 'themes' === $tab ) self::render_themes( isset( $snapshot['themes'] ) ? $snapshot['themes'] : array() );
 		if ( 'astra' === $tab ) self::render_astra( isset( $snapshot['astra'] ) ? $snapshot['astra'] : array(), isset( $snapshot['astra_children'] ) ? $snapshot['astra_children'] : array() );
 		if ( 'maintenance' === $tab ) self::render_maintenance();
+		if ( 'diagnostics' === $tab ) self::render_diagnostics();
 		echo '</div>';
 	}
 
@@ -241,6 +243,59 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			echo '<tr><td><code>' . esc_html( isset( $item['stylesheet'] ) ? $item['stylesheet'] : '' ) . '</code></td><td>' . esc_html( isset( $item['version'] ) ? $item['version'] : '' ) . '</td><td>' . esc_html( ! empty( $item['active_stylesheet'] ) ? 'yes' : 'no' ) . '</td><td>' . esc_html( isset( $fs['returned_file_count'] ) ? (string) $fs['returned_file_count'] : '0' ) . '</td><td><code>' . esc_html( ! empty( $fs['override_files'] ) ? implode( ', ', $fs['override_files'] ) : '' ) . '</code></td><td>' . esc_html( ! empty( $fs['truncated'] ) ? 'truncated' : 'complete' ) . '</td></tr>';
 		}
 		echo '</tbody></table></div>';
+	}
+
+
+	/** Observational native WordPress diagnostics. GET never triggers network probes or writes. */
+	private static function render_diagnostics() {
+		if ( ! class_exists( 'MAD4B_SCP_Native_Recovery', false ) ) {
+			echo '<div class="notice notice-warning"><p>Native recovery evidence is not loaded.</p></div>';
+			return;
+		}
+		$status = MAD4B_SCP_Native_Recovery::status();
+		if ( is_wp_error( $status ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html( $status->get_error_message() ) . '</p></div>';
+			return;
+		}
+		$incidents = isset( $status['incidents'] ) && is_array( $status['incidents'] ) ? $status['incidents'] : array();
+		$qm = isset( $status['query_monitor'] ) && is_array( $status['query_monitor'] ) ? $status['query_monitor'] : array();
+		$health = isset( $status['wordpress_site_health'] ) && is_array( $status['wordpress_site_health'] ) ? $status['wordpress_site_health'] : array();
+		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Native diagnostics', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Read-only status from WordPress Site Health, the existing Query Monitor evidence bridge and a staging-only early PHP fatal recorder. No raw PHP messages, paths, cookies or credentials are displayed.', 'mad4b-site-control-plane' ) . '</p>';
+		MAD4B_SCP_Admin_Experience::cards( array(
+			array( 'label' => 'Staging enrollment', 'value' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'exact' : 'not verified', 'state' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'complete' : 'blocked' ),
+			array( 'label' => 'PHP incident recorder', 'value' => isset( $incidents['state'] ) ? (string) $incidents['state'] : 'unavailable', 'state' => ! empty( $incidents['recorder_loaded'] ) ? 'complete' : 'attention' ),
+			array( 'label' => 'Captured fatal events', 'value' => (string) (int) ( $incidents['count'] ?? 0 ), 'state' => ! empty( $incidents['count'] ) ? 'attention' : 'pending' ),
+			array( 'label' => 'Query Monitor bridge', 'value' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'available' : 'not loaded', 'state' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'complete' : 'attention' ),
+		) );
+		echo '<p><a class="button button-secondary" href="' . esc_url( admin_url( 'site-health.php' ) ) . '">' . esc_html__( 'Open WordPress Site Health', 'mad4b-site-control-plane' ) . '</a> '
+			. '<a class="button button-secondary" href="' . esc_url( admin_url( 'plugins.php?s=query-monitor' ) ) . '">' . esc_html__( 'Inspect Query Monitor plugin', 'mad4b-site-control-plane' ) . '</a></p>';
+		echo '<p class="description">' . esc_html__( 'Site Health runs its own core tests in WordPress. Query Monitor captures request-specific warnings and DB/HTTP telemetry only when loaded for that request; a missing collector does not prove the plugin is uninstalled.', 'mad4b-site-control-plane' ) . '</p>';
+		if ( ! empty( $status['site_profile_staging_enrolled'] ) && ! empty( $status['paired_probe']['available'] ) ) {
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			echo '<input type="hidden" name="action" value="' . esc_attr( MAD4B_SCP_Native_Recovery::POST_ACTION ) . '">';
+			wp_nonce_field( MAD4B_SCP_Native_Recovery::NONCE_ACTION );
+			submit_button( __( 'Check homepage + REST (read-only)', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo '</form>';
+		}
+		$last = MAD4B_SCP_Native_Recovery::last_local_probe();
+		if ( $last ) {
+			echo '<h3>' . esc_html__( 'Latest local HTTP probe', 'mad4b-site-control-plane' ) . '</h3><p><code>' . esc_html( (string) ( $last['state'] ?? '' ) ) . '</code> '
+				. esc_html( 'Homepage HTTP ' . (int) ( $last['homepage']['http_status'] ?? 0 ) . ' / REST HTTP ' . (int) ( $last['rest_root']['http_status'] ?? 0 ) ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'Same-origin server reachability only. A loopback HTTP 500 is not proof of a visitor-facing 500 or a confirmed PHP root cause.', 'mad4b-site-control-plane' ) . '</p>';
+		}
+		$events = isset( $incidents['events'] ) && is_array( $incidents['events'] ) ? array_slice( $incidents['events'], -12 ) : array();
+		if ( $events ) {
+			echo '<h3>' . esc_html__( 'Recent PHP fatal metadata', 'mad4b-site-control-plane' ) . '</h3><table class="widefat striped"><thead><tr><th>UTC</th><th>Request</th><th>Component family</th><th>PHP error type</th><th>Fingerprint</th></tr></thead><tbody>';
+			foreach ( $events as $event ) {
+				echo '<tr><td>' . esc_html( gmdate( 'Y-m-d H:i:s', (int) ( $event['last_at'] ?? 0 ) ) ) . '</td><td>' . esc_html( (string) ( $event['request_family'] ?? '' ) )
+					. '</td><td>' . esc_html( (string) ( $event['component_family'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['type'] ?? '' ) )
+					. '</td><td><code>' . esc_html( substr( (string) ( $event['incident_fingerprint'] ?? '' ), 0, 12 ) ) . '</code></td></tr>';
+			}
+			echo '</tbody></table>';
+		} else echo '<p>' . esc_html__( 'No incident captured in the bounded journal. This does not prove that PHP or the host has never failed.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><a href="' . esc_url( admin_url( 'tools.php?page=mad4b-staging-write-owner-review' ) ) . '">' . esc_html__( 'Review exact Write Authority plan (separate owner approval)', 'mad4b-site-control-plane' ) . '</a></p>';
+		echo '<p class="description">' . esc_html__( 'Opening this page, reading Query Monitor, or running an HTTP check never approves grants, installs plugins, disables Recovery Mode, or certifies Production.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
 
 	private static function key_value_table( array $values ) {
