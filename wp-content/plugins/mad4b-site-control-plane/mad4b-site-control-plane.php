@@ -537,6 +537,11 @@ require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-form-ui.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-cso-secrets.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-recovery-lifecycle.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-runtime-recovery-workspace.php';
+// Loaded again only if the trusted MU bootstrap has not already loaded it.
+// Normal plugin includes never activate the pre-plugin shutdown observer.
+require_once MAD4B_SCP_DIR . 'bootstrap/mad4b-native-incident-mu.php';
+require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-native-runtime-diagnostics.php';
+MAD4B_SCP_Native_Runtime_Diagnostics::boot();
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-governance-abilities.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-governance-experience.php';
 require_once MAD4B_SCP_DIR . 'includes/class-mad4b-scp-g2-permission-changes.php';

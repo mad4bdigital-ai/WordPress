@@ -155,6 +155,23 @@ $mad4b_mcp_mu_status['wordpress_environment'] = $mad4b_mcp_mu_binding['wordpress
 $mad4b_mcp_mu_status['wordpress_environment_explicit'] = ! empty( $mad4b_mcp_mu_binding['wordpress_environment_explicit'] );
 $mad4b_mcp_mu_profile_enrolled = ! empty( $mad4b_mcp_mu_binding['eligible'] );
 
+// Native PHP incident metadata can be captured before ordinary plugins load,
+// even when the MAD4B plugin itself has a fatal error. No raw PHP messages,
+// filesystem paths or user URLs are recorded. This observer is staging-only,
+// and never creates a deployment binding, grant or new managed MU file.
+if ( $mad4b_mcp_mu_profile_enrolled
+    && 'staging' === (string) ( $mad4b_mcp_mu_binding['environment'] ?? '' )
+    && '' !== $mad4b_mcp_mu_control_plane_root ) {
+    $mad4b_native_incident_source = $mad4b_mcp_mu_control_plane_root . 'bootstrap/mad4b-native-incident-mu.php';
+    if ( is_readable( $mad4b_native_incident_source ) ) {
+        require_once $mad4b_native_incident_source;
+        if ( class_exists( 'MAD4B_Native_Incident_MU', false ) )
+            MAD4B_Native_Incident_MU::boot( true );
+    }
+    unset( $mad4b_native_incident_source );
+}
+
+
 // Any unresolved filesystem transaction blocks provider execution before normal
 // plugins load. The database option is authoritative; persistent object-cache
 // state is evicted before this safety read so Redis/Memcached acceleration cannot
