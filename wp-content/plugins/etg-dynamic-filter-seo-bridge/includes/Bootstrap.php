@@ -170,6 +170,7 @@ final class Bootstrap {
         (new JetEngineInspectorPage($sourceResolver,$previewContextProvider))->register();
         (new UsageGuidePage($runtimeInventory,$catalog,$slots,$profiles))->register();
         (new InventoryControlPage($this->config,$profiles,$runtimeInventory,$profilePlanner))->register();
+        (new \ETG\DynamicFilterSEOBridge\Admin\UrlArchitecturePage())->register();
 
         if($globalRuntimeEnabled&&$needsRankMath&&$compatibility->rankMath()){
             (new MetadataAdapter($provider,$content,$gallery,$this->policy,$canonical,$publication))->register();

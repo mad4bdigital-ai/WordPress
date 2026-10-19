@@ -54,6 +54,8 @@ jobs:
           set -euo pipefail
           PLUGIN='wp-content/plugins/etg-dynamic-filter-seo-bridge'
           for test_file in \
+            indexflow-managed-url-smoke.php \
+            indexflow-route-environment-smoke.php \
             indexflow-configuration-smoke.php \
             indexflow-legacy-profile-compat-smoke.php \
             indexflow-semantic-acceptance-smoke.php \

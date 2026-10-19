@@ -9,6 +9,7 @@ final class AdminUi {
         'etg-dfsb-jetengine-inspector' => 'JetEngine Inspector',
         'etg-dfsb-inventory-control' => 'Inventory Control',
         'etg-filter-seo-publication' => 'SEO Publication',
+        'etg-indexflow-url-architecture' => 'URL Architecture',
         'etg-dfsb-usage-guide' => 'Usage Guide',
     );
 

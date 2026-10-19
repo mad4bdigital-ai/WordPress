@@ -9,6 +9,7 @@ final class AdminAssets {
         'etg-dfsb-jetengine-inspector',
         'etg-dfsb-inventory-control',
         'etg-filter-seo-publication',
+        'etg-indexflow-url-architecture',
         'etg-dfsb-usage-guide',
     );
 
