@@ -1,0 +1,48 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing-terms",
+	"title": "Listing Terms",
+	"category": "jsf-blocks",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"from_tax": {
+			"type": "string",
+			"default": "category"
+		},
+		"show_all_terms": {
+			"type": "boolean",
+			"default": true
+		},
+		"terms_num": {
+			"type": "number",
+			"default": 1
+		},
+		"order_by": {
+			"type": "string",
+			"default": "name"
+		},
+		"order": {
+			"type": "string",
+			"default": "asc"
+		},
+		"terms_linked": {
+			"type": "boolean",
+			"default": true
+		},
+		"terms_delimiter": {
+			"type": "string",
+			"default": ", "
+		},
+		"terms_prefix": {
+			"type": "string",
+			"default": ""
+		},
+		"terms_suffix": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"render": "file:./render.php"
+}

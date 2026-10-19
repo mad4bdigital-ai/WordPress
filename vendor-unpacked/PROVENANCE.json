@@ -1,0 +1,20 @@
+{
+  "schema": "mad4b.research-unpacked-vendor-archives.v1",
+  "non_authorizing": true,
+  "no_runtime_certs": true,
+  "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+  "branch": "research/vendor-jet-smart-filters-20261019",
+  "archives": [
+    {
+      "archive": "wp-content/plugins/jet-smart-filters.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "4499133a6acbdfec685178bbf3c54adf65fcccff",
+      "archive_sha256": "9d82887a95728f824f53efa9ac59101ca609dfd1321e4639030e4dff3dcc3354",
+      "archive_bytes": 8151596,
+      "files": 667,
+      "uncompressed_bytes": 7987774,
+      "extract_root": "vendor-unpacked/jet-smart-filters",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    }
+  ]
+}

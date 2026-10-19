@@ -1,0 +1,68 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing-field",
+	"title": "Listing Field",
+	"category": "jsf-blocks",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"source": {
+			"type": "string",
+			"default": "object"
+		},
+		"object": {
+			"type": "string",
+			"default": "post_title"
+		},
+		"meta_key": {
+			"type": "string",
+			"default": ""
+		},
+		"option_name": {
+			"type": "string",
+			"default": ""
+		},
+		"fallback": {
+			"type": "string",
+			"default": ""
+		},
+		"date_format": {
+			"type": "string",
+			"default": "F j, Y"
+		},
+		"thousands_separator": {
+			"type": "string",
+			"default": ","
+		},
+		"decimal_count": {
+			"type": "number",
+			"default": 0
+		},
+		"decimal_point": {
+			"type": "string",
+			"default": "."
+		},
+		"tag": {
+			"type": "string",
+			"default": "div"
+		},
+		"use_filter": {
+			"type": "boolean",
+			"default": false
+		},
+		"filter_callback": {
+			"type": "string",
+			"default": "date"
+		},
+		"use_custom_format": {
+			"type": "boolean",
+			"default": false
+		},
+		"custom_format": {
+			"type": "string",
+			"default": "%s"
+		}
+	},
+	"render": "file:./render.php"
+}

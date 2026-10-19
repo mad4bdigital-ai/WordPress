@@ -1,0 +1,21 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing",
+	"title": "JSF Listing",
+	"category": "jet-smart-filters",
+	"icon": "layout",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"listing_id": {
+			"type": "string",
+			"default": ""
+		},
+		"_element_id": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"render": "file:./render.php"
+}

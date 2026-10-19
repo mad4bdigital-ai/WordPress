@@ -1,0 +1,23 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing-section",
+	"title": "Listing Section",
+	"category": "design",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"direction": {
+			"type": "string",
+			"default": "row"
+		},
+		"justify": {
+			"type": "string",
+			"default": "flex-start"
+		},
+		"align_items": {
+			"type": "string",
+			"default": "center"
+		}
+	}
+}

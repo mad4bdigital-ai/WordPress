@@ -1,0 +1,80 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing-link",
+	"title": "Listing Link",
+	"category": "jsf-blocks",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"source": {
+			"type": "string",
+			"default": "permalink"
+		},
+		"attachment_key": {
+			"type": "string",
+			"default": ""
+		},
+		"meta_key": {
+			"type": "string",
+			"default": ""
+		},
+		"option_name": {
+			"type": "string",
+			"default": ""
+		},
+		"link_fallback": {
+			"type": "string",
+			"default": ""
+		},
+		"label_type": {
+			"type": "string",
+			"default": "static"
+		},
+		"label_text": {
+			"type": "string",
+			"default": "Read more"
+		},
+		"label_source": {
+			"type": "string",
+			"default": "object"
+		},
+		"label_object": {
+			"type": "string",
+			"default": "post_title"
+		},
+		"label_meta_key": {
+			"type": "string",
+			"default": ""
+		},
+		"label_option_name": {
+			"type": "string",
+			"default": ""
+		},
+		"label_aria_type": {
+			"type": "string",
+			"default": "inherit"
+		},
+		"label_aria_text": {
+			"type": "string",
+			"default": ""
+		},
+		"url_prefix": {
+			"type": "string",
+			"default": ""
+		},
+		"url_anchor": {
+			"type": "string",
+			"default": ""
+		},
+		"is_new_window": {
+			"type": "boolean",
+			"default": false
+		},
+		"rel_attribute_type": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"render": "file:./render.php"
+}

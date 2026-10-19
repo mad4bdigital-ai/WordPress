@@ -1,0 +1,64 @@
+{
+	"apiVersion": 3,
+	"name": "jsf-grid-block/listing-image",
+	"title": "Listing Image",
+	"category": "jsf-blocks",
+	"supports": {
+		"html": false
+	},
+	"attributes": {
+		"image_source": {
+			"type": "string",
+			"default": "post_thumbnail"
+		},
+		"image_meta_key": {
+			"type": "string",
+			"default": ""
+		},
+		"image_option_name": {
+			"type": "string",
+			"default": ""
+		},
+		"image_url_prefix": {
+			"type": "string",
+			"default": ""
+		},
+		"image_fallback": {
+			"type": "number",
+			"default": ""
+		},
+		"image_size": {
+			"type": "string",
+			"default": "full"
+		},
+		"avatar_size": {
+			"type": "number",
+			"default": 50
+		},
+		"custom_image_alt": {
+			"type": "string",
+			"default": ""
+		},
+		"image_is_linked": {
+			"type": "boolean",
+			"default": false
+		},
+		"link_source": {
+			"type": "string",
+			"default": "permalink"
+		},
+		"link_attachment_key": {
+			"type": "string",
+			"default": ""
+		},
+		"link_meta_key": {
+			"type": "string",
+			"default": ""
+		},
+		"link_option_name": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"render": "file:./render.php"
+}

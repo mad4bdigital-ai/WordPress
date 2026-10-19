@@ -1,0 +1,183 @@
+:root {
+	// listing-field
+	--jsf-lf-color: currentColor;
+	--jsf-lf-typography__size: inherit;
+	--jsf-lf-typography__weight: inherit;
+	--jsf-lf-typography__lineheight: inherit;
+	--jsf-lf-typography__family: inherit;
+	--jsf-lf-typography__style: inherit;
+	--jsf-lf-typography__transform: inherit;
+	--jsf-lf-typography__letterspacing: inherit;
+	--jsf-lf-typography__decoration: inherit;
+	--jsf-lf-margin: 0;
+	--jsf-lf-padding: 0;
+	--jsf-lf-border__radius: 0;
+	--jsf-lf-border__top: none;
+	--jsf-lf-border__right: none;
+	--jsf-lf-border__bottom: none;
+	--jsf-lf-border__left: none;
+	--jsf-lf-bg: transparent;
+
+	// listing-link
+	--jsf-ll-typography__size: inherit;
+	--jsf-ll-typography__weight: inherit;
+	--jsf-ll-typography__lineheight: inherit;
+	--jsf-ll-typography__family: inherit;
+	--jsf-ll-typography__style: inherit;
+	--jsf-ll-typography__transform: inherit;
+	--jsf-ll-typography__letterspacing: inherit;
+	--jsf-ll-typography__decoration: inherit;
+	--jsf-ll-color: currentColor;
+	--jsf-ll-bg: transparent;
+	--jsf-ll-margin: 0;
+	--jsf-ll-padding: 0;
+	--jsf-ll-border__radius: 0;
+	--jsf-ll-border__top: none;
+	--jsf-ll-border__right: none;
+	--jsf-ll-border__bottom: none;
+	--jsf-ll-border__left: none;
+
+	// listing-image
+	--jsf-li-width: 100%;
+	--jsf-li-max-width: inherit;
+	--jsf-li-height: inherit;
+	--jsf-li-margin: 0;
+	--jsf-li-padding: 0;
+	--jsf-li-border__radius: 0;
+	--jsf-li-border__top: none;
+	--jsf-li-border__right: none;
+	--jsf-li-border__bottom: none;
+	--jsf-li-border__left: none;
+	--jsf-li-bg: transparent;
+
+	// listing-terms
+	--jsf-lt-typography__size: inherit;
+	--jsf-lt-typography__weight: inherit;
+	--jsf-lt-typography__lineheight: inherit;
+	--jsf-lt-typography__family: inherit;
+	--jsf-lt-typography__style: inherit;
+	--jsf-lt-typography__transform: inherit;
+	--jsf-lt-typography__letterspacing: inherit;
+	--jsf-lt-typography__decoration: inherit;
+	--jsf-lt-margin: 0;
+	--jsf-lt-padding: 0;
+	--jsf-lt-border__radius: 0;
+	--jsf-lt-border__top: none;
+	--jsf-lt-border__right: none;
+	--jsf-lt-border__bottom: none;
+	--jsf-lt-border__left: none;
+	--jsf-lt-bg: transparent;
+	--jsf-lti-color: currentColor;
+	--jsf-lti-bg: transparent --jsf-lti-margin 0: --jsf-lti-padding 0: --jsf-lti-border__radius: 0;
+	--jsf-lti-border__top: none;
+	--jsf-lti-border__right: none;
+	--jsf-lti-border__bottom: none;
+	--jsf-lti-border__left: none;
+	--jsf-lt-prefix-margin: 0 6px 0 0;
+	--jsf-lt-suffix-margin: 0 0 0 6px;
+}
+
+.jsf-listing-field {
+	color: var(--jsf-lf-color);
+	font-size: var(--jsf-lf-typography__size);
+	font-weight: var(--jsf-lf-typography__weight);
+	line-height: var(--jsf-lf-typography__lineheight);
+	font-family: var(--jsf-lf-typography__family);
+	font-style: var(--jsf-lf-typography__style);
+	text-transform: var(--jsf-lf-typography__transform);
+	letter-spacing: var(--jsf-lf-typography__letterspacing);
+	text-decoration: var(--jsf-lf-typography__decoration);
+	margin: var(--jsf-lf-margin);
+	padding: var(--jsf-lf-padding);
+	border-radius: var(--jsf-lf-border__radius);
+	border-top: var(--jsf-lf-border__top);
+	border-right: var(--jsf-lf-border__right);
+	border-bottom: var(--jsf-lf-border__bottom);
+	border-left: var(--jsf-lf-border__left);
+	background-color: var(--jsf-lf-bg);
+}
+
+a.jsf-listing-link {
+	font-size: var(--jsf-ll-typography__size);
+	font-weight: var(--jsf-ll-typography__weight);
+	line-height: var(--jsf-ll-typography__lineheight);
+	font-family: var(--jsf-ll-typography__family);
+	font-style: var(--jsf-ll-typography__style);
+	text-transform: var(--jsf-ll-typography__transform);
+	letter-spacing: var(--jsf-ll-typography__letterspacing);
+	text-decoration: var(--jsf-ll-typography__decoration);
+	color: var(--jsf-ll-color);
+	background-color: var(--jsf-ll-bg);
+	margin: var(--jsf-ll-margin);
+	padding: var(--jsf-ll-padding);
+	border-radius: var(--jsf-ll-border__radius);
+	border-top: var(--jsf-ll-border__top);
+	border-right: var(--jsf-ll-border__right);
+	border-bottom: var(--jsf-ll-border__bottom);
+	border-left: var(--jsf-ll-border__left);
+}
+
+a.jsf-listing-link:hover {
+	color: var(--jsf-ll-color__hover, var(--jsf-ll-color));
+	background-color: var(--jsf-ll-bg__hover, var(--jsf-ll-bg));
+}
+
+.jsf-listing-image {
+	margin: var(--jsf-li-margin);
+}
+.jsf-listing-image .jsf-listing-image__img {
+	width: var(--jsf-li-width);
+	max-width: var(--jsf-li-max-width);
+	height: var(--jsf-li-height);
+	padding: var(--jsf-li-padding);
+	border-radius: var(--jsf-li-border__radius);
+	border-top: var(--jsf-li-border__top);
+	border-right: var(--jsf-li-border__right);
+	border-bottom: var(--jsf-li-border__bottom);
+	border-left: var(--jsf-li-border__left);
+	background-color: var(--jsf-li-bg);
+}
+
+.jsf-listing-terms {
+	font-size: var(--jsf-lt-typography__size);
+	font-weight: var(--jsf-lt-typography__weight);
+	line-height: var(--jsf-lt-typography__lineheight);
+	font-family: var(--jsf-lt-typography__family);
+	font-style: var(--jsf-lt-typography__style);
+	text-transform: var(--jsf-lt-typography__transform);
+	letter-spacing: var(--jsf-lt-typography__letterspacing);
+	text-decoration: var(--jsf-lt-typography__decoration);
+	margin: var(--jsf-lt-margin);
+	padding: var(--jsf-lt-padding);
+	border-radius: var(--jsf-lt-border__radius);
+	border-top: var(--jsf-lt-border__top);
+	border-right: var(--jsf-lt-border__right);
+	border-bottom: var(--jsf-lt-border__bottom);
+	border-left: var(--jsf-lt-border__left);
+	background-color: var(--jsf-lt-bg);
+
+	.jsf-listing-terms-item {
+		color: var(--jsf-lti-color);
+		margin: var(--jsf-lti-margin);
+		padding: var(--jsf-lti-padding);
+		border-radius: var(--jsf-lti-border__radius);
+		border-top: var(--jsf-lti-border__top);
+		border-right: var(--jsf-lti-border__right);
+		border-bottom: var(--jsf-lti-border__bottom);
+		border-left: var(--jsf-lti-border__left);
+		background-color: var(--jsf-lti-bg);
+
+		&:hover {
+			color: var(--jsf-lti-color__hover, var(--jsf-lti-color));
+			background-color: var(--jsf-lti-bg__hover, var(--jsf-lti-bg));
+			border-color: var(--jsf-lti-border__hover);
+		}
+	}
+
+	.jsf-listing-terms-prefix {
+		margin: var(--jsf-lt-prefix-margin);
+	}
+	.jsf-listing-terms-suffix {
+		margin: var(--jsf-lt-suffix-margin);
+	}
+}
