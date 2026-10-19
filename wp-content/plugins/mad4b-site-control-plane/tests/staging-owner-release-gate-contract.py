@@ -43,7 +43,13 @@ assert convergence.index("::reserve( $plan )") < convergence.index("MAD4B_SCP_St
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::claim( $plan, array(" in convergence
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::can_remote_attest()" in convergence
 assert "MAD4B_SCP_Staging_Write_Owner_Intent::attest( array(" in convergence
-assert "'mad4b_staging_owner_proof_ambiguous'" in convergence
+# A matching review may accompany an existing signed receipt. Preserve
+# missing/stale proof rejection and never mint a replacement receipt for it.
+assert "'mad4b_staging_owner_proof_required'" in convergence
+assert "'mad4b_staging_owner_review_stale'" in convergence
+assert "if ( '' === $receipt && '' === $review )" in convergence
+assert "if ( '' === $receipt )" in convergence
+assert "'mad4b_staging_owner_proof_ambiguous'" not in convergence
 assert "self::review()" in owner and "hash_equals(" in owner and "hash_hmac(" in owner
 assert "add_option( $claim_key" in owner
 print('STAGING_OWNER_RELEASE_GATE: PASS (contract only; '+publish_state+')')
