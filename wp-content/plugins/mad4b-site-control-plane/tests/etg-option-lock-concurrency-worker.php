@@ -6,7 +6,7 @@ use ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate as Gate;
 $mode=(string)getenv('ETG_LOCK_MODE');
 $marker=(string)getenv('ETG_LOCK_MARKER');
 if(!preg_match('#^/tmp/[a-zA-Z0-9._-]{5,150}$#D',$marker))throw new RuntimeException('bad marker');
-$option='etg_dfsb_settings';
+$option='etg_dfsb_dynamic_content_slots';
 if($mode==='hold'){
     $lease=Gate::acquire($option);
     if(is_wp_error($lease))throw new RuntimeException('first DB lock failed');
