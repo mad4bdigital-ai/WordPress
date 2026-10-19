@@ -45,6 +45,7 @@ jobs:
           php -l "$root/includes/class-mad4b-scp-unified-capability-gateway.php"
           php -l "$root/includes/class-mad4b-scp-catalog-object-store.php"
           php -l "$root/tools/catalog-decommission.php"
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/catalog-transport-runtime.php"
           node "$root/tests/catalog-transport-client.mjs"
           node "$root/tests/network-catalog-client.mjs"
@@ -93,6 +94,7 @@ jobs:
           set -euo pipefail
           root='wp-content/plugins/mad4b-site-control-plane'
           find "$root/includes" -name '*.php' -print0 | xargs -0 -n1 php -l
+          php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/catalog-transport-runtime.php"
           php "$root/tests/projection-registration-lifecycle.php"
           php "$root/tests/gateway-regression-runtime.php"
