@@ -682,6 +682,64 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "e2cba28567b83b8ded0292baf5a1b5d0010debbb",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py"
+      ],
+      "review_rationale": "CI-only review of ETG option-scoped owner-token lock, independent Admin/MCP write fence, guarded profile/slot CAS readback, retention of uncertain undo lease and refusal of cross-adapter unjournaled writes. Native write smoke and shared transaction checks are included in this PR; independent Staging HTTP concurrency and reconciled lock release are still required.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-indexflow-routes-adapter.php",
+      "source_blob_sha": "7a446692aa3a1411e105ac960206dfca786a6cc4",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php"
+      ],
+      "review_rationale": "CI-only review of separate Staging-only IndexFlow route-storage authority, provider certification, plan-digest CAS apply/readback/undo, and retention of a resource lease after uncertain journal outcome. Route adapter behavioral tests and no-activation contract are present; this review does not certify live rewrite routing, vendor SEO output, provider grants or Production.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source_blob_sha": "6138b3472a1e8542dc481e83042529fc42b64341",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "DATABASE-01",
+        "RECOVERY-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py"
+      ],
+      "review_rationale": "CI-only source review of durable pre-restore parent CAS and child undo-intent journaling, exact before/after SHA evidence, SQL field-format regression, rejection of unsafe replay, and retention of provider option lock when post-side-effect journal status cannot be committed. Fault injection tests include claim, insert, provider, readback and journal-finalization failures; real live operator reconciliation remains an independent gate.",
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
