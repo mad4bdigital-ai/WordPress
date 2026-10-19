@@ -33,6 +33,16 @@ final class MAD4B_Native_Incident_MU {
         elseif ( false !== strpos( $file, '/wp-content/plugins/' ) ) $family = 'plugin';
         elseif ( false !== strpos( $file, '/wp-content/themes/' ) ) $family = 'theme';
         elseif ( false !== strpos( $file, '/wp-includes/' ) || false !== strpos( $file, '/wp-admin/' ) ) $family = 'wordpress_core';
+        // The plugin/theme slug is safe operational context; do not reveal the
+        // absolute path or filename. It is a *suspected* origin, not root cause.
+        $slug = '';
+        $root = 'plugin' === $family ? '/wp-content/plugins/' : ( 'theme' === $family ? '/wp-content/themes/' : '' );
+        if ( '' !== $root ) {
+            $suffix = substr( $file, strpos( $file, $root ) + strlen( $root ) );
+            $first = strtok( $suffix, '/' );
+            if ( is_string( $first ) && 1 === preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/D', $first ) )
+                $slug = strtolower( $first );
+        }
         $message = isset( $error['message'] ) && is_string( $error['message'] ) ? $error['message'] : '';
         $secret = function_exists( 'wp_salt' ) ? (string) wp_salt( 'auth' ) : '';
         if ( '' === $secret ) return array(); // Never persist an unsalted guess about sensitive source text.
@@ -42,6 +52,7 @@ final class MAD4B_Native_Incident_MU {
         return array(
             'type' => $type,
             'component_family' => $family,
+            'suspected_component_slug' => $slug,
             'component_fingerprint' => hash_hmac( 'sha256', $file, $secret ),
             'incident_fingerprint' => hash_hmac( 'sha256', $type . '|' . $file . '|' . $message, $secret ),
             'request_family' => $request,
@@ -75,8 +86,7 @@ final class MAD4B_Native_Incident_MU {
             $history = array_slice( $history, -self::MAX_EVENTS );
             // WordPress option storage is available only after core DB bootstrap.
             // A hard outage before that point is explicitly NOT captured.
-            update_option( self::OPTION, array( 'contract' => self::CONTRACT, 'events' => $history ), false );
-            return true;
+            return (bool) update_option( self::OPTION, array( 'contract' => self::CONTRACT, 'events' => $history ), false );
         } catch ( Throwable $ignored ) {
             return false; // Incident handling must never crash the request again.
         }
@@ -85,7 +95,11 @@ final class MAD4B_Native_Incident_MU {
     public static function status() {
         $stored = function_exists( 'get_option' ) ? get_option( self::OPTION, array() ) : array();
         $events = is_array( $stored ) && isset( $stored['events'] ) && is_array( $stored['events'] ) ? $stored['events'] : array();
-        $events = array_slice( $events, -self::MAX_EVENTS );
+        $now = time();
+        $events = array_slice( array_values( array_filter( $events, static function ( $row ) use ( $now ) {
+            return is_array( $row ) && isset( $row['last_at'] )
+                && (int) $row['last_at'] <= $now && (int) $row['last_at'] >= $now - 7 * DAY_IN_SECONDS;
+        } ) ), -self::MAX_EVENTS );
         // Only select metadata fields; no untrusted stored text echoed to UI/MCP.
         $safe = array();
         foreach ( $events as $row ) {
@@ -94,6 +108,8 @@ final class MAD4B_Native_Incident_MU {
                 'type' => (int) ( $row['type'] ?? 0 ),
                 'component_family' => in_array( (string) ( $row['component_family'] ?? '' ), array( 'mu_plugin', 'plugin', 'theme', 'wordpress_core', 'unknown' ), true ) ? $row['component_family'] : 'unknown',
                 'request_family' => in_array( (string) ( $row['request_family'] ?? '' ), array( 'cron', 'rest', 'admin', 'frontend' ), true ) ? $row['request_family'] : 'unknown',
+                'suspected_component_slug' => isset( $row['suspected_component_slug'] ) && is_string( $row['suspected_component_slug'] )
+                    && 1 === preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $row['suspected_component_slug'] ) ? $row['suspected_component_slug'] : '',
                 'last_at' => max( 0, (int) ( $row['last_at'] ?? 0 ) ),
                 'incident_fingerprint' => isset( $row['incident_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/D', (string) $row['incident_fingerprint'] ) ? $row['incident_fingerprint'] : '',
             );

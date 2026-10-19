@@ -286,10 +286,10 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		}
 		$events = isset( $incidents['events'] ) && is_array( $incidents['events'] ) ? array_slice( $incidents['events'], -12 ) : array();
 		if ( $events ) {
-			echo '<h3>' . esc_html__( 'Recent PHP fatal metadata', 'mad4b-site-control-plane' ) . '</h3><table class="widefat striped"><thead><tr><th>UTC</th><th>Request</th><th>Component family</th><th>PHP error type</th><th>Fingerprint</th></tr></thead><tbody>';
+			echo '<h3>' . esc_html__( 'Recent PHP fatal metadata', 'mad4b-site-control-plane' ) . '</h3><table class="widefat striped"><thead><tr><th>UTC</th><th>Request</th><th>Component family</th><th>Suspected component</th><th>PHP error type</th><th>Fingerprint</th></tr></thead><tbody>';
 			foreach ( $events as $event ) {
 				echo '<tr><td>' . esc_html( gmdate( 'Y-m-d H:i:s', (int) ( $event['last_at'] ?? 0 ) ) ) . '</td><td>' . esc_html( (string) ( $event['request_family'] ?? '' ) )
-					. '</td><td>' . esc_html( (string) ( $event['component_family'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['type'] ?? '' ) )
+					. '</td><td>' . esc_html( (string) ( $event['component_family'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['suspected_component_slug'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['type'] ?? '' ) )
 					. '</td><td><code>' . esc_html( substr( (string) ( $event['incident_fingerprint'] ?? '' ), 0, 12 ) ) . '</code></td></tr>';
 			}
 			echo '</tbody></table>';

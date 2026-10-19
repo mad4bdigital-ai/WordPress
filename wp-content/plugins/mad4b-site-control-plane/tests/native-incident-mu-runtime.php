@@ -21,8 +21,8 @@ $check( true === MAD4B_Native_Incident_MU::record( $err ), 'fatal metadata not r
 $check( false === MAD4B_Native_Incident_MU::record( $err ), 'duplicate event persisted in same minute' );
 $stored = get_option( MAD4B_Native_Incident_MU::OPTION );
 $text = json_encode( $stored );
-$check( strpos( $text, 'LEAK_NEVER' ) === false && strpos( $text, $file ) === false && strpos( $text, 'plugin-name' ) === false, 'raw PHP error detail leaked' );
-$check( 'plugin' === $stored['events'][0]['component_family'] && count( $stored['events'] ) === 1, 'component classification or retention wrong' );
+$check( strpos( $text, 'LEAK_NEVER' ) === false && strpos( $text, $file ) === false, 'raw PHP error detail leaked' );
+$check( 'plugin' === $stored['events'][0]['component_family'] && 'plugin-name' === $stored['events'][0]['suspected_component_slug'] && count( $stored['events'] ) === 1, 'component classification or retention wrong' );
 $events = MAD4B_Native_Incident_MU::status();
 $check( 'CAPTURED' === $events['state'] && 1 === $events['count'] && empty( $events['events'][0]['message'] ), 'sanitized status wrong' );
 $check( empty( MAD4B_Native_Incident_MU::classify( array( 'type' => E_NOTICE ) ) ), 'nonfatal class accepted' );
