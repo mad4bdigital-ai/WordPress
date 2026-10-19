@@ -225,6 +225,34 @@ jobs:
           php /tmp/wp-cli.phar eval-file \
             "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php" \
             --path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin
+      - name: Certify real WP/MariaDB option mutex across separate PHP processes
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ETG_LOCK_MARKER="/tmp/etg-gate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          script="$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/etg-option-lock-concurrency-worker.php"
+          wp_args=(--path=/tmp/mad4b-etg-wordpress --user=mad4b-ci-admin)
+          rm -f "${ETG_LOCK_MARKER}."{lease,locked,release,done}
+          ETG_LOCK_MODE=hold php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}" > "${ETG_LOCK_MARKER}.log" 2>&1 &
+          holder_pid=$!
+          cleanup() {
+            touch "${ETG_LOCK_MARKER}.release"
+            if kill -0 "$holder_pid" 2>/dev/null; then wait "$holder_pid" || true; fi
+            if test -f "${ETG_LOCK_MARKER}.log"; then cat "${ETG_LOCK_MARKER}.log"; fi
+          }
+          trap cleanup EXIT
+          for n in $(seq 1 100); do
+            if test -f "${ETG_LOCK_MARKER}.locked"; then break; fi
+            if ! kill -0 "$holder_pid" 2>/dev/null; then echo "::error::holder died before acquiring mutex"; exit 1; fi
+            sleep 0.1
+          done
+          test -f "${ETG_LOCK_MARKER}.locked"
+          ETG_LOCK_MODE=deny php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}"
+          touch "${ETG_LOCK_MARKER}.release"
+          wait "$holder_pid"
+          test -f "${ETG_LOCK_MARKER}.done"
+          ETG_LOCK_MODE=handover php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}"
+          echo "REAL_DB_CONCURRENT_ETG_MUTEX: PASS"
       - name: Upload premium package normalization evidence
         if: always()
         uses: actions/upload-artifact@v4
