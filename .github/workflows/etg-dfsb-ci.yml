@@ -95,6 +95,7 @@ jobs:
             inventory-reconciliation-smoke.php \
             pre-staging-authority-hardening-smoke.php \
             publication-layer-smoke.php \
+            seo-output-ownership-smoke.php \
             build-identity-smoke.php \
             alpha9-governance-smoke.php \
             alpha10-query-identity-smoke.php \

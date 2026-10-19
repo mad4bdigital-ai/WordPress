@@ -141,6 +141,7 @@
     "includes/WPML/LanguageResolver.php": "9746b227ade54a1b72c14062df7185e5b4c87b0e55c3ec0859b053bdb3ca421c",
     "readme.md": "7343dc24e186caf43eefff620d474a56204513ca4fe373aa0e01fcaa2a9a0e72",
     "uninstall.php": "987e15977bf0eeeb170161e86d90f8876371de773715dbd1b9ab8edf9b3a1848",
-    "includes/Runtime/OptionMutationGate.php": "dad3deed2fe34d4ac2d06ef816cc52f1e809417167f2d54a47e6eeb81a67eb60"
+    "includes/Runtime/OptionMutationGate.php": "dad3deed2fe34d4ac2d06ef816cc52f1e809417167f2d54a47e6eeb81a67eb60",
+    "includes/SEO/OutputOwnershipResolver.php": "be7507567c26c52e51b91a8a3d67ae00e47095480606d0d56b264807f450804b"
   }
 }
