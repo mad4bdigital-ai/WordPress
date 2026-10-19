@@ -61,9 +61,11 @@ jobs:
         run: |
           set -euo pipefail
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adapter-registry.php
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
+          php wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php
           php wp-content/plugins/mad4b-site-control-plane/tests/external-handshake-inventory-runtime.php
 
   php-compatibility:

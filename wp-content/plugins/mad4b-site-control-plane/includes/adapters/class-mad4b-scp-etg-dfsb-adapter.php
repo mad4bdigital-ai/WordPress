@@ -10,6 +10,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * not enable the ETG bridge, mutate profiles, publish SEO state, alter Elementor
  * documents, or grant any authority.
  */
+if ( ! class_exists( 'MAD4B_SCP_Object_Cache_Diagnostics' ) ) {
+	require_once dirname( __DIR__ ) . '/class-mad4b-scp-object-cache-diagnostics.php';
+}
+
 final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 	const CONTRACT = 'mad4b.etg-dfsb-read-adapter.v1';
 	const SUPPORTED_VERSION = '0.4.0-alpha.13';
@@ -40,6 +44,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			'etg-dfsb/profile-plan',
 			'etg-dfsb/profile-diff',
 			'etg-dfsb/slot-plan',
+			'etg-dfsb/object-cache-status',
 			'etg-dfsb/content-catalog',
 		);
 		$read = array_merge( $read, $this->native_evidence_read_abilities() );
@@ -147,6 +152,7 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 			'slot_plan', $read,
 			$this->schema( array( 'slot' => array( 'type' => 'object', 'maxProperties' => 24, 'additionalProperties' => true ) ), array( 'slot' ) )
 		);
+		$this->add_ability( 'etg-dfsb/object-cache-status', 'Read ETG Object Cache Preconditions (Memcached/LSMCD)', 'object_cache_status', $read, $this->schema( array() ) );
 		$this->add_ability( 'etg-dfsb/content-catalog', 'Read ETG DFSB Dynamic Content Catalog', 'content_catalog', $read );
 	}
 
@@ -331,6 +337,13 @@ final class MAD4B_SCP_ETG_DFSB_Adapter extends MAD4B_SCP_Adapter_Base {
 		} catch ( Throwable $error ) {
 			return $this->runtime_error( 'slot_plan_unavailable' );
 		}
+	}
+
+	/** Passive diagnostics only; the staging key probe is never exposed through MCP. */
+	public function object_cache_status() {
+		$guard = $this->guard_runtime();
+		if ( is_wp_error( $guard ) ) return $guard;
+		return MAD4B_SCP_Object_Cache_Diagnostics::status();
 	}
 
 	public function content_catalog() {

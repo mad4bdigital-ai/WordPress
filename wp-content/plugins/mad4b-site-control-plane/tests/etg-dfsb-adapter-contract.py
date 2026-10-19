@@ -34,6 +34,7 @@ for ability in (
     'etg-dfsb/profile-plan',
     'etg-dfsb/profile-diff',
     'etg-dfsb/slot-plan',
+    'etg-dfsb/object-cache-status',
     'etg-dfsb/content-catalog',
     'etg-dfsb/evidence-provider',
     'etg-dfsb/evidence-query',
@@ -100,7 +101,7 @@ for contract in (
 ):
     require(contract in required_contracts, 'ETG requested contract missing: ' + contract)
 
-for marker in ('profile_diff(', 'slot_plan(', "'apply_authorized' => false", "'mutation_performed' => false"):
+for marker in ('profile_diff(', 'slot_plan(', 'object_cache_status(', 'MAD4B_SCP_Object_Cache_Diagnostics::status()', "'apply_authorized' => false", "'mutation_performed' => false"):
     require(marker in adapter, 'read-only ETG plan/diff contract missing: ' + marker)
 
 print('mad4b.site-control-plane.etg-dfsb-read-adapter.v1: PASS')
