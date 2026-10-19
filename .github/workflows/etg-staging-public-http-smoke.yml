@@ -24,6 +24,7 @@ jobs:
       - name: Checkout exact repository SHA
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Enforce safe source script syntax
         run: python3 -m py_compile tools/etg-staging-public-http-smoke.py
