@@ -1,0 +1,38 @@
+name: Research Vendor ZIP Extraction (Isolated)
+on:
+  push:
+    branches:
+      - research/vendor-unpack-controller-20261019
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: research-vendor-archive-extraction-20261019
+  cancel-in-progress: false
+
+jobs:
+  unpack-vendor:
+    if: github.repository == 'mad4bdigital-ai/WordPress'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify helper branch and pinned archive source
+        run: |
+          test "$GITHUB_REF_NAME" = "research/vendor-unpack-controller-20261019"
+          git cat-file -e f9b08155a68e2da01ac81edb0202c0d4471efc0d^{commit}
+          git fetch origin '+refs/heads/research/vendor-*:refs/remotes/origin/research/vendor-*'
+      - name: Copy trusted unpack helper before changing branches
+        run: cp tools/vendor_research_unpack.py "$RUNNER_TEMP/vendor_research_unpack.py"
+      - name: Unpack archives to separately isolated helper branches
+        run: python3 "$RUNNER_TEMP/vendor_research_unpack.py"
+      - name: Confirm research branch refs
+        if: success()
+        run: |
+          git ls-remote --heads origin 'refs/heads/research/vendor-*'
+          echo 'Vendor extraction complete. No ETG/production mutation or merge performed.' >> "$GITHUB_STEP_SUMMARY"
