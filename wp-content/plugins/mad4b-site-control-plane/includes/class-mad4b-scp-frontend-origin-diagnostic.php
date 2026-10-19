@@ -44,7 +44,12 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
     }
 
     private static function marker( $period ) {
-        return hash_hmac( 'sha256', self::MARKER . '|' . (int) $period, wp_salt( 'auth' ) );
+        // WordPress salts are pluggable and may not exist in early MU-plugin
+        // request classification. Never derive or accept an unsigned fallback.
+        if ( ! function_exists( 'wp_salt' ) ) return '';
+        $secret = wp_salt( 'auth' );
+        if ( ! is_string( $secret ) || '' === $secret ) return '';
+        return hash_hmac( 'sha256', self::MARKER . '|' . (int) $period, $secret );
     }
 
     public static function is_signed_synthetic_request() {
@@ -141,7 +146,8 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
                 $paired_state = 'BOTH_LOOPBACK_PATHS_5XX';
             return $base + array(
                 'state' => $paired_state, 'network_request_performed' => true,
-                'network_requests_performed' => 2,
+                'network_requests_performed' => (int) ! empty( $homepage['network_request_performed'] )
+                    + (int) ! empty( $rest['network_request_performed'] ),
                 'results' => array( 'homepage' => $homepage, 'rest_root' => $rest ),
                 'root_cause_proven' => false, 'public_network_verified' => false,
                 'next_action' => 'Correlate sanitized PHP/webserver error logs and theme/plugin frontend hooks for the same window; independently test a public browser. Loopback 500 is not proof of visitor-facing 500.',
@@ -154,6 +160,14 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         $url = 'rest_root' === $target ? rtrim( $origin, '/' ) . '/wp-json/' : $origin;
         $period = floor( time() / 120 );
         $marker = self::marker( $period );
+        if ( '' === $marker ) return array(
+            'state' => 'HTTP_PROBE_FAILED',
+            'network_request_performed' => false,
+            'error_code' => 'mad4b_frontend_probe_signature_unavailable',
+            'transport_error_class' => 'local_http_policy_block',
+            'root_cause_proven' => false,
+            'next_action' => 'Retry when the WordPress pluggable salt function is loaded; unsigned requests are never sent.',
+        );
         $url .= '?mad4b_synthetic_probe=' . $marker;
         $start = microtime( true );
         $response = wp_safe_remote_get( $url, array(
