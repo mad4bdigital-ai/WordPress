@@ -1,0 +1,146 @@
+{
+  "contract": "mad4b.readiness-capability-coverage.v1",
+  "authorizing": false,
+  "production_promotion_from_ci": false,
+  "scope": "repository_change_coverage_not_live_runtime_certification",
+  "treatment_of_existing_capabilities": "observed_baseline_not_automatically_certified",
+  "guarantees": {
+    "new_capability_requires_reviewed_coverage": true,
+    "new_capability_requires_new_test_evidence": true,
+    "retired_capability_requires_traceable_supersession": true,
+    "unknown_change_kind_fails_closed": true,
+    "new_capabilities_do_not_self_authorize": true,
+    "past_controls_remain_immutable_by_default": true,
+    "existing_behavior_changes_require_reviewed_test_evidence": true,
+    "new_capability_control_growth_decision_required": true,
+    "registered_interface_additions_require_coverage": true,
+    "control_metadata_history_is_sha_bound": true,
+    "policy_scope_protected_against_reduction": true,
+    "impact_rules_cannot_shadow_existing_rules": true,
+    "regression_tests_must_execute_in_ci": true
+  },
+  "domain_rules": [
+    {
+      "id": "authority",
+      "pattern": "authorization|approval|oauth|grant|security|policy|fence|identity|ticket|authenticat(?:ion|e|ing)",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ]
+    },
+    {
+      "id": "update",
+      "pattern": "cross[-_]?plugin|plugin[-_](?:update|rollback|install)|package|updat(?:e|ing)|rollback|deploy|release|recovery|restore",
+      "risk": "P0",
+      "controls": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01"
+      ]
+    },
+    {
+      "id": "mcp",
+      "pattern": "mcp|provider|adapter|ability|tool|capability|transport",
+      "risk": "P0",
+      "controls": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ]
+    },
+    {
+      "id": "admin",
+      "pattern": "admin|popup|ui|workspace|page|browser",
+      "risk": "P1",
+      "controls": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ]
+    },
+    {
+      "id": "data",
+      "pattern": "database|schema|migration|query|cache|search",
+      "risk": "P0",
+      "controls": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ]
+    },
+    {
+      "id": "automation",
+      "pattern": "cron|schedule|queue|job|workflow|skill|flow",
+      "risk": "P1",
+      "controls": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01"
+      ]
+    },
+    {
+      "id": "content",
+      "pattern": "content|research|brand|seo|wpml|translation|form",
+      "risk": "P1",
+      "controls": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ]
+    },
+    {
+      "id": "platform",
+      "pattern": ".*",
+      "risk": "P0",
+      "controls": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ]
+    }
+  ],
+  "reviewed_capabilities": [],
+  "lifecycle": [],
+  "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
+  "reviewed_changes": [],
+  "code_change_rules": {
+    "contract": "mad4b.readiness-reviewed-changes.v1",
+    "authorizing": false,
+    "runtime_root": "wp-content/plugins/mad4b-site-control-plane/",
+    "covered_extensions": [
+      ".php",
+      ".js",
+      ".css",
+      ".json"
+    ],
+    "included_subtrees": [
+      "includes/",
+      "assets/",
+      "config/"
+    ],
+    "root_php": true,
+    "excluded_subtrees": [
+      "tests/",
+      "docs/",
+      "languages/"
+    ],
+    "require_current_git_blob": true,
+    "require_same_pr_regression_test": true,
+    "require_existing_control_mapping": true,
+    "live_evidence_required": true,
+    "production_authorized": false,
+    "require_executed_regression_test": true
+  },
+  "capability_growth_policy": {
+    "contract": "mad4b.readiness-control-growth.v1",
+    "require_explicit_new_control_decision": true,
+    "require_review_rationale_for_reuse": true,
+    "require_new_control_ids_for_expansion": true,
+    "preserve_existing_control_ids": true,
+    "automated_approval": false
+  },
+  "policy_migrations": [],
+  "migration_contract": "mad4b.readiness-impact-rule-migration.v1"
+}
