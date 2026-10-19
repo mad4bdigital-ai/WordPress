@@ -157,7 +157,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		$after_hash = self::state_hash( $after_state );
-		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) ) {
+		if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verified', 'after_sha256' => $after_hash, 'verification_code' => 'provider_readback_recorded', 'error_code' => '' ) ) ) {
 			MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-journal-recovery', array( 'mutation_id' => $mutation_id, 'ability' => $ability_name, 'adapter' => $adapter->id(), 'after_sha256' => $after_hash ), 'failure' );
 			return new WP_Error( 'mad4b_mutation_journal_recovery_required', 'Provider write was observed, but its verification journal could not be persisted. Manual reconciliation required; blind retry denied.', array( 'mutation_id' => $mutation_id, 'observed_after_sha256' => $after_hash, 'recovery_required' => true, 'blind_retry_allowed' => false ) );
 		}
