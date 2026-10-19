@@ -78,7 +78,7 @@ jobs:
             ($runs | any(.name == "MAD4B Release Verdict" and .conclusion == "success"))
           ' "$RUNNER_TEMP/indexflow-source-ci.json"
           jq -e --arg merge "$MERGE_SHA" '
-            [.workflow_runs[] | select(.head_sha == $merge)] as $runs |
+            [.workflow_runs[] | select(.head_sha == $merge and .event == "push")] as $runs |
             ($runs | length) == 31 and
             ($runs | all(.conclusion == "success"))
           ' "$RUNNER_TEMP/indexflow-merge-ci.json"
