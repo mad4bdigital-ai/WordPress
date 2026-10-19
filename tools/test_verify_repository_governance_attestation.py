@@ -168,6 +168,7 @@ assert mig_spec.loader is not None
 mig_spec.loader.exec_module(mig)
 before = copy.deepcopy(template_data)
 before.update(id=23968498, source_type="Repository", source=REPOSITORY)
+before["rules"][2]["parameters"]["require_extra_approval_for_unattributed_changes"] = True
 before["rules"][3]["parameters"]["required_status_checks"] = copy.deepcopy(mig.LEGACY)
 assert mig.preflight(before, template_data, policy_data, REPOSITORY)["transition"] == "append_readiness_only"
 converged = copy.deepcopy(before)
@@ -176,6 +177,7 @@ assert mig.preflight(converged, template_data, policy_data, REPOSITORY)["transit
 for label, mutator in (
     ("wrong_repository", lambda d: d.update(source="untrusted/WordPress")),
     ("missing_bypass_evidence", lambda d: d.pop("bypass_actors")),
+    ("missing_unattributed_approval", lambda d: d["rules"][2]["parameters"].pop("require_extra_approval_for_unattributed_changes")),
     ("injected_bypass", lambda d: d.update(bypass_actors=[{"actor_type":"OrganizationAdmin","actor_id":1,"bypass_mode":"always"}])),
     ("removed_release", lambda d: d["rules"][3]["parameters"]["required_status_checks"].pop(0)),
     ("weakened_strict", lambda d: d["rules"][3]["parameters"].update(strict_required_status_checks_policy=False)),
