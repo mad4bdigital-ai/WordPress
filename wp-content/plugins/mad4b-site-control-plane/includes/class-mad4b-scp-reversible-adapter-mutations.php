@@ -147,12 +147,12 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			) )
 			: $readback_call();
 		if ( is_wp_error( $after_state ) ) {
-			self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
 			$error = new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'provider_error' => $after_state->get_error_code() ) );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		if ( ! is_array( $after_state ) ) {
-			self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
 			$error = new WP_Error( 'mad4b_reversible_readback_invalid', 'Provider reversible readback did not return a bounded state object.' );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
@@ -293,12 +293,12 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			&& is_array( $observed )
 			&& hash_equals( (string) $before_hash, (string) $after_hash );
 		if ( $declared_not_started_verified ) {
-			self::update_record( $mutation_id, array(
+			if ( 1 !== self::update_record( $mutation_id, array(
 				'status' => 'failed',
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => 'provider_declared_not_started_verified',
-			) );
+			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, 'failed', false );
 			return self::attach_failure_evidence( $error, $evidence );
 		}
@@ -309,24 +309,24 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 
 		if ( $changed ) {
 			$mutation_status = 'verification_failed';
-			self::update_record( $mutation_id, array(
+			if ( 1 !== self::update_record( $mutation_id, array(
 				'status' => $mutation_status,
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => 'provider_error_after_side_effect',
-			) );
+			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$restore_available = true;
 		} else {
 			$mutation_status = is_wp_error( $observed ) ? 'verification_failed' : 'failed';
 			$verification_code = is_wp_error( $observed )
 				? ( $declared_not_started ? 'provider_declared_not_started_readback_unverified' : 'provider_error_readback_failed' )
 				: 'provider_error_no_observed_side_effect';
-			self::update_record( $mutation_id, array(
+			if ( 1 !== self::update_record( $mutation_id, array(
 				'status' => $mutation_status,
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => $verification_code,
-			) );
+			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$restore_available = $declared_not_started && is_wp_error( $observed );
 		}
 
@@ -423,6 +423,18 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 
 	private static function state_hash( array $state ) {
 		return hash( 'sha256', wp_json_encode( $state, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+	}
+
+	private static function journal_recovery_error( $mutation_id, $message ) {
+		MAD4B_SCP_Audit::record( 'mad4b/reversible-adapter-journal-recovery', array(
+			'mutation_id' => (string) $mutation_id,
+			'error_code' => 'mutation_status_persistence_failed',
+		), 'failure' );
+		return new WP_Error(
+			'mad4b_mutation_journal_recovery_required',
+			(string) $message . ' Reconciliation is required; blind retry is prohibited.',
+			array( 'mutation_id' => (string) $mutation_id, 'recovery_required' => true, 'blind_retry_allowed' => false )
+		);
 	}
 
 	private static function update_record( $mutation_id, array $changes ) {
