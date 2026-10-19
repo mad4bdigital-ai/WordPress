@@ -14,7 +14,7 @@ The public browser / external HTTPS requests from the diagnostic client were **n
 | MCP client transport | Repeated intermittent connector-internal errors with successful reads between errors | Intermittent errors with successful governed reads | `mcp-connection-failsoft-runtime.php`, `session-safe-transport-resilience-runtime.php`, `connector-resilience-runtime.php` | Correlate authenticated server request ID, HTTP status, transport, upstream logs |
 | HTTP homepage / REST parity | Exact paired probe could not be completed through connector | **Homepage HTTP 500 in 269.65ms; REST root HTTP 200 in 1043.47ms**; state `FRONTEND_LOOPBACK_5XX_REST_REACHABLE` | `frontend-origin-diagnostic-runtime.php` includes 500/200 and 500/502, redirects and denied Production | Capture sanitized PHP FPM, webserver, theme/plugin hooks, and independently attested browser result |
 | HTTP transport classes | External/public diagnostic client failed DNS lookup; not reliable origin evidence | WordPress-origin paired probe reached both HTTP endpoints | Added fixture categories for DNS resolution, TLS certificate, timeout, TCP failure, local-policy block and unclassified network failure | One independent error code per true failed request; never weaken TLS |
-| Early PHP fatal incident recorder | Diagnostic read failed through intermittent connector | Recorder loaded; `NO_CAPTURED_INCIDENTS` during read; not proof no frontend PHP exception | `native-incident-mu-runtime.php` and `native-incident-early-runtime.php` | Correlate exact **homepage request** timestamp with PHP-FPM/webserver error logs; late fatal and nonfatal errors may not be captured |
+| Early PHP fatal incident recorder | Diagnostic read failed through intermittent connector | Recorder initially reported `NO_CAPTURED_INCIDENTS`; independent later read returned one frontend `E_ERROR`, suspect `mad4b-site-control-plane`, 2026-10-19 06:23:09Z; not proof of root PHP file/line | `native-incident-mu-runtime.php` and `native-incident-early-runtime.php` | Correlate exact **homepage request** timestamp with PHP-FPM/webserver error logs; late fatal and nonfatal errors may not be captured |
 | WordPress Site Health | No executed core Site Health suite evidenced | `site-health.php` available, tests not executed in diagnostic read | Native diagnostics source contract | Native Site Health result with timestamp/URL and safe redacted summary |
 | Query Monitor | No current collector snapshot evidenced | Plugin and bridge available in diagnostic request; collector snapshot **not taken** | Existing native diagnostics / QMonitor bridge tests | Produce request-local Query Monitor collection for 500, if available without enabling unsafe debugging |
 | OAuth / step-up and owner decision | Owner intent expired; exact write-only owner review currently matches expected plan but receipt no longer valid | Owner intent expired and stored owner review points to another plan | `dynamic-first-party-enrollment-runtime.php`, `staging-write-owner-intent-runtime.php`, `staging-write-owner-transport-runtime.php` | Fresh explicit per-site owner approval on current exact plan, single-use TTL receipt |
@@ -23,6 +23,25 @@ The public browser / external HTTPS requests from the diagnostic client were **n
 | Skills checkpoint | Managed Skills reconciliation previously returned certified; live deeper evaluation remains separate | Candidate-bound certificate matches rc.102; deep skills evaluation deferred | Existing skills runtime certification tests | New-request deep functional skill and provider verification |
 | Developer host prerequisites | proc_open, resource limiter, network isolation unavailable in prior handshake | Same class of unresolved prerequisites in prior handshake | Existing developer runtime contracts | Host-admin independent assessment; Developer/Breakglass remain disabled |
 | Hostinger / Desktop external fallback | Hostinger last returned HTTP 401; desktop previously offline | Same external access limitation | Not testable by WordPress local fixture | Reconnect separately without credential exposure; no SSH claim |
+
+## New sanitized PHP fatal evidence after the ARE HTTP 500 probe
+
+The first native read contained no incidents. **A subsequent independent read**
+returned a persisted Staging frontend fatal:
+
+- `type=1` (`E_ERROR`), `request_family=frontend`
+- `component_family=plugin`, `suspected_component_slug=mad4b-site-control-plane`
+- `last_at=1792390989` (2026-10-19 06:23:09 UTC)
+- `incident_fingerprint=c38cd0e3ae21ddd9897fd57d71aa34b36e3c277515b9ad6982308e8ec15025f6`
+- `root_cause_proven=false`: the record contains no PHP source file, line, stack or fatal message.
+
+This is **new P0 diagnostic evidence** of a first-party-plugin-classified
+fatal on a frontend request around the period when the WordPress-origin
+homepage returned HTTP 500. The source file, precise error and causal
+relationship are **not independently proven**. Correlate the fingerprint's
+timestamp with PHP-FPM/server logs under controlled read-only Staging
+access. Do not deactivate plugins, weaken error-redaction or publish raw
+trace data merely to force a diagnosis.
 
 ## Additional 2026-10-19 live REST/WPML readback
 
