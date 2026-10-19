@@ -10,6 +10,7 @@ $cases = array(
     'includes/Presentation/functions.php' => array( 'context' => 5 ),
     'includes/Bootstrap.php' => array( 'context' => 2 ),
     'includes/JetEngine/QueryIdentityResolver.php' => array( 'queryProvider' => 1 ),
+    'includes/JetSmartFilters/FilterDefinitionInspector.php' => array( 'templateProvider' => 1, 'filterProvider' => 1 ),
     'includes/Runtime/RuntimeTopologyDiscoverer.php' => array( 'templateProvider' => 1, 'queryProvider' => 1, 'templateReferenceProvider' => 1 ),
     'includes/Runtime/RuntimeQueryBindingResolver.php' => array( 'topology' => 1, 'identity' => 1 ),
     'includes/Context/FilterContextBuilder.php' => array( 'ajaxParser' => 1 ),
@@ -50,5 +51,5 @@ foreach ( $cases as $relative => $parameters ) {
         $checked += $observed;
     }
 }
-if ( 38 !== $checked || 17 !== count( $cases ) ) throw new RuntimeException( 'Unexpected ETG deprecation evidence coverage' );
-echo "PASS ETG explicit nullable PHP signatures: 38 parameters / 17 files; installed-content SHA-256 verified; no site mutation\n";
+if ( 40 !== $checked || 18 !== count( $cases ) ) throw new RuntimeException( 'Unexpected ETG deprecation evidence coverage' );
+echo "PASS ETG explicit nullable PHP signatures: 40 parameters / 18 files; installed-content SHA-256 verified; no site mutation\n";
