@@ -44,7 +44,7 @@ def run(status="completed", sha=SHA, associated=True, branch=BRANCH, rid=98,
             }] if associated else []}
 
 
-def fake_api(pr=None, runs=None, commits=None):
+def fake_api(pr=None, runs=None, commits=None, current_pr=None, current_run=None):
     pr = pull() if pr is None else pr
     runs = [run()] if runs is None else runs
     calls, posts = [], []
@@ -54,9 +54,11 @@ def fake_api(pr=None, runs=None, commits=None):
         if "/commits/" in path and path.endswith("/pulls?per_page=100"):
             return [pull()] if commits is None else commits
         if path.endswith("/pulls/426"):
-            return pr
+            return current_pr if current_pr is not None and calls.count(path) > 1 else pr
         if "/actions/workflows/" in path:
             return {"workflow_runs": runs}
+        if path.endswith("/actions/runs/98"):
+            return current_run if current_run is not None else runs[0]
         raise AssertionError("Untrusted endpoint: " + path)
 
     def post(path):
@@ -90,6 +92,21 @@ def test_success_deduplicated():
     get, post, _, posts = fake_api(runs=[run(conclusion="success")])
     outcome = mod.process("issue_comment", comment(), POLICY, REPO, get, post)
     assert outcome["outcome"] == "ALREADY_SUCCESS" and not posts
+
+
+def test_rerun_toctou_fences():
+    scenarios = (
+        {"current_pr": pull(head=OTHER)},
+        {"current_pr": pull(base_sha=OTHER)},
+        {"current_run": run(status="in_progress")},
+        {"current_run": run(sha=OTHER)},
+        {"current_run": run(base_sha=OTHER)},
+        {"current_run": run(conclusion="success")},
+    )
+    for case in scenarios:
+        get, post, _, posts = fake_api(**case)
+        denied("issue_comment", comment(), get, post)
+        assert not posts
 
 
 def test_security():
@@ -134,6 +151,7 @@ if __name__ == "__main__":
     test_success()
     test_active_deduplicated()
     test_success_deduplicated()
+    test_rerun_toctou_fences()
     test_security()
     test_commit_comment()
     print("READINESS_COMMENT_DISPATCH_SECURITY_CONTRACT: PASS")
