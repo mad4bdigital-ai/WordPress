@@ -10,6 +10,11 @@ $option='etg_dfsb_settings';
 if($mode==='hold'){
     $lease=Gate::acquire($option);
     if(is_wp_error($lease))throw new RuntimeException('first DB lock failed');
+    $slots=new \ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry();
+    $first=$slots->save(array('id'=>'ci_mutex_alpha','label'=>'Gate A',
+        'template'=>'first','enabled'=>true,'type'=>'text'),$slots->revision());
+    if(empty($first['saved']) || !$slots->get('ci_mutex_alpha'))
+        throw new RuntimeException('first WordPress option mutation failed');
     file_put_contents($marker.'.lease',wp_json_encode($lease));
     file_put_contents($marker.'.locked','yes');
     $deadline=microtime(true)+20;
@@ -30,6 +35,17 @@ if($mode==='hold'){
     if(is_wp_error($current))throw new RuntimeException('second owner cannot acquire after release');
     if(Gate::release($old))throw new RuntimeException('former owner deleted newer lease');
     if(!is_wp_error(Gate::acquire($option)))throw new RuntimeException('former owner unlocked a successor');
+    $slots=new \ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry();
+    if(!$slots->get('ci_mutex_alpha'))throw new RuntimeException('first worker option write was lost');
+    $second=$slots->save(array('id'=>'ci_mutex_beta','label'=>'Gate B',
+        'template'=>'second','enabled'=>true,'type'=>'text'),$slots->revision());
+    if(empty($second['saved']) || !$slots->get('ci_mutex_alpha')
+        || !$slots->get('ci_mutex_beta'))throw new RuntimeException('second option update lost earlier slot');
+    if(!$slots->delete('ci_mutex_alpha',$slots->revision())
+        || !$slots->delete('ci_mutex_beta',$slots->revision()))
+        throw new RuntimeException('source fixture cleanup failed');
+    if($slots->get('ci_mutex_alpha') || $slots->get('ci_mutex_beta'))
+        throw new RuntimeException('fixture rollback was incomplete');
     if(!Gate::release($current))throw new RuntimeException('successor cannot release');
 }else throw new RuntimeException('unknown test phase');
 echo "ETG OPTION LOCK ".$mode.": PASS\n";
