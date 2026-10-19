@@ -13,6 +13,12 @@ import json
 
 controls = json.loads((ROOT / reg.CONTROLS).read_text(encoding="utf-8"))
 policy = json.loads((ROOT / reg.COVERAGE).read_text(encoding="utf-8"))
+# Synthetic introduction/retirement scenarios need an empty history fixture.
+# Preserve the current policy guards and rules, but never inherit repository
+# review records into a fictional aaaa/bbbb Git history. Historical retention
+# is exercised separately below using the explicit covered/retired fixtures.
+for history in ("reviewed_capabilities", "reviewed_changes", "lifecycle", "policy_migrations"):
+    policy[history] = []
 base, head = "a" * 40, "b" * 40
 path = reg.PLUGIN + "includes/class-mad4b-scp-example-security.php"
 cap = "ability:mad4b/dynamic-security-demo"

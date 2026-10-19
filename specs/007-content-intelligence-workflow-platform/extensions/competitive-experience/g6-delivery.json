@@ -68,8 +68,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "801f82350c3927fb797d5a5a889813e93753266fa77ce3c7693455866589d8c2",
-      "bytes": 52096
+      "sha256": "b0b7d1696a50d67fac90820e9bce7558c970cb839c34c322e0a9a32ceefaecf0",
+      "bytes": 52452
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-g6-conversation-vault.php",

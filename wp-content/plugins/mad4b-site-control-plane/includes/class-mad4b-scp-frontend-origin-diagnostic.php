@@ -30,7 +30,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
                 'type' => 'object',
                 'properties' => array(
                     'mode' => array( 'type' => 'string', 'enum' => array( 'plan', 'probe' ), 'default' => 'plan' ),
-                    'target' => array( 'type' => 'string', 'enum' => array( 'homepage', 'rest_root' ), 'default' => 'homepage' ),
+                    'target' => array( 'type' => 'string', 'enum' => array( 'homepage', 'rest_root', 'paired' ), 'default' => 'homepage' ),
                 ),
                 'additionalProperties' => false,
             ),
@@ -83,8 +83,8 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         $input = is_array( $input ) ? $input : array();
         $mode = isset( $input['mode'] ) ? (string) $input['mode'] : 'plan';
         $target = isset( $input['target'] ) ? (string) $input['target'] : 'homepage';
-        if ( ! in_array( $target, array( 'homepage', 'rest_root' ), true ) )
-            return new WP_Error( 'mad4b_frontend_probe_target_invalid', 'Only the enrolled homepage and public REST root may be checked.' );
+        if ( ! in_array( $target, array( 'homepage', 'rest_root', 'paired' ), true ) )
+            return new WP_Error( 'mad4b_frontend_probe_target_invalid', 'Only the enrolled homepage, public REST root and their bounded paired probe may be checked.' );
         if ( ! in_array( $mode, array( 'plan', 'probe' ), true ) )
             return new WP_Error( 'mad4b_frontend_probe_mode_invalid', 'Only plan and probe modes are allowed.' );
         if ( ! class_exists( 'MAD4B_SCP_Policy' ) || true !== MAD4B_SCP_Policy::can_read() )
@@ -113,7 +113,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             'contract' => self::CONTRACT, 'mode' => $mode,
             'origin_identity_sha256' => hash( 'sha256', strtolower( $a['host'] ) . ':' . (int) ( $a['port'] ?? 443 ) ),
             'target' => $target, 'target_classification' => 'same_origin_bounded_public_read',
-            'max_requests' => 1,
+            'max_requests' => 'paired' === $target ? 2 : 1,
             'request_timeout_seconds' => self::TIMEOUT_SECONDS,
             'redirects_allowed' => false, 'cookies_sent' => false,
             'javascript_executed' => false, 'external_browser_attestation' => false,
@@ -124,10 +124,37 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         if ( 'plan' === $mode ) return $base + array( 'state' => 'READY_FOR_EXPLICIT_PROBE', 'network_request_performed' => false );
         if ( ! function_exists( 'wp_safe_remote_get' ) )
             return $base + array( 'state' => 'WP_HTTP_CLIENT_UNAVAILABLE', 'network_request_performed' => false );
-        // One fixed path and a signed marker; no user-provided URL, arbitrary
-        // path, OAuth bearer, cookies, redirects, or unsafe TLS fallback.
-        if ( 'rest_root' === $target ) $url = rtrim( $url, '/' ) . '/wp-json/';
-        $url .= '?mad4b_synthetic_probe=' . self::marker( floor( time() / 120 ) );
+        // Exact same-origin paired triage eliminates one extra MCP round trip.
+        // Two sequential fixed GETs; no arbitrary URL, cookies, token, redirect,
+        // browser certification, authority change, or second-site requests.
+        if ( 'paired' === $target ) {
+            $homepage = self::probe_one( $url, 'homepage' );
+            $rest = self::probe_one( $url, 'rest_root' );
+            $homepage_code = (int) ( $homepage['http_status'] ?? 0 );
+            $rest_code = (int) ( $rest['http_status'] ?? 0 );
+            $paired_state = 'PAIRED_HTTP_INCONCLUSIVE';
+            if ( $homepage_code >= 500 && $homepage_code <= 599 && $rest_code >= 200 && $rest_code < 300 )
+                $paired_state = 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE';
+            elseif ( ! empty( $homepage['http_success'] ) && ! empty( $rest['http_success'] ) )
+                $paired_state = 'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED';
+            elseif ( $homepage_code >= 500 && $rest_code >= 500 )
+                $paired_state = 'BOTH_LOOPBACK_PATHS_5XX';
+            return $base + array(
+                'state' => $paired_state, 'network_request_performed' => true,
+                'network_requests_performed' => 2,
+                'results' => array( 'homepage' => $homepage, 'rest_root' => $rest ),
+                'root_cause_proven' => false, 'public_network_verified' => false,
+                'next_action' => 'Correlate sanitized PHP/webserver error logs and theme/plugin frontend hooks for the same window; independently test a public browser. Loopback 500 is not proof of visitor-facing 500.',
+            );
+        }
+        return $base + self::probe_one( $url, $target );
+    }
+
+    private static function probe_one( $origin, $target ) {
+        $url = 'rest_root' === $target ? rtrim( $origin, '/' ) . '/wp-json/' : $origin;
+        $period = floor( time() / 120 );
+        $marker = self::marker( $period );
+        $url .= '?mad4b_synthetic_probe=' . $marker;
         $start = microtime( true );
         $response = wp_safe_remote_get( $url, array(
             'method' => 'GET', 'timeout' => self::TIMEOUT_SECONDS,
@@ -135,11 +162,11 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             'blocking' => true, 'limit_response_size' => 4096, 'cookies' => array(),
             'headers' => array(
                 'Accept' => 'rest_root' === $target ? 'application/json' : 'text/html',
-                'X-MAD4B-Synthetic-Probe' => self::marker( floor( time() / 120 ) ),
+                'X-MAD4B-Synthetic-Probe' => $marker,
             ),
         ) );
         $elapsed_ms = round( ( microtime( true ) - $start ) * 1000, 2 );
-        if ( is_wp_error( $response ) ) return $base + array(
+        if ( is_wp_error( $response ) ) return array(
             'state' => 'HTTP_PROBE_FAILED', 'network_request_performed' => true,
             'elapsed_ms' => $elapsed_ms,
             'error_code' => (string) $response->get_error_code(),
@@ -147,11 +174,15 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             'next_action' => 'Inspect host DNS, TLS, firewall and WordPress loopback connectivity without weakening TLS validation.',
         );
         $code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
-        return $base + array(
+        return array(
             'state' => $code >= 200 && $code < 300 ? 'HTTP_REACHABLE_NOT_BROWSER_VERIFIED' : 'HTTP_RESPONSE_NOT_ACCEPTED',
             'network_request_performed' => true, 'elapsed_ms' => $elapsed_ms, 'http_status' => $code,
             'http_success' => $code >= 200 && $code < 300,
-            'next_action' => 'Use separately attested managed browser acceptance to verify JavaScript, page render and public-network reachability.',
+            'http_server_error' => $code >= 500 && $code <= 599,
+            'root_cause_proven' => false,
+            'next_action' => $code >= 500 && $code <= 599
+                ? 'Inspect sanitized PHP/webserver logs, theme and frontend plugin hooks; validate separately in an external browser.'
+                : 'Use separately attested managed browser acceptance to verify JavaScript, page render and public-network reachability.',
         );
     }
 }

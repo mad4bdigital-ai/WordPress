@@ -69,7 +69,7 @@ final class MAD4B_SCP_Servers {
 				'mad4b/site-bootstrap-snapshot',
 				'mad4b/remote-operation-parity-status', 'mad4b/operation-discover', 'mad4b/operation-route-discover', 'mad4b/operation-route-plan', 'mad4b/provider-closure-matrix', 'mad4b/remote-operation-work-queue', 'mad4b/operation-classify',
                 'mad4b/brand-core-remote-recovery-status', 'mad4b/brand-core-remote-recovery-prepare', 'mad4b/brand-core-recovery-alternatives', 'mad4b/context-source-onboarding-preflight',
-                'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys', 'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
+                'mad4b/native-runtime-diagnostics', 'mad4b/native-recovery-status', 'mad4b/native-recovery-plan', 'mad4b/native-recovery-readback', 'mad4b/operator-journeys', 'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/admin-surface-coverage', 'mad4b/admin-adapter-blueprint', 'mad4b/admin-control-census', 'mad4b/operational-acceptance-evidence',
                 'mad4b/operational-remediation-status', 'mad4b/operational-remediation-prepare',
                 'mad4b/root-cause-remediation-plan',

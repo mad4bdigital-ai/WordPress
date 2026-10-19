@@ -103,6 +103,47 @@
   ],
   "reviewed_capabilities": [
     {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "ability:mad4b/native-runtime-diagnostics",
+      "control_ids": [
+        "PLATFORM-10",
+        "MCP-01",
+        "MCP-05"
+      ],
+      "review_rationale": "Review distinct read-only ability identity, governed read permission and sanitized observations without replacing scratch-recovery tools.",
+      "needs_new_control": true,
+      "new_control_ids": [
+        "PLATFORM-10"
+      ]
+    },
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "control_ids": [
+        "PLATFORM-10",
+        "PLATFORM-06",
+        "SECURITY-03",
+        "PLATFORM-01"
+      ],
+      "review_rationale": "Review owned diagnostics bootstrap, safe native-tool reuse, explicit nonce probe and coexistence with all legacy recovery abilities.",
+      "needs_new_control": true,
+      "new_control_ids": [
+        "PLATFORM-10"
+      ]
+    },
+    {
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
       "control_ids": [
         "MCP-01",
@@ -200,6 +241,93 @@
   "lifecycle": [],
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
   "reviewed_changes": [
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "28cdb6f0281003ba51c8a61c0b72d6e7e4fb9b2f",
+      "control_ids": [
+        "MCP-09",
+        "SECURITY-03",
+        "PROVIDERS-02"
+      ],
+      "review_rationale": "Review paired two-request budget, same-origin TLS and redirect denial, default zero-network behavior and response-body redaction; execution remains in the existing owned diagnostic class."
+    },
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "6a7af518bdb50a217a833ac2e3486132ad6a1361",
+      "control_ids": [
+        "PLATFORM-10",
+        "MCP-05",
+        "PROVIDERS-02",
+        "ADMIN-04"
+      ],
+      "review_rationale": "Review local trusted service and existing Query Monitor bridge reuse without loading arbitrary provider classes; observe only sanitized state and retain explicit capability/nonce guards."
+    },
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "86b1fc520e1fff342787b8701b74d90d286b2cf2",
+      "control_ids": [
+        "ADMIN-01",
+        "ADMIN-04",
+        "PLATFORM-10"
+      ],
+      "review_rationale": "Review diagnostic tab dispatch to the separate service, escaped bounded metadata and nonce-protected explicit POST; opening the tab does not trigger network probes."
+    },
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "5a15b842a37c252469ec0937d475a5f467f3a2f3",
+      "control_ids": [
+        "MCP-01",
+        "MCP-05",
+        "PROVIDERS-02"
+      ],
+      "review_rationale": "Review read-server declaration of the owned diagnostics ability while retaining existing recovery declarations; discovery does not introduce provider code or grant write authority."
+    },
+    {
+      "regression_tests": [
+        "tests/native_runtime_diagnostics_contract.py"
+      ],
+      "owner_role": "Plugin maintainer / automated CI source review",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "570edfc6b71829659219a1371dac33bd27dd9c73",
+      "control_ids": [
+        "PLATFORM-01",
+        "PLATFORM-06",
+        "PLATFORM-10",
+        "PROVIDERS-02"
+      ],
+      "review_rationale": "Review require and boot of the package-owned diagnostics class; preserve legacy recovery bootstrap through Operational Remediation and do not load untrusted provider implementations."
+    },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
       "source_blob_sha": "9813c94ddc911754270322ad5ec4017a8dea0faf",
@@ -300,6 +428,23 @@
       ],
       "owner_role": "Repository security and release reviewer",
       "review_rationale": "Two bounded semantic operations explicitly deny Production and generic dispatch; governance and platform controls cover discovery without adding authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "c99d856cc5996b2b7682f31eaa7d316d8305a21e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Merged current master runtime-incident bootstrap with the independently reviewed ETG Staging mutation adapter require; retained all prior source-hash history and runtime controls.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true

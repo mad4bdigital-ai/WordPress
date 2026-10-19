@@ -116,6 +116,11 @@ jobs:
             --head-sha "$EXACT_HEAD" \
             --out artifacts/production-readiness
           cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Setup PHP for mapped WordPress runtime regressions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
       - name: Execute required mapped regression tests, not merely check filenames
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
