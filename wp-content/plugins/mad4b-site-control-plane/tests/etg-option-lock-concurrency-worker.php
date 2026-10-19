@@ -10,10 +10,12 @@ $option='etg_dfsb_dynamic_content_slots';
 if($mode==='hold'){
     $lease=Gate::acquire($option);
     if(is_wp_error($lease))throw new RuntimeException('first DB lock failed');
-    $slots=new \ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry();
-    $first=$slots->save(array('id'=>'ci_mutex_alpha','label'=>'Gate A',
-        'template'=>'first','enabled'=>true,'type'=>'text'),$slots->revision());
-    if(empty($first['saved']) || !$slots->get('ci_mutex_alpha'))
+    $stored=get_option($option,array());
+    if(!is_array($stored))throw new RuntimeException('shared option state is not an array');
+    $stored['ci_mutex_alpha']=array('id'=>'ci_mutex_alpha','template'=>'first','enabled'=>true);
+    update_option($option,$stored,false);
+    $readback=get_option($option,array());
+    if(!is_array($readback)||!isset($readback['ci_mutex_alpha']))
         throw new RuntimeException('first WordPress option mutation failed');
     file_put_contents($marker.'.lease',wp_json_encode($lease));
     file_put_contents($marker.'.locked','yes');
@@ -35,16 +37,18 @@ if($mode==='hold'){
     if(is_wp_error($current))throw new RuntimeException('second owner cannot acquire after release');
     if(Gate::release($old))throw new RuntimeException('former owner deleted newer lease');
     if(!is_wp_error(Gate::acquire($option)))throw new RuntimeException('former owner unlocked a successor');
-    $slots=new \ETG\DynamicFilterSEOBridge\Presentation\ContentSlotRegistry();
-    if(!$slots->get('ci_mutex_alpha'))throw new RuntimeException('first worker option write was lost');
-    $second=$slots->save(array('id'=>'ci_mutex_beta','label'=>'Gate B',
-        'template'=>'second','enabled'=>true,'type'=>'text'),$slots->revision());
-    if(empty($second['saved']) || !$slots->get('ci_mutex_alpha')
-        || !$slots->get('ci_mutex_beta'))throw new RuntimeException('second option update lost earlier slot');
-    if(!$slots->delete('ci_mutex_alpha',$slots->revision())
-        || !$slots->delete('ci_mutex_beta',$slots->revision()))
-        throw new RuntimeException('source fixture cleanup failed');
-    if($slots->get('ci_mutex_alpha') || $slots->get('ci_mutex_beta'))
+    $stored=get_option($option,array());
+    if(!is_array($stored)||!isset($stored['ci_mutex_alpha']))
+        throw new RuntimeException('first worker option write was lost');
+    $stored['ci_mutex_beta']=array('id'=>'ci_mutex_beta','template'=>'second','enabled'=>true);
+    update_option($option,$stored,false);
+    $readback=get_option($option,array());
+    if(!isset($readback['ci_mutex_alpha'],$readback['ci_mutex_beta']))
+        throw new RuntimeException('second option update lost earlier write');
+    unset($readback['ci_mutex_alpha'],$readback['ci_mutex_beta']);
+    update_option($option,$readback,false);
+    $after=get_option($option,array());
+    if(isset($after['ci_mutex_alpha'])||isset($after['ci_mutex_beta']))
         throw new RuntimeException('fixture rollback was incomplete');
     if(!Gate::release($current))throw new RuntimeException('successor cannot release');
 }else throw new RuntimeException('unknown test phase');

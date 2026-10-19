@@ -69,6 +69,18 @@ namespace {
         $GLOBALS['etg_test_options'][$key]=$value;return true;
     }
     function delete_option($key){unset($GLOBALS['etg_test_options'][$key]);return true;}
+    function wp_cache_delete($key,$group){return true;}
+    class ETG_Test_WPDB {
+        public $options='wp_options';
+        public function delete($table,$where,$formats){
+            if($table!==$this->options || $formats!==array('%s','%s'))return false;
+            $key=$where['option_name']??'';
+            if(!array_key_exists($key,$GLOBALS['etg_test_options'])
+                ||$GLOBALS['etg_test_options'][$key]!==($where['option_value']??null))return 0;
+            unset($GLOBALS['etg_test_options'][$key]);return 1;
+        }
+    }
+    $GLOBALS['wpdb']=new ETG_Test_WPDB();
     class WP_Error {
         private $code;
         public function __construct($code,$message=''){$this->code=$code;}
