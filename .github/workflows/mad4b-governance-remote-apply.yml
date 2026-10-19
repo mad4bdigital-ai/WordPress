@@ -244,11 +244,15 @@ jobs:
               or any(x.get("status") != "modified" for x in changed)):
               raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: unexpected target PR scope")
           check_runs = gh(f"commits/{head_sha}/check-runs?per_page=100").get("check_runs") or []
-          if not any(x.get("name") == "Repository feature boundary"
-                     and x.get("status") == "completed"
-                     and x.get("conclusion") == "success"
-                     and (x.get("app") or {}).get("id") == 15368 for x in check_runs):
-              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: trusted feature boundary missing")
+          root_checks = sorted(
+              (x for x in check_runs if x.get("name") == "Repository feature boundary"),
+              key=lambda x: int(x.get("id") or 0), reverse=True
+          )
+          if (not root_checks
+              or root_checks[0].get("status") != "completed"
+              or root_checks[0].get("conclusion") != "success"
+              or (root_checks[0].get("app") or {}).get("id") != 15368):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: latest trusted boundary is not green")
           comments = gh(f"issues/{number}/comments?per_page=100")
           exact_owner_comment = f"OWNER_ATTEST_SINGLE_OWNER\nexact_head_sha: {head_sha}"
           if not any((x.get("user") or {}).get("login") == "mad4bdigital-ai"
@@ -298,19 +302,22 @@ jobs:
               raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: concurrent state change")
           try:
               gh("rulesets/23968498", method="PUT", data=target_file)
-          except Exception:
-              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: apply rejected; readback needed")
-          try:
               after = gh("rulesets/23968498?includes_parents=true")
               if mutable_ruleset(after) != mutable_ruleset(target_template):
                   raise RuntimeError("three-check ruleset readback mismatch")
               (TEMP / "readiness-bootstrap-after.json").write_text(json.dumps(after, indent=2))
           except Exception:
-              gh("rulesets/23968498", method="PUT", data=rollback_file)
+              # Even an HTTP failure may follow a server-side write.
+              # Recover only from a recognizable base/target state.
+              observed = gh("rulesets/23968498?includes_parents=true")
+              if mutable_ruleset(observed) == mutable_ruleset(target_template):
+                  gh("rulesets/23968498", method="PUT", data=rollback_file)
+              elif mutable_ruleset(observed) != mutable_ruleset(template):
+                  raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: unexpected post-write state")
               restored = gh("rulesets/23968498?includes_parents=true")
               if mutable_ruleset(restored) != mutable_ruleset(template):
                   raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: rollback not verified")
-              raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: target readback failed; original ruleset restored")
+              raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: apply/readback rejected; original ruleset verified")
           print("READINESS_RULESET_BOOTSTRAP: PASS; one required check added; Production NO-GO")
           PY
       - name: Retain exact bootstrap evidence
