@@ -276,7 +276,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			'error_code' => '',
 			'created_at' => $now,
 			'updated_at' => $now,
-		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		), array( '%s','%s','%s','%d','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s','%s','%d','%s','%s','%s','%s','%s','%s','%s','%s', '%s' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( 1 !== $inserted ) return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not be persisted before restore.' );
 		if ( 1 !== self::update_record( $recovery_id, array( 'status' => 'executing', 'verification_code' => 'undo_restore_started' ) ) ) {
 			return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child intent could not enter executing state.' );

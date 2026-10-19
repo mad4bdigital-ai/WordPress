@@ -37,6 +37,13 @@ class UndoFixtureDB {
     public $rows=array();public $fail_insert=false;public $fail_claim=false;public $fail_child_commit=false;
     public function insert($table,$values,$formats){
         if(count($values)!==count($formats))throw new RuntimeException('mutation insert format mismatch');
+        $keys=array_keys($values);
+        foreach(array('agent_id'=>'%d','wp_user_id'=>'%d','reversible'=>'%d',
+            'before_sha256'=>'%s','after_sha256'=>'%s','mutation_id'=>'%s')as$key=>$expected){
+            $offset=array_search($key,$keys,true);
+            if(false===$offset||$formats[$offset]!==$expected)
+                throw new RuntimeException('unsafe mutation insert field format: '.$key);
+        }
         if($this->fail_insert)return false;
         $id=$values['mutation_id'];if(isset($this->rows[$id]))return false;
         $this->rows[$id]=$values;return 1;
