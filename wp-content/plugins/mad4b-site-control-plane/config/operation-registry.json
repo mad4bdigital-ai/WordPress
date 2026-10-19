@@ -226,6 +226,44 @@
       "retry_semantics": "readback_before_retry",
       "owner_confirmation_required": true,
       "production_allowed": false
+    },
+    {
+      "id": "wordpress.etg-dfsb.slot.apply",
+      "target_kind": "etg_slot",
+      "risk": "high",
+      "planner": "etg-dfsb/slot-plan",
+      "executor": "etg-dfsb/slot-apply",
+      "supports": [
+        "apply-slot"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "staging_wp_option",
+      "retry_semantics": "readback_before_retry",
+      "owner_confirmation_required": true,
+      "production_allowed": false
+    },
+    {
+      "id": "wordpress.etg-dfsb.profile.apply",
+      "target_kind": "etg_profile",
+      "risk": "high",
+      "planner": "etg-dfsb/profile-diff",
+      "executor": "etg-dfsb/profile-apply",
+      "supports": [
+        "apply-disabled-profile"
+      ],
+      "durable_resume": true,
+      "dependency_impact": false,
+      "generic_mutation_dispatch": false,
+      "required_runtime": true,
+      "pipeline_profile": "governed_mutation_v1",
+      "side_effect_class": "staging_wp_option",
+      "retry_semantics": "readback_before_retry",
+      "owner_confirmation_required": true,
+      "production_allowed": false
     }
   ],
   "aliases": {

@@ -72,6 +72,7 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/tests/runtime-self-test-provider-isolation-smoke.php
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py
           python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py
           php wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php
           php wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php
