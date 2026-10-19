@@ -206,6 +206,12 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-chatgpt-tool-inventory-smoke.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
 
+      - name: Prove bounded session-safe identity, triage and full reads in live WordPress
+        shell: bash
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar eval-file "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/runtime-session-safe-diagnostic-acceptance.php" --path=/tmp/mad4b-wordpress --user=mad4b-ci-admin
+
       - name: Prove arbitrary registered Abilities can be dynamically projected
         shell: bash
         run: |
