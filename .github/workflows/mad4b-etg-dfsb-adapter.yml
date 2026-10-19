@@ -254,6 +254,22 @@ jobs:
           test -f "${ETG_LOCK_MARKER}.done"
           ETG_LOCK_MODE=handover php /tmp/wp-cli.phar eval-file "$script" "${wp_args[@]}"
           echo "REAL_DB_CONCURRENT_ETG_MUTEX: PASS"
+      - name: Certify current PR ETG source against disposable WordPress and real SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          WP_PATH=/tmp/mad4b-etg-wordpress
+          PLUGIN=wp-content/plugins/etg-dynamic-filter-seo-bridge
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$WP_PATH" = /tmp/mad4b-etg-wordpress
+          rm -rf "$WP_PATH/$PLUGIN"
+          cp -R "$GITHUB_WORKSPACE/$PLUGIN" "$WP_PATH/$PLUGIN"
+          cmp "$GITHUB_WORKSPACE/$PLUGIN/includes/Runtime/OptionMutationGate.php" "$WP_PATH/$PLUGIN/includes/Runtime/OptionMutationGate.php"
+          php /tmp/wp-cli.phar eval-file \
+            "$GITHUB_WORKSPACE/wp-content/plugins/mad4b-site-control-plane/tests/etg-current-source-db-acceptance.php" \
+            --path="$WP_PATH" --user=mad4b-ci-admin
+          echo "CURRENT_HEAD_ETG_SOURCE_DB_ACCEPTANCE: PASS"
+
       - name: Upload premium package normalization evidence
         if: always()
         uses: actions/upload-artifact@v4
