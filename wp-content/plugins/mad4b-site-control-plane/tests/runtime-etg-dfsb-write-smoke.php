@@ -5,7 +5,7 @@ namespace ETG\DynamicFilterSEOBridge\Config {
         const OPTION_NAME='etg_dfsb_settings';
         public function all(){return \get_option(self::OPTION_NAME,array());}
         public function enabled(){return !empty($this->all()['enabled']);}
-        public function validationErrors(){return array();}
+        public function validationErrors(){return !empty($GLOBALS['etg_test_invalid_config'])?array('simulated_bad_state'):array();}
         public function revision(){return substr(hash('sha256',\wp_json_encode($this->all())),0,16);}
         public function sanitizeForStorage($v){return $v;}
     }
@@ -49,6 +49,7 @@ namespace {
     $GLOBALS['etg_test_env']='staging';
     $GLOBALS['etg_test_admin']=true;
     $GLOBALS['etg_test_context']=true;
+    $GLOBALS['etg_test_invalid_config']=false;
     $GLOBALS['etg_test_slots']=array();
     $GLOBALS['etg_test_options']=array('etg_dfsb_settings'=>array('enabled'=>false,
         'profiles_json'=>\json_encode(array(array('id'=>'tours','enabled'=>false,'post_types'=>array('posts'),
@@ -130,10 +131,13 @@ namespace {
     assert_etg(error_etg($writer->restore_reversible_state($writer::PROFILE_APPLY,
         $profileBefore['target'],$profileBefore['state'],array('after_sha256'=>str_repeat('f',64))),
         'mad4b_etg_undo_state_drift'),'profile undo rejects drift');
+    // A failed write can leave invalid configuration: approved undo must remain available.
+    $GLOBALS['etg_test_invalid_config']=true;
     $result=$writer->restore_reversible_state($writer::PROFILE_APPLY,
         $profileBefore['target'],$profileBefore['state'],array('after_sha256'=>$profileAfterHash));
     assert_etg(is_array($result)&&!empty($result['verified'])&&$config->all()===$profileBefore['state']['option'],
-        'profile rollback preserves exact previous option');
+        'profile rollback repairs invalid after-state with exact previous option');
+    $GLOBALS['etg_test_invalid_config']=false;
     $GLOBALS['etg_test_env']='production';
     assert_etg(!$writer->is_available(),'production unavailable');
     assert_etg(error_etg($writer->slot_apply($slotInput),'mad4b_etg_staging_only'),'production write prohibited');
