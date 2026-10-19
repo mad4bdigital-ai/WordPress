@@ -188,3 +188,27 @@ for label, mutator in (
     else:
         raise AssertionError(f"minimal-delta preflight permitted {label}")
 print("MAD4B_READINESS_MINIMAL_DELTA_NEGATIVE_CONTRACT: PASS")
+
+
+# Trusted bootstrap is an owner-ledger-only, narrow governance migration.
+workflow = Path(".github/workflows/mad4b-governance-remote-apply.yml").read_text(encoding="utf-8")
+assert "bootstrap-readiness-required-check:" in workflow
+assert "github.event.issue.number == 71" in workflow
+assert "APPLY_MAD4B_READINESS_CHECK_BOOTSTRAP" in workflow
+assert "expected_master_sha:" in workflow and "target_head_sha:" in workflow
+assert "OWNER_ATTEST_SINGLE_OWNER" in workflow
+assert "Repository feature boundary" in workflow
+assert "Production readiness matrix contract" in workflow
+assert "MAD4B_OWNER_GOVERNANCE_TOKEN" in workflow
+assert "mutable_ruleset(before) != mutable_ruleset(template)" in workflow
+assert 'if mutable_ruleset(restored) != mutable_ruleset(template)' in workflow
+assert "ref: ${{ github.event.repository.default_branch }}" in workflow
+assert "persist-credentials: false" in workflow
+assert "tools/build_repository_ruleset_attestation.py" in workflow
+assert "tools/publish_repository_ruleset_attestation.py" in workflow
+assert "tools/verify_repository_governance.py" in workflow
+assert "readiness-bootstrap-target-policy.json" in workflow
+assert "readiness-bootstrap-target-template.json" in workflow
+assert "RULESET_BOOTSTRAP_RECOVERY_REQUIRED" in workflow
+assert "readiness-bootstrap-rollback-governance.json" in workflow
+print("MAD4B_RULESET_BOOTSTRAP_TRUST_CONTRACT: PASS")
