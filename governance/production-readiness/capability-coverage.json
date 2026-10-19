@@ -693,10 +693,10 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
       ],
-      "review_rationale": "CI-only review of ETG option-scoped owner-token lock, independent Admin/MCP write fence, guarded profile/slot CAS readback, retention of uncertain undo lease and refusal of cross-adapter unjournaled writes. Native write smoke and shared transaction checks are included in this PR; independent Staging HTTP concurrency and reconciled lock release are still required.",
+      "review_rationale": "CI-only review of ETG option-scoped owner-token lock, independent Admin/MCP write fence, guarded profile/slot CAS readback, retention of uncertain undo lease and refusal of cross-adapter unjournaled writes. Native write smoke and shared transaction checks are included in this PR; independent Staging HTTP concurrency and reconciled lock release are still required. The mapped Python wrapper executes the standalone PHP CLI regression fixtures including write, undo fault injection, and cache diagnostics; absence of PHP or failing fixtures fails this exact-head CI evaluation closed.",
       "owner_role": "Repository runtime source and CI code reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -731,10 +731,10 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/undo-intent-fault-injection.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-native-regressions.py"
       ],
-      "review_rationale": "CI-only source review of durable pre-restore parent CAS and child undo-intent journaling, exact before/after SHA evidence, SQL field-format regression, rejection of unsafe replay, and retention of provider option lock when post-side-effect journal status cannot be committed. Fault injection tests include claim, insert, provider, readback and journal-finalization failures; real live operator reconciliation remains an independent gate.",
+      "review_rationale": "CI-only source review of durable pre-restore parent CAS and child undo-intent journaling, exact before/after SHA evidence, SQL field-format regression, rejection of unsafe replay, and retention of provider option lock when post-side-effect journal status cannot be committed. Fault injection tests include claim, insert, provider, readback and journal-finalization failures; real live operator reconciliation remains an independent gate. The mapped Python wrapper executes the standalone PHP CLI regression fixtures including write, undo fault injection, and cache diagnostics; absence of PHP or failing fixtures fails this exact-head CI evaluation closed.",
       "owner_role": "Repository runtime source and CI code reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,

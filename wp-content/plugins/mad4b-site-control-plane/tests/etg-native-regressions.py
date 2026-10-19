@@ -8,6 +8,6 @@ tests = Path(__file__).resolve().parent
 php = shutil.which('php')
 if not php:
     raise SystemExit('PHP CLI is required; standalone ETG assertions were not executed')
-for name in ('runtime-etg-dfsb-write-smoke.php', 'object-cache-diagnostics-runtime.php'):
+for name in ('runtime-etg-dfsb-write-smoke.php', 'object-cache-diagnostics-runtime.php', 'undo-intent-fault-injection.php'):
     subprocess.run([php, str(tests / name)], check=True)
-print('PASS actual standalone ETG write/undo and cache assertions; no PHPUnit assumption or runtime certification')
+print('PASS actual standalone ETG write, cache, and journal/undo fault-injection assertions; no PHPUnit assumption or runtime certification')
