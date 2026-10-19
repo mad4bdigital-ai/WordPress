@@ -712,10 +712,9 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-adapter-smoke.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/indexflow-routes-contract.py"
       ],
-      "review_rationale": "CI-only review of separate Staging-only IndexFlow route-storage authority, provider certification, plan-digest CAS apply/readback/undo, and retention of a resource lease after uncertain journal outcome. Route adapter behavioral tests and no-activation contract are present; this review does not certify live rewrite routing, vendor SEO output, provider grants or Production.",
+      "review_rationale": "CI-only review of separate Staging-only IndexFlow route-storage authority, provider certification, plan-digest CAS apply/readback/undo, and retention of a resource lease after uncertain journal outcome. Route adapter behavioral tests and no-activation contract are present; this review does not certify live rewrite routing, vendor SEO output, provider grants or Production. The mapped IndexFlow Python contract actually executes the standalone adapter and storage PHP smoke tests using PHP CLI, failing closed on missing PHP or failed subprocess; the raw PHP fixture is not a PHPUnit suite.",
       "owner_role": "Repository runtime source and CI code reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,

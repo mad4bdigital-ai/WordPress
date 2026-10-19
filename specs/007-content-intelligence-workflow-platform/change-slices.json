@@ -4,8 +4,8 @@
   "reviewed_base_sha": "9723edd8bd7a9b1d4245c6cf77c4c2c17d00d15e",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 107,
-  "changed_paths_sha256": "be98c35ccaf1e10c9d7d1a9318aebf8912245648a03858ccfea845a59ce20221",
+  "changed_file_count": 110,
+  "changed_paths_sha256": "20112b74fdc97457167f878095b2c989a8ee80bedcd1d06fe2c74f165bf9ceea",
   "slices": [
     {
       "id": "ci-and-evidence",
@@ -27,7 +27,10 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g7-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json",
-        "specs/007-content-intelligence-workflow-platform/feature.json"
+        "specs/007-content-intelligence-workflow-platform/feature.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
+        "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
+        "wp-content/plugins/etg-dynamic-filter-seo-bridge/tests/alpha13-browser-ajax-reset-smoke.js"
       ]
     },
     {
