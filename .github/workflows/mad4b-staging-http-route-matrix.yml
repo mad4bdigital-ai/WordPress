@@ -1,0 +1,101 @@
+name: MAD4B Staging Public HTTP Surface Matrix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mad4b-staging-http-route-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-http-matrix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bounded-readonly-probe:
+    name: ETG and ARE public routes (no mutation / no acceptance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Inspect fixed public routes and discovered same-origin HTML pages
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, ssl, socket, time, urllib.parse as up, urllib.request as ur, urllib.error as ue, re
+          from pathlib import Path
+          SITES = {'ETG': 'staging.egypttourgates.com', 'ARE': 'staging.allroyalegypt.com'}
+          PATHS = [
+            ('home', '/'), ('home_query', '/?mad4b_http_matrix=1'),
+            ('rest', '/wp-json/'),
+            ('pages_api', '/wp-json/wp/v2/pages?per_page=4&_fields=link,slug,status'),
+            ('posts_api', '/wp-json/wp/v2/posts?per_page=3&_fields=link,slug,status'),
+            ('robots', '/robots.txt'), ('sitemap', '/wp-sitemap.xml'),
+            ('feed', '/feed/'), ('login', '/wp-login.php'),
+            ('wpml_rest', '/wp-json/wpml/v1/rest/status?test_get_parameter=1')
+          ]
+          class NoRedirect(ur.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          http = ur.build_opener(NoRedirect, ur.HTTPSHandler(context=ssl.create_default_context()))
+          def safe(host, value):
+              if not isinstance(value, str) or len(value) > 1800: return None
+              u = up.urlsplit(value)
+              try:
+                  if u.scheme != 'https' or u.hostname != host or u.port not in (None,443) or u.username or u.password or u.fragment: return None
+              except ValueError: return None
+              if not u.path.startswith('/') or u.path.startswith('//') or '\\' in u.path or re.search('%2f|%5c|%0[ad]', u.path, re.I): return None
+              return u.path + ('?' + u.query if u.query else '')
+          assert safe(SITES['ETG'], 'https://staging.egypttourgates.com/about/') == '/about/'
+          for target in ('http://staging.egypttourgates.com/', 'https://evil.com/', 'https://staging.egypttourgates.com.evil.net/', 'https://x:y@staging.egypttourgates.com/', 'https://staging.egypttourgates.com:8888/'):
+              assert safe(SITES['ETG'],target) is None
+          def get(host, key, path):
+              began = time.monotonic()
+              code, body, hdr, error = 0, b'', {}, ''
+              try:
+                  req = ur.Request('https://' + host + path, method='GET', headers={'User-Agent':'MAD4B-Public-HTTP-Matrix/1.0', 'Cache-Control':'no-cache, no-store', 'Accept':'text/html,application/json;q=0.8'})
+                  try:
+                      with http.open(req, timeout=8) as res:
+                          code, hdr, body = res.status, dict(res.headers.items()), res.read(65536)
+                  except ue.HTTPError as exc:
+                      code, hdr, body = exc.code, dict(exc.headers.items()), exc.read(65536)
+              except Exception as exc:
+                  err = exc.reason if isinstance(exc, ue.URLError) else exc
+                  error = ('dns' if isinstance(err,socket.gaierror) else 'tls' if isinstance(err,ssl.SSLError) else 'timeout' if isinstance(err,(socket.timeout,TimeoutError)) else 'tcp' if isinstance(err,ConnectionRefusedError) else 'transport')
+              low = {k.lower():v for k,v in hdr.items()}
+              challenge = bool(re.search('hcdn-cgi/jschallenge|Checking your browser before accessing',body[:2048].decode('utf-8','ignore'),re.I))
+              row = {'route':key, 'path':path, 'status':code, 'elapsed_ms':round((time.monotonic()-began)*1000,1), 'error_class':error, 'content_type':low.get('content-type','').split(';')[0][:64], 'server':low.get('server','')[:70], 'hcdn_challenge':challenge, 'body_recorded':False}
+              print(f"{host} {key}: HTTP {code} ({row['elapsed_ms']} ms) error={error} challenge={challenge}",flush=True)
+              return row,body
+          report = {'contract':'mad4b.staging-http-public-route-matrix.v1','read_only':True,'mutation_performed':False,'site_acceptance_certified':False,'browser_certified':False,'sites':{}}
+          for label,host in SITES.items():
+              rows, pages, posts = [], [], []
+              for key,path in PATHS:
+                  row,body = get(host,key,path)
+                  rows.append(row)
+                  if key in ('pages_api','posts_api') and row['status']==200:
+                      try: collection=json.loads(body)
+                      except (ValueError,UnicodeError): collection=[]
+                      if isinstance(collection,list):
+                          good=[]
+                          for doc in collection[:8]:
+                              if isinstance(doc,dict) and doc.get('status','publish') == 'publish':
+                                  target=safe(host,doc.get('link'))
+                                  if target and target not in good: good.append(target)
+                          if key=='pages_api':pages=good[:3]
+                          else:posts=good[:2]
+              for i,path in enumerate(pages):rows.append(get(host,f'public_page_{i+1}',path)[0])
+              for i,path in enumerate(posts):rows.append(get(host,f'public_post_{i+1}',path)[0])
+              report['sites'][label] = {'host':host,'requests':len(rows),'discovered_html_pages_tested':len(pages),'discovered_posts_tested':len(posts),'rows':rows}
+          Path('staging-http-matrix.json').write_text(json.dumps(report,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+          print('READONLY_MATRIX_RECORDED: no page or transport state was automatically certified.')
+          PY
+      - name: Preserve sanitized status and timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mad4b-staging-http-matrix-${{ github.sha }}
+          path: staging-http-matrix.json
+          retention-days: 10
+          if-no-files-found: warn
