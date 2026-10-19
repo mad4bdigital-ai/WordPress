@@ -448,6 +448,44 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reversible-adapter-mutations.php",
+      "source_blob_sha": "611c27a5516aba6f7055b2b142c5272cc2dbdb1d",
+      "control_ids": [
+        "DATABASE-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "CI-only review of shared reversible journal lifetime, scope lock from snapshot through readback, terminal status persistence and explicit recovery-required errors; fault-injection and real Staging approval remain separate.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "cc32b91d9ef2a41d251653055e4867356a5de0d5",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-shared-transaction-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "CI-only review of shared option-scoped lock identity, use of ETG provider lock and central governed journal, Staging-only permission fence and rollback drift guard. Does not certify Provider or grant execution.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
     }
   ],
   "code_change_rules": {
