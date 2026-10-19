@@ -4,8 +4,6 @@ name: MAD4B Governed Readiness Comment Dispatch
 on:
   issue_comment:
     types: [created]
-  commit_comment:
-    types: [created]
 
 permissions:
   contents: read
@@ -14,7 +12,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: mad4b-readiness-comment-${{ github.event.issue.number || github.event.comment.commit_id }}
+  group: mad4b-readiness-comment-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
