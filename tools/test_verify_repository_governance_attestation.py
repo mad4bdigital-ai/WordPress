@@ -128,4 +128,11 @@ assert "mutable_ruleset(before) != mutable_ruleset(template)" in workflow
 assert 'if mutable_ruleset(restored) != mutable_ruleset(template)' in workflow
 assert "ref: ${{ github.event.repository.default_branch }}" in workflow
 assert "persist-credentials: false" in workflow
+assert "tools/build_repository_ruleset_attestation.py" in workflow
+assert "tools/publish_repository_ruleset_attestation.py" in workflow
+assert "tools/verify_repository_governance.py" in workflow
+assert "readiness-bootstrap-target-policy.json" in workflow
+assert "readiness-bootstrap-target-template.json" in workflow
+assert "RULESET_BOOTSTRAP_RECOVERY_REQUIRED" in workflow
+assert "readiness-bootstrap-rollback-governance.json" in workflow
 print("MAD4B_RULESET_BOOTSTRAP_TRUST_CONTRACT: PASS")
