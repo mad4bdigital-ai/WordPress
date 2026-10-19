@@ -365,14 +365,50 @@ jobs:
                   observed = gh("rulesets/23968498?includes_parents=true")
               except Exception as error:
                   raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: post-write readback unavailable") from error
+              rollback_performed = False
               if mutable_ruleset(observed) == mutable_ruleset(target_template):
                   gh("rulesets/23968498", method="PUT", data=rollback_file)
+                  rollback_performed = True
               elif mutable_ruleset(observed) != mutable_ruleset(template):
                   raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: unexpected post-write state")
               restored = gh("rulesets/23968498?includes_parents=true")
               if mutable_ruleset(restored) != mutable_ruleset(template):
                   raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: rollback not verified")
-              raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: apply/readback rejected; original ruleset verified")
+              if rollback_performed:
+                  # Rollback itself changes ruleset updated_at, invalidating
+                  # historical owner attestations. Re-attest trusted old master.
+                  recovered_path = TEMP / "readiness-bootstrap-rollback-readback.json"
+                  recovered_path.write_text(json.dumps(restored, indent=2))
+                  recovered_attestation = TEMP / "readiness-bootstrap-rollback-attestation.json"
+                  recovered_publication = TEMP / "readiness-bootstrap-rollback-publication.json"
+                  base_policy_path = Path(".github/mad4b-repository-governance-policy.json")
+                  base_template_path = Path(".github/mad4b-master-ruleset-template.json")
+                  try:
+                      subprocess.run([
+                          "python3", "tools/build_repository_ruleset_attestation.py",
+                          "--readback", str(recovered_path),
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--repository", REPO,
+                          "--output", str(recovered_attestation),
+                      ], check=True, timeout=65)
+                      subprocess.run([
+                          "python3", "tools/publish_repository_ruleset_attestation.py",
+                          "--repository", REPO,
+                          "--policy", str(base_policy_path),
+                          "--template", str(base_template_path),
+                          "--attestation", str(recovered_attestation),
+                          "--output", str(recovered_publication),
+                      ], check=True, timeout=65)
+                      published_restore = json.loads(recovered_publication.read_text())
+                      if (published_restore.get("published") is not True
+                          or published_restore.get("readback_verified") is not True):
+                          raise RuntimeError("rollback attestation publication incomplete")
+                  except Exception as recovery_error:
+                      raise RuntimeError(
+                          "RULESET_BOOTSTRAP_RECOVERY_REQUIRED: previous ruleset restored but owner attestation unavailable"
+                      ) from recovery_error
+              raise RuntimeError("RULESET_BOOTSTRAP_FAIL_CLOSED: apply/readback rejected; original ruleset and attestation recovered")
           print("READINESS_RULESET_BOOTSTRAP: PASS; one required check added; Production NO-GO")
           PY
       - name: Retain exact bootstrap evidence
@@ -389,5 +425,8 @@ jobs:
             ${{ runner.temp }}/readiness-bootstrap-attestation.json
             ${{ runner.temp }}/readiness-bootstrap-publication.json
             ${{ runner.temp }}/readiness-bootstrap-governance.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-readback.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-attestation.json
+            ${{ runner.temp }}/readiness-bootstrap-rollback-publication.json
           if-no-files-found: ignore
           retention-days: 30
