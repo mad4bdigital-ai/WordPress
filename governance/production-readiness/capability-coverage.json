@@ -101,10 +101,210 @@
       ]
     }
   ],
-  "reviewed_capabilities": [],
+  "reviewed_capabilities": [
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "First-party reviewed Staging writer service is backed by existing mutation and reversible-adapter controls; execution remains uncertified and blocked.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Passive diagnostic service and bounded Staging cache probe reuse existing database/performance controls without cache activation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "operation:wordpress.etg-dfsb.slot.apply",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Explicit governed slot operation is discoverable but still requires independent provider/NHI certification and user approval before mutation.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "operation:wordpress.etg-dfsb.profile.apply",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Explicit governed disabled-profile operation cannot enable SEO or Production and still requires runtime acceptance and independent review.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    },
+    {
+      "id": "ability:mad4b/mutation-undo",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Static scanner observes an existing central undo ability referenced by the new adapter; it is not a newly registered undo endpoint or an authority grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing audited mutation, provider, security and release controls adequately cover the new source candidate pending independent runtime approval."
+    }
+  ],
   "lifecycle": [],
   "change_impact_notes": "For each newly introduced registry item, registered MAD4B Ability, PHP service or Admin asset, add a reviewed_capabilities entry with exact id, nonempty existing control_ids, a regression test changed in this PR, owner_role, review_rationale, and status 'reviewed_for_ci_only'. CI fails on uncovered introductions; no entry grants Production. Existing runtime/config source additions and modifications require reviewed_changes entries keyed by exact Git blob, impacted control IDs and test changed in the same PR. Every new capability must explicitly decide whether to expand the checklist or reuse existing controls with a rationale. Static REST/AJAX/Cron surface discoveries remain candidates, never runtime certification.",
-  "reviewed_changes": [],
+  "reviewed_changes": [
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-adapter.php",
+      "source_blob_sha": "9813c94ddc911754270322ad5ec4017a8dea0faf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-adapter-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Existing read-only ETG adapter expanded with cache and dry-run planning; existing MCP/provider/execution controls remain sufficient for read surface review, not mutation grant.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-etg-dfsb-write-adapter.php",
+      "source_blob_sha": "37b2038b2597b599481007e1d6f67b2f40bfa64c",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-etg-dfsb-write-smoke.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "New independent ETG Staging writer requires existing NHI, provider certification, admin authorization, exact-state SHA readback and central reversible journal; no production authority inferred.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "source_blob_sha": "7bea1c5a096b41a231201c4cdc454d264bfe9d13",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Memcached/LSMCD passive diagnostics and temporary Staging-only probe reuse database safety, performance and security controls while leaving cache provider uncertified.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "9512338f4490b63eaf612bf4a2d20175cee25e4c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Reviewed inclusion of a second ETG adapter in immutable bundled bootstrap; source approval does not imply a write grant or deployment permission.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/adapter-registration-policy.json",
+      "source_blob_sha": "8b165e72cd84554ce180a90f8bf27196b3852e84",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-write-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Exact bundled-class whitelist is updated under existing authority and security controls; registration allows observation but cannot bypass policy, certification or NHI.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/operation-registry.json",
+      "source_blob_sha": "ab4ef0e7b56d42b0051b6e59eef0ce9ab01af354",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/etg-dfsb-operations-contract.py"
+      ],
+      "owner_role": "Repository security and release reviewer",
+      "review_rationale": "Two bounded semantic operations explicitly deny Production and generic dispatch; governance and platform controls cover discovery without adding authority.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    }
+  ],
   "code_change_rules": {
     "contract": "mad4b.readiness-reviewed-changes.v1",
     "authorizing": false,
