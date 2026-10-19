@@ -1,0 +1,31 @@
+{
+  "schema": "mad4b.research-unpacked-vendor-archives.v1",
+  "non_authorizing": true,
+  "no_runtime_certs": true,
+  "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+  "branch": "research/vendor-elementor-20261019",
+  "archives": [
+    {
+      "archive": "wp-content/plugins/elementor.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "262afb4cccfbe80720a234ebb40b3cbabbea7bef",
+      "archive_sha256": "0de809b0e2d82244576993869b84c7653abbdd20ad19f18254de3429fe0ddc60",
+      "archive_bytes": 22678603,
+      "files": 2966,
+      "uncompressed_bytes": 80665499,
+      "extract_root": "vendor-unpacked/elementor",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    },
+    {
+      "archive": "wp-content/plugins/elementor-pro.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "d9378b1bf40eb162ca3658dbb153c10230a72e44",
+      "archive_sha256": "faa93d0825f9994cb0ee21e58a0daac83dee84e06f399b497156472545570ad3",
+      "archive_bytes": 3818496,
+      "files": 1313,
+      "uncompressed_bytes": 16830406,
+      "extract_root": "vendor-unpacked/elementor-pro",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    }
+  ]
+}
