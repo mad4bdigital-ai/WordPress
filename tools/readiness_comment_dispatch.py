@@ -73,6 +73,8 @@ def select_pr(repo: str, requested: str, number: int | None, get) -> tuple[int, 
     require(head.get("sha") == requested and (head.get("repo") or {}).get("full_name") == repo,
             "PR exact HEAD changed or source repository differs")
     require(base.get("ref") == "master", "PR must target the protected master branch")
+    require(bool(re.fullmatch(r"[0-9a-f]{40}", str(base.get("sha") or ""))),
+            "Current base SHA not readable")
     require(bool(head.get("ref")), "Source branch is missing")
     return pr["number"], pr
 
@@ -86,10 +88,18 @@ def select_run(repo: str, sha: str, pr: dict, get) -> dict:
         require(isinstance(rows, list), "Missing trusted workflow run inventory")
         for run in rows:
             prs = run.get("pull_requests") or []
+            # Re-running a stale PR event is NOT an acceptable current-base
+            # check. Require GitHub's immutable event PR head and base SHAs.
+            associations = [
+                row for row in prs
+                if row.get("number") == pr["number"]
+                and (row.get("head") or {}).get("sha") == sha
+                and (row.get("base") or {}).get("sha") == pr["base"]["sha"]
+            ]
             if (run.get("event") == "pull_request"
                     and run.get("head_sha") == sha
                     and run.get("head_branch") == pr["head"]["ref"]
-                    and any(x.get("number") == pr["number"] for x in prs)):
+                    and associations):
                 matches.append(run)
         if len(rows) < 100:
             break
@@ -111,7 +121,14 @@ def process(kind: str, event: dict, policy: dict, repo: str, get, post) -> dict:
     pr_number, pr = select_pr(repo, sha, number, get)
     run = select_run(repo, sha, pr, get)
     status, run_id = run["status"], int(run["id"])
-    outcome = "ALREADY_ACTIVE" if status != "completed" else "RERUN_REQUESTED"
+    if status != "completed":
+        outcome = "ALREADY_ACTIVE"
+    elif run.get("conclusion") == "success":
+        outcome = "ALREADY_SUCCESS"
+    else:
+        require(run.get("conclusion") in {"failure", "cancelled", "timed_out"},
+                "The previous run is not eligible for safe retry")
+        outcome = "RERUN_REQUESTED"
     if outcome == "RERUN_REQUESTED":
         post(f"repos/{repo}/actions/runs/{run_id}/rerun")
     return {
