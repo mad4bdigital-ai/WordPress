@@ -43,6 +43,22 @@ timestamp with PHP-FPM/server logs under controlled read-only Staging
 access. Do not deactivate plugins, weaken error-redaction or publish raw
 trace data merely to force a diagnosis.
 
+## First-party fatal location hardening in PR #438 (not installed)
+
+The candidate now records **only** a strictly validated PHP path relative to
+`wp-content/plugins/mad4b-site-control-plane/` and a bounded source line for
+future MAD4B-owned Staging fatal events. The readback revalidates these fields,
+discarding traversal paths, forged values, foreign plugin locations and
+absolute host filesystem prefixes. Messages, stack traces, tokens, request
+URLs, IP addresses and credentials remain excluded. No additional authority
+or automatic repair is granted.
+
+This **does not recover** the file and line for the existing incident
+`c38cd0e3...`; that event was stored by the old recorder, before the
+new optional fields existed. A future capture on an independently admitted
+Staging build can provide source evidence. Testing does not justify
+reproducing crashes on Production or bypassing signed update gates.
+
 ## Additional 2026-10-19 live REST/WPML readback
 
 Both Staging sites independently returned `mad4b/rest-compatibility-status` with
