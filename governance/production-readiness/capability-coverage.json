@@ -697,7 +697,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-regression.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-coverage-regression.py"
       ],
       "review_rationale": "Review backward-compatible opt-in result projector for session-safe read callbacks: large provider data is reduced before sibling check accumulation. WP_Error and exception classification remain fail-closed, no raw diagnostic payload or mutation is emitted, and existing run_checks callers without a projector retain their behavior. Hermetic 64MB regression plus WordPress identity/triage/full integration are executed in same-PR CI. CI-only source coverage, not live runtime certification or Production authorization. The WordPress WP-CLI acceptance test is independently executed in the MCP Client Compatibility integration workflow; the governance mapped-test runner executes only the hermetic 64MB fixture, not tests requiring an installed WordPress database."
     },
@@ -715,7 +715,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-regression.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-coverage-regression.py"
       ],
       "review_rationale": "Review bounded diagnostic projection and hashing: digests explicitly represent non-authorizing bounded summaries, not full raw provider evidence or signed receipts. Scalar-list extraction avoids whole-array copies; blocked/unknown authority remains blocked/unknown and the read output remains generation-fenced and <=16KB. Same-PR PHP 7.4/8.3 hermetic stress and disposable WP MCP tests enforce redaction and scope compatibility. External client schema refresh and two-site live readback remain required. The WordPress WP-CLI acceptance test is independently executed in the MCP Client Compatibility integration workflow; the governance mapped-test runner executes only the hermetic 64MB fixture, not tests requiring an installed WordPress database."
     },
@@ -729,7 +729,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/staging-write-one-step-review-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
       ],
       "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
       "status": "reviewed_for_ci_only",
