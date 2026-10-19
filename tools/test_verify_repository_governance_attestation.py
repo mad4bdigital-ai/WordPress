@@ -112,3 +112,20 @@ print("freshness_binding=ruleset_updated_at")
 print("policy_binding=sha256")
 print("template_binding=sha256")
 print("hidden_protection_binding=bypass+unattributed_approval")
+
+
+# Trusted bootstrap is an owner-ledger-only, narrow governance migration.
+workflow = Path(".github/workflows/mad4b-governance-remote-apply.yml").read_text(encoding="utf-8")
+assert "bootstrap-readiness-required-check:" in workflow
+assert "github.event.issue.number == 71" in workflow
+assert "APPLY_MAD4B_READINESS_CHECK_BOOTSTRAP" in workflow
+assert "expected_master_sha:" in workflow and "target_head_sha:" in workflow
+assert "OWNER_ATTEST_SINGLE_OWNER" in workflow
+assert "Repository feature boundary" in workflow
+assert "Production readiness matrix contract" in workflow
+assert "MAD4B_OWNER_GOVERNANCE_TOKEN" in workflow
+assert "mutable_ruleset(before) != mutable_ruleset(template)" in workflow
+assert 'if mutable_ruleset(restored) != mutable_ruleset(template)' in workflow
+assert "ref: ${{ github.event.repository.default_branch }}" in workflow
+assert "persist-credentials: false" in workflow
+print("MAD4B_RULESET_BOOTSTRAP_TRUST_CONTRACT: PASS")
