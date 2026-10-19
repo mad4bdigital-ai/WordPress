@@ -112,7 +112,7 @@ etg_has("QueryId::normalize((\$route['provider_query_id']??'')?:(\$route['query_
 etg_expect(false===strpos($publicationRegistry,"\$queryId=sanitize_key((string)(\$route['query_id']??''))"),'publication singleRoute must not lowercase Query IDs');
 etg_expect(false===strpos($publicationRegistry,"':'.sanitize_key((string)\$route['query_id'])"),'publication URL builder must not lowercase Query IDs');
 etg_has("':'.\$queryId.'/tax/'",$publicationRegistry,'publication URL builder emits preserved Query ID');
-etg_has("return'external_waf_required'",$endpointCompact,'REST rate protection declares external WAF requirement without persistent cache');
+etg_has("return 'rate_limit_backend_unavailable'",$endpoint,'REST fails closed without persistent cache or attested WAF');
 etg_has("'rateLimitMode'=>\$this->rateLimitMode()",$endpointCompact,'client receives the active rate-protection boundary');
 etg_expect(false===strpos($endpoint,'get_transient(')&&false===strpos($endpoint,'set_transient('),'anonymous REST presentation path must not write per-visitor transients/DB state');
 etg_has('wp_using_ext_object_cache',$endpoint,'in-process burst limiter only runs with persistent object cache');

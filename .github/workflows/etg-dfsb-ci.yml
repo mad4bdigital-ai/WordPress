@@ -101,6 +101,7 @@ jobs:
             alpha11-runtime-topology-dynamic-content-smoke.php \
             alpha12-inventory-control-smoke.php \
             alpha13-ajax-state-smoke.php \
+            ajax-rate-limit-smoke.php \
             alpha13-usage-guide-smoke.php \
             alpha13-frontend-runtime-smoke.php \
             alpha13-deep-audit-smoke.php; do
