@@ -11,6 +11,7 @@ spec.loader.exec_module(mod)
 
 SHA = "a" * 40
 OTHER = "b" * 40
+BASE = "c" * 40
 REPO = "mad4bdigital-ai/WordPress"
 BRANCH = "develop/readiness-registry-coverage-enforcement-20261018"
 OWNER = "mad4bdigital-ai"
@@ -26,15 +27,21 @@ def comment(kind="issue_comment", body=BODY, sha=SHA, login=OWNER, pr=426, actio
     return data
 
 
-def pull(number=426, head=SHA, state="open", base="master", repo=REPO):
-    return {"number": number, "state": state, "base": {"ref": base},
+def pull(number=426, head=SHA, state="open", base="master", repo=REPO, base_sha=BASE):
+    return {"number": number, "state": state, "base": {"ref": base, "sha": base_sha},
             "head": {"sha": head, "ref": BRANCH, "repo": {"full_name": repo}}}
 
 
-def run(status="completed", sha=SHA, associated=True, branch=BRANCH, rid=98):
+def run(status="completed", sha=SHA, associated=True, branch=BRANCH, rid=98,
+        conclusion="failure", base_sha=BASE):
     return {"id": rid, "event": "pull_request", "head_sha": sha,
             "head_branch": branch, "status": status,
-            "pull_requests": [{"number": 426}] if associated else []}
+            "conclusion": conclusion if status == "completed" else None,
+            "pull_requests": [{
+                "number": 426,
+                "head": {"sha": sha},
+                "base": {"sha": base_sha},
+            }] if associated else []}
 
 
 def fake_api(pr=None, runs=None, commits=None):
@@ -79,6 +86,12 @@ def test_active_deduplicated():
     assert outcome["outcome"] == "ALREADY_ACTIVE" and not posts
 
 
+def test_success_deduplicated():
+    get, post, _, posts = fake_api(runs=[run(conclusion="success")])
+    outcome = mod.process("issue_comment", comment(), POLICY, REPO, get, post)
+    assert outcome["outcome"] == "ALREADY_SUCCESS" and not posts
+
+
 def test_security():
     for body in ("run " + SHA, "/run-production-readiness " + OTHER + " unsafe",
                  "/run-production-readiness " + SHA + "\n/merge",
@@ -94,7 +107,8 @@ def test_security():
         get, post, _, posts = fake_api(pr=pull(**arg))
         denied("issue_comment", comment(), get, post)
         assert not posts
-    for rows in ([run(sha=OTHER)], [run(associated=False)], [run(branch="stale")]):
+    for rows in ([run(sha=OTHER)], [run(associated=False)], [run(branch="stale")],
+                 [run(base_sha=OTHER)]):
         get, post, _, posts = fake_api(runs=rows)
         denied("issue_comment", comment(), get, post)
         assert not posts
@@ -119,6 +133,7 @@ def test_commit_comment():
 if __name__ == "__main__":
     test_success()
     test_active_deduplicated()
+    test_success_deduplicated()
     test_security()
     test_commit_comment()
     print("READINESS_COMMENT_DISPATCH_SECURITY_CONTRACT: PASS")
