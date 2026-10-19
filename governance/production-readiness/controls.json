@@ -3076,6 +3076,24 @@
       "reviewer_note": null,
       "evidence_url": null,
       "original_review_date": "2026-10-18"
+    },
+    {
+      "id": "PLATFORM-10",
+      "domain": "الإقلاع ودورة حياة WordPress",
+      "title": "التقاط الحوادث المبكر وفصل التشخيص عن الاستعادة",
+      "acceptance": "التقاط Fatal بعد MU وقبل pluggable عند توافر مفاتيح موقع قوية، دون رسائل أو مسارات خام؛ فشل التخزين لا يعرض نجاحا، والتشخيص لا يستبدل عقود الاستعادة أو يمنح صلاحيات. القبول الحي مستقل لكل موقع Staging.",
+      "priority": "P0",
+      "release_scope": "Core",
+      "environments": "Staging",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": "Plugin maintainer / Site owner",
+      "evidence_requirement": "Executed early-fatal, storage-failure and legacy-recovery regressions plus independent exact-site runtime evidence",
+      "source": {
+        "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php"
+      },
+      "reviewer_note": "Source review and hermetic CI only; no live incident root cause or Production authorization.",
+      "evidence_url": null,
+      "original_review_date": "2026-10-19"
     }
   ]
 }

@@ -5,7 +5,9 @@ name: MAD4B Production Readiness Matrix
 on:
   pull_request:
   push:
-    branches: [master, 'develop/production-readiness-*']
+    branches: [master, 'develop/production-readiness-*', 'develop/readiness-registry-*']
+    # Run a new read-only evaluation when an explicit readiness release-candidate tag is pushed.
+    tags: ['readiness/v*']
   workflow_dispatch:
 
 permissions:
@@ -26,6 +28,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 0
       - name: Verify exact checkout identity
         env:
           EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -34,11 +37,133 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
           python3 --version
+      - name: Exercise the fail-closed Git tag trigger contract
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_tag_policy.py self-test
+      - name: Exercise governed comment dispatcher security contract
+        run: |
+          set -euo pipefail
+          python3 tests/readiness_comment_dispatch_contract.py
+      - name: Verify exact governed readiness tag and master ancestry
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+        env:
+          TAG_REF: ${{ github.ref }}
+          EXACT_HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_tag_policy.py verify \
+            --ref "$TAG_REF" \
+            --head-sha "$EXACT_HEAD" \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/tag-trigger-evidence.md >> "$GITHUB_STEP_SUMMARY"
       - name: Validate audit matrix and policy bindings
         run: |
           set -euo pipefail
           python3 tools/production_readiness_matrix.py validate
           python3 tools/production_readiness_matrix.py self-test
+          python3 tools/readiness_csv.py
+      - name: Inventory existing source capabilities without baseline certification
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_baseline.py self-test
+          python3 tools/readiness_baseline.py render \
+            --head-sha "$EXACT_HEAD" \
+            --out artifacts/production-readiness
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("artifacts/production-readiness/baseline-inventory.json").read_text())
+          assert p["contract"] == "mad4b.baseline-capability-inventory.v1"
+          assert p["authorizing"] is False and p["production_authorized"] is False
+          assert p["total_observed"] >= p["reviewed_source_entries"]
+          assert all(x["live_site_verified"] is False and
+                     x["production_authorized"] is False for x in p["records"])
+          print("BASELINE_REVIEW_GAPS_NOT_AUTOCERTIFIED: PASS")
+          PY
+
+      - name: Test dynamic coverage fail-closed scenarios
+        run: |
+          set -euo pipefail
+          python3 tools/production_readiness_registry.py self-test
+          python3 tests/production_readiness_registry_contract.py
+      - name: Resolve immutable PR base and enforce capability coverage
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="$PR_BASE_SHA"
+          if [[ ! "$BASE_SHA" =~ ^[a-f0-9]{40}$ || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+          if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$BASE_SHA" --depth=1
+          fi
+          if ! git merge-base --is-ancestor "$BASE_SHA" "$EXACT_HEAD"; then
+            # Base branch can advance while a stacked PR is open. Compare
+            # against the immutable fork point rather than fail or trust a
+            # mutable base head that is not in the PR ancestry.
+            BASE_SHA="$(git merge-base "$BASE_SHA" "$EXACT_HEAD")"
+            test -n "$BASE_SHA"
+          fi
+          echo "Readiness compared exact head $EXACT_HEAD against fork $BASE_SHA"
+          python3 tools/production_readiness_registry.py evaluate \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$EXACT_HEAD" \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/capability-impact.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Setup PHP for mapped WordPress runtime regressions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Execute required mapped regression tests, not merely check filenames
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_test_execution.py self-test
+          python3 tools/readiness_test_execution.py evaluate \
+            --head-sha "$EXACT_HEAD" \
+            --impact artifacts/production-readiness/capability-impact.json \
+            --out artifacts/production-readiness
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("artifacts/production-readiness/executed-regressions.json").read_text())
+          impact=json.loads(Path("artifacts/production-readiness/capability-impact.json").read_text())
+          assert report["contract"] == "mad4b.readiness-executed-regressions.v1"
+          assert report["authorizing"] is False and report["production_authorized"] is False
+          assert report["exact_head_sha"] == impact["exact_head_sha"]
+          assert sorted(x["path"] for x in report["tests"]) == sorted(impact["required_regression_tests"])
+          assert report["passed_count"] == report["required_count"]
+          print("MAPPED_REGRESSION_EXECUTION_GATE: PASS")
+          PY
+      - name: Verify per-control history stays non-authorizing
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("artifacts/production-readiness/control-history.json").read_text())
+          assert p["contract"] == "mad4b.readiness-control-head-history.v1"
+          assert p["authorizing"] is False
+          assert p["all_live_evidence_unverified"] is True
+          assert len(p["controls"]) >= 170
+          delta=json.loads(Path("artifacts/production-readiness/control-delta.json").read_text())
+          assert delta["contract"] == "mad4b.readiness-control-delta.v1"
+          assert delta["authorizing"] is False and delta["production_authorized"] is False
+          assert sum(delta["counts"].values()) == len(p["controls"])
+          assert all(x["live_evidence_status"] == "UNVERIFIED"
+                     and x["authorizing"] is False for x in delta["revisions"])
+          assert all(x["live_evidence_status"] == "UNVERIFIED" and
+                     x["production_authorized"] is False
+                     for x in p["controls"])
+          print("PER_CONTROL_HISTORY_NON_AUTHORIZING: PASS")
+          PY
       - name: Generate exact-head read-only evaluation
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -70,6 +195,38 @@ jobs:
           assert p["historical_observations_non_authoritative"] is True
           print("PRODUCTION_MATRIX_NON_AUTHORIZING: PASS")
           PY
+      - name: Validate evidence envelope and quality indicator guardrails
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_evidence.py
+          python3 tools/readiness_quality.py self-test
+
+      - name: Generate non-authorizing five-KPI scorecard
+        run: |
+          set -euo pipefail
+          python3 tools/readiness_quality.py evaluate \
+            --impact artifacts/production-readiness/capability-impact.json \
+            --readiness artifacts/production-readiness/readiness.json \
+            --out artifacts/production-readiness
+          cat artifacts/production-readiness/quality-scorecard.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check quality result never impersonates independent release evidence
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("artifacts/production-readiness/quality-scorecard.json").read_text())
+          assert p["contract"] == "mad4b.readiness-quality-report.v1"
+          assert p["production_decision"] == "NO-GO"
+          assert p["authorizing"] is False and p["production_authorized"] is False
+          assert len(p["metrics"]) == 5
+          assert all(metric["measured_value"] is None or
+                     metric["provenance"] == "EXACT_HEAD_SOURCE_DIFF_ONLY"
+                     for metric in p["metrics"])
+          assert p["data_trust"] == "REPOSITORY_ONLY_WITHOUT_SIGNED_SITE_OR_PRODUCTION_AUDIT"
+          print("FIVE_KPI_READINESS_NON_AUTHORIZING: PASS")
+          PY
+
       - name: Upload generated matrix reports
         uses: actions/upload-artifact@v4
         if: always()
