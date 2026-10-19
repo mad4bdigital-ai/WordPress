@@ -102,6 +102,7 @@ jobs:
             alpha12-inventory-control-smoke.php \
             alpha13-ajax-state-smoke.php \
             ajax-rate-limit-smoke.php \
+            option-mutation-gate-smoke.php \
             alpha13-usage-guide-smoke.php \
             alpha13-frontend-runtime-smoke.php \
             alpha13-deep-audit-smoke.php \
