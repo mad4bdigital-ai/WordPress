@@ -271,6 +271,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
+    },
+    {
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "500603e3a9df5ad0c8f2f35937c0894c3790a643",
+      "control_ids": [
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-session-safe-diagnostic-acceptance.php"
+      ],
+      "review_rationale": "Review backward-compatible opt-in result projector for session-safe read callbacks: large provider data is reduced before sibling check accumulation. WP_Error and exception classification remain fail-closed, no raw diagnostic payload or mutation is emitted, and existing run_checks callers without a projector retain their behavior. Hermetic 64MB regression plus WordPress identity/triage/full integration are executed in same-PR CI. CI-only source coverage, not live runtime certification or Production authorization."
+    },
+    {
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_blob_sha": "706ce1ecb92da7f040faf1b1a85c48757006bfee",
+      "control_ids": [
+        "MCP-01",
+        "PERFORMANCE-01",
+        "SECURITY-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/session-safe-memory-regression.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-session-safe-diagnostic-acceptance.php"
+      ],
+      "review_rationale": "Review bounded diagnostic projection and hashing: digests explicitly represent non-authorizing bounded summaries, not full raw provider evidence or signed receipts. Scalar-list extraction avoids whole-array copies; blocked/unknown authority remains blocked/unknown and the read output remains generation-fenced and <=16KB. Same-PR PHP 7.4/8.3 hermetic stress and disposable WP MCP tests enforce redaction and scope compatibility. External client schema refresh and two-site live readback remain required."
     }
   ],
   "code_change_rules": {
