@@ -105,7 +105,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         }
         return true;
     }
-    private function id($v){return is_scalar($v)?sanitize_key((string)$v):'';}
+    private function clean_id($v){return is_scalar($v)?sanitize_key((string)$v):'';}
     private function is_hex($v,$len){return is_string($v)&&strlen($v)===$len&&1===preg_match('/^[a-f0-9]+$/D',$v);}
     private function lock($kind,$id){
         $key='mad4b_etg_lock_'.substr(hash('sha256',$kind.'|'.$id),0,36);
@@ -141,7 +141,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
     }
     public function read_reversible_state($ability_name,array$target){
         $kind=(string)($target['kind']??'');
-        $id=$this->id($target['id']??'');
+        $id=$this->clean_id($target['id']??'');
         if(!$id || !in_array($kind,array('slot','profile'),true)){
             return new WP_Error('mad4b_etg_readback_target_invalid','Target identity invalid.');
         }
@@ -152,7 +152,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         if(is_wp_error($guard))return $guard;
         $input=is_array($input)?$input:array();
         $kind=(string)($input['target_type']??'');
-        $id=$this->id($input['target_id']??'');
+        $id=$this->clean_id($input['target_id']??'');
         $snapshot=$this->read_reversible_state(self::VERIFY,array('kind'=>$kind,'id'=>$id));
         if(is_wp_error($snapshot))return $snapshot;
         $digest=hash('sha256',wp_json_encode($snapshot,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE));
@@ -169,7 +169,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         if(self::SLOT_APPLY===$ability_name){
             $slot=$input['slot']??array();
             if(!is_array($slot))return new WP_Error('mad4b_etg_slot_invalid','Slot must be an object.');
-            $id=$this->id($slot['id']??'');
+            $id=$this->clean_id($slot['id']??'');
             if(''===$id||0===strpos($id,'etg_background_')){
                 return new WP_Error('mad4b_etg_reserved_slot','Reserved or missing slot identifier.');
             }
@@ -183,7 +183,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
             }
             $kind='slot';
         }elseif(self::PROFILE_APPLY===$ability_name){
-            $id=$this->id($input['profile_id']??'');
+            $id=$this->clean_id($input['profile_id']??'');
             if(''===$id)return new WP_Error('mad4b_etg_profile_id_required','Profile ID required.');
             $cfg=new \ETG\DynamicFilterSEOBridge\Config\Configuration();
             if(!hash_equals($cfg->revision(),(string)($input['expected_revision']??''))){
@@ -217,7 +217,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         if(!is_array($profilesRaw))return new WP_Error('mad4b_etg_profiles_invalid','Profiles JSON is invalid.');
         $found=false;
         foreach($profilesRaw as $profile){
-            if(is_array($profile)&&$id===$this->id($profile['id']??'')){
+            if(is_array($profile)&&$id===$this->clean_id($profile['id']??'')){
                 $found=true;
                 if(!empty($profile['enabled'])){
                     return new WP_Error('mad4b_etg_profile_enabled','Enabled profiles cannot be changed by this operation.');
@@ -232,7 +232,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         $ctx=$this->check_executor_context();if(is_wp_error($ctx))return $ctx;
         $guard=$this->guard();if(is_wp_error($guard))return $guard;
         $slot=is_array($input['slot']??null)?$input['slot']:array();
-        $id=$this->id($slot['id']??'');
+        $id=$this->clean_id($slot['id']??'');
         $lock=$this->lock('slot',$id);if(is_wp_error($lock))return $lock;
         try{
             $before=$this->capture_reversible_state(self::SLOT_APPLY,$input);
@@ -251,7 +251,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
     public function profile_apply($input=array()){
         $ctx=$this->check_executor_context();if(is_wp_error($ctx))return $ctx;
         $guard=$this->guard();if(is_wp_error($guard))return $guard;
-        $id=$this->id($input['profile_id']??'');
+        $id=$this->clean_id($input['profile_id']??'');
         $lock=$this->lock('profile',$id);if(is_wp_error($lock))return $lock;
         try{
             $before=$this->capture_reversible_state(self::PROFILE_APPLY,$input);
@@ -267,7 +267,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
             if(!is_array($rows))return new WP_Error('mad4b_etg_profiles_invalid','Profiles JSON invalid.');
             $changed=false;
             foreach($rows as &$row){
-                if(!is_array($row)||$id!==$this->id($row['id']??''))continue;
+                if(!is_array($row)||$id!==$this->clean_id($row['id']??''))continue;
                 $old=$row;
                 $proposed=(array)$proposal['proposed_profile'];
                 foreach(array('post_types','require_post_type_binding','post_type_authority','routes')as$field){
@@ -305,7 +305,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         if(!class_exists('MAD4B_SCP_Policy')||!MAD4B_SCP_Policy::can_mutate()){
             return new WP_Error('mad4b_etg_undo_authority_required','Central MAD4B mutation authority required for undo.');
         }
-        $kind=(string)($target['kind']??'');$id=$this->id($target['id']??'');
+        $kind=(string)($target['kind']??'');$id=$this->clean_id($target['id']??'');
         if(''===$id||!in_array($kind,array('slot','profile'),true)
             ||(self::SLOT_APPLY===$ability_name&&'slot'!==$kind)
             ||(self::PROFILE_APPLY===$ability_name&&'profile'!==$kind)){
@@ -338,7 +338,7 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
                 $rows=json_decode((string)$option['profiles_json'],true);
                 if(!is_array($rows))return new WP_Error('mad4b_etg_undo_profiles_invalid','Previous profile JSON invalid.');
                 foreach($rows as $row){
-                    if(is_array($row)&&$id===$this->id($row['id']??'')&&!empty($row['enabled'])){
+                    if(is_array($row)&&$id===$this->clean_id($row['id']??'')&&!empty($row['enabled'])){
                         return new WP_Error('mad4b_etg_undo_profile_enabled','Rollback cannot enable a Profile.');
                     }
                 }
