@@ -1,0 +1,40 @@
+name: MAD4B Readiness Comment Dispatch Contract
+
+on:
+  pull_request:
+    paths:
+      - 'tools/readiness_comment_dispatch.py'
+      - 'tests/readiness_comment_dispatch_contract.py'
+      - '.github/workflows/mad4b-readiness-comment-dispatch.yml'
+      - '.github/workflows/mad4b-readiness-comment-contract.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'tools/readiness_comment_dispatch.py'
+      - 'tests/readiness_comment_dispatch_contract.py'
+      - '.github/workflows/mad4b-readiness-comment-dispatch.yml'
+      - '.github/workflows/mad4b-readiness-comment-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mad4b-readiness-comment-contract-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  test-dispatcher:
+    name: Readiness comment dispatcher security contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+      - name: Test owner authorization, stale-base rejection and idempotency
+        run: python3 tests/readiness_comment_dispatch_contract.py
