@@ -1,0 +1,20 @@
+{
+  "schema": "mad4b.research-unpacked-vendor-archives.v1",
+  "non_authorizing": true,
+  "no_runtime_certs": true,
+  "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+  "branch": "research/vendor-litespeed-20261019",
+  "archives": [
+    {
+      "archive": "wp-content/plugins/litespeed-cache.zip",
+      "source_commit": "f9b08155a68e2da01ac81edb0202c0d4471efc0d",
+      "git_blob_sha1": "d86037186e670a63dd7baa14966207c989f41323",
+      "archive_sha256": "4d0427332929dd67067ef6ea8e2d8f9cbaebbbef34ced57aca6c917b950cf3fc",
+      "archive_bytes": 1059024,
+      "files": 319,
+      "uncompressed_bytes": 3570057,
+      "extract_root": "vendor-unpacked/litespeed-cache",
+      "certification": "source_inspection_only_not_runtime_attestation"
+    }
+  ]
+}
