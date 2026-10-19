@@ -384,5 +384,10 @@ jobs:
             ${{ runner.temp }}/readiness-bootstrap-before.json
             ${{ runner.temp }}/readiness-bootstrap-target.json
             ${{ runner.temp }}/readiness-bootstrap-after.json
+            ${{ runner.temp }}/readiness-bootstrap-target-policy.json
+            ${{ runner.temp }}/readiness-bootstrap-target-template.json
+            ${{ runner.temp }}/readiness-bootstrap-attestation.json
+            ${{ runner.temp }}/readiness-bootstrap-publication.json
+            ${{ runner.temp }}/readiness-bootstrap-governance.json
           if-no-files-found: ignore
           retention-days: 30
