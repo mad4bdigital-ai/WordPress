@@ -1,0 +1,107 @@
+{
+  "contract": "mad4b.production-independent-signoffs.v1",
+  "authorizing": false,
+  "all_statuses_non_authoritative": true,
+  "note": "Imported historical signoff requirements; an unsigned CSV or CI result does not approve Production.",
+  "requirements": [
+    {
+      "id": "Exact build freeze",
+      "acceptance": "HEAD + ZIP + MCP Adapter pair + package manifest immutable",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "All P0/P1",
+      "acceptance": "لا بنود حرجة/مهمة مفتوحة في Checklist",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "CI required checks",
+      "acceptance": "10 Workflow required successful exact SHA",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "14 production stages",
+      "acceptance": "14 evidence contracts signed and site-bound",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Core13 live",
+      "acceptance": "13 core workstreams closed by live evidence",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Production database",
+      "acceptance": "Governance DB schema + permissions + topology + backups",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Recovery rehearsal",
+      "acceptance": "Backup/restore/rollback signed evidence and RTO/RPO",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Performance & security",
+      "acceptance": "SLO/QM + security canaries + external test results",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Owner exact-head approval",
+      "acceptance": "OWNER_ATTEST_SINGLE_OWNER on final post-review SHA",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Production site-specific promotion",
+      "acceptance": "Independent one-time approval bound to site UUID + profile digest",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    },
+    {
+      "id": "Release manager authorization",
+      "acceptance": "Separate, explicit production go/no-go; no auto publish",
+      "initial_observation": "بانتظار دليل حي",
+      "owner_role": null,
+      "evidence_url": null,
+      "approved_at": null,
+      "independent_approval_required": true
+    }
+  ]
+}
