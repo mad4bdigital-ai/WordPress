@@ -18,7 +18,7 @@ class UndoFixtureAdapter extends MAD4B_SCP_Adapter_Base {
     public function id(){return 'ci-fixture';}
     public function reversible_contract_for($name){return 'ci.restore.v1';}
     public function status(){return array('mutation_requires_certification'=>false);}
-    public function read_reversible_state($name,$target){return $this->bad_readback?array('v'=>'unexpected'):$this->value;}
+    public function read_reversible_state($name,$target){return $this->bad_readback&&$this->restore_calls>0?array('v'=>'unexpected'):$this->value;}
     public function acquire_reversible_undo_scope($name,$target){return array('token'=>'fixture');}
     public function release_reversible_scope($scope){}
     public function restore_reversible_state($name,$target,$state,$record){
