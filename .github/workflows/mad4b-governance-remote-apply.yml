@@ -276,6 +276,12 @@ jobs:
               raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: target policy/template drift")
           verify(target_template, target_policy)
 
+          active_repository_rulesets = gh("rulesets?includes_parents=false")
+          if (not isinstance(active_repository_rulesets, list)
+              or len(active_repository_rulesets) != 1
+              or active_repository_rulesets[0].get("id") != 23968498
+              or active_repository_rulesets[0].get("name") != "MAD4B master release governance"):
+              raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: unexpected additional repository rulesets")
           before = gh("rulesets/23968498?includes_parents=true")
           if (before.get("id") != 23968498
               or before.get("source_type") != "Repository"
@@ -309,7 +315,10 @@ jobs:
           except Exception:
               # Even an HTTP failure may follow a server-side write.
               # Recover only from a recognizable base/target state.
-              observed = gh("rulesets/23968498?includes_parents=true")
+              try:
+                  observed = gh("rulesets/23968498?includes_parents=true")
+              except Exception as error:
+                  raise RuntimeError("RULESET_BOOTSTRAP_RECOVERY_REQUIRED: post-write readback unavailable") from error
               if mutable_ruleset(observed) == mutable_ruleset(target_template):
                   gh("rulesets/23968498", method="PUT", data=rollback_file)
               elif mutable_ruleset(observed) != mutable_ruleset(template):
