@@ -23,19 +23,34 @@ final class OptionMutationGate {
         }
         $lease = array('key' => $key, 'token' => $token, 'resource' => $option);
         register_shutdown_function(static function () use ($lease): void {
+            // Preserve the lock after fatal execution: state may be modified
+            // while its journal was never finalized.
+            $last = function_exists('error_get_last') ? error_get_last() : null;
+            if (is_array($last) && in_array((int)($last['type'] ?? 0),
+                array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR), true)) return;
             self::release($lease);
         });
         return $lease;
     }
 
     public static function release(array $lease): bool {
+        global $wpdb;
         if (empty($lease['key']) || empty($lease['token']) || empty($lease['resource'])
             || !in_array($lease['resource'], self::ALLOWED, true)
-            || !function_exists('get_option') || !function_exists('delete_option')) return false;
+            || !isset($wpdb) || !is_object($wpdb) || !isset($wpdb->options)
+            || !method_exists($wpdb, 'delete') || !function_exists('wp_cache_delete')) return false;
         $key = 'mad4b_etg_lock_' . substr(hash('sha256', 'option|' . $lease['resource']), 0, 36);
         if (!hash_equals($key, (string)$lease['key'])) return false;
-        $actual = get_option($key, '');
-        if (!is_string($actual) || !hash_equals((string)$lease['token'], $actual)) return false;
-        return (bool)delete_option($key);
+        // Compare-and-delete in one SQL statement. A get_option -> delete_option
+        // sequence can delete another holder after a token handover.
+        $deleted = $wpdb->delete($wpdb->options,
+            array('option_name' => $key, 'option_value' => (string)$lease['token']),
+            array('%s', '%s'));
+        if (1 !== $deleted) return false;
+        // Direct SQL bypasses the normal delete_option cache maintenance.
+        wp_cache_delete($key, 'options');
+        wp_cache_delete('notoptions', 'options');
+        wp_cache_delete('alloptions', 'options');
+        return true;
     }
 }

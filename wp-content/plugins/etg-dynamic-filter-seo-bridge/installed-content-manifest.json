@@ -128,7 +128,7 @@
     "includes/Runtime/AdapterRegistry.php": "d12e49cbd10a28f2d264c6bfe7ed20296a6e9b816e74e2a999f5bbb4ac675d3d",
     "includes/Runtime/BootGuard.php": "3f4c85eb4024c5d0ee5bdbc227ab3752d5e4cd911e96f9230b35309a3f86c8a3",
     "includes/Runtime/CapabilityRequirements.php": "6441d28b5223f7409e65f4e07b2e694607038aabe4dc3abf44c1983eeff84eea",
-    "includes/Runtime/OptionMutationGate.php": "dad3deed2fe34d4ac2d06ef816cc52f1e809417167f2d54a47e6eeb81a67eb60",
+    "includes/Runtime/OptionMutationGate.php": "d613c18875217a0e7bd824914a828379ff1163883de94e1471e39c9c8ce45a11",
     "includes/Runtime/PostTypeObserver.php": "0611109ec977cc55e048c7c1ca405f7db362bfb489f297fda1d68b4fa58a0418",
     "includes/Runtime/Readiness.php": "761a0ad3c9d496695ac8f2df0527cdbf536a1689c09cae1ab579c814a648ab23",
     "includes/Runtime/RequestScope.php": "d60e1cf756d732286cd3d32bc53756f1c0b241640df0b7fca563619be6a99e7d",

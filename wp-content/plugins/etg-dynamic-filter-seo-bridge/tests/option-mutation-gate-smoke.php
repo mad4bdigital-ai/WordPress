@@ -1,6 +1,20 @@
 <?php
 /** Standalone fail-closed, identity-scoped ETG Admin/MCP option lock regression. */
 $GLOBALS['etg_gate_options']=array();
+$GLOBALS['etg_gate_cache_deletes']=array();
+class ETG_Gate_DB {
+    public $options='wp_options'; public $fail_delete=false;
+    public function delete($table,$where,$format) {
+        if($table!==$this->options || $format!==array('%s','%s'))return false;
+        if($this->fail_delete)return false;
+        $key=$where['option_name']??'';
+        if(!isset($GLOBALS['etg_gate_options'][$key])
+            ||$GLOBALS['etg_gate_options'][$key]!==($where['option_value']??''))return 0;
+        unset($GLOBALS['etg_gate_options'][$key]);return 1;
+    }
+}
+$GLOBALS['wpdb']=new ETG_Gate_DB();
+function wp_cache_delete($key,$group){$GLOBALS['etg_gate_cache_deletes'][]=$group.':'.$key;return true;}
 function wp_generate_uuid4(){return 'ci-'.bin2hex(random_bytes(8));}
 function add_option($key,$value,$unused='',$autoload='no'){
     if(array_key_exists($key,$GLOBALS['etg_gate_options']))return false;
@@ -31,6 +45,15 @@ $another=Gate::acquire('etg_dfsb_dynamic_content_slots');
 ck(is_array($another)&&$another['token']!==$slot['token'],'replacement owner receives distinct token');
 ck(!Gate::release($slot),'prior lease must not delete newer owner');
 ck(Gate::release($another),'replacement lease released');
+$blocked=Gate::acquire('etg_dfsb_dynamic_content_slots');
+$GLOBALS['wpdb']->fail_delete=true;
+ck(!Gate::release($blocked),'failed atomic release retains lock');
+ck(is_wp_error(Gate::acquire('etg_dfsb_dynamic_content_slots')),
+    'failed backend release must not admit next holder');
+$GLOBALS['wpdb']->fail_delete=false;
+ck(Gate::release($blocked),'release succeeds after backend recovery');
+ck(in_array('options:alloptions',$GLOBALS['etg_gate_cache_deletes'],true),
+    'option caches are invalidated after direct SQL');
 ck(Gate::release($profile),'independent profile lease released');
 $paths=array(
     dirname(__DIR__).'/includes/Admin/DynamicContentPage.php',
