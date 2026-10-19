@@ -35,7 +35,7 @@ function wp_safe_remote_get( $url, $args ) {
         throw new RuntimeException( 'Origin probe allowed an unsafe target or HTTP request' );
     if ( ! is_string( $args['headers']['X-MAD4B-Synthetic-Probe'] ) )
         throw new RuntimeException( 'Synthetic marker missing' );
-    return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed', 'cURL error 6: Could not resolve host' )
+    return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed', isset( $GLOBALS['http_error_message'] ) ? (string) $GLOBALS['http_error_message'] : 'cURL error 6: Could not resolve host' )
         : array( 'response' => array( 'code' => $GLOBALS['http_code_by_path'][ $GLOBALS['last_probe_path'] ] ?? $GLOBALS['http_code'] ) );
 }
 class MAD4B_SCP_Policy {
@@ -156,4 +156,39 @@ $assert( is_wp_error( MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
     array( 'target' => 'paired', 'mode' => 'probe' ) ) ) && $GLOBALS['outbound_requests'] === $before,
     'Paired probe bypassed governed read permission' );
 $GLOBALS['permitted'] = true;
-echo "PASS staging origin probe: default zero-network, bounded GET, HTTPS-only, no redirects, no credentials, non-browser, denied production, signed proxy-safe marker and REST root isolation\n";
+// Verify all allowlisted loopback transport failure categories in the same
+// sanitized, read-only contract. No message, URL or token is returned.
+$GLOBALS['http_error'] = true;
+$cases = array(
+    'cURL error 6: Could not resolve host' => 'dns_resolution_failure',
+    'cURL error 60: SSL certificate problem' => 'tls_verification_failure',
+    'cURL error 28: Operation timed out' => 'network_timeout',
+    'cURL error 7: Could not connect to server' => 'tcp_connection_failure',
+    'Blocked external request by policy' => 'local_http_policy_block',
+    'Undocumented socket failure' => 'unknown_transport_failure',
+);
+$before = $GLOBALS['outbound_requests'];
+foreach ( $cases as $message => $expected_class ) {
+    $GLOBALS['http_error_message'] = $message;
+    $row = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+        array( 'target' => 'homepage', 'mode' => 'probe' ) );
+    $assert( 'HTTP_PROBE_FAILED' === $row['state']
+        && $expected_class === $row['transport_error_class']
+        && ! isset( $row['error_message'] ) && ! isset( $row['body'] )
+        && ! empty( $row['network_request_performed'] ),
+        'Live transport failure category was not redacted and classified: ' . $expected_class );
+}
+$assert( $GLOBALS['outbound_requests'] === $before + count( $cases ),
+    'Transport failure fixture made extra outbound requests' );
+$GLOBALS['http_error_message'] = 'cURL error 28: Operation timed out';
+$pair_failed = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect(
+    array( 'target' => 'paired', 'mode' => 'probe' ) );
+$assert( 'PAIRED_HTTP_INCONCLUSIVE' === $pair_failed['state']
+    && 'network_timeout' === $pair_failed['results']['homepage']['transport_error_class']
+    && 'network_timeout' === $pair_failed['results']['rest_root']['transport_error_class']
+    && false === $pair_failed['root_cause_proven']
+    && false === $pair_failed['public_network_verified'],
+    'Paired transport failure falsely certified the homepage or REST endpoint' );
+unset( $GLOBALS['http_error_message'] );
+$GLOBALS['http_error'] = false;
+echo "PASS staging origin probe: six transport failures, mixed 500/200, zero-network default, bounded GET, HTTPS-only, no redirects, no credentials, no public browser certification or Production mutation\n";

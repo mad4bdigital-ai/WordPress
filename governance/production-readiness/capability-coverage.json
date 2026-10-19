@@ -644,6 +644,44 @@
         "PROVIDERS-01",
         "SECURITY-01"
       ]
+    },
+    {
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "fff2db845256a8a831c4eb850797391af20732ff",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "review_rationale": "Existing owner-attestation and Staging Write convergence callbacks preserve their exact authorization gates and journal boundaries. Only bounded post-child WP_Error observability changes; no authority or success is inferred, and each affected owner transport has same-PR negative runtime regression coverage. Independent Staging readback and owner step-up remain mandatory. The dispatch adapter also maintains the existing provider isolation perimeter, covered by PROVIDERS-02; this is CI-only evidence, not runtime certification. The exact-head Readiness gate executes both standalone PHP runtime fixtures through a fixed-path Python subprocess regression runner; absence of PHP, timeout, or any fixture failure fails the CI job."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "71e326a283024b9c737a018245baae971b0fb40f",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
     }
   ],
   "code_change_rules": {

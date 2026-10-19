@@ -474,6 +474,41 @@ mad4b_assert( false === strpos( wp_json_encode( $owner_uncertain ), 'owner_priva
     'owner child exception leaked details' );
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner;
 
+// Owner target WP_Error can occur after a durable journal/claim. The MCP
+// caller must get an explicit UNKNOWN outcome, not an opaque host exception
+// or a misleading failed/succeeded write declaration.
+$owner_wp_error = new MAD4B_Test_Ability(
+    mad4b_test_meta( array(
+        'chatgpt_direct_step_up' => true,
+        'exact_chatgpt_client_required' => true,
+        'mad4b_staging_write_authority_convergence' => 'mad4b.staging-write-authority-convergence.v1',
+    ) ), $schema,
+    new WP_Error( 'mad4b_staging_owner_receipt_stale', 'SENSITIVE_OWNER_MESSAGE', array( 'token' => 'PRIVATE_OWNER_TOKEN' ) )
+);
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner_wp_error;
+$owner_error_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => 'staging_write_authority_convergence' ) );
+$owner_error_input = $owner_input;
+$owner_error_input['expected_registration_digest'] = $owner_error_info['registration_digest'];
+$owner_error_input['expected_dispatch_policy_digest'] = $owner_error_info['dispatch_policy_digest'];
+$owner_error_input['expected_input_schema_sha256'] = $owner_error_info['input_schema_sha256'];
+$owner_error_result = MAD4B_SCP_Enrollment_Dispatch::execute( $owner_error_input );
+mad4b_assert( is_array( $owner_error_result )
+    && 'target_error_reconciliation_required' === $owner_error_result['state']
+    && 'mad4b_staging_owner_receipt_stale' === $owner_error_result['target_error_code']
+    && true === $owner_error_result['human_decision_required']
+    && true === $owner_error_result['reconciliation_required']
+    && true === $owner_error_result['authority_not_proven']
+    && false === $owner_error_result['blind_retry_allowed']
+    && null === $owner_error_result['mutation_performed']
+    && ! array_key_exists( 'operation_succeeded', $owner_error_result )
+    && ! array_key_exists( 'failed', $owner_error_result ),
+    'Owner target error should produce a bounded unknown outcome without grant or replay' );
+mad4b_assert( 1 === $owner_wp_error->calls
+    && false === strpos( wp_json_encode( $owner_error_result ), 'SENSITIVE_OWNER_MESSAGE' )
+    && false === strpos( wp_json_encode( $owner_error_result ), 'PRIVATE_OWNER_TOKEN' ),
+    'Owner transport error exposed private target data or re-invoked a child' );
+$GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] = $owner;
+
 // Metadata and catalog are both independently required. A spoofed or downgraded
 // operation, missing client binding, or lost OAuth step-up must fail closed.
 $GLOBALS['mad4b_test_abilities'][ MAD4B_SCP_Remote_Operation_Parity::OWNER_CONVERGENCE ] =

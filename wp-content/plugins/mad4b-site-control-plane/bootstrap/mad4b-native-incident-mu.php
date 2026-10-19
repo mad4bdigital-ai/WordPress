@@ -54,6 +54,24 @@ final class MAD4B_Native_Incident_MU {
             if ( is_string( $first ) && 1 === preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/D', $first ) )
                 $slug = strtolower( $first );
         }
+        // Source hint only for our own publicly versioned plugin files.
+        // Never persist a host filesystem prefix, other plugin/theme filename,
+        // arbitrary suffix, traversal segment or raw PHP error message.
+        $first_party_file = '';
+        $first_party_line = 0;
+        if ( 'plugin' === $family && 'mad4b-site-control-plane' === $slug ) {
+            $prefix = '/wp-content/plugins/mad4b-site-control-plane/';
+            $at = strpos( $file, $prefix );
+            if ( false !== $at ) {
+                $suffix = substr( $file, $at + strlen( $prefix ) );
+                if ( strlen( $suffix ) <= 180
+                    && 1 === preg_match( '/^(?:[A-Za-z0-9_-]+\\/)*[A-Za-z0-9._-]+\\.php$/D', $suffix ) ) {
+                    $first_party_file = $suffix;
+                    $line = isset( $error['line'] ) ? (int) $error['line'] : 0;
+                    $first_party_line = $line >= 1 && $line <= 2000000 ? $line : 0;
+                }
+            }
+        }
         $message = isset( $error['message'] ) && is_string( $error['message'] ) ? $error['message'] : '';
         $secret = '' !== self::$early_secret ? self::$early_secret
             : ( function_exists( 'wp_salt' ) ? (string) wp_salt( 'auth' ) : '' );
@@ -65,6 +83,8 @@ final class MAD4B_Native_Incident_MU {
             'type' => $type,
             'component_family' => $family,
             'suspected_component_slug' => $slug,
+            'first_party_file' => $first_party_file,
+            'first_party_line' => $first_party_line,
             'component_fingerprint' => hash_hmac( 'sha256', $file, $secret ),
             'incident_fingerprint' => hash_hmac( 'sha256', $type . '|' . $file . '|' . $message, $secret ),
             'request_family' => $request,
@@ -126,6 +146,22 @@ final class MAD4B_Native_Incident_MU {
                 'request_family' => in_array( (string) ( $row['request_family'] ?? '' ), array( 'cron', 'rest', 'admin', 'frontend' ), true ) ? $row['request_family'] : 'unknown',
                 'suspected_component_slug' => isset( $row['suspected_component_slug'] ) && is_string( $row['suspected_component_slug'] )
                     && 1 === preg_match( '/^[a-z0-9][a-z0-9._-]{0,63}$/D', $row['suspected_component_slug'] ) ? $row['suspected_component_slug'] : '',
+                // Stored data is untrusted: validate again before projection.
+                'first_party_file' => ( isset( $row['suspected_component_slug'], $row['component_family'], $row['first_party_file'] )
+                    && 'mad4b-site-control-plane' === $row['suspected_component_slug']
+                    && 'plugin' === $row['component_family']
+                    && is_string( $row['first_party_file'] )
+                    && strlen( $row['first_party_file'] ) <= 180
+                    && 1 === preg_match( '/^(?:[A-Za-z0-9_-]+\\/)*[A-Za-z0-9._-]+\\.php$/D', $row['first_party_file'] ) )
+                    ? $row['first_party_file'] : '',
+                'first_party_line' => ( isset( $row['suspected_component_slug'], $row['component_family'], $row['first_party_file'], $row['first_party_line'] )
+                    && 'mad4b-site-control-plane' === $row['suspected_component_slug']
+                    && 'plugin' === $row['component_family']
+                    && is_string( $row['first_party_file'] )
+                    && strlen( $row['first_party_file'] ) <= 180
+                    && 1 === preg_match( '/^(?:[A-Za-z0-9_-]+\\/)*[A-Za-z0-9._-]+\\.php$/D', $row['first_party_file'] )
+                    && (int) $row['first_party_line'] >= 1 && (int) $row['first_party_line'] <= 2000000 )
+                    ? (int) $row['first_party_line'] : 0,
                 'last_at' => max( 0, (int) ( $row['last_at'] ?? 0 ) ),
                 'incident_fingerprint' => isset( $row['incident_fingerprint'] ) && preg_match( '/^[a-f0-9]{64}$/D', (string) $row['incident_fingerprint'] ) ? $row['incident_fingerprint'] : '',
             );
