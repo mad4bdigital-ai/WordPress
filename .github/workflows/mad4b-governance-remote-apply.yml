@@ -138,6 +138,7 @@ jobs:
           path: |
             ${{ runner.temp }}/mad4b-ruleset-template-verification.json
             ${{ runner.temp }}/mad4b-ruleset-before-readback.json
+            ${{ runner.temp }}/mad4b-readiness-ruleset-minimal-delta.json
             ${{ runner.temp }}/mad4b-ruleset-readback.json
             ${{ runner.temp }}/mad4b-ruleset-rollback-readback.json
             ${{ runner.temp }}/mad4b-ruleset-rollback-verification.json
