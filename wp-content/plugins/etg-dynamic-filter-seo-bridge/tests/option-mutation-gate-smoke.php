@@ -55,6 +55,12 @@ ck(Gate::release($blocked),'release succeeds after backend recovery');
 ck(in_array('options:alloptions',$GLOBALS['etg_gate_cache_deletes'],true),
     'option caches are invalidated after direct SQL');
 ck(Gate::release($profile),'independent profile lease released');
+$retained=Gate::acquire('etg_dfsb_dynamic_content_slots');
+ck(is_array($retained),'recovery reservation');
+ck(Gate::retain($retained),'owned scope may retain uncertain mutation');
+ck(!Gate::release($retained),'retained lock cannot be released on normal cleanup');
+ck(is_wp_error(Gate::acquire('etg_dfsb_dynamic_content_slots')),'retained lock fences new writes');
+ck(!Gate::retain(array('key'=>$retained['key'],'token'=>'not-owner','resource'=>$retained['resource'])),'foreign lease cannot retain lock');
 $paths=array(
     dirname(__DIR__).'/includes/Admin/DynamicContentPage.php',
     dirname(__DIR__).'/includes/Admin/InventoryControlPage.php',

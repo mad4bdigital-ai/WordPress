@@ -7,6 +7,8 @@ namespace ETG\DynamicFilterSEOBridge\Runtime;
  * This serializes the ETG Admin and MAD4B MCP writers of the same WP option.
  */
 final class OptionMutationGate {
+    private static $held = array();
+    private static $retained = array();
     private const ALLOWED = array('etg_dfsb_settings', 'etg_dfsb_dynamic_content_slots', 'etg_indexflow_routes');
 
     public static function acquire(string $option) {
@@ -22,6 +24,7 @@ final class OptionMutationGate {
             return new \WP_Error('mad4b_etg_target_locked', 'ETG option is already locked; prior lease requires reconciliation.');
         }
         $lease = array('key' => $key, 'token' => $token, 'resource' => $option);
+        self::$held[$key] = $token;
         register_shutdown_function(static function () use ($lease): void {
             // Preserve the lock after fatal execution: state may be modified
             // while its journal was never finalized.
@@ -33,6 +36,17 @@ final class OptionMutationGate {
         return $lease;
     }
 
+    /** Keep a recoverably uncertain mutation fenced across normal PHP cleanup. */
+    public static function retain(array $lease): bool {
+        if(empty($lease['key'])||empty($lease['token'])||empty($lease['resource'])
+            ||!in_array($lease['resource'],self::ALLOWED,true))return false;
+        $key='mad4b_etg_lock_'.substr(hash('sha256','option|'.$lease['resource']),0,36);
+        if(!hash_equals($key,(string)$lease['key'])||!isset(self::$held[$key])
+            ||!hash_equals(self::$held[$key],(string)$lease['token']))return false;
+        self::$retained[$key]=(string)$lease['token'];
+        return true;
+    }
+
     public static function release(array $lease): bool {
         global $wpdb;
         if (empty($lease['key']) || empty($lease['token']) || empty($lease['resource'])
@@ -41,12 +55,14 @@ final class OptionMutationGate {
             || !method_exists($wpdb, 'delete') || !function_exists('wp_cache_delete')) return false;
         $key = 'mad4b_etg_lock_' . substr(hash('sha256', 'option|' . $lease['resource']), 0, 36);
         if (!hash_equals($key, (string)$lease['key'])) return false;
+        if(isset(self::$retained[$key])&&hash_equals(self::$retained[$key],(string)$lease['token']))return false;
         // Compare-and-delete in one SQL statement. A get_option -> delete_option
         // sequence can delete another holder after a token handover.
         $deleted = $wpdb->delete($wpdb->options,
             array('option_name' => $key, 'option_value' => (string)$lease['token']),
             array('%s', '%s'));
         if (1 !== $deleted) return false;
+        unset(self::$held[$key],self::$retained[$key]);
         // Direct SQL bypasses the normal delete_option cache maintenance.
         wp_cache_delete($key, 'options');
         wp_cache_delete('notoptions', 'options');

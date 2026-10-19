@@ -212,6 +212,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 		if ( (int) $agent['id'] !== (int) $record['agent_id'] && ! apply_filters( 'mad4b_scp_allow_cross_agent_undo', false, $record, $agent ) ) return new WP_Error( 'mad4b_undo_agent_denied', 'A different agent cannot undo this mutation by default.' );
 
 		$undo_scope = null;
+		$undo_intent_incomplete = false;
 		if ( method_exists( $adapter, 'acquire_reversible_undo_scope' ) && method_exists( $adapter, 'release_reversible_scope' ) ) {
 			$undo_scope = $adapter->acquire_reversible_undo_scope( $record['ability_name'], $payload['target'] );
 			if ( is_wp_error( $undo_scope ) ) return $undo_scope;
@@ -238,6 +239,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			array( 'mutation_id' => (string) $mutation_id, 'status' => (string) $record['status'] ),
 			array( '%s', '%s', '%s' ), array( '%s', '%s' )
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+		if ( 1 === $claimed ) $undo_intent_incomplete = true;
 		if ( 1 !== $claimed ) return new WP_Error(
 			'mad4b_undo_intent_claim_failed',
 			'Undo intent could not be claimed atomically; no restore was attempted.',
@@ -307,9 +309,13 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			array( '%s', '%s' ), array( '%s', '%s' )
 		); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( 1 !== $original_done ) return self::undo_recovery_required( $mutation_id, $recovery_id, 'Undo child was verified but the original mutation could not be finalized.' );
+		$undo_intent_incomplete = false;
 		MAD4B_SCP_Audit::record( 'mad4b/mutation-undo', array( 'mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'provider' => $record['provider'], 'target_type' => $record['target_type'], 'target_id' => $record['target_id'], 'restored_sha256' => $restored_hash, 'approval_ticket_id' => $undo_approval_ticket_id ) );
 		return array( 'status' => 'undone', 'original_mutation_id' => $mutation_id, 'recovery_mutation_id' => $recovery_id, 'restored_sha256' => $restored_hash, 'verified' => true, 'restore_contract' => $payload['restore_contract'] );
 		} finally {
+			if ( $undo_intent_incomplete && null !== $undo_scope && method_exists( $adapter, 'retain_reversible_scope' ) ) {
+				$adapter->retain_reversible_scope( $undo_scope );
+			}
 			if ( null !== $undo_scope ) $adapter->release_reversible_scope( $undo_scope );
 		}
 	}

@@ -14,13 +14,14 @@ function get_current_user_id(){return 1;}
 function apply_filters($tag,$default){return $default;}
 class MAD4B_SCP_Adapter_Base {}
 class UndoFixtureAdapter extends MAD4B_SCP_Adapter_Base {
-    public $value=array('v'=>'after');public $restore_calls=0;public $fail_restore=false;public $bad_readback=false;
+    public $value=array('v'=>'after');public $restore_calls=0;public $fail_restore=false;public $bad_readback=false;public $retained=false;
     public function id(){return 'ci-fixture';}
     public function reversible_contract_for($name){return 'ci.restore.v1';}
     public function status(){return array('mutation_requires_certification'=>false);}
     public function read_reversible_state($name,$target){return $this->bad_readback&&$this->restore_calls>0?array('v'=>'unexpected'):$this->value;}
     public function acquire_reversible_undo_scope($name,$target){return array('token'=>'fixture');}
     public function release_reversible_scope($scope){}
+    public function retain_reversible_scope($scope){$this->retained=true;return true;}
     public function restore_reversible_state($name,$target,$state,$record){
         global $wpdb;
         $children=array_filter($wpdb->rows,static function($r){return ($r['parent_mutation_id']??null)==='original';});
@@ -96,6 +97,7 @@ foreach(array('success','claim_fail','insert_fail','restore_fail','bad_readback'
     $children=array_values(array_filter($wpdb->rows,static function($row){return ($row['parent_mutation_id']??null)==='original';}));
     if($case==='success'){
         test_assert(is_array($result)&&($result['status']??'')==='undone','happy path failed');
+        test_assert(!$adapter->retained,'successful undo must release its scope');
         test_assert(($wpdb->rows['original']['status']??'')==='undone' && count($children)===1
             && $children[0]['status']==='undone' && $adapter->value===array('v'=>'before'),
             'successful undo missing exact child journal/readback');
@@ -104,6 +106,7 @@ foreach(array('success','claim_fail','insert_fail','restore_fail','bad_readback'
         if($case==='bad_readback')test_assert($result->get_error_code()==='mad4b_undo_verification_failed',
             'legacy verification failure API must retain its error code');
         test_assert($adapter->restore_calls===($case==='claim_fail'||$case==='insert_fail'?0:1),'unsafe restore count: '.$case);
+        test_assert($adapter->retained===($case!=='claim_fail'),'uncertain lock retention mismatch: '.$case);
         test_assert(($wpdb->rows['original']['status']??'')===($case==='claim_fail'?'verified':'undo_pending'),
             'parent must be a durable undo fence: '.$case);
         test_assert($case==='claim_fail'||is_wp_error(MAD4B_SCP_Reversible_Adapter_Mutations::undo('original')),

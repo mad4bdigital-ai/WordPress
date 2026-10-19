@@ -144,6 +144,13 @@ final class MAD4B_SCP_ETG_DFSB_Write_Adapter extends MAD4B_SCP_Adapter_Base {
         }
         return $this->acquire_reversible_scope($ability,array('slot'=>array('id'=>$id),'profile_id'=>$id));
     }
+    public function retain_reversible_scope($lock){
+        if(!is_array($lock)||!is_array($this->reversibleScope)
+            ||!isset($lock['key'],$lock['token'])
+            ||$lock['key']!==$this->reversibleScope['key']
+            ||!hash_equals((string)$lock['token'],(string)$this->reversibleScope['token']))return false;
+        return \ETG\DynamicFilterSEOBridge\Runtime\OptionMutationGate::retain($this->reversibleScope);
+    }
     public function release_reversible_scope($lock){
         if(!is_array($lock)||!is_array($this->reversibleScope)||!isset($lock['token'],$lock['key'])
             ||$lock['key']!==$this->reversibleScope['key']
