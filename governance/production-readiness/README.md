@@ -52,6 +52,46 @@ with a dedicated GitHub ruleset where appropriate. The trigger becomes
 effective only once a commit containing this workflow is merged; adding a tag
 to an older commit without the workflow does not retrofit this trigger.
 
+## Run an exact-head PR Readiness check from ChatGPT / GitHub comments
+
+Once `.github/workflows/mad4b-readiness-comment-dispatch.yml` is merged
+into the default `master` branch, the enrolled owner (including the linked
+GitHub account used by ChatGPT) can post **a new top-level PR conversation
+comment** containing exactly:
+
+```text
+/run-production-readiness <40-character-current-PR-head-SHA>
+```
+
+It also accepts a **GitHub commit comment** attached to the exact PR HEAD
+with that same command. The default-branch receiver listens only to newly
+created `issue_comment` and `commit_comment` events; editing the PR
+description or an existing comment is **not** a trigger. This distinction
+prevents accidentally interpreting historic PR descriptions as commands.
+
+The dispatcher checks the event author against
+`single_owner_safety.authorized_owner_logins` in the trusted repository
+governance policy, verifies the **open, same-repository PR targeting master**
+and current exact HEAD SHA, and finds an existing `pull_request`-sourced
+`mad4b-production-readiness-matrix.yml` run for that PR/SHA/branch.
+If the latest matching run is completed it requests **only an Actions rerun**
+using the bounded `actions:write` permission. If the exact run is active,
+it reports `ALREADY_ACTIVE`; if absent or ambiguous, it fails closed.
+The comment text is parsed as data and never passed to a shell.
+
+Because an Actions *rerun* reuses its original triggering PR event, a PR
+whose base was changed after the original run must receive a fresh normal
+`pull_request` workflow first for up-to-date base-comparison evidence.
+The dispatcher never authorizes a new base or infers Production readiness.
+
+**Operational prerequisites:** the trusted receiver must first be merged
+to `master`; `#429` must merge before full #426 dynamic-coverage CI can
+use the historical controls baseline. Publishing a command before the
+receiver reaches default branch does **not** queue a future request.
+GitHub tag `readiness/v*` and manual workflow dispatch remain independently
+supported as read-only entrypoints. Neither a command nor a green check
+authorizes Staging changes, Production Promotion, Git merges or access grants.
+
 ## Trust boundaries
 
 1. Historical spreadsheet observations are NOT authoritative. GitHub workflows are evaluated for the exact SHA only.
