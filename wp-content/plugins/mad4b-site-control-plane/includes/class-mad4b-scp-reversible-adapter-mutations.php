@@ -147,12 +147,12 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 			) )
 			: $readback_call();
 		if ( is_wp_error( $after_state ) ) {
-			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => $after_state->get_error_code(), 'verification_code' => 'readback_failed' ) ) )  return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
 			$error = new WP_Error( 'mad4b_reversible_readback_failed', 'Provider write completed but reversible readback failed.', array( 'provider_error' => $after_state->get_error_code() ) );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
 		if ( ! is_array( $after_state ) ) {
-			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
+			if ( 1 !== self::update_record( $mutation_id, array( 'status' => 'verification_failed', 'error_code' => 'invalid_readback_state', 'verification_code' => 'readback_failed' ) ) )  return self::journal_recovery_error( $mutation_id, 'Provider readback could not be finalized.' );
 			$error = new WP_Error( 'mad4b_reversible_readback_invalid', 'Provider reversible readback did not return a bounded state object.' );
 			return self::attach_failure_evidence( $error, self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, '', 'verification_failed', false ) );
 		}
@@ -298,7 +298,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => 'provider_declared_not_started_verified',
-			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
+			) ) )  return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$evidence = self::failure_evidence( $mutation_id, $ability_name, $provider, $before, $before_hash, $after_hash, 'failed', false );
 			return self::attach_failure_evidence( $error, $evidence );
 		}
@@ -314,7 +314,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => 'provider_error_after_side_effect',
-			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
+			) ) )  return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$restore_available = true;
 		} else {
 			$mutation_status = is_wp_error( $observed ) ? 'verification_failed' : 'failed';
@@ -326,7 +326,7 @@ final class MAD4B_SCP_Reversible_Adapter_Mutations {
 				'after_sha256' => $after_hash,
 				'error_code' => (string) $error_code,
 				'verification_code' => $verification_code,
-			) ) ) ) return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
+			) ) )  return self::journal_recovery_error( $mutation_id, 'Provider failure evidence could not be finalized.' );
 			$restore_available = $declared_not_started && is_wp_error( $observed );
 		}
 
