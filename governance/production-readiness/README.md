@@ -63,20 +63,21 @@ comment** containing exactly:
 /run-production-readiness <40-character-current-PR-head-SHA>
 ```
 
-It also accepts a **GitHub commit comment** attached to the exact PR HEAD
-with that same command. The default-branch receiver listens only to newly
-created `issue_comment` and `commit_comment` events; editing the PR
-description or an existing comment is **not** a trigger. This distinction
-prevents accidentally interpreting historic PR descriptions as commands.
+The default-branch receiver listens only to newly created
+`issue_comment` events on Pull Requests. GitHub Actions does **not**
+support `commit_comment` triggers; the full commit identity must be supplied
+in the PR command instead. Editing a PR description, posting a review
+comment or editing an existing comment is **not** a trigger.
 
 The dispatcher checks the event author against
 `single_owner_safety.authorized_owner_logins` in the trusted repository
 governance policy, verifies the **open, same-repository PR targeting master**
 and current exact HEAD SHA, and finds an existing `pull_request`-sourced
 `mad4b-production-readiness-matrix.yml` run for that PR/SHA/branch.
-If the latest matching run is completed it requests **only an Actions rerun**
-using the bounded `actions:write` permission. If the exact run is active,
-it reports `ALREADY_ACTIVE`; if absent or ambiguous, it fails closed.
+If the latest matching run is completed with failure, cancellation or
+timeout, it requests **only an Actions rerun** using the bounded
+`actions:write` permission. Completed-success or active runs are idempotent,
+reported as `ALREADY_SUCCESS` / `ALREADY_ACTIVE`. Old-base runs fail closed.
 The comment text is parsed as data and never passed to a shell.
 
 Because an Actions *rerun* reuses its original triggering PR event, a PR
