@@ -26,6 +26,16 @@ test_path = "tests/production_readiness_registry_contract.py"
 changed = [("A", path), ("A", test_path)]
 added = {cap: path}
 
+# Regression: the global "wp-content" prefix is not a content feature.
+# The classifier must consider only the actual plugin-relative behavior.
+resilience_path = reg.PLUGIN + "includes/class-mad4b-scp-connector-resilience.php"
+assert reg.classify(resilience_path, resilience_path, policy)["id"] == "platform"
+assert reg.classify(resilience_path, "service:" + resilience_path, policy)["id"] == "platform"
+provider_path = reg.PLUGIN + "includes/class-mad4b-scp-provider-transport.php"
+assert reg.classify(provider_path, provider_path, policy)["id"] == "mcp"
+content_path = reg.PLUGIN + "includes/class-mad4b-scp-content-create.php"
+assert reg.classify(content_path, content_path, policy)["id"] == "content"
+
 def initial_baseline(_commit, path):
     if path == reg.CONTROLS:
         return copy.deepcopy(controls)
