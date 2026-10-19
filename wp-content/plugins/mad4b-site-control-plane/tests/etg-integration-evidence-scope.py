@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Admit only append-only CI reviews and source-derived bootstrap fingerprints."""
+"""Admit bounded non-authorizing reviews, exact-base metadata and source fingerprints."""
 import argparse
 import copy
 import hashlib
@@ -9,6 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[4]
 COVERAGE = 'governance/production-readiness/capability-coverage.json'
+FEATURE = 'specs/007-content-intelligence-workflow-platform/feature.json'
 BOOT = 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
 DELIVERIES = {f'specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g{i}-delivery.json' for i in range(2, 10)}
 
@@ -49,6 +50,14 @@ def fingerprints_only(old, new, source):
                 right.pop(field, None)
     require(before == after, 'delivery_metadata_or_acceptance_changed')
 
+def baseline_only(old, new, base):
+    before, after = copy.deepcopy(old), copy.deepcopy(new)
+    require(after.pop('last_reviewed_master_parent_sha') == base, 'reviewed_base_not_exact')
+    before.pop('last_reviewed_master_parent_sha')
+    require(after.pop('baseline_checked_at') == '2026-10-19', 'review_date_not_exact')
+    before.pop('baseline_checked_at')
+    require(before == after, 'feature_policy_or_acceptance_changed')
+
 def self_test():
     row = dict(id='fixture', status='reviewed_for_ci_only', production_authorized=False,
                live_evidence_required=True, owner_role='CI reviewer', regression_tests=['test'], control_ids=['control'])
@@ -68,6 +77,11 @@ def self_test():
     fingerprints_only(a, b, lambda path: b'new')
     bad = copy.deepcopy(b); bad['accepted'] = True; denied(lambda: fingerprints_only(a, bad, lambda path: b'new'))
     bad = copy.deepcopy(b); bad['code_paths'][0]['sha256'] = 'forged'; denied(lambda: fingerprints_only(a, bad, lambda path: b'new'))
+    a = {'last_reviewed_master_parent_sha': 'old', 'baseline_checked_at': 'old', 'merge_authorized': False}
+    b = dict(a, last_reviewed_master_parent_sha='base', baseline_checked_at='2026-10-19')
+    baseline_only(a, b, 'base')
+    bad = dict(b, merge_authorized=True); denied(lambda: baseline_only(a, bad, 'base'))
+    denied(lambda: baseline_only(a, b, 'other'))
     print('PASS evidence scope rejects policy/approval/history/acceptance/hash forgery')
 
 def main():
@@ -83,6 +97,8 @@ def main():
     for path in paths:
         if path == COVERAGE:
             reviews_only(json.loads(raw(args.base, path)), json.loads(raw(args.head, path)))
+        elif path == FEATURE:
+            baseline_only(json.loads(raw(args.base, path)), json.loads(raw(args.head, path)), args.base)
         elif path in DELIVERIES:
             fingerprints_only(json.loads(raw(args.base, path)), json.loads(raw(args.head, path)), lambda source: raw(args.head, source))
     print('PASS narrow ETG integration evidence scope; no grants, policy changes or acceptance promotion')

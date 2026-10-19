@@ -4,8 +4,8 @@
   "reviewed_base_sha": "b9ffd800239d40cbc1147dffe7106ad5e5323655",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 105,
-  "changed_paths_sha256": "fd4d4c875536af8c256c358e0a92f045c054cec3a637c0009f11ba789af42150",
+  "changed_file_count": 106,
+  "changed_paths_sha256": "b8278eac98af3356a5c8a3e1730085380202be8eb8e389ef6a6f0b20cd7e84dd",
   "slices": [
     {
       "id": "ci-and-evidence",
@@ -26,7 +26,8 @@
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g6-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g7-delivery.json",
         "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g8-delivery.json",
-        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json"
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/g9-delivery.json",
+        "specs/007-content-intelligence-workflow-platform/feature.json"
       ]
     },
     {
