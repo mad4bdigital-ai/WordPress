@@ -134,17 +134,17 @@ def test_security():
     assert not posts
 
 
-def test_commit_comment():
+def test_only_supported_github_event():
     get, post, _, posts = fake_api()
-    outcome = mod.process("commit_comment", comment(kind="commit_comment"),
-                          POLICY, REPO, get, post)
-    assert outcome["surface"] == "commit_comment" and len(posts) == 1
-    get, post, _, posts = fake_api(commits=[pull(), pull(number=421)])
     denied("commit_comment", comment(kind="commit_comment"), get, post)
     assert not posts
-    get, post, _, posts = fake_api()
-    denied("commit_comment", comment(kind="commit_comment", sha=OTHER), get, post)
-    assert not posts
+    workflow = (Path(__file__).resolve().parents[1]
+                / ".github/workflows/mad4b-readiness-comment-dispatch.yml").read_text()
+    assert "\n  issue_comment:\n" in workflow
+    assert "\n  commit_comment:\n" not in workflow
+    assert "types: [created]" in workflow
+    assert "actions: write" in workflow
+    assert "ref: ${{ github.event.repository.default_branch }}" in workflow
 
 
 if __name__ == "__main__":
@@ -153,5 +153,5 @@ if __name__ == "__main__":
     test_success_deduplicated()
     test_rerun_toctou_fences()
     test_security()
-    test_commit_comment()
+    test_only_supported_github_event()
     print("READINESS_COMMENT_DISPATCH_SECURITY_CONTRACT: PASS")
