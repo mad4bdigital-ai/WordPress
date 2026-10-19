@@ -263,7 +263,8 @@ jobs:
               row = gh(f"contents/{path}?ref={head_sha}")
               if row.get("encoding") != "base64":
                   raise ValueError("Candidate data must use base64")
-              return json.loads(base64.b64decode(row.get("content") or ""))
+              raw_bytes = base64.b64decode(row.get("content") or "")
+              return json.loads(raw_bytes), raw_bytes
 
           policy = json.loads(Path(".github/mad4b-repository-governance-policy.json").read_text())
           template = json.loads(Path(".github/mad4b-master-ruleset-template.json").read_text())
@@ -271,10 +272,16 @@ jobs:
           target_policy["required_status_checks"]["contexts"].append(ADD)
           next_rule = next(x for x in target_template["rules"] if x["type"] == "required_status_checks")
           next_rule["parameters"]["required_status_checks"].append(ADD)
-          if (candidate_json(".github/mad4b-repository-governance-policy.json") != target_policy
-              or candidate_json(".github/mad4b-master-ruleset-template.json") != target_template):
+          candidate_policy, candidate_policy_bytes = candidate_json(".github/mad4b-repository-governance-policy.json")
+          candidate_template, candidate_template_bytes = candidate_json(".github/mad4b-master-ruleset-template.json")
+          if candidate_policy != target_policy or candidate_template != target_template:
               raise SystemExit("RULESET_BOOTSTRAP_FAIL_CLOSED: target policy/template drift")
           verify(target_template, target_policy)
+          # Attestation hashes bind exact reviewed PR bytes, never reserialized JSON.
+          target_policy_file = TEMP / "readiness-bootstrap-target-policy.json"
+          target_template_file = TEMP / "readiness-bootstrap-target-template.json"
+          target_policy_file.write_bytes(candidate_policy_bytes)
+          target_template_file.write_bytes(candidate_template_bytes)
 
           active_repository_rulesets = gh("rulesets?includes_parents=false")
           if (not isinstance(active_repository_rulesets, list)
