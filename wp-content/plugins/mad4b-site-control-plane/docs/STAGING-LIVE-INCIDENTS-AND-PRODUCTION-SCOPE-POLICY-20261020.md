@@ -36,3 +36,7 @@ This document is an **unimplemented governance design**, not a grant, activation
 6. Independently test ETG native tours CPT and sequential Draft→Publish→readback→Draft only with explicit target authorization, while DFSB SEO publication remains disabled until content/filter SEO checks pass.
 
 **Never assert that Production is automated, that the public site is fixed, or that a Release Candidate is certified solely from this PR or local tests.**
+
+## 20 October upstream synchronisation clarification
+
+The 21 additional commits integrated from `master` already implement a separate, fail-closed frontend probe repair (`frontend-origin-diagnostic.php` and its dedicated pre-pluggable runtime tests). That upstream source and its test contract take precedence over the redundant alternate HMAC candidate originally on PR #443. The alternate `frontend-origin-early-marker-*` fixtures are deliberately not carried into the synchronized merge. No live site change is implied. The authoritative source and test behavior must be re-validated on this merged exact head; no Release or Production claim is made by this note.

@@ -288,88 +288,6 @@
       ],
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
-    },
-    {
-      "id": "ability:mad4b/test-attestation-trust-owner-consent",
-      "control_ids": [
-        "MCP-01",
-        "PROVIDERS-01",
-        "EXECUTION-01",
-        "GOVERNANCE-02",
-        "SECURITY-01",
-        "UPDATES-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
-      ],
-      "owner_role": "Repository source reviewer / automated CI review only",
-      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
-    },
-    {
-      "id": "ability:mad4b/test-attestation-verify",
-      "control_ids": [
-        "MCP-01",
-        "PROVIDERS-01",
-        "EXECUTION-01",
-        "GOVERNANCE-02",
-        "SECURITY-01",
-        "UPDATES-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
-      ],
-      "owner_role": "Repository source reviewer / automated CI review only",
-      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
-    },
-    {
-      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01",
-        "GOVERNANCE-02",
-        "UPDATES-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
-      ],
-      "owner_role": "Repository source reviewer / automated CI review only",
-      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
-    },
-    {
-      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
-      "control_ids": [
-        "GOVERNANCE-01",
-        "PLATFORM-01",
-        "SECURITY-01",
-        "GOVERNANCE-02",
-        "UPDATES-01"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
-      ],
-      "owner_role": "Repository source reviewer / automated CI review only",
-      "review_rationale": "Review exact artifact RSA test verification and separately enrolled Production batch execution, with scope, expiry, replay and key-revocation regression. Audit event literals found by static discovery are not independently registered executable abilities. No live capability certification is claimed.",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "needs_new_control": false,
-      "coverage_reuse_rationale": "Existing governance, exact-ticket, security and update controls cover the bounded owner consent and signature verifier. New runtime fault fixtures execute through the existing CI entry; live evidence is independently required."
     }
   ],
   "lifecycle": [],
@@ -877,6 +795,23 @@
       "live_evidence_required": true
     },
     {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "c71eecffeaafe02bdb19e4fc679d6484106d9761",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-pre-pluggable-regression.py"
+      ],
+      "owner_role": "Repository runtime source and CI code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "CI-only review of the exact PHP source blob for the signed Staging frontend diagnostic. WordPress pluggable wp_salt can be unavailable in early request classification; return an absent signature rather than a guessed key, deny unsigned loopback requests before network I/O, and report actual paired request counts. A newly added same-PR pre-pluggable regression is executed in MCP compatibility CI; normal signed-request tests remain in that workflow. The prior source-line PHP incident does not establish the complete cause of homepage HTTP 500. Require separately certified Staging deployment and independent external browser, PHP and request-correlated readback. No Production authorization or site mutation. The readiness policy's trusted Python runner invokes both standalone PHP assertions rather than treating PHP CLI files as PHPUnit suites; missing or failing PHP causes CI to fail closed."
+    },
+    {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
       "source_blob_sha": "123c763665eaa5f0ddb056e3c8acb6e0215d2eeb",
       "control_ids": [
@@ -1095,26 +1030,6 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true
-    },
-    {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
-      "source_blob_sha": "3362c1c266b296f1beb341daef3e4fd9e068ad83",
-      "control_ids": [
-        "MCP-01",
-        "PROVIDERS-02",
-        "SECURITY-01",
-        "PERFORMANCE-01",
-        "SECURITY-03"
-      ],
-      "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-early-marker-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
-      ],
-      "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
-      "status": "reviewed_for_ci_only",
-      "production_authorized": false,
-      "live_evidence_required": true,
-      "review_rationale": "Exact source-blob review: the Staging-only signed synthetic HTTP probe is classified during ordinary plugin inclusion, before wp_salt() exists; derive a purpose-scoped token from non-default strong AUTH_KEY/AUTH_SALT without loading pluggable.php early, and never issue an unsigned probe if signing keys are weak/missing. Preserve the 120-second two-window expiry, header/query parity, origin/TLS/redirect limits, nonauthorizing evidence and exclusion from performance baselines. Dedicated hermetic PHP test covers pre-pluggable execution, forgery, expiration and missing/weak secret fail-close; PHP compatibility matrix executes across 7.4–8.5. No Production changes, live browser acceptance or provider write certification are authorized."
     }
   ],
   "code_change_rules": {
