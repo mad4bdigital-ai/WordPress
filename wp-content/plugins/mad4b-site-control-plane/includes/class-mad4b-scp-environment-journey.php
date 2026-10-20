@@ -15,6 +15,32 @@ final class MAD4B_SCP_Environment_Journey {
         'write_authority', 'content_publish', 'plugin_update', 'deployment'
     );
 
+    /**
+     * Defense in depth: a nested Staging review is advisory only and must
+     * remain exactly bound to this site's identity and one registered route.
+     */
+    private static function exact_staging_request( $request, $site_uuid ) {
+        if ( ! is_array( $request ) || ! is_string( $site_uuid )
+            || ( $request['operation_id'] ?? '' ) !== 'staging_write_authority_convergence'
+            || ! isset( $request['input'] ) || ! is_array( $request['input'] )
+            || ( $request['input']['expected_site_uuid'] ?? '' ) !== $site_uuid
+            || ( $request['input']['confirmation'] ?? '' ) !== 'ENABLE GOVERNED STAGING WRITE AUTHORITY' )
+            return false;
+        foreach ( array( 'expected_registration_digest', 'expected_dispatch_policy_digest',
+            'expected_input_schema_sha256' ) as $field )
+            if ( ! isset( $request[ $field ] ) || ! is_string( $request[ $field ] )
+                || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $request[ $field ] ) ) return false;
+        foreach ( array( 'expected_plan_sha256', 'expected_profile_digest',
+            'owner_review_digest' ) as $field )
+            if ( ! isset( $request['input'][ $field ] ) || ! is_string( $request['input'][ $field ] )
+                || 1 !== preg_match( '/^[a-f0-9]{64}$/D', $request['input'][ $field ] ) ) return false;
+        if ( ! isset( $request['input']['expected_source_commit_sha'] )
+            || ! is_string( $request['input']['expected_source_commit_sha'] )
+            || 1 !== preg_match( '/^[a-f0-9]{40}$/D', $request['input']['expected_source_commit_sha'] ) )
+            return false;
+        return true;
+    }
+
     /** Pure reducer, deliberately usable without a running WordPress site. */
     public static function model( $environment_resolution, $identity, $operation_kind, $production_batch_active = false, $staging_guided = null ) {
         $resolution = is_array( $environment_resolution ) ? $environment_resolution : array();
@@ -74,11 +100,17 @@ final class MAD4B_SCP_Environment_Journey {
                     ? (string) $staging_guided['next_action'] : $base['next_action'];
                 // A *read* endpoint can quote the exact bound dispatcher input,
                 // but may never authorize it or execute it.
-                if ( 'ready_for_exact_owner_decision' === $base['state']
-                    && ! empty( $staging_guided['owner_decision_required'] )
-                    && ! empty( $staging_guided['prepared_request'] )
-                    && is_array( $staging_guided['prepared_request'] ) )
-                    $base['prepared_request'] = $staging_guided['prepared_request'];
+                if ( 'ready_for_exact_owner_decision' === $base['state'] ) {
+                    if ( ! empty( $staging_guided['owner_decision_required'] )
+                        && self::exact_staging_request(
+                            $staging_guided['prepared_request'] ?? null, $identity['site_uuid']
+                        ) )
+                        $base['prepared_request'] = $staging_guided['prepared_request'];
+                    else {
+                        $base['state'] = 'invalid_staging_handoff';
+                        $base['next_action'] = 'refresh_exact_enrollment_owner_review';
+                    }
+                }
             }
         } elseif ( 'production' === $environment ) {
             $base['state'] = $production_batch_active ? 'exact_batch_scope_check_required' : 'production_owner_batch_required';
