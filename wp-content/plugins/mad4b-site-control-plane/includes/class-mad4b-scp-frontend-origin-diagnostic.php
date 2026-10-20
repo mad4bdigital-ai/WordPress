@@ -44,7 +44,17 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
     }
 
     private static function marker( $period ) {
-        return hash_hmac( 'sha256', self::MARKER . '|' . (int) $period, wp_salt( 'auth' ) );
+        // This verifier also runs during ordinary plugin includes, before
+        // pluggable.php defines wp_salt(). Derive a scoped secret from the
+        // configured high-entropy auth constants instead of loading pluggable
+        // early or falling back to a predictable/unsigned diagnostic token.
+        if ( ! defined( 'AUTH_KEY' ) || ! defined( 'AUTH_SALT' )
+            || ! is_string( AUTH_KEY ) || ! is_string( AUTH_SALT )
+            || strlen( AUTH_KEY ) < 32 || strlen( AUTH_SALT ) < 32
+            || false !== stripos( AUTH_KEY, 'put your unique phrase here' )
+            || false !== stripos( AUTH_SALT, 'put your unique phrase here' ) ) return '';
+        $secret = hash_hmac( 'sha256', self::MARKER . '|' . AUTH_SALT, AUTH_KEY, true );
+        return hash_hmac( 'sha256', self::MARKER . '|' . (int) $period, $secret );
     }
 
     public static function is_signed_synthetic_request() {
@@ -55,9 +65,12 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         $query = isset( $_GET['mad4b_synthetic_probe'] ) && is_string( $_GET['mad4b_synthetic_probe'] )
             ? (string) $_GET['mad4b_synthetic_probe'] : '';
         $period = (int) floor( time() / 120 );
+        $current = self::marker( $period );
+        if ( '' === $current ) return false;
+        $previous = self::marker( $period - 1 );
         foreach ( array( $header, $query ) as $value ) {
             if ( ! preg_match( '/^[a-f0-9]{64}$/D', $value ) ) continue;
-            if ( hash_equals( self::marker( $period ), $value ) || hash_equals( self::marker( $period - 1 ), $value ) ) return true;
+            if ( hash_equals( $current, $value ) || hash_equals( $previous, $value ) ) return true;
         }
         return false;
     }
@@ -122,6 +135,9 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             'production_allowed' => false, 'governed_content_mutation' => false,
         );
         if ( 'plan' === $mode ) return $base + array( 'state' => 'READY_FOR_EXPLICIT_PROBE', 'network_request_performed' => false );
+        if ( '' === self::marker( (int) floor( time() / 120 ) ) )
+            return $base + array( 'state' => 'SIGNED_SYNTHETIC_PROBE_UNAVAILABLE', 'network_request_performed' => false,
+                'next_action' => 'Configure strong WordPress AUTH_KEY and AUTH_SALT; do not send an unsigned probe.' );
         if ( ! function_exists( 'wp_safe_remote_get' ) )
             return $base + array( 'state' => 'WP_HTTP_CLIENT_UNAVAILABLE', 'network_request_performed' => false );
         // Exact same-origin paired triage eliminates one extra MCP round trip.
