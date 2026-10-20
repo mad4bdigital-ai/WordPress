@@ -3072,6 +3072,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Fail closed on Google Drive source reads with missing normalized content, along with expired child-page and content-read budgets. Unreadable files mark scan_complete=false and truncated reasons, so no missing/deleted-file assertions can arise from partial material. Exact provider timeout remains distinct from OAuth errors. The changed PHP post-manual-update-guidance-runtime fixture, invoked by the Python runtime-update-recovery-contract runner, denies incomplete/truncated/unverified content during Source Scan Apply. Bounded resumable inventory remains a separate unimplemented NO-GO."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "8d35d1f6915c6ac29f95a5afe9730411f8721bd4",
+      "control_ids": [
+        "AI-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review the WordPress Admin Source Scan guarded-write route. It retains nonce and administrator checks, reuses the original Brand Context Builder complete inventory admission, refuses partial or unnormalized Drive reads and refuses missing admission helper. Modified context-authority-contract.py enforces the admin route's native admission and context-scan-completeness-runtime.php exercises end-to-end partial write denial and complete source scan positive paths. No Google provider promotion, Brand owner approval, Staging acceptance or Production mutation is implied."
     }
   ],
   "code_change_rules": {
