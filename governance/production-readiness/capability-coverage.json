@@ -1714,9 +1714,10 @@
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
       "source_blob_sha": "bddb73e7a6fab2746c36f8c631d68af54ad259f1",
       "control_ids": [
-        "ADMIN-01",
-        "PLATFORM-01",
-        "SECURITY-01"
+        "UPDATES-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "ADMIN-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
