@@ -94,6 +94,9 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/staging-write-one-step-review-runtime.php"
+          for mode in valid weak missing; do
+            php "$root/tests/frontend-origin-early-marker-runtime.php" "$mode"
+          done
 
   catalog-compatibility:
     name: Catalog runtime (PHP ${{ matrix.php }})
