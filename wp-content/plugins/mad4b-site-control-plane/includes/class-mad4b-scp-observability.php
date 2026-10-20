@@ -127,33 +127,50 @@ final class MAD4B_SCP_Observability {
 
 	public static function run_stage( $stage, $callback, $tenant_scope = '', array $attributes = array() ) {
 		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_observability_callback_invalid', 'Observed stage requires a callable.' );
-		$span = self::child( $stage, $tenant_scope, $attributes );
-		// child() resolves/creates the parent request context but does not mutate
-		// it. Capture that parent and make the child current only for the callback
-		// scope so nested governed stages inherit an exact causal parent span.
 		$parent = self::$current;
-		if ( ! is_wp_error( $span ) ) self::$current = $span;
-		$started = self::start_clock();
+		$span = null;
+		$started = null;
 		try {
-			$result = call_user_func( $callback );
-			if ( ! is_wp_error( $span ) ) {
-				// Telemetry is intentionally best-effort: its result never
-				// replaces or upgrades the authoritative callback result.
-				self::finish_span( $span, $started, ! is_wp_error( $result ), array(
-					'result_class' => is_wp_error( $result ) ? 'wp_error' : 'success',
-					'error_code' => is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '',
-				) );
-			}
-			return $result;
-		} catch ( Throwable $error ) {
-			if ( ! is_wp_error( $span ) ) self::finish_span( $span, $started, false, array(
-				'result_class' => 'exception',
-				'error_class' => get_class( $error ),
-			) );
-			throw $error;
-		} finally {
+			$span = self::child( $stage, $tenant_scope, $attributes );
+			// Preserve the lazily created request root as the restoration target.
+			$parent = self::$current;
+			if ( ! is_wp_error( $span ) ) self::$current = $span;
+			$started = self::start_clock();
+		} catch ( Throwable $telemetry_error ) {
 			self::$current = $parent;
+			$span = null;
+			self::telemetry_exception( $stage, $telemetry_error );
 		}
+		$success = false;
+		$attributes_out = array( 'result_class' => 'exception' );
+		try {
+			// Exactly one authoritative invocation. No telemetry catch may retry it.
+			$result = call_user_func( $callback );
+			$success = ! is_wp_error( $result );
+			$attributes_out = array( 'result_class' => $success ? 'success' : 'wp_error',
+				'error_code' => $success ? '' : (string) $result->get_error_code() );
+			return $result;
+		} finally {
+			try {
+				if ( is_array( $span ) ) self::finish_span( $span, $started, $success, $attributes_out );
+			} catch ( Throwable $telemetry_error ) {
+				self::telemetry_exception( $stage, $telemetry_error );
+			} finally {
+				self::$current = $parent;
+			}
+		}
+	}
+
+	/** Bounded server evidence only; never log messages, attributes or paths. */
+	private static function telemetry_exception( $stage, Throwable $error ) {
+		try {
+			error_log( 'MAD4B_OPTIONAL_TELEMETRY_FAILURE ' . json_encode( array(
+				'code' => 'mad4b_optional_telemetry_exception',
+				'stage' => substr( sanitize_key( (string) $stage ), 0, 48 ),
+				'origin_sha256' => hash( 'sha256', get_class( $error ) . '|' . $error->getFile() . '|' . $error->getLine() ),
+				'authorizing' => false,
+			) ) );
+		} catch ( Throwable $ignored ) { /* Optional diagnostic sinks cannot affect execution. */ }
 	}
 
 	public static function finish_span( $span, $started, $success = true, array $attributes = array() ) {
@@ -166,6 +183,14 @@ final class MAD4B_SCP_Observability {
 	}
 
 	public static function record_stage( $stage, $duration_ms, $success = true, array $attributes = array() ) {
+		try { return self::record_stage_impl( $stage, $duration_ms, $success, $attributes ); }
+		catch ( Throwable $error ) {
+			self::telemetry_exception( $stage, $error );
+			return self::optional_failure( $stage, 'mad4b_optional_telemetry_exception', array() );
+		}
+	}
+
+	private static function record_stage_impl( $stage, $duration_ms, $success, array $attributes ) {
 		$stage = sanitize_key((string)$stage);
 		$profile = self::profile();
 		if ( is_wp_error($profile) || !isset($profile['stages'][$stage]) ) {

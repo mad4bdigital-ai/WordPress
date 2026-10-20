@@ -3,13 +3,13 @@ define('ABSPATH',__DIR__);
 class WP_Error{private $c;public function __construct($c,$m='',$d=null){$this->c=(string)$c;}public function get_error_code(){return $this->c;}}
 function is_wp_error($v){return $v instanceof WP_Error;}
 function sanitize_key($v){return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(string)$v));}
-function wp_json_encode($v,$f=0){return json_encode($v,$f);}
+function wp_json_encode($v,$f=0){if(!empty($GLOBALS['obs_encode_throw']))throw new TypeError('private-trace-encoding-detail');return json_encode($v,$f);}
 function wp_generate_uuid4(){return '11111111-1111-4111-8111-'.substr(hash('sha256',microtime(true).mt_rand()),0,12);}
 $GLOBALS['obs_metric_fail']=false;
 $GLOBALS['obs_records']=array();
 class MAD4B_SCP_Runtime_Metrics{
  const MAX_NAMES=50;
- public static function record($n,$v=1){if(!empty($GLOBALS['obs_metric_fail']))return new WP_Error('ci_metric_backend_down');$GLOBALS['obs_records'][]=array($n,$v);return true;}
+ public static function record($n,$v=1){if(!empty($GLOBALS['obs_metric_throw']))throw new RuntimeException('private-metric-backend-detail');if(!empty($GLOBALS['obs_metric_fail']))return new WP_Error('ci_metric_backend_down');$GLOBALS['obs_records'][]=array($n,$v);return true;}
  public static function summary(array $names=array(),$hours=24){
   $metrics=array();
   foreach($names as $n){
@@ -78,6 +78,32 @@ $callback_result=MAD4B_SCP_Observability::run_stage('discovery',static function(
 $check(is_array($callback_result)&&'unchanged'===$callback_result['safe_read'],'Telemetry outage changed an observed callback result.',$callback_result);
 $optional=MAD4B_SCP_Observability::record_stage('discovery',17,true,array('safe'=>'yes'));
 $check(is_array($optional)&&empty($optional['recorded'])&&empty($optional['safe_read_blocked'])&&'ci_metric_backend_down'===$optional['telemetry_error_code'],'Optional telemetry outage became blocking.',$optional);
+// A throwing optional backend must preserve callback identity, denial and exception.
+$diagnostic_log=tempnam(sys_get_temp_dir(),'mad4b-observability-');
+$previous_log=ini_get('error_log');ini_set('error_log',$diagnostic_log);
+$GLOBALS['obs_metric_throw']=true;
+$calls=0;
+$sentinel=new stdClass();
+$actual=MAD4B_SCP_Observability::run_stage('preparation',static function()use(&$calls,$sentinel){$calls++;return $sentinel;},'site-a');
+$check($sentinel===$actual&&1===$calls,'Throwing telemetry replaced or repeated successful callback.');
+$denial=new WP_Error('mandatory_audit_failed');
+$actual=MAD4B_SCP_Observability::run_stage('approval',static function()use(&$calls,$denial){$calls++;return $denial;},'site-a');
+$check($denial===$actual&&2===$calls,'Throwing telemetry altered mandatory denial.');
+$original=new LogicException('private-authoritative-error');
+$caught=null;
+try{MAD4B_SCP_Observability::run_stage('commit_guard',static function()use(&$calls,$original){$calls++;throw $original;},'site-a');}catch(Throwable $error){$caught=$error;}
+$check($caught===$original&&3===$calls,'Telemetry masked original exception or repeated callback.');
+$check($root['span_id']===MAD4B_SCP_Observability::current()['span_id'],'Throwing telemetry leaked child trace context.');
+$optional=MAD4B_SCP_Observability::record_stage('discovery',1,true);
+$check(empty($optional['recorded'])&&'mad4b_optional_telemetry_exception'===$optional['telemetry_error_code'],'Direct metric exception escaped its optional boundary.');
+$GLOBALS['obs_metric_throw']=false;
+$GLOBALS['obs_encode_throw']=true;
+$actual=MAD4B_SCP_Observability::run_stage('preparation',static function()use(&$calls,$sentinel){$calls++;return $sentinel;},'site-a',array('tenant_id'=>array('private-label')));
+$check($actual===$sentinel&&4===$calls,'Trace setup exception blocked or repeated callback.');
+$GLOBALS['obs_encode_throw']=false;
+$check($root['span_id']===MAD4B_SCP_Observability::current()['span_id'],'Trace setup exception contaminated request context.');
+$logged=file_get_contents($diagnostic_log);ini_set('error_log',$previous_log);unlink($diagnostic_log);
+$check(false!==strpos($logged,'MAD4B_OPTIONAL_TELEMETRY_FAILURE')&&false===strpos($logged,'private-')&&false===strpos($logged,__FILE__),'Optional failure diagnostic leaked messages, labels or paths.');
 $GLOBALS['obs_metric_fail']=false;
 $policy_record=MAD4B_SCP_Observability::record_stage('policy',21,true,array('capability_sha256'=>hash('sha256','demo/read')));
 $check(!empty($policy_record['recorded'])&&'policy'===$policy_record['stage'],'Policy stage metric is not registered.',$policy_record);

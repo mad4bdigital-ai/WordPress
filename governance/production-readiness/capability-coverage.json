@@ -3362,6 +3362,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+      "source_blob_sha": "05d50ea1e82481aa2cfc41d1840761ba819f58ec",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "Existing platform, security, MCP and performance controls cover isolating optional trace/metric exceptions from the original single callback invocation. No new executor, authority, approval, audit bypass, retry or production capability. Regression executes the real PHP runtime: success object and mandatory denial retain identity, original exception survives a throwing metrics backend, failed trace setup cannot block execution, parent trace is restored, and bounded diagnostics contain no messages, labels or paths. Live MCP root cause remains unproven."
     }
   ],
   "code_change_rules": {
