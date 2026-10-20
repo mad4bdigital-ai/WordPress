@@ -42,4 +42,15 @@ foreach ( array(
 }
 $connection = MAD4B_SCP_Google_Drive_Context::connection_verification_guidance( array( 'health_state' => 'refresh_failed', 'reconnect_required' => true ) );
 guidance_check( 'reconnect_provider_with_owner' === $connection['next_action'], 'invalid-grant reconnect path lost' );
+// A provider budget timeout is a bounded incomplete scan, never proof of
+// OAuth refresh failure, missing files or an authorized Source Scan Apply.
+if ( ! class_exists( 'WP_Error' ) ) {
+ class WP_Error { private $code; function __construct( $code, $message = '' ) { $this->code = $code; } function get_error_code() { return $this->code; } }
+}
+if ( ! function_exists( 'is_wp_error' ) ) { function is_wp_error( $value ) { return $value instanceof WP_Error; } }
+$budget = new WP_Error( 'mad4b_google_drive_scan_time_budget_exhausted', 'Budget exhausted' );
+$auth = new WP_Error( 'mad4b_google_drive_token_refresh_failed', 'Not a scan budget error' );
+guidance_check( MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( $budget ), 'Provider scan budget not classified' );
+guidance_check( ! MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( $auth ), 'OAuth failure was masked as partial scan' );
+guidance_check( ! MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( array( 'complete' => false ) ), 'Raw partial data was treated as an exact budget error' );
 echo "POST_MANUAL_UPDATE_GUIDANCE: PASS (hermetic; no live acceptance)\n";
