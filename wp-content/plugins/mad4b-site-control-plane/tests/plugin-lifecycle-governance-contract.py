@@ -17,6 +17,8 @@ for marker in (
     "expected_plan_sha256",
     "write_binding",
     "mad4b_plugin_lifecycle_plan_changed",
+    "expected_state_sha256",
+    "expected_plan_sha256",
     "RequiresPlugins",
     "active_dependents",
     "required_dependencies",
@@ -35,8 +37,6 @@ for marker in (
     "before_state_sha256",
     "after_state_sha256",
     "readback_verified",
-    "expected_state_sha256",
-    "expected_plan_sha256",
 ):
     if marker not in executor:
         raise SystemExit(f"plugin lifecycle mutation path missing evidence guard: {marker}")
