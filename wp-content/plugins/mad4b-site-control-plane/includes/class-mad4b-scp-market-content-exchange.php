@@ -79,7 +79,7 @@ final class MAD4B_SCP_Market_Content_Exchange {
     }
 
     // Tourism-specific CPT/user mapping and DMC exchange deliberately live in
-    // the All Royal site addon, never in the reusable Control Plane core.
+    // the site-owned addon, never in the reusable Control Plane core.
 
     public static function assistant_route( $input = array() ) {
         $input = is_array( $input ) ? $input : array();

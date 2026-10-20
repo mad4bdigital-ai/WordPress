@@ -463,7 +463,7 @@ if "dynamic_managed" not in adapter[adapter.find("private function snapshot"):ad
 
 # The public content-update-post ability must not retain a second mutation path.
 abilities_method_start = abilities.find("public function content_update_post( $input )")
-abilities_method_end = abilities.find("private function plugin_site_active", abilities_method_start)
+abilities_method_end = abilities.find("public function plugin_activate( $input )", abilities_method_start)
 if abilities_method_start < 0 or abilities_method_end < 0:
     raise SystemExit("content_update_post delegation method missing")
 abilities_method = abilities[abilities_method_start:abilities_method_end]

@@ -26,7 +26,7 @@ final class MAD4B_SCP_Object_Cache_Diagnostics {
         if(false!==strpos($cls,'memcache')){$hint='memcached_class_hint';}
         elseif(false!==strpos($cls,'redis')){$hint='redis_class_hint';}
         elseif(false!==strpos($cls,'litespeed')||false!==strpos($cls,'lscache')){$hint='litespeed_class_hint';}
-        $waf=defined('ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED')&&true===ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED;
+        $waf=defined('MAD4B_SCP_EXTERNAL_WAF_RATE_LIMIT_VERIFIED')&&true===MAD4B_SCP_EXTERNAL_WAF_RATE_LIMIT_VERIFIED;
         return array(
             'contract'=>self::CONTRACT,'read_only'=>true,'authorizing'=>false,'mutation_performed'=>false,
             'litespeed_cache_detected'=>(bool)$ls,'object_cache_dropin_present'=>(bool)$dropin,

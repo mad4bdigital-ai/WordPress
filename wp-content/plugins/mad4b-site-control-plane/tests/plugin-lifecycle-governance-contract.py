@@ -4,6 +4,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 lifecycle = (root / "includes" / "class-mad4b-scp-plugin-lifecycle.php").read_text(encoding="utf-8")
 abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+executor = (root / "includes" / "class-mad4b-scp-plugin-ability-service.php").read_text(encoding="utf-8")
 policy = (root / "includes" / "class-mad4b-scp-policy.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 main = (root / "mad4b-site-control-plane.php").read_text(encoding="utf-8")
@@ -16,6 +17,8 @@ for marker in (
     "expected_plan_sha256",
     "write_binding",
     "mad4b_plugin_lifecycle_plan_changed",
+    "expected_state_sha256",
+    "expected_plan_sha256",
     "RequiresPlugins",
     "active_dependents",
     "required_dependencies",
@@ -34,11 +37,13 @@ for marker in (
     "before_state_sha256",
     "after_state_sha256",
     "readback_verified",
-    "expected_state_sha256",
-    "expected_plan_sha256",
 ):
-    if marker not in abilities:
+    if marker not in executor:
         raise SystemExit(f"plugin lifecycle mutation path missing evidence guard: {marker}")
+
+for marker in ("MAD4B_SCP_Plugin_Ability_Service::plugin_activate", "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate", "class-mad4b-scp-plugin-ability-service.php"):
+    if marker not in abilities:
+        raise SystemExit(f"plugin lifecycle facade delegation missing: {marker}")
 
 for marker in (
     "MAD4B_MCP_PLUGIN_LIFECYCLE_ENABLED",
@@ -48,7 +53,7 @@ for marker in (
     if marker not in policy:
         raise SystemExit(f"plugin lifecycle policy guard missing: {marker}")
 
-if "mad4b_control_plane_dependency_protected" not in abilities:
+if "mad4b_control_plane_dependency_protected" not in executor:
     raise SystemExit("Control Plane / MCP Adapter deactivation protection must remain defense-in-depth")
 if "mad4b/plugin-lifecycle-plan" not in servers:
     raise SystemExit("plugin lifecycle plan must be exposed on a governed read surface")

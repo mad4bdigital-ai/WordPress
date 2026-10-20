@@ -9,6 +9,7 @@ final class MAD4B_SCP_Site_Profile_Admin {
 	const ACTION_AUTOPILOT = 'mad4b_site_profile_enable_staging_autopilot';
 	const ACTION_DISABLE = 'mad4b_site_profile_disable_authority';
 	const ACTION_LEGACY_MIGRATE = 'mad4b_site_profile_explicit_legacy_migrate';
+	const ACTION_RECONCILIATION = 'mad4b_site_profile_reconciliation_policy';
 	private static $booted = false;
 
 	public static function boot() {
@@ -20,6 +21,28 @@ final class MAD4B_SCP_Site_Profile_Admin {
 		add_action( 'wp_ajax_' . self::ACTION_SAVE, array( __CLASS__, 'handle_save' ) );
 		add_action( 'admin_post_' . self::ACTION_DISABLE, array( __CLASS__, 'handle_disable' ) );
 		add_action( 'admin_post_' . self::ACTION_LEGACY_MIGRATE, array( __CLASS__, 'handle_legacy_migrate' ) );
+		add_action( 'admin_post_' . self::ACTION_RECONCILIATION, array( __CLASS__, 'handle_reconciliation_policy' ) );
+	}
+
+	/** Scheduling policy only: this action cannot grant or attest Write authority. */
+	public static function handle_reconciliation_policy() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
+		check_admin_referer( self::ACTION_RECONCILIATION );
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) || ! MAD4B_SCP_Staging_Write_Owner_Intent::owner() ) {
+			wp_die( 'Exact enrolled Staging owner required.', '', array( 'response' => 403 ) );
+		}
+		$mode = isset( $_POST['reconciliation_mode'] ) && is_string( $_POST['reconciliation_mode'] ) ? wp_unslash( $_POST['reconciliation_mode'] ) : '';
+		if ( ! in_array( $mode, array( MAD4B_SCP_Auto_Reconcile_Scenarios::MODE_AUTOMATIC, MAD4B_SCP_Auto_Reconcile_Scenarios::MODE_MANUAL ), true ) ) self::redirect( 'reconciliation_mode_blocked' );
+		$before = MAD4B_SCP_Auto_Reconcile_Scenarios::policy_mode();
+		if ( ! class_exists( 'MAD4B_SCP_Audit' ) || empty( MAD4B_SCP_Audit::storage_status()['ready'] ) ) self::redirect( 'reconciliation_audit_blocked' );
+		$logged = MAD4B_SCP_Audit::record( 'mad4b/reconciliation-policy-change', array(
+			'before' => $before, 'after' => $mode, 'owner_user' => get_current_user_id(),
+			'site_uuid' => MAD4B_SCP_Site_Profile::site_uuid(), 'authority_expansion_allowed' => false,
+			'write_authority_attested' => false, 'production_mutation' => false ), 'intent' );
+		if ( is_wp_error( $logged ) ) self::redirect( 'reconciliation_audit_blocked' );
+		update_option( MAD4B_SCP_Auto_Reconcile_Scenarios::MODE_OPTION, $mode, false );
+		if ( get_option( MAD4B_SCP_Auto_Reconcile_Scenarios::MODE_OPTION, '' ) !== $mode ) self::redirect( 'reconciliation_readback_blocked' );
+		self::redirect( 'reconciliation_policy_saved' );
 	}
 
 	public static function register_page() {
@@ -396,6 +419,30 @@ final class MAD4B_SCP_Site_Profile_Admin {
 			<h1><?php echo esc_html__( 'MAD4B Site Profile', 'mad4b-site-control-plane' ); ?></h1>
 			<p><?php echo esc_html__( 'Enroll this exact WordPress origin before remote OAuth or governed write authority can become active. Unknown sites remain fail-closed after installation.', 'mad4b-site-control-plane' ); ?></p>
 			<?php MAD4B_SCP_WordPress_Native_Opt_In::render_admin( $status ); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ) MAD4B_SCP_Governed_Runtime_Gates::render_admin_policy(); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Production_Automation' ) ) MAD4B_SCP_Production_Automation::render_admin(); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Test_Attestation' ) ) MAD4B_SCP_Test_Attestation::render_admin(); ?>
+			<?php if ( class_exists( 'MAD4B_SCP_Auto_Reconcile_Scenarios' ) && class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) && MAD4B_SCP_Staging_Write_Owner_Intent::owner() ) :
+				$reconciliation = MAD4B_SCP_Auto_Reconcile_Scenarios::batch_policy(); ?>
+			<div class="card" style="max-width:950px">
+				<h2><?php esc_html_e( 'Automatic Staging reconciliation', 'mad4b-site-control-plane' ); ?></h2>
+				<p><?php esc_html_e( 'One scheduling policy for runtime identity, managed Skills, schema maintenance and verified zero-delta candidate rebinding. Existing grants and exact operation tickets remain required. New authority, untrusted packages and changed site or actor identity require review.', 'mad4b-site-control-plane' ); ?></p>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION_RECONCILIATION ); ?>">
+					<?php wp_nonce_field( self::ACTION_RECONCILIATION ); ?>
+					<label for="mad4b-reconciliation-mode"><?php esc_html_e( 'Reconciliation mode', 'mad4b-site-control-plane' ); ?></label>
+					<select name="reconciliation_mode" id="mad4b-reconciliation-mode">
+						<option value="automatic_same_scope" <?php selected( $reconciliation['mode'], 'automatic_same_scope' ); ?>><?php esc_html_e( 'Automatic within existing authority', 'mad4b-site-control-plane' ); ?></option>
+						<option value="manual" <?php selected( $reconciliation['mode'], 'manual' ); ?>><?php esc_html_e( 'Manual maintenance scheduling', 'mad4b-site-control-plane' ); ?></option>
+					</select>
+					<?php submit_button( __( 'Save reconciliation policy', 'mad4b-site-control-plane' ), 'secondary', 'submit', false ); ?>
+				</form>
+				<details><summary><?php esc_html_e( 'Reconciliation cases and decisions', 'mad4b-site-control-plane' ); ?></summary>
+				<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Case', 'mad4b-site-control-plane' ); ?></th><th><?php esc_html_e( 'Decision', 'mad4b-site-control-plane' ); ?></th></tr></thead><tbody>
+				<?php foreach ( $reconciliation['items'] as $case ) : ?><tr><td><?php echo esc_html( $case['id'] ); ?></td><td><?php echo esc_html( $case['decision'] ); ?></td></tr><?php endforeach; ?>
+				</tbody></table></details>
+			</div>
+			<?php endif; ?>
 			<?php if ( '' !== $state ) : ?><div class="notice <?php echo false !== strpos( $state, 'blocked' ) ? 'notice-warning' : 'notice-info'; ?>"><p><?php echo esc_html( $state ); ?></p></div><?php endif; ?>
 			<div class="notice notice-info inline" style="max-width:950px;padding:12px 16px">
 				<p><strong><?php esc_html_e( 'Staging Autopilot / Assistant Handoff', 'mad4b-site-control-plane' ); ?></strong></p>

@@ -1,5 +1,39 @@
 # MAD4B Site Control Plane
 
+## Hosted WordPress file-manager handoff (manual, read-only integration)
+
+For sites hosted on providers such as Hostinger, a WordPress administrator may
+use a separately installed file-manager plugin (including WP File Manager) to
+**inspect site-owned files in wp-admin**. No developer laptop or Hostinger
+control-panel session is required for that human inspection. The manager is an
+optional WordPress plugin, **not** an authenticated remote editor for ChatGPT
+or a trusted MAD4B mutation executor.
+
+The deep governed `mad4b/control-plane-update-status` projection now includes
+`wordpress_admin_file_workspace`: advisory installed/active status when the
+WordPress plugin inventory is already available, access capability, and the
+supported signed ZIP plan/apply handoff. The lightweight cached status does
+not scan plugin inventory. Detection is *not* proof of WAF, filesystem or
+deployment authority, and no file-manager endpoint or credential is invoked.
+
+**Safe operator flow:** review the site files from wp-admin, prepare and test
+the changes on GitHub, build an immutable certified ZIP, review the existing
+`mad4b/control-plane-upload-plan` output for that exact artifact, then
+apply only with the existing enrolled Staging owner/OAuth step-up authority,
+audit, readback and rollback policy. Prefer the signed WordPress-native update
+channel for released builds. Never paste executable PHP into arbitrary
+file-manager endpoints or overwrite a live MAD4B plugin directory manually;
+WP File Manager does not replace the governor. Per-site post types, tourism
+fields, templates and acceptance configuration belong to that site's own
+WordPress settings or site plugin, not this reusable control plane.
+
+**Security:** keep third-party file managers updated, restrict admin access,
+disable external file-manager API exposure, and use ordinary wp-admin
+authentication/2FA. This source change does not install, activate, inspect
+or mutate any live hosted WordPress site. A missing admin plugin inventory
+returns `plugin_inventory_unavailable` instead of guessing.
+
+
 Companion plugin for the official `WordPress/mcp-adapter`. The upstream adapter owns MCP protocol/session/transport; MAD4B registers explicit WordPress Abilities and mounts them only on isolated custom MCP servers.
 
 Read diagnostics use snapshot-aware `mad4b.read-consistency.v1`: one runtime generation, fixed bounded bundles, a compact metadata envelope, safe same-generation resume after reconnect, and fail-closed invalidation when build/provider/profile identity changes. Repeated session termination opens only a request-local read breaker; mutations are never replayed automatically after transport loss.

@@ -13,6 +13,7 @@ class WP_Error {private $code;public function __construct($code,$description){$t
 function check_cache($c,$s){if(!$c)throw new RuntimeException($s);}
 require_once dirname(__DIR__).'/includes/class-mad4b-scp-object-cache-diagnostics.php';
 $cls='MAD4B_SCP_Object_Cache_Diagnostics';
+define('ETG_DFSB_EXTERNAL_WAF_RATE_LIMIT_VERIFIED',true);
 $passive=$cls::status();
 check_cache(!$passive['persistent_object_cache_reported']&&'rate_limit_backend_unavailable'===$passive['ajax_rate_limit_mode'],'missing backend fail closed');
 check_cache(empty($GLOBALS['memtest_data'])&&!$passive['cross_request_proven']&&!$passive['atomic_increment_proven'],'passive read does not write or certify');
@@ -32,4 +33,9 @@ $GLOBALS['memtest_admin']=true;
 check_cache($cls::cli_probe('read','invalid') instanceof WP_Error,'invalid token denied');
 $GLOBALS['memtest_data']=array();
 check_cache($cls::cli_probe('expiry',$token)['ttl_expiration_proven'],'expired key observed');
+$GLOBALS['memtest_persistent']=false;
+check_cache('rate_limit_backend_unavailable'===$cls::status()['ajax_rate_limit_mode'],'site-specific addon constant cannot determine core WAF evidence');
+define('MAD4B_SCP_EXTERNAL_WAF_RATE_LIMIT_VERIFIED',true);
+$status=$cls::status();
+check_cache('external_waf_attested'===$status['ajax_rate_limit_mode']&&!$status['atomic_increment_proven'],'site-neutral WAF configuration remains passive evidence');
 echo "PASS Memcached/LSMCD passive diagnostics and staging-only ephemeral acceptance\n";

@@ -1,0 +1,38 @@
+name: Site-neutral plugin contracts
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/**'
+      - 'tools/check_plugin_site_neutrality.py'
+      - 'tools/staging-public-http-smoke.py'
+      - 'tests/staging-public-http-contract.py'
+      - '.github/workflows/mad4b-site-neutrality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: site-neutrality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  generic-contracts:
+    name: Site-neutral runtime and multi-business fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Site-neutral source, HTTP scope, registered tags and WAF evidence
+        run: python3 wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py
+      - name: Site-neutral content model and environment contracts
+        run: |
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/dynamic-content-orchestration-contract.py
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py

@@ -38,6 +38,12 @@ final class MAD4B_SCP_Abilities {
 
 	public function register_abilities() {
 		$this->add( 'mad4b/site-info', 'Get Site Info', 'mad4b-read', 'site_info', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/environment-journey', 'Plan Safe Environment Operation', 'mad4b-read', 'environment_journey', 'read', $this->schema(
+			array( 'operation_kind' => array( 'type' => 'string', 'enum' => array(
+				'diagnostics', 'derived_state', 'operational_repair', 'write_authority',
+				'content_publish', 'plugin_update', 'deployment'
+			), 'default' => 'diagnostics' ) ), array()
+		), false, true, false, true );
 		$this->add( 'mad4b/list-post-types', 'List Post Types', 'mad4b-read', 'list_post_types', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/list-plugins', 'List Plugins', 'mad4b-read', 'list_plugins', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/abilities-inventory', 'Abilities Inventory', 'mad4b-read', 'abilities_inventory', 'read', null, false, true, false, true );
@@ -313,6 +319,11 @@ final class MAD4B_SCP_Abilities {
 			),
 			array( 'plugin', 'expected_active', 'expected_state_sha256', 'expected_plan_sha256', 'reason' )
 		);
+	}
+
+	public function environment_journey( $input = array() ) {
+		require_once __DIR__ . '/class-mad4b-scp-environment-journey.php';
+		return MAD4B_SCP_Environment_Journey::read( $input );
 	}
 
 	public function site_info() {
@@ -1139,6 +1150,9 @@ final class MAD4B_SCP_Abilities {
 				}
 			}
 		} else {
+			// Permission callbacks execute before the protected target; capture only
+			// the structured denial code before request-local observation cleanup.
+			$remote_permission_denial_code = '';
 			try {
 				$execution = $with_approval_scope(
 					static function () use ( $ability_name, $execute_target ) {
@@ -1152,6 +1166,9 @@ final class MAD4B_SCP_Abilities {
 					}
 				);
 			} finally {
+				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'remote_permission_denial_code' ) ) {
+					$remote_permission_denial_code = MAD4B_SCP_Authorization::remote_permission_denial_code( $ability_name );
+				}
 				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
 					MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
 				}
@@ -1161,10 +1178,20 @@ final class MAD4B_SCP_Abilities {
 					$data = $execution->get_error_data();
 					$data = is_array( $data ) ? $data : array();
 					$original_error_code = isset( $data['original_error_code'] ) ? sanitize_key( (string) $data['original_error_code'] ) : '';
+					if ( '' === $original_error_code ) $original_error_code = sanitize_key( (string) $execution->get_error_code() );
+					$permission_denial = '' !== $remote_permission_denial_code;
+					if ( $permission_denial && in_array( $original_error_code, array( 'ability_invalid_permissions', 'mad4b_write_dispatch_not_started', 'mad4b_write_dispatch_dispatch_not_started' ), true ) ) {
+						$original_error_code = $remote_permission_denial_code;
+					}
+					$client_action = $permission_denial ? 'inspect_exact_permission_denial_then_replan' : 'repair_dispatch_then_replan';
+					if ( $permission_denial && 0 === strpos( $remote_permission_denial_code, 'mad4b_google_' ) ) {
+						$client_action = 'inspect_google_connection_then_replan';
+					}
 					if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 						MAD4B_SCP_Audit::record( 'mad4b/write-dispatch-target-not-started', array(
 							'target_ability' => $ability_name,
 							'original_error_code' => $original_error_code,
+							'permission_callback_denied' => $permission_denial,
 							'mutation_state' => 'not_started',
 							'reconciliation_required' => false,
 						) );
@@ -1176,7 +1203,9 @@ final class MAD4B_SCP_Abilities {
 							'ability_name' => $ability_name,
 							'original_error_code' => $original_error_code,
 							'category' => isset( $data['category'] ) ? sanitize_key( (string) $data['category'] ) : 'unknown',
-							'client_action' => 'repair_dispatch_then_replan',
+							'client_action' => $client_action,
+							'permission_callback_denied' => $permission_denial,
+							'pre_target_failure_code' => $original_error_code,
 							'mutation_state' => 'not_started',
 							'target_execution_entered' => false,
 							'reconciliation_required' => false,
@@ -1496,116 +1525,27 @@ final class MAD4B_SCP_Abilities {
 	}
 
 
-	private function plugin_site_active( $plugin ) {
-		$active_plugins = get_option( 'active_plugins', array() );
-		return is_array( $active_plugins ) && in_array( (string) $plugin, $active_plugins, true );
-	}
-
+	// The public Ability callbacks remain stable; defer loading the mutator
+	// until a governed plugin lifecycle execution reaches this boundary.
 	public function plugin_activate( $input ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		$plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
-		if ( ! isset( $plugins[ $plugin ] ) ) return new WP_Error( 'mad4b_plugin_missing', 'Plugin is not installed.' );
-		if ( ! current_user_can( 'activate_plugins' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_capability_denied', 'Current user cannot activate plugins.' );
-		$scope = isset( $input['activation_scope'] ) ? sanitize_key( (string) $input['activation_scope'] ) : 'site';
-		if ( ! in_array( $scope, array( 'site', 'network' ), true ) ) return new WP_Error( 'mad4b_plugin_activation_scope_invalid', 'activation_scope must be site or network.' );
-		if ( 'network' === $scope && ! is_multisite() ) return new WP_Error( 'mad4b_plugin_network_scope_unavailable', 'Network activation requires WordPress multisite.' );
-		$network_active = is_multisite() ? is_plugin_active_for_network( $plugin ) : false;
-		if ( 'site' === $scope && $network_active ) return new WP_Error( 'mad4b_plugin_network_activation_controls_site', 'Site-scoped lifecycle changes are not meaningful while the plugin is network-active; change network scope first.' );
-		$current = 'network' === $scope ? $network_active : $this->plugin_site_active( $plugin );
-		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed in the requested activation scope since it was reviewed.', array( 'activation_scope' => $scope, 'current_active' => $current ) );
-		if ( $current ) return new WP_Error( 'mad4b_plugin_already_active', 'Plugin is already active in the requested activation scope.' );
-		if ( 'network' === $scope && ! current_user_can( 'manage_network_plugins' ) ) return new WP_Error( 'mad4b_network_plugin_capability_denied', 'Network-wide plugin activation requires manage_network_plugins.' );
-		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'activate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
-		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, true, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
-		if ( is_wp_error( $preflight ) ) return $preflight;
-		$result = activate_plugin( $plugin, '', 'network' === $scope ); if ( is_wp_error( $result ) ) return $result;
-		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, true, $scope );
-		if ( is_wp_error( $readback ) ) {
-			MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
-			return $readback;
-		}
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-activate', array( 'plugin' => $plugin, 'activation_scope' => $scope, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
-		return array( 'plugin' => $plugin, 'active' => true, 'activation_scope' => $scope, 'network_active' => (bool) $readback['network_active'], 'site_active' => (bool) $readback['site_active'], 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
+		require_once __DIR__ . '/class-mad4b-scp-plugin-ability-service.php';
+		return MAD4B_SCP_Plugin_Ability_Service::plugin_activate( $input );
 	}
 
 	public function plugin_deactivate( $input ) {
-		require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		$plugin = sanitize_text_field( $input['plugin'] ); $plugins = get_plugins();
-		if ( ! isset( $plugins[ $plugin ] ) ) return new WP_Error( 'mad4b_plugin_missing', 'Plugin is not installed.' );
-		if ( ! current_user_can( 'activate_plugins' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_capability_denied', 'Current user cannot deactivate plugins.' );
-		$scope = isset( $input['activation_scope'] ) ? sanitize_key( (string) $input['activation_scope'] ) : 'site';
-		if ( ! in_array( $scope, array( 'site', 'network' ), true ) ) return new WP_Error( 'mad4b_plugin_activation_scope_invalid', 'activation_scope must be site or network.' );
-		if ( 'network' === $scope && ! is_multisite() ) return new WP_Error( 'mad4b_plugin_network_scope_unavailable', 'Network deactivation requires WordPress multisite.' );
-		$network_active = is_multisite() ? is_plugin_active_for_network( $plugin ) : false;
-		if ( 'site' === $scope && $network_active ) return new WP_Error( 'mad4b_plugin_network_activation_controls_site', 'Site-scoped lifecycle changes are not meaningful while the plugin is network-active; change network scope first.' );
-		$current = 'network' === $scope ? $network_active : $this->plugin_site_active( $plugin );
-		if ( $current !== (bool) $input['expected_active'] ) return new WP_Error( 'mad4b_stale_plugin_state', 'Plugin active state changed in the requested activation scope since it was reviewed.', array( 'activation_scope' => $scope, 'current_active' => $current ) );
-		if ( ! $current ) return new WP_Error( 'mad4b_plugin_already_inactive', 'Plugin is already inactive in the requested activation scope.' );
-		$self = plugin_basename( MAD4B_SCP_FILE );
-		$name = isset( $plugins[ $plugin ]['Name'] ) ? strtolower( $plugins[ $plugin ]['Name'] ) : '';
-		$text_domain = isset( $plugins[ $plugin ]['TextDomain'] ) ? strtolower( $plugins[ $plugin ]['TextDomain'] ) : '';
-		$is_mcp_adapter = 0 === strpos( strtolower( $plugin ), 'mcp-adapter/' ) || 'mcp-adapter' === $text_domain || false !== strpos( $name, 'mcp adapter' );
-		if ( $plugin === $self || $is_mcp_adapter || MAD4B_SCP_Policy::plugin_lifecycle_protected( $plugin ) ) return new WP_Error( 'mad4b_control_plane_dependency_protected', 'The control plane, its MCP Adapter dependency, and protected plugins cannot be deactivated through the normal admin surface.' );
-		if ( ! MAD4B_SCP_Policy::plugin_lifecycle_allowed( $plugin, 'deactivate' ) ) return new WP_Error( 'mad4b_plugin_lifecycle_policy_denied', 'Plugin lifecycle mutation is disabled or the plugin is not explicitly allowlisted.' );
-		$preflight = class_exists( 'MAD4B_SCP_Plugin_Lifecycle' ) ? MAD4B_SCP_Plugin_Lifecycle::mutation_preflight( $plugin, false, $input ) : new WP_Error( 'mad4b_plugin_lifecycle_preflight_unavailable', 'Plugin lifecycle preflight is unavailable.' );
-		if ( is_wp_error( $preflight ) ) return $preflight;
-		$network = 'network' === $scope;
-		if ( $network && ! current_user_can( 'manage_network_plugins' ) ) return new WP_Error( 'mad4b_network_plugin_capability_denied', 'Network-wide plugin deactivation requires manage_network_plugins.' );
-		deactivate_plugins( $plugin, false, $network );
-		$readback = MAD4B_SCP_Plugin_Lifecycle::verify_state( $plugin, false, $scope );
-		if ( is_wp_error( $readback ) ) {
-			MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'network_wide' => $network, 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'readback_verified' => false ), 'failure' );
-			return $readback;
-		}
-		MAD4B_SCP_Audit::record( 'mad4b/plugin-deactivate', array( 'plugin' => $plugin, 'activation_scope' => $scope, 'network_wide' => $network, 'reason' => sanitize_text_field( $input['reason'] ), 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true ) );
-		return array( 'plugin' => $plugin, 'active' => false, 'activation_scope' => $scope, 'site_active' => (bool) $readback['site_active'], 'network_active' => (bool) $readback['network_active'], 'plan_sha256' => $preflight['plan_sha256'], 'before_state_sha256' => $preflight['state_sha256'], 'after_state_sha256' => $readback['state_sha256'], 'readback_verified' => true );
+		require_once __DIR__ . '/class-mad4b-scp-plugin-ability-service.php';
+		return MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate( $input );
 	}
 
+	// Lazy filesystem execution boundary: callback names and permissions stay stable.
 	public function filesystem_write( $input ) {
-		$path = MAD4B_SCP_Policy::resolve_path( $input['root'], $input['path'], false ); if ( is_wp_error( $path ) ) return $path;
-		$mutation_allowed = MAD4B_SCP_Policy::can_mutate_file( $input['root'], $path ); if ( is_wp_error( $mutation_allowed ) ) return $mutation_allowed;
-		$content = (string) $input['content']; if ( false !== strpos( $content, "\0" ) ) return new WP_Error( 'mad4b_binary_write_denied', 'NUL bytes are not allowed.' );
-		$exists = file_exists( $path ); $expected = isset( $input['expected_sha256'] ) ? strtolower( trim( $input['expected_sha256'] ) ) : '';
-		if ( $exists ) { if ( ! is_file( $path ) ) return new WP_Error( 'mad4b_not_file', 'Target is not a regular file.' ); $current = hash_file( 'sha256', $path ); if ( ! $expected || ! hash_equals( $current, $expected ) ) return new WP_Error( 'mad4b_stale_file', 'Current SHA-256 is required.', array( 'current_sha256' => $current ) ); }
-		elseif ( empty( $input['allow_create'] ) ) return new WP_Error( 'mad4b_create_not_allowed', 'Set allow_create=true to create a new file.' );
-		$result = $this->atomic_write( $path, $content, ! isset( $input['create_backup'] ) || (bool) $input['create_backup'] ); if ( is_wp_error( $result ) ) return $result;
-		MAD4B_SCP_Audit::record( 'mad4b/filesystem-write', array( 'root' => $input['root'], 'path' => $input['path'], 'sha256' => $result['sha256'], 'create' => ! $exists, 'backup_id' => $result['backup_id'] ) ); return $result;
+		require_once __DIR__ . '/class-mad4b-scp-filesystem-mutation-service.php';
+		return MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write( $input );
 	}
 
 	public function filesystem_patch( $input ) {
-		$path = MAD4B_SCP_Policy::resolve_path( $input['root'], $input['path'], true ); if ( is_wp_error( $path ) ) return $path;
-		$mutation_allowed = MAD4B_SCP_Policy::can_mutate_file( $input['root'], $path ); if ( is_wp_error( $mutation_allowed ) ) return $mutation_allowed;
-		$content = is_file( $path ) ? file_get_contents( $path ) : false; if ( false === $content ) return new WP_Error( 'mad4b_read_failed', 'Unable to read target.' );
-		$current = hash( 'sha256', $content ); if ( ! hash_equals( $current, strtolower( trim( $input['expected_sha256'] ) ) ) ) return new WP_Error( 'mad4b_stale_file', 'Target SHA-256 no longer matches.', array( 'current_sha256' => $current ) );
-		$count = substr_count( $content, (string) $input['search'] ); $max = isset( $input['max_replacements'] ) ? max( 1, min( 100, absint( $input['max_replacements'] ) ) ) : 1;
-		if ( 0 === $count ) return new WP_Error( 'mad4b_patch_not_found', 'Search text not found.' ); if ( $count > $max ) return new WP_Error( 'mad4b_patch_too_broad', 'Search matches exceed max_replacements.', array( 'matches' => $count ) );
-		$patched = str_replace( (string) $input['search'], (string) $input['replace'], $content, $replacements ); $result = $this->atomic_write( $path, $patched, ! isset( $input['create_backup'] ) || (bool) $input['create_backup'] ); if ( is_wp_error( $result ) ) return $result;
-		$result['replacements'] = $replacements; MAD4B_SCP_Audit::record( 'mad4b/filesystem-patch', array( 'root' => $input['root'], 'path' => $input['path'], 'replacements' => $replacements, 'sha256' => $result['sha256'], 'backup_id' => $result['backup_id'] ) ); return $result;
-	}
-
-	private function atomic_write( $path, $content, $backup ) {
-		$dir = dirname( $path ); if ( ! is_writable( $dir ) ) return new WP_Error( 'mad4b_directory_not_writable', 'Target directory is not writable.' );
-		$exists = file_exists( $path );
-		$mode = $exists ? ( fileperms( $path ) & 0777 ) : 0644;
-		$backup_id = '';
-		if ( $backup && $exists ) {
-			$backup_root = MAD4B_SCP_Policy::prepare_backup_root();
-			if ( is_wp_error( $backup_root ) ) return $backup_root;
-			$name = sanitize_file_name( basename( $path ) ) . '-' . substr( hash( 'sha256', $path ), 0, 12 ) . '-' . gmdate( 'YmdHis' ) . '.bak';
-			$name = wp_unique_filename( $backup_root, $name );
-			$backup_path = trailingslashit( $backup_root ) . $name;
-			if ( ! copy( $path, $backup_path ) ) return new WP_Error( 'mad4b_backup_failed', 'Unable to create protected backup.' );
-			@chmod( $backup_path, 0600 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-			$backup_id = $name;
-		}
-
-		$temp = tempnam( $dir, '.mad4b-' ); if ( false === $temp ) return new WP_Error( 'mad4b_temp_failed', 'Unable to create temporary file.' );
-		$bytes = file_put_contents( $temp, $content, LOCK_EX );
-		if ( false === $bytes ) { @unlink( $temp ); return new WP_Error( 'mad4b_write_failed', 'Unable to write temporary file.' ); }
-		@chmod( $temp, $mode ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		if ( ! rename( $temp, $path ) ) { @unlink( $temp ); return new WP_Error( 'mad4b_replace_failed', 'Unable to atomically replace target.' ); }
-		clearstatcache( true, $path );
-		return array( 'written' => true, 'bytes' => $bytes, 'sha256' => hash( 'sha256', $content ), 'backup_id' => $backup_id, 'mode' => sprintf( '%04o', $mode ) );
+		require_once __DIR__ . '/class-mad4b-scp-filesystem-mutation-service.php';
+		return MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch( $input );
 	}
 
 	public function database_update( $input ) {

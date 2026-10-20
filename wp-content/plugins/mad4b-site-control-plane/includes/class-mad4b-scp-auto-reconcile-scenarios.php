@@ -19,6 +19,36 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 	const MAX_EXTENSION_SCENARIOS = 50;
 	const MAX_EXTENSION_SIGNALS = 64;
 	const MAX_EXTENSION_ERROR_POLICIES = 50;
+	const MODE_OPTION = 'mad4b_scp_reconciliation_mode_v1';
+	const MODE_AUTOMATIC = 'automatic_same_scope';
+	const MODE_MANUAL = 'manual';
+
+	/** Preserve the existing automatic maintenance default; unknown options fail closed. */
+	public static function policy_mode() {
+		$mode = function_exists( 'get_option' ) ? get_option( self::MODE_OPTION, self::MODE_AUTOMATIC ) : self::MODE_AUTOMATIC;
+		return self::MODE_AUTOMATIC === $mode ? self::MODE_AUTOMATIC : self::MODE_MANUAL;
+	}
+
+	/** One non-authorizing view of all registered reconciliation decisions. */
+	public static function batch_policy() {
+		$mode = self::policy_mode();
+		$items = array();
+		foreach ( self::registry() as $scenario ) {
+			$decision = $scenario['decision'];
+			$automatic = self::DECISION_SCHEDULE_PROBE === $decision && self::MODE_AUTOMATIC === $mode;
+			$items[] = array(
+				'id' => $scenario['id'],
+				'decision' => self::DECISION_SCHEDULE_PROBE === $decision && ! $automatic ? self::DECISION_REVIEW : $decision,
+				'reason' => $scenario['reason'],
+				'automatic_probe_allowed' => $automatic,
+				'rebind_executor' => $scenario['rebind_executor'],
+			);
+		}
+		return array( 'contract' => 'mad4b.reconciliation-batch-policy.v1', 'mode' => $mode,
+			'items' => $items, 'count' => count( $items ), 'authorizing' => false,
+			'authority_expansion_allowed' => false, 'mutation_performed' => false,
+			'zero_delta_required_for_rebind' => true, 'production_mutation' => false );
+	}
 
 	private static function builtins() {
 		return array(
@@ -132,11 +162,16 @@ final class MAD4B_SCP_Auto_Reconcile_Scenarios {
 		$signals = self::signals( $context );
 		foreach ( self::registry() as $scenario ) {
 			if ( ! self::match( $scenario, $signals ) ) continue;
+			$mode = self::policy_mode();
+			$decision = $scenario['decision'];
+			$paused = self::DECISION_SCHEDULE_PROBE === $decision && self::MODE_MANUAL === $mode;
 			return array(
 				'contract' => self::CONTRACT,
 				'scenario_id' => $scenario['id'],
-				'decision' => $scenario['decision'],
-				'reason' => $scenario['reason'],
+				'decision' => $paused ? self::DECISION_REVIEW : $decision,
+				'reason' => $paused ? 'automatic_reconciliation_disabled_by_owner' : $scenario['reason'],
+				'policy_mode' => $mode,
+				'automatic_probe_allowed' => ! $paused && self::DECISION_SCHEDULE_PROBE === $decision,
 				'signals' => array_keys( array_filter( $signals ) ),
 				'mutation_allowed' => false,
 				'authority_expansion_allowed' => false,

@@ -278,11 +278,18 @@ final class MAD4B_SCP_Connector_Resilience {
 				'elapsed_ms' => isset( $result['elapsed_ms'] ) ? (int) $result['elapsed_ms'] : 0,
 			);
 		}
+		// safe_read() already records the sanitized target WP_Error code.
+		// Preserve that bounded code at the dispatch boundary for Staging
+		// Google OAuth/source scan repair; never return the provider message.
+		$original_error_code = isset( $result['error_code'] ) ? sanitize_key( (string) $result['error_code'] ) : '';
+		$original_error_code = substr( $original_error_code, 0, 96 );
+		$google_connection_failure = 0 === strpos( $original_error_code, 'mad4b_google_' );
 		return new WP_Error(
 			'mad4b_read_dispatch_execution_failed',
 			'Governed read execution failed. Inspect structured metadata before retrying.',
 			array(
 				'target' => $target,
+				'original_error_code' => $original_error_code,
 				'correlation_id' => $result['correlation_id'],
 				'stage' => $result['stage'],
 				'timing_scope' => $result['timing_scope'],
@@ -291,7 +298,7 @@ final class MAD4B_SCP_Connector_Resilience {
 				'automatic_retry_performed' => ! empty( $result['automatic_retry_performed'] ),
 				'automatic_retry_exhausted' => ! empty( $result['automatic_retry_exhausted'] ),
 				'category' => isset( $result['category'] ) ? (string) $result['category'] : 'unknown',
-				'client_action' => isset( $result['client_action'] ) ? (string) $result['client_action'] : 'inspect',
+				'client_action' => $google_connection_failure ? 'inspect_google_connection_then_replan' : ( isset( $result['client_action'] ) ? (string) $result['client_action'] : 'inspect' ),
 				'recovery' => isset( $result['recovery'] ) && is_array( $result['recovery'] ) ? $result['recovery'] : array(),
 				'retry_after_seconds' => isset( $result['retry_after_seconds'] ) ? (int) $result['retry_after_seconds'] : 0,
 				'attempts' => isset( $result['attempts'] ) ? (int) $result['attempts'] : 1,

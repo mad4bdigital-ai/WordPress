@@ -17,6 +17,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	const CONTRACT = 'mad4b.governed-runtime-gates.v1';
 	const OPTION = 'mad4b_scp_governed_runtime_gates_v1';
 	const VERSION = 1;
+	const ADMIN_ACTION = 'mad4b_production_runtime_policy';
 
 	const STATUS_ABILITY = 'mad4b/runtime-gates-status';
 	const PLAN_ABILITY = 'mad4b/runtime-gates-plan';
@@ -31,6 +32,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	public static function boot() {
 		if ( self::$booted || ! function_exists( 'add_action' ) ) return;
 		self::$booted = true;
+		add_action( 'admin_post_' . self::ADMIN_ACTION, array( __CLASS__, 'handle_admin_policy' ) );
 		add_action( 'wp_abilities_api_categories_init', array( __CLASS__, 'register_category' ), 17 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_abilities' ), 17 );
 	}
@@ -224,6 +226,10 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	public static function plan( $input = array() ) {
 		$access = self::can_access( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
+		return self::build_plan( $input );
+	}
+
+	private static function build_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$record = self::record();
 		$desired = self::desired_from_input( $input, $record );
@@ -323,9 +329,13 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 	public static function apply( $input ) {
 		$access = self::can_apply( $input );
 		if ( is_wp_error( $access ) || ! $access ) return $access;
+		return self::apply_plan( $input );
+	}
+
+	private static function apply_plan( $input, $transport = 'oauth_step_up' ) {
 		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_runtime_gates_input_invalid', 'Input must be an object.' );
 
-		$plan = self::plan( $input );
+		$plan = self::build_plan( $input );
 		if ( is_wp_error( $plan ) ) return $plan;
 		if ( empty( $plan['ready_to_apply'] ) ) return new WP_Error( 'mad4b_runtime_gates_plan_blocked', 'Runtime gate plan contains hard blockers.', array( 'blockers' => $plan['hard_blockers'] ) );
 		$match = self::match_expected_plan( $plan, $input );
@@ -339,7 +349,7 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			|| ! hash_equals( (string) $plan['policy_digest'], self::record_digest( $before ) ) ) {
 			return new WP_Error( 'mad4b_runtime_gates_plan_stale', 'Runtime gate policy changed after plan validation and before persistence.' );
 		}
-		$revalidated = self::plan( $input );
+		$revalidated = self::build_plan( $input );
 		if ( is_wp_error( $revalidated ) ) return $revalidated;
 		if ( empty( $revalidated['ready_to_apply'] )
 			|| ! hash_equals( (string) $plan['plan_sha256'], (string) $revalidated['plan_sha256'] ) ) {
@@ -378,6 +388,8 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'production_mutation_enabled' => $next['production_mutation_enabled'],
 			'production_auto_enable' => $next['production_auto_enable'],
 			'database_authoritative' => true,
+			'actor_user_id' => get_current_user_id(),
+			'authority_transport' => $transport,
 		), 'ok' ) : new WP_Error( 'mad4b_runtime_gates_audit_unavailable' );
 
 		if ( is_wp_error( $audit ) ) {
@@ -404,6 +416,88 @@ final class MAD4B_SCP_Governed_Runtime_Gates {
 			'mutation_performed' => true,
 			'production_mutation_performed' => false,
 		);
+	}
+
+
+	/** Local owner consent uses the same exact-plan CAS/audit transaction as OAuth. */
+	public static function admin_owner_access() {
+		if ( ! function_exists( 'is_admin' ) || ! is_admin() || ! current_user_can( 'manage_options' )
+			|| ! self::exact_profile_bound() || 'production' !== self::environment() ) return false;
+		$ids = MAD4B_SCP_Site_Profile::oauth_user_ids();
+		if ( ! is_array( $ids ) || 1 !== count( array_unique( array_map( 'intval', $ids ) ) )
+			|| ! in_array( (int) get_current_user_id(), array_map( 'intval', $ids ), true ) ) return false;
+		if ( class_exists( 'MAD4B_SCP_Policy' ) && MAD4B_SCP_Policy::can_breakglass() ) return false;
+		return true;
+	}
+
+	public static function admin_policy_plan( $mode ) {
+		if ( ! self::admin_owner_access() ) return new WP_Error( 'mad4b_production_owner_required', 'Exact enrolled Production owner session required.' );
+		if ( ! is_string( $mode ) || ! in_array( $mode, array( 'disabled', 'manual', 'automatic' ), true ) ) return new WP_Error( 'mad4b_production_mode_invalid', 'Invalid Production runtime mode.' );
+		$flags = self::record_flags( self::record() );
+		// This UI never enables, renews or silently copies exceptional SQL authority.
+		if ( $flags['raw_sql_breakglass_enabled'] || $flags['raw_sql_write_enabled'] || $flags['raw_sql_ddl_enabled'] ) return new WP_Error( 'mad4b_production_breakglass_separate', 'Disable exceptional SQL policy through its dedicated gate flow first.' );
+		return self::build_plan( array(
+			'raw_sql_breakglass_enabled' => false, 'raw_sql_write_enabled' => false, 'raw_sql_ddl_enabled' => false,
+			'production_mutation_enabled' => 'disabled' !== $mode,
+			'production_auto_enable' => 'automatic' === $mode,
+		) );
+	}
+
+	public static function admin_policy_apply( $mode, $input ) {
+		$plan = self::admin_policy_plan( $mode );
+		if ( is_wp_error( $plan ) ) return $plan;
+		if ( ! is_array( $input ) ) return new WP_Error( 'mad4b_runtime_gates_input_invalid', 'Input must be an object.' );
+		// Validate all desired flags as well as the exact rendered plan before using
+		// the common transaction. No caller can smuggle Raw SQL flags via this route.
+		$match = self::match_expected_plan( $plan, $input );
+		if ( is_wp_error( $match ) ) return $match;
+		return self::apply_plan( $input, 'wordpress_owner_session' );
+	}
+
+	public static function handle_admin_policy() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) wp_die( 'POST required.', '', array( 'response' => 405 ) );
+		check_admin_referer( self::ADMIN_ACTION );
+		$mode = isset( $_POST['production_runtime_mode'] ) && is_string( $_POST['production_runtime_mode'] ) ? wp_unslash( $_POST['production_runtime_mode'] ) : '';
+		$input = array();
+		foreach ( array_keys( self::apply_schema()['properties'] ) as $key ) {
+			$value = $_POST[ $key ] ?? null;
+			if ( ! is_string( $value ) ) wp_die( 'Invalid Production policy input.', '', array( 'response' => 400 ) );
+			$input[ $key ] = wp_unslash( $value );
+		}
+		foreach ( array_keys( self::record_flags( self::default_record() ) ) as $key ) {
+			if ( ! in_array( $input[ $key ], array( '0', '1' ), true ) ) wp_die( 'Invalid Production policy flag.', '', array( 'response' => 400 ) );
+			$input[ $key ] = '1' === $input[ $key ];
+		}
+		$result = self::admin_policy_apply( $mode, $input );
+		if ( is_wp_error( $result ) ) wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 409 ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=mad4b-control-plane-site-profile' ) );
+		exit;
+	}
+
+	public static function render_admin_policy() {
+		if ( ! self::admin_owner_access() ) return;
+		$status = self::status();
+		echo '<div class="card" style="max-width:950px"><h2>' . esc_html__( 'Production runtime automation', 'mad4b-site-control-plane' ) . '</h2>';
+		echo '<p>' . esc_html__( 'Automatic mode restores the existing Production runtime gate on each request. It persists across code releases while the exact Site Profile remains unchanged. Grants, operation tickets, content reviews and deployment approvals still apply.', 'mad4b-site-control-plane' ) . '</p>';
+		echo '<p><strong>' . esc_html__( 'Effective mode:', 'mad4b-site-control-plane' ) . '</strong> ' . esc_html( $status['production_auto_enable'] ? 'automatic' : ( $status['production_mutation_enabled'] ? 'manual runtime activation' : 'disabled' ) ) . '</p>';
+		if ( $status['blockers'] ) echo '<p>' . esc_html( implode( ', ', $status['blockers'] ) ) . '</p>';
+		foreach ( array( 'automatic' => 'Enable automatic runtime', 'manual' => 'Require manual runtime activation', 'disabled' => 'Disable Production runtime authority' ) as $mode => $label ) {
+			$plan = self::admin_policy_plan( $mode );
+			if ( is_wp_error( $plan ) ) { echo '<p>' . esc_html( $plan->get_error_message() ) . '</p>'; break; }
+			if ( empty( $plan['ready_to_apply'] ) ) { echo '<p>' . esc_html( implode( ', ', $plan['hard_blockers'] ) ) . '</p>'; continue; }
+			$fields = $plan['after'];
+			foreach ( array( 'plan_sha256', 'policy_revision', 'policy_digest', 'site_uuid', 'source_commit_sha', 'build_fingerprint' ) as $key ) $fields[ 'expected_' . $key ] = $plan[ $key ];
+			$fields['expected_profile_revision'] = $plan['site_profile_revision'];
+			$fields['expected_profile_digest'] = $plan['site_profile_digest'];
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:12px 0">';
+			wp_nonce_field( self::ADMIN_ACTION );
+			$fields['action'] = self::ADMIN_ACTION; $fields['production_runtime_mode'] = $mode;
+			foreach ( $fields as $key => $value ) echo '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( is_bool( $value ) ? ( $value ? '1' : '0' ) : $value ) . '">';
+			echo '<label><input type="checkbox" name="confirmation" required value="' . esc_attr( $plan['required_confirmation'] ) . '"> ' . esc_html( $label ) . '</label> ';
+			submit_button( $label, 'secondary', 'submit', false );
+			echo '</form>';
+		}
+		echo '<p>' . esc_html__( 'Disabling takes effect for new authorization checks; a constant already defined in this request cannot be undefined. A wp-config kill switch remains authoritative.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}
 
 	private static function exact_profile_bound() {

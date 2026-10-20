@@ -288,6 +288,224 @@
       ],
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-trust-owner-consent",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "GOVERNANCE-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Owner consent for trusted test signers requires same-site authenticated admin, expected policy digest, exact key identity, allowlist and audit. The bounded RSA fixture tests unknown signer, key revocation, expiry, forged/modified certificate, target/site/environment binding and non-authorizing consent. No live Production trust enrollment is asserted.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-verify",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Read-only verifier checks RSA signature and exact package/manifest/version/source assertion, trusted issuer, environment, test PASS and expiry. The dedicated signed-test-attestation PHP suite is executed by governed-runtime-gates-contract.py. Result grants no write or Production certification.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "A new bounded Production batch service requires explicit site owner consent for up to 20 exact items with short expiry, stable site/agent identity, current OAuth/NHI binding, single-use ticket or install claim, separate native deployment planning, signed tests, deterministic rollback and audit. The PHP production automation fixture runs via the changed Python contract; no scheduled Production action is authorized by this review.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Test certificate service enforces exact target site, build, signing key trust, signed package hash and required test cases, with invalidated, expired or revoked certificate refusal. The hermetic PHP signed-attestation fixture is executed by governed-runtime-gates-contract.py; Source reviewed for CI only, Production signer provisioning and deployment remain separately gated.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "ability:mad4b/environment-journey",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governed MCP source reviewer",
+      "review_rationale": "Exact-source review of a read-only site-environment guide; runtime derives Local/Development/Staging/Production from WordPress and enrolled Site Profile, never an untrusted client selection. No new write, owner attestation, OAuth grant or Production shortcut. Hermetic PHP + MCP catalog tests cover 28 combinations, environment mismatch and cross-site proof rejection.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read policy, environment identity, OAuth/governance and execution-fence control families apply; no novel mutable privilege."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governed environment policy reviewer",
+      "review_rationale": "Pure model and thin runtime adapter return nonauthorizing read-only guidance across four environments. Staging Write prepared input is additionally bound to exact enrolled site and broker digests; Production content/deployment batches are never allowed to authorize Production Write Authority. Unknown/mismatched environment fails closed. No changes to site permissions or Production execution.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse site profile binding, request read authority, exact operation approval, original Enrollment and Production batch safeguards; no new authority-bearing method is introduced."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-ability-service.php",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, security and release controls apply to the extracted existing code. No new registered authority or permissive operation is introduced.",
+      "review_rationale": "Extract existing policy-checked plugin activation and deactivation execution with explicit Staging/Production gates, multisite permission preflight, protected dependency checks and post-mutation readback. Source and CI review only; live validation and final owner approval remain required."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-filesystem-mutation-service.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/pre-install-hardening-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, execution, security and release controls apply to the extracted existing code. No new registered authority or permissive operation is introduced.",
+      "review_rationale": "Extract existing guarded file-write/file-patch and atomic backup implementation behind stable Abilities callbacks, retaining path policy, expected SHA checks, backup and audit invocation. Source and CI review only; live validation and final owner approval remain required."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing provider certification, exact ticket, mutation, drift, rollback and security controls; no new mutable Ability or environment authority.",
+      "review_rationale": "Isolate existing named provider settings behind installed provider identity; generic source copying does not depend on this addon. Test absent default and installed provider roundtrip. Source/fixture evidence only, not live certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-file-workspace.php",
+      "control_ids": [
+        "ADMIN-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only administrator-owned file workspace compatibility status only; no external file-manager API or filesystem mutation introduced. Source and runtime contract exercise denial, detection, and immutable governed handoff.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin authorization, general WordPress platform and security review controls cover passive plugin discovery and explicit nonauthorizing file-manager handoff."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-authority-closure.php",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, provider diagnostic, MCP and security controls already cover this bounded, passive reducer; no ability, source mutation, or new runtime authority is introduced.",
+      "review_rationale": "Review the new pure Brand Authority Closure reducer as a non-authorizing diagnostic service, with independent hermetic runtime and static contract evidence; exact source was independently reviewed, and live Staging acceptance remains required. Execution proof is provided by the bounded Python wrapper that runs the original standalone PHP fixture; PHPUnit is not falsely assumed."
     }
   ],
   "lifecycle": [],
@@ -810,6 +1028,766 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "CI-only review of the exact PHP source blob for the signed Staging frontend diagnostic. WordPress pluggable wp_salt can be unavailable in early request classification; return an absent signature rather than a guessed key, deny unsigned loopback requests before network I/O, and report actual paired request counts. A newly added same-PR pre-pluggable regression is executed in MCP compatibility CI; normal signed-request tests remain in that workflow. The prior source-line PHP incident does not establish the complete cause of homepage HTTP 500. Require separately certified Staging deployment and independent external browser, PHP and request-correlated readback. No Production authorization or site mutation. The readiness policy's trusted Python runner invokes both standalone PHP assertions rather than treating PHP CLI files as PHPUnit suites; missing or failing PHP causes CI to fail closed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ai-approval.php",
+      "source_blob_sha": "123c763665eaa5f0ddb056e3c8acb6e0215d2eeb",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-approval-tickets.php",
+      "source_blob_sha": "e76ebd812b121ccae94dd88063124a2aa57e07e9",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-auto-reconcile-scenarios.php",
+      "source_blob_sha": "626901f7797fc2793b1b44a7d5b3aa4256f59204",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-runtime-gates.php",
+      "source_blob_sha": "c401447819799b76c5f56dd4c10287faa38fbdd3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "source_blob_sha": "1e82353ed6ce5c8ae074288e2105cdd519a178c1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-plugin-update.php",
+      "source_blob_sha": "20797949f5fcfe0409fb222799ddd4b7c55b74da",
+      "control_ids": [
+        "UPDATES-01",
+        "CROSSPLUGIN-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "a14e609b91ff3782387b6c2d915a862cfb2dd66c",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile-admin.php",
+      "source_blob_sha": "fc1b6888529fd627a5b86d83a587a1d7b1739dc3",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "a4f9fdaaa18e60ee6314e86dfe0c78d45d9e13c3",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
+      "source_blob_sha": "f6e6f4227bee23a8886a822a81f8fd12bb972f46",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
+      "source_blob_sha": "f1776a19ea2bf6dd259007d86d45b31b774044e5",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "CI-only source review of exact Production owner consent, bounded single-use content approval, native plugin deployment and RSA artifact test verification. The existing governed runtime CI entry executes real plan/CAS, policy, AI delegation and RSA fixtures, including replay, revoke, expiry, package drift, environment and issuer denial. Installer side effects are fixture boundaries, not live certification. Existing Staging reconciliation remains separately bounded.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "e584b1805f98a443a6502bdfd27617616e403de8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-guided-write-handoff-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin security/release maintainer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "286f074a00e154f5393b61f17075acfec9b24525",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-guided-write-handoff-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin security/release maintainer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "77ac43f7c05ec031d3bec6bddf567990c23613f2",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "9e2fe4d06d1278fc119313bbbe1018348169a341",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Register read-only environment-journey Ability with constrained operation-kind schema, without mutation callback, shell, privilege elevation, or direct owner consent. A pure reducer is exposed through a thin read-only runtime adapter. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "81ba43cb21f1376c9e9a58c63f99c11692761cde",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose one read-only environment guide in standard mad4b-read and bounded ChatGPT MCP read transports while keeping existing Write/Developer/Breakglass and Enrollment mutations under their independent scope gates. Direct tool visibility grants no authority. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "0281d8abb448ff74709a7169742b933e3b93bac8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance. Follow-up exact-source security review: even read-only suggested Staging prepared requests must match this enrolled site's UUID, exact dispatch/registration/schema digests, source SHA, plan digest, owner review digest and Write-only confirmation; cross-site or tampered nested proofs fail closed to invalid_staging_handoff without executing."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "e90ac31e2af2ab384467c1ea0a44acba08331d48",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance. Follow-up exact-source security review: even read-only suggested Staging prepared requests must match this enrolled site's UUID, exact dispatch/registration/schema digests, source SHA, plan digest, owner review digest and Write-only confirmation; cross-site or tampered nested proofs fail closed to invalid_staging_handoff without executing. Independent Production Write Authority consent remains separate from exact Production content/plugin deployment batches; a preapproved finite batch never renews grants, changes Site Profile, or grants permission. Hermetic PHP verifies the separation across all environments."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/config/architecture-maintainability-policy.json",
+      "source_blob_sha": "863354066c244fa2941027769fdb227b0d7ded59",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Ratchet the Facade size ceiling and explicitly record isolated lifecycle/filesystem domain ownership without relaxing existing maintainability checks. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "c0f8a6afdf837ac965eb70a59273863585713317",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "EXECUTION-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Retain the existing governed Ability callback interface while delegating lifecycle and filesystem mutations to isolated services; review concurrent remote permission-denial diagnostics without granting new authority. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "18cad0c2038574b813bbe40e679fa621d7d65d58",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "OAUTH-04",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add request-local ability-scoped denial-code diagnostics, clearing them on execution and request boundaries without exposing tickets or token evidence or changing authorization decisions. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "e7e0d5f1f4d178fb7f5691c1be9924aaa1e11de7",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add bounded, read-only site-owned source and Google connection diagnostic projections while excluding raw Drive folder IDs, credential material and cross-site foreign records. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-ability-service.php",
+      "source_blob_sha": "3d5599a0f106d5164d5e32bcb6c55fefff8a2452",
+      "control_ids": [
+        "MCP-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-lifecycle-governance-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Extract existing policy-checked plugin activation and deactivation execution with explicit Staging/Production gates, multisite permission preflight, protected dependency checks and post-mutation readback. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-filesystem-mutation-service.php",
+      "source_blob_sha": "71cbae047102794b62e437fe7a5d7f11ef290717",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/pre-install-hardening-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Extract existing guarded file-write/file-patch and atomic backup implementation behind stable Abilities callbacks, retaining path policy, expected SHA checks, backup and audit invocation. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "6c063da1be108019af84c9eb30eee2f5272b9d67",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "OAUTH-04",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace inline permission-result truth conversion with a dedicated decision-graph delegate, preserving WP_Error and boolean passthrough and fail-closed rejected arrays. This exact Git blob review is nonauthorizing and requires separate live acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+      "source_blob_sha": "3213c72a610244067f463ed2dd41025f69fcace3",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Own a pure permission result projection with exactly the original fail-closed preflight-allowed condition; no changed external callback signature or authority expansion. This exact Git blob review is nonauthorizing and requires separate live acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "2ae4ee95909ac2989a8c84f140a6870a57aaef8a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only Google Drive source diagnostic attribution: pass only sanitized, <=96-char WP_Error code from the safe-read result through the governed read-execute failure envelope; separate Google connection action never leaks raw provider messages or credential bytes. Existing classification, transient retry policy, execution fence, protected write authority and human Brand approval remain unchanged. Exact-head CI runs the new no-secret source-read/authorization contract and hermetic PHP observer regression; independent ETG/ARE live provider and OAuth readback is still required. This review is non-authorizing and is not Production certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "source_blob_sha": "7cea76b3d74176e71d04da67ee3b505f0f8cb615",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "Add a durable exact-batch deployment boundary before target entry. Failure, interrupted claims, audit failure and result persistence uncertainty block later worker invocations; only fully verified success releases the fence. Real queue fixtures inject those failures and re-enter the same batch, then prove only a fresh owner batch resumes. No new authority, retry or live deployment is granted. Exact-blob review is CI-only and nonauthorizing; independent live acceptance remains required.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "a08221ddddc0620d93fdb68a38570b327547c25b",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Remove one redundant blank line to restore the existing 1050-line facade budget without changing catalog declarations, callbacks, policy or authority. Existing environment journey and domain-service contracts continue to validate routing and separation. No policy limit was raised. Exact-blob review is CI-only and nonauthorizing; independent live acceptance remains required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "source_blob_sha": "d735b2ff281e9d8a899ad081ba5add00ce957977",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace site-name matching with exact registered source-tag parsing, canonical roundtrip and site policy denial. Keep source/target SHA, provider certification, exact approval and rollback guards. Runtime-gate the optional named builder. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php",
+      "source_blob_sha": "285d4b53e541a53a1bb47bb3d290f18ebb3071c6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Isolate existing named provider settings behind installed provider identity; generic source copying does not depend on this addon. Test absent default and installed provider roundtrip. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "source_blob_sha": "865cc0c728f2b2383bd1d0fc0cb2f5375416a4ae",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Use site-neutral WAF evidence configuration. A provider-specific constant cannot affect passive core status; neither configuration is proof of atomic/shared counters or authority. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php",
+      "source_blob_sha": "ea04c33c483f0abd55eab953baf6cefc52271ac1",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace pilot-specific UI description and comment with WordPress terminology; preserve index execution and permission logic. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+      "source_blob_sha": "38bef70338f92a71e367642e1ebc9cffac8b94bf",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot name in a comment explaining that business-specific mappings belong to site addons. No exchange policy or runtime behavior changed. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
+      "source_blob_sha": "a1aff2b36381c2720191512e388f0faa11e860dd",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot name in no-hardcoded-contract comment; preserve runtime browser acceptance, environment and enrollment checks. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "dcfa6a874aebdfb0256edfc09804b4e15309464f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot names in an incident comment; preserve exact grants, provider compatibility identifiers and authority. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-file-workspace.php",
+      "source_blob_sha": "a12c86d38f40f8e46f8c4912d8de60771274c1b1",
+      "control_ids": [
+        "ADMIN-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add generic WordPress-admin file-manager advisory discovery with explicit fail-closed, no-API, no-write contract; runtime fixtures cover permission and activation states. Production use remains unapproved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "bddb73e7a6fab2746c36f8c631d68af54ad259f1",
+      "control_ids": [
+        "UPDATES-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose the nonauthorizing administrator file workspace handoff from the deep self-update status without touching cached hotpath, update permissions, signed releases, archive verification or rollback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-authority-closure.php",
+      "source_blob_sha": "585529a44446e2d8eac6dc83f748da7d0e5f29a4",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure, site-neutral Brand recovery diagnostic reducer differentiates Google invalid_grant, current vs stale grants, and exact three-category content reviews. It never invokes network/DB writes or mints an approval, release, Skills checkpoint or Production capability. A hermetic ETG/ARE fixture and source contract verify no automatic retry, revoke or acceptance. This CI review is nonauthorizing and requires new live Staging readback. Domain coverage explicitly includes PROVIDERS-02 for the baseline-owned impact classifier; this never changes Product/Production authority. The readiness runner uses the bounded Python executor for standalone PHP tests; the PHP fixture is not declared as PHPUnit."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "bbfb2270fcf175c86e716c8c0b1afff3b77aaa3d",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing read-only, exact-site Brand Core status gains opt-in operational_diagnostics with source-and-grant-scoped facts only. The default API is unchanged. The new reducer is lazy-loaded only after exact Staging confirmation, and owner consent/Google OAuth/source scan remain independent gates. Hermetic operational tests and exact source contracts cover fail-closed behavior. CI-only; no Production authorizations or live certification. Domain coverage explicitly includes RECOVERY-01 for the baseline-owned impact classifier; this never changes Product/Production authority. Standalone PHP reducer is executed by a bounded Python harness for CI coverage; no PHPUnit runner or live authority is inferred."
     }
   ],
   "code_change_rules": {

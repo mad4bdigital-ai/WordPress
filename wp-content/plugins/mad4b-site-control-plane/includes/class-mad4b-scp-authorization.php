@@ -82,9 +82,14 @@ final class MAD4B_SCP_Authorization {
 		add_filter( 'wp_register_ability_args', array( __CLASS__, 'wrap_execution_boundary' ), 190, 2 );
 	}
 
+	private static $remote_permission_denial_codes = array();
+
 	public static function begin_execution_callback_observation( $ability_name ) {
 		$ability_name = (string) $ability_name;
-		if ( '' !== $ability_name ) self::$execution_callback_started[ $ability_name ] = false;
+		if ( '' !== $ability_name ) {
+			self::$execution_callback_started[ $ability_name ] = false;
+			unset( self::$remote_permission_denial_codes[ $ability_name ] );
+		}
 	}
 
 	public static function mark_execution_callback_started( $ability_name ) {
@@ -97,9 +102,19 @@ final class MAD4B_SCP_Authorization {
 		return '' !== $ability_name && ! empty( self::$execution_callback_started[ $ability_name ] );
 	}
 
+	public static function remote_permission_denial_code( $ability_name ) {
+		$ability_name = (string) $ability_name;
+		// Request-local, ability-scoped diagnostic only. No ticket or OAuth evidence is exposed.
+		return array_key_exists( $ability_name, self::$execution_callback_started )
+			? ( isset( self::$remote_permission_denial_codes[ $ability_name ] ) ? (string) self::$remote_permission_denial_codes[ $ability_name ] : '' ) : '';
+	}
+
 	public static function clear_execution_callback_observation( $ability_name ) {
 		$ability_name = (string) $ability_name;
-		if ( '' !== $ability_name ) unset( self::$execution_callback_started[ $ability_name ] );
+		if ( '' !== $ability_name ) {
+			unset( self::$execution_callback_started[ $ability_name ] );
+			unset( self::$remote_permission_denial_codes[ $ability_name ] );
+		}
 	}
 
 	public static function request_scope_state() {
@@ -118,6 +133,7 @@ final class MAD4B_SCP_Authorization {
 			if ( $started ) return new WP_Error( 'mad4b_request_scope_execution_active', 'An execution callback observation is still active at the request boundary.' );
 		}
 		self::$execution_callback_started = array();
+		self::$remote_permission_denial_codes = array();
         self::$operation_claim_in_callback = array();
 		return true;
 	}
@@ -128,10 +144,7 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function permission_result_from_authorization( $result ) {
-		if ( is_wp_error( $result ) || is_bool( $result ) ) return $result;
-		if ( ! is_array( $result ) ) return false;
-		if ( ! isset( $result['allowed'], $result['reason_code'] ) ) return false;
-		return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];
+		return MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result );
 	}
 
 	private static function remember_trusted_execution_boundary( $ability_name, $callback ) {
@@ -891,6 +904,10 @@ final class MAD4B_SCP_Authorization {
 		if ( ! is_wp_error( $error ) ) return false;
 		$server_id = class_exists( 'MAD4B_SCP_Transport_Context' ) ? MAD4B_SCP_Transport_Context::current_server_id() : '';
 		if ( ! in_array( $server_id, array( 'mad4b-chatgpt', 'mad4b-write', 'mad4b-developer', 'mad4b-developer-breakglass' ), true ) ) return false;
+		$ability_name = (string) $ability_name;
+		if ( array_key_exists( $ability_name, self::$execution_callback_started ) ) {
+			self::$remote_permission_denial_codes[ $ability_name ] = sanitize_key( (string) $error->get_error_code() );
+		}
 		self::audit_execution_denial( $ability_name, $error, $input );
 		return true;
 	}

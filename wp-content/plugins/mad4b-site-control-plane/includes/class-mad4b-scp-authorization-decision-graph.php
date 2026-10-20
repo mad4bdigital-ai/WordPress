@@ -4,6 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 final class MAD4B_SCP_Authorization_Decision_Graph {
 	const CONTRACT = 'mad4b.authorization-decision-graph.v1';
 
+	/** Preserve the exact native callback truth contract outside the Authorization facade. */
+	public static function permission_result( $result ) {
+		if ( is_wp_error( $result ) || is_bool( $result ) ) return $result;
+		if ( ! is_array( $result ) ) return false;
+		if ( ! isset( $result['allowed'], $result['reason_code'] ) ) return false;
+		return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];
+	}
+
 	public static function decorate( $result, $ability, $server, $provider ) {
 		$code = is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '';
 		$failed = self::stage_for_error( $code );

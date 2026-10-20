@@ -20,6 +20,8 @@ def main():
     policy = text("includes/class-mad4b-scp-policy.php")
     gates = text("includes/class-mad4b-scp-governed-runtime-gates.php")
     abilities = text("includes/class-mad4b-scp-abilities.php")
+    filesystem_executor = text("includes/class-mad4b-scp-filesystem-mutation-service.php")
+    lifecycle_executor = text("includes/class-mad4b-scp-plugin-ability-service.php")
     provider = text("includes/class-mad4b-scp-provider-contracts.php")
     base = text("includes/adapters/class-mad4b-scp-adapter-base.php")
     registry = text("includes/class-mad4b-scp-adapter-registry.php")
@@ -37,7 +39,9 @@ def main():
     require(policy, "mad4b_scp_mutable_data_extensions", "data extension allowlist")
     for token in (".htaccess", ".user.ini", "php.ini", "web.config", "phtml", "phar", "svg"):
         require(policy, token, f"filesystem deny token {token}")
-    require(abilities, "MAD4B_SCP_Policy::can_mutate_file", "filesystem mutation policy invocation")
+    require(filesystem_executor, "MAD4B_SCP_Policy::can_mutate_file", "filesystem mutation policy invocation")
+    require(abilities, "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write", "governed file-write callback delegation")
+    require(abilities, "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch", "governed file-patch callback delegation")
 
     # Every mutation surface has an explicit master switch before provider/action-specific policy.
     require(policy, "MAD4B_MCP_MUTATION_ENABLED", "global mutation master opt-in")
@@ -68,9 +72,11 @@ def main():
     # Lifecycle mutation is disabled and empty-allowlist by default; stale state and multisite capabilities are mandatory.
     require(policy, "MAD4B_MCP_PLUGIN_LIFECYCLE_ENABLED", "plugin lifecycle master opt-in")
     require(policy, "mad4b_scp_plugin_lifecycle_allowlist', array()", "empty plugin lifecycle allowlist")
-    require(abilities, "expected_active", "plugin lifecycle optimistic guard")
-    require(abilities, "manage_network_plugins", "multisite network lifecycle capability")
-    require(abilities, "mad4b_stale_plugin_state", "plugin lifecycle stale-state rejection")
+    require(abilities, "MAD4B_SCP_Plugin_Ability_Service::plugin_activate", "governed activation delegation")
+    require(abilities, "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate", "governed deactivation delegation")
+    require(lifecycle_executor, "expected_active", "plugin lifecycle optimistic guard")
+    require(lifecycle_executor, "manage_network_plugins", "multisite network lifecycle capability")
+    require(lifecycle_executor, "mad4b_stale_plugin_state", "plugin lifecycle stale-state rejection")
 
     # Structured DB mutation must prove real columns + transactional engine + lockable transaction.
     require(abilities, "DESCRIBE `", "database real-column discovery")

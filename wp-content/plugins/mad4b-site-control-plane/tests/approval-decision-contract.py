@@ -276,7 +276,7 @@ for marker in [
     "expected_classification_sha256",
     "operation_input",
     "MAD4B_SCP_Approval_Tickets::decide_pending_by_ai",
-    "'production_authorized' => false",
+    "'production_authorized' => $production_batch && empty( $blockers )",
     "'breakglass_authorized' => false",
     "'prior_human_approval_required' => false",
 ]:

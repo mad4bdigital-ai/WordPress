@@ -3086,6 +3086,39 @@ final class MAD4B_SCP_Context_Authority {
 		if ( $issue_counts['optional_conflicting'] > 0 ) $warnings[] = 'optional_context_contains_conflicting_assets';
 		if ( $issue_counts['optional_incomplete'] > 0 ) $warnings[] = 'optional_context_contains_incomplete_assets';
 
+		// Read-only, bounded diagnostics: site-owned governed sources only.
+		// Never expose raw Drive folder identifiers, file listings, or OAuth secrets.
+		$source_diagnostics = array();
+		foreach ( $governed_sources as $source ) {
+			$root = isset( $source['external_root_id'] ) ? (string) $source['external_root_id'] : '';
+			$source_diagnostics[] = array(
+				'source_id' => isset( $source['source_id'] ) ? (string) $source['source_id'] : '',
+				'provider' => isset( $source['provider'] ) ? sanitize_key( (string) $source['provider'] ) : '',
+				'root_identity_sha256' => '' === $root ? '' : hash( 'sha256', $root ),
+				'folder_identity_configured' => '' !== $root,
+				'status' => isset( $source['status'] ) ? sanitize_key( (string) $source['status'] ) : '',
+				'last_scan_complete' => ! empty( $source['last_scan_complete'] ),
+				'write_policy' => isset( $source['write_policy'] ) ? sanitize_key( (string) $source['write_policy'] ) : 'read_only',
+			);
+		}
+		$google_connection = array(
+			'connection_observed' => false, 'connected' => false,
+			'read_available' => false, 'write_available' => false,
+			'refresh_required' => false, 'reconnect_required' => false,
+			'health_state' => 'unavailable', 'next_action' => 'inspect_google_connection',
+		);
+		if ( class_exists( 'MAD4B_SCP_Google_Drive_Context' ) && method_exists( 'MAD4B_SCP_Google_Drive_Context', 'public_connection_status' ) ) {
+			$google = MAD4B_SCP_Google_Drive_Context::public_connection_status();
+			if ( is_array( $google ) ) {
+				$google_connection['connection_observed'] = true;
+				foreach ( array( 'connected', 'read_available', 'write_available', 'refresh_required', 'reconnect_required' ) as $key )
+					$google_connection[ $key ] = ! empty( $google[ $key ] );
+				$google_connection['health_state'] = isset( $google['health_state'] ) ? sanitize_key( (string) $google['health_state'] ) : 'unavailable';
+				$google_connection['next_action'] = ! $google_connection['connected'] || $google_connection['reconnect_required']
+					? 'reconnect_existing_google_authorization'
+					: ( $google_connection['refresh_required'] ? 'plan_existing_grant_refresh' : 'verify_exact_source_membership' );
+			}
+		}
 		$ready = empty( $blockers );
 		$state = $ready ? ( empty( $warnings ) ? 'ready' : 'ready_with_warnings' ) : ( empty( $profile ) ? 'unconfigured' : 'blocked' );
 		return array(
@@ -3112,6 +3145,9 @@ final class MAD4B_SCP_Context_Authority {
 			'governed_source_count' => count( $governed_sources ),
 			'task_source_count' => count( $task_sources ),
 			'partial_source_count' => $partial_sources,
+			'source_binding_diagnostics' => $source_diagnostics,
+			'google_connection_diagnostics' => $google_connection,
+			'diagnostics_authorizing' => false,
 			'asset_count' => count( $assets ),
 			'governed_asset_count' => count( $governed_assets ),
 			'required_asset_count' => count( $required ),

@@ -2,6 +2,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 remote = (root / "includes/class-mad4b-scp-brand-core-remote-recovery.php").read_text(encoding="utf-8")
+closure = (root / "includes/class-mad4b-scp-brand-authority-closure.php").read_text(encoding="utf-8")
 remediation = (root / "includes/class-mad4b-scp-operational-remediation.php").read_text(encoding="utf-8")
 parity = (root / "includes/class-mad4b-scp-remote-operation-parity.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'config/remote-operation-catalog.php').read_text(encoding='utf-8')
 servers = (root / "includes/class-mad4b-scp-servers.php").read_text(encoding="utf-8") + (Path(__file__).resolve().parents[1] / 'includes/class-mad4b-scp-server-write-catalog.php').read_text(encoding='utf-8')
@@ -55,6 +56,32 @@ for kind in (
     "brand_approval", "draft_acceptance"
 ):
     must(remote, f"'{kind}' => array(", "missing scoped remote stage")
+
+# Site-neutral, bounded and non-authorizing cross-site operator diagnosis.
+for marker in (
+    "class-mad4b-scp-brand-authority-closure.php",
+    "'include_operational_diagnostics'",
+    "MAD4B_SCP_Brand_Authority_Closure::summarize(",
+):
+    must(remote, marker, "opt-in source-bound Brand closure missing")
+for marker in (
+    "const CONTRACT = 'mad4b.brand-authority-operational-closure.v1'",
+    "google_reconsent_required",
+    "stale_write_grants_present",
+    "three_category_brand_review_incomplete",
+    "reconnect_site_owned_google_oauth",
+    "review_fresh_exact_write_convergence_plan",
+    "'skills_build_checkpoint_certified' => false",
+    "'release_and_browser_acceptance_certified' => false",
+    "'ready_for_publication' => false",
+    "'production_authorized' => false",
+    "'mutation_performed' => false",
+):
+    must(closure, marker, "Brand closure missing fail-closed evidence boundary")
+for forbidden in ("wp_remote_post(", "update_option(", "delete_option(", "wp_insert_post(",
+                  "wp_register_ability(", "MAD4B_SCP_Staging_Write_Authority_Convergence::apply("):
+    if forbidden in closure:
+        raise AssertionError("Brand diagnosis must not perform mutation: " + forbidden)
 
 if remote.count("public static function register_abilities(") != 1:
     raise AssertionError("duplicate remote recovery ability registrations")
@@ -430,6 +457,7 @@ must(workflow, "class-mad4b-scp-adaptive-operation-router.php",
 must(workflow, "adaptive-operation-router-runtime.php",
     "dynamic router native PHP regression missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
+must(workflow, "brand-authority-closure-runtime.php", "site-neutral ETG/ARE operational case matrix missing")
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
 must(runbook, "durable_db_recovery", "Host-runner and DB gap not documented")

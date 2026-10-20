@@ -77,7 +77,7 @@ oauth_ai_assert( false !== strpos( $issuer, "mad4b:approval:auto:all" )
     && false !== strpos( $issuer, 'CHATGPT_CIMD_CLIENT_ID' )
     && false !== strpos( $bridge, "const AI_AUTO_ALL_SCOPE = 'mad4b:approval:auto:all';" ),
     'Server metadata and human consent must advertise the same exact AI scope' );
-oauth_ai_assert( false !== strpos( $approval, "'authorization_mode' => \$oauth_auto_all ? 'owner_oauth_scope_auto_all'" )
+oauth_ai_assert( false !== strpos( $approval, "\$oauth_auto_all ? 'owner_oauth_scope_auto_all'" )
     && false !== strpos( $approval, "'context/remote-owner-review-apply'" )
     && false !== strpos( $approval, "'breakglass' ===" ),
     'Scope may delegate ticket decisions but not fake original human ownership or raw SQL Breakglass' );

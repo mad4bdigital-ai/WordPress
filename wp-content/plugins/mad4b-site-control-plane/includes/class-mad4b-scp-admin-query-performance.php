@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 /**
  * Bounded Staging-only performance hardening for the two meta lookups observed
- * on ETG wp-admin. The indexes are additive and idempotent; no existing index
+ * on WordPress admin pages. The indexes are additive and idempotent; no existing index
  * is removed or rewritten and Production is never mutated by this component.
  */
 final class MAD4B_SCP_Admin_Query_Performance {
@@ -31,7 +31,7 @@ final class MAD4B_SCP_Admin_Query_Performance {
 		if ( ! function_exists( 'wp_register_ability' ) || ( function_exists( 'wp_has_ability' ) && wp_has_ability( 'mad4b/admin-query-performance-status' ) ) ) return;
 		wp_register_ability( 'mad4b/admin-query-performance-status', array(
 			'label' => 'Get Admin Query Performance Status',
-			'description' => 'Read the bounded ETG admin-query index and attribution status without changing database state.',
+			'description' => 'Read the bounded WordPress admin-query index and attribution status without changing database state.',
 			'category' => 'mad4b-read',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => array( 'MAD4B_SCP_Policy', 'can_read' ),

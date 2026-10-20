@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/../integrations/class-mad4b-scp-elementor-bridge-compatibility.php';
 
 final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	const ROOT_PARENT = '__root__';
@@ -8,11 +9,13 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	public function label() { return 'Elementor'; }
 	public function is_available() { return defined( 'ELEMENTOR_VERSION' ) || class_exists( '\\Elementor\\Plugin' ); }
 	public function ability_names() {
-		return array(
+		$names = array(
 			'read' => array( 'elementor/status', 'elementor/get-document', 'elementor/list-widgets', 'elementor/get-dynamic-tags', 'elementor/validate-document', 'elementor/compare-documents', 'elementor/font-css-origin-audit' ),
 			'content' => array( 'elementor/update-widget-settings', 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' ),
 			'admin' => array(),
 		);
+		if ( ! MAD4B_SCP_Elementor_Bridge_Compatibility::available() ) $names['content'] = array_values( array_diff( $names['content'], array( 'elementor/set-etg-dynamic-tag' ) ) );
+		return $names;
 	}
 	public function reversible_contracts() {
 		return array(
@@ -160,9 +163,10 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			'content', false, true, true
 		);
 
+		if ( MAD4B_SCP_Elementor_Bridge_Compatibility::available() ) {
 		$this->add_ability(
 			'elementor/set-etg-dynamic-tag',
-			'Set Canonical ETG Elementor Dynamic Tag',
+			'Set Optional Bridge Elementor Dynamic Tag',
 			'set_etg_dynamic_tag',
 			array( $this, 'can_edit_post' ),
 			$this->schema(
@@ -172,7 +176,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 					'target_setting' => $element_id_schema,
 					'tag_name' => array(
 						'type' => 'string',
-						'enum' => array( 'etg-filter-title', 'etg-filter-intro', 'etg-filter-image', 'etg-filter-gallery', 'etg-filter-result-summary' ),
+						'enum' => MAD4B_SCP_Elementor_Bridge_Compatibility::tag_names(),
 					),
 					'mode' => array(
 						'type' => 'string',
@@ -185,6 +189,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			),
 			'content', false, true, true
 		);
+		}
 	}
 
 	/**
@@ -217,7 +222,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$uploads = function_exists( 'wp_get_upload_dir' ) ? wp_get_upload_dir() : wp_upload_dir( null, false );
 		$basedir = is_array( $uploads ) ? (string) ( $uploads['basedir'] ?? '' ) : '';
 		// Inspect the dedicated generated Google Fonts CSS first; it contains
-		// the absolute production font URLs seen on ETG Staging. Stay read-only.
+		// the absolute production font URLs seen on a migrated installation. Stay read-only.
 		$elementor_root = '' !== $basedir ? realpath( $basedir . '/elementor' ) : false;
 		$directories = array();
 		if ( false !== $elementor_root && is_dir( $elementor_root ) ) {
@@ -317,9 +322,10 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			'jet-listing-grid' => array( 'custom_post_types', 'posts_query' ),
 		);
 		$status['bounded_structural_mutations'] = array( 'elementor/clone-subtree', 'elementor/move-element', 'elementor/delete-element', 'elementor/set-dynamic-tag', 'elementor/set-etg-dynamic-tag' );
+		if ( ! MAD4B_SCP_Elementor_Bridge_Compatibility::available() ) $status['bounded_structural_mutations'] = array_values( array_diff( $status['bounded_structural_mutations'], array( 'elementor/set-etg-dynamic-tag' ) ) );
 		$status['structural_root_parent'] = self::ROOT_PARENT;
 		$status['structural_rollback_limit_bytes'] = self::MAX_STRUCTURAL_ROLLBACK_BYTES;
-		$status['dynamic_tag_policy'] = array( 'source_copy_only' => false, 'canonical_etg_builder' => true, 'allowed_tag_names' => array( 'etg-filter-title', 'etg-filter-image', 'etg-filter-intro', 'etg-filter-gallery', 'etg-filter-result-summary' ) );
+		$status['dynamic_tag_policy'] = array( 'source_copy_only' => true, 'registered_runtime_tag_required' => true, 'exact_source_binding_required' => true, 'site_policy_filter' => 'mad4b_scp_elementor_source_tag_allowed', 'optional_bridge_builder' => MAD4B_SCP_Elementor_Bridge_Compatibility::available() );
 		$status['raw_elementor_meta_exposed'] = false;
 		$status['legacy_generic_writer_used_by_governed_fallback'] = false;
 		return $status;
@@ -506,7 +512,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$bounded = $this->bounded_element_snapshot( $target_element['element'] ); if ( is_wp_error( $bounded ) ) return $bounded;
 		$tag = $this->dynamic_tag_from_source( $source_element['element'], (string) $input['source_setting'] ); if ( is_wp_error( $tag ) ) return $tag;
 		$tag_name = $this->allowed_dynamic_tag_name( $tag );
-		if ( '' === $tag_name ) return new WP_Error( 'mad4b_elementor_dynamic_tag_not_allowlisted', 'Source dynamic tag is not in the bounded ETG allowlist.' );
+		if ( '' === $tag_name ) return new WP_Error( 'mad4b_elementor_dynamic_tag_not_allowlisted', 'Source dynamic tag must be an exact registered binding permitted by this site policy.' );
 		$setting = (string) $input['target_setting'];
 		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{1,100}$/', $setting ) ) return new WP_Error( 'mad4b_elementor_dynamic_setting_invalid', 'Target dynamic setting name is invalid.' );
 		$elements = $target_doc['elements'];
@@ -521,7 +527,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 
 
 	public function set_etg_dynamic_tag( $input ) {
-		if ( ! $this->exact_provider_certified() ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The exact installed Elementor package is not certified for governed ETG dynamic-tag mutation.' );
+		if ( ! $this->exact_provider_certified() ) return new WP_Error( 'mad4b_elementor_provider_not_certified', 'The exact installed Elementor package is not certified for governed Bridge dynamic-tag mutation.' );
 		$id = absint( $input['post_id'] );
 		$document = $this->document_with_expected_sha( $id, $input['expected_sha256'] ); if ( is_wp_error( $document ) ) return $document;
 		$target = $this->element_target( $document['elements'], (string) $input['element_id'] ); if ( is_wp_error( $target ) ) return $target;
@@ -536,9 +542,9 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		$after = $this->persist_elements( $id, $elements ); if ( is_wp_error( $after ) ) return $after;
 		$read = $this->element_target( $after['elements'], (string) $input['element_id'] ); if ( is_wp_error( $read ) ) return $read;
 		$read_tag = $this->dynamic_tag_from_source( $read['element'], $setting );
-		if ( is_wp_error( $read_tag ) || ! hash_equals( $tag, (string) $read_tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_readback_mismatch', 'Canonical ETG dynamic tag readback does not match the generated Elementor binding.' );
+		if ( is_wp_error( $read_tag ) || ! hash_equals( $tag, (string) $read_tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_readback_mismatch', 'Optional Bridge dynamic tag readback does not match the generated Elementor binding.' );
 		$parsed = $this->parse_elementor_dynamic_tag( $read_tag ); if ( is_wp_error( $parsed ) ) return $parsed;
-		if ( $tag_name !== (string) $parsed['name'] ) return new WP_Error( 'mad4b_elementor_dynamic_tag_name_readback_mismatch', 'Canonical ETG dynamic tag name changed during readback.' );
+		if ( $tag_name !== (string) $parsed['name'] ) return new WP_Error( 'mad4b_elementor_dynamic_tag_name_readback_mismatch', 'Optional Bridge dynamic tag name changed during readback.' );
 		MAD4B_SCP_Audit::record( 'elementor/set-etg-dynamic-tag', array(
 			'post_id' => $id,
 			'element_id' => (string) $input['element_id'],
@@ -634,7 +640,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 			$source = $this->document_with_expected_sha( absint( $input['source_post_id'] ), $input['expected_source_sha256'] ); if ( is_wp_error( $source ) ) return $source;
 			$source_element = $this->element_target( $source['elements'], (string) $input['source_element_id'] ); if ( is_wp_error( $source_element ) ) return $source_element;
 			$tag = $this->dynamic_tag_from_source( $source_element['element'], (string) $input['source_setting'] ); if ( is_wp_error( $tag ) ) return $tag;
-			if ( '' === $this->allowed_dynamic_tag_name( $tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_not_allowlisted', 'Source dynamic tag is not in the bounded ETG allowlist.' );
+			if ( '' === $this->allowed_dynamic_tag_name( $tag ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_not_allowlisted', 'Source dynamic tag must be an exact registered binding permitted by this site policy.' );
 			$target = $this->document_with_expected_sha( absint( $input['target_post_id'] ), $input['expected_target_sha256'] ); if ( is_wp_error( $target ) ) return $target;
 			$target_element = $this->element_target( $target['elements'], (string) $input['target_element_id'] ); if ( is_wp_error( $target_element ) ) return $target_element;
 			$bounded = $this->bounded_element_snapshot( $target_element['element'] ); if ( is_wp_error( $bounded ) ) return $bounded;
@@ -843,30 +849,7 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 
 
 	private function canonical_etg_dynamic_settings( $tag_name, array $input ) {
-		$tag_name = sanitize_key( (string) $tag_name );
-		$allowed = array( 'etg-filter-title', 'etg-filter-intro', 'etg-filter-image', 'etg-filter-gallery', 'etg-filter-result-summary' );
-		if ( ! in_array( $tag_name, $allowed, true ) ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_not_allowlisted', 'ETG dynamic tag name is not allowlisted.' );
-		$settings = array( 'preview_url' => '' );
-		if ( in_array( $tag_name, array( 'etg-filter-title', 'etg-filter-intro', 'etg-filter-result-summary' ), true ) ) {
-			if ( isset( $input['mode'] ) || isset( $input['limit'] ) ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_settings_invalid', 'Text ETG dynamic tags do not accept media mode or limit settings.' );
-			$settings['live_update'] = 'yes';
-			$settings['live_group'] = '';
-			return $settings;
-		}
-		$modes = array( 'priority', 'combined', 'all_terms', 'galleries_only', 'primary_images', 'balanced', 'role_priority' );
-		$default_mode = 'etg-filter-gallery' === $tag_name ? 'combined' : 'priority';
-		$mode = isset( $input['mode'] ) ? sanitize_key( (string) $input['mode'] ) : $default_mode;
-		if ( ! in_array( $mode, $modes, true ) ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_mode_invalid', 'ETG media dynamic-tag mode is not allowlisted.' );
-		$settings['mode'] = $mode;
-		if ( 'etg-filter-image' === $tag_name ) {
-			if ( isset( $input['limit'] ) ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_settings_invalid', 'ETG Filter Image does not accept a gallery limit.' );
-			$settings['fallback_image'] = array( 'id' => 0, 'url' => '' );
-			return $settings;
-		}
-		$limit = isset( $input['limit'] ) ? absint( $input['limit'] ) : 9;
-		if ( $limit < 1 || $limit > 30 ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_limit_invalid', 'ETG Filter Gallery limit must be between 1 and 30.' );
-		$settings['limit'] = $limit;
-		return $settings;
+		return MAD4B_SCP_Elementor_Bridge_Compatibility::settings( $tag_name, $input );
 	}
 
 	private function build_elementor_dynamic_tag( $post_id, $element_id, $setting, $tag_name, array $settings ) {
@@ -875,9 +858,9 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 		if ( ! is_object( $manager ) || ! method_exists( $manager, 'tag_data_to_tag_text' ) || ! method_exists( $manager, 'tag_text_to_tag_data' ) || ! method_exists( $manager, 'create_tag' ) ) return new WP_Error( 'mad4b_elementor_dynamic_manager_contract_missing', 'Exact Elementor Dynamic Tags serialization contract is unavailable.' );
 		$tag_id = substr( hash( 'sha256', absint( $post_id ) . '|' . (string) $element_id . '|' . (string) $setting . '|' . (string) $tag_name ), 0, 8 );
 		$instance = $manager->create_tag( $tag_id, (string) $tag_name, $settings );
-		if ( ! is_object( $instance ) || ! method_exists( $instance, 'get_name' ) || (string) $instance->get_name() !== (string) $tag_name ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_unregistered', 'Exact ETG dynamic tag is not registered in the installed Elementor runtime.' );
+		if ( ! is_object( $instance ) || ! method_exists( $instance, 'get_name' ) || (string) $instance->get_name() !== (string) $tag_name ) return new WP_Error( 'mad4b_elementor_etg_dynamic_tag_unregistered', 'Exact Bridge dynamic tag is not registered in the installed Elementor runtime.' );
 		$tag = $manager->tag_data_to_tag_text( $tag_id, (string) $tag_name, $settings );
-		if ( ! is_string( $tag ) || '' === trim( $tag ) || strlen( $tag ) > 4096 ) return new WP_Error( 'mad4b_elementor_dynamic_tag_serialize_failed', 'Elementor failed to serialize the bounded ETG dynamic tag.' );
+		if ( ! is_string( $tag ) || '' === trim( $tag ) || strlen( $tag ) > 4096 ) return new WP_Error( 'mad4b_elementor_dynamic_tag_serialize_failed', 'Elementor failed to serialize the bounded Bridge dynamic tag.' );
 		$parsed = $manager->tag_text_to_tag_data( $tag );
 		if ( ! is_array( $parsed ) || (string) ( $parsed['name'] ?? '' ) !== (string) $tag_name || ! isset( $parsed['settings'] ) || ! is_array( $parsed['settings'] ) ) return new WP_Error( 'mad4b_elementor_dynamic_tag_roundtrip_failed', 'Elementor Dynamic Tags serialization did not round-trip.' );
 		return $tag;
@@ -901,11 +884,21 @@ final class MAD4B_SCP_Elementor_Adapter extends MAD4B_SCP_Adapter_Base {
 	}
 
 	private function allowed_dynamic_tag_name( $tag ) {
-		$allowed = array( 'etg-filter-title', 'etg-filter-image', 'etg-filter-intro', 'etg-dynamic-content-slot', 'etg-filter-gallery', 'etg-filter-result-summary' );
-		foreach ( $allowed as $name ) {
-			if ( preg_match( '/(^|[^A-Za-z0-9_-])' . preg_quote( $name, '/' ) . '($|[^A-Za-z0-9_-])/i', (string) $tag ) ) return $name;
-		}
-		return '';
+		if ( ! is_string( $tag ) || '' === $tag || strlen( $tag ) > 4096 ) return '';
+		try {
+			$parsed = $this->parse_elementor_dynamic_tag( $tag );
+			if ( is_wp_error( $parsed ) || ! is_array( $parsed ) ) return '';
+			foreach ( array( 'id', 'name' ) as $key ) if ( ! isset( $parsed[ $key ] ) || ! is_string( $parsed[ $key ] ) || 1 !== preg_match( '/^[A-Za-z0-9_-]{1,128}$/D', $parsed[ $key ] ) ) return '';
+			if ( ! isset( $parsed['settings'] ) || ! is_array( $parsed['settings'] ) ) return '';
+			$manager = \Elementor\Plugin::$instance->dynamic_tags;
+			if ( ! method_exists( $manager, 'create_tag' ) || ! method_exists( $manager, 'tag_data_to_tag_text' ) ) return '';
+			$instance = $manager->create_tag( $parsed['id'], $parsed['name'], $parsed['settings'] );
+			if ( ! is_object( $instance ) || ! method_exists( $instance, 'get_name' ) || $instance->get_name() !== $parsed['name'] ) return '';
+			$canonical = $manager->tag_data_to_tag_text( $parsed['id'], $parsed['name'], $parsed['settings'] );
+			if ( ! is_string( $canonical ) || ! hash_equals( $tag, $canonical ) ) return '';
+			if ( true !== apply_filters( 'mad4b_scp_elementor_source_tag_allowed', true, $parsed['name'], $parsed ) ) return '';
+			return $parsed['name'];
+		} catch ( \Throwable $error ) { return ''; }
 	}
 
 	private function apply_dynamic_tag( array &$elements, $element_id, $setting, $tag, $depth ) {
