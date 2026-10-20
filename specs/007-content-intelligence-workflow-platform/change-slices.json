@@ -4,8 +4,8 @@
   "reviewed_base_sha": "9bc751c166e10379f739965be8449f9ceb5e2494",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 95,
-  "changed_paths_sha256": "646c4d101aa6f07bb4a7448b5695e83d884e71643350ff36afc669dc1288fb20",
+  "changed_file_count": 94,
+  "changed_paths_sha256": "d295642c10fd7e581112f2460928013a7bd0f3aa89a8e1aa7a0b2d10c64ad44c",
   "slices": [
     {
       "id": "source-evidence-and-ci",
@@ -16,7 +16,6 @@
         ".github/workflows/etg-staging-public-http-smoke.yml",
         ".github/workflows/mad4b-mcp-client-compatibility.yml",
         ".github/workflows/mad4b-pre-install-hardening.yml",
-        ".github/workflows/mad4b-site-control-plane.yml",
         ".github/workflows/mad4b-site-neutrality.yml",
         ".github/workflows/staging-public-http-smoke.yml",
         "governance/production-readiness/capability-coverage.json",
