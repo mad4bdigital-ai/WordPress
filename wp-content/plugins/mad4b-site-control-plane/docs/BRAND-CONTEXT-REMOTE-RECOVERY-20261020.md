@@ -39,3 +39,61 @@
 - Verify site-specific `context/brand-core-coverage` becomes READY only after exact three-category approval with correct review sequence. Staging publication and all Production operations require separately evidenced authority.
 
 **Residual:** These changes improve observability and safe recovery. They do not assert that the original pre-target admission defect or ARE Google connection has been fixed on a live Staging site. A certified new package and real OAuth/site acceptance remain required. A closed Issue #446 needs both independent site receipts, not CI alone.
+
+## Independent cross-site closure checklist (read-only)
+
+The opt-in `mad4b/brand-core-remote-recovery-status` input `include_operational_diagnostics=true`
+now returns `operational_diagnostics`, a **non-authorizing** synopsis. It does not
+perform a source scan, Google token refresh, grant convergence, owner approval or
+any publication. Its negative `*_certified=false` flags reflect **evidence not
+collected in that particular read**, not proof that the live feature is broken.
+
+Observed site-local evidence on 20 October 2026 (re-observe after installing a
+new certified package; never hardcode these facts as product behavior):
+
+| Check | ETG Staging | ARE Staging | Required independent acceptance |
+| --- | --- | --- | --- |
+| Installed release | `0.4.0-rc.102`, SHA `a0ec8e00` | same | install new exact-head Staging-only release and read back identity |
+| Write Grants | 101/101 current | 96 current plus **5 stale** not in active runtime inventory | owner-reviewed fresh exact `staging-write-authority-convergence-plan` and same-request + later readback; never silently revoke/regrant |
+| Google Drive OAuth | `healthy`, read/write | `refresh_failed`, Google `invalid_grant` HTTP 400 | reconnect **WordPress site's own** Google OAuth interactively; confirm exact source folder membership, scopes and subsequent scan |
+| Brand Core | Strategy approved, Voice/Editorial unapproved | all three categories unapproved | exact review plan + owner receipt per category + source SHA + human policy; no inferred review |
+| Registry | revision 6 | revision 6 | fresh `context/source-scan-plan`, one-time ticket, append-only audit and independent hash/category readback |
+| Skills | live certification READY; build-bound historical checkpoint stale | same | verify or rebuild **separate** current-build checkpoint, not merely seed existence |
+| Provider closure | 29 operational actions; 22 require owner review | 31 operational actions; 26 require owner review | closure by actual provider applicability, behavioral/canary/rollback receipts; no mass auto-enablement |
+| Public HTTP | sampled routes HTTP 200; homepage `hreflang=0` | homepage HTTP 200; sampled ~4.1s | repeated independent browser, locale, canonical, AJAX and budget acceptance; HTTP 200 alone insufficient |
+
+**Order and hard boundaries**
+
+1. **Source integrity:** pass release CI and owner gates on the *new exact
+   PR head*. PR #447 carries protected root-only workflow changes and cannot
+   be absorbed into PR #443 without violating the baseline-owned
+   `verify_feature_boundary.py` root-of-trust rules. Merge the protected
+   governance prerequisite independently before finalizing the runtime PR.
+2. **ETG Source Scan:** refresh the exact inventory and digest (previous
+   plan `9395cd45...`, revision 6 is NOT reusable as authorization).
+   Use the existing one-time approval path and a bounded `write-execute`
+   result; if permission denied or target not entered, retain the error code,
+   do not blindly replay, inspect journal/readback and re-plan. Scan never
+   implies a human Brand approval.
+3. **ARE OAuth:** `invalid_grant` must not trigger automated Google network
+   retry, grant substitution from the chat connector or file adoption from a
+   different Drive account. Interactive owner reconnection and file membership
+   evidence come first. Only after the source is verified, do a fresh scan.
+4. **ARE Write:** stale grants for five old Google Context abilities are not
+   the same as missing active grants. Keep the operational readiness
+   fail-closed; use exact current reviewed grant scope and owner-approved
+   reconciliation only. Never enable unrelated Developer/Breakglass/Production.
+5. **Human review:** ETG Tone of Voice -> Editorial Guidelines; ARE Brand
+   Strategy -> Tone of Voice -> Editorial Guidelines. Do not turn
+   operational notebooks into approved strategy. Verify file hashes and
+   signed Owner intent independently.
+6. **Separate closure:** after Brand is ready, certify Skills checkpoint,
+   provider closures, browser/SEO/locale/response-time budgets and staging
+   rollback. Sign-off and publication are independent; neither CI nor
+   the closure matrix mints a PASS receipt.
+
+**What cannot be solved by code alone:** a provider-rejected OAuth grant, a
+human review decision, exact-head owner attestation, an uninstalled build,
+third-party canary/rollback evidence, and actual independent browser/Host
+acceptance. Do not report these as closed merely because read-only unit
+tests pass. Issue #446 requires site-specific source-scan/owner readbacks.
