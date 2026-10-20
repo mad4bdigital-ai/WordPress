@@ -369,6 +369,46 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "ability:mad4b/environment-journey",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-02",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governed MCP source reviewer",
+      "review_rationale": "Exact-source review of a read-only site-environment guide; runtime derives Local/Development/Staging/Production from WordPress and enrolled Site Profile, never an untrusted client selection. No new write, owner attestation, OAuth grant or Production shortcut. Hermetic PHP + MCP catalog tests cover 28 combinations, environment mismatch and cross-site proof rejection.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP read policy, environment identity, OAuth/governance and execution-fence control families apply; no novel mutable privilege."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governed environment policy reviewer",
+      "review_rationale": "Pure model and thin runtime adapter return nonauthorizing read-only guidance across four environments. Staging Write prepared input is additionally bound to exact enrolled site and broker digests; Production content/deployment batches are never allowed to authorize Production Write Authority. Unknown/mismatched environment fails closed. No changes to site permissions or Production execution.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse site profile binding, request read authority, exact operation approval, original Enrollment and Production batch safeguards; no new authority-bearing method is introduced."
     }
   ],
   "lifecycle": [],
