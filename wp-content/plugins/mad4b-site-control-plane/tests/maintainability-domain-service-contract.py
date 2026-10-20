@@ -60,4 +60,13 @@ for expected in ("MAD4B_SCP_Policy::resolve_path", "MAD4B_SCP_Policy::can_mutate
 if "private function atomic_write" in abilities:
  raise SystemExit("FILESYSTEM_ATOMIC_WRITE_REABSORBED")
 
+# Keep pure authorization result interpretation in the decision graph while
+# preserving the original public Authorization callback ABI.
+decision_graph=(root/"includes/class-mad4b-scp-authorization-decision-graph.php").read_text(encoding="utf-8")
+if "MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result )" not in files["authorization"]:
+ raise SystemExit("AUTHORIZATION_PERMISSION_RESULT_DELEGATION_MISSING")
+for marker in ("public static function permission_result(", "is_wp_error( $result )", "'preflight_allowed'"):
+ if marker not in decision_graph:
+  raise SystemExit("AUTHORIZATION_DECISION_GRAPH_TRUTH_MISSING:"+marker)
+
 print("mad4b.maintainability-domain-service-decomposition.v1: PASS")
