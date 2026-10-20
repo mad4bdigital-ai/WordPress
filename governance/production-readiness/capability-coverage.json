@@ -485,6 +485,27 @@
       "review_rationale": "Read-only administrator-owned file workspace compatibility status only; no external file-manager API or filesystem mutation introduced. Source and runtime contract exercise denial, detection, and immutable governed handoff.",
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing admin authorization, general WordPress platform and security review controls cover passive plugin discovery and explicit nonauthorizing file-manager handoff."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-authority-closure.php",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governance, provider diagnostic, MCP and security controls already cover this bounded, passive reducer; no ability, source mutation, or new runtime authority is introduced.",
+      "review_rationale": "Review the new pure Brand Authority Closure reducer as a non-authorizing diagnostic service, with independent hermetic runtime and static contract evidence; exact source was independently reviewed, and live Staging acceptance remains required."
     }
   ],
   "lifecycle": [],
