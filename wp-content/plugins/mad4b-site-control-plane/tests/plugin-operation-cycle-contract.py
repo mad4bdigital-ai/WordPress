@@ -30,4 +30,25 @@ for name, marker in (
         raise SystemExit("PLUGIN_OPERATION_CYCLE: FAIL " + name + "\n" +
                          (result.stdout + result.stderr)[-2500:])
     print(name + ": PASS")
+# CONTENT_JOB_SCOPE_METADATA: runtime integration remains in the disposable WP-CLI
+# fixture; lint and assert the nonauthorizing scope contract here as well.
+source = HERE.parent / "includes" / "class-mad4b-scp-content-jobs.php"
+if source.is_symlink() or not source.is_file():
+    raise SystemExit("PLUGIN_OPERATION_CYCLE: scoped ContentJob source missing")
+code = source.read_text(encoding="utf-8")
+for literal in (
+    "'read_scope' => 'site_uuid_brand_id_tenant_id'",
+    "'site_wide_inventory_evaluated' => false",
+    "'zero_rows_clear_site_wide_doctor' => false",
+    "'cross_scope_repair_allowed' => false",
+    "brand_id=%s', 'tenant_id=%s",
+):
+    if literal not in code:
+        raise SystemExit("PLUGIN_OPERATION_CYCLE: ContentJob exact read scope contract drift: " + literal)
+lint = subprocess.run([php, "-l", str(source)], cwd=HERE, capture_output=True,
+                      text=True, timeout=30, check=False)
+if lint.returncode or lint.stderr or "No syntax errors detected" not in lint.stdout:
+    raise SystemExit("PLUGIN_OPERATION_CYCLE: ContentJob PHP lint failed: " + (lint.stdout + lint.stderr)[-1200:])
+print("CONTENT_JOB_SCOPE_METADATA: PASS; no site-wide clearance or cross-tenant repair authority")
+
 print("PLUGIN_OPERATION_CYCLE: PASS; empty-object reads, permission/pins, optional visibility, journal recovery; not live acceptance")
