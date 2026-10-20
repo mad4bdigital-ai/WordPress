@@ -171,8 +171,8 @@
   "workflow_paths": [
     {
       "path": ".github/workflows/feature-007-spec-ci.yml",
-      "sha256": "b301598a5a402a1ab457cd83a38eeb7e8e50d9bad91da3e1ed782f661622281c",
-      "bytes": 56668
+      "sha256": "5795a79ffef076e43ef5c0bc6cbdd2b3d18e4f4ff39b2cef4f33ea41a1a322b2",
+      "bytes": 56704
     }
   ]
 }
