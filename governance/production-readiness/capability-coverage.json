@@ -1972,7 +1972,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py"
       ],
       "owner_role": "MAD4B WordPress runtime and provider-governance reviewer",
@@ -1993,7 +1993,7 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
       ],
       "owner_role": "MAD4B WordPress runtime and Brand Authority reviewer",
       "status": "reviewed_for_ci_only",
