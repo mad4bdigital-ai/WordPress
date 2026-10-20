@@ -54,7 +54,7 @@ final class MAD4B_SCP_Servers {
 		$governed_status = 'mad4b-read' === $server_id ? array( 'mad4b/write-authority-status', 'mad4b/write-authority-reconciliation-plan', 'mad4b/write-runtime-certification', 'mad4b/rest-compatibility-status', 'mad4b/staging-certification-status', 'mad4b/staging-convergence-plan', 'mad4b/staging-write-candidate-binding-plan' ) : array();
 		$map = array(
 			'mad4b-read' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/site-autopilot-fast-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
+				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/environment-journey', 'mad4b/site-autopilot-fast-status', 'mad4b/list-post-types', 'mad4b/post-identity', 'mad4b/list-plugins', 'mad4b/abilities-inventory', 'mad4b/filesystem-list', 'mad4b/filesystem-read',
 				'mad4b/database-list-tables', 'mad4b/database-describe-table', 'mad4b/database-select', 'mad4b/diagnostics-health', 'mad4b/security-site-posture', 'mad4b/security-provider-evidence', 'mad4b/runtime-authority-status', 'mad4b/schema-status', 'mad4b/multi-authority-registry-status', 'mad4b/connection-status', 'mad4b/connector-preflight', 'mad4b/session-safe-diagnostics', 'mad4b/read-snapshot-header', 'mad4b/read-diagnostic-bundle', 'mad4b/read-metadata-envelope', 'mad4b/context-authority-status',
 				'mad4b/plugin-lifecycle-plan', 'mad4b/plugin-package-plan', 'mad4b/plugin-remote-update-plan', 'mad4b/plugin-deployment-sources', 'mad4b/plugin-deployment-plan', 'mad4b/plugin-deployment-intake-plan', 'mad4b/control-plane-update-status', 'mad4b/control-plane-upload-plan', 'mad4b/control-plane-native-plan', 'mad4b/control-plane-selected-head-plan', 'mad4b/workflow-provider-status', 'mad4b/workflow-plan', 'mad4b/runtime-functional-gap-diagnostic', 'mad4b/code-snippets-rest-bootstrap-diagnostic',
 				'mad4b/operating-model-status', 'mad4b/semantic-identity-map', 'mad4b/site-feature-bundle-validate', 'mad4b/state-diff', 'mad4b/operation-plan', 'mad4b/evidence-invalidation-plan', 'mad4b/invariant-evaluate', 'mad4b/candidate-state', 'mad4b/workflow-compile',
@@ -81,7 +81,7 @@ final class MAD4B_SCP_Servers {
                 'mad4b/host-operation-status', 'mad4b/host-operation-receipt',
 			), class_exists( 'MAD4B_SCP_Operation_Registry' ) ? MAD4B_SCP_Operation_Registry::read_projection( 'catalog' ) : array(), $governed_status, $cso_read ),
 			'mad4b-chatgpt' => array_merge( array(
-				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/site-autopilot-fast-status',
+				'mad4b/site-info', 'mad4b/site-profile-status', 'mad4b/environment-journey', 'mad4b/site-autopilot-fast-status',
 				'mad4b/session-safe-diagnostics', 'mad4b/optional-governance-status', 'mad4b/optional-governance-plan', 'mad4b/optional-governance-verify',
                 'mad4b/recovery-route-matrix', 'mad4b/deployment-binding-production-status',
                 'mad4b/staging-write-owner-review',
@@ -378,6 +378,7 @@ final class MAD4B_SCP_Servers {
 		$tools = array(
 			'mad4b/site-info',
 			'mad4b/site-profile-status',
+			'mad4b/environment-journey',
 			'mad4b/session-safe-diagnostics',
 			'mad4b/tool-discover',
 			'mad4b/tool-info',
