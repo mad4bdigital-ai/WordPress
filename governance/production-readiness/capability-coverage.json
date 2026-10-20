@@ -301,7 +301,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
       "review_rationale": "Owner consent for trusted test signers requires same-site authenticated admin, expected policy digest, exact key identity, allowlist and audit. The bounded RSA fixture tests unknown signer, key revocation, expiry, forged/modified certificate, target/site/environment binding and non-authorizing consent. No live Production trust enrollment is asserted.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -321,7 +321,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
       "review_rationale": "Read-only verifier checks RSA signature and exact package/manifest/version/source assertion, trusted issuer, environment, test PASS and expiry. The dedicated signed-test-attestation PHP suite is executed by governed-runtime-gates-contract.py. Result grants no write or Production certification.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -342,7 +342,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
       "review_rationale": "A new bounded Production batch service requires explicit site owner consent for up to 20 exact items with short expiry, stable site/agent identity, current OAuth/NHI binding, single-use ticket or install claim, separate native deployment planning, signed tests, deterministic rollback and audit. The PHP production automation fixture runs via the changed Python contract; no scheduled Production action is authorized by this review.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -362,7 +362,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
       "review_rationale": "Test certificate service enforces exact target site, build, signing key trust, signed package hash and required test cases, with invalidated, expired or revoked certificate refusal. The hermetic PHP signed-attestation fixture is executed by governed-runtime-gates-contract.py; Source reviewed for CI only, Production signer provisioning and deployment remain separately gated.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -1307,7 +1307,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4\u20138.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
@@ -1327,7 +1327,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4\u20138.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
@@ -1942,6 +1942,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Shared runtime diagnostics reject non-scalar blocker values, preserve bounded nested root code/inspection guidance without accepting outcome claims, and never authorize from error metadata. Boolean-only certified-reader/reclaim flags preserve unknown outcomes and single-shot execution. Behavioral runner reproduces original defects and checks positive/negative recovery cases. No new capability, grant or retry is introduced."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "source_blob_sha": "655b1ed3a1f37283d91dcc3706aaf1422aba0aa2",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress runtime and provider-governance reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Adds read-only bounded static inspection to exact Source Scan provider certification and release-ring facts, explicitly not checking mutation authority or breaker admission and not authorizing transport. Existing preflight and circuit-breaker order unchanged. Tests cover certification missing, staging canary, certified static-only and production-denied branches. Live ETG readback and existing guarded one-time ticket still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "fe53582dd2ceb4a19797ba772fbac54b27327a6b",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/provider-transport-eligibility-runtime.php"
+      ],
+      "owner_role": "MAD4B WordPress runtime and Brand Authority reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing opt-in Staging Brand recovery status now exposes an exact, non-authorizing Source Scan certification snapshot. No new write ability, owner approval, OAuth refresh, circuit admission, source scan, broad grant or Production mutation. Updated contract and PHP fixture enforce that static eligibility evidence never supplies write authority. Requires independent live Staging verification."
     }
   ],
   "code_change_rules": {
