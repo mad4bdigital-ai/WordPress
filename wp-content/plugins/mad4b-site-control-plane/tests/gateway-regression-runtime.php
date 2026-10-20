@@ -32,7 +32,7 @@ function apply_filters( $name, $value ) { return $value; }
 function get_current_user_id() { return $GLOBALS['receipt_user'] ?? 1; }
 function wp_get_current_user() { return (object) array( 'allcaps' => $GLOBALS['receipt_caps'] ?? array() ); }
 function current_user_can() { return false; }
-function get_option( $name, $default = false ) { return $default; }
+function get_option( $name, $default = false ) { return $GLOBALS['fixture_options'][$name] ?? $default; }
 function rest_url( $path ) { return 'https://ci.test/wp-json/' . $path; }
 function untrailingslashit( $value ) { return rtrim( $value, '/' ); }
 class MAD4B_SCP_Policy { static function can_read() { return $GLOBALS['read_allowed']; } static function can_admin() { return true; } static function can_mutate() { return true; } }
@@ -46,6 +46,7 @@ class MAD4B_SCP_Servers {
  static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
 }
 class MAD4B_SCP_Authorization {
+ static function remote_permission_denial_code( $name ) { return $GLOBALS['fixture_denial_code'] ?? ''; }
  static function execution_boundary_verified( $ability ) { return $ability->boundary; }
  static function begin_execution_callback_observation( $name ) { $GLOBALS['observation_started'][$name] = false; }
  static function execution_callback_started( $name ) { return ! empty( $GLOBALS['observation_started'][$name] ); }
@@ -62,7 +63,7 @@ class MAD4B_SCP_Identity_Context {
 }
 class MAD4B_SCP_Connector_Resilience {
  const CONTRACT = 'fixture';
- static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
+ static function execute_mutation( $lane, $name, $callback ) { if ( isset( $GLOBALS['fixture_transport_error'] ) ) return $GLOBALS['fixture_transport_error']; $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
  static function execute_read( $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
 }
 class MAD4B_SCP_Replay_Policy {
@@ -106,6 +107,7 @@ class MAD4B_SCP_Staging_Write_Planning_Guard {
 }
 class MAD4B_SCP_OAuth_Resource_Bridge { static function verified_bearer_active() { return $GLOBALS['bearer']; } }
 class GatewayFixture {
+ public $require_object_input = false; public $last_input;
  public $aliases = array(); public $boundary = true; public $permission = true; public $lane; public $readonly; public $calls = 0; public $schema_reads = 0; public $throw_exception = false; public $error_code = '';
  private $name;
  function __construct( $name, $lane, $readonly ) { $this->name = $name; $this->lane = $lane; $this->readonly = $readonly; }
@@ -117,7 +119,9 @@ class GatewayFixture {
  function get_label() { return 'Metadata fixture'; }
  function get_description() { return 'Schema must remain lazy'; }
  function execute( $input = null ) {
-  if ( ! $this->permission ) return new WP_Error( 'permission_denied' );
+  if ( ! $this->permission ) return new WP_Error( 'ability_invalid_permissions' );
+  if ( $this->require_object_input && ! is_array( $input ) && ! is_object( $input ) ) return new WP_Error( 'fixture_object_input_required' );
+  $this->last_input = $input;
   if ( is_array( $input ) && ! empty( $input['_mad4b_approval_ticket_id'] ) && $GLOBALS['approval_scope_active'] !== $input['_mad4b_approval_ticket_id'] ) return new WP_Error( 'approval_scope_missing' );
   $GLOBALS['observation_started'][$this->name] = true;
   if ( $this->throw_exception ) throw new RuntimeException( 'fixture planner exception' );
@@ -287,6 +291,40 @@ check_gateway(
  'Approval-plan did not recover cleanly after prior failed executions'
 );
 
+// Source-scan-shaped dispatch denials must expose the safe blocker even when
+// an MCP client drops WP_Error data. Never invoke the target or claim a ticket outcome.
+$scan = new GatewayFixture( 'context/source-scan-apply', 'write', false );
+$GLOBALS['abilities'][$scan->get_name()] = $scan;
+$GLOBALS['mounted']['mad4b-write'][$scan->get_name()] = true;
+$scan->permission = false;
+$scan_input = array_merge( array( 'ability_name' => $scan->get_name(), 'input' => array() ), prepared_dispatch_identity( $scan->get_name() ) );
+foreach ( array( '' => 'repair_dispatch_then_replan', 'mad4b_context_denied' => 'inspect_exact_permission_denial_then_replan', 'mad4b_google_invalid_grant' => 'inspect_google_connection_then_replan' ) as $denial => $action ) {
+ $GLOBALS['fixture_denial_code'] = $denial;
+ $failure = $dispatcher->write_execute( $scan_input );
+ $data = $failure->get_error_data();
+ $code = $denial ?: 'ability_invalid_permissions';
+ check_gateway( 'mad4b_write_dispatch_target_not_started' === $failure->get_error_code() && 0 === $scan->calls, 'Denied Source Scan entered target' );
+ check_gateway( $code === $data['original_error_code'] && $action === $data['client_action'], 'Exact dispatch blocker/action lost' );
+ check_gateway( false === $data['target_execution_entered'] && false === $data['blind_retry_allowed'] && 'not_started' === $data['mutation_state'], 'Pre-target failure became retryable or uncertain' );
+ check_gateway( false !== strpos( $failure->get_error_message(), $code ) && false !== strpos( $failure->get_error_message(), $action ), 'MCP-visible message lost safe blocker/action' );
+}
+$GLOBALS['fixture_denial_code'] = '';
+$GLOBALS['fixture_transport_error'] = new WP_Error( 'mad4b_provider_transport_precedence_denied', 'fixture transport rejection', array( 'reason_code'=>'provider_capability_not_write_certified' ) );
+$transport_failure = $dispatcher->write_execute( $scan_input );
+$transport_data = $transport_failure->get_error_data();
+check_gateway( 'provider_capability_not_write_certified' === $transport_data['original_error_code'] && 'inspect_provider_transport_eligibility_then_replan' === $transport_data['client_action'] && 0 === $scan->calls, 'provider preflight failure mislabeled as mounting repair or entered target' );
+check_gateway( false !== strpos( $transport_failure->get_error_message(), 'provider_capability_not_write_certified' ), 'provider reason lost in dispatcher-visible error' );
+unset( $GLOBALS['fixture_transport_error'] );
+$decision = new GatewayFixture( 'mad4b/approval-ai-decide', 'write', false );
+$GLOBALS['abilities'][$decision->get_name()] = $decision;
+$GLOBALS['mounted']['mad4b-write'][$decision->get_name()] = true;
+$decision->error_code = 'fixture_error_after_possible_decision';
+$decision_input = array_merge( array( 'ability_name' => $decision->get_name(), 'input' => array() ), prepared_dispatch_identity( $decision->get_name() ) );
+$decision_failure = $dispatcher->write_execute( $decision_input );
+$decision_data = $decision_failure->get_error_data();
+check_gateway( 'mad4b_approval_decision_outcome_unconfirmed' === $decision_failure->get_error_code() && 'unknown' === $decision_data['mutation_state'] && true === $decision_data['reconciliation_required'], 'Decision error asserted an unverified ticket outcome' );
+check_gateway( false === $decision_data['blind_retry_allowed'] && 'mad4b/approval-decision-handoff' === $decision_data['read_ability'] && '' === $GLOBALS['approval_scope_active'], 'Decision recovery replayed or leaked approval scope' );
+
 foreach ( array( 'internal', 'breakglass', 'developer-breakglass', 'unknown' ) as $lane ) {
  $row = array( 'ability_name' => 'fixture/sensitive', 'execution_lane' => $lane, 'execution_eligible' => true, 'readonly' => false );
  check_gateway( 'blocked' === MAD4B_SCP_Unified_Capability_Gateway::describe_execution( $row )['state'], 'Unsupported lane gained generic dispatcher: ' . $lane );
@@ -314,6 +352,21 @@ $search = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array( 'action' => 'se
 check_gateway( 7 === count( $search['items'] ) && 5000 === $search['universe_count'] && 'fixture/00000' === $search['items'][0]['ability_name'], 'High-cardinality relevance ordering/bounds regressed' );
 foreach ( $GLOBALS['abilities'] as $a ) check_gateway( 0 === $a->schema_reads, 'Metadata search loaded a schema' );
 check_gateway( microtime( true ) - $started < 5, '5000 Ability metadata search exceeded regression ceiling' );
+// MCP clients may omit the optional dispatcher input for a no-argument
+// object Ability. Omission must not become null at the target validator.
+$object_read = $GLOBALS['abilities']['fixture/00000'];
+$object_read->require_object_input = true;
+$identity = prepared_dispatch_identity( 'fixture/00000' );
+check_gateway( ! is_wp_error( $identity ), 'Cannot prepare object read fixture' );
+$object_result = $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000' ), $identity ) );
+check_gateway( ! is_wp_error( $object_result ) && array() === $object_read->last_input, 'Omitted object input was dispatched as null' );
+foreach ( array( null, 'invalid', 7 ) as $invalid_input ) {
+ $invalid_result = $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000', 'input' => $invalid_input ), $identity ) );
+ check_gateway( is_wp_error( $invalid_result ) && 'fixture_object_input_required' === $invalid_result->get_error_code(), 'Explicit invalid target input was normalized into success' );
+}
+$object_read->permission = false;
+check_gateway( is_wp_error( $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000' ), $identity ) ) ), 'Empty input normalization bypassed target permission' );
+$object_read->permission = true;
 $GLOBALS['blog'] = 2;
 $switched_apply = MAD4B_SCP_ChatGPT_Tool_Projection::can_apply();
 check_gateway( is_wp_error( $switched_apply ) && 'mad4b_projection_blog_switch_denied' === $switched_apply->get_error_code(), 'Switched blog reached site projection authority checks' );
@@ -335,3 +388,29 @@ $GLOBALS['abilities'] = array( 'vendor/product-edit' => $a );
 $aliases = MAD4B_SCP_Unified_Capability_Gateway::dispatch( array( 'action' => 'search', 'task' => 'تحديث المنتج' ) );
 check_gateway( 1 === $aliases['count'] && 0 === $a->schema_reads && 2 === count( $aliases['items'][0]['search_aliases'] ), 'Bounded Arabic alias discovery loaded schemas or failed matching' );
 echo "PASS bounded bilingual aliases remain metadata-only and non-authorizing\n";
+
+// Optional visibility has independent health. This summary must neither scan
+// the provider universe nor claim fixed-dispatch or authorization readiness.
+if ( ! class_exists( 'MAD4B_SCP_Site_Profile' ) ) {
+ class MAD4B_SCP_Site_Profile {
+  static function configured() { return true; }
+  static function origin_enrolled() { return true; }
+  static function site_urls_match_enrollment() { return true; }
+  static function current_environment() { return 'staging'; }
+  static function site_uuid() { return '00000000-0000-4000-8000-000000000001'; }
+  static function current_origin() { return 'https://fixture.example'; }
+  static function revision() { return 1; }
+ }
+}
+if ( ! class_exists( 'MAD4B_SCP_MCP_Catalog_Diagnostics' ) ) {
+ class MAD4B_SCP_MCP_Catalog_Diagnostics { const MAX_TOOLS = 36; const MAX_SERIALIZED_TOOL_BYTES = 98304; }
+}
+$option = MAD4B_SCP_ChatGPT_Tool_Projection::OPTION;
+$empty_summary = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+check_gateway( 'not_configured' === $empty_summary['projection_state'] && 'use_fixed_dispatch' === $empty_summary['projection_next_action'], 'Empty optional selection reported as a connector fault' );
+$GLOBALS['fixture_options'][$option] = array( 'contract' => MAD4B_SCP_ChatGPT_Tool_Projection::CONTRACT,
+ 'revision' => 1, 'abilities' => array( 'fixture/00000' => array() ), 'binding' => array() );
+$drift_summary = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+check_gateway( 'binding_drift' === $drift_summary['projection_state'] && 'plan_optional_projection_rebind' === $drift_summary['projection_next_action'], 'Stored optional binding drift was hidden' );
+check_gateway( false === $drift_summary['fixed_dispatch_health_evaluated'] && false === $drift_summary['projection_changes_authority'] && 0 === $drift_summary['ability_contract_scan_count'], 'Optional projection summary claimed authority or scanned schemas' );
+echo "PASS optional projection state is independent of fixed-dispatch health\n";

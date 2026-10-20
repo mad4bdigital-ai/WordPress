@@ -30,6 +30,7 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
                     'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
                     'include_provider_scan' => array( 'type' => 'boolean', 'default' => false ),
                     'include_host_challenge' => array( 'type' => 'boolean', 'default' => false ),
+                    'include_staging_gates' => array( 'type' => 'boolean', 'default' => false ),
                     'expected_snapshot_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                 ) ),
             'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
@@ -280,10 +281,10 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
         foreach ( array_keys( $input ) as $key ) {
             if ( ! in_array( $key, array( 'source_id', 'candidate_sha',
                 'include_provider_scan', 'include_host_challenge',
-                'expected_snapshot_sha256' ), true ) )
+                'include_staging_gates', 'expected_snapshot_sha256' ), true ) )
                 return self::denied( 'unexpected_parameter', 'No arbitrary receipt, SQL, URL or callback is accepted.' );
         }
-        foreach ( array( 'include_provider_scan', 'include_host_challenge' ) as $field )
+        foreach ( array( 'include_provider_scan', 'include_host_challenge', 'include_staging_gates' ) as $field )
             if ( isset( $input[ $field ] ) && ! is_bool( $input[ $field ] ) )
                 return self::denied( 'invalid_boolean', 'Provider and Host checks must be explicit booleans.' );
         $source = (string) ( $input['source_id'] ?? '' );
@@ -360,6 +361,14 @@ final class MAD4B_SCP_Operational_Acceptance_Evidence {
             'original_plan_sha256' => (string) ( $original_plan['plan_sha256'] ?? '' ),
         );
         $report = self::reduce( $facts, $mounts );
+        if ( ! empty( $input['include_staging_gates'] ) ) {
+            // This opt-in adds only direct current WordPress read observations;
+            // it never imports user-supplied Browser/SEO/mutation receipts.
+            require_once __DIR__ . '/class-mad4b-scp-staging-acceptance-gates.php';
+            $report['staging_gate_diagnostics'] = MAD4B_SCP_Staging_Acceptance_Gates::collect();
+            $report['staging_gate_diagnostics_sha256'] = self::digest( $report['staging_gate_diagnostics'] );
+            $report['staging_gate_diagnostics_authorizing'] = false;
+        }
         if ( '' !== $expected && ! hash_equals( $expected, $report['snapshot_sha256'] ) )
             return self::denied( 'snapshot_changed_replan', 'Evidence changed since the supplied snapshot. Collect a new exact plan.');
         return $report;

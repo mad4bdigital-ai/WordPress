@@ -550,8 +550,21 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		);
 		if ( ! is_array( $handshake ) ) return $base + array(
 			'state' => 'handshake_unavailable', 'next_action' => 'refresh_exact_site_handshake' );
-		if ( ! empty( $handshake['already_current'] ) ) return $base + array(
-			'state' => 'already_current', 'next_action' => 'readback_current_write_authority' );
+		if ( ! empty( $handshake['already_current'] ) ) {
+			// Current grants prove current authority, not the outcome of a
+			// previous invocation. Never hide an uncertain journal behind ready.
+			$latest_state = is_array( $latest ) ? (string) ( $latest['state'] ?? '' ) : '';
+			if ( ! in_array( $latest_state, array( 'NO_CURRENT_OPERATION_POINTER', 'VERIFIED' ), true ) )
+				return $base + array(
+					'state' => 'prior_operation_requires_reconciliation',
+					'authority_current' => true,
+					'latest_site_operation_state' => $latest_state,
+					'next_action' => 'read_owner_intent_and_exact_operation_journal_no_replay',
+				);
+			return $base + array( 'state' => 'already_current', 'authority_current' => true,
+				'latest_site_operation_state' => $latest_state,
+				'next_action' => 'readback_current_write_authority' );
+		}
 		if ( empty( $handshake['ready_to_apply'] ) || ! empty( $handshake['hard_blockers'] ) )
 			return $base + array(
 				'state' => 'prerequisites_blocked', 'next_action' => 'inspect_exact_site_blockers',
@@ -632,7 +645,14 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			$handshake = MAD4B_SCP_Staging_Write_Authority_Convergence::handshake();
 			if ( is_wp_error( $handshake ) || ! is_array( $handshake ) )
 				return self::guided_write_handoff_model( $row, null, null, null );
-			if ( ! empty( $handshake['already_current'] ) || empty( $handshake['ready_to_apply'] ) )
+			if ( ! empty( $handshake['already_current'] ) ) {
+				// The handshake already contains its exact site identity. Inspect
+				// one bounded journal pointer without rebuilding the full plan.
+				$site_uuid = (string) ( $handshake['exact_apply']['expected_site_uuid'] ?? '' );
+				$latest = MAD4B_SCP_Staging_Operation_Journal::latest( $site_uuid );
+				return self::guided_write_handoff_model( $row, $handshake, null, $latest );
+			}
+			if ( empty( $handshake['ready_to_apply'] ) )
 				return self::guided_write_handoff_model( $row, $handshake, null, null );
 			$plan = MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
 			if ( is_wp_error( $plan ) || ! is_array( $plan ) )

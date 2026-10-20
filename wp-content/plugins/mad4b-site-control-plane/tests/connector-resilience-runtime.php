@@ -591,4 +591,64 @@ mad4b_assert_true( false !== $bounded_json && strlen( $bounded_json ) <= MAD4B_S
 mad4b_assert_true( empty( $bounded['mutation_performed'] ), 'session-safe diagnostics must remain read-only' );
 mad4b_assert_true( empty( $bounded['production_mutation_performed'] ), 'session-safe diagnostics must never mutate Production' );
 
+// Malformed provider diagnostics must never replace the original failure with
+// a new PHP warning/exception or imply authority from an error response.
+$malformed = MAD4B_SCP_Connector_Resilience::safe_read( 'malformed_recovery', static function () {
+ return new WP_Error( 'mad4b_abuse_rate_storage_unavailable', 'SECRET-MUST-NOT-LEAK', array(
+  'topology_blockers' => array( array( 'nested' ), new stdClass(), 'database_topology_probe_error' ),
+  'authorizing' => 'false', 'blind_retry_allowed' => 'false',
+  'recovery_read_ability' => new stdClass(),
+ ) );
+}, array( 'retry_transient' => false ) );
+mad4b_assert_true( 'mad4b_abuse_rate_storage_unavailable' === ($malformed['error_code'] ?? ''), 'malformed metadata masked original error' );
+mad4b_assert_true( array( 'database_topology_probe_error' ) === $malformed['recovery']['topology_blockers'], 'non-scalar diagnostic blockers were not discarded' );
+mad4b_assert_true( false === $malformed['recovery']['authorizing'] && false === $malformed['recovery']['blind_retry_allowed'], 'error recovery granted authority or retry from truthy strings' );
+
+$nested_calls = 0;
+$nested = MAD4B_SCP_Connector_Resilience::execute_mutation( 'write', 'context/source-scan-apply', static function () use ( &$nested_calls ) {
+ return MAD4B_SCP_Connector_Resilience::execute_mutation( 'write', 'context/source-scan-apply', static function () use ( &$nested_calls ) {
+  ++$nested_calls;
+  return new WP_Error( 'mad4b_write_dispatch_target_not_started', 'SECRET-MUST-NOT-LEAK', array(
+   'original_error_code' => 'mad4b_google_invalid_grant',
+   'client_action' => 'inspect_google_connection_then_replan',
+   'authorizing' => true, 'blind_retry_allowed' => true,
+  ) );
+ } );
+} );
+$nested_data = $nested->get_error_data();
+mad4b_assert_true( 1 === $nested_calls, 'nested error caused a mutation retry' );
+mad4b_assert_true( 'mad4b_google_invalid_grant' === ($nested_data['recovery']['root_error_code'] ?? ''), 'nested wrapper lost original provider denial' );
+mad4b_assert_true( 'inspect_google_connection_then_replan' === $nested_data['recovery']['client_action'], 'nested wrapper lost bounded recovery action' );
+mad4b_assert_true( 'unknown' === $nested_data['mutation_state'] && $nested_data['reconciliation_required'], 'nested metadata weakened conservative mutation outcome' );
+mad4b_assert_true( false === $nested_data['recovery']['authorizing'] && false === $nested_data['recovery']['blind_retry_allowed'], 'nested error metadata enabled authorization or replay' );
+mad4b_assert_true( false !== strpos( $nested->get_error_message(), 'mad4b_google_invalid_grant' ) && false === strpos( $nested->get_error_message(), 'SECRET-MUST-NOT-LEAK' ), 'MCP-visible nested error lost safe code or leaked provider message' );
+
+// Diagnostic strings must not certify a recovery reader or reclaim eligibility.
+$uncertified = MAD4B_SCP_Connector_Resilience::execute_mutation( 'write', 'fixture/recovery', static function () {
+ return new WP_Error( 'fixture_uncertain', 'SECRET-MUST-NOT-LEAK', array(
+  'mad4b_mutation_evidence' => array( 'postcondition_recovery' => array(
+   'reader_certified' => 'false', 'retry_reclaim_eligible' => 'false',
+  ) ),
+ ) );
+} );
+$uncertified_data = $uncertified->get_error_data();
+mad4b_assert_true( false === $uncertified_data['postcondition_reader_certified'] && false === $uncertified_data['retry_reclaim_eligible'], 'truthy strings falsely certified postcondition recovery' );
+
+foreach ( array( array( true, true, true ), array( false, true, false ), array( 1, 1, false ) ) as $case ) {
+ $outcome = MAD4B_SCP_Connector_Resilience::execute_mutation( 'write', 'fixture/recovery', static function () use ( $case ) {
+  return new WP_Error( 'fixture_uncertain', 'SECRET-MUST-NOT-LEAK', array(
+   'mad4b_mutation_evidence' => array( 'postcondition_recovery' => array(
+    'reader_certified' => $case[0], 'retry_reclaim_eligible' => $case[1],
+   ) ),
+  ) );
+ } );
+ $metadata = $outcome->get_error_data();
+ mad4b_assert_true( $case[2] === $metadata['retry_reclaim_eligible'] && false === $metadata['blind_retry_allowed'] && 'unknown' === $metadata['mutation_state'], 'reader certification/reclaim changed execution or blind-retry authority' );
+}
+
+$google_read = MAD4B_SCP_Connector_Resilience::execute_read( 'context/source-scan-plan', static function () {
+ return new WP_Error( 'mad4b_google_invalid_grant', 'SECRET-MUST-NOT-LEAK' );
+} );
+mad4b_assert_true( false !== strpos( $google_read->get_error_message(), 'mad4b_google_invalid_grant' ) && false === strpos( $google_read->get_error_message(), 'SECRET-MUST-NOT-LEAK' ), 'read error message does not preserve safe Google blocker' );
+
 echo "mad4b.connector-resilience.runtime.v1: PASS\n";

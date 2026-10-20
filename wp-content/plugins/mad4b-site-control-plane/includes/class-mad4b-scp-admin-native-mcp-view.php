@@ -37,6 +37,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
                 'registered_write_count' => count( $writes ),
                 'read_ability' => isset( $reads[0] ) && is_string( $reads[0] ) ? $reads[0] : '',
                 'certified_provider' => ! empty( $item['provider_certification_ok'] ),
+                'operation_readiness' => isset( $item['operation_readiness'] ) && is_array( $item['operation_readiness'] ) ? $item['operation_readiness'] : array(),
                 'dependency_gap' => ! empty( $item['dependency_gap'] ),
                 'unreviewed_count' => (int) ( $item['unreviewed_namespace_candidates_count'] ?? 0 ),
             );
@@ -95,7 +96,7 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
         echo '<p class="description">Registration is not runtime authorization. The underlying inventory may call approved provider status hooks; no unknown Adapter callback or write is executed by this panel.</p>';
         echo '<p>Discovery: <code>' . esc_html( $model['state'] ) . '</code> · Observed: ' . esc_html( (string) $model['count'] ) . ' · Graph SHA-256: <code>' . esc_html( $model['sha'] ?: 'unavailable' ) . '</code></p>';
         if ( ! $model['complete'] ) echo '<div class="notice notice-warning inline"><p>Inventory is partial. Route plans are ineligible until discovery is complete.</p></div>';
-        echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th scope="col">Plugin / version</th><th scope="col">State</th><th scope="col">Abilities registered</th><th scope="col">Review evidence</th><th scope="col">Read route</th></tr></thead><tbody>';
+        echo '<div class="mad4b-scp-table-wrap"><table class="widefat striped"><thead><tr><th scope="col">Plugin / version</th><th scope="col">State</th><th scope="col">Abilities registered</th><th scope="col">Review evidence</th><th scope="col">Read route</th><th scope="col">Operations and next steps</th></tr></thead><tbody>';
         foreach ( $model['rows'] as $row ) {
             echo '<tr><th scope="row"><code>' . esc_html( $row['plugin_file'] ) . '</code><br>' . esc_html( $row['version'] ) . '</th>';
             echo '<td>' . esc_html( $row['active'] ? 'active' : 'inactive' ) . ' · <code>' . esc_html( $row['coverage_state'] ) . '</code></td>';
@@ -108,9 +109,23 @@ final class MAD4B_SCP_Admin_Native_MCP_View {
                 ) );
                 echo '<a href="' . esc_url( $link ) . '">Preview read route</a>';
             } else echo 'Not eligible for preview';
-            echo '</td></tr>';
+            echo '</td><td>';
+            $operations = $row['operation_readiness'];
+            echo '<details><summary>Operation readiness</summary>';
+            echo '<p>Refreshed from current registration and evidence. Each operation still requires authorization.</p>';
+            if ( empty( $operations['complete'] ) ) echo '<p>Operation discovery is partial.</p>';
+            echo '<p>' . esc_html( (string) ( $operations['integration_action'] ?? 'refresh_complete_runtime_discovery' ) ) . '</p><ul>';
+            foreach ( (array) ( $operations['operations'] ?? array() ) as $operation ) {
+                if ( ! is_array( $operation ) ) continue;
+                echo '<li><code>' . esc_html( (string) ( $operation['ability'] ?? '' ) ) . '</code>: '
+                    . esc_html( (string) ( $operation['state'] ?? 'unknown' ) ) . '<br>'
+                    . esc_html( implode( ', ', (array) ( $operation['blockers'] ?? array() ) ) ) . '<br>'
+                    . esc_html( (string) ( $operation['next_action'] ?? '' ) ) . '<br>'
+                    . esc_html( (string) ( $operation['verification']['contract_state'] ?? '' ) ) . '</li>';
+            }
+            echo '</ul><p>Readback and rollback must be verified for the exact target; discovery does not perform them.</p></details></td></tr>';
         }
-        if ( ! $model['rows'] ) echo '<tr><td colspan="5">No graph rows available on this page.</td></tr>';
+        if ( ! $model['rows'] ) echo '<tr><td colspan="6">No graph rows available on this page.</td></tr>';
         echo '</tbody></table></div>';
         if ( $model['offset'] > 0 ) echo '<a class="button" href="' . esc_url( self::tab_url( 'capabilities', array( 'offset' => max( 0, $model['offset'] - self::PAGE_SIZE ) ) ) ) . '">Previous</a> ';
         if ( null !== $model['next_offset'] ) echo '<a class="button" href="' . esc_url( self::tab_url( 'capabilities', array( 'offset' => $model['next_offset'] ) ) ) . '">Next</a>';

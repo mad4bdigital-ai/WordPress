@@ -262,6 +262,12 @@ final class MAD4B_SCP_Content_Jobs {
 			'contract' => self::CONTRACT,
 			'items' => array_values( array_filter( array_map( array( __CLASS__, 'row' ), is_array( $rows ) ? $rows : array() ) ) ),
 			'count' => is_array( $rows ) ? count( $rows ) : 0,
+			// A zero here is not a site-wide Doctor clearance: this query is
+			// intentionally constrained by the current brand and tenant fence.
+			'read_scope' => 'site_uuid_brand_id_tenant_id',
+			'site_wide_inventory_evaluated' => false,
+			'zero_rows_clear_site_wide_doctor' => false,
+			'cross_scope_repair_allowed' => false,
 			'mutation_performed' => false,
 		);
 	}
@@ -520,7 +526,7 @@ final class MAD4B_SCP_Content_Jobs {
 		$t = MAD4B_SCP_Schema::tables();
 		$sql = $wpdb->prepare( "SELECT * FROM {$t['content_jobs']} WHERE job_id=%s AND site_uuid=%s AND brand_id=%s AND tenant_id=%s LIMIT 1" . ( $for_update ? ' FOR UPDATE' : '' ), $job_id, $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] );
 		$row = $wpdb->get_row( $sql, ARRAY_A );
-		return is_array( $row ) ? $row : new WP_Error( 'mad4b_content_job_missing', 'ContentJob was not found for this site.' );
+		return is_array( $row ) ? $row : new WP_Error( 'mad4b_content_job_missing', 'ContentJob is not visible within the current authorized site, brand and tenant scope.' );
 	}
 
 	private static function append_event_locked( $job_id, $sequence, $event_type, $previous_state, $new_state, $previous_stage, $new_stage, $reason, array $actor, $plan_sha256, $artifact_id ) {

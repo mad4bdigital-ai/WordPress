@@ -210,18 +210,53 @@ $check( false === $doctor['mutation_performed'], 'Doctor reported mutation' );
 $check( false === $doctor['authorizing'], 'Doctor became authorizing' );
 
 $snapshot = $doctor['snapshot'];
-$check( $contains( $snapshot['stuck_jobs'], 'job_id', $stuck_job ), 'stuck ContentJob fixture was not detected' );
+$check( (int) $snapshot['stuck_job_count'] >= 1, 'stuck ContentJob fixture was not detected' );
 $check( ! $contains( $snapshot['stuck_jobs'], 'job_id', $other_job ), 'cross-site stuck ContentJob leaked into Doctor' );
-$check( $contains( $snapshot['orphan_jobs'], 'job_id', $orphan_job ), 'orphan ContentJob fixture was not detected' );
+$check( (int) $snapshot['orphan_job_count'] >= 1, 'orphan ContentJob fixture was not detected' );
 $check( ! $contains( $snapshot['orphan_jobs'], 'job_id', $other_job ), 'cross-site orphan ContentJob leaked into Doctor' );
-$check( $contains( $snapshot['expired_active_leases'], 'work_id', $work_id ), 'expired active lease fixture was not detected' );
-$check( $contains( $snapshot['overdue_outbox'], 'outbox_id', $pending_outbox ), 'overdue outbox fixture was not detected' );
-$check( $contains( $snapshot['dead_lettered_outbox'], 'outbox_id', $dead_outbox ), 'provider DLQ fixture was not detected' );
+$check( (int) $snapshot['expired_active_lease_count'] >= 1, 'expired active lease fixture was not detected' );
+$check( (int) $snapshot['overdue_outbox_count'] >= 1, 'overdue outbox fixture was not detected' );
+$check( (int) $snapshot['dead_lettered_outbox_count'] >= 1, 'provider DLQ fixture was not detected' );
 $check( ! $contains( $snapshot['dead_lettered_outbox'], 'outbox_id', $other_dead_outbox ), 'cross-site provider DLQ leaked into Doctor' );
-$check( $contains( $snapshot['stale_inbox'], 'provider_event_id', $provider_event ), 'stale inbox fixture was not detected' );
+$check( (int) $snapshot['stale_inbox_count'] >= 1, 'stale inbox fixture was not detected' );
 $check( (int) $snapshot['host_runner_uncertain_count'] >= 1, 'Host Runner uncertain mutation was not detected' );
 $check( (int) $snapshot['host_runner_recovery_required_count'] >= 1, 'Host Runner recovery-required state was not detected' );
 $check( (int) $snapshot['host_runner_dead_lettered_count'] >= 1, 'Host Runner dead-letter state was not detected' );
+
+$check( true === $snapshot['site_diagnostic_is_not_detail_read_authority'], 'site-level Doctor accidentally granted scoped detail read' );
+$check( false === $doctor['release_acceptance_evaluated'], 'Doctor health became release acceptance' );
+foreach ( array( 'stuck_jobs', 'orphan_jobs', 'expired_active_leases', 'overdue_outbox', 'stale_inbox', 'dead_lettered_outbox' ) as $group ) {
+ foreach ( $snapshot[$group] as $item ) {
+  $check( isset( $item['scope_relation'] ) && false === $item['automatic_repair_allowed'], 'SQL snapshot omitted scope/repair guard: ' . $group );
+  $check( ! array_key_exists( 'brand_id', $item ) && ! array_key_exists( 'tenant_id', $item ), 'Doctor exposed original job scope identifiers' );
+ }
+}
+
+// Exercise the exact mixed-tenant redaction boundary without relying on a
+// live tenant fixture or accidentally granting details via site-wide Doctor.
+$trusted = array( 'site_uuid' => $site_uuid, 'brand_ref' => 'doctor-ci', 'tenant_ref' => 'tenant-ci' );
+$rows = array(
+	array( 'job_id' => 'own-job', 'provider_event_id' => 'own-event', 'brand_id' => 'doctor-ci', 'tenant_id' => 'tenant-ci' ),
+	array( 'job_id' => 'foreign-job-secret', 'outbox_id' => 'foreign-outbox-secret', 'provider_event_id' => 'foreign-event-secret', 'brand_id' => 'doctor-ci', 'tenant_id' => 'foreign-tenant' ),
+	array( 'job_id' => 'legacy-job-secret', 'work_id' => 'legacy-work-secret', 'brand_id' => 'doctor-ci', 'tenant_id' => '' ),
+);
+$filtered = MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, $trusted, $site_uuid );
+$check( 3 === count( $filtered ), 'site-wide incident counts were lost during redaction' );
+$check( 'own-job' === $filtered[0]['job_id'] && false === $filtered[0]['cross_scope_details_redacted'], 'own-scope diagnostic details removed' );
+foreach ( array( 1, 2 ) as $index ) {
+	$row = $filtered[ $index ];
+	$check( true === $row['cross_scope_details_redacted'] && false === $row['automatic_repair_allowed'], 'foreign or legacy scope was not denied' );
+	foreach ( array( 'job_id', 'work_id', 'outbox_id', 'provider_event_id', 'brand_id', 'tenant_id' ) as $secret_key ) {
+		$check( ! array_key_exists( $secret_key, $row ), 'foreign-scope identifier leaked: ' . $secret_key );
+	}
+}
+$untrusted = MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, array(), $site_uuid );
+foreach ( $untrusted as $row ) {
+	$check( 'current_scope_unresolved' === $row['scope_relation'] && true === $row['cross_scope_details_redacted'], 'missing trusted scope did not fail closed' );
+	$check( ! isset( $row['job_id'] ) && ! isset( $row['provider_event_id'] ), 'unverified scope leaked details' );
+}
+$wrong_site = MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, array( 'site_uuid' => $other_site_uuid, 'brand_ref' => 'doctor-ci', 'tenant_ref' => 'tenant-ci' ), $site_uuid );
+$check( ! isset( $wrong_site[0]['job_id'] ) && true === $wrong_site[0]['cross_scope_details_redacted'], 'different-site scope bypassed redaction' );
 
 $finding_ids = array_column( $doctor['findings'], 'finding_id' );
 foreach ( array(
@@ -244,7 +279,7 @@ $check( false === $dlq['replay_available'], 'DLQ unexpectedly enabled replay' );
 $check( true === $dlq['original_items_preserved'], 'DLQ did not preserve original items' );
 $check( false === $dlq['mutation_performed'], 'DLQ status reported mutation' );
 $check( false === $dlq['authorizing'], 'DLQ status became authorizing' );
-$check( $contains( $dlq['items']['provider_outbox'], 'outbox_id', $dead_outbox ), 'provider DLQ item missing from DLQ status' );
+$check( (int) $dlq['dead_lettered_count'] >= 1, 'provider DLQ item missing from DLQ status' );
 $check( ! $contains( $dlq['items']['provider_outbox'], 'outbox_id', $other_dead_outbox ), 'cross-site provider DLQ leaked into DLQ status' );
 $check( $contains( $dlq['items']['host_runner'], 'job_id', $journal_jobs['DEAD_LETTERED'] ), 'Host Runner DLQ item missing from DLQ status' );
 

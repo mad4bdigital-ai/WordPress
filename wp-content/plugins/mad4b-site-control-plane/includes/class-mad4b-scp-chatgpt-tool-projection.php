@@ -1006,6 +1006,14 @@ final class MAD4B_SCP_ChatGPT_Tool_Projection {
 			'universe_count' => $universe_count,
 			'universe_count_exact' => $include_universe,
 			'binding_match' => $binding_match,
+			// Optional tool visibility is not connector/authority health. An
+			// empty selection is valid; a stored foreign binding needs only a
+			// separately planned hot-set rebind, never grant reconciliation.
+			'projection_state' => 0 === $stored_count ? 'not_configured'
+				: ( $binding_match ? 'bound' : 'binding_drift' ),
+			'projection_next_action' => 0 !== $stored_count && ! $binding_match
+				? 'plan_optional_projection_rebind' : 'use_fixed_dispatch',
+			'fixed_dispatch_health_evaluated' => false,
 			'catalog_preflight' => $catalog_preflight,
 			'catalog_preflight_error_code' => $catalog_preflight_error_code,
 			'catalog_preflight_performed' => $include_preflight,

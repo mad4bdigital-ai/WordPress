@@ -205,6 +205,8 @@ final class MAD4B_SCP_Operator_Doctor {
 			'site_uuid' => isset( $snapshot['site_uuid'] ) ? (string) $snapshot['site_uuid'] : '',
 			'observed_at' => isset( $snapshot['observed_at'] ) ? (string) $snapshot['observed_at'] : '',
 			'healthy' => empty( $findings ),
+			'healthy_semantics' => 'no_operator_findings_not_release_acceptance',
+			'release_acceptance_evaluated' => false,
 			'finding_count' => count( $findings ),
 			'findings' => $findings,
 			'snapshot' => $snapshot,
@@ -285,6 +287,44 @@ final class MAD4B_SCP_Operator_Doctor {
 		return array( 'available' => true, 'journal_root' => $resolved_journal, 'counts' => $counts, 'incidents' => $incidents );
 	}
 
+	/** Site diagnostics do not grant access to a different brand/tenant's jobs. */
+	public static function scope_job_rows( array $rows, array $scope, $site_uuid ) {
+		$known = isset( $scope['site_uuid'], $scope['brand_ref'], $scope['tenant_ref'] )
+			&& is_string( $scope['site_uuid'] ) && is_string( $scope['brand_ref'] ) && is_string( $scope['tenant_ref'] )
+			&& '' !== $scope['brand_ref'] && '' !== $scope['tenant_ref']
+			&& hash_equals( (string) $site_uuid, $scope['site_uuid'] );
+		$out = array();
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) continue;
+			$brand = isset( $row['brand_id'] ) && is_string( $row['brand_id'] ) ? $row['brand_id'] : '';
+			$tenant = isset( $row['tenant_id'] ) && is_string( $row['tenant_id'] ) ? $row['tenant_id'] : '';
+			$relation = ! $known ? 'current_scope_unresolved' : ( '' === $brand || '' === $tenant ? 'legacy_scope_binding_incomplete'
+				: ( hash_equals( $scope['brand_ref'], $brand ) && hash_equals( $scope['tenant_ref'], $tenant ) ? 'current_scope_match' : 'original_scope_review_required' ) );
+			if ( 'current_scope_match' !== $relation ) {
+				// A site-wide incident is visible as an aggregate but is not
+				// authority to disclose foreign/unknown tenant job, outbox,
+				// provider, lease or event identifiers (nor their payload data).
+				// Fail closed when the trusted scope cannot be resolved.
+				$row = array(
+					'scope_relation' => $relation,
+					'inspection_action' => 'verify_original_owner_scope_before_detail_read_or_repair',
+					'detail_read_authorized_by_doctor' => false,
+					'automatic_repair_allowed' => false,
+					'cross_scope_details_redacted' => true,
+				);
+			} else {
+				unset( $row['brand_id'], $row['tenant_id'] );
+				$row['scope_relation'] = $relation;
+				$row['inspection_action'] = 'read_job_and_events_through_existing_scope_gate';
+				$row['detail_read_authorized_by_doctor'] = false;
+				$row['automatic_repair_allowed'] = false;
+				$row['cross_scope_details_redacted'] = false;
+			}
+			$out[] = $row;
+		}
+		return $out;
+	}
+
 	private static function snapshot( $stale_seconds, $limit ) {
 		global $wpdb;
 		if ( ! class_exists( 'MAD4B_SCP_Schema' ) || ! MAD4B_SCP_Schema::critical_ready() ) {
@@ -303,7 +343,7 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$stuck_jobs = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT job_id,state,stage,job_revision,updated_at FROM {$t['content_jobs']} WHERE site_uuid=%s AND state IN ('QUEUED','RUNNING','WAITING_REVIEW','BLOCKED') AND updated_at<%s ORDER BY updated_at ASC LIMIT %d",
+				"SELECT job_id,brand_id,tenant_id,state,stage,job_revision,updated_at FROM {$t['content_jobs']} WHERE site_uuid=%s AND state IN ('QUEUED','RUNNING','WAITING_REVIEW','BLOCKED') AND updated_at<%s ORDER BY updated_at ASC LIMIT %d",
 				$site_uuid,
 				$cutoff,
 				$limit
@@ -312,7 +352,7 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$orphan_jobs = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT j.job_id,j.state,j.stage,j.job_revision,j.created_at FROM {$t['content_jobs']} j LEFT JOIN {$t['content_job_events']} e ON e.job_id=j.job_id WHERE j.site_uuid=%s GROUP BY j.id,j.job_id,j.state,j.stage,j.job_revision,j.created_at HAVING COUNT(e.id)=0 ORDER BY j.created_at ASC LIMIT %d",
+				"SELECT j.job_id,j.brand_id,j.tenant_id,j.state,j.stage,j.job_revision,j.created_at FROM {$t['content_jobs']} j LEFT JOIN {$t['content_job_events']} e ON e.job_id=j.job_id WHERE j.site_uuid=%s GROUP BY j.id,j.job_id,j.brand_id,j.tenant_id,j.state,j.stage,j.job_revision,j.created_at HAVING COUNT(e.id)=0 ORDER BY j.created_at ASC LIMIT %d",
 				$site_uuid,
 				$limit
 			),
@@ -320,7 +360,7 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$expired_leases = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT l.work_id,l.aggregate_id,l.worker_id,l.lease_epoch,l.expected_aggregate_revision,l.expires_at FROM {$t['work_leases']} l INNER JOIN {$t['content_jobs']} j ON l.aggregate_type='content_job' AND l.aggregate_id=j.job_id WHERE j.site_uuid=%s AND l.status='active' AND l.expires_at<=%s ORDER BY l.expires_at ASC LIMIT %d",
+				"SELECT j.brand_id,j.tenant_id,l.work_id,l.aggregate_id,l.worker_id,l.lease_epoch,l.expected_aggregate_revision,l.expires_at FROM {$t['work_leases']} l INNER JOIN {$t['content_jobs']} j ON l.aggregate_type='content_job' AND l.aggregate_id=j.job_id WHERE j.site_uuid=%s AND l.status='active' AND l.expires_at<=%s ORDER BY l.expires_at ASC LIMIT %d",
 				$site_uuid,
 				$now,
 				$limit
@@ -329,7 +369,7 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$overdue_outbox = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT o.outbox_id,o.job_id,o.provider_id,o.capability_id,o.attempts,o.status,o.available_at,o.last_error_class FROM {$t['outbox']} o INNER JOIN {$t['content_jobs']} j ON o.job_id=j.job_id WHERE j.site_uuid=%s AND o.status IN ('pending','retrying') AND o.available_at<=%s ORDER BY o.available_at ASC LIMIT %d",
+				"SELECT j.brand_id,j.tenant_id,o.outbox_id,o.job_id,o.provider_id,o.capability_id,o.attempts,o.status,o.available_at,o.last_error_class FROM {$t['outbox']} o INNER JOIN {$t['content_jobs']} j ON o.job_id=j.job_id WHERE j.site_uuid=%s AND o.status IN ('pending','retrying') AND o.available_at<=%s ORDER BY o.available_at ASC LIMIT %d",
 				$site_uuid,
 				$cutoff,
 				$limit
@@ -338,7 +378,7 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$stale_inbox = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT i.provider_id,i.provider_event_id,i.job_id,i.status,i.provider_execution_ref,i.received_at FROM {$t['inbox']} i INNER JOIN {$t['content_jobs']} j ON i.job_id=j.job_id WHERE j.site_uuid=%s AND i.processed_at IS NULL AND i.received_at<=%s ORDER BY i.received_at ASC LIMIT %d",
+				"SELECT j.brand_id,j.tenant_id,i.provider_id,i.provider_event_id,i.job_id,i.status,i.provider_execution_ref,i.received_at FROM {$t['inbox']} i INNER JOIN {$t['content_jobs']} j ON i.job_id=j.job_id WHERE j.site_uuid=%s AND i.processed_at IS NULL AND i.received_at<=%s ORDER BY i.received_at ASC LIMIT %d",
 				$site_uuid,
 				$cutoff,
 				$limit
@@ -347,12 +387,26 @@ final class MAD4B_SCP_Operator_Doctor {
 		);
 		$dead = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT o.outbox_id,o.job_id,o.provider_id,o.capability_id,o.attempts,o.last_error_class,o.updated_at FROM {$t['outbox']} o INNER JOIN {$t['content_jobs']} j ON o.job_id=j.job_id WHERE j.site_uuid=%s AND o.status='dead_lettered' ORDER BY o.updated_at DESC LIMIT %d",
+				"SELECT j.brand_id,j.tenant_id,o.outbox_id,o.job_id,o.provider_id,o.capability_id,o.attempts,o.last_error_class,o.updated_at FROM {$t['outbox']} o INNER JOIN {$t['content_jobs']} j ON o.job_id=j.job_id WHERE j.site_uuid=%s AND o.status='dead_lettered' ORDER BY o.updated_at DESC LIMIT %d",
 				$site_uuid,
 				$limit
 			),
 			ARRAY_A
 		);
+
+		// Use the same trusted scope source as Content Jobs; never accept a scope
+		// supplied in diagnostic input or weaken its detail-read SQL predicates.
+		$scope = array();
+		try {
+			$checkpoint = class_exists( 'MAD4B_SCP_Operational_Integrity' ) ? MAD4B_SCP_Operational_Integrity::capture() : null;
+			if ( is_array( $checkpoint ) && isset( $checkpoint['scope'] ) && is_array( $checkpoint['scope'] ) ) $scope = $checkpoint['scope'];
+		} catch ( \Throwable $error ) { $scope = array(); }
+		$stuck_jobs = self::scope_job_rows( is_array( $stuck_jobs ) ? $stuck_jobs : array(), $scope, $site_uuid );
+		$orphan_jobs = self::scope_job_rows( is_array( $orphan_jobs ) ? $orphan_jobs : array(), $scope, $site_uuid );
+		$expired_leases = self::scope_job_rows( is_array( $expired_leases ) ? $expired_leases : array(), $scope, $site_uuid );
+		$overdue_outbox = self::scope_job_rows( is_array( $overdue_outbox ) ? $overdue_outbox : array(), $scope, $site_uuid );
+		$stale_inbox = self::scope_job_rows( is_array( $stale_inbox ) ? $stale_inbox : array(), $scope, $site_uuid );
+		$dead = self::scope_job_rows( is_array( $dead ) ? $dead : array(), $scope, $site_uuid );
 
 		$host_runner = self::host_runner_incidents( $limit );
 
@@ -390,6 +444,9 @@ final class MAD4B_SCP_Operator_Doctor {
 			'host_runner_dead_lettered' => isset( $host_runner['incidents'] ) ? array_values( array_filter( $host_runner['incidents'], static function ( $row ) { return 'DEAD_LETTERED' === (string) $row['state']; } ) ) : array(),
 			'query_scope' => 'site_uuid_via_content_job_join_and_fixed_host_runner_evidence_root',
 			'cross_site_rows_exposed' => false,
+			'detail_read_scope' => 'site_uuid_plus_brand_id_plus_tenant_id',
+			'site_diagnostic_is_not_detail_read_authority' => true,
+			'automatic_job_repair_allowed' => false,
 			'mutation_performed' => false,
 		);
 	}
