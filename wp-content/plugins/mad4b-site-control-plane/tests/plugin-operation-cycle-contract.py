@@ -11,6 +11,7 @@ php = os.environ.get("MAD4B_TEST_PHP_BIN") or shutil.which("php")
 if not php:
     raise SystemExit("PLUGIN_OPERATION_CYCLE: PHP unavailable")
 for name, marker in (
+    ("connector-resilience-runtime.php", "mad4b.connector-resilience.runtime.v1: PASS"),
     ("gateway-regression-runtime.php", "PASS gateway regressions"),
     ("enrollment-guided-write-handoff-runtime.php", "MAD4B_ENROLLMENT_GUIDED_WRITE_HANDOFF: PASS"),
 ):

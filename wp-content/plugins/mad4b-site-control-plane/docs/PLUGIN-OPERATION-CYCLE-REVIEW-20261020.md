@@ -125,3 +125,34 @@ OAuth credentials or promote this connection repair to a Production grant.
 
 These are source-based recovery corrections and local simulated boundary tests.
 Neither reported live incident is marked resolved without fresh site readback.
+
+## Shared runtime follow-up review
+
+Reviewed shared read/write resilience, dispatcher boundaries, Enrollment error
+reconciliation, approval transition/replay admission and Source Scan provider
+flow for error masking and unsafe outcome/retry claims. This is source review,
+not a declaration that every installed provider or live path passed.
+
+Reproduced and corrected in the shared resilience service:
+
+- A provider topology blocker array/object was cast to string while building error
+  metadata. This produced a PHP warning/exception and replaced the actual provider
+  error with a second runtime failure. Non-scalar blocker values are discarded.
+- Error metadata cast the string "false" to boolean true for authorizing/retry
+  hints. Error recovery now always remains nonauthorizing and cannot enable blind
+  retry; normal read retry admission remains controlled by its existing policy.
+- Mutation wrappers discarded the safe root denial and bounded read/inspection
+  action on a second wrap. A diagnostic-only recovery whitelist now preserves
+  those across wrappers, and read/write messages include the safe code even if
+  the MCP client drops structured data. Outcome, retry and permission rules are
+  not inferred from nested metadata; uncertain outcomes still need reconciliation.
+- Postcondition recovery flags used truthiness, so strings such as "false" could
+  be reported as a certified reader/reclaim candidate. Only boolean true certifies
+  the reader; reclaim eligibility additionally requires a certified reader. This
+  is diagnostic eligibility only and never performs a reclaim or retry.
+
+Behavioral fixtures reproduced metadata masking and false certification before
+fixing the source. They also cover nested single-shot dispatch, safe messages,
+secret omission, valid boolean certification and uncertified recovery denial.
+The CI lifecycle runner executes these fixtures and fails on PHP diagnostics.
+No site-specific defaults, new authority, live request or deployment is added.

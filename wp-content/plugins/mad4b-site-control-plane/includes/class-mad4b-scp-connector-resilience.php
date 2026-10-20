@@ -286,7 +286,7 @@ final class MAD4B_SCP_Connector_Resilience {
 		$google_connection_failure = 0 === strpos( $original_error_code, 'mad4b_google_' );
 		return new WP_Error(
 			'mad4b_read_dispatch_execution_failed',
-			'Governed read execution failed. Inspect structured metadata before retrying.',
+			'Governed read execution failed. Blocker: ' . $original_error_code . '. Inspect structured recovery metadata before retrying.',
 			array(
 				'target' => $target,
 				'original_error_code' => $original_error_code,
@@ -342,10 +342,15 @@ final class MAD4B_SCP_Connector_Resilience {
 			if ( is_wp_error( $result ) ) {
 				$classification = self::classify_wp_error( $result );
 				$original_error_code = self::safe_error_code( $result );
+				$recovery = self::safe_mutation_recovery_metadata( $result );
 				$original_data = method_exists( $result, 'get_error_data' ) ? $result->get_error_data( $original_error_code ) : array();
 				$mutation_evidence = is_array( $original_data ) && isset( $original_data['mad4b_mutation_evidence'] ) && is_array( $original_data['mad4b_mutation_evidence'] ) ? $original_data['mad4b_mutation_evidence'] : array();
 				$postcondition_recovery = isset( $mutation_evidence['postcondition_recovery'] ) && is_array( $mutation_evidence['postcondition_recovery'] ) ? $mutation_evidence['postcondition_recovery'] : array();
 				if ( class_exists( 'MAD4B_SCP_Structural_Redaction' ) ) $postcondition_recovery = MAD4B_SCP_Structural_Redaction::redact( $postcondition_recovery, 'provider_error_metadata' );
+				if ( $postcondition_recovery ) {
+					$postcondition_recovery['reader_certified'] = true === ( $postcondition_recovery['reader_certified'] ?? false );
+					$postcondition_recovery['retry_reclaim_eligible'] = $postcondition_recovery['reader_certified'] && true === ( $postcondition_recovery['retry_reclaim_eligible'] ?? false );
+				}
 				$dispatch_not_started = self::wp_error_proves_mutation_not_started( $original_error_code );
 				if ( class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' ) ) MAD4B_SCP_Provider_Circuit_Breaker::record_result( $breaker, false, isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown' );
 				$code_suffix = $dispatch_not_started
@@ -354,12 +359,13 @@ final class MAD4B_SCP_Connector_Resilience {
 				return new WP_Error(
 					'mad4b_' . ( '' !== $surface ? $surface : 'mutation' ) . $code_suffix,
 					$dispatch_not_started
-						? 'Governed mutation was rejected before the target callback started. Repair the dispatch contract and re-plan before retrying.'
-						: 'Governed mutation returned an error after execution may have started. Reconcile observed postconditions before any retry.',
+						? 'Governed mutation was rejected before the target callback started. Blocker: ' . $recovery['root_error_code'] . '. Inspect recovery metadata and create a fresh exact plan.'
+						: 'Governed mutation returned an error after execution may have started. Blocker: ' . $recovery['root_error_code'] . '. Reconcile observed postconditions before any retry.',
 					array(
 						'surface' => $surface,
 						'target' => $target,
 						'original_error_code' => $original_error_code,
+						'recovery' => $recovery,
 						'category' => isset( $classification['category'] ) ? (string) $classification['category'] : 'unknown',
 						'client_action' => $dispatch_not_started ? 'repair_dispatch_then_replan' : 'reconcile_then_replan',
 						'retryable' => false,
@@ -684,6 +690,7 @@ final class MAD4B_SCP_Connector_Resilience {
 		if ( isset( $data['topology_blockers'] ) && is_array( $data['topology_blockers'] ) ) {
 			$blockers = array();
 			foreach ( $data['topology_blockers'] as $blocker ) {
+				if ( ! is_scalar( $blocker ) ) continue;
 				$blocker = sanitize_key( (string) $blocker );
 				if ( '' === $blocker ) continue;
 				$blockers[] = substr( $blocker, 0, 96 );
@@ -692,8 +699,29 @@ final class MAD4B_SCP_Connector_Resilience {
 			$out['topology_blockers'] = array_values( array_unique( $blockers ) );
 		}
 		foreach ( array( 'blind_retry_allowed', 'authorizing' ) as $key ) {
-			if ( array_key_exists( $key, $data ) ) $out[ $key ] = (bool) $data[ $key ];
+			// Error metadata is guidance, never a source of retry or authority.
+			if ( array_key_exists( $key, $data ) ) $out[ $key ] = false;
 		}
+		return $out;
+	}
+
+	/** Preserve bounded diagnostic provenance without trusting outcome/authority claims. */
+	private static function safe_mutation_recovery_metadata( WP_Error $error ) {
+		$out = self::safe_wp_error_recovery_metadata( $error );
+		$out['root_error_code'] = self::safe_error_code( $error );
+		$data = $error->get_error_data();
+		$data = is_array( $data ) ? $data : array();
+		$nested = isset( $data['recovery'] ) && is_array( $data['recovery'] ) ? $data['recovery'] : array();
+		$code = $nested['root_error_code'] ?? ( $data['original_error_code'] ?? '' );
+		if ( is_string( $code ) && 1 === preg_match( '/^[a-z0-9_-]{1,96}$/D', $code ) ) $out['root_error_code'] = $code;
+		$action = $nested['client_action'] ?? ( $data['client_action'] ?? '' );
+		if ( in_array( $action, array(
+			'inspect_google_connection_then_replan',
+			'inspect_exact_permission_denial_then_replan',
+			'read_exact_approval_ticket_before_further_decision_or_write',
+		), true ) ) $out['client_action'] = $action;
+		$out['authorizing'] = false;
+		$out['blind_retry_allowed'] = false;
 		return $out;
 	}
 
