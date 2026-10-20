@@ -137,8 +137,16 @@ jobs:
           META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
           if [ "$BASE_REF" = "master" ]; then
             if [ "$META_BASE" != "$BASE" ]; then
-              echo "BASELINE_METADATA_STALE expected_reviewed_master_parent=$BASE recorded=$META_BASE"
-              exit 1
+              # A non-Feature-007 PR must not rewrite inherited Feature-007
+              # review provenance to a master SHA it has not actually reviewed.
+              # Fail closed for any Feature-007 source change or invalid ancestry.
+              if git diff --quiet "$BASE"...HEAD -- specs/007-content-intelligence-workflow-platform/ \
+                && git merge-base --is-ancestor "$META_BASE" "$BASE"; then
+                echo "::warning title=Inherited Feature 007 baseline drift::Feature 007 metadata is stale in master; no Feature 007 files changed in this PR. Recorded=$META_BASE, current_master=$BASE. Reconcile via separately reviewed Feature 007 baseline."
+              else
+                echo "BASELINE_METADATA_STALE expected_reviewed_master_parent=$BASE recorded=$META_BASE"
+                exit 1
+              fi
             fi
           elif [ "$BASE_REF" = "$INTEGRATION_REF" ]; then
             git fetch --no-tags origin master
