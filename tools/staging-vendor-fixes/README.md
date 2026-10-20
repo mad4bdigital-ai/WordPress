@@ -14,6 +14,8 @@ installable plugin ZIPs and a SHA-256 manifest without executing WordPress.
 Changes:
 
 - JetEngine rejects invalid block identities before array access.
+- JetElements uses colon case separators in the real Lottie render switch,
+  removing PHP 8.5 deprecations without changing its local/external/default routing.
 - Elementor text replacements reject arrays and non-stringable objects; the
   structured `returnType=object` branch and stringable/scalar values remain intact.
   This bounds invalid output; the offending site tag configuration still needs review.
@@ -35,6 +37,15 @@ python3 tools/staging-vendor-fixes/build.py --source wp-content/plugins --output
 reproduces failures against original source, checks every payload entry, rejects
 archive drift, and repeats the build to verify deterministic hashes.
 
+The candidate manifest includes the original plugin version, canonical entrypoint,
+archive digest and per-file before/after digests. A matching version string alone
+does not prove the installed source matches. The existing `repair-status.json` is
+historical evidence from the earlier cycle, not a live readiness endpoint.
+
+The dedicated Public response and vendor runtime boundaries workflow executes the
+actual-source fixtures on PHP 7.4, 8.3 and 8.5. It rejects warnings/deprecations in
+lint output, verifies that each original regression fails for the expected reason,
+and publishes review-only candidate artifacts after the PHP 8.5 job succeeds.
 Local validation used PHP 8.3 and Node.js. The PHP 8.5 live scenario still needs
 verification after deployment. These are **uncertified Staging candidates**, not
 a successful deployment or a Production release. Existing plugin versions are

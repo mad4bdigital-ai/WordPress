@@ -74,7 +74,7 @@ transport = []
 class Response:
     status = 302
     def read(self, limit):
-        assert limit == mod.MAX_BODY
+        assert limit == mod.MAX_BODY + 1
         return b""
     def getheaders(self):
         return [("Location", "http://127.0.0.1/private")]
@@ -93,4 +93,35 @@ mod.PinnedHTTPSConnection = Connection
 with contextlib.redirect_stdout(io.StringIO()):
     assert mod.fetch("catalog", "/products/", target=targets[0])["http_status"] == 302
 assert len(transport) == 1, "Redirect must never be followed"
+assert mod.probe_exit_status([]) == 0
+assert mod.probe_exit_status([{"observations": [{"observed_issues": ["php_diagnostic_output"]}]}]) == 1
+assert mod.probe_exit_status([{"observations": [{"observed_issues": []}]}]) == 0
+# Real response-shape regressions: HTTP 200 is not a clean PHP/JSON response.
+for body, expected in (
+    (b'<b>Deprecated</b>: Using null as an array offset in <b>/private/site/plugin.php</b> on line <b>113</b>', 1),
+    (b'<b>Warning</b>: Array to string conversion in /private/site/tag.php on line 66<br>Warning: Array to string conversion in /private/site/tag.php on line 66', 2),
+    (b'Deprecated: Case statements followed by a semicolon (;) are deprecated in C:\\site\\lottie.php on line 519', 1),
+    (b'<p>Warning: limited availability. Deprecated products are listed below.</p>', 0),
+    (b'<script>"Warning: example in /private/foo.php on line 1"</script><!-- Warning: comment in /foo.php on line 2 -->', 0),
+):
+    result = mod.runtime_diagnostics(body)
+    assert result['observed_count'] == expected, result
+    assert '/private' not in json.dumps(result) and 'lottie.php' not in json.dumps(result)
+Response.status = 200
+Response.getheaders = lambda self: [("Content-Type", "text/html")]
+Response.read = lambda self, limit: b'<b>Warning</b>: Array to string conversion in /private/site/plugin.php on line 66'
+with contextlib.redirect_stdout(io.StringIO()):
+    warning_row = mod.fetch("catalog", "/products/", target=targets[0])
+assert warning_row['http_status'] == 200 and warning_row['observed_issues'] == ['php_diagnostic_output']
+assert '/private' not in json.dumps(warning_row) and warning_row['response_body_retained'] is False
+Response.getheaders = lambda self: [("Content-Type", "application/json")]
+Response.read = lambda self, limit: b'<b>Warning</b>: bad output in /site/a.php on line 1 {"ok":true}'
+with contextlib.redirect_stdout(io.StringIO()):
+    invalid_json = mod.fetch("catalog", "/products/", target=targets[0])
+assert 'invalid_json_response' in invalid_json['observed_issues']
+Response.read = lambda self, limit: b'x' * limit
+with contextlib.redirect_stdout(io.StringIO()):
+    bounded = mod.fetch("catalog", "/products/", target=targets[0])
+assert bounded['body_scan_complete'] is False and bounded['body_scan_bytes'] == mod.MAX_BODY
+assert bounded['json_inspection_state'] == 'deferred_body_budget'
 print("CONFIGURED_STAGING_HTTP: PASS (three business fixtures; no default targets; scoped public GET)")

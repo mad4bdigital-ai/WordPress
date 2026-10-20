@@ -1,0 +1,53 @@
+name: Public response and vendor runtime boundaries
+on:
+  pull_request:
+    paths:
+      - 'tools/staging-public-http-smoke.py'
+      - 'tests/staging-public-http-contract.py'
+      - 'tools/staging-vendor-fixes/**'
+      - 'wp-content/plugins/elementor.zip'
+      - 'wp-content/plugins/jet-engine.zip'
+      - 'wp-content/plugins/jet-elements.zip'
+      - 'wp-content/plugins/jet-search.zip'
+      - 'wp-content/plugins/jet-smart-filters.zip'
+      - '.github/workflows/staging-runtime-boundaries.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: runtime-boundaries-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: tokenizer
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Public response fixtures (no live requests)
+        run: python3 tests/staging-public-http-contract.py
+      - name: Pinned actual-source vendor regressions and deterministic packages
+        run: python3 tools/staging-vendor-fixes/verify.py
+      - name: Build review-only candidates
+        if: matrix.php == '8.5'
+        run: python3 tools/staging-vendor-fixes/build.py --source wp-content/plugins --output vendor-repair-candidates
+      - uses: actions/upload-artifact@v4
+        if: success() && matrix.php == '8.5'
+        with:
+          name: uncertified-vendor-repair-candidates-${{ github.sha }}
+          path: vendor-repair-candidates/
+          retention-days: 7

@@ -8,6 +8,7 @@ import os
 import re
 import socket
 import ssl
+import sys
 import time
 import urllib.parse
 from html.parser import HTMLParser
@@ -104,6 +105,48 @@ class LinkMetadata(HTMLParser):
             self.robots.append(a.get("content", "")[:180])
 
 
+class DiagnosticText(HTMLParser):
+    """Inspect rendered text, excluding scripts/styles and HTML comments."""
+    def __init__(self):
+        super().__init__()
+        self.parts, self.hidden = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() in ("script", "style"):
+            self.hidden += 1
+
+    def handle_endtag(self, tag):
+        if tag.lower() in ("script", "style"):
+            self.hidden = max(0, self.hidden - 1)
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.parts.append(data)
+
+
+def runtime_diagnostics(body):
+    # Require PHP's source/line suffix, rather than treating ordinary business
+    # copy such as "Warning: limited availability" as a runtime error.
+    parser = DiagnosticText()
+    parser.feed(body.decode("utf-8", "replace"))
+    text = re.sub(r"\s+", " ", " ".join(parser.parts))
+    pattern = (r"\b(Deprecated|Warning|Notice|Fatal error|Parse error|Recoverable fatal error|Strict Standards)"
+               r"\s*:\s*.{0,1800}?\s+in\s+(?:[A-Za-z]:[\\/]|/|phar://)"
+               r".{1,1000}?\s+on\s+line\s+\d+")
+    counts = {}
+    for match in re.finditer(pattern, text, re.I):
+        severity = re.sub(r"\s+", "_", match.group(1).lower())
+        counts[severity] = counts.get(severity, 0) + 1
+    # Never return messages, paths, line text, tokens or the response body.
+    return {"observed_count": sum(counts.values()), "severity_counts": counts}
+
+
+def probe_exit_status(records):
+    """Fail on observed errors only; this never certifies unobserved behavior."""
+    return int(any(row.get("observed_issues") for record in records
+                   for row in record["observations"]))
+
+
 def fetch(label, path, *, target):
     # Validate at the I/O boundary too; callers cannot substitute a route/origin.
     approved = validate_targets([target])[0]
@@ -117,26 +160,53 @@ def fetch(label, path, *, target):
         client.request("GET", path, headers={"User-Agent": "MAD4B-Staging-ReadOnly/2.0",
                        "Accept": "text/html,application/json;q=0.8", "Cache-Control": "no-cache, no-store"})
         response = client.getresponse()
-        code, body, headers = response.status, response.read(MAX_BODY), dict(response.getheaders())
+        code, body, headers = response.status, response.read(MAX_BODY + 1), dict(response.getheaders())
     except Exception as exc:
         error_class = type(exc).__name__[:90]
     finally:
         if client is not None:
             client.close()
     low = {k.lower(): v for k, v in headers.items()}
+    truncated, body = len(body) > MAX_BODY, body[:MAX_BODY]
     parsed = LinkMetadata()
-    if "text/html" in low.get("content-type", "").lower() and body:
-        parsed.feed(body.decode("utf-8", "replace"))
+    diagnostics = {"observed_count": 0, "severity_counts": {}}
+    inspection_error = ""
+    try:
+        if "text/html" in low.get("content-type", "").lower() and body:
+            parsed.feed(body.decode("utf-8", "replace"))
+        diagnostics = runtime_diagnostics(body)
+    except Exception as exc:
+        inspection_error = type(exc).__name__[:90]
+    json_state = "not_json"
+    if "json" in low.get("content-type", "").lower():
+        json_state = "deferred_body_budget" if truncated else "valid"
+        if not truncated:
+            try:
+                json.loads(body)
+            except (ValueError, UnicodeError):
+                json_state = "invalid"
+    challenge = bool(re.search(b"hcdn-cgi/jschallenge|Checking your browser before accessing", body[:2500], re.I))
+    issues = []
+    if error_class: issues.append("transport_error")
+    if not 200 <= code < 300: issues.append("http_status_not_success")
+    if challenge: issues.append("browser_challenge")
+    if diagnostics["observed_count"]: issues.append("php_diagnostic_output")
+    if json_state == "invalid": issues.append("invalid_json_response")
+    if inspection_error: issues.append("body_inspection_failed")
     row = {"route": label, "http_status": code,
            "elapsed_ms": round((time.monotonic() - start) * 1000, 1), "error_class": error_class,
            "content_type": low.get("content-type", "").split(";")[0][:80],
            "cache_headers_present": any(k in low for k in ("x-hcdn-cache-status", "x-litespeed-cache", "x-cache")),
-           "hcdn_challenge": bool(re.search(b"hcdn-cgi/jschallenge|Checking your browser before accessing", body[:2500], re.I)),
+           "hcdn_challenge": challenge,
+           "runtime_diagnostics": diagnostics, "observed_issues": issues,
+           "body_scan_complete": not truncated and not error_class and not inspection_error,
+           "body_scan_bytes": len(body), "body_scan_limit": MAX_BODY,
+           "json_inspection_state": json_state,
            "canonical_count": len(parsed.canonicals),
            "canonical_same_origin": bool(parsed.canonicals) and all(urllib.parse.urlsplit(h).hostname == host for h in parsed.canonicals),
            "hreflang_count": len(parsed.hreflang), "hreflang_languages": sorted(set(parsed.hreflang))[:15],
            "robots_meta_present": bool(parsed.robots), "response_body_retained": False}
-    print(f"{label}: HTTP {code} error={error_class or 'none'}")
+    print(f"{label}: HTTP {code} error={error_class or 'none'} issues={','.join(issues) or 'none_observed'}")
     return row
 
 
@@ -167,4 +237,4 @@ if __name__ == "__main__":
     raw = (os.environ.get("MAD4B_STAGING_PUBLIC_PROBE_TARGETS_JSON") or "[]")
     if len(raw) > 16384:
         raise SystemExit("Target configuration exceeds size limit")
-    main(json.loads(raw), args.output_dir)
+    sys.exit(probe_exit_status(main(json.loads(raw), args.output_dir)))
