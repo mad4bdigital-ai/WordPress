@@ -930,9 +930,19 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			return new WP_Error( 'mad4b_runtime_admin_target_unavailable', 'Certified runtime pair is missing exact release identity.' );
 		if ( version_compare( $target_version, $current_version, '<' ) )
 			return new WP_Error( 'mad4b_runtime_admin_downgrade_blocked', 'The release channel points to an older version.' );
-		if ( ! empty( $status['transaction']['state'] ) &&
-			! in_array( $status['transaction']['state'], array( 'committed', 'cancelled', 'rolled_back' ), true ) )
-			return new WP_Error( 'mad4b_runtime_admin_transition_in_progress', 'Runtime transition is already in progress.' );
+		$operation = isset( $input['expected_operation'] ) && is_string( $input['expected_operation'] )
+			? sanitize_key( wp_unslash( $input['expected_operation'] ) ) : '';
+		if ( '' !== $operation && 'reconcile_failed_transaction' !== $operation )
+			return new WP_Error( 'mad4b_runtime_admin_operation_invalid', 'Only a separately reviewed failed-transaction reconciliation is selectable.' );
+		if ( 'reconcile_failed_transaction' === $operation ) {
+			if ( empty( $status['transaction_integrity_ready'] ) || empty( $status['transaction_recovery']['eligible'] )
+				|| 'failed_transaction_requires_reconciliation' !== (string) ( $status['state'] ?? '' )
+				|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $input['expected_plan_sha256'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_runtime_admin_recovery_not_verified', 'A verified exact reconciliation plan is required.' );
+		} elseif ( ! empty( $status['transaction']['state'] ) &&
+			! in_array( $status['transaction']['state'], array( 'committed', 'cancelled', 'rolled_back' ), true ) ) {
+			return new WP_Error( 'mad4b_runtime_admin_transition_in_progress', 'Runtime transition requires independent readback or a separate exact reconciliation review.' );
+		}
 		$input_release = isset( $input['expected_release_set_sha256'] ) && is_string( $input['expected_release_set_sha256'] )
 			? sanitize_text_field( wp_unslash( $input['expected_release_set_sha256'] ) ) : '';
 		$input_current = isset( $input['expected_current_source_commit_sha'] ) && is_string( $input['expected_current_source_commit_sha'] )
@@ -948,10 +958,23 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		check_admin_referer( 'mad4b_runtime_release_set_apply' );
 		$preflight = self::admin_form_preflight( self::status(), $_POST, $_SERVER['REQUEST_METHOD'] ?? '' );
 		if ( is_wp_error( $preflight ) ) self::redirect_admin_result( 'blocked', $preflight->get_error_code() );
-		$reason = 'WordPress administrator requested the exact compatible MAD4B runtime release set.';
+		$reconciling = isset( $_POST['expected_operation'] )
+			&& 'reconcile_failed_transaction' === sanitize_key( wp_unslash( $_POST['expected_operation'] ) );
+		$reason = $reconciling
+			? 'WordPress administrator reviewed exact reconciliation of a verified failed runtime transaction.'
+			: 'WordPress administrator requested the exact compatible MAD4B runtime release set.';
 		$plan = self::plan( array( 'reason' => $reason ) );
 		if ( is_wp_error( $plan ) ) self::redirect_admin_result( 'plan_error', $plan->get_error_code() );
 		if ( empty( $plan['eligible'] ) ) self::redirect_admin_result( 'blocked', implode( ',', $plan['blockers'] ) );
+		if ( $reconciling ) {
+			$expected = isset( $_POST['expected_plan_sha256'] ) && is_string( $_POST['expected_plan_sha256'] )
+				? sanitize_text_field( wp_unslash( $_POST['expected_plan_sha256'] ) ) : '';
+			if ( 'reconcile_failed_transaction' !== $plan['operation'] ||
+				! hash_equals( (string) $plan['plan_sha256'], $expected ) )
+				self::redirect_admin_result( 'blocked', 'exact_reconciliation_plan_changed' );
+		} elseif ( 'reconcile_failed_transaction' === $plan['operation'] ) {
+			self::redirect_admin_result( 'blocked', 'separate_reconciliation_review_required' );
+		}
 		$result = self::apply_internal(
 			array(
 				'reason' => $reason,
