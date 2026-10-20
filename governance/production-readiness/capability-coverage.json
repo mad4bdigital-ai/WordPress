@@ -1211,6 +1211,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Expose one read-only environment guide in standard mad4b-read and bounded ChatGPT MCP read transports while keeping existing Write/Developer/Breakglass and Enrollment mutations under their independent scope gates. Direct tool visibility grants no authority. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "0281d8abb448ff74709a7169742b933e3b93bac8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance. Follow-up exact-source security review: even read-only suggested Staging prepared requests must match this enrolled site's UUID, exact dispatch/registration/schema digests, source SHA, plan digest, owner review digest and Write-only confirmation; cross-site or tampered nested proofs fail closed to invalid_staging_handoff without executing."
     }
   ],
   "code_change_rules": {
