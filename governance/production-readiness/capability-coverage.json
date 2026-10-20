@@ -2641,6 +2641,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "9512cee911ba065e1aa84d2cacde026764863adf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Google provider or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review the bounded Google Drive scan budget classification patch: token/refresh failures remain separate from provider deadline exhaustion; when a folder or asset fetch exhausts the 10-second budget, a typed partial inventory with complete=false is returned without authorizing missing-file conclusions, Source Scan Apply or provider promotion. The changed Python regression wrapper executes post-manual-update-guidance-runtime.php which asserts precise error classification. Full resumable generation-fenced inventory is explicitly pending under docs/runtime/google-drive-source-scan-acceptance.md; this CI-only review is not live source membership, Brand approval or Production evidence."
     }
   ],
   "code_change_rules": {
