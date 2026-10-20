@@ -1151,6 +1151,66 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "77ac43f7c05ec031d3bec6bddf567990c23613f2",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "9e2fe4d06d1278fc119313bbbe1018348169a341",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Register read-only environment-journey Ability with constrained operation-kind schema, without mutation callback, shell, privilege elevation, or direct owner consent. A pure reducer is exposed through a thin read-only runtime adapter. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "81ba43cb21f1376c9e9a58c63f99c11692761cde",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose one read-only environment guide in standard mad4b-read and bounded ChatGPT MCP read transports while keeping existing Write/Developer/Breakglass and Enrollment mutations under their independent scope gates. Direct tool visibility grants no authority. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance."
     }
   ],
   "code_change_rules": {
