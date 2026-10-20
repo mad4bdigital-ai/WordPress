@@ -288,6 +288,87 @@
       ],
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-provider, central authorization, reversible mutation and source review controls cover this bounded Staging scope; independent live certification remains mandatory."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-trust-owner-consent",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "GOVERNANCE-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Owner consent for trusted test signers requires same-site authenticated admin, expected policy digest, exact key identity, allowlist and audit. The bounded RSA fixture tests unknown signer, key revocation, expiry, forged/modified certificate, target/site/environment binding and non-authorizing consent. No live Production trust enrollment is asserted.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "ability:mad4b/test-attestation-verify",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Read-only verifier checks RSA signature and exact package/manifest/version/source assertion, trusted issuer, environment, test PASS and expiry. The dedicated signed-test-attestation PHP suite is executed by governed-runtime-gates-contract.py. Result grants no write or Production certification.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "A new bounded Production batch service requires explicit site owner consent for up to 20 exact items with short expiry, stable site/agent identity, current OAuth/NHI binding, single-use ticket or install claim, separate native deployment planning, signed tests, deterministic rollback and audit. The PHP production automation fixture runs via the changed Python contract; no scheduled Production action is authorized by this review.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-test-attestation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "review_rationale": "Test certificate service enforces exact target site, build, signing key trust, signed package hash and required test cases, with invalidated, expired or revoked certificate refusal. The hermetic PHP signed-attestation fixture is executed by governed-runtime-gates-contract.py; Source reviewed for CI only, Production signer provisioning and deployment remain separately gated.",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Previously reviewed governance, OAuth, audit, release, execution and security controls cover exact certificate / preapproved-batch contracts in isolated test fixtures; no new environment, role or unbounded mutation authority is introduced or certified."
     }
   ],
   "lifecycle": [],
