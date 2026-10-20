@@ -1,9 +1,10 @@
-name: ETG Staging Public HTTP Evidence
+name: ETG and ARE Staging Public HTTP Evidence
 
 on:
   pull_request:
     paths:
       - 'tools/etg-staging-public-http-smoke.py'
+      - 'tests/staging-dual-site-public-http-contract.py'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php'
       - '.github/workflows/etg-staging-public-http-smoke.yml'
   workflow_dispatch:
@@ -17,7 +18,7 @@ concurrency:
 
 jobs:
   observe:
-    name: ETG public fixed-route observation only
+    name: ETG/ARE public fixed-route observation only
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
@@ -28,13 +29,19 @@ jobs:
           persist-credentials: false
       - name: Enforce safe source script syntax
         run: python3 -m py_compile tools/etg-staging-public-http-smoke.py
+      - name: Test fixed-origin fail-closed and evidence-only contracts
+        run: python3 tests/staging-dual-site-public-http-contract.py
       - name: Collect read-only independent external observations
-        run: python3 tools/etg-staging-public-http-smoke.py
+        run: |
+          python3 tools/etg-staging-public-http-smoke.py --site etg
+          python3 tools/etg-staging-public-http-smoke.py --site are
       - name: Preserve evidence independent of release decision
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: etg-staging-public-http-${{ github.sha }}
-          path: etg-staging-public-smoke.json
+          name: etg-are-staging-public-http-${{ github.sha }}
+          path: |
+            etg-staging-public-smoke.json
+            are-staging-public-smoke.json
           if-no-files-found: warn
           retention-days: 14
