@@ -1727,6 +1727,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Expose the nonauthorizing administrator file workspace handoff from the deep self-update status without touching cached hotpath, update permissions, signed releases, archive verification or rollback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-authority-closure.php",
+      "source_blob_sha": "585529a44446e2d8eac6dc83f748da7d0e5f29a4",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure, site-neutral Brand recovery diagnostic reducer differentiates Google invalid_grant, current vs stale grants, and exact three-category content reviews. It never invokes network/DB writes or mints an approval, release, Skills checkpoint or Production capability. A hermetic ETG/ARE fixture and source contract verify no automatic retry, revoke or acceptance. This CI review is nonauthorizing and requires new live Staging readback."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "bbfb2270fcf175c86e716c8c0b1afff3b77aaa3d",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing read-only, exact-site Brand Core status gains opt-in operational_diagnostics with source-and-grant-scoped facts only. The default API is unchanged. The new reducer is lazy-loaded only after exact Staging confirmation, and owner consent/Google OAuth/source scan remain independent gates. Hermetic operational tests and exact source contracts cover fail-closed behavior. CI-only; no Production authorizations or live certification."
     }
   ],
   "code_change_rules": {
