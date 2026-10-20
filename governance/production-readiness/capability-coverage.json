@@ -749,21 +749,23 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
-      "source_blob_sha": "71e326a283024b9c737a018245baae971b0fb40f",
+      "source_blob_sha": "3362c1c266b296f1beb341daef3e4fd9e068ad83",
       "control_ids": [
         "MCP-01",
         "PROVIDERS-02",
         "SECURITY-01",
-        "PERFORMANCE-01"
+        "PERFORMANCE-01",
+        "SECURITY-03"
       ],
       "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-early-marker-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/owner-enrollment-error-reconciliation-regression.py"
       ],
       "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Fix exact cURL numeric error classifier ambiguity. cURL 60 (TLS) must not match cURL 6 (DNS); also enforce full numeric match for cURL 7 and 28 to avoid substring misclassification. 16 hermetic PHP fixtures plus explicit DNS/TLS/TCP/timeout/policy cases run as subprocesses in exact-head CI. This does not prove live site acceptability or authorize production."
+      "review_rationale": "Exact source-blob review: the Staging-only signed synthetic HTTP probe is classified during ordinary plugin inclusion, before wp_salt() exists; derive a purpose-scoped token from non-default strong AUTH_KEY/AUTH_SALT without loading pluggable.php early, and never issue an unsigned probe if signing keys are weak/missing. Preserve the 120-second two-window expiry, header/query parity, origin/TLS/redirect limits, nonauthorizing evidence and exclusion from performance baselines. Dedicated hermetic PHP test covers pre-pluggable execution, forgery, expiration and missing/weak secret fail-close; PHP compatibility matrix executes across 7.4–8.5. No Production changes, live browser acceptance or provider write certification are authorized."
     },
     {
       "owner_role": "MAD4B WordPress plugin maintainer / security reviewer",
