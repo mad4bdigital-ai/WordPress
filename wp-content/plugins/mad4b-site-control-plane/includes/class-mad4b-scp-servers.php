@@ -121,6 +121,7 @@ final class MAD4B_SCP_Servers {
 					: array(),
 				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
                 class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ? array( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY ) : array(),
+                class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ? MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools() : array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()

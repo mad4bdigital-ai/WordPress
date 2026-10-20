@@ -197,13 +197,14 @@ native_apply_body = self_update.split("public static function native_apply", 1)[
 for marker in (
     "public static function native_apply( $input, $bootstrap_revalidate = false )",
     "if ( $bootstrap_revalidate )",
-    "$bootstrap_access = self::can_bootstrap_native_apply( $input );",
+    "MAD4B_SCP_Runtime_Release_Set::revalidate_control_plane_bootstrap( $input )",
+    ": self::can_bootstrap_native_apply( $input );",
     "mad4b_self_update_bootstrap_revalidation_failed",
 ):
     if marker not in self_update:
         raise SystemExit(f"bootstrap self-update pre-mutation revalidation invariant missing: {marker}")
 verify_index = native_apply_body.find("$verified = self::verify_archive( $tmp, $manifest );")
-recheck_index = native_apply_body.find("$bootstrap_access = self::can_bootstrap_native_apply( $input );")
+recheck_index = native_apply_body.find(": self::can_bootstrap_native_apply( $input );")
 apply_index = native_apply_body.find("$result = self::apply_verified_archive(")
 if min(verify_index, recheck_index, apply_index) < 0 or not (verify_index < recheck_index < apply_index):
     raise SystemExit("bootstrap authority must be revalidated after archive verification and immediately before filesystem mutation")

@@ -193,6 +193,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'source_plugin' => 'mad4b-site-control-plane',
 				'registration_digest' => hash( 'sha256', wp_json_encode( $identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ),
 				'capability_tags' => array( 'dynamic', 'oauth-step-up', 'staging-only', 'non-authorizing-discovery' ),
+                'search_terms' => 'exact_runtime_release_set_v1' === $candidate['broker_dispatch_policy'] ? 'runtime update maintenance recovery' : '',
 			);
 		}
 		ksort( $operations, SORT_STRING );
@@ -218,8 +219,11 @@ final class MAD4B_SCP_Enrollment_Dispatch {
         // accepts only explicit, owner-reviewed, Staging-only declarations.
         // Other privileged operations keep their dedicated dispatch lane.
         if ( $verified_first_party && (
-            'owner_attestation_v1' !== ( $row['broker_dispatch_policy'] ?? '' )
-            || empty( $row['owner_intent_only'] )
+            ! MAD4B_SCP_Governed_Ability_Census::reviewed_broker_policy(
+                (string) ( $row['remote_ability'] ?? '' ),
+                array( 'broker_dispatch_policy' => $row['broker_dispatch_policy'] ?? '',
+                    'owner_intent_only' => ! empty( $row['owner_intent_only'] ),
+                    'authority_mutation_allowed' => false, 'normal_write_authority_required' => false ) )
             || empty( $row['callback_pair_digest'] )
             || empty( $row['human_decision_required'] ) ) ) {
             return new WP_Error( 'mad4b_enrollment_dispatch_policy_not_reviewed',
@@ -462,6 +466,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				isset( $row['remote_ability'] ) ? (string) $row['remote_ability'] : '',
 				isset( $row['provider'] ) ? (string) $row['provider'] : '',
 				isset( $row['executor'] ) ? (string) $row['executor'] : '',
+                isset( $row['search_terms'] ) ? (string) $row['search_terms'] : '',
 				isset( $row['remote_mode'] ) ? (string) $row['remote_mode'] : '',
 			) ) );
 			if ( ! self::query_matches( $query, $haystack ) ) continue;
@@ -790,7 +795,9 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			$owner_operation = 'staging_write_authority_convergence' === $operation_id
 				|| ( ! empty( $row['owner_intent_only'] )
 					&& 'owner_attestation_v1' === (string) ( $row['broker_dispatch_policy'] ?? '' ) );
-			if ( ! $skills_operation && ! $owner_operation ) return $result;
+			 $runtime_operation = 'exact_runtime_release_set_v1' === ( $row['broker_dispatch_policy'] ?? '' )
+                && 'mad4b/runtime-release-set-bootstrap-apply' === ( $row['remote_ability'] ?? '' );
+			if ( ! $skills_operation && ! $owner_operation && ! $runtime_operation ) return $result;
 			$envelope = array(
 				'contract' => self::CONTRACT,
 				'operation_id' => $row['operation_id'],
@@ -814,7 +821,10 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				// Retain the existing managed-Skills consumer contract.
 				$envelope['failed'] = true;
 				$envelope['operation_succeeded'] = false;
-			} else {
+			} elseif ( $runtime_operation ) {
+                $envelope['outcome_verified'] = false;
+                $envelope['next_action'] = 'read_runtime_release_set_status_and_update_attempt_before_replan';
+            } else {
 				// Owner decision remains a human gate even after the child errored.
 				$envelope['human_decision_required'] = true;
 				$envelope['outcome_verified'] = false;

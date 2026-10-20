@@ -120,6 +120,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 							'type' => 'tool',
 							'surface' => 'enrollment',
 							'chatgpt_direct_step_up' => true,
+							'governed_enrollment_broker' => true,
+							'broker_dispatch_policy' => 'exact_runtime_release_set_v1',
                             'generic_remote_admin' => false,
                             'production_mutation_allowed' => false,
 							'exact_chatgpt_client_required' => true,
@@ -207,6 +209,16 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		return $result;
 	}
 
+    public static function control_plane_bootstrap_active() {
+        return 'bootstrap' === self::component_mode( 'control_plane' );
+    }
+
+    public static function revalidate_control_plane_bootstrap( $input ) {
+        if ( ! self::control_plane_bootstrap_active() ) return new WP_Error(
+            'mad4b_runtime_release_set_component_context_required', 'Exact runtime component context is required.' );
+        return self::can_bootstrap_apply( $input );
+    }
+
 	public static function target_adapter_version() {
 		$policy = self::policy();
 		return isset( $policy['target_adapter_version'] ) ? trim( (string) $policy['target_adapter_version'] ) : '';
@@ -250,7 +262,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		$current_control_sha = isset( $current_control['source_commit_sha'] ) ? (string) $current_control['source_commit_sha'] : '';
 		$control_current = '' !== $control_target_sha && '' !== $current_control_sha && hash_equals( $control_target_sha, $current_control_sha );
 		$adapter_current = '' !== $target_adapter && '' !== $current_adapter && hash_equals( $target_adapter, $current_adapter );
-		$ready = $control_current && $adapter_current && ! empty( $readback['ready'] );
+		$ready = $control_current && $adapter_current && ! empty( $readback['ready'] )
+            && self::transaction_integrity_ready() && empty( $transaction['error_code'] );
 
 		return array(
 			'contract' => self::CONTRACT,
@@ -264,7 +277,9 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'mcp_adapter_current' => $adapter_current,
 			'runtime_readback' => $readback,
 			'ready' => $ready,
-			'state' => $ready ? 'ready' : ( self::transaction_active( $transaction ) ? 'transition_in_progress' : 'update_or_refresh_required' ),
+			'state' => ! self::transaction_integrity_ready() ? 'transaction_integrity_invalid' : ( $ready ? 'ready' : ( self::transaction_active( $transaction ) && ! empty( $transaction['error_code'] ) ? 'failed_transaction_requires_reconciliation' : ( self::transaction_active( $transaction ) ? 'transition_in_progress' : 'update_or_refresh_required' ) ) ),
+            'transaction_integrity_ready' => self::transaction_integrity_ready(),
+            'transaction_recovery' => self::transaction_recovery( $transaction, array( 'control_plane' => $current_control, 'mcp_adapter' => array( 'version' => $current_adapter ) ) ),
 			'transaction' => self::public_transaction( $transaction ),
 			'update_order' => isset( $policy['update_order'] ) ? $policy['update_order'] : array( 'control_plane', 'mcp_adapter' ),
 			'pair_certification_required' => true,
@@ -330,7 +345,16 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		}
 
 		$transaction = self::read_transaction();
-		if ( self::transaction_active( $transaction ) ) {
+        $recovery = self::transaction_recovery( $transaction, array( 'control_plane' => $current_control, 'mcp_adapter' => array( 'version' => $current_adapter ) ) );
+        if ( ! self::transaction_integrity_ready() ) $blockers[] = 'runtime_transaction_integrity_invalid';
+		if ( self::transaction_active( $transaction ) && empty( $recovery['eligible'] ) ) {
+            $state = (string) ( $transaction['state'] ?? '' );
+            if ( ! empty( $transaction['error_code'] ) || ! in_array( $state,
+                array( 'control_plane_updated_awaiting_resume', 'awaiting_runtime_readback' ), true ) )
+                $blockers[] = 'runtime_transaction_reconciliation_required';
+            if ( ( 'control_plane_updated_awaiting_resume' === $state && $control_update_required )
+                || ( 'awaiting_runtime_readback' === $state && ( $control_update_required || $adapter_update_required ) ) )
+                $blockers[] = 'runtime_transaction_component_readback_mismatch';
 			$stored_sha = isset( $transaction['release_set_sha256'] ) ? (string) $transaction['release_set_sha256'] : '';
 			if ( '' === $stored_sha || '' === $release_set_sha || ! hash_equals( $stored_sha, $release_set_sha ) ) $blockers[] = 'active_transaction_release_set_drift';
 		}
@@ -340,7 +364,8 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			: array( 'ready' => false, 'state' => 'deferred_until_exact_pair_installed' );
 
 		$operation = 'current';
-		if ( $control_update_required ) $operation = 'update_control_plane';
+		if ( ! empty( $recovery['eligible'] ) ) $operation = 'reconcile_failed_transaction';
+		elseif ( $control_update_required ) $operation = 'update_control_plane';
 		elseif ( $adapter_update_required ) $operation = 'update_mcp_adapter';
 		elseif ( self::transaction_active( $transaction ) && ! empty( $readback['ready'] ) ) $operation = 'finalize_release_set';
 		elseif ( self::transaction_active( $transaction ) ) $operation = 'await_runtime_readback';
@@ -348,6 +373,7 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		$plan = array(
 			'contract' => self::PLAN_CONTRACT,
 			'operation' => $operation,
+            'transaction_recovery' => $recovery,
 			'current' => array(
 				'control_plane' => $current_control,
 				'mcp_adapter' => array( 'version' => $current_adapter ),
@@ -420,11 +446,17 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		if ( empty( $plan['eligible'] ) ) return new WP_Error( 'mad4b_runtime_release_set_preflight_blocked', 'Runtime release-set preflight blocked the mutation.', array( 'blockers' => $plan['blockers'] ) );
 
 		$operation = isset( $plan['operation'] ) ? (string) $plan['operation'] : '';
+        if ( 'reconcile_failed_transaction' === $operation ) {
+            $reconciled = self::reconcile_failed_transaction( $plan );
+            if ( is_wp_error( $reconciled ) ) return $reconciled;
+            return self::result( $plan, 'failed_transaction_reconciled_replan_required', true, false );
+        }
 		if ( 'current' === $operation ) return self::result( $plan, 'current', false, false );
 
 		if ( 'finalize_release_set' === $operation ) {
-			self::commit_transaction( $plan, 'explicit_finalize' );
-			return self::result( $plan, 'committed', false, false );
+			$committed = self::commit_transaction( $plan, 'explicit_finalize' );
+            if ( is_wp_error( $committed ) ) return $committed;
+			return self::result( $plan, 'committed', true, false );
 		}
 		if ( 'await_runtime_readback' === $operation ) return self::result( $plan, 'awaiting_runtime_readback', false, true );
 
@@ -438,27 +470,34 @@ final class MAD4B_SCP_Runtime_Release_Set {
 					return is_wp_error( $revalidate ) ? $revalidate : new WP_Error( 'mad4b_runtime_release_set_bootstrap_revalidation_failed', 'Runtime release-set bootstrap became ineligible before Control Plane mutation.' );
 				}
 			}
-			$cp = MAD4B_SCP_Self_Update::native_apply(
-				array(
-					'reason' => $reason,
-					'expected_plan_sha256' => (string) $plan['control_plane']['plan_sha256'],
-				),
-				(bool) $bootstrap_step_up
-			);
+            $cp = self::with_component_context(
+                'control_plane', (string) $plan['target']['control_plane']['version'],
+                $bootstrap_step_up ? 'bootstrap' : 'forward',
+                static function () use ( $reason, $plan, $bootstrap_step_up ) {
+                    return MAD4B_SCP_Self_Update::native_apply(
+                        array( 'reason' => $reason,
+                            'expected_plan_sha256' => (string) $plan['control_plane']['plan_sha256'] ),
+                        (bool) $bootstrap_step_up
+                    );
+                }
+            );
 			if ( is_wp_error( $cp ) ) {
 				self::fail_transaction( $transaction, 'control_plane_apply_failed', $cp->get_error_code() );
 				return $cp;
 			}
-			self::transition_transaction( $transaction, 'control_plane_updated_awaiting_resume', array(
+            if ( ! is_array( $cp ) || true !== ( $cp['readback_verified'] ?? null ) ) {
+                self::fail_transaction( $transaction, 'control_plane_apply_failed', 'mad4b_runtime_component_result_unverified' );
+                return new WP_Error( 'mad4b_runtime_component_result_unverified', 'Component completion requires independent readback.' );
+            }
+			$transition = self::transition_transaction( $transaction, 'control_plane_updated_awaiting_resume', array(
 				'control_plane_result' => self::bounded_component_result( $cp ),
 			) );
+			if ( is_wp_error( $transition ) ) return $transition;
 			return self::result( $plan, 'control_plane_updated_awaiting_resume', true, true );
 		}
 
 		if ( 'update_mcp_adapter' === $operation ) {
-			$transaction = self::transaction_active( self::read_transaction() )
-				? self::read_transaction()
-				: self::begin_transaction( $plan, 'adapter_update_pending' );
+			$transaction = self::begin_transaction( $plan, 'adapter_update_pending' );
 			if ( is_wp_error( $transaction ) ) return $transaction;
 			if ( $bootstrap_step_up ) {
 				$revalidate = self::can_bootstrap_apply( $input );
@@ -489,9 +528,14 @@ final class MAD4B_SCP_Runtime_Release_Set {
 				self::fail_transaction( $transaction, 'mcp_adapter_apply_failed', $component->get_error_code() );
 				return $component;
 			}
-			self::transition_transaction( $transaction, 'awaiting_runtime_readback', array(
+            if ( ! is_array( $component ) || true !== ( $component['readback_verified'] ?? null ) ) {
+                self::fail_transaction( $transaction, 'mcp_adapter_apply_failed', 'mad4b_runtime_component_result_unverified' );
+                return new WP_Error( 'mad4b_runtime_component_result_unverified', 'Component completion requires independent readback.' );
+            }
+			$transition = self::transition_transaction( $transaction, 'awaiting_runtime_readback', array(
 				'mcp_adapter_result' => self::bounded_component_result( $component ),
 			) );
+			if ( is_wp_error( $transition ) ) return $transition;
 			return self::result( $plan, 'awaiting_runtime_readback', true, true );
 		}
 
@@ -622,6 +666,7 @@ final class MAD4B_SCP_Runtime_Release_Set {
 
 	private static function begin_transaction( array $plan, $state ) {
 		$current = self::read_transaction();
+        if ( ! self::transaction_integrity_ready() ) return new WP_Error( 'mad4b_runtime_transaction_integrity_invalid', 'Unverifiable transaction requires independent investigation.' );
 		if ( self::transaction_active( $current ) ) {
 			$expected = isset( $plan['release_set_sha256'] ) ? (string) $plan['release_set_sha256'] : '';
 			$actual = isset( $current['release_set_sha256'] ) ? (string) $current['release_set_sha256'] : '';
@@ -641,22 +686,109 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'production_mutation' => false,
 			'breakglass_included' => false,
 		);
-		return self::write_transaction( $transaction );
+		return self::write_transaction( $transaction, $current );
 	}
 
 	private static function transition_transaction( array $transaction, $state, array $extra = array() ) {
+		$expected = $transaction;
 		$transaction['state'] = sanitize_key( (string) $state );
 		$transaction['updated_at'] = gmdate( 'c' );
 		foreach ( $extra as $key => $value ) $transaction[ sanitize_key( (string) $key ) ] = $value;
-		return self::write_transaction( $transaction );
+		return self::write_transaction( $transaction, $expected );
 	}
 
-	private static function fail_transaction( array $transaction, $state, $error_code ) {
-		return self::transition_transaction( $transaction, $state, array( 'error_code' => sanitize_key( (string) $error_code ) ) );
-	}
+    private static function fail_transaction( array $transaction, $state, $error_code ) {
+        $proof = in_array( $state, array( 'control_plane_bootstrap_revalidation_failed', 'mcp_adapter_bootstrap_revalidation_failed' ), true )
+            || in_array( $error_code, self::pre_replacement_error_codes(), true );
+        return self::transition_transaction( $transaction, $state, array(
+            'error_code' => sanitize_key( (string) $error_code ),
+            'replacement_state' => $proof ? 'not_started' : 'unknown',
+        ) );
+    }
+
+    private static function pre_replacement_error_codes() {
+        // Exact errors returned before filesystem replacement, never prefixes.
+        return array( 'mad4b_self_update_plan_digest_required', 'mad4b_self_update_plan_changed',
+            'mad4b_self_update_preflight_blocked', 'mad4b_self_update_native_release_drift',
+            'mad4b_self_update_native_lineage_changed', 'mad4b_self_update_bootstrap_not_required',
+            'mad4b_self_update_continuation_prior_authority_drift' );
+    }
+
+    public static function transaction_recovery_from_signals( array $transaction, array $current, $quiet ) {
+        $out = array( 'contract' => 'mad4b.runtime-transaction-recovery.v1', 'eligible' => false,
+            'state' => 'independent_readback_required', 'automatic_retry_allowed' => false,
+            'next_action' => 'inspect_original_transaction_and_component_readback',
+            'read_only' => true, 'authorizing' => false, 'mutation_performed' => false );
+        if ( empty( $transaction ) || in_array( $transaction['state'] ?? '', array( 'committed', 'cancelled', 'rolled_back' ), true ) ) return array_replace( $out, array( 'state' => 'not_required', 'next_action' => 'none' ) );
+        $failed = in_array( $transaction['state'] ?? '', array( 'control_plane_apply_failed',
+            'control_plane_bootstrap_revalidation_failed', 'mcp_adapter_bootstrap_revalidation_failed' ), true );
+        $proof = 'not_started' === ( $transaction['replacement_state'] ?? '' )
+            || in_array( $transaction['error_code'] ?? '', self::pre_replacement_error_codes(), true );
+        if ( ! $failed || ! $proof || ! $quiet || ! empty( $transaction['control_plane_result'] )
+            || ! empty( $transaction['mcp_adapter_result'] ) ) return $out;
+        foreach ( array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+            $before = (string) ( $transaction['previous']['control_plane'][ $key ] ?? '' );
+            if ( '' === $before || ! hash_equals( $before, (string) ( $current['control_plane'][ $key ] ?? '' ) ) ) return $out;
+        }
+        $adapter = (string) ( $transaction['previous']['mcp_adapter']['version'] ?? '' );
+        if ( '' === $adapter || ! hash_equals( $adapter, (string) ( $current['mcp_adapter']['version'] ?? '' ) ) ) return $out;
+        return array_replace( $out, array( 'eligible' => true, 'state' => 'unchanged_pair_pre_replacement_failure',
+            'next_action' => 'apply_exact_reconciliation_then_replan_update' ) );
+    }
+
+    private static function transaction_recovery( array $transaction, array $current ) {
+        $quiet = false;
+        if ( class_exists( 'MAD4B_SCP_Runtime_Maintenance_Lease' ) && class_exists( 'MAD4B_SCP_Post_Update_Continuation' ) ) {
+            $lease = MAD4B_SCP_Runtime_Maintenance_Lease::status();
+            $permit = MAD4B_SCP_Post_Update_Continuation::status();
+            $quiet = is_array( $lease ) && false === ( $lease['active'] ?? null )
+                && is_array( $permit ) && empty( $permit['active'] )
+                && ! in_array( $permit['state'] ?? '', array( 'prepared', 'executing', 'pending_convergence', 'exact_readback_verified' ), true );
+        }
+        return self::transaction_recovery_from_signals( $transaction, $current, $quiet );
+    }
+
+    private static function transaction_integrity_ready() {
+        $raw = get_option( self::TRANSACTION_OPTION, null );
+        return null === $raw || ( is_array( $raw ) && ! empty( self::read_transaction() ) );
+    }
+
+    private static function reconcile_failed_transaction( array $plan ) {
+        $current = self::read_transaction();
+        if ( ! self::transaction_integrity_ready() || self::public_transaction( $current ) !== $plan['transaction'] )
+            return new WP_Error( 'mad4b_runtime_transaction_reconciliation_changed', 'Transaction changed; read status before replanning.' );
+        $recovery = self::transaction_recovery( $current, $plan['current'] );
+        if ( empty( $recovery['eligible'] ) ) return new WP_Error( 'mad4b_runtime_transaction_reconciliation_blocked', 'Independent transaction readback is required.' );
+        // Retain the signed failure and its proof. Never delete the transaction
+        // or label it committed; this exact apply only cancels unused metadata.
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_runtime_transaction_audit_required', 'Append-only reconciliation evidence is required.' );
+        $audit = MAD4B_SCP_Audit::record( 'mad4b/runtime-release-set-apply', array(
+            'event' => 'failed_transaction_reconciliation_reviewed',
+            'transaction' => self::public_transaction( $current ),
+            'plan_sha256' => $plan['plan_sha256'], 'recovery' => $recovery,
+            'current' => $plan['current'], 'production_mutation' => false,
+        ) );
+        if ( is_wp_error( $audit ) || empty( $audit ) ) return new WP_Error( 'mad4b_runtime_transaction_audit_failed', 'Reconciliation evidence was not persisted.' );
+        $result = self::transition_transaction( $current, 'cancelled', array(
+            'previous_failure_state' => (string) $current['state'],
+            'reconciliation_plan_sha256' => $plan['plan_sha256'],
+            'reconciliation_reason' => 'verified_pre_replacement_failure_unchanged_pair',
+        ) );
+        return is_wp_error( $result ) ? $result : true;
+    }
 
 	private static function commit_transaction( array $plan, $source ) {
 		$transaction = self::read_transaction();
+        if ( empty( $transaction ) || ! self::transaction_integrity_ready()
+            || self::public_transaction( $transaction ) !== ( $plan['transaction'] ?? array() )
+            || empty( $plan['runtime_readback']['ready'] ) )
+            return new WP_Error( 'mad4b_runtime_transaction_finalize_changed', 'Exact transaction and pair readback are required for finalization.' );
+        $control = MAD4B_SCP_Self_Update::cached_status();
+        foreach ( array( 'version', 'source_commit_sha', 'build_fingerprint', 'package_manifest_digest' ) as $key ) {
+            $expected = (string) ( $plan['target']['control_plane'][$key] ?? '' );
+            if ( '' === $expected || ! hash_equals( $expected, (string) ( $control['current'][$key] ?? '' ) ) )
+                return new WP_Error( 'mad4b_runtime_transaction_control_readback_mismatch', 'Control Plane disk identity does not match the finalized runtime pair.' );
+        }
 		$receipt = array(
 			'contract' => 'mad4b.runtime-release-receipt.v1',
 			'transaction_id' => isset( $transaction['transaction_id'] ) ? (string) $transaction['transaction_id'] : '',
@@ -668,13 +800,24 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'production_mutation' => false,
 			'breakglass_included' => false,
 		);
-		update_option( self::LAST_RECEIPT_OPTION, $receipt, false );
-		delete_option( self::TRANSACTION_OPTION );
-		if ( class_exists( 'MAD4B_SCP_Audit' ) ) MAD4B_SCP_Audit::record( 'mad4b/runtime-release-set-apply', $receipt );
+        if ( ! class_exists( 'MAD4B_SCP_Audit' ) ) return new WP_Error( 'mad4b_runtime_transaction_audit_required', 'Append-only runtime completion evidence is required.' );
+        $audit = MAD4B_SCP_Audit::record( 'mad4b/runtime-release-set-apply', array(
+            'event' => 'runtime_finalize_reviewed', 'receipt_candidate' => $receipt,
+            'transaction' => self::public_transaction( $transaction ) ) );
+        if ( is_wp_error( $audit ) || empty( $audit ) ) return new WP_Error( 'mad4b_runtime_transaction_audit_failed', 'Runtime completion evidence could not be persisted.' );
+        $committed = self::transition_transaction( $transaction, 'committed' );
+        if ( is_wp_error( $committed ) ) return $committed;
+        update_option( self::LAST_RECEIPT_OPTION, $receipt, false );
+        if ( get_option( self::LAST_RECEIPT_OPTION, null ) !== $receipt )
+            return new WP_Error( 'mad4b_runtime_transaction_receipt_readback_failed', 'Runtime completion receipt readback failed.' );
 		return $receipt;
 	}
 
 	private static function read_transaction() {
+		if ( function_exists( 'wp_cache_delete' ) ) {
+            wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
+            wp_cache_delete( 'notoptions', 'options' );
+        }
 		$value = get_option( self::TRANSACTION_OPTION, array() );
 		if ( ! is_array( $value ) || self::TRANSACTION_CONTRACT !== ( isset( $value['contract'] ) ? (string) $value['contract'] : '' ) ) return array();
 		$digest = isset( $value['integrity'] ) ? (string) $value['integrity'] : '';
@@ -684,12 +827,30 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		return $value;
 	}
 
-	private static function write_transaction( array $transaction ) {
-		unset( $transaction['integrity'] );
-		$transaction['integrity'] = self::transaction_integrity( $transaction );
-		update_option( self::TRANSACTION_OPTION, $transaction, false );
-		return $transaction;
-	}
+    private static function write_transaction( array $transaction, array $expected = array() ) {
+        unset( $transaction['integrity'] );
+        $transaction['integrity'] = self::transaction_integrity( $transaction );
+        // Exact database CAS: stale workers may not replace another transition.
+        global $wpdb;
+        if ( empty( $expected ) ) {
+            $written = add_option( self::TRANSACTION_OPTION, $transaction, '', false );
+        } elseif ( is_object( $wpdb ) && isset( $wpdb->options ) && method_exists( $wpdb, 'prepare' )
+            && method_exists( $wpdb, 'query' ) && function_exists( 'maybe_serialize' ) ) {
+            $written = 1 === (int) $wpdb->query( $wpdb->prepare(
+                "UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND BINARY option_value = BINARY %s",
+                maybe_serialize( $transaction ), self::TRANSACTION_OPTION, maybe_serialize( $expected )
+            ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.PreparedSQL.NotPrepared
+        } else {
+            return new WP_Error( 'mad4b_runtime_transaction_atomic_storage_required', 'Atomic transaction storage is required.' );
+        }
+        if ( function_exists( 'wp_cache_delete' ) ) {
+            wp_cache_delete( self::TRANSACTION_OPTION, 'options' );
+            wp_cache_delete( 'notoptions', 'options' );
+        }
+        if ( ! $written || get_option( self::TRANSACTION_OPTION, null ) !== $transaction )
+            return new WP_Error( 'mad4b_runtime_transaction_write_conflict', 'Transaction changed or could not be persisted; inspect status before retry.' );
+        return $transaction;
+    }
 
 	private static function transaction_integrity( array $transaction ) {
 		unset( $transaction['integrity'] );
@@ -710,6 +871,9 @@ final class MAD4B_SCP_Runtime_Release_Set {
 			'state' => isset( $transaction['state'] ) ? (string) $transaction['state'] : '',
 			'started_at' => isset( $transaction['started_at'] ) ? (string) $transaction['started_at'] : '',
 			'updated_at' => isset( $transaction['updated_at'] ) ? (string) $transaction['updated_at'] : '',
+            'error_code' => substr( sanitize_key( (string) ( $transaction['error_code'] ?? '' ) ), 0, 96 ),
+            'replacement_state' => (string) ( $transaction['replacement_state'] ?? 'unknown' ),
+            'transaction_digest' => self::digest( $transaction ),
 			'release_set_sha256' => isset( $transaction['release_set_sha256'] ) ? (string) $transaction['release_set_sha256'] : '',
 			'production_mutation' => false,
 			'breakglass_included' => false,
@@ -727,6 +891,7 @@ final class MAD4B_SCP_Runtime_Release_Set {
 		if ( empty( $readback['ready'] ) ) return;
 		$plan = array(
 			'release_set_sha256' => isset( $transaction['release_set_sha256'] ) ? $transaction['release_set_sha256'] : '',
+            'transaction' => self::public_transaction( $transaction ),
 			'target' => $target,
 			'runtime_readback' => $readback,
 		);

@@ -290,4 +290,43 @@ MAD4B_SCP_Site_Profile::$env = 'production';
 mad4b_check( array() === MAD4B_SCP_Governed_Ability_Census::eligible(),
     'Production did not fail closed' );
 mad4b_check( 0 === $GLOBALS['registered'][ $owner ]->calls, 'Discovery executed mutation' );
+// Runtime maintenance remains reachable through the fixed Enrollment broker
+// even if the optional direct tool was omitted from the 36-tool catalog.
+MAD4B_SCP_Site_Profile::$env = 'staging';
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-release-set.php';
+MAD4B_SCP_Runtime_Release_Set::register_abilities();
+$runtime_name = MAD4B_SCP_Runtime_Release_Set::BOOTSTRAP_APPLY_ABILITY;
+$runtime = $GLOBALS['registered'][ $runtime_name ];
+$runtime_candidates = MAD4B_SCP_Governed_Ability_Census::eligible();
+mad4b_check( isset( $runtime_candidates[$runtime_name] ), 'exact runtime bootstrap missing from fixed broker' );
+$runtime_id = $runtime_candidates[$runtime_name]['operation_id'];
+mad4b_check( 1 === MAD4B_SCP_Enrollment_Dispatch::discover( array( 'query' => 'runtime update' ) )['count'], 'runtime update intent search lost fallback' );
+$runtime_info = MAD4B_SCP_Enrollment_Dispatch::info( array( 'operation_id' => $runtime_id ) );
+mad4b_check( ! is_wp_error( $runtime_info ) && $runtime_info['remote_ability'] === $runtime_name,
+    'runtime broker did not bind real registration' );
+$runtime_call = array( 'operation_id' => $runtime_id,
+    'expected_registration_digest' => $runtime_info['registration_digest'],
+    'expected_dispatch_policy_digest' => $runtime_info['dispatch_policy_digest'],
+    'expected_input_schema_sha256' => $runtime_info['input_schema_sha256'],
+    'input' => array( 'reason' => 'exact runtime maintenance', 'expected_plan_sha256' => str_repeat( 'a', 64 ),
+        'confirmation' => MAD4B_SCP_Runtime_Release_Set::CONFIRMATION ) );
+WP_Ability::$test_result = new WP_Error( 'mad4b_runtime_release_set_plan_changed', 'PRIVATE_ERROR' );
+$error = MAD4B_SCP_Enrollment_Dispatch::execute( $runtime_call );
+mad4b_check( ! is_wp_error( $error ) && 'mad4b_runtime_release_set_plan_changed' === $error['target_error_code']
+    && null === $error['mutation_performed'] && ! $error['blind_retry_allowed']
+    && false === strpos( json_encode( $error ), 'PRIVATE_ERROR' ), 'runtime errors lost bounded reconciliation details' );
+WP_Ability::$test_result = null;
+$runtime_call['expected_registration_digest'] = str_repeat( '0', 64 );
+mad4b_check( is_wp_error( MAD4B_SCP_Enrollment_Dispatch::execute( $runtime_call ) ), 'runtime registration drift allowed' );
+// Copying runtime policy onto an arbitrary first-party callback cannot enroll it.
+$GLOBALS['registered'][$runtime_name] = new WP_Ability( $runtime_name, array(
+    'meta' => $runtime->get_meta(), 'input_schema' => $runtime->get_input_schema(),
+    'execute_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'attest' ),
+    'permission_callback' => array( 'MAD4B_SCP_Staging_Write_Owner_Intent', 'can_remote_attest' ),
+) );
+mad4b_check( ! isset( MAD4B_SCP_Governed_Ability_Census::eligible()[$runtime_name] ),
+    'runtime policy accepted the wrong first-party callback pair' );
+$GLOBALS['registered'][$runtime_name] = $runtime;
+MAD4B_SCP_Site_Profile::$env = 'production';
+mad4b_check( array() === MAD4B_SCP_Governed_Ability_Census::eligible(), 'runtime broker widened Production' );
 echo "DYNAMIC_FIRST_PARTY_ENROLLMENT_RUNTIME_PASS\n";

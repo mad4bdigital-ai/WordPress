@@ -1243,7 +1243,13 @@ final class MAD4B_SCP_Self_Update {
 		// concurrent reconcile, grant change, Breakglass enablement, or candidate
 		// bind fails closed instead of using a stale pre-download authorization.
 		if ( $bootstrap_revalidate ) {
-			$bootstrap_access = self::can_bootstrap_native_apply( $input );
+			// The runtime coordinator has its own exact OAuth/subject admission.
+            // Candidate-drift bootstrap is a separate, narrower operation.
+            $runtime_bootstrap = class_exists( 'MAD4B_SCP_Runtime_Release_Set' )
+                && MAD4B_SCP_Runtime_Release_Set::control_plane_bootstrap_active();
+            $bootstrap_access = $runtime_bootstrap
+                ? MAD4B_SCP_Runtime_Release_Set::revalidate_control_plane_bootstrap( $input )
+                : self::can_bootstrap_native_apply( $input );
 			if ( is_wp_error( $bootstrap_access ) || ! $bootstrap_access ) {
 				@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 				return is_wp_error( $bootstrap_access )
@@ -1258,7 +1264,7 @@ final class MAD4B_SCP_Self_Update {
 			$bootstrap_revalidate ? 'governed_native_release_pull_bootstrap' : 'governed_native_release_pull',
 			$expected,
 			$verified,
-			(bool) $bootstrap_revalidate
+			(bool) $bootstrap_revalidate && empty( $runtime_bootstrap )
 		);
 		@unlink( $tmp ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return $result;
@@ -2202,6 +2208,12 @@ final class MAD4B_SCP_Self_Update {
 					);
 				}
 			}
+
+            if ( class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) && MAD4B_SCP_Runtime_Release_Set::control_plane_bootstrap_active() ) {
+                $runtime_access = MAD4B_SCP_Runtime_Release_Set::revalidate_control_plane_bootstrap( array() );
+                if ( is_wp_error( $runtime_access ) || ! $runtime_access ) return is_wp_error( $runtime_access )
+                    ? $runtime_access : new WP_Error( 'mad4b_self_update_runtime_step_up_changed', 'Runtime step-up became ineligible before replacement.' );
+            }
 
 			self::$managed_apply = true;
 			$skin = new Automatic_Upgrader_Skin();
