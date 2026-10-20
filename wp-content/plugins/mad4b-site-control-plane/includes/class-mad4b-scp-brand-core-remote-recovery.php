@@ -596,6 +596,19 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'context' => is_array( $context ) ? $context : array(),
                 'brand' => $facts['brand_coverage'],
             ) );
+            // Read-only static certification snapshot of the exact ETG/ARE
+            // Context source-scan Ability. No write-lane authorization,
+            // Circuit Breaker reservation or provider operation is attempted.
+            $report['operational_diagnostics']['source_scan_transport'] =
+                class_exists( 'MAD4B_SCP_Provider_Transport_Eligibility' )
+                ? MAD4B_SCP_Provider_Transport_Eligibility::inspect_target_certification(
+                    'write', 'context/source-scan-apply'
+                ) : array(
+                    'reason_code' => 'provider_inspection_unavailable',
+                    'transport_eligible' => null,
+                    'authorizing' => false,
+                    'mutation_performed' => false,
+                );
         }
         $report['alternative_routes'] = MAD4B_SCP_Recovery_Alternatives::discover( 'all' );
         return $report;
