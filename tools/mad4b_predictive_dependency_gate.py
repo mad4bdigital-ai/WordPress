@@ -113,6 +113,7 @@ DOMAINS = {
     "package_identity": {
         "paths": [PLUGIN + "includes/*package*", PLUGIN + "includes/*self-update*",
                   PLUGIN + "config/*release*", ".github/workflows/mad4b-control-plane-package.yml",
+                  ".github/workflows/mad4b-release-verdict.yml",
                   ".github/workflows/mad4b-predictive-dependency-parity.yml",
                   ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"],
         "next": ["production_guard"],
@@ -297,6 +298,7 @@ def self_test() -> None:
     assert "mcp_transport" in domains_for([PLUGIN + "includes/class-mad4b-scp-read-consistency.php"])
     assert "owner_stepup" in domains_for([PLUGIN + "includes/class-mad4b-scp-staging-write-owner-intent.php"])
     assert "package_identity" in domains_for([".github/workflows/mad4b-control-plane-package.yml"])
+    assert "package_identity" in domains_for([".github/workflows/mad4b-release-verdict.yml"])
     assert "core" in domains_for(["tools/mad4b_predictive_dependency_gate.py"])
     assert "core" in domains_for([PLUGIN + "config/new-provider-contract.json"])
     from tempfile import TemporaryDirectory
