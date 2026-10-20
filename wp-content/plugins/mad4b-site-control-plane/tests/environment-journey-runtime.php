@@ -81,7 +81,7 @@ $invalid_guided['prepared_request']['input']['expected_site_uuid']
     = '8de35ca2-fb87-4a28-bc9c-33593d92fdad';
 $out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $invalid_guided );
 check( $out['state'] === 'invalid_staging_handoff' && $out['prepared_request'] === null,
-    'Wrong-site signed plan must never be proposed to this site's owner' );
+    'Wrong-site signed plan must never be proposed to the current owner' );
 $invalid_guided = $guided;
 $invalid_guided['prepared_request']['expected_dispatch_policy_digest'] = 'invalid';
 $out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $invalid_guided );
