@@ -1519,7 +1519,7 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'truncation_reasons' => $truncation_reasons,
 			// This is diagnostic evidence only: a partial inventory must never
 			// authorize Source Scan Apply, absence or deleted-asset conclusions.
-			'absence_certified' => (bool) $complete,
+			'partial_scan_requires_complete_rescan' => ! $complete,
 			'assets' => $assets,
 		);
 		self::$scan_deadline = $previous_scan_deadline;
