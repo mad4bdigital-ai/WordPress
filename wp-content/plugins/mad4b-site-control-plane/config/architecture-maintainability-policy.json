@@ -24,7 +24,7 @@
     "new_php_domain_service_max_lines": 900,
     "legacy_facades": {
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php": 2200,
-      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": 1700,
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": 1650,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-durable-execution.php": 1100,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php": 1050,
       "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php": 950
@@ -55,6 +55,12 @@
         "current_ceiling": 950,
         "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-target-fingerprint.php",
         "rationale": "Mutation-target canonicalization and resource-bound fingerprinting now belong to a dedicated domain service behind the Authorization facade."
+      },
+      "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php": {
+        "previous_ceiling": 1700,
+        "current_ceiling": 1650,
+        "extracted_service": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-ability-service.php",
+        "rationale": "Move governed plugin activation/deactivation execution and readback into a lazily-loaded domain service, preserving stable Ability callbacks and policy boundaries."
       }
     }
   },
