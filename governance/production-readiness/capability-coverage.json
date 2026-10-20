@@ -2194,6 +2194,70 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Make the exact site/brand/tenant read fence explicit on ContentJob list results; zero current-scope rows cannot close a site-wide Operator Doctor incident. Do not loosen load_job predicates or allow cross-tenant recovery; bounded PHP lint and source contract run via plugin-operation-cycle-contract.py and disposable WordPress ContentJob integration fixture remains required. Scope and zero-row behavior impact the automation/job lifecycle and database read contracts, so the review explicitly maps their existing controls."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-acceptance-gates.php",
+      "source_blob_sha": "eb6c4b73a95bcc59eee51028384abeed7833e394",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "BROWSER-01",
+        "ADMIN-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress Staging acceptance security reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only and nonauthorizing independent Staging acceptance summary. Live Skills READY is not blocked by stale historical checkpoint, but neither Skills, HTTP 200 nor Direct/AJAX PASS certify Browser Executor, isolated acceptance target, authorized mutation verify/undo, Memcached cross-worker/TTL proofs, Rank Math Write or Production. Every missing gate remains unapproved; no caller-supplied receipts or dynamic arbitrary browser URLs/Javascript. PHP fixture and source contracts exercise negative evidence and no side effects."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operational-acceptance-evidence.php",
+      "source_blob_sha": "b04b8d6b5ff15f582477c32da35abb42a2ffa9dc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "EXECUTION-01",
+        "PROVIDERS-02",
+        "BROWSER-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress guarded read and acceptance reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Existing administrator-only exact Staging operational acceptance evidence gains explicit boolean opt-in include_staging_gates. It calls the side-effect-free local reporter, publishes separately digested, nonauthorizing diagnostics; existing eight-stage evidence and original snapshot CAS semantics remain unchanged. No Browser task submission, content mutation, cache test write, provider certification or approvals issued."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "source_blob_sha": "22d9266a603d286e89156d0a477b9c1ed66b7885",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress Cache/Rate Limiter acceptance reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Fixes TTL false positive: absent object-cache key could be evicted or explicitly deleted, so the CLI expiry substep no longer claims ttl_expiration_proven. Records only missing-key observation and requires an independently timed, multi-request/worker/nodes proof before rate-limit certification. Test deliberately deletes the key to prove no false certification. No production cache mutation or external connection credentials."
     }
   ],
   "code_change_rules": {
