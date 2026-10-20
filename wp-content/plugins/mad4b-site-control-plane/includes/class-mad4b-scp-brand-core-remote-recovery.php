@@ -55,6 +55,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                     'source_id' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
                     'include_provider_scan' => array( 'type' => 'boolean', 'default' => false ),
                     'include_host_challenge' => array( 'type' => 'boolean', 'default' => false ),
+                    'include_operational_diagnostics' => array( 'type' => 'boolean', 'default' => false ),
                     'candidate_sha' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{40}$' ),
                 ),
                 'required' => array(),
@@ -492,7 +493,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
         if ( ! is_array( $input ) ) return self::denial( 'invalid_input' );
         foreach ( array_keys( $input ) as $key ) {
             if ( ! in_array( $key, array( 'source_id', 'include_provider_scan',
-                'include_host_challenge', 'candidate_sha' ), true ) )
+                'include_host_challenge', 'include_operational_diagnostics', 'candidate_sha' ), true ) )
                 return self::denial( 'unexpected_parameter' );
         }
         $source_id = isset( $input['source_id'] ) ? (string) $input['source_id'] : '';
@@ -578,6 +579,24 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
             }
         }
         $report = self::reduce( $facts, $available );
+        if ( ! empty( $input['include_operational_diagnostics'] ) ) {
+            // Opt-in read-only inspection: no source scan, ticket minting, Google
+            // refresh or permission mutation. Missing evidence remains blocked.
+            require_once __DIR__ . '/class-mad4b-scp-brand-authority-closure.php';
+            $google = class_exists( 'MAD4B_SCP_Google_Drive_Context' )
+                ? MAD4B_SCP_Google_Drive_Context::public_connection_status() : array();
+            $write = class_exists( 'MAD4B_SCP_Staging_Write_Authority' )
+                ? MAD4B_SCP_Staging_Write_Authority::reconciliation_plan() : array();
+            $context = class_exists( 'MAD4B_SCP_Context_Authority' )
+                ? MAD4B_SCP_Context_Authority::status() : array();
+            $report['operational_diagnostics'] = MAD4B_SCP_Brand_Authority_Closure::summarize( array(
+                'exact_staging' => $staging && ! $facts['evidence_drift'],
+                'google' => is_array( $google ) ? $google : array(),
+                'write' => is_array( $write ) ? $write : array(),
+                'context' => is_array( $context ) ? $context : array(),
+                'brand' => $facts['brand_coverage'],
+            ) );
+        }
         $report['alternative_routes'] = MAD4B_SCP_Recovery_Alternatives::discover( 'all' );
         return $report;
     }
