@@ -8,6 +8,7 @@ transport = (root / "includes" / "class-mad4b-scp-transport-context.php").read_t
 abilities = (root / "includes" / "class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 servers = (root / "includes" / "class-mad4b-scp-servers.php").read_text(encoding="utf-8")
 authorization = (root / "includes" / "class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
+decision_graph = (root / "includes" / "class-mad4b-scp-authorization-decision-graph.php").read_text(encoding="utf-8")
 execution_fence = (root / "includes" / "class-mad4b-scp-execution-fence.php").read_text(encoding="utf-8")
 planning_guard = (root / "includes" / "class-mad4b-scp-staging-write-planning-guard.php").read_text(encoding="utf-8")
 
@@ -102,7 +103,7 @@ if "private function schema( array $properties" not in abilities or "'additional
 required_authorization_boundary = [
     "private static $execution_callback_started = array();",
     "public static function permission_result_from_authorization",
-    "return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];",
+    "MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result )",
     "MAD4B_SCP_Authorization::permission_result_from_authorization( $result )",
     "public static function begin_execution_callback_observation",
     "public static function mark_execution_callback_started",
@@ -113,6 +114,9 @@ required_authorization_boundary = [
 for marker in required_authorization_boundary:
     if marker not in authorization:
         raise SystemExit("execution callback boundary invariant missing: " + marker)
+
+if "return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];" not in decision_graph:
+    raise SystemExit("permission verdict graph lost exact fail-closed preflight truth")
 
 for marker in [
     "private static function remember_trusted_execution_boundary",
