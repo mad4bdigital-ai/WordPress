@@ -2307,14 +2307,13 @@
         "DATABASE-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/operator-doctor-runtime.php",
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
       ],
       "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Close cross-tenant information disclosure in the site-wide Operator Doctor result. Preserve aggregate findings while fail-closed redacting every foreign/legacy/unresolved-scope row, including job, outbox, lease and provider event identifiers. Disposable mixed-tenant runtime fixtures verify same-scope visibility and denial of foreign/unknown identifiers. No authorization, repair or production mutation is granted."
+      "review_rationale": "Close cross-tenant information disclosure in the site-wide Operator Doctor result. Preserve aggregate findings while fail-closed redacting every foreign/legacy/unresolved-scope row, including job, outbox, lease and provider event identifiers. Disposable mixed-tenant runtime fixtures verify same-scope visibility and denial of foreign/unknown identifiers. No authorization, repair or production mutation is granted. The checked-in pure PHP behavior fixture is executed by the bounded Python regression runner; disposable WP-CLI/MariaDB tests remain separate and are not misidentified as PHPUnit."
     }
   ],
   "code_change_rules": {
