@@ -1136,6 +1136,67 @@ final class MAD4B_SCP_Self_Update {
         return true;
     }
 
+    /** Route guidance never authorizes or invokes an update. */
+    public static function native_execution_guidance_from_signals( array $signals ) {
+        $ready = true === ( $signals['write_authority_ready'] ?? null );
+        $out = array( 'contract' => 'mad4b.native-update-execution-guidance.v1',
+            'state' => 'authority_reconciliation_required', 'apply_ability' => '',
+            'dispatch_tool' => '', 'direct_tool_required' => false,
+            'normal_write_authority_ready' => $ready,
+            'host_tool_visibility_verified' => false, 'route_is_authority' => false,
+            'automatic_execution_allowed' => false, 'automatic_retry_allowed' => false,
+            'bootstrap_must_not_replace_normal_apply' => $ready,
+            'exact_plan_required' => true, 'original_approval_required' => true,
+            'next_action' => 'inspect_exact_authority_handoff',
+            'local_admin_handoff' => array( 'page' => 'mad4b-runtime-components', 'tab' => 'maintenance',
+                'requires_authenticated_admin' => true, 'requires_fresh_plan_and_nonce' => true,
+                'backup_and_exact_disk_readback_required' => true, 'automatic_execution_allowed' => false ),
+            'read_only' => true, 'mutation_performed' => false, 'authorizing' => false,
+            'included_in_plan_sha256' => false );
+        if ( true !== ( $signals['staging_exact'] ?? null ) ) return array_replace( $out,
+            array( 'state' => 'environment_or_origin_not_exact', 'next_action' => 'inspect_site_profile' ) );
+        if ( $ready ) {
+            $out['apply_ability'] = 'mad4b/control-plane-native-apply';
+            if ( true === ( $signals['write_dispatch_mounted'] ?? null )
+                && true === ( $signals['native_admin_mounted'] ?? null ) ) {
+                $out['dispatch_tool'] = 'mad4b/write-execute';
+                $out['state'] = 'normal_governed_dispatch_preparation_required';
+                $out['next_action'] = 'prepare_native_apply_schema_receipt_and_original_exact_approval';
+            } elseif ( true === ( $signals['native_direct_mounted'] ?? null ) ) {
+                $out['dispatch_tool'] = 'mad4b/control-plane-native-apply';
+                $out['state'] = 'normal_direct_tool_visibility_unverified';
+                $out['next_action'] = 'verify_host_tools_list_then_original_exact_approval';
+            } else {
+                $out['state'] = 'normal_apply_transport_unavailable';
+                $out['next_action'] = 'use_authenticated_native_admin_after_independent_readback';
+            }
+        } elseif ( false === ( $signals['write_authority_ready'] ?? null )
+            && true === ( $signals['candidate_drift_eligible'] ?? null )
+            && true === ( $signals['bootstrap_direct_mounted'] ?? null ) ) {
+            $out['state'] = 'candidate_drift_bootstrap_preparation_required';
+            $out['apply_ability'] = self::BOOTSTRAP_APPLY_ABILITY;
+            $out['dispatch_tool'] = self::BOOTSTRAP_APPLY_ABILITY;
+            $out['next_action'] = 'review_exact_candidate_drift_plan_and_oauth_step_up';
+        }
+        return $out;
+    }
+
+    private static function native_execution_guidance( array $continuation ) {
+        $mounted = static function ( $server, $ability ) {
+            return class_exists( 'MAD4B_SCP_Servers' ) && method_exists( 'MAD4B_SCP_Servers', 'ability_is_mounted' )
+                && MAD4B_SCP_Servers::ability_is_mounted( $server, $ability );
+        };
+        return self::native_execution_guidance_from_signals( array(
+            'staging_exact' => self::environment_allowed( true ),
+            'write_authority_ready' => $continuation['current_authority_ready'] ?? null,
+            'candidate_drift_eligible' => $continuation['bootstrap_candidate_drift_eligible'] ?? false,
+            'write_dispatch_mounted' => $mounted( 'mad4b-chatgpt', 'mad4b/write-execute' ),
+            'native_admin_mounted' => $mounted( 'mad4b-admin', 'mad4b/control-plane-native-apply' ),
+            'native_direct_mounted' => $mounted( 'mad4b-chatgpt', 'mad4b/control-plane-native-apply' ),
+            'bootstrap_direct_mounted' => $mounted( 'mad4b-chatgpt', self::BOOTSTRAP_APPLY_ABILITY ),
+        ) );
+    }
+
 	public static function native_plan( $input ) {
 		$input = is_array( $input ) ? $input : array();
 		$current = self::installed_identity();
@@ -1194,6 +1255,8 @@ final class MAD4B_SCP_Self_Update {
 		sort( $plan['blockers'], SORT_STRING );
 		$plan['plan_sha256'] = self::digest( $plan );
 		$plan['write_binding'] = array( 'expected_plan_sha256' => $plan['plan_sha256'] );
+        // Transport visibility can change independently; it is not plan authority.
+        $plan['execution_guidance'] = self::native_execution_guidance( $continuation_projection );
 		return $plan;
 	}
 

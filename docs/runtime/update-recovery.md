@@ -41,3 +41,21 @@ independent operator investigation; this implementation does not clear them by a
 CI exercises recovery and broker admission on PHP 7.4, 8.3, 8.4 and 8.5, including
 unknown outcomes, signature corruption, worker races, changed identities, audit
 failure, missing scope, foreign client and Production rejection.
+
+## Native Apply visibility and host safety rejection
+
+The native plan returns nonauthorizing execution guidance outside its package
+plan digest. Current Write Authority selects `mad4b/control-plane-native-apply`,
+using the existing `mad4b/write-execute` transport when the direct tool is absent.
+The original exact approval, schema/classification receipt and execution checks
+remain required. Server mounting never proves host tools/list visibility. A
+missing normal transport does not select candidate-drift Bootstrap; the plan
+provides the authenticated native Runtime Update workspace instead.
+
+A client-reported platform safety rejection is distinct from a WordPress
+permission denial. The router offers no alternate remote executor or automatic
+retry, and does not infer that delivery stopped before mutation. Read independent
+update status and receipts first. The native administrator handoff still requires
+a fresh plan, nonce, backup and exact installed identity verification. The plugin
+cannot remove a host safety decision. No such rejection was reproduced or
+bypassed by these hermetic source tests.

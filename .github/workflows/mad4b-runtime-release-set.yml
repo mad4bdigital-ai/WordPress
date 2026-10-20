@@ -58,6 +58,8 @@ jobs:
           P=wp-content/plugins/mad4b-site-control-plane
           php "$P/tests/runtime-update-recovery-runtime.php"
           php "$P/tests/dynamic-first-party-enrollment-runtime.php"
+          php "$P/tests/native-update-routing-runtime.php"
+          php "$P/tests/adaptive-operation-router-runtime.php"
           php -l "$P/includes/class-mad4b-scp-selected-head-update.php"
           php -l "$P/includes/class-mad4b-scp-staging-selected-head-admin.php"
           php -l "$P/includes/class-mad4b-scp-staging-source-selector.php"

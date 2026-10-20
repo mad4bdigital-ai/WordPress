@@ -592,6 +592,26 @@
       "source_regression_references": [
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
       ]
+    },
+    {
+      "id": "ability:mad4b/write-execute",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, not site-owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Native update guidance references the already existing governed Write dispatcher. Existing execution, isolation and recovery controls cover this nonauthorizing route reference; no new executable Ability is registered.",
+      "review_rationale": "Standalone PHP guidance fixtures verify effective Write chooses the original native operation, absent direct tools do not imply missing server authority, missing transport never chooses candidate-drift Bootstrap, original exact approval remains mandatory, and platform safety rejection offers no alternative remote execution or automatic retry."
     }
   ],
   "lifecycle": [],
@@ -2407,6 +2427,63 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "878b343db54d878c1123b8be34a93ac80a51a96a",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+      "source_blob_sha": "987fbaf12800efa5a046a0baa29481c81b1bf70b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "284e43bf7624bdf8082ac16ada308dcf893b14f3",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
     }
   ],
   "code_change_rules": {
