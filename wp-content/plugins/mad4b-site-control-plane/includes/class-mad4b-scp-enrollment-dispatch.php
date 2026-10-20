@@ -517,6 +517,125 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 		}
 	}
 
+
+	/**
+	 * One bounded, read-only owner journey. The write executor still validates
+	 * every digest, OAuth step-up, owner decision, signed receipt and site grant.
+	 * The returned envelope is a proposed request, never an authorization.
+	 */
+	private static function guided_write_handoff_model( array $row, $handshake, $prior, $latest ) {
+		$base = array(
+			'contract' => 'mad4b.enrollment-guided-write-handoff.v1',
+			'operation_id' => 'staging_write_authority_convergence',
+			'server' => 'mad4b-enrollment',
+			'method' => 'mad4b/enrollment-execute',
+			'authority_scope' => 'write_only',
+			'production_mutation_allowed' => false,
+			'developer_included' => false,
+			'breakglass_included' => false,
+			'owner_decision_required' => true,
+			'step_up_scope_required' => 'mad4b:authority:step-up',
+			'automatic_execution' => false,
+			'blind_retry_allowed' => false,
+			'read_only' => true,
+			'mutation_performed' => false,
+		);
+		if ( ! is_array( $handshake ) ) return $base + array(
+			'state' => 'handshake_unavailable', 'next_action' => 'refresh_exact_site_handshake' );
+		if ( ! empty( $handshake['already_current'] ) ) return $base + array(
+			'state' => 'already_current', 'next_action' => 'readback_current_write_authority' );
+		if ( empty( $handshake['ready_to_apply'] ) || ! empty( $handshake['hard_blockers'] ) )
+			return $base + array(
+				'state' => 'prerequisites_blocked', 'next_action' => 'inspect_exact_site_blockers',
+				'blockers' => isset( $handshake['hard_blockers'] ) && is_array( $handshake['hard_blockers'] )
+					? array_slice( array_values( $handshake['hard_blockers'] ), 0, 12 ) : array() );
+		$prior_state = is_array( $prior ) && isset( $prior['state'] ) ? (string) $prior['state'] : '';
+		$latest_state = is_array( $latest ) && isset( $latest['state'] ) ? (string) $latest['state'] : '';
+		if ( 'UNVERIFIED_OR_UNAVAILABLE' !== $prior_state
+			|| ! in_array( $latest_state, array( 'NO_CURRENT_OPERATION_POINTER', 'VERIFIED' ), true ) ) {
+			return $base + array(
+				'state' => 'prior_operation_requires_reconciliation',
+				'next_action' => 'read_owner_intent_and_exact_operation_journal_no_replay',
+				'prior_operation_state' => $prior_state,
+				'latest_site_operation_state' => $latest_state,
+			);
+		}
+		$apply = isset( $handshake['exact_apply'] ) && is_array( $handshake['exact_apply'] )
+			? $handshake['exact_apply'] : array();
+		$hashes = array( 'expected_plan_sha256', 'expected_build_fingerprint',
+			'expected_package_manifest_digest', 'expected_profile_digest', 'owner_review_digest' );
+		foreach ( $hashes as $key ) {
+			if ( ! isset( $apply[ $key ] ) || ! is_string( $apply[ $key ] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $apply[ $key ] ) )
+				return $base + array( 'state' => 'invalid_plan_evidence',
+					'next_action' => 'refresh_exact_site_handshake' );
+		}
+		if ( ! isset( $apply['expected_source_commit_sha'] ) || ! is_string( $apply['expected_source_commit_sha'] )
+			|| 1 !== preg_match( '/^[a-f0-9]{40}$/D', $apply['expected_source_commit_sha'] )
+			|| ! isset( $apply['expected_site_uuid'] ) || ! is_string( $apply['expected_site_uuid'] )
+			|| 1 !== preg_match( '/^[a-f0-9-]{36}$/D', $apply['expected_site_uuid'] )
+			|| empty( $apply['expected_artifact_identity'] )
+			|| ! is_string( $apply['expected_artifact_identity'] )
+			|| strlen( $apply['expected_artifact_identity'] ) > 191
+			|| ! isset( $apply['expected_profile_revision'] )
+			|| ! is_int( $apply['expected_profile_revision'] ) || $apply['expected_profile_revision'] < 1
+			|| ! isset( $apply['confirmation'] )
+			|| 'ENABLE GOVERNED STAGING WRITE AUTHORITY' !== $apply['confirmation'] )
+			return $base + array( 'state' => 'invalid_plan_evidence',
+				'next_action' => 'refresh_exact_site_handshake' );
+		// Never accept an unreviewed operation row or a stale dispatch digest.
+		foreach ( array( 'registration_digest', 'dispatch_policy_digest',
+			'input_schema_sha256' ) as $key ) {
+			if ( ! isset( $row[ $key ] ) || ! is_string( $row[ $key ] )
+				|| 1 !== preg_match( '/^[a-f0-9]{64}$/D', $row[ $key ] ) )
+				return $base + array( 'state' => 'invalid_route_evidence',
+					'next_action' => 'refresh_enrollment_info' );
+		}
+		if ( 'mad4b/staging-write-authority-convergence-apply' !== ( $row['remote_ability'] ?? '' )
+			|| 'mad4b-enrollment' !== ( $row['authority_surface'] ?? '' )
+			|| 'deny' !== ( $row['production_policy'] ?? '' )
+			|| 'owner' !== ( $row['remote_caller_role'] ?? '' )
+			|| empty( $row['human_decision_required'] )
+			|| empty( $row['execution_eligible'] ) || empty( $row['remote_parity_ready'] ) )
+			return $base + array( 'state' => 'route_not_authorized',
+				'next_action' => 'refresh_enrollment_info' );
+		return $base + array(
+			'state' => 'ready_for_exact_owner_decision',
+			'next_action' => 'present_exact_site_owner_consent_then_step_up_once',
+			'owner_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
+			'execution_after_owner_decision' => 'one_governed_enrollment_dispatch',
+			'readback_after_execution' => 'new_request_write_runtime_certification_and_candidate_binding',
+			'prepared_request' => array(
+				'operation_id' => 'staging_write_authority_convergence',
+				'expected_registration_digest' => $row['registration_digest'],
+				'expected_dispatch_policy_digest' => $row['dispatch_policy_digest'],
+				'expected_input_schema_sha256' => $row['input_schema_sha256'],
+				'input' => $apply,
+			),
+		);
+	}
+
+	private static function guided_write_handoff( array $row ) {
+		if ( ! class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' )
+			|| ! class_exists( 'MAD4B_SCP_Staging_Operation_Journal' ) )
+			return self::guided_write_handoff_model( $row, null, null, null );
+		try {
+			$handshake = MAD4B_SCP_Staging_Write_Authority_Convergence::handshake();
+			if ( is_wp_error( $handshake ) || ! is_array( $handshake ) )
+				return self::guided_write_handoff_model( $row, null, null, null );
+			if ( ! empty( $handshake['already_current'] ) || empty( $handshake['ready_to_apply'] ) )
+				return self::guided_write_handoff_model( $row, $handshake, null, null );
+			$plan = MAD4B_SCP_Staging_Write_Authority_Convergence::plan();
+			if ( is_wp_error( $plan ) || ! is_array( $plan ) )
+				return self::guided_write_handoff_model( $row, null, null, null );
+			$prior = MAD4B_SCP_Staging_Operation_Journal::inspect_plan( $plan );
+			$latest = MAD4B_SCP_Staging_Operation_Journal::latest( (string) ( $plan['site_uuid'] ?? '' ) );
+			return self::guided_write_handoff_model( $row, $handshake, $prior, $latest );
+		} catch ( Throwable $error ) {
+			return self::guided_write_handoff_model( $row, null, null, null );
+		}
+	}
+
 	public static function info( $input ) {
 		$operation_id = isset( $input['operation_id'] ) ? (string) $input['operation_id'] : '';
 		$current = self::operation( $operation_id );
@@ -535,6 +654,8 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			// Operator can recover from a lost MCP mutation response using the
 			// same stable Enrollment Info tool, without a second expensive
 			// catalog projection or any replay of the target write.
+			'guided_handoff' => 'staging_write_authority_convergence' === $operation_id
+				? self::guided_write_handoff( $row ) : null,
 			'checkpoint_handoff' => 'managed_skills_reconciliation' === $operation_id
 				? self::managed_skills_checkpoint_handoff() : array( 'state' => 'independent_plan_required', 'read_only' => true ),
 			'execution_preflight' => 'managed_skills_reconciliation' === $operation_id
