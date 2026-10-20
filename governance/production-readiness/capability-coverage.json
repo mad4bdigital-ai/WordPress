@@ -467,6 +467,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuse existing provider certification, exact ticket, mutation, drift, rollback and security controls; no new mutable Ability or environment authority.",
       "review_rationale": "Isolate existing named provider settings behind installed provider identity; generic source copying does not depend on this addon. Test absent default and installed provider roundtrip. Source/fixture evidence only, not live certification."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-file-workspace.php",
+      "control_ids": [
+        "ADMIN-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only administrator-owned file workspace compatibility status only; no external file-manager API or filesystem mutation introduced. Source and runtime contract exercise denial, detection, and immutable governed handoff.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing admin authorization, general WordPress platform and security review controls cover passive plugin discovery and explicit nonauthorizing file-manager handoff."
     }
   ],
   "lifecycle": [],
@@ -1674,6 +1692,40 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Neutralize pilot names in an incident comment; preserve exact grants, provider compatibility identifiers and authority. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-file-workspace.php",
+      "source_blob_sha": "a12c86d38f40f8e46f8c4912d8de60771274c1b1",
+      "control_ids": [
+        "ADMIN-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add generic WordPress-admin file-manager advisory discovery with explicit fail-closed, no-API, no-write contract; runtime fixtures cover permission and activation states. Production use remains unapproved."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "bddb73e7a6fab2746c36f8c631d68af54ad259f1",
+      "control_ids": [
+        "ADMIN-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose the nonauthorizing administrator file workspace handoff from the deep self-update status without touching cached hotpath, update permissions, signed releases, archive verification or rollback."
     }
   ],
   "code_change_rules": {
