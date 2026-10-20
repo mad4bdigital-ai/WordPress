@@ -3044,13 +3044,14 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php"
       ],
       "owner_role": "Repository source reviewer — CI only, not owner approval",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO. Content/Brand source classification is explicitly reviewed under AI-01 and PROVIDERS-02, in addition to the unchanged governance and provider execution gates."
+      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO. Content/Brand source classification is explicitly reviewed under AI-01 and PROVIDERS-02, in addition to the unchanged governance and provider execution gates. The updated Context scan-completeness runtime proves end-to-end partial scan rejection does not mutate the registry, while successful complete-scan ingestion remains accepted."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
