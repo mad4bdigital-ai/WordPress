@@ -541,7 +541,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			'production_mutation_allowed' => false,
 			'developer_included' => false,
 			'breakglass_included' => false,
-			'owner_decision_required' => true,
+			'owner_decision_required' => false,
 			'step_up_scope_required' => 'mad4b:authority:step-up',
 			'automatic_execution' => false,
 			'blind_retry_allowed' => false,
@@ -609,6 +609,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'next_action' => 'refresh_enrollment_info' );
 		return $base + array(
 			'state' => 'ready_for_exact_owner_decision',
+			'owner_decision_required' => true,
 			'next_action' => 'present_exact_site_owner_consent_then_step_up_once',
 			'owner_confirmation' => 'AUTHORIZE EXACT STAGING WRITE CONVERGENCE',
 			'execution_after_owner_decision' => 'one_governed_enrollment_dispatch',
