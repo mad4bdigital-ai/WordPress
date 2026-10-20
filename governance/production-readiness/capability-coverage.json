@@ -2171,6 +2171,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Preserve concurrent bounded static diagnosis wiring for the exact governed source-scan target on the existing recovery read. It does not evaluate write authority, reserve a breaker, run the provider, create certification or authorize dispatch. Generic site-neutral comment, unchanged operation target and authority semantics."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-jobs.php",
+      "source_blob_sha": "67a77fa124a133c5ef3627e5eb46024876c9edc8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only scope review, not site-owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Make the exact site/brand/tenant read fence explicit on ContentJob list results; zero current-scope rows cannot close a site-wide Operator Doctor incident. Do not loosen load_job predicates or allow cross-tenant recovery; bounded PHP lint and source contract run via plugin-operation-cycle-contract.py and disposable WordPress ContentJob integration fixture remains required."
     }
   ],
   "code_change_rules": {
