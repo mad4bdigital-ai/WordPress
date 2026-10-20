@@ -30,4 +30,26 @@ if pre not in mutation or brk not in mutation or fin not in mutation:
  raise SystemExit("FAIL connector mutation implementation lost eligibility/breaker stages")
 if not (mutation.index(pre)<mutation.index(brk)<mutation.index(fin)):
  raise SystemExit("FAIL strongest static deny is not evaluated before breaker transport admission")
+# The repair diagnosis must inspect exact provider capability evidence without
+# turning a read request into a mutation admission or simulated owner approval.
+for evidence in (
+ "public static function inspect_target_certification(",
+ "'contract' => 'mad4b.provider-transport-static-inspection.v1'",
+ "'authorization_checked' => false",
+ "'breaker_checked' => false",
+ "'transport_eligible' => null",
+ "'authorizing' => false",
+ "'mutation_performed' => false",
+ "'reason_code' => $reason",
+ "certify_exact_provider_capability",
+ "review_exact_release_ring",
+ "verify_separate_write_authority_and_breaker",
+):
+ if evidence not in elig: raise SystemExit("FAIL nonauthorizing source scan inspection marker missing: "+evidence)
+inspect = elig.split("public static function inspect_target_certification(",1)[1].split("\n\tpublic static function resolve_facts(",1)[0]
+for forbidden in ("begin_for_target(", "finalize_breaker(", "wp_remote_post(", "update_option(", "MAD4B_SCP_Authorization::authorize(", "execute_mutation("):
+ if forbidden in inspect: raise SystemExit("FAIL read-only inspection has mutation/authority side effect: "+forbidden)
+runtime = (root/"tests/provider-transport-eligibility-runtime.php").read_text(encoding="utf-8")
+for fixture in ("provider_capability_not_write_certified","provider_release_ring_ineligible","static_gates_satisfied_only","production"):
+ if fixture not in runtime: raise SystemExit("FAIL source scan provider inspection fixture missing: "+fixture)
 print("mad4b.provider-transport-eligibility.contract.v1: PASS")
