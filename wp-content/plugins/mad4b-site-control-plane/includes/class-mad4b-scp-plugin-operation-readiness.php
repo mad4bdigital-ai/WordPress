@@ -22,6 +22,9 @@ final class MAD4B_SCP_Plugin_Operation_Readiness {
 				if ( isset( $out[ $name ] ) ) { $out[ $name ] = array( 'ambiguous' => true ); continue; }
 				$out[ $name ] = array(
 					'capability_id' => is_string( $id ) && preg_match( '/^[a-zA-Z0-9._-]{1,191}$/D', $id ) ? $id : '',
+					'certification_level' => self::label( $cap['certification_level'] ?? '' ),
+					'activation_stage' => self::label( $cap['activation_stage'] ?? '' ),
+					'release_ring' => self::label( $cap['release_ring'] ?? '' ),
 					'contract_digest' => self::digest( $cap['capability_contract_digest'] ?? '' ),
 					'artifact_fingerprint' => self::digest( $behavior['artifact_fingerprint'] ?? '' ),
 					'read_eligible' => true === ( $cap['read_eligible'] ?? false ),
@@ -74,6 +77,12 @@ final class MAD4B_SCP_Plugin_Operation_Readiness {
 			$rows[] = array(
 				'ability' => $name, 'dimension' => $is_read ? 'read' : 'write',
 				'state' => $state, 'registered' => isset( $registered[ $name ] ),
+				'provider_certification' => array(
+					'level' => $cap['certification_level'] ?? '', 'activation_stage' => $cap['activation_stage'] ?? '',
+					'release_ring' => $cap['release_ring'] ?? '', 'artifact_authority_bound' => true === ( $cap['artifact_bound'] ?? false ),
+					'write_eligible' => true === ( $cap['write_eligible'] ?? false ),
+					'write_grants_or_candidate_rebind_satisfy_certification' => false,
+				),
 				'contract_digest' => $cap['contract_digest'] ?? '',
 				'artifact_fingerprint' => $cap['artifact_fingerprint'] ?? '',
 				'blockers' => array_values( array_unique( $blockers ) ),
@@ -115,6 +124,10 @@ final class MAD4B_SCP_Plugin_Operation_Readiness {
 		if ( in_array( 'plugin_inactive', $blockers, true ) ) return 'wait_for_explicit_plugin_activation';
 		if ( in_array( 'exact_artifact_evidence_required', $blockers, true ) ) return 'verify_exact_provider_artifact';
 		return 'inspect_operation_contract_and_certification';
+	}
+
+	private static function label( $value ) {
+		return is_string( $value ) && preg_match( '/^[a-zA-Z0-9._-]{1,64}$/D', $value ) ? $value : '';
 	}
 
 	private static function digest( $value ) {

@@ -2484,6 +2484,83 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "37b6a52da44e5b0b10938f3367f78bbd67894399",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "91986ef05c0afd60fbfb01237d357d4973f850a7",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "6a932172d1ffdd413c451f46e7701e6b14f1ba63",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-operation-readiness.php",
+      "source_blob_sha": "1e79dc965d4104a3df31bf15282cea51d760a79a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
     }
   ],
   "code_change_rules": {

@@ -59,6 +59,8 @@ jobs:
           php "$P/tests/runtime-update-recovery-runtime.php"
           php "$P/tests/dynamic-first-party-enrollment-runtime.php"
           php "$P/tests/native-update-routing-runtime.php"
+          php "$P/tests/post-manual-update-guidance-runtime.php"
+          php "$P/tests/plugin-operation-readiness-runtime.php"
           php "$P/tests/adaptive-operation-router-runtime.php"
           php -l "$P/includes/class-mad4b-scp-selected-head-update.php"
           php -l "$P/includes/class-mad4b-scp-staging-selected-head-admin.php"

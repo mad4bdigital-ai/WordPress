@@ -4,7 +4,8 @@ import subprocess
 
 root = Path(__file__).resolve().parents[1]
 for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enrollment-runtime.php',
-                'native-update-routing-runtime.php', 'adaptive-operation-router-runtime.php'):
+                'native-update-routing-runtime.php', 'adaptive-operation-router-runtime.php',
+                'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php'):
     subprocess.run(['php', '-n', str(root / 'tests' / fixture)], check=True)
 parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text()
 enrollment_mount = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
@@ -20,3 +21,8 @@ assert '(bool) $bootstrap_revalidate && empty( $runtime_bootstrap )' in native
 replacement = update.split('private static function apply_verified_archive', 1)[1]
 assert replacement.index('MAD4B_SCP_Runtime_Release_Set::revalidate_control_plane_bootstrap( array() )') < replacement.index('$upgrader->install(')
 print('RUNTIME_UPDATE_RECOVERY_CONTRACT_PASS; hermetic only, live acceptance pending')
+
+includes = root / 'includes'
+assert "$checkpoint['repair_guidance'] = self::repair_guidance(" in (includes / 'class-mad4b-scp-staging-write-authority.php').read_text()
+assert "$result['repair_guidance'] = self::repair_guidance( $result, self::persisted_status() );" in (includes / 'class-mad4b-scp-skill-runtime-certification.php').read_text()
+assert "$public['verification_guidance'] = self::connection_verification_guidance( $status );" in (includes / 'class-mad4b-scp-google-drive-context.php').read_text()

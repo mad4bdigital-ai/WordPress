@@ -623,7 +623,26 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'write_blockers' => isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] ) ? array_values( $status['write_blockers'] ) : array(),
 			'scope_diagnostic' => isset( $status['scope_diagnostic'] ) && is_array( $status['scope_diagnostic'] ) ? $status['scope_diagnostic'] : array(),
 		);
+		$public['verification_guidance'] = self::connection_verification_guidance( $status );
 		return $public;
+	}
+
+	/** Scope availability does not prove successful renewal or remote continuity. */
+	public static function connection_verification_guidance( array $status ) {
+		$state = $status['health_state'] ?? 'unknown';
+		$action = 'inspect_connection_state';
+		if ( 'refresh_required' === $state ) $action = 'perform_governed_refresh_then_verify_provider_read';
+		elseif ( 'refresh_failed' === $state ) $action = true === ( $status['reconnect_required'] ?? false ) ? 'reconnect_provider_with_owner' : 'inspect_refresh_failure_and_backoff';
+		elseif ( 'healthy' === $state ) $action = 'verify_provider_read_continuity';
+		elseif ( 'revocation_pending' === $state ) $action = 'complete_governed_revocation';
+		return array(
+			'contract' => 'mad4b.provider-connection-verification-guidance.v1',
+			'next_action' => $action,
+			'refresh_pending' => 'refresh_required' === $state,
+			'provider_continuity_verified_by_status' => false,
+			'write_certification_evaluated' => false,
+			'execution_allowed_by_guidance' => false, 'mutation_performed' => false,
+		);
 	}
 
 	public static function runtime_readiness() {

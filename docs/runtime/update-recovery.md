@@ -59,3 +59,33 @@ update status and receipts first. The native administrator handoff still require
 a fresh plan, nonce, backup and exact installed identity verification. The plugin
 cannot remove a host safety decision. No such rejection was reproduced or
 bypassed by these hermetic source tests.
+
+## Manual package replacement: independent readiness layers
+
+Explicit Write Authority current-status reads provide binding-only repair advice
+when the deep grant snapshot and persisted authority are clean and candidate
+identity drift is the sole blocker. They never recreate grants or authorize a
+rebind: existing exact-plan, sealed-baseline, environment, actor and transport
+preflights remain mandatory. Missing, revoked or drifted authority is not
+binding-only. No grant count or site name is hard-coded.
+
+Explicit Skills live inspection distinguishes healthy current-build runtime from
+historical certification. A healthy inspection requests recording current-build
+evidence through the governed lifecycle without reconciling files. Historical-only
+or build-unbound evidence cannot prove live readiness. Actual seed/provider drift
+still requires inspection before managed reconciliation.
+
+Operation discovery preserves bounded certification level, activation stage,
+declared release ring and artifact binding when present. Missing ring information
+remains unknown. Valid Write grants and a repaired candidate binding do not certify
+a discovered/shadow provider or promote its ring. Source Scan retains all original
+provider transport gates and evidence requirements.
+
+Drive connection guidance separates pending refresh, refresh failure/backoff,
+credentials requiring owner reconnection, and pending revocation. Read/write scope
+availability does not prove refresh success, remote continuity or provider write
+certification. Status reads never refresh credentials or make provider requests;
+governed renewal and an independent provider read remain necessary.
+
+These generic read-only diagnostics have hermetic PHP regression coverage in the
+runtime CI matrix. They are not live acceptance evidence or Production approval.

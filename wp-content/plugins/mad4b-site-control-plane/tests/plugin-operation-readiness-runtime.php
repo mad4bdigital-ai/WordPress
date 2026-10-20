@@ -90,3 +90,15 @@ foreach ( array( array(), array( 'site_uuid' => 'site-b', 'brand_ref' => 'brand-
  readiness_check( 'current_scope_unresolved' === MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, $unknown, 'site-a' )[0]['scope_relation'], 'unresolved/cross-site scope matched' );
 }
 echo "PLUGIN_OPERATION_READINESS: PASS\n";
+
+// Provider certification remains independent even after candidate/grant repair.
+$uncertified = $status;
+$uncertified['capability_certification']['capabilities']['meta.write']['certification_level'] = 'DISCOVERED';
+$uncertified['capability_certification']['capabilities']['meta.write']['activation_stage'] = 'shadow';
+$uncertified['capability_certification']['capabilities']['meta.write']['release_ring'] = 'R0_DISPOSABLE';
+$projected = $plugin; $projected['operation_capabilities'] = $c::evidence( $uncertified );
+$write = $c::project( $projected, $registry, true )['operations'][1];
+readiness_check( 'blocked' === $write['state'] && 'shadow' === $write['provider_certification']['activation_stage'] && 'R0_DISPOSABLE' === $write['provider_certification']['release_ring'], 'provider stage/ring lost in discovery' );
+readiness_check( ! $write['provider_certification']['write_grants_or_candidate_rebind_satisfy_certification'] && ! $write['provider_certification']['artifact_authority_bound'], 'candidate repair certified the provider' );
+$uncertified['capability_certification']['capabilities']['meta.write']['activation_stage'] = '<secret payload>';
+readiness_check( '' === $c::evidence( $uncertified )['vendor/write']['activation_stage'], 'unbounded provider label leaked' );

@@ -92,7 +92,26 @@ final class MAD4B_SCP_Skill_Runtime_Certification {
 		$result = self::evaluate();
 		if ( ! is_array( $result ) ) return self::persisted_status();
 		$result['persistence'] = 'read_only_live_inspection';
+		$result['repair_guidance'] = self::repair_guidance( $result, self::persisted_status() );
 		return $result;
+	}
+
+	/** Separate local file repair from renewal of historical build-bound evidence. */
+	public static function repair_guidance( array $live, array $persisted ) {
+		$live_ready = true === ( $live['ready'] ?? false )
+			&& 'read_only_live_inspection' === ( $live['persistence'] ?? '' )
+			&& true === ( $live['checks']['build_provenance_identity_ready'] ?? false );
+		$files_need_repair = in_array( 'seed_pack_not_ready', $live['blockers'] ?? array(), true )
+			|| in_array( 'provider_reconciliation_not_ready', $live['blockers'] ?? array(), true );
+		return array(
+			'contract' => 'mad4b.skill-runtime-repair-guidance.v1',
+			'next_action' => $live_ready ? ( true === ( $persisted['build_identity_current'] ?? false ) ? 'none' : 'record_current_build_certification' ) : ( $files_need_repair ? 'inspect_managed_skill_drift_before_reconcile' : 'inspect_current_runtime_certification' ),
+			'local_runtime_ready' => $live_ready,
+			'skills_reconcile_required' => $live_ready ? false : ( $files_need_repair ? true : null ),
+			'historical_certificate_proves_current_runtime_failure' => false,
+			'certification_persistence_requires_governed_lifecycle' => true,
+			'execution_allowed_by_guidance' => false, 'mutation_performed' => false,
+		);
 	}
 
 	public static function status() {
