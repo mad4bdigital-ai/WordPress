@@ -76,6 +76,43 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
                 'mad4b/skills-runtime-certification', 'read', 'none', 'independent_runtime_checkpoint' ),
             self::row( 130, 'context_onboarding', 'admin.php?page=mad4b-control-plane-context',
                 'mad4b/context-source-onboarding-preflight', 'read', 'owner_source_selection', 'verify_google_provider_and_source' ),
+            // The same native workspaces are linked from MCP and wp-admin.
+            // These routes are diagnostic until each owning executor admits an
+            // independently reviewed, environment-bound operation.
+            self::row( 15, 'mcp_tool_projection', 'admin.php?page=mad4b-control-plane-chatgpt',
+                'mad4b/chatgpt-tool-projection-recovery-plan', 'read', 'none', 'verify_projection_and_original_gateway_mount' ),
+            self::row( 17, 'failed_runtime_transaction', 'admin.php?page=mad4b-runtime-components&tab=maintenance',
+                'mad4b/runtime-release-set-status', 'read', 'signed_premutation_evidence_and_exact_admin_or_oauth_review', 'reconcile_only_if_pair_unchanged_then_replan' ),
+            self::row( 19, 'failed_runtime_transaction_plan', 'admin.php?page=mad4b-runtime-components&tab=maintenance',
+                'mad4b/runtime-release-set-plan', 'read', 'exact_plan_and_transaction_cas', 'do_not_replay_unknown_or_partial_mutations' ),
+            self::row( 105, 'binding_only_reconciliation', 'tools.php?page=mad4b-staging-write-owner-review',
+                'mad4b/write-authority-reconciliation-plan', 'read', 'enrolled_owner_and_current_grant_evidence', 'verify_binding_without_recreating_clean_grants' ),
+            self::row( 122, 'skills_drift_recovery', 'admin.php?page=mad4b-control-plane-skills',
+                'mad4b/reconcile-managed-skills', 'enrollment', 'exact_scope_and_separate_approval', 'skip_when_live_seed_and_files_ready' ),
+            self::row( 125, 'provider_connection', 'admin.php?page=mad4b-provider-connections',
+                'mad4b/provider-connection-discover', 'read', 'none', 'separate_refresh_pending_from_invalid_grant' ),
+            self::row( 126, 'provider_refresh', 'admin.php?page=mad4b-provider-connections',
+                'mad4b/provider-connection-plan', 'read', 'owner_oauth_and_exact_refresh_plan', 'verify_refresh_and_independent_provider_read' ),
+            self::row( 127, 'provider_write_certification', 'admin.php?page=mad4b-adapter-coverage',
+                'mad4b/operation-discover', 'read', 'provider_artifact_behavior_ring_and_transport_certification', 'no_shadow_or_discovery_write_bypass' ),
+            self::row( 131, 'drive_inventory', 'admin.php?page=mad4b-control-plane-context',
+                'mad4b/context-source-onboarding-preflight', 'read', 'selected_folder_verified_and_complete_scan', 'chunk_scan_and_digest_before_any_apply' ),
+            self::row( 132, 'brand_authority', 'admin.php?page=mad4b-control-plane-context',
+                'mad4b/brand-core-remote-recovery-status', 'read', 'separate_content_hash_and_owner_approval', 'source_registration_is_not_brand_approval' ),
+            self::row( 133, 'brand_recovery_plan', 'admin.php?page=mad4b-control-plane-context',
+                'mad4b/brand-core-remote-recovery-prepare', 'read', 'fresh_exact_brand_asset_identity', 'verify_registry_approval_independently' ),
+            self::row( 134, 'browser_executor', 'admin.php?page=mad4b-browser-acceptance',
+                'mad4b/remote-operation-work-queue', 'read', 'separate_external_executor_identity', 'claim_lease_checkpoint_and_receipt_required' ),
+            self::row( 136, 'browser_acceptance', 'admin.php?page=mad4b-browser-acceptance',
+                'mad4b/browser-acceptance-run', 'enrollment', 'target_identity_and_executor_approval', 'real_browser_receipt_direct_ajax_wpml_rankmath' ),
+            self::row( 137, 'remote_capability_parity', 'admin.php?page=mad4b-operational-remediation',
+                'mad4b/remote-operation-parity-status', 'read', 'none', 'verify_gateway_transport_not_just_wordpress_ability' ),
+            self::row( 138, 'rate_limit_and_cache', 'admin.php?page=mad4b-control-plane-performance',
+                'mad4b/operational-acceptance-evidence', 'read', 'independent_multinode_and_ttl_test', 'no_backend_or_atomicity_inferred_from_dropin' ),
+            self::row( 139, 'seo_and_wpml_acceptance', 'admin.php?page=mad4b-browser-acceptance',
+                'mad4b/operational-acceptance-evidence', 'read', 'separate_seo_write_and_browser_acceptance', 'verify_canonical_hreflang_ajax_and_undo' ),
+            self::row( 141, 'mcp_error_diagnostics', 'admin.php?page=mad4b-control-plane-connection',
+                'mad4b/operational-remediation-status', 'read', 'correlated_runtime_error_and_independent_readback', 'separate_transport_registration_outer_fence_and_callback_failure' ),
             self::row( 140, 'production_host_identity', 'admin.php?page=mad4b-operational-remediation#mad4b-production-deployment-identity',
                 'mad4b/deployment-binding-production-status', 'read', 'production_separate_release', 'verify_production_host_locally' ),
             self::row( 135, 'staging_promotion_evidence', 'admin.php?page=mad4b-operational-remediation',
@@ -111,8 +148,13 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
             }
             $is_mounted = ! empty( $mounted_servers );
             $prod = 0 === strpos( $item['stage'], 'production_' );
-            $allowed_env = $exact_env && ( $prod ? 'production' === $environment : 'staging' === $environment
-                || in_array( $item['stage'], array( 'discovery', 'runtime_release' ), true ) );
+            $cross_environment_diagnostics = 'read' === $item['mcp_lane'] && in_array(
+                $item['stage'], array( 'discovery', 'runtime_release', 'mcp_tool_projection',
+                    'failed_runtime_transaction', 'failed_runtime_transaction_plan',
+                    'provider_connection', 'provider_refresh', 'provider_write_certification',
+                    'remote_capability_parity', 'mcp_error_diagnostics' ), true );
+            $allowed_env = $exact_env && ( $prod ? 'production' === $environment
+                : ( 'staging' === $environment || $cross_environment_diagnostics ) );
             $item['ability_registered'] = (bool) $registered;
             $item['remote_mount_verified'] = (bool) $is_mounted;
             // Direct tools/list visibility and prepare/read-execute via the
@@ -126,6 +168,20 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
             $item['remote_mount_inspection_available'] = $exposure_checked;
             $item['environment_applicable'] = $allowed_env;
             $item['wordpress_route_type'] = 'admin_navigation_only';
+            $item['admin_route_registered'] = false;
+            $item['admin_access_verified'] = false;
+            if ( preg_match( '/^admin\\.php\\?page=(mad4b-[a-z0-9-]+)/D', $item['wordpress_admin_path'], $matches )
+                && class_exists( 'MAD4B_SCP_Admin_Route_Registry', false ) ) {
+                $routes = MAD4B_SCP_Admin_Route_Registry::routes();
+                if ( isset( $routes[ $matches[1] ] ) && is_array( $routes[ $matches[1] ] ) ) {
+                    $item['admin_route_registered'] = true;
+                    $cap = (string) ( $routes[ $matches[1] ]['required_capability'] ?? '' );
+                    $item['admin_access_verified'] = '' !== $cap && current_user_can( $cap );
+                }
+            }
+            $item['native_form_proven'] = false;
+            // A route registry entry is navigation evidence, NOT proof that the
+            // site's active menu or original POST/nonce handler is mounted.
             $item['remote_authority_granted'] = false;
             $item['execution_performed'] = false;
             $item['state'] = ! $allowed_env ? 'NOT_APPLICABLE_TO_EXACT_ENVIRONMENT'
@@ -170,7 +226,10 @@ final class MAD4B_SCP_Recovery_Route_Matrix {
         foreach ( $data['stages'] as $row ) {
             echo '<tr><td>' . esc_html( $row['stage'] ) . '</td><td><a href="'
                 . esc_url( admin_url( $row['wordpress_admin_path'] ) ) . '">Open WordPress</a> <code>'
-                . esc_html( $row['wordpress_admin_path'] ) . '</code></td><td><code>'
+                . esc_html( $row['wordpress_admin_path'] ) . '</code><br><small>'
+                . esc_html( ! empty( $row['admin_access_verified'] ) ? 'Admin route registered; form/action must still be checked'
+                    : 'Admin route/access not verified; link does not authorize a repair' )
+                . '</small></td><td><code>'
                 . esc_html( $row['mcp_ability'] ) . '</code> (' . esc_html( $row['mcp_lane'] )
                 . ')</td><td><code>' . esc_html( $row['state'] ) . '</code></td><td><code>'
                 . esc_html( $row['approval_gate'] ) . '</code></td><td>'

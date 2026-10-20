@@ -22,6 +22,40 @@ final class MAD4B_SCP_Connector_Resilience {
 	const DEFAULT_REQUEST_BUDGET_MS = 12000;
 	const SESSION_TERMINATION_BUDGET = 2;
 
+	/** Contain read-only callback faults before they reach the MCP protocol handler. */
+	public static function wrap_read_registration( $args, $name ) {
+		if ( ! is_array( $args ) || ! is_string( $name )
+			|| ! preg_match( '~^(mad4b|context)/[a-z0-9._/-]+$~D', $name )
+			|| true !== ( $args['meta']['annotations']['readonly'] ?? null ) ) return $args;
+		foreach ( array( 'permission_callback' => 'permission', 'execute_callback' => 'execution' ) as $field => $stage ) {
+			if ( ! isset( $args[ $field ] ) || ! is_callable( $args[ $field ] ) ) continue;
+			$callback = $args[ $field ];
+			$args[ $field ] = static function ( $input = null ) use ( $callback, $name, $stage ) {
+				try { return call_user_func( $callback, $input ); }
+				catch ( Throwable $error ) { return MAD4B_SCP_Connector_Resilience::read_callback_exception( $name, $stage, $error ); }
+			};
+		}
+		return $args;
+	}
+
+	private static function read_callback_exception( $name, $stage, Throwable $error ) {
+		// Correlation is diagnostic only; it is never an authorization token.
+		$correlation = substr( hash( 'sha256', uniqid( '', true ) . microtime( true ) ), 0, 32 );
+		$origin = hash( 'sha256', get_class( $error ) . '|' . $error->getFile() . '|' . $error->getLine() );
+		$code = 'mad4b_read_' . $stage . '_exception';
+		$evidence = array( 'contract' => 'mad4b.read-callback-failure.v1',
+			'ability_name' => $name, 'stage' => $stage, 'error_code' => $code,
+			'correlation_id' => $correlation, 'origin_sha256' => $origin,
+			'exception_kind' => $error instanceof TypeError ? 'type_error' : ( $error instanceof Error ? 'php_error' : 'exception' ),
+			'retryable' => false, 'blind_retry_allowed' => false,
+			'permission_granted_by_boundary' => false, 'raw_error_message_exposed' => false,
+			'client_action' => 'inspect_correlated_server_diagnostic_then_retry_read',
+		);
+		// Never log input, exception message, credentials or file paths.
+		error_log( 'MAD4B_READ_CALLBACK_FAILURE ' . json_encode( $evidence ) );
+		return new WP_Error( $code, 'Read callback failed: ' . $code . '; correlation_id=' . $correlation . '; automatic_retry_allowed=false.', $evidence );
+	}
+
 	public static function safe_read( $name, $callback, array $options = array() ) {
 		// Locally generated, per-invocation identifier. Never trust an incoming
 		// token/header or reuse a stable error fingerprint as a correlation ID.

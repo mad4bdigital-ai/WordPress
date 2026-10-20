@@ -56,7 +56,7 @@ final class MAD4B_SCP_Abilities {
 		$this->add( 'mad4b/tool-info', 'Get Governed Read Ability Info', 'mad4b-read', 'tool_info', 'read', $this->schema(
 			array(
 				'ability_name' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 180 ),
-				'prepare_execution' => array( 'type' => 'boolean', 'default' => false ),
+				'prepare_execution' => array( 'type' => 'boolean', 'default' => true ),
 			), array( 'ability_name' )
 		), false, true, false, true );
 		$this->add( 'mad4b/read-execute', 'Execute Governed Read Ability', 'mad4b-read', 'read_execute', 'read', $this->schema(
@@ -424,10 +424,10 @@ final class MAD4B_SCP_Abilities {
 			'read_only' => true,
 			'mutation_performed' => false,
 		);
-		// Preparation is explicit, bounded and non-authorizing. Keep metadata-only
-		// callers cheap; reuse the exact canonical descriptor and receipt required
+		// Preparation is bounded and non-authorizing, including legacy clients. Keep metadata-only
+		// opt-outs cheap; reuse the exact canonical descriptor and receipt required
 		// by read_execute instead of allowing clients to invent missing hashes.
-		if ( empty( $input['prepare_execution'] ) ) return $result;
+		if ( array_key_exists( 'prepare_execution', $input ) && false === $input['prepare_execution'] ) return $result;
 		if ( ! class_exists( 'MAD4B_SCP_Capability_Descriptor_Registry' )
 			|| ! class_exists( 'MAD4B_SCP_Ability_Catalog_Transport' )
 			|| ! class_exists( 'MAD4B_SCP_Preparation_Receipt' ) ) {

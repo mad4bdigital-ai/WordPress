@@ -592,6 +592,397 @@
       "source_regression_references": [
         "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
       ]
+    },
+    {
+      "id": "ability:mad4b/write-execute",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, not site-owner authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Native update guidance references the already existing governed Write dispatcher. Existing execution, isolation and recovery controls cover this nonauthorizing route reference; no new executable Ability is registered.",
+      "review_rationale": "Standalone PHP guidance fixtures verify effective Write chooses the original native operation, absent direct tools do not imply missing server authority, missing transport never chooses candidate-drift Bootstrap, original exact approval remains mandatory, and platform safety rejection offers no alternative remote execution or automatic retry."
+    },
+    {
+      "id": "ability:mad4b/brand-core-remote-recovery-prepare",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for brand-core-remote-recovery-prepare must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/brand-core-remote-recovery-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for brand-core-remote-recovery-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/browser-acceptance-run",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for browser-acceptance-run must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/chatgpt-tool-projection-recovery-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for chatgpt-tool-projection-recovery-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operation-discover",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operation-discover must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operational-acceptance-evidence",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operational-acceptance-evidence must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operational-remediation-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operational-remediation-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/provider-connection-discover",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for provider-connection-discover must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/provider-connection-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for provider-connection-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/reconcile-managed-skills",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for reconcile-managed-skills must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/remote-operation-parity-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for remote-operation-parity-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/remote-operation-work-queue",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for remote-operation-work-queue must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/runtime-release-set-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for runtime-release-set-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/runtime-release-set-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for runtime-release-set-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/write-authority-reconciliation-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for write-authority-reconciliation-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, scope isolation, exact execution, encryption and recovery controls cover diagnostic continuation through existing source operations; no new ability or authority.",
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, scope isolation, exact execution, encryption and recovery controls cover diagnostic continuation through existing source operations; no new ability or authority.",
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
     }
   ],
   "lifecycle": [],
@@ -2314,6 +2705,663 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Close cross-tenant information disclosure in the site-wide Operator Doctor result. Preserve aggregate findings while fail-closed redacting every foreign/legacy/unresolved-scope row, including job, outbox, lease and provider event identifiers. Disposable mixed-tenant runtime fixtures verify same-scope visibility and denial of foreign/unknown identifiers. No authorization, repair or production mutation is granted. The checked-in pure PHP behavior fixture is executed by the bounded Python regression runner; disposable WP-CLI/MariaDB tests remain separate and are not misidentified as PHPUnit."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "c6ebec722e56521b61c506652d12122baaaeafc6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "a36c4ad27e332acf6fce5a628a7aa770b8a934f9",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "source_blob_sha": "235e15d48285d7870ce3be6c323f06ab62974d54",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "1b02146e1652ae2ce8f67e71975392140b09d0ea",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php",
+      "source_blob_sha": "8be10ec3a593de6db3efcd7b8a97b514c21e2530",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "878b343db54d878c1123b8be34a93ac80a51a96a",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-adaptive-operation-router.php",
+      "source_blob_sha": "987fbaf12800efa5a046a0baa29481c81b1bf70b",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "284e43bf7624bdf8082ac16ada308dcf893b14f3",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native update route guidance and host-side safety rejection handling. Effective Write selects the original Native Apply ability with exact approval through a mounted dispatcher; missing direct projection never selects candidate-drift Bootstrap. Guidance is explicitly nonauthorizing and excluded from the package plan digest. Client-reported host safety labels return no selected executor, no alternate remote route, no replay, and unknown mutation delivery until independent readback. The fixed native administrator workspace keeps fresh-plan, nonce, backup and exact disk-readback requirements. Python executes actual standalone PHP route/recovery fixtures, never a fabricated platform authorization or live update success."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-authority.php",
+      "source_blob_sha": "37b6a52da44e5b0b10938f3367f78bbd67894399",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-skill-runtime-certification.php",
+      "source_blob_sha": "91986ef05c0afd60fbfb01237d357d4973f850a7",
+      "control_ids": [
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "6a932172d1ffdd413c451f46e7701e6b14f1ba63",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-operation-readiness.php",
+      "source_blob_sha": "1e79dc965d4104a3df31bf15282cea51d760a79a",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "b7de2d53ad97095061ab1fa665dc69486677a2cf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "49914b76ab3ee47b0584d77e9c07734b73959f9e",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_blob_sha": "c3c17549dd6d0af3e441d7fcdfd832b40a8d3423",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "cbded76c50ad616a5eeb1f2a0f8b8a4a5c1e6ec5",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "9512cee911ba065e1aa84d2cacde026764863adf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Google provider or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review the bounded Google Drive scan budget classification patch: token/refresh failures remain separate from provider deadline exhaustion; when a folder or asset fetch exhausts the 10-second budget, a typed partial inventory with complete=false is returned without authorizing missing-file conclusions, Source Scan Apply or provider promotion. The changed Python regression wrapper executes post-manual-update-guidance-runtime.php which asserts precise error classification. Full resumable generation-fenced inventory is explicitly pending under docs/runtime/google-drive-source-scan-acceptance.md; this CI-only review is not live source membership, Brand approval or Production evidence."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-recovery-route-matrix.php",
+      "source_blob_sha": "025f39025a391956e8e2e4c924ce530671af36e9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "MCP-01",
+        "RECOVERY-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; not Site Owner or Production reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review additive read-only staging recovery route rows: mount/admin-route checks are explicitly distinct from an executable native form, and provider Write/Owner Step-up must be separately authorized. Environment-crossing routes only expose diagnostics, never mutation. Hermetic changed runtime-update-recovery-contract.py executes route/runtime fixture checks; real admin page mount and remote OAuth outcomes remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "535ee08e1e6c03e722e3881c5063fe55e9f264f2",
+      "control_ids": [
+        "ADMIN-01",
+        "ADMIN-04",
+        "PLATFORM-10"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; not Site Owner or Production reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review native administrator failed-runtime-transaction form: it is shown only for eligible, intact pre-replacement metadata recovery; a passive GET is not an apply, an explicit review/nonce and exact plan are required, and the handler replans before any metadata CAS mutation. Existing recovery regression runner is modified in this PR and tests negative/safe recovery eligibility; live admin handler wiring still needs independent acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "source_blob_sha": "5ac8320c89c8f66ecd101e7a7fa699f0966a8102",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; not Site Owner or Production reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review strictly scoped runtime release-set recovery: verified signed failed transaction, no partial component replacement, exact current pair identity, original one-time OAuth/owner gates and CAS remain mandatory. Explicit component context prevents bootstrap eligibility being inferred from missing tool visibility; actual component readback is required before marking updates complete. The changed Python harness executes hermetic runtime recovery, races, audit and fail-closed tests, not live Staging or Production acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "4dea3a7205248825b2249209a12166603666c14e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI only, not owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO. Content/Brand source classification is explicitly reviewed under AI-01 and PROVIDERS-02, in addition to the unchanged governance and provider execution gates. The updated Context scan-completeness runtime proves end-to-end partial scan rejection does not mutate the registry, while successful complete-scan ingestion remains accepted. Execution mapping: this PHP file is a standalone CLI fixture, not a PHPUnit class. The changed Python recovery driver runs it with php -n and propagates failure; no test coverage is removed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "54d32312ce0e134c1b4ad55cf79c7ddde2adcbf8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI only, no Staging or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Fail closed on Google Drive source reads with missing normalized content, along with expired child-page and content-read budgets. Unreadable files mark scan_complete=false and truncated reasons, so no missing/deleted-file assertions can arise from partial material. Exact provider timeout remains distinct from OAuth errors. The changed PHP post-manual-update-guidance-runtime fixture, invoked by the Python runtime-update-recovery-contract runner, denies incomplete/truncated/unverified content during Source Scan Apply. Bounded resumable inventory remains a separate unimplemented NO-GO."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "8d35d1f6915c6ac29f95a5afe9730411f8721bd4",
+      "control_ids": [
+        "AI-01",
+        "PROVIDERS-02",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review the WordPress Admin Source Scan guarded-write route. It retains nonce and administrator checks, reuses the original Brand Context Builder complete inventory admission, refuses partial or unnormalized Drive reads and refuses missing admission helper. Modified context-authority-contract.py enforces the admin route's native admission and context-scan-completeness-runtime.php exercises end-to-end partial write denial and complete source scan positive paths. No Google provider promotion, Brand owner approval, Staging acceptance or Production mutation is implied. Execution mapping: this PHP file is a standalone CLI fixture, not a PHPUnit class. The changed Python recovery driver runs it with php -n and propagates failure; no test coverage is removed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "source_blob_sha": "27a4ba3316497ed725a37914cbf583a1ad677c94",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "62b009aa5930f6efe87c90bbd115ae7e18c18172",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "18c3a42f109997f403ff51067e896a85042163f4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "6ff5485254bbcb722187890524408bf3cc51dc34",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php",
+      "source_blob_sha": "5d2557289e10993729565452aa2ca79265b1fb25",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "source_blob_sha": "bc7a25de077ff51ab5d7a02153d3af842d1aef32",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "12333be41b2145cea2fbde8173c1b2302b5b54bf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "81f925688fdbb9732f570efaa9b6af77b1a54c51",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
     }
   ],
   "code_change_rules": {

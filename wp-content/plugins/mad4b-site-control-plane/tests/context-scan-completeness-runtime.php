@@ -441,7 +441,9 @@ $registered = array_values( array_filter( MAD4B_SCP_Context_Authority::assets(),
 } ) );
 mad4b_scan_assert( 1 === count( $registered ), 'End-to-end source scan apply must register the newly observed Drive asset exactly once.', $registered );
 
-// A bounded partial provider scan may now commit only what was actually observed.
+// Partial provider evidence is diagnostic only: the source-scan apply gateway
+// must not commit an incomplete provider set. Lower-level Context Authority
+// partial persistence is separately exercised above and never certifies absence.
 // Context Authority still forbids absence evidence until a later complete scan.
 MAD4B_SCP_Context_Provider_Gateway::$complete = false;
 MAD4B_SCP_Context_Provider_Gateway::$assets = array(
@@ -471,19 +473,23 @@ $partial_apply = MAD4B_SCP_Brand_Context_Builder::source_scan_apply(
 		'expected_registry_revision' => $partial_plan['registry_revision'],
 	)
 );
-mad4b_scan_assert( ! is_wp_error( $partial_apply ), 'Exact partial source scan apply must commit observed assets.', $partial_apply );
-mad4b_scan_assert( ! empty( $partial_apply['continuation_required'] ) && 'continue_source_scan' === $partial_apply['next_action'], 'Partial source scan apply must expose deterministic continuation.', $partial_apply );
-mad4b_scan_assert( $partial_before_revision + 1 === MAD4B_SCP_Context_Authority::registry_revision(), 'Partial source scan apply must advance registry revision exactly once.' );
+mad4b_scan_assert( is_wp_error( $partial_apply )
+ && 'mad4b_context_source_scan_complete_inventory_required' === $partial_apply->get_error_code(),
+ 'Partial source scan apply must reject incomplete provider inventory.', $partial_apply );
+mad4b_scan_assert( $partial_before_revision === MAD4B_SCP_Context_Authority::registry_revision(),
+ 'Rejected partial source scan apply must not increment registry revision.' );
 $partial_assets = MAD4B_SCP_Context_Authority::assets();
 $prior_tone = array_values( array_filter( $partial_assets, static function ( $asset ) {
-	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-new-tone-of-voice' === (string) $asset['file_id'];
+ return is_array( $asset ) && 'drive-new-tone-of-voice' === (string) ( $asset['file_id'] ?? '' );
 } ) );
 $partial_brand = array_values( array_filter( $partial_assets, static function ( $asset ) {
-	return is_array( $asset ) && isset( $asset['file_id'] ) && 'drive-partial-brand-strategy' === (string) $asset['file_id'];
+ return is_array( $asset ) && 'drive-partial-brand-strategy' === (string) ( $asset['file_id'] ?? '' );
 } ) );
-mad4b_scan_assert( 1 === count( $prior_tone ) && 'ready' === $prior_tone[0]['status'], 'Partial apply must not mark an unseen previously registered asset unavailable.', $prior_tone );
-mad4b_scan_assert( 1 === count( $partial_brand ), 'Partial apply must register the newly observed asset exactly once.', $partial_brand );
+mad4b_scan_assert( 1 === count( $prior_tone ) && 'ready' === $prior_tone[0]['status'],
+ 'Rejected partial scan may not modify previously registered file availability.', $prior_tone );
+mad4b_scan_assert( 0 === count( $partial_brand ), 'Partial scan must not ingest provisional Brand content.', $partial_brand );
 $partial_sources = MAD4B_SCP_Context_Authority::sources();
-mad4b_scan_assert( 'partial_scan' === $partial_sources[ $source_id ]['status'] && empty( $partial_sources[ $source_id ]['last_scan_complete'] ), 'Partial apply must preserve explicit incomplete source state.', $partial_sources[ $source_id ] );
+mad4b_scan_assert( ! empty( $partial_sources[ $source_id ]['last_scan_complete'] ),
+ 'Rejected partial scan must retain the previous complete source certification.', $partial_sources[ $source_id ] );
 
 echo "mad4b.site-control-plane.context-scan-completeness.runtime.v4: PASS\n";

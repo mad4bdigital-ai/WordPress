@@ -260,10 +260,31 @@ final class MAD4B_SCP_Staging_Write_Authority {
 		$checkpoint['candidate_binding_required'] = is_array( $current ) && ! empty( $current['candidate_binding_required'] );
 		$checkpoint['candidate_binding_match'] = is_array( $current ) && ! empty( $current['candidate_binding_match'] );
 		$checkpoint['current_readiness_blockers'] = is_array( $current ) && isset( $current['blockers'] ) && is_array( $current['blockers'] ) ? $current['blockers'] : array( 'write_current_readiness_unavailable' );
+		$checkpoint['repair_guidance'] = self::repair_guidance( is_array( $current ) ? $current : array() );
 		$checkpoint['current_truth'] = true;
 		$checkpoint['deep_grant_scan_performed'] = true;
 		$checkpoint['mutation_performed'] = false;
 		return $checkpoint;
+	}
+
+	/** Read-only advice from an explicit deep scan; never an admission decision. */
+	public static function repair_guidance( array $current ) {
+		$blockers = isset( $current['blockers'] ) && is_array( $current['blockers'] ) ? $current['blockers'] : null;
+		$binding_only = true === ( $current['current_grant_snapshot_ready'] ?? false )
+			&& true === ( $current['persisted_ready'] ?? false )
+			&& true === ( $current['candidate_binding_required'] ?? false )
+			&& false === ( $current['candidate_binding_match'] ?? null )
+			&& is_array( $blockers ) && ! empty( $blockers )
+			&& ! array_diff( $blockers, array( 'runtime_authority_candidate_not_reconciled' ) );
+		return array(
+			'contract' => 'mad4b.write-authority-repair-guidance.v1',
+			'next_action' => $binding_only ? 'prepare_exact_candidate_binding_reconciliation' : ( true === ( $current['ready'] ?? false ) ? 'none' : 'inspect_current_authority_and_grant_drift' ),
+			'candidate_binding_only' => $binding_only,
+			'grant_recreation_required_by_binding_drift' => false,
+			'existing_reconciliation_preflight_required' => $binding_only,
+			'provider_certification_evaluated' => false,
+			'execution_allowed_by_guidance' => false, 'mutation_performed' => false,
+		);
 	}
 
 	public static function approval_policy_projection( $candidate_bootstrap_exception_active = null ) {

@@ -193,15 +193,15 @@ $read_dispatch = wp_get_ability( 'mad4b/read-execute' );
 // Regression: the public ChatGPT read discovery -> tool-info -> fixed dispatcher
 // must provide a signed, server-created identity without manual hash guessing.
 $read_info_tool = wp_get_ability( 'mad4b/tool-info' );
-$metadata_only = $read_info_tool->execute( array( 'ability_name' => $oversized_name ) );
+$metadata_only = $read_info_tool->execute( array( 'ability_name' => $oversized_name, 'prepare_execution' => false ) );
 if ( is_wp_error( $metadata_only ) || array_key_exists( 'prepared_dispatch', $metadata_only ) ) {
-    $fail( 'Default tool-info unexpectedly issued a receipt or failed.', is_wp_error( $metadata_only ) ? $metadata_only->get_error_code() : $metadata_only );
+    $fail( 'Metadata-only opt-out issued a receipt or failed.', is_wp_error( $metadata_only ) ? $metadata_only->get_error_code() : $metadata_only );
 }
-$prepared_info = $read_info_tool->execute( array( 'ability_name' => $oversized_name, 'prepare_execution' => true ) );
+$prepared_info = $read_info_tool->execute( array( 'ability_name' => $oversized_name ) );
 if ( is_wp_error( $prepared_info ) || empty( $prepared_info['prepared_dispatch']['preparation_receipt'] )
     || 'read' !== ( $prepared_info['prepared_dispatch']['expected_execution_lane'] ?? '' )
     || 'mad4b/read-execute' !== ( $prepared_info['dispatch_tool'] ?? '' ) ) {
-    $fail( 'Opt-in tool-info did not return exact signed read preparation.', is_wp_error( $prepared_info ) ? $prepared_info->get_error_code() : $prepared_info );
+    $fail( 'Legacy tool-info call did not return exact signed read preparation.', is_wp_error( $prepared_info ) ? $prepared_info->get_error_code() : $prepared_info );
 }
 $prepared_dispatch_result = $read_dispatch->execute( array_merge(
     array( 'ability_name' => $oversized_name, 'input' => array() ),

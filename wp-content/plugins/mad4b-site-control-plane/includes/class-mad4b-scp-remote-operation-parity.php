@@ -84,6 +84,10 @@ final class MAD4B_SCP_Remote_Operation_Parity {
 				$abilities[] = (string) $row['remote_ability'];
 			}
 		}
+        // Explicitly opted-in, provenance-verified broker operations share this
+        // mount with catalog operations; optional tools/list slots are irrelevant.
+        if ( $registry_ready && class_exists( 'MAD4B_SCP_Governed_Ability_Census' ) )
+            $abilities = array_merge( $abilities, array_keys( MAD4B_SCP_Governed_Ability_Census::eligible() ) );
 		$abilities = array_values( array_unique( array_filter( array_map( 'strval', $abilities ) ) ) );
 		sort( $abilities, SORT_STRING );
 		return $abilities;

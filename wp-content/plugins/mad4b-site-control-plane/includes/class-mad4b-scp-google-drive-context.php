@@ -623,7 +623,26 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'write_blockers' => isset( $status['write_blockers'] ) && is_array( $status['write_blockers'] ) ? array_values( $status['write_blockers'] ) : array(),
 			'scope_diagnostic' => isset( $status['scope_diagnostic'] ) && is_array( $status['scope_diagnostic'] ) ? $status['scope_diagnostic'] : array(),
 		);
+		$public['verification_guidance'] = self::connection_verification_guidance( $status );
 		return $public;
+	}
+
+	/** Scope availability does not prove successful renewal or remote continuity. */
+	public static function connection_verification_guidance( array $status ) {
+		$state = $status['health_state'] ?? 'unknown';
+		$action = 'inspect_connection_state';
+		if ( 'refresh_required' === $state ) $action = 'perform_governed_refresh_then_verify_provider_read';
+		elseif ( 'refresh_failed' === $state ) $action = true === ( $status['reconnect_required'] ?? false ) ? 'reconnect_provider_with_owner' : 'inspect_refresh_failure_and_backoff';
+		elseif ( 'healthy' === $state ) $action = 'verify_provider_read_continuity';
+		elseif ( 'revocation_pending' === $state ) $action = 'complete_governed_revocation';
+		return array(
+			'contract' => 'mad4b.provider-connection-verification-guidance.v1',
+			'next_action' => $action,
+			'refresh_pending' => 'refresh_required' === $state,
+			'provider_continuity_verified_by_status' => false,
+			'write_certification_evaluated' => false,
+			'execution_allowed_by_guidance' => false, 'mutation_performed' => false,
+		);
 	}
 
 	public static function runtime_readiness() {
@@ -1299,6 +1318,90 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $items;
 	}
 
+	/**
+	 * Transport timeout is not an OAuth failure and must never produce an
+	 * apparently complete Drive inventory. Treat it as a partial scan only.
+	 */
+	public static function is_scan_budget_exhaustion( $result ) {
+		return is_wp_error( $result ) && 'mad4b_google_drive_scan_time_budget_exhausted' === (string) $result->get_error_code();
+	}
+
+	/** One bounded page under the existing source/brand/OAuth identity. */
+	public static function scan_source_page( array $source, array $input ) {
+		if ( ! class_exists( 'MAD4B_SCP_Drive_Scan_Continuation' ) ) require_once __DIR__ . '/class-mad4b-scp-drive-scan-continuation.php';
+		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) require_once __DIR__ . '/class-mad4b-scp-distributed-lock.php';
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		if ( 'staging' !== ( $checkpoint['scope']['environment'] ?? '' ) ) return new WP_Error( 'mad4b_scan_staging_only', 'Resumable inventory is admitted only on enrolled Staging.' );
+		$grant = self::encrypted_grant_identity_sha256(); if ( is_wp_error( $grant ) ) return $grant;
+		$connection = self::connection_status();
+		if ( empty( $connection['token_healthy'] ) ) return new WP_Error( 'mad4b_scan_fresh_connection_required', 'Verify the governed Google connection refresh before starting or resuming an inventory.' );
+		$source_digest = hash( 'sha256', wp_json_encode( $source ) );
+		$registered = MAD4B_SCP_Context_Authority::source( $source['source_id'] ?? '' );
+		if ( empty($registered) || !hash_equals($source_digest,hash('sha256',wp_json_encode($registered))) ) return new WP_Error('mad4b_scan_source_scope_mismatch','Only the exact currently registered source may be scanned.');
+		$actor = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+		$actor_digest = hash( 'sha256', wp_json_encode( array_intersect_key( is_array($actor)?$actor:array(), array_flip(array('auth_method','wp_user_id','subject_fingerprint','client_fingerprint')) ) ) );
+		$scope = array( 'checkpoint_owner'=>array($checkpoint['scope']['site_uuid'],$checkpoint['scope']['brand_ref'],$checkpoint['actor_user_id'],$actor_digest,$source['source_id']),
+			'integrity'=>$checkpoint['fingerprint'], 'actor'=>$actor_digest, 'source'=>$source_digest,
+			'grant'=>$grant, 'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision() );
+		$previous = self::$scan_deadline; self::$scan_deadline = microtime( true ) + self::MAX_SCAN_WALL_SECONDS;
+		try {
+			$root = self::get_folder( $source['external_root_id'] ?? '' ); if ( is_wp_error( $root ) ) return $root;
+			$drive_id = (string) ( $root['driveId'] ?? '' );
+			$scope['drive_id']=$drive_id; $scope['root_id']=$root['id'];
+			$provider = static function ( $action, $data ) use ( $checkpoint, $grant, $source, $source_digest, $scope, $drive_id ) {
+				if ( 'revalidate' === $action ) {
+					$valid = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, false );
+					if ( is_wp_error( $valid ) ) return $valid;
+					$current_grant = self::encrypted_grant_identity_sha256();
+					$current_source = MAD4B_SCP_Context_Authority::source( $source['source_id'] );
+					return ! is_wp_error( $current_grant ) && hash_equals( $grant, $current_grant )
+						&& hash_equals( $source_digest, hash( 'sha256', wp_json_encode( $current_source ) ) )
+						&& $scope['registry_revision'] === MAD4B_SCP_Context_Authority::registry_revision();
+				}
+				if ( 'begin' === $action || 'verify' === $action ) {
+					$params = array( 'supportsAllDrives'=>'true' ); if ( '' !== $drive_id ) $params['driveId']=$drive_id;
+					if ( 'begin' === $action ) {
+						$params['fields']='startPageToken';
+						$result=self::api_get(self::DRIVE_API.'/changes/startPageToken?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+						return is_wp_error($result)?$result:($result['startPageToken']??'');
+					}
+					$params+=array('pageToken'=>$data['change_token'],'pageSize'=>1,'includeItemsFromAllDrives'=>'true',
+						'fields'=>'kind,nextPageToken,newStartPageToken,changes(fileId,removed)');
+					$result=self::api_get(self::DRIVE_API.'/changes?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+					if ( is_wp_error($result) ) return $result;
+					return is_array($result) && 'drive#changeList' === ($result['kind']??'')
+						&& (!array_key_exists('changes',$result) || (is_array($result['changes']) && !$result['changes']))
+						&& empty($result['nextPageToken']) && is_string($result['newStartPageToken']??null) && ''!==$result['newStartPageToken'];
+				}
+				if ( 'list' === $action ) {
+					$id=self::bounded_drive_id($data['id']);
+					$params=array('q'=>"'".$id."' in parents and trashed = false",'pageSize'=>25,
+						'fields'=>'kind,nextPageToken,incompleteSearch,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,appProperties)',
+						'supportsAllDrives'=>'true','includeItemsFromAllDrives'=>'true');
+					if ( ''!==$data['token'] ) $params['pageToken']=$data['token'];
+					$result=self::api_get(self::DRIVE_API.'/files?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+					if (is_wp_error($result)) return $result;
+					if (!is_array($result) || 'drive#fileList'!==($result['kind']??'')) return new WP_Error('mad4b_scan_provider_page_invalid','Drive listing envelope is unverified.');
+					if (!array_key_exists('files',$result)) $result['files']=array();
+					return $result;
+				}
+				$record=self::fetch_text_content_record($data); if (is_wp_error($record))return $record;
+				$text=(string)($record['content']??'');
+				return array('file_id'=>$data['id'],'title'=>$data['name']??'','path'=>$data['path'],
+					'parent_folder_id'=>$data['parents'][0]??'','mimeType'=>$data['mimeType']??'',
+					'modifiedTime'=>$data['modifiedTime']??'','size'=>$data['size']??'',
+					'webViewLink'=>$data['webViewLink']??'','appProperties'=>$data['appProperties']??array(),
+					'normalized_text'=>$text,'content_complete'=>true===($record['complete']??false),
+					'content_bytes'=>strlen($text),'content_hash'=>hash('sha256',$text),
+					'normalization_status'=>$record['normalization_status']??'unknown',
+					'normalization_reason'=>$record['normalization_reason']??'');
+			};
+			return MAD4B_SCP_Drive_Scan_Continuation::run($scope,$root,!empty($source['recursive']),
+				$input['scan_cursor']??'', !empty($input['final_only']),$provider, true === ($input['restart_scan']??false));
+		} finally { self::$scan_deadline = $previous; }
+	}
+
 	public static function scan_folder( $folder_id, $recursive = true ) {
 		$scan_clock_started = microtime( true );
 		$deadline = $scan_clock_started + self::MAX_SCAN_WALL_SECONDS;
@@ -1351,6 +1454,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 			$children_result = self::list_children( $id, false, true );
 			if ( is_wp_error( $children_result ) ) {
+				if ( self::is_scan_budget_exhaustion( $children_result ) ) {
+					// Retain only observed records. An unlisted folder is NOT a missing set.
+					$complete = false;
+					$truncation_reasons[] = 'scan_time_budget';
+					break;
+				}
 				self::$scan_deadline = $previous_scan_deadline;
 				return $children_result;
 			}
@@ -1417,6 +1526,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 				} else {
 					$content_record = self::fetch_text_content_record( $child );
 					++$fetched_asset_count;
+					if ( self::is_scan_budget_exhaustion( $content_record ) ) {
+						// A timed-out file must not become a complete inventory member.
+						$complete = false;
+						$truncation_reasons[] = 'scan_time_budget';
+						break;
+					}
 					if ( is_wp_error( $content_record ) ) {
 						$content_record = array(
 							'content' => '',
@@ -1428,6 +1543,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 					}
 				}
 				$content_complete = ! empty( $content_record['complete'] );
+				if ( ! $content_complete ) {
+					// A fully listed folder with an unreadable document is not a
+					// complete, reviewable source inventory or absence proof.
+					$complete = false;
+					$truncation_reasons[] = 'content_normalization_incomplete';
+				}
 				$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
 				$basis = '' !== $text
 					? $text
@@ -1478,6 +1599,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'complete' => (bool) $complete,
 			'truncated' => ! $complete,
 			'truncation_reasons' => $truncation_reasons,
+			// This is diagnostic evidence only: a partial inventory must never
+			// authorize Source Scan Apply, absence or deleted-asset conclusions.
+			'partial_scan_requires_complete_rescan' => ! $complete,
 			'assets' => $assets,
 		);
 		self::$scan_deadline = $previous_scan_deadline;

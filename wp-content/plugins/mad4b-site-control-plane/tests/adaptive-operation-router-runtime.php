@@ -248,4 +248,17 @@ require_route( $explicit_execution['selected']['route'] === 'write-execute'
         'live_registered_ability_metadata_schema_pinned_canonical_lane'
     && $explicit_execution['transport_options'][0]['verified_in_host_tools_list'] === false,
     'exact write route is only an untrusted until execution revalidates' );
+foreach ( array( 'platform_safety_blocked', 'host_safety_blocked', 'platform_policy_denied',
+    'safety_check_rejected', 'automatic_approval_rejected', 'tool_execution_rejected' ) as $code ) {
+    $platform = $router::plan( array( 'ability_name' => 'example/trip-apply', 'intent' => 'write',
+        'failed_transport' => 'direct', 'failure_code' => $code ) );
+    require_route( $platform['selected'] === null && $platform['transport_options'] === array()
+        && $platform['alternate_recovery_routes'] === null
+        && $platform['state'] === 'HOST_SAFETY_REJECTION_NO_ALTERNATE_EXECUTION'
+        && ! $platform['failure_resolution']['plugin_can_remove_host_safety_rejection']
+        && ! $platform['failure_resolution']['automatic_retry_allowed']
+        && $platform['failure_resolution']['mutation_delivery_state'] === 'unverified'
+        && $platform['local_admin_handoff']['requires_independent_readback_first'],
+        'platform safety report suggested a retry or alternate remote execution: ' . $code );
+}
 echo "mad4b.site-control-plane.adaptive-operation-router.runtime.v1: PASS\n";

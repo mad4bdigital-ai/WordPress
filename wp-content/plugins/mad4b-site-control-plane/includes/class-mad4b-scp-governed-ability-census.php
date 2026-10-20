@@ -172,12 +172,22 @@ final class MAD4B_SCP_Governed_Ability_Census {
                 // inference can waive a human decision.
                 if ( 'staging' === $mode
                     && ( true !== ( $mcp['governed_enrollment_broker'] ?? null )
-                        || 'owner_attestation_v1' !== ( $mcp['broker_dispatch_policy'] ?? null )
-                        || true !== ( $mcp['owner_intent_only'] ?? null ) ) ) continue;
+                        || ! self::reviewed_broker_policy( $name, $mcp ) ) ) continue;
             } else {
                 if ( true !== ( $mcp['direct_only_excluded_from_staging_broker'] ?? null )
                     || true !== ( $mcp['production_allowed'] ?? null )
                     || true !== ( $mcp['generic_raw_sql_breakglass_configuration'] ?? null ) ) continue;
+            }
+            if ( 'staging' === $mode && 'exact_runtime_release_set_v1' === ( $mcp['broker_dispatch_policy'] ?? '' ) ) {
+                foreach ( array( 'execute_callback' => 'bootstrap_apply', 'permission_callback' => 'can_bootstrap_apply' ) as $field => $method ) {
+                    try {
+                        $property = new ReflectionProperty( 'WP_Ability', $field );
+                        $property->setAccessible( true );
+                        $identity = self::callback_identity( $property->getValue( $ability ) );
+                        $suffix = 'MAD4B_SCP_Runtime_Release_Set::' . $method . '@class-mad4b-scp-runtime-release-set.php';
+                        if ( substr( $identity, -strlen( $suffix ) ) !== $suffix ) continue 2;
+                    } catch ( Throwable $error ) { continue 2; }
+                }
             }
             $callback_digest = self::callback_pair_digest( $ability );
             if ( '' === $callback_digest ) continue;
@@ -196,6 +206,17 @@ final class MAD4B_SCP_Governed_Ability_Census {
         }
         ksort( $result, SORT_STRING );
         return $result;
+    }
+
+    public static function reviewed_broker_policy( $name, array $mcp ) {
+        $policy = (string) ( $mcp['broker_dispatch_policy'] ?? '' );
+        if ( 'owner_attestation_v1' === $policy ) return true === ( $mcp['owner_intent_only'] ?? null );
+        // Exact first-party runtime maintenance only. Callback provenance,
+        // target permission, enrolled subject, OAuth and plan still revalidate.
+        return 'exact_runtime_release_set_v1' === $policy
+            && 'mad4b/runtime-release-set-bootstrap-apply' === $name
+            && false === ( $mcp['authority_mutation_allowed'] ?? null )
+            && false === ( $mcp['normal_write_authority_required'] ?? null );
     }
 
     public static function structural_step_up() { return self::scan( 'projection' ); }

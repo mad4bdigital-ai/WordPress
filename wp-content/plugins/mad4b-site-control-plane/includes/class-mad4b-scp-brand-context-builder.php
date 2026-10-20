@@ -1476,12 +1476,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $artifact;
 	}
 
-	private static function source_scan_snapshot( $source_id ) {
+	private static function source_scan_snapshot( $source_id, array $continuation = array() ) {
 		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
 		$source = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::source( $source_id ) : array();
 		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
 		if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_context_provider_gateway_unavailable', 'Context Provider Gateway is unavailable.' );
-		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( $source_id );
+		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( $source_id, $continuation );
 		if ( is_wp_error( $scan ) ) return $scan;
 		$current = array();
 		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
@@ -1496,7 +1496,10 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		ksort( $observed, SORT_STRING );
 		ksort( $current, SORT_STRING );
 		$new_files = array_values( array_diff( array_keys( $observed ), array_keys( $current ) ) );
-		$missing_files = array_values( array_diff( array_keys( $current ), array_keys( $observed ) ) );
+		// Partial provider scans are not evidence of deleted or missing files.
+		$scan_complete = ! is_wp_error( self::source_scan_apply_admission( array( 'scan_complete' => true ), $scan ) );
+		$missing_files = $scan_complete
+			? array_values( array_diff( array_keys( $current ), array_keys( $observed ) ) ) : array();
 		sort( $new_files, SORT_STRING );
 		sort( $missing_files, SORT_STRING );
 		$changed_files = array();
@@ -1518,32 +1521,62 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'source_id' => $source_id,
 			'registry_revision' => (int) MAD4B_SCP_Context_Authority::registry_revision(),
 			'provider_inventory_digest' => $inventory_digest,
-			'scan_complete' => ! empty( $scan['complete'] ),
+			'scan_complete' => $scan_complete,
+			'missing_files_certified' => $scan_complete,
 			'truncation_reasons' => isset( $scan['truncation_reasons'] ) ? array_values( $scan['truncation_reasons'] ) : array(),
 			'new_files' => $new_files,
 			'changed_files' => $changed_files,
 			'unchanged_files' => $unchanged_files,
 			'missing_files' => $missing_files,
 		);
+		if ( isset( $scan['scan_cursor'] ) ) $basis['continuation'] = array(
+			'scan_cursor'=>$scan['scan_cursor'], 'expires_at'=>$scan['expires_at'],
+			'checkpoint_revision'=>$scan['checkpoint_revision'], 'next_action'=>$scan['next_action'] );
 		$basis['plan_sha256'] = hash( 'sha256', self::stable_json( $basis ) );
 		return array( 'plan' => $basis, 'scan' => $scan );
 	}
 
 	public static function source_scan_plan( $input ) {
-		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '' );
+		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '',
+			array( 'resumable'=>true === ( $input['resumable'] ?? false ), 'scan_cursor'=>$input['scan_cursor'] ?? '',
+				'restart_scan'=>true === ( $input['restart_scan'] ?? false ) ) );
 		return is_wp_error( $result ) ? $result : $result['plan'];
 	}
 
+	/** Apply is forbidden until every enumerated provider file is complete. */
+	public static function source_scan_apply_admission( $plan, $scan ) {
+		if ( ! is_array( $plan ) || ! is_array( $scan ) || true !== ( $plan['scan_complete'] ?? null )
+			|| true !== ( $scan['complete'] ?? null ) || ! empty( $scan['truncated'] )
+			|| ! empty( $scan['partial_scan_requires_complete_rescan'] ) || ! empty( $scan['truncation_reasons'] )
+			|| ! isset( $scan['assets'] ) || ! is_array( $scan['assets'] ) )
+			return new WP_Error( 'mad4b_context_source_scan_complete_inventory_required',
+				'Source Scan Apply requires a complete provider inventory; partial evidence cannot authorize registry writes.' );
+		$seen = array();
+		foreach ( $scan['assets'] as $item ) {
+			$id = is_array( $item ) ? (string) ( $item['file_id'] ?? '' ) : '';
+			if ( '' === $id || isset( $seen[ $id ] ) || true !== ( $item['content_complete'] ?? null )
+				|| ! preg_match( '/^[a-f0-9]{64}$/D', (string) ( $item['content_hash'] ?? '' ) ) )
+				return new WP_Error( 'mad4b_context_source_scan_asset_unverified',
+					'Source Scan Apply requires unique, fully normalized content records with verifiable hashes.' );
+			$seen[ $id ] = true;
+		}
+		return true;
+	}
+
 	public static function source_scan_apply( $input ) {
-		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '' );
+		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '',
+			array( 'scan_cursor'=>$input['scan_cursor'] ?? '', 'final_only'=>true ) );
 		if ( is_wp_error( $result ) ) return $result;
 		$plan = $result['plan'];
+		$admission = self::source_scan_apply_admission( $plan, $result['scan'] );
+		if ( is_wp_error( $admission ) ) return $admission;
 		foreach ( array( 'expected_plan_sha256' => 'plan_sha256', 'expected_provider_inventory_digest' => 'provider_inventory_digest' ) as $input_key => $plan_key ) {
 			$expected = strtolower( trim( (string) ( isset( $input[ $input_key ] ) ? $input[ $input_key ] : '' ) ) );
 			if ( ! preg_match( '/^[a-f0-9]{64}$/', $expected ) || ! hash_equals( (string) $plan[ $plan_key ], $expected ) ) return new WP_Error( 'mad4b_context_source_scan_plan_stale', 'Context source inventory changed after scan planning.', array( 'field' => $plan_key ) );
 		}
 		$expected_revision = isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1;
 		if ( $expected_revision !== (int) $plan['registry_revision'] ) return new WP_Error( 'mad4b_context_source_scan_registry_stale', 'Context registry changed after scan planning.' );
+		$result['scan']['expected_registry_revision'] = $expected_revision;
 		$applied = MAD4B_SCP_Context_Authority::replace_source_assets(
 			(string) $plan['source_id'],
 			isset( $result['scan']['assets'] ) && is_array( $result['scan']['assets'] ) ? $result['scan']['assets'] : array(),

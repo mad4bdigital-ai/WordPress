@@ -376,9 +376,29 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$source_id = isset( $_POST['source_id'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['source_id'] ) ) ) ) : '';
 		$sources = MAD4B_SCP_Context_Authority::sources();
 		if ( ! isset( $sources[ $source_id ] ) ) self::redirect_result( new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' ), 'sources', '' );
+		if ( ! empty( $_POST['resumable'] ) ) {
+			require_once __DIR__ . '/class-mad4b-scp-drive-scan-admin.php';
+			$result = MAD4B_SCP_Drive_Scan_Admin::step( wp_unslash( $_POST ) );
+			if ( is_wp_error( $result ) ) self::redirect_result( $result, 'sources', '' );
+			if ( 'apply' === ( $_POST['scan_operation'] ?? '' ) ) self::redirect_result( $result, 'assets', 'source_scanned' );
+			require_once ABSPATH . 'wp-admin/admin-header.php';
+			MAD4B_SCP_Drive_Scan_Admin::render( $result );
+			require_once ABSPATH . 'wp-admin/admin-footer.php';
+			exit;
+		}
 		$source = $sources[ $source_id ];
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
+		// Admin and MCP use the same complete-source admission. A partial
+		// diagnostic inventory must never create provisional Brand assets.
+		if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' )
+			|| ! method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'source_scan_apply_admission' ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_source_scan_admission_unavailable',
+				'Complete Source Scan admission is unavailable.' ), 'sources', '' );
+		}
+		$admission = MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission(
+			array( 'scan_complete' => true === ( $scan['complete'] ?? null ) ), $scan );
+		if ( is_wp_error( $admission ) ) self::redirect_result( $admission, 'sources', '' );
 		$result = MAD4B_SCP_Context_Authority::replace_source_assets(
 			$source_id,
 			isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array(),
@@ -1447,6 +1467,7 @@ final class MAD4B_SCP_Context_Admin_UI {
 			wp_nonce_field( self::ACTION_SCAN_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_SCAN_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';
 			submit_button( __( 'Scan now', 'mad4b-site-control-plane' ), 'secondary', 'submit', false );
+			echo ' <button class="button" name="resumable" value="1" type="submit">' . esc_html__( 'Scan in bounded steps', 'mad4b-site-control-plane' ) . '</button>';
 			echo '</form><details class="mad4b-context-remove"><summary>' . esc_html__( 'Remove', 'mad4b-site-control-plane' ) . '</summary><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
 			wp_nonce_field( self::ACTION_REMOVE_SOURCE );
 			echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION_REMOVE_SOURCE ) . '"><input type="hidden" name="source_id" value="' . esc_attr( $source['source_id'] ) . '">';

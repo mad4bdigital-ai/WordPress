@@ -143,9 +143,56 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		echo '<div class="mad4b-scp-panel"><h3>' . esc_html__( 'Control Plane + MCP Adapter', 'mad4b-site-control-plane' ) . '</h3>';
 		echo '<p>' . esc_html__( 'Use this explicit maintenance action instead of the generic Plugins action row. It never converts the MCP Adapter into a generic independently updatable dependency.', 'mad4b-site-control-plane' ) . '</p>';
 		if ( ! empty( $runtime['transaction']['state'] ) && ! in_array( $runtime['transaction']['state'], array( 'committed', 'cancelled', 'rolled_back' ), true ) ) {
+			$recovery = is_array( $runtime['transaction_recovery'] ?? null ) ? $runtime['transaction_recovery'] : array();
+			$safe_reconciliation = ! empty( $runtime['transaction_integrity_ready'] ) && ! empty( $recovery['eligible'] )
+				&& 'failed_transaction_requires_reconciliation' === (string) ( $runtime['state'] ?? '' );
+			if ( ! $safe_reconciliation ) {
+				echo '<div class="notice notice-warning inline"><p>'
+					. esc_html__( 'Transaction still active or uncertain: no retry or metadata clearing. Inspect its signed receipt, maintenance lease and independent component readback.', 'mad4b-site-control-plane' )
+					. '</p></div></div>';
+				return;
+			}
 			echo '<div class="notice notice-warning inline"><p>'
-				. esc_html__( 'An exact runtime update transaction is in progress. Finish its independent readback or recovery before starting another update.', 'mad4b-site-control-plane' )
-				. '</p></div></div>';
+				. esc_html__( 'A failed pre-replacement transaction has verified unchanged installed components. Reconciliation only cancels the failed metadata; it does not update plugins or grant authority.', 'mad4b-site-control-plane' )
+				. '</p></div>';
+			$review_requested = isset( $_GET['mad4b_runtime_recovery_review'] )
+				&& '1' === (string) wp_unslash( $_GET['mad4b_runtime_recovery_review'] );
+			if ( ! $review_requested ) {
+				$review_url = add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => 'maintenance',
+					'mad4b_runtime_recovery_review' => '1' ), admin_url( 'admin.php' ) );
+				echo '<p><a class="button" href="' . esc_url( $review_url ) . '">'
+					. esc_html__( 'Review exact failed-transaction recovery plan', 'mad4b-site-control-plane' )
+					. '</a></p></div>';
+				return;
+			}
+			// Only this explicit review request performs the potentially expensive
+			// planning read. A passive admin GET never fetches the release channel.
+			$reason = 'WordPress administrator reviewed exact reconciliation of a verified failed runtime transaction.';
+			$plan = MAD4B_SCP_Runtime_Release_Set::plan( array( 'reason' => $reason ) );
+			if ( is_wp_error( $plan ) || ! is_array( $plan ) || empty( $plan['eligible'] )
+				|| 'reconcile_failed_transaction' !== (string) ( $plan['operation'] ?? '' )
+				|| ! hash_equals( (string) ( $runtime['release_set_sha256'] ?? '' ),
+					(string) ( $plan['release_set_sha256'] ?? '' ) ) ) {
+				echo '<div class="notice notice-error inline"><p>'
+					. esc_html__( 'The exact recovery plan is no longer eligible. Inspect evidence and reload; no change has been made.', 'mad4b-site-control-plane' )
+					. '</p></div></div>';
+				return;
+			}
+			echo '<p><strong>' . esc_html__( 'Reconciliation plan SHA-256', 'mad4b-site-control-plane' )
+				. ':</strong> <code>' . esc_html( (string) $plan['plan_sha256'] ) . '</code></p>';
+			echo '<p class="description">' . esc_html__( 'Confirm only after checking the complete current transaction and unaffected component identities. The handler independently replans and rejects any change.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+			wp_nonce_field( 'mad4b_runtime_release_set_apply' );
+			echo '<input type="hidden" name="action" value="mad4b_runtime_release_set_apply">';
+			foreach ( array( 'expected_operation' => 'reconcile_failed_transaction',
+				'expected_plan_sha256' => (string) $plan['plan_sha256'],
+				'expected_release_set_sha256' => (string) $plan['release_set_sha256'],
+				'expected_current_source_commit_sha' => $installed_commit ) as $key => $value ) {
+				echo '<input type="hidden" name="' . esc_attr( $key ) . '" value="' . esc_attr( $value ) . '">';
+			}
+			echo '<button class="button button-primary" type="submit">'
+				. esc_html__( 'Reconcile verified failed transaction (no package update)', 'mad4b-site-control-plane' )
+				. '</button></form></div>';
 			return;
 		}
 		if ( $missing_release_target ) {

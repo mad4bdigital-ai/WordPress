@@ -290,6 +290,16 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
     public static function failure_advice( array $request ) {
         $transport = (string) ( $request['failed_transport'] ?? '' );
         $reason = sanitize_key( (string) ( $request['failure_code'] ?? '' ) );
+        if ( in_array( $reason, array( 'platform_safety_blocked', 'host_safety_blocked',
+            'platform_policy_denied', 'safety_check_rejected', 'automatic_approval_rejected',
+            'tool_execution_rejected' ), true ) ) return array(
+                'state' => 'HOST_SAFETY_REJECTION_NO_ALTERNATE_EXECUTION',
+                'next_action' => 'read_independent_update_status_then_authenticated_native_admin',
+                'requires_independent_readback' => true, 'automatic_retry_allowed' => false,
+                'alternate_execution_allowed' => false, 'plugin_can_remove_host_safety_rejection' => false,
+                'reported_by_client' => true, 'verified_platform_denial' => false,
+                'mutation_delivery_state' => 'unverified',
+            );
         if ( '' === $transport ) return array(
             'state' => 'NO_FAILURE_REPORTED',
             'next_action' => 'prepare_fresh_exact_route_and_verify_host_visibility',
@@ -362,6 +372,15 @@ final class MAD4B_SCP_Adaptive_Operation_Router {
         if ( ! self::can_read() ) return self::blocked( 'read_permission_denied' );
         $request = self::normalize( $input );
         if ( is_wp_error( $request ) ) return $request;
+        $reported_failure = self::failure_advice( $request );
+        if ( 'HOST_SAFETY_REJECTION_NO_ALTERNATE_EXECUTION' === $reported_failure['state'] ) return array(
+            'contract' => self::CONTRACT, 'state' => $reported_failure['state'],
+            'selected' => null, 'failure_resolution' => $reported_failure,
+            'alternate_recovery_routes' => null, 'transport_options' => array(),
+            'local_admin_handoff' => array( 'page' => 'mad4b-runtime-components', 'tab' => 'maintenance',
+                'requires_independent_readback_first' => true, 'requires_fresh_plan_nonce_and_admin' => true,
+                'automatic_execution_allowed' => false ),
+            'read_only' => true, 'mutation_performed' => false, 'authorizing' => false );
         // A natural-language task cannot silently escalate from a planning
         // request into an effectful execution. Only an explicit write intent
         // or an exact registered operation/Ability can select that lane.
