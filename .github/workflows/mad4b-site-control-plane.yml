@@ -131,8 +131,6 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
-          lifecycle_executor="$root/includes/class-mad4b-scp-plugin-ability-service.php"
-          filesystem_executor="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
           audit="$root/includes/class-mad4b-scp-audit.php"
           registry="$root/includes/class-mad4b-scp-adapter-registry.php"
           provider_contracts="$root/includes/class-mad4b-scp-provider-contracts.php"
@@ -151,8 +149,6 @@ jobs:
             config/certified-providers.json \
             includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-abilities.php \
-            includes/class-mad4b-scp-plugin-ability-service.php \
-            includes/class-mad4b-scp-filesystem-mutation-service.php \
             includes/class-mad4b-scp-policy.php \
             includes/class-mad4b-scp-servers.php \
             includes/class-mad4b-scp-transport-context.php \
@@ -225,9 +221,7 @@ jobs:
           grep -Fq "is_sensitive_database_column" "$abilities"
           grep -Fq "START TRANSACTION" "$abilities"
           grep -Fq "FOR UPDATE" "$abilities"
-          grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate" "$abilities"
-          grep -Fq "mad4b_control_plane_dependency_protected" "$lifecycle_executor"
-          grep -Fq "MAD4B_SCP_Policy::plugin_lifecycle_protected" "$lifecycle_executor"
+          grep -Fq "mad4b_control_plane_dependency_protected" "$abilities"
 
           grep -Fq "realpath" "$policy"
           grep -Fq "mad4b_scp_read_capability" "$policy"
@@ -240,11 +234,9 @@ jobs:
           grep -Fq "mad4b_scp_allow_sensitive_database_read" "$policy"
           grep -Fq "mad4b_scp_allow_sensitive_database_write" "$policy"
 
-          grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write" "$abilities"
-          grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch" "$abilities"
-          grep -Fq "prepare_backup_root" "$filesystem_executor"
-          grep -Fq "chmod( \$backup_path, 0600" "$filesystem_executor"
-          grep -Fq "fileperms( \$path ) & 0777" "$filesystem_executor"
+          grep -Fq "prepare_backup_root" "$abilities"
+          grep -Fq "chmod( \$backup_path, 0600" "$abilities"
+          grep -Fq "fileperms( \$path ) & 0777" "$abilities"
           if grep -Fq ".mad4b-backup-" "$abilities"; then
             echo 'Adjacent webroot backup naming must not return.' >&2
             exit 1
