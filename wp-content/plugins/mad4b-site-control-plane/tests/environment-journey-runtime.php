@@ -52,14 +52,42 @@ $staging = array( 'effective_environment'=>'staging', 'wordpress_profile_mismatc
 $guided = array(
     'state'=>'ready_for_exact_owner_decision', 'owner_decision_required'=>true,
     'next_action'=>'present_exact_site_owner_consent_then_step_up_once',
-    'prepared_request'=>array( 'operation_id'=>'staging_write_authority_convergence',
-        'expected_registration_digest'=>str_repeat( '1', 64 ) ),
+    'prepared_request'=>array(
+        'operation_id'=>'staging_write_authority_convergence',
+        'expected_registration_digest'=>str_repeat( '1', 64 ),
+        'expected_dispatch_policy_digest'=>str_repeat( '2', 64 ),
+        'expected_input_schema_sha256'=>str_repeat( '3', 64 ),
+        'input'=>array(
+            'expected_site_uuid'=>$valid['site_uuid'],
+            'expected_plan_sha256'=>str_repeat( 'a', 64 ),
+            'expected_profile_digest'=>str_repeat( 'b', 64 ),
+            'owner_review_digest'=>str_repeat( 'c', 64 ),
+            'expected_source_commit_sha'=>str_repeat( 'd', 40 ),
+            'confirmation'=>'ENABLE GOVERNED STAGING WRITE AUTHORITY',
+        ),
+    ),
 );
 $out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $guided );
 check( $out['state'] === 'ready_for_exact_owner_decision'
     && $out['prepared_request'] === $guided['prepared_request']
     && $out['automatic_execution'] === false && $out['owner_decision_recorded'] === false,
     'Prepared Staging proof may be presented but never auto-applied' );
+$invalid_guided = $guided;
+$invalid_guided['prepared_request']['input']['expected_site_uuid']
+    = '8de35ca2-fb87-4a28-bc9c-33593d92fdad';
+$out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $invalid_guided );
+check( $out['state'] === 'invalid_staging_handoff' && $out['prepared_request'] === null,
+    'Wrong-site signed plan must never be proposed to this site's owner' );
+$invalid_guided = $guided;
+$invalid_guided['prepared_request']['expected_dispatch_policy_digest'] = 'invalid';
+$out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $invalid_guided );
+check( $out['state'] === 'invalid_staging_handoff' && $out['prepared_request'] === null,
+    'Tampered broker dispatch policy must not be proposed' );
+$invalid_guided = $guided;
+$invalid_guided['prepared_request']['input']['confirmation'] = 'APPROVE ANY ENVIRONMENT';
+$out = MAD4B_SCP_Environment_Journey::model( $staging, $valid, 'write_authority', false, $invalid_guided );
+check( $out['state'] === 'invalid_staging_handoff' && $out['prepared_request'] === null,
+    'Altered owner scope must not be proposed' );
 foreach ( array( 'prior_operation_requires_reconciliation', 'already_current',
     'prerequisites_blocked' ) as $state ) {
     $guided = array( 'state'=>$state, 'owner_decision_required'=>false,
