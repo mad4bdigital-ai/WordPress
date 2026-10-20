@@ -1,11 +1,11 @@
 {
   "contract": "mad4b.change-slices.v2",
   "authorizing": false,
-  "reviewed_base_sha": "9bc751c166e10379f739965be8449f9ceb5e2494",
+  "reviewed_base_sha": "cfddceca6976cde7f3923f78a89f85b886001302",
   "exact_head_binding": "supplied_by_ci_not_embedded_in_commit",
   "exhaustive_ownership_required": true,
-  "changed_file_count": 94,
-  "changed_paths_sha256": "d295642c10fd7e581112f2460928013a7bd0f3aa89a8e1aa7a0b2d10c64ad44c",
+  "changed_file_count": 105,
+  "changed_paths_sha256": "6a92a91052d4e3453096d5eb859dbb66e0025f5e55bc13ebe458a810648c1e9d",
   "slices": [
     {
       "id": "source-evidence-and-ci",
@@ -31,7 +31,9 @@
         "specs/007-content-intelligence-workflow-platform/feature.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.json",
         "specs/007-content-intelligence-workflow-platform/implementation-closure.md",
-        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json"
+        "specs/007-content-intelligence-workflow-platform/post-merge-capability-fabric-closure.json",
+        ".github/workflows/feature-007-spec-ci.yml",
+        "specs/007-content-intelligence-workflow-platform/extensions/competitive-experience/ui-delivery.json"
       ]
     },
     {
@@ -147,6 +149,31 @@
         "tools/staging-vendor-fixes/regression.php",
         "tools/staging-vendor-fixes/repair-status.json",
         "tools/staging-vendor-fixes/verify.py"
+      ]
+    },
+    {
+      "id": "hosted-wordpress-admin-handoff",
+      "semantic_unit": "Read-only wp-admin file manager inventory, guarded ZIP update status projection, hermetic runtime checks and operator documentation.",
+      "revert_boundary": "Revert the advisory discovery/status projection with its isolated admin fixture and docs; never enable elFinder or external filesystem write authority, and preserve immutable ZIP approval and rollback.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/README.md",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-file-workspace.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/admin-file-workspace-runtime.php"
+      ]
+    },
+    {
+      "id": "brand-closure-readonly-recovery",
+      "semantic_unit": "Bounded, site-neutral Brand recovery diagnostics with standalone PHP reducer, bounded runner, and fail-closed native operations contract.",
+      "revert_boundary": "Revert Brand closure reducer and remote recovery caller with their PHP/Python behavioral checks together. Never infer authorization, automatically repair OAuth, or replay uncertain writes.",
+      "certification": "exact_head",
+      "path_globs": [
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-authority-closure.php",
+        "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ]
     }
   ]
