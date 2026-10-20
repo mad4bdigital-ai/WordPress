@@ -6,7 +6,8 @@ root = Path(__file__).resolve().parents[1]
 for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enrollment-runtime.php',
                 'native-update-routing-runtime.php', 'adaptive-operation-router-runtime.php',
                 'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php',
-                'read-callback-boundary-runtime.php', 'gateway-regression-runtime.php'):
+                'read-callback-boundary-runtime.php', 'gateway-regression-runtime.php',
+                'context-scan-completeness-runtime.php', 'drive-scan-continuation-runtime.php'):
     subprocess.run(['php', '-n', str(root / 'tests' / fixture)], check=True)
 parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text()
 enrollment_mount = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
@@ -33,3 +34,12 @@ assert "'wp_register_ability_args', array( 'MAD4B_SCP_Connector_Resilience', 'wr
 abilities = (includes / 'class-mad4b-scp-abilities.php').read_text()
 assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in abilities
 assert "array_key_exists( 'prepare_execution', $input ) && false === $input['prepare_execution']" in abilities
+
+provider = (includes / 'class-mad4b-scp-context-provider-gateway.php').read_text()
+assert 'MAD4B_SCP_Google_Drive_Context::scan_source_page( $source, $continuation )' in provider
+admin = (includes / 'class-mad4b-scp-context-admin-ui.php').read_text()
+handler = admin.split('public static function handle_scan_source()',1)[1].split('public static function handle_remove_source()',1)[0]
+assert handler.index('self::require_admin( self::ACTION_SCAN_SOURCE )') < handler.index('MAD4B_SCP_Drive_Scan_Admin::step')
+assert 'source_scan_apply_admission' in handler
+authority = (includes / 'class-mad4b-scp-context-authority.php').read_text()
+assert "isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision()" in authority

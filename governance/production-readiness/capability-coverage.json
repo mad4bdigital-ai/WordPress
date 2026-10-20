@@ -927,6 +927,62 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
       "review_rationale": "Bounded route discovery for write-authority-reconciliation-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, scope isolation, exact execution, encryption and recovery controls cover diagnostic continuation through existing source operations; no new ability or authority.",
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing provider, scope isolation, exact execution, encryption and recovery controls cover diagnostic continuation through existing source operations; no new ability or authority.",
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
     }
   ],
   "lifecycle": [],
@@ -3044,14 +3100,13 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI only, not owner approval",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO. Content/Brand source classification is explicitly reviewed under AI-01 and PROVIDERS-02, in addition to the unchanged governance and provider execution gates. The updated Context scan-completeness runtime proves end-to-end partial scan rejection does not mutate the registry, while successful complete-scan ingestion remains accepted."
+      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO. Content/Brand source classification is explicitly reviewed under AI-01 and PROVIDERS-02, in addition to the unchanged governance and provider execution gates. The updated Context scan-completeness runtime proves end-to-end partial scan rejection does not mutate the registry, while successful complete-scan ingestion remains accepted. Execution mapping: this PHP file is a standalone CLI fixture, not a PHPUnit class. The changed Python recovery driver runs it with php -n and propagates failure; no test coverage is removed."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
@@ -3084,13 +3139,229 @@
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/context-authority-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/context-scan-completeness-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Review the WordPress Admin Source Scan guarded-write route. It retains nonce and administrator checks, reuses the original Brand Context Builder complete inventory admission, refuses partial or unnormalized Drive reads and refuses missing admission helper. Modified context-authority-contract.py enforces the admin route's native admission and context-scan-completeness-runtime.php exercises end-to-end partial write denial and complete source scan positive paths. No Google provider promotion, Brand owner approval, Staging acceptance or Production mutation is implied."
+      "review_rationale": "Review the WordPress Admin Source Scan guarded-write route. It retains nonce and administrator checks, reuses the original Brand Context Builder complete inventory admission, refuses partial or unnormalized Drive reads and refuses missing admission helper. Modified context-authority-contract.py enforces the admin route's native admission and context-scan-completeness-runtime.php exercises end-to-end partial write denial and complete source scan positive paths. No Google provider promotion, Brand owner approval, Staging acceptance or Production mutation is implied. Execution mapping: this PHP file is a standalone CLI fixture, not a PHPUnit class. The changed Python recovery driver runs it with php -n and propagates failure; no test coverage is removed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-context-adapter.php",
+      "source_blob_sha": "27a4ba3316497ed725a37914cbf583a1ad677c94",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "62b009aa5930f6efe87c90bbd115ae7e18c18172",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-admin-ui.php",
+      "source_blob_sha": "18c3a42f109997f403ff51067e896a85042163f4",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-authority.php",
+      "source_blob_sha": "6ff5485254bbcb722187890524408bf3cc51dc34",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-context-provider-gateway.php",
+      "source_blob_sha": "5d2557289e10993729565452aa2ca79265b1fb25",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-admin.php",
+      "source_blob_sha": "bc7a25de077ff51ab5d7a02153d3af842d1aef32",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-drive-scan-continuation.php",
+      "source_blob_sha": "12333be41b2145cea2fbde8173c1b2302b5b54bf",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "81f925688fdbb9732f570efaa9b6af77b1a54c51",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "PROVIDERS-02",
+        "AI-01",
+        "RECOVERY-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
     }
   ],
   "code_change_rules": {

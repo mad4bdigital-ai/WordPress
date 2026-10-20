@@ -59,6 +59,8 @@ jobs:
           php "$P/tests/runtime-update-recovery-runtime.php"
           php "$P/tests/dynamic-first-party-enrollment-runtime.php"
           php "$P/tests/native-update-routing-runtime.php"
+          php "$P/tests/drive-scan-continuation-runtime.php"
+          php "$P/tests/context-scan-completeness-runtime.php"
           php "$P/tests/read-callback-boundary-runtime.php"
           php "$P/tests/gateway-regression-runtime.php"
           php "$P/tests/post-manual-update-guidance-runtime.php"

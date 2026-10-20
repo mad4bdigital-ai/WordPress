@@ -208,12 +208,13 @@ final class MAD4B_SCP_Context_Provider_Gateway {
 		return new WP_Error( 'mad4b_context_provider_read_unsupported', 'Context provider does not expose certified asset readback.' );
 	}
 
-	public static function scan_source( $source_id ) {
+	public static function scan_source( $source_id, array $continuation = array() ) {
 		$source = self::source( $source_id );
 		if ( is_wp_error( $source ) ) return $source;
 		$provider = self::provider_from_source( $source );
 		if ( is_wp_error( $provider ) ) return $provider;
 		if ( 'google_drive' === $provider ) {
+			if ( ! empty( $continuation['resumable'] ) || ! empty( $continuation['scan_cursor'] ) ) return MAD4B_SCP_Google_Drive_Context::scan_source_page( $source, $continuation );
 			return MAD4B_SCP_Google_Drive_Context::scan_folder(
 				isset( $source['external_root_id'] ) ? $source['external_root_id'] : '',
 				! empty( $source['recursive'] )

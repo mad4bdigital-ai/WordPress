@@ -1326,6 +1326,82 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return is_wp_error( $result ) && 'mad4b_google_drive_scan_time_budget_exhausted' === (string) $result->get_error_code();
 	}
 
+	/** One bounded page under the existing source/brand/OAuth identity. */
+	public static function scan_source_page( array $source, array $input ) {
+		if ( ! class_exists( 'MAD4B_SCP_Drive_Scan_Continuation' ) ) require_once __DIR__ . '/class-mad4b-scp-drive-scan-continuation.php';
+		if ( ! class_exists( 'MAD4B_SCP_Distributed_Lock' ) ) require_once __DIR__ . '/class-mad4b-scp-distributed-lock.php';
+		$checkpoint = MAD4B_SCP_Operational_Integrity::capture();
+		if ( is_wp_error( $checkpoint ) ) return $checkpoint;
+		if ( 'staging' !== ( $checkpoint['scope']['environment'] ?? '' ) ) return new WP_Error( 'mad4b_scan_staging_only', 'Resumable inventory is admitted only on enrolled Staging.' );
+		$grant = self::encrypted_grant_identity_sha256(); if ( is_wp_error( $grant ) ) return $grant;
+		$connection = self::connection_status();
+		if ( empty( $connection['token_healthy'] ) ) return new WP_Error( 'mad4b_scan_fresh_connection_required', 'Verify the governed Google connection refresh before starting or resuming an inventory.' );
+		$source_digest = hash( 'sha256', wp_json_encode( $source ) );
+		$registered = MAD4B_SCP_Context_Authority::source( $source['source_id'] ?? '' );
+		if ( empty($registered) || !hash_equals($source_digest,hash('sha256',wp_json_encode($registered))) ) return new WP_Error('mad4b_scan_source_scope_mismatch','Only the exact currently registered source may be scanned.');
+		$actor = class_exists( 'MAD4B_SCP_Identity_Context' ) ? MAD4B_SCP_Identity_Context::current() : array();
+		$actor_digest = hash( 'sha256', wp_json_encode( array_intersect_key( is_array($actor)?$actor:array(), array_flip(array('auth_method','wp_user_id','subject_fingerprint','client_fingerprint')) ) ) );
+		$scope = array( 'checkpoint_owner'=>array($checkpoint['scope']['site_uuid'],$checkpoint['scope']['brand_ref'],$checkpoint['actor_user_id'],$actor_digest,$source['source_id']),
+			'integrity'=>$checkpoint['fingerprint'], 'actor'=>$actor_digest, 'source'=>$source_digest,
+			'grant'=>$grant, 'registry_revision'=>MAD4B_SCP_Context_Authority::registry_revision() );
+		$previous = self::$scan_deadline; self::$scan_deadline = microtime( true ) + self::MAX_SCAN_WALL_SECONDS;
+		try {
+			$root = self::get_folder( $source['external_root_id'] ?? '' ); if ( is_wp_error( $root ) ) return $root;
+			$drive_id = (string) ( $root['driveId'] ?? '' );
+			$scope['drive_id']=$drive_id; $scope['root_id']=$root['id'];
+			$provider = static function ( $action, $data ) use ( $checkpoint, $grant, $source, $source_digest, $scope, $drive_id ) {
+				if ( 'revalidate' === $action ) {
+					$valid = MAD4B_SCP_Operational_Integrity::assert_unchanged( $checkpoint, false );
+					if ( is_wp_error( $valid ) ) return $valid;
+					$current_grant = self::encrypted_grant_identity_sha256();
+					$current_source = MAD4B_SCP_Context_Authority::source( $source['source_id'] );
+					return ! is_wp_error( $current_grant ) && hash_equals( $grant, $current_grant )
+						&& hash_equals( $source_digest, hash( 'sha256', wp_json_encode( $current_source ) ) )
+						&& $scope['registry_revision'] === MAD4B_SCP_Context_Authority::registry_revision();
+				}
+				if ( 'begin' === $action || 'verify' === $action ) {
+					$params = array( 'supportsAllDrives'=>'true' ); if ( '' !== $drive_id ) $params['driveId']=$drive_id;
+					if ( 'begin' === $action ) {
+						$params['fields']='startPageToken';
+						$result=self::api_get(self::DRIVE_API.'/changes/startPageToken?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+						return is_wp_error($result)?$result:($result['startPageToken']??'');
+					}
+					$params+=array('pageToken'=>$data['change_token'],'pageSize'=>1,'includeItemsFromAllDrives'=>'true',
+						'fields'=>'kind,nextPageToken,newStartPageToken,changes(fileId,removed)');
+					$result=self::api_get(self::DRIVE_API.'/changes?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+					if ( is_wp_error($result) ) return $result;
+					return is_array($result) && 'drive#changeList' === ($result['kind']??'')
+						&& (!array_key_exists('changes',$result) || (is_array($result['changes']) && !$result['changes']))
+						&& empty($result['nextPageToken']) && is_string($result['newStartPageToken']??null) && ''!==$result['newStartPageToken'];
+				}
+				if ( 'list' === $action ) {
+					$id=self::bounded_drive_id($data['id']);
+					$params=array('q'=>"'".$id."' in parents and trashed = false",'pageSize'=>25,
+						'fields'=>'kind,nextPageToken,incompleteSearch,files(id,name,mimeType,modifiedTime,size,md5Checksum,parents,driveId,webViewLink,appProperties)',
+						'supportsAllDrives'=>'true','includeItemsFromAllDrives'=>'true');
+					if ( ''!==$data['token'] ) $params['pageToken']=$data['token'];
+					$result=self::api_get(self::DRIVE_API.'/files?'.http_build_query($params,'','&',PHP_QUERY_RFC3986));
+					if (is_wp_error($result)) return $result;
+					if (!is_array($result) || 'drive#fileList'!==($result['kind']??'')) return new WP_Error('mad4b_scan_provider_page_invalid','Drive listing envelope is unverified.');
+					if (!array_key_exists('files',$result)) $result['files']=array();
+					return $result;
+				}
+				$record=self::fetch_text_content_record($data); if (is_wp_error($record))return $record;
+				$text=(string)($record['content']??'');
+				return array('file_id'=>$data['id'],'title'=>$data['name']??'','path'=>$data['path'],
+					'parent_folder_id'=>$data['parents'][0]??'','mimeType'=>$data['mimeType']??'',
+					'modifiedTime'=>$data['modifiedTime']??'','size'=>$data['size']??'',
+					'webViewLink'=>$data['webViewLink']??'','appProperties'=>$data['appProperties']??array(),
+					'normalized_text'=>$text,'content_complete'=>true===($record['complete']??false),
+					'content_bytes'=>strlen($text),'content_hash'=>hash('sha256',$text),
+					'normalization_status'=>$record['normalization_status']??'unknown',
+					'normalization_reason'=>$record['normalization_reason']??'');
+			};
+			return MAD4B_SCP_Drive_Scan_Continuation::run($scope,$root,!empty($source['recursive']),
+				$input['scan_cursor']??'', !empty($input['final_only']),$provider, true === ($input['restart_scan']??false));
+		} finally { self::$scan_deadline = $previous; }
+	}
+
 	public static function scan_folder( $folder_id, $recursive = true ) {
 		$scan_clock_started = microtime( true );
 		$deadline = $scan_clock_started + self::MAX_SCAN_WALL_SECONDS;

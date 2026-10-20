@@ -1514,6 +1514,7 @@ final class MAD4B_SCP_Context_Authority {
 		return self::with_registry_lock(
 			'replace_source_assets',
 			static function () use ( $source_id, $assets, $scan ) {
+				if ( isset( $scan['expected_registry_revision'] ) && (int) $scan['expected_registry_revision'] !== self::registry_revision() ) return new WP_Error( 'mad4b_context_source_scan_registry_stale', 'Context registry changed before the exact scan commit.' );
 				$source_id = strtolower( trim( (string) $source_id ) );
 				$authorized_sources = self::sources();
 				if ( ! isset( $authorized_sources[ $source_id ] ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );

@@ -1476,12 +1476,12 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		return $artifact;
 	}
 
-	private static function source_scan_snapshot( $source_id ) {
+	private static function source_scan_snapshot( $source_id, array $continuation = array() ) {
 		$source_id = strtolower( trim( sanitize_text_field( (string) $source_id ) ) );
 		$source = class_exists( 'MAD4B_SCP_Context_Authority' ) ? MAD4B_SCP_Context_Authority::source( $source_id ) : array();
 		if ( empty( $source ) ) return new WP_Error( 'mad4b_context_source_not_found', 'Context source was not found.' );
 		if ( ! class_exists( 'MAD4B_SCP_Context_Provider_Gateway' ) ) return new WP_Error( 'mad4b_context_provider_gateway_unavailable', 'Context Provider Gateway is unavailable.' );
-		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( $source_id );
+		$scan = MAD4B_SCP_Context_Provider_Gateway::scan_source( $source_id, $continuation );
 		if ( is_wp_error( $scan ) ) return $scan;
 		$current = array();
 		foreach ( MAD4B_SCP_Context_Authority::assets() as $asset ) {
@@ -1497,8 +1497,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		ksort( $current, SORT_STRING );
 		$new_files = array_values( array_diff( array_keys( $observed ), array_keys( $current ) ) );
 		// Partial provider scans are not evidence of deleted or missing files.
-		$scan_complete = true === ( $scan['complete'] ?? null ) && empty( $scan['truncated'] )
-			&& empty( $scan['partial_scan_requires_complete_rescan'] );
+		$scan_complete = ! is_wp_error( self::source_scan_apply_admission( array( 'scan_complete' => true ), $scan ) );
 		$missing_files = $scan_complete
 			? array_values( array_diff( array_keys( $current ), array_keys( $observed ) ) ) : array();
 		sort( $new_files, SORT_STRING );
@@ -1530,12 +1529,17 @@ final class MAD4B_SCP_Brand_Context_Builder {
 			'unchanged_files' => $unchanged_files,
 			'missing_files' => $missing_files,
 		);
+		if ( isset( $scan['scan_cursor'] ) ) $basis['continuation'] = array(
+			'scan_cursor'=>$scan['scan_cursor'], 'expires_at'=>$scan['expires_at'],
+			'checkpoint_revision'=>$scan['checkpoint_revision'], 'next_action'=>$scan['next_action'] );
 		$basis['plan_sha256'] = hash( 'sha256', self::stable_json( $basis ) );
 		return array( 'plan' => $basis, 'scan' => $scan );
 	}
 
 	public static function source_scan_plan( $input ) {
-		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '' );
+		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '',
+			array( 'resumable'=>true === ( $input['resumable'] ?? false ), 'scan_cursor'=>$input['scan_cursor'] ?? '',
+				'restart_scan'=>true === ( $input['restart_scan'] ?? false ) ) );
 		return is_wp_error( $result ) ? $result : $result['plan'];
 	}
 
@@ -1560,7 +1564,8 @@ final class MAD4B_SCP_Brand_Context_Builder {
 	}
 
 	public static function source_scan_apply( $input ) {
-		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '' );
+		$result = self::source_scan_snapshot( isset( $input['source_id'] ) ? $input['source_id'] : '',
+			array( 'scan_cursor'=>$input['scan_cursor'] ?? '', 'final_only'=>true ) );
 		if ( is_wp_error( $result ) ) return $result;
 		$plan = $result['plan'];
 		$admission = self::source_scan_apply_admission( $plan, $result['scan'] );
@@ -1571,6 +1576,7 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		}
 		$expected_revision = isset( $input['expected_registry_revision'] ) ? (int) $input['expected_registry_revision'] : -1;
 		if ( $expected_revision !== (int) $plan['registry_revision'] ) return new WP_Error( 'mad4b_context_source_scan_registry_stale', 'Context registry changed after scan planning.' );
+		$result['scan']['expected_registry_revision'] = $expected_revision;
 		$applied = MAD4B_SCP_Context_Authority::replace_source_assets(
 			(string) $plan['source_id'],
 			isset( $result['scan']['assets'] ) && is_array( $result['scan']['assets'] ) ? $result['scan']['assets'] : array(),

@@ -360,6 +360,9 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'resumable' => array( 'type'=>'boolean', 'default'=>false ),
+					'restart_scan' => array( 'type'=>'boolean', 'default'=>false ),
+					'scan_cursor' => array( 'type'=>'string', 'maxLength'=>120 ),
 				),
 				array( 'source_id' )
 			)
@@ -550,6 +553,7 @@ final class MAD4B_SCP_Context_Adapter extends MAD4B_SCP_Adapter_Base {
 			$this->schema(
 				array(
 					'source_id' => array( 'type' => 'string', 'minLength' => 64, 'maxLength' => 64 ),
+					'scan_cursor' => array( 'type'=>'string', 'maxLength'=>120 ),
 					'expected_plan_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 					'expected_registry_revision' => array( 'type' => 'integer', 'minimum' => 0 ),
 					'expected_provider_inventory_digest' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),

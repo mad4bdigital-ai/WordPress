@@ -30,3 +30,52 @@ The above correction makes failed reads actionable; it does **not** make a large
 - ETG and ARE independently return a complete source digest, provider certification evidence and Brand owner-review state; no Production mutation or privileged Developer/Breakglass state is enabled.
 
 Until these conditions pass against the live runtime, this feature remains **NO-GO for Source Scan Write**, regardless of successful Staging candidate binding, package/Skills status or a partial read's file count.
+
+## Implemented follow-up: opt-in bounded continuation
+
+`context/source-scan-plan` now accepts `resumable=true` to start an enrolled
+Staging inventory. Pass the returned `continuation.scan_cursor` to the same
+operation for each subsequent step. One request lists at most 25 children or
+normalizes one file. The original 10-second provider budget remains unchanged.
+Plain single-request scans remain supported.
+
+Progress uses one non-autoloaded AES-256-GCM encrypted checkpoint per exact
+site/brand/actor/source/credential/registry identity, with a 900-second TTL,
+8 MiB plaintext cap, 500 files, 120 folders and depth eight. Provider pagination
+and document bodies never appear in the cursor or audit. Signed, revision-bound
+cursors, an existing connection-owned advisory mutex, ownership readback,
+append-only diagnostic intent and exact SQL compare-and-swap prevent concurrent
+append or silent overwrite. Replaying the previous page returns its checkpoint
+without re-normalizing files. Checkpoint expiry, corruption or loss fails closed.
+`restart_scan=true` requires the exact current cursor and replaces diagnostic
+progress with a new generation; it cannot clear assets or owner approvals.
+
+The existing Google Changes API fences the account or selected shared drive from
+the initial change token. Any reported change, pending changes page or unverified
+response denies final completeness. This is conservative: even unrelated changes
+in the same change feed require a fresh inventory. The feed and exact scope are
+rechecked on completed readback and before Apply. Unsupported or incomplete
+normalization, shortcuts needing separate scope review, credential refresh,
+registry/profile/actor drift and bounds require explicit remediation/restart;
+they are never silently skipped or certified as absent.
+
+A complete result supplies a stable plan and inventory digest. Include its exact
+`scan_cursor` alongside the existing plan SHA, inventory SHA and registry revision
+when calling `context/source-scan-apply`. Apply reads the sealed final result,
+rechecks Drive changes and identity, then retains all original provider Write,
+approval and registry gates. Registry revision is checked again inside the
+original Context registry lock. Diagnostic pages do not ingest provisional assets.
+
+The native Context Authority Sources tab exposes **Scan in bounded steps** under
+the original administrator POST/nonce handler. Each step uses the same planner;
+a complete result requires separate checked confirmation and exact-plan Apply.
+The existing one-request administrator scan now uses the same completeness gate.
+
+Executable hermetic regressions cover 25 files in multiple folders/pages,
+exact-once normalization, ciphertext/tokens, forged/stale/cross-scope cursors,
+provider changes, normalization failure, timeout, audit failure, lost lock, CAS
+failure, cache loss, expiry, explicit restart, exact final planner/Apply parity
+and unconfirmed/forged native Apply refusal. These establish source behavior,
+not Google OAuth integration or ETG/ARE acceptance. The earlier "Still required"
+section remains the live acceptance checklist; source implementation alone does
+not supply provider certification, Brand review or a live complete inventory.

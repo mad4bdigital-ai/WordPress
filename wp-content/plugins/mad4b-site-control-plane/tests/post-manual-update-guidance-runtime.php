@@ -113,3 +113,15 @@ $completed_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'sou
 guidance_check( is_array( $completed_plan ) && true === $completed_plan['missing_files_certified']
  && array( 'previous-file' ) === $completed_plan['missing_files'], 'complete inventory did not produce precise missing-file evidence' );
 echo "POST_MANUAL_UPDATE_GUIDANCE: PASS (hermetic; no live acceptance)\n";
+
+// Planning and mutation must use identical completeness evidence.
+foreach (array('truncation_reason','incomplete_content','duplicate_file','missing_assets') as $case) {
+ $contradictory = $verified;
+ if ('truncation_reason' === $case) $contradictory['truncation_reasons'] = array('scan_time_budget');
+ if ('incomplete_content' === $case) $contradictory['assets'][0]['content_complete'] = false;
+ if ('duplicate_file' === $case) $contradictory['assets'][] = $contradictory['assets'][0];
+ if ('missing_assets' === $case) unset($contradictory['assets']);
+ MAD4B_SCP_Context_Provider_Gateway::$mock_scan = $contradictory;
+ $rejected_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan(array('source_id'=>$source_id));
+ guidance_check(false === $rejected_plan['scan_complete'] && false === $rejected_plan['missing_files_certified'] && array() === $rejected_plan['missing_files'], 'contradictory inventory certified missing files: '.$case);
+}
