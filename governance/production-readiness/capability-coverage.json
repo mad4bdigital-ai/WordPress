@@ -1231,6 +1231,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance. Follow-up exact-source security review: even read-only suggested Staging prepared requests must match this enrolled site's UUID, exact dispatch/registration/schema digests, source SHA, plan digest, owner review digest and Write-only confirmation; cross-site or tampered nested proofs fail closed to invalid_staging_handoff without executing."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
+      "source_blob_sha": "e90ac31e2af2ab384467c1ea0a44acba08331d48",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Pure read-only environment-bound guidance for Local, Development, Staging, Production using WordPress and Site Profile authoritative resolution. It does not accept caller environment overrides, cannot create grants/owner decisions, does not replay unknown operations, routes Staging through exact Enrollment and Production through exact batch + signed test policy; all seven operation families and four environments tested in isolated PHP. This record is append-only and nonauthorizing. CI is not live Production or Staging acceptance. Follow-up exact-source security review: even read-only suggested Staging prepared requests must match this enrolled site's UUID, exact dispatch/registration/schema digests, source SHA, plan digest, owner review digest and Write-only confirmation; cross-site or tampered nested proofs fail closed to invalid_staging_handoff without executing. Independent Production Write Authority consent remains separate from exact Production content/plugin deployment batches; a preapproved finite batch never renews grants, changes Site Profile, or grants permission. Hermetic PHP verifies the separation across all environments."
     }
   ],
   "code_change_rules": {
