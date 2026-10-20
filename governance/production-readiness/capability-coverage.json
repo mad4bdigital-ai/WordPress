@@ -1780,14 +1780,14 @@
         "RECOVERY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ],
       "owner_role": "MAD4B WordPress source security and release reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Existing read-only, exact-site Brand Core status gains opt-in operational_diagnostics with source-and-grant-scoped facts only. The default API is unchanged. The new reducer is lazy-loaded only after exact Staging confirmation, and owner consent/Google OAuth/source scan remain independent gates. Hermetic operational tests and exact source contracts cover fail-closed behavior. CI-only; no Production authorizations or live certification. Domain coverage explicitly includes RECOVERY-01 for the baseline-owned impact classifier; this never changes Product/Production authority."
+      "review_rationale": "Existing read-only, exact-site Brand Core status gains opt-in operational_diagnostics with source-and-grant-scoped facts only. The default API is unchanged. The new reducer is lazy-loaded only after exact Staging confirmation, and owner consent/Google OAuth/source scan remain independent gates. Hermetic operational tests and exact source contracts cover fail-closed behavior. CI-only; no Production authorizations or live certification. Domain coverage explicitly includes RECOVERY-01 for the baseline-owned impact classifier; this never changes Product/Production authority. Standalone PHP reducer is executed by a bounded Python harness for CI coverage; no PHPUnit runner or live authority is inferred."
     }
   ],
   "code_change_rules": {
