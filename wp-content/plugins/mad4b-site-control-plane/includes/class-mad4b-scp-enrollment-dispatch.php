@@ -468,6 +468,14 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			if ( 'managed_skills_reconciliation' === $operation_id ) {
 				$row['execution_preflight'] = self::live_managed_skills_preflight();
 			}
+			// An exact intent query returns the whole ready-to-present owner journey,
+			// without requiring separate discovery and manual digest copying.
+			// Broad enumeration remains cheap and never prepares privileged actions.
+			if ( 'staging_write_authority_convergence' === $operation_id
+				&& in_array( $query, array( 'staging_write_authority_convergence',
+					'staging write authority convergence' ), true ) ) {
+				$row['guided_handoff'] = self::guided_write_handoff( $row );
+			}
 			$items[ $operation_id ] = $row;
 			if ( count( $items ) >= $limit ) break;
 		}
