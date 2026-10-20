@@ -2180,7 +2180,11 @@
         "GOVERNANCE-02",
         "SECURITY-01",
         "EXECUTION-01",
-        "RECOVERY-01"
+        "RECOVERY-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "DATABASE-01",
+        "AI-01"
       ],
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
@@ -2189,7 +2193,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Make the exact site/brand/tenant read fence explicit on ContentJob list results; zero current-scope rows cannot close a site-wide Operator Doctor incident. Do not loosen load_job predicates or allow cross-tenant recovery; bounded PHP lint and source contract run via plugin-operation-cycle-contract.py and disposable WordPress ContentJob integration fixture remains required."
+      "review_rationale": "Make the exact site/brand/tenant read fence explicit on ContentJob list results; zero current-scope rows cannot close a site-wide Operator Doctor incident. Do not loosen load_job predicates or allow cross-tenant recovery; bounded PHP lint and source contract run via plugin-operation-cycle-contract.py and disposable WordPress ContentJob integration fixture remains required. Scope and zero-row behavior impact the automation/job lifecycle and database read contracts, so the review explicitly maps their existing controls."
     }
   ],
   "code_change_rules": {
