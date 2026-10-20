@@ -124,3 +124,82 @@ without the correlated server log. Failures before registration, inside the oute
 execution fence, process/resource termination, response serialization, proxy or
 session transport remain separate. No Brand Authority scan, asset acceptance,
 registry mutation or live runtime repair is claimed from these source changes.
+
+## Remote MCP and WordPress administrator recovery parity
+
+The canonical read-only `mad4b/recovery-route-matrix` now describes the
+administrator navigation route and MCP Ability for each bounded operational
+recovery area. Open **Control Plane → Operational Remediation → Recovery
+routes — WordPress vs OAuth/MCP** to see the same live registry inspection.
+Use `mad4b/operational-remediation-status` to identify open gates and
+`mad4b/operational-remediation-prepare` to produce a nonauthorizing,
+exact-source review handoff.
+
+A registered WordPress Ability is **not** proof of MCP mounting, ChatGPT
+tools/list visibility, a successful gateway prepare, a permission grant or
+a completed mutation. The matrix keeps these separate. Administrator route
+registration similarly does not prove an executable POST handler or a
+successful write. Unknown coverage is shown as unverified, never ready.
+
+### Exact local recovery of a failed runtime transaction
+
+**Control Plane → Runtime Components → Maintenance** now exposes a dedicated
+recovery path **only** when the signed transaction, unchanged original pair,
+known pre-replacement failure, inactive maintenance lease and inactive
+continuation justify `transaction_recovery.eligible=true`. Ordinary update
+remains blocked while the transaction is active or uncertain.
+
+1. Choose **Review exact failed-transaction recovery plan**. This is an
+   explicit read/planning action, not a package update. Passive page views
+   avoid the potentially expensive release-plan read.
+2. Review the fresh `reconcile_failed_transaction` plan SHA-256 and the
+   current identity. Only then use the separate nonce-protected POST.
+3. The native handler requires `update_plugins`, Staging safety, an exact
+   plan hash, release-set hash, installed source SHA, original signed
+   failure and an independent fresh replan. The existing audit/CAS executor
+   preserves the failure, cancels metadata once, and requires **another**
+   plan and approval before any package installation.
+4. If the transaction is partial, unknown, corrupt, under a lease or has
+   changed installed components, no local or remote shortcut is offered.
+   Inspect the transaction journal and disk identity independently.
+
+The admin route and remote `mad4b/runtime-release-set-plan` / governed
+`mad4b/runtime-release-set-apply` share the same runtime coordinator and
+transaction guard; they do **not** share identity or consent automatically.
+
+### Scope of the expanded matrix
+
+| Recovery area | Read/plan surface | Existing governed operator handoff |
+| --- | --- | --- |
+| Runtime update, failed transaction | Runtime Release Set status/plan | Runtime Components native exact review; separately admitted MCP apply |
+| Current build Candidate Binding | Write Authority and Staging convergence | Exact enrolled owner intent plus OAuth step-up; never recreate healthy grants |
+| Skills | Live Skills Runtime Certification | Reconcile Managed Skills only after proving actual drift |
+| Provider/Google OAuth | Provider Connection Discover/Plan | Owner OAuth browser consent or certified refresh, followed by independent read |
+| Google Drive inventory | Context source onboarding preflight | Prove selected folder and complete bounded scan before Scan Apply |
+| Brand Authority | Brand Core remote recovery status/prepare | Hash-bound asset review and separate owner approval |
+| Browser/AJAX/SEO | Work queue, browser acceptance and acceptance evidence | Verified external executor, target, lease and independent receipt |
+| Rate Limiting/Object Cache | Operational acceptance evidence | Host/worker/TTL/atomicity evidence; cannot infer from a cache drop-in |
+| MCP transport errors | Tool projection recovery plan and remediation status | Correlate gateway, registration, execution-fence and callback faults |
+| Production recovery | Production readiness and host identity reads | No automatically inferred Production write, secret provisioning or restore |
+
+A host safety denial or unsupported host capability (process isolation,
+Resource Limiter, network isolation, SSH, external executor) is not bypassed
+by changing transport, generating arbitrary PHP, invoking raw SQL or
+switching to Breakglass. Where only a human host/operator can supply a
+capability, the matrix returns the original route and the missing proof
+instead of claiming remote remediation.
+
+### CI and live acceptance
+
+The PHP 7.4, 8.3, 8.4 and 8.5 Runtime Release Set CI matrix tests exact
+admin recovery intent, rejected stale/unknown plans, read-only recovery
+route inventory, missing mounts, and Production/Staging separation.
+Source tests must **not** be recorded as live ETG/ARE acceptance.
+
+For each installed site, separately verify package source and manifest,
+100% current grant inventory, Candidate Binding, Skills live evidence,
+provider transport certification, completed Drive inventory, Brand asset
+decisions, Browser executor receipts, Apply → Verify → Undo, rate limiting,
+cache backends, AJAX/Canonical/WPML, and independent audits. Preserve the
+existing owner attestation and exact environment scope. No Production
+mutation or unattended generic remote repair is provided here.
