@@ -47,6 +47,8 @@ jobs:
           php -l "$root/tools/catalog-decommission.php"
           php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/staging-write-one-step-review-runtime.php"
+          php "$root/tests/frontend-origin-diagnostic-runtime.php"
+          php "$root/tests/frontend-origin-pre-pluggable-runtime.php"
           php "$root/tests/catalog-transport-runtime.php"
           node "$root/tests/catalog-transport-client.mjs"
           node "$root/tests/network-catalog-client.mjs"
