@@ -52,3 +52,7 @@ $check( strpos( $ui, "'diagnostics' => __( 'Diagnostics & Recovery'" ) !== false
 $check( strpos( $ui, 'wp_nonce_field( MAD4B_SCP_Native_Runtime_Diagnostics::NONCE_ACTION )' ) !== false, 'admin POST missing nonce' );
 $check( strpos( $ui, "'site-health.php'" ) !== false && strpos( $ui, 'plugins.php?s=query-monitor' ) !== false, 'native WordPress tools not linked' );
 echo "PASS native WordPress Recovery: registered MCP read, QM reuse, Site Health, 500/200 projection, nonce UI, fail-closed permissions\n";
+
+$GLOBALS['allowed'] = new WP_Error('policy_failed');
+$GLOBALS['administrator'] = false;
+$check(is_wp_error(MAD4B_SCP_Native_Runtime_Diagnostics::status()), 'WP_Error policy denial became truthy diagnostic access');

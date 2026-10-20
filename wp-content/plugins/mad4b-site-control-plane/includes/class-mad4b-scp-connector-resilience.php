@@ -51,6 +51,9 @@ final class MAD4B_SCP_Connector_Resilience {
 			'permission_granted_by_boundary' => false, 'raw_error_message_exposed' => false,
 			'client_action' => 'inspect_correlated_server_diagnostic_then_retry_read',
 		);
+        try {
+            if ( class_exists('MAD4B_Native_Incident_MU',false) ) MAD4B_Native_Incident_MU::record_throwable($error,$stage,$name,$correlation);
+        } catch ( Throwable $ignored ) { /* Diagnostic persistence is optional. */ }
 		// Never log input, exception message, credentials or file paths.
 		error_log( 'MAD4B_READ_CALLBACK_FAILURE ' . json_encode( $evidence ) );
 		return new WP_Error( $code, 'Read callback failed: ' . $code . '; correlation_id=' . $correlation . '; automatic_retry_allowed=false.', $evidence );

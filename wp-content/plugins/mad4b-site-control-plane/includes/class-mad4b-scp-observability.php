@@ -164,6 +164,7 @@ final class MAD4B_SCP_Observability {
 	/** Bounded server evidence only; never log messages, attributes or paths. */
 	private static function telemetry_exception( $stage, Throwable $error ) {
 		try {
+			if ( class_exists('MAD4B_Native_Incident_MU',false) ) MAD4B_Native_Incident_MU::record_throwable($error,'telemetry');
 			error_log( 'MAD4B_OPTIONAL_TELEMETRY_FAILURE ' . json_encode( array(
 				'code' => 'mad4b_optional_telemetry_exception',
 				'stage' => substr( sanitize_key( (string) $stage ), 0, 48 ),

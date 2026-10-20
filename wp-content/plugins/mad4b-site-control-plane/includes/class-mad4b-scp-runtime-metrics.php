@@ -9,8 +9,14 @@ final class MAD4B_SCP_Runtime_Metrics {
 
 	public static function record($name,$value=1){
 		try { return self::record_impl($name,$value); }
-		catch (Throwable $error) { return new WP_Error('mad4b_metric_write_exception','Optional metric storage failed; no retry was performed.'); }
+		catch (Throwable $error) { self::observe_exception($error,'metric_write'); return new WP_Error('mad4b_metric_write_exception','Optional metric storage failed; no retry was performed.'); }
 	}
+
+    private static function observe_exception(Throwable $error,$stage) {
+        try {
+            if (class_exists('MAD4B_Native_Incident_MU',false)) MAD4B_Native_Incident_MU::record_throwable($error,$stage);
+        } catch (Throwable $ignored) { /* Storage observation never retries or replaces the failure. */ }
+    }
 
 	private static function record_impl($name,$value){
 		global $wpdb;
@@ -36,7 +42,7 @@ final class MAD4B_SCP_Runtime_Metrics {
 
 	public static function summary(array $names=array(),$hours=24){
 		try { return self::summary_impl($names,$hours); }
-		catch (Throwable $error) { return new WP_Error('mad4b_metric_read_exception','Metric history could not be read.'); }
+		catch (Throwable $error) { self::observe_exception($error,'metric_read'); return new WP_Error('mad4b_metric_read_exception','Metric history could not be read.'); }
 	}
 
 	private static function summary_impl(array $names,$hours){

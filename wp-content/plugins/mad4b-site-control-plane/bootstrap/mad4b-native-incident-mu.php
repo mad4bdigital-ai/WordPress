@@ -1,6 +1,6 @@
 <?php
 /**
- * Early, best-effort, staging-only PHP fatal incident metadata recorder.
+ * Early, best-effort, staging-only fatal/caught PHP incident metadata recorder.
  * Loaded by the *already managed* MAD4B MCP MU bootstrap after exact site
  * enrollment checks. It must not start WordPress, expose raw PHP errors or
  * change Recovery Mode, error display, file permissions, or write authority.
@@ -13,6 +13,9 @@ final class MAD4B_Native_Incident_MU {
     const MAX_EVENTS = 12;
     private static $enabled = false;
     private static $registered = false;
+    private static $recording = false;
+    private static $caught_attempts = 0;
+    private static $request_correlation = '';
     private static $early_secret = '';
 
     public static function boot( $staging_enrolled = false ) {
@@ -31,6 +34,43 @@ final class MAD4B_Native_Incident_MU {
         self::$registered = true;
         register_shutdown_function( array( __CLASS__, 'shutdown' ) );
         return true;
+    }
+
+    public static function active() { return self::$enabled; }
+
+    /** Diagnostic identity only; never accepts an inbound request identifier. */
+    public static function correlation_id() {
+        if ( '' === self::$request_correlation ) {
+            try { self::$request_correlation = bin2hex( random_bytes( 16 ) ); }
+            catch ( Throwable $ignored ) { self::$request_correlation = substr( hash( 'sha256', uniqid( '', true ) ), 0, 32 ); }
+        }
+        return self::$request_correlation;
+    }
+
+    public static function record_throwable( Throwable $error, $stage, $ability = '', $correlation = '' ) {
+        return self::record_caught( array( 'type'=>E_ERROR, 'file'=>$error->getFile(),
+            'line'=>$error->getLine(), 'message'=>get_class($error).'|'.$error->getMessage() ),
+            array( 'event_kind'=>'caught_exception', 'stage'=>$stage, 'ability_name'=>$ability,
+                'correlation_id'=>$correlation ) );
+    }
+
+    /** Adapter supplies text, not the Throwable: hash it, never infer a source location. */
+    public static function record_adapter_error( $message, array $context ) {
+        $text = is_string( $message ) ? $message : '';
+        $detail = isset($context['exception']) && is_string($context['exception']) ? $context['exception'] : '';
+        $ability = $context['tool'] ?? ($context['tool_name'] ?? '');
+        $ability = is_string($ability) && strlen($ability)<=180 ? $ability : '';
+        return self::record_caught( array( 'type'=>E_ERROR, 'file'=>'', 'line'=>0, 'message'=>$text.'|'.$detail.'|'.$ability ),
+            array( 'event_kind'=>'adapter_error', 'stage'=>'adapter', 'ability_name'=>$ability ) );
+    }
+
+    private static function record_caught( array $error, array $context ) {
+        if ( !self::$enabled || self::$recording || self::$caught_attempts >= 3 ) return false;
+        ++self::$caught_attempts;
+        self::$recording = true;
+        try { return self::record( $error, $context ); }
+        catch ( Throwable $ignored ) { return false; }
+        finally { self::$recording = false; }
     }
 
     /** No raw message, stack trace, IP, request URL or filesystem path leaves this method. */
@@ -97,11 +137,17 @@ final class MAD4B_Native_Incident_MU {
     }
 
     /** Metadata-only best effort; never replace WordPress Recovery Mode. */
-    public static function record( $error ) {
+    public static function record( $error, array $context = array() ) {
         if ( ! self::$enabled || ! function_exists( 'get_option' ) || ! function_exists( 'update_option' ) ) return false;
         try {
             $event = self::classify( $error );
             if ( ! $event ) return false;
+            $event['event_kind'] = in_array($context['event_kind'] ?? '', array('caught_exception','adapter_error'), true) ? $context['event_kind'] : 'fatal';
+            $event['stage'] = in_array($context['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter'), true) ? $context['stage'] : '';
+            $ability = $context['ability_name'] ?? '';
+            $event['ability_name'] = is_string($ability) && preg_match('~^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,179}$~D',$ability) ? $ability : '';
+            $correlation = $context['correlation_id'] ?? '';
+            $event['correlation_id'] = is_string($correlation) && preg_match('/^[a-f0-9]{32}$/D',$correlation) ? $correlation : self::correlation_id();
             $now = time();
             $stored = get_option( self::OPTION, array() );
             $history = is_array( $stored ) && isset( $stored['events'] ) && is_array( $stored['events'] ) ? $stored['events'] : array();
@@ -141,6 +187,10 @@ final class MAD4B_Native_Incident_MU {
         foreach ( $events as $row ) {
             if ( ! is_array( $row ) ) continue;
             $safe[] = array(
+                'event_kind' => in_array($row['event_kind'] ?? '', array('caught_exception','adapter_error'), true) ? $row['event_kind'] : 'fatal',
+                'stage' => in_array($row['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter'), true) ? $row['stage'] : '',
+                'ability_name' => is_string($row['ability_name'] ?? null) && preg_match('~^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,179}$~D',$row['ability_name']) ? $row['ability_name'] : '',
+                'correlation_id' => is_string($row['correlation_id'] ?? null) && preg_match('/^[a-f0-9]{32}$/D',$row['correlation_id']) ? $row['correlation_id'] : '',
                 'type' => (int) ( $row['type'] ?? 0 ),
                 'component_family' => in_array( (string) ( $row['component_family'] ?? '' ), array( 'mu_plugin', 'plugin', 'theme', 'wordpress_core', 'unknown' ), true ) ? $row['component_family'] : 'unknown',
                 'request_family' => in_array( (string) ( $row['request_family'] ?? '' ), array( 'cron', 'rest', 'admin', 'frontend' ), true ) ? $row['request_family'] : 'unknown',

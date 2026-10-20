@@ -60,3 +60,7 @@ for marker in ["self::$current = $span","finally {","self::$current = $parent","
 import subprocess
 subprocess.run(["php", "-n", str(root / "tests/observability-runtime.php")], check=True)
 subprocess.run(["php", "-n", str(root / "tests/runtime-metrics-failure-runtime.php")], check=True)
+subprocess.run(["php", "-n", str(root / "tests/native-caught-incident-runtime.php")], check=True)
+subprocess.run(["php", "-n", str(root / "tests/native-recovery-status-runtime.php")], check=True)
+subprocess.run(["php", "-n", str(root / "tests/native-incident-mu-runtime.php")], check=True)
+subprocess.run(["php", "-n", str(root / "tests/native-incident-early-runtime.php")], check=True)

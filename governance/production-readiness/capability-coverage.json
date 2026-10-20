@@ -983,6 +983,36 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing provider, scope isolation, exact execution, encryption and recovery controls cover diagnostic continuation through existing source operations; no new ability or authority.",
       "review_rationale": "Review bounded source inventory continuation and complete-plan/native parity. It reuses source-scan-plan/apply and original Google provider reads; no new executor, provider promotion or owner approval. Optional Staging pages seal source/actor/profile/credential/registry scope, provider tokens and bodies with AES-GCM, finite TTL/size/count/depth, signed current cursors, advisory lock ownership, append-only intent and exact CAS. Duplicate requests do not normalize twice. Any Google Changes result, foreign/duplicate item, incomplete file, scope drift, cache loss, audit failure or stale cursor denies completeness. Final Apply retains original exact plan/provider/approval guards and rechecks registry revision inside its lock. The native POST/nonce route requires separate reviewed completion confirmation and uses the same planner/Apply. Changed Python driver executes real hermetic PHP checkpoint crypto/CAS and 25-file multi-page traversal, exact final planner/Apply, denial/replay/restart tests, and the real Context completeness positive/negative fixture. No live Staging or Production certification is inferred."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-mcp-error-handler.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing diagnostic and security controls cover a passive Adapter error sink. No new ability, operation or authority.",
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
     }
   ],
   "lifecycle": [],
@@ -3424,6 +3454,216 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "review_rationale": "CI-only review: optional DB metric writes return bounded errors without retry, failed history queries are unavailable evidence, zero/inconsistent samples cannot certify SLO latency or error budgets. Existing observability/MCP/database controls suffice; no new authority or executor. The changed Python regression driver executes actual metrics, hot-set consumer, workload consumer and SLO paths under database exceptions/null/error results, preserving mandatory callback outcomes and tenant trace isolation. Live MCP exception origin and deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "f3a7cfeb6413fe0f8c25739f16440e958db50c61",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "829cca9277d03a10bcbb9b0a9ca329f52eb8fe8d",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+      "source_blob_sha": "eb11ae9d49610518a25810788404b198976c8f74",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "a7c4907964ab73f2f3273cda6fe9e0ae3d6048f9",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php",
+      "source_blob_sha": "0aff3b7ddf2e0de65637553b10049b5066700667",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "b0420ff0d725cc13286981abe993c968c0ee7d84",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-mcp-error-handler.php",
+      "source_blob_sha": "8c61984c4f4d71478c3774c3b8dbb17d44702d53",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01",
+        "SECURITY-02",
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "ADMIN-01",
+        "BROWSER-01",
+        "RECOVERY-01",
+        "PLATFORM-01",
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
     }
   ],
   "code_change_rules": {

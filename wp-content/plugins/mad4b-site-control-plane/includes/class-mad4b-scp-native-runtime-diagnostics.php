@@ -33,9 +33,19 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
         ) );
     }
 
+    /** Use the Adapter interface, preserving its response semantics and authentication. */
+    public static function adapter_error_handler() {
+        $fallback = '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
+        if ( !class_exists('MAD4B_Native_Incident_MU',false) || !method_exists('MAD4B_Native_Incident_MU','active') || !MAD4B_Native_Incident_MU::active()
+            || !interface_exists('\\WP\\MCP\\Infrastructure\\ErrorHandling\\Contracts\\McpErrorHandlerInterface') ) return $fallback;
+        require_once __DIR__ . '/class-mad4b-scp-native-mcp-error-handler.php';
+        return 'MAD4B_SCP_Native_MCP_Error_Handler';
+    }
+
     private static function authorized() {
-        return ( function_exists( 'current_user_can' ) && current_user_can( 'manage_options' ) )
-            || ( class_exists( 'MAD4B_SCP_Policy', false ) && MAD4B_SCP_Policy::can_read() );
+        if ( function_exists( 'current_user_can' ) && current_user_can( 'manage_options' ) ) return true;
+        $allowed = class_exists( 'MAD4B_SCP_Policy', false ) ? MAD4B_SCP_Policy::can_read() : false;
+        return ! is_wp_error( $allowed ) && true === $allowed;
     }
 
     public static function status( $input = array() ) {

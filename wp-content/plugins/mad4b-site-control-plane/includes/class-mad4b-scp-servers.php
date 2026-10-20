@@ -951,7 +951,7 @@ final class MAD4B_SCP_Servers {
 	public function register_servers( $adapter ) {
 		if ( ! is_object( $adapter ) || ! method_exists( $adapter, 'create_server' ) ) { foreach ( self::expected_server_ids() as $id ) self::$registrations[ $id ] = array( 'registered' => false, 'error' => 'adapter_contract_unavailable', 'materialized' => false, 'tool_count' => 0 ); return; }
 		$transport = '\\WP\\MCP\\Transport\\HttpTransport';
-		$error_handler = '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
+		$error_handler = class_exists( 'MAD4B_SCP_Native_Runtime_Diagnostics', false ) ? MAD4B_SCP_Native_Runtime_Diagnostics::adapter_error_handler() : '\\WP\\MCP\\Infrastructure\\ErrorHandling\\ErrorLogMcpErrorHandler';
 		$observability = '\\WP\\MCP\\Infrastructure\\Observability\\NullMcpObservabilityHandler';
 		$target_server_id = self::current_request_server_id();
 		$registry = null;
