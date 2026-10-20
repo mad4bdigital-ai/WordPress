@@ -137,12 +137,56 @@ jobs:
           META_BASE="$(python -c 'import json; print(json.load(open("specs/007-content-intelligence-workflow-platform/feature.json"))["last_reviewed_master_parent_sha"])')"
           if [ "$BASE_REF" = "master" ]; then
             if [ "$META_BASE" != "$BASE" ]; then
-              # A non-Feature-007 PR must not rewrite inherited Feature-007
-              # review provenance to a master SHA it has not actually reviewed.
-              # Fail closed for any Feature-007 source change or invalid ancestry.
-              if git diff --quiet "$BASE"...HEAD -- specs/007-content-intelligence-workflow-platform/ \
-                && git merge-base --is-ancestor "$META_BASE" "$BASE"; then
-                echo "::warning title=Inherited Feature 007 baseline drift::Feature 007 metadata is stale in master; no Feature 007 files changed in this PR. Recorded=$META_BASE, current_master=$BASE. Reconcile via separately reviewed Feature 007 baseline."
+              # Do not invent a Feature 007 review of a newer master. Permit
+              # inherited metadata drift only for unchanged Feature 007 sources
+              # or exact SHA/bytes rebinding of this reviewed workflow.
+              if git merge-base --is-ancestor "$META_BASE" "$BASE" && python3 - "$BASE" <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          base = sys.argv[1]
+          scope = "specs/007-content-intelligence-workflow-platform/"
+          prefix = scope + "extensions/competitive-experience/"
+          workflow = ".github/workflows/feature-007-spec-ci.yml"
+          raw = Path(workflow).read_bytes()
+          digest = hashlib.sha256(raw).hexdigest()
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", f"{base}...HEAD", "--", scope],
+              text=True,
+          ).splitlines()
+          for path in changed:
+              if not path.startswith(prefix) or not path.endswith("-delivery.json"):
+                  raise SystemExit("FEATURE007_BASELINE_REVIEW_REQUIRED:" + path)
+              old = json.loads(subprocess.check_output(
+                  ["git", "show", f"{base}:{path}"], text=True
+              ))
+              new = json.loads(Path(path).read_text(encoding="utf-8"))
+              for doc, current in ((old, False), (new, True)):
+                  records = [
+                      record
+                      for group in ("code_paths", "test_paths", "spec_paths",
+                                    "workflow_paths", "evidence_integrity")
+                      for record in doc.get(group, [])
+                      if isinstance(record, dict) and record.get("path") == workflow
+                  ]
+                  if len(records) != 1 or not all(
+                      key in records[0] for key in ("sha256", "bytes")
+                  ):
+                      raise SystemExit("FEATURE007_WORKFLOW_BINDING_INVALID:" + path)
+                  record = records[0]
+                  if current and (record["sha256"] != digest or record["bytes"] != len(raw)):
+                      raise SystemExit("FEATURE007_WORKFLOW_BINDING_STALE:" + path)
+                  record["sha256"] = "<verified-workflow-hash>"
+                  record["bytes"] = 0
+              if old != new:
+                  raise SystemExit("FEATURE007_UNRELATED_DELIVERY_CHANGE:" + path)
+          print("FEATURE007_INHERITED_DRIFT_SCOPE_OK checked_delivery_files=" + str(len(changed)))
+          PY
+              then
+                echo "::warning title=Inherited Feature 007 baseline drift::Feature 007 review metadata is inherited from master. Only exact workflow fingerprint rebinding is permitted; separately reconcile the reviewed parent. Recorded=$META_BASE, current_master=$BASE."
               else
                 echo "BASELINE_METADATA_STALE expected_reviewed_master_parent=$BASE recorded=$META_BASE"
                 exit 1
