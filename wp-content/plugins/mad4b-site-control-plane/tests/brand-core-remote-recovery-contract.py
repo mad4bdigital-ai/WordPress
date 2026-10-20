@@ -467,4 +467,37 @@ must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint mi
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
 must(runbook, "durable_db_recovery", "Host-runner and DB gap not documented")
 must(runbook, "include_host_challenge", "nonce-bound read flow missing")
+# Independent local Staging acceptance: a passed Skills Runtime is not
+# a Browser Executor claim, SEO Write certificate, Undo receipt, or cache TTL.
+operational = (root / "includes/class-mad4b-scp-operational-acceptance-evidence.php").read_text(encoding="utf-8")
+gates = (root / "includes/class-mad4b-scp-staging-acceptance-gates.php").read_text(encoding="utf-8")
+cache_diag = (root / "includes/class-mad4b-scp-object-cache-diagnostics.php").read_text(encoding="utf-8")
+cache_fixture = (root / "tests/object-cache-diagnostics-runtime.php").read_text(encoding="utf-8")
+for marker in (
+    "'include_staging_gates' => array( 'type' => 'boolean', 'default' => false )",
+    "MAD4B_SCP_Staging_Acceptance_Gates::collect()",
+    "'staging_gate_diagnostics_authorizing'] = false",
+):
+    must(operational, marker, "independent Staging gate read integration missing")
+for marker in (
+    "MAD4B_SCP_Skill_Runtime_Certification::current_status()",
+    "'PASS_LIVE_RUNTIME'",
+    "'EXTERNAL_EXECUTOR_RECEIPT_MISSING'",
+    "'blind_resubmit_allowed' => false",
+    "'automatic_content_write_allowed' => false",
+    "'rankmath_write_certified' => false",
+    "'multi_worker_or_node_acceptance_certified' => false",
+    "'full_operational_acceptance' => false",
+    "'production_authorized' => false",
+    "'mutation_performed' => false",
+):
+    must(gates, marker, "Staging readiness must not self-certify independent gates")
+for forbidden in ("wp_insert_post(", "wp_update_post(", "wp_remote_post(", "update_option(",
+                  "wp_cache_add(", "wp_cache_incr(", "MAD4B_SCP_Mutation_Manager::apply("):
+    if forbidden in gates:
+        raise AssertionError("read-only Staging acceptance performs mutation: " + forbidden)
+must(cache_diag, "'ttl_expiration_proven'=>false",
+     "cache TTL cannot be certified from an absent/deleted key")
+must(cache_fixture, "deleted key can only prove absence",
+     "deleted-key false-positive regression missing")
 print("mad4b.site-control-plane.brand-core-remote-recovery.contract.v1: PASS")
