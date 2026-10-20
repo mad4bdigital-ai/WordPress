@@ -496,7 +496,7 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ],
       "owner_role": "MAD4B WordPress source security and release reviewer",
@@ -505,7 +505,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, provider diagnostic, MCP and security controls already cover this bounded, passive reducer; no ability, source mutation, or new runtime authority is introduced.",
-      "review_rationale": "Review the new pure Brand Authority Closure reducer as a non-authorizing diagnostic service, with independent hermetic runtime and static contract evidence; exact source was independently reviewed, and live Staging acceptance remains required."
+      "review_rationale": "Review the new pure Brand Authority Closure reducer as a non-authorizing diagnostic service, with independent hermetic runtime and static contract evidence; exact source was independently reviewed, and live Staging acceptance remains required. Execution proof is provided by the bounded Python wrapper that runs the original standalone PHP fixture; PHPUnit is not falsely assumed."
     }
   ],
   "lifecycle": [],
@@ -1760,14 +1760,14 @@
         "PROVIDERS-02"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-authority-closure-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ],
       "owner_role": "MAD4B WordPress source security and release reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Pure, site-neutral Brand recovery diagnostic reducer differentiates Google invalid_grant, current vs stale grants, and exact three-category content reviews. It never invokes network/DB writes or mints an approval, release, Skills checkpoint or Production capability. A hermetic ETG/ARE fixture and source contract verify no automatic retry, revoke or acceptance. This CI review is nonauthorizing and requires new live Staging readback. Domain coverage explicitly includes PROVIDERS-02 for the baseline-owned impact classifier; this never changes Product/Production authority."
+      "review_rationale": "Pure, site-neutral Brand recovery diagnostic reducer differentiates Google invalid_grant, current vs stale grants, and exact three-category content reviews. It never invokes network/DB writes or mints an approval, release, Skills checkpoint or Production capability. A hermetic ETG/ARE fixture and source contract verify no automatic retry, revoke or acceptance. This CI review is nonauthorizing and requires new live Staging readback. Domain coverage explicitly includes PROVIDERS-02 for the baseline-owned impact classifier; this never changes Product/Production authority. The readiness runner uses the bounded Python executor for standalone PHP tests; the PHP fixture is not declared as PHPUnit."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
