@@ -479,3 +479,7 @@ for marker in [
         raise SystemExit("Google OAuth health contract missing marker: " + marker)
 if "'token_healthy' => $connected && ( ! empty( $token['access_token'] ) || ! empty( $token['refresh_token'] ) )" in drive:
     raise SystemExit("Google OAuth health must not treat an expired access token plus refresh-token presence as healthy")
+
+# Exercise original convergence code without provider/generation services.
+import subprocess
+subprocess.run(["php", str(cp / "tests/brand-existing-assets-runtime.php")], check=True)
