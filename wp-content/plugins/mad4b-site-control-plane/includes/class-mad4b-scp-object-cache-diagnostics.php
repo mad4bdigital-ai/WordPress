@@ -76,7 +76,9 @@ final class MAD4B_SCP_Object_Cache_Diagnostics {
         $value=wp_cache_get($key,self::GROUP,false,$found);
         if('expiry'===$phase) {
             return array('contract'=>self::CONTRACT,'phase'=>'expiry',
-                'expired_observed'=>!$found,'ttl_expiration_proven'=>!$found,
+                'expired_observed'=>!$found,'ttl_expiration_proven'=>false,
+                'elapsed_ttl_proven'=>false,
+                'expiry_missing_key_is_not_ttl_proof'=>true,
                 'multi_node_shared_storage_proven'=>false);
         }
         if(!$found||!is_numeric($value)||(int)$value<2){
