@@ -5,6 +5,7 @@ No cookies, authentication, request bodies, redirects, site writes, or browser
 acceptance assertions. HTTP 5xx and WAF challenges remain visible evidence,
 not an automatic project-release acceptance or a CI-infrastructure failure.
 """
+import argparse
 import json
 import re
 import ssl
@@ -15,15 +16,25 @@ import urllib.request
 from html.parser import HTMLParser
 from pathlib import Path
 
-ORIGIN = "https://staging.egypttourgates.com"
-ROUTES = (
-    ("homepage", "/"),
-    ("tours_archive", "/tours-and-activities/"),
-    ("rest_root", "/wp-json/"),
-    ("wpml_rest", "/wp-json/wpml/v1/rest/status?test_get_parameter=1"),
-    ("robots", "/robots.txt"),
-)
-ALLOWED_HOST = "staging.egypttourgates.com"
+SITES = {
+    "etg": {
+        "origin": "https://staging.egypttourgates.com",
+        "routes": (
+            ("homepage", "/"), ("tours_archive", "/tours-and-activities/"),
+            ("rest_root", "/wp-json/"),
+            ("wpml_rest", "/wp-json/wpml/v1/rest/status?test_get_parameter=1"),
+            ("robots", "/robots.txt"),
+        ),
+    },
+    "are": {
+        "origin": "https://staging.allroyalegypt.com",
+        "routes": (("homepage", "/"), ("rest_root", "/wp-json/"), ("robots", "/robots.txt")),
+    },
+}
+# Preserve the earlier ETG-only API as a stable default for imports.
+ORIGIN = SITES["etg"]["origin"]
+ROUTES = SITES["etg"]["routes"]
+ALLOWED_HOST = urllib.parse.urlsplit(ORIGIN).hostname
 MAX_BODY = 200_000
 
 
@@ -53,9 +64,14 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def fetch(label, path):
-    candidate = urllib.parse.urlsplit(ORIGIN + path)
-    assert candidate.scheme == "https" and candidate.hostname == ALLOWED_HOST
+def fetch(label, path, *, origin=None):
+    origin = ORIGIN if origin is None else origin
+    allowed_hosts = {item["origin"] for item in SITES.values()}
+    if origin not in allowed_hosts:
+        raise ValueError("Site identity not enrolled in fixed read-only origins")
+    host = urllib.parse.urlsplit(origin).hostname
+    candidate = urllib.parse.urlsplit(origin + path)
+    assert candidate.scheme == "https" and candidate.hostname == host
     assert candidate.port is None and not candidate.username and not candidate.password
     assert path.startswith("/") and not path.startswith("//")
     start = time.monotonic()
@@ -65,7 +81,7 @@ def fetch(label, path):
     error_class = ""
     try:
         request = urllib.request.Request(
-            ORIGIN + path,
+            origin + path,
             method="GET",
             headers={
                 "User-Agent": "MAD4B-ETG-Staging-ReadOnly/1.0",
@@ -99,7 +115,7 @@ def fetch(label, path):
         "hcdn_challenge": challenge,
         "canonical_count": len(parsed.canonicals),
         "canonical_same_origin": bool(parsed.canonicals) and all(
-            urllib.parse.urlsplit(h).hostname == ALLOWED_HOST for h in parsed.canonicals
+            urllib.parse.urlsplit(h).hostname == host for h in parsed.canonicals
         ),
         "hreflang_count": len(parsed.hreflang),
         "hreflang_languages": sorted(set(parsed.hreflang))[:15],
@@ -111,10 +127,16 @@ def fetch(label, path):
     return row
 
 
-def main():
+def main(site="etg"):
+    if site not in SITES:
+        raise ValueError("Unknown fixed Staging site")
+    site_config = SITES[site]
+    origin = site_config["origin"]
+    routes = site_config["routes"]
     result = {
-        "contract": "mad4b.etg-external-public-smoke.v1",
-        "site": ORIGIN,
+        "contract": "mad4b.staging-external-public-smoke.v2",
+        "site": origin,
+        "site_id": site,
         "scope": "fixed_origin_public_http_only",
         "mutation_performed": False,
         "read_only": True,
@@ -123,12 +145,14 @@ def main():
         "site_acceptance_certified": False,
         "authority_granted": False,
         "seo_publication_performed": False,
-        "observations": [fetch(label, path) for label, path in ROUTES],
+        "observations": [fetch(label, path, origin=origin) for label, path in routes],
     }
-    Path("etg-staging-public-smoke.json").write_text(json.dumps(result, indent=2) + "\n")
-    assert len(result["observations"]) == len(ROUTES)
+    Path(f"{site}-staging-public-smoke.json").write_text(json.dumps(result, indent=2) + "\n")
+    assert len(result["observations"]) == len(routes)
     print("EVIDENCE_ONLY: public HTTP observations do not authorize Staging or Production.")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Read-only fixed-route Staging HTTP observations")
+    parser.add_argument("--site", choices=sorted(SITES), default="etg")
+    main(parser.parse_args().site)
