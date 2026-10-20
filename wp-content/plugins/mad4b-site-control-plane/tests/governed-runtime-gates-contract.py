@@ -177,3 +177,13 @@ contract = subprocess.run([os.environ.get("MAD4B_TEST_PYTHON_BIN", "python3"), s
 if contract.returncode or "BRAND_CONTEXT_REMOTE_DENIAL: PASS" not in contract.stdout:
     raise SystemExit(f"brand-context-remote-denial-contract.py failed:\n{contract.stdout}\n{contract.stderr}")
 print("brand-context-remote-denial-contract.py: PASS")
+
+# Keep neutrality enforceable through the existing required contract guard,
+# independently of whether the additional PHP matrix workflow is selected.
+neutrality = subprocess.run(
+    [os.environ.get("MAD4B_TEST_PYTHON_BIN", "python3"), str(ROOT / "tests/site-neutrality-contract.py")],
+    capture_output=True, text=True, timeout=120,
+)
+if neutrality.returncode or "SITE_NEUTRALITY_CONTRACT: PASS" not in neutrality.stdout:
+    raise SystemExit(f"Site neutrality failed:\n{neutrality.stdout}\n{neutrality.stderr}")
+print("site-neutrality-contract.py: PASS (existing runtime gate)")
