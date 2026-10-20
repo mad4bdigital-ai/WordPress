@@ -131,6 +131,20 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          # Support both the current monolith and its reviewed domain services.
+          # When a service exists, require the stable Ability facade to delegate.
+          plugin_mutations="$abilities"
+          filesystem_mutations="$abilities"
+          if test -f "$root/includes/class-mad4b-scp-plugin-ability-service.php"; then
+            plugin_mutations="$root/includes/class-mad4b-scp-plugin-ability-service.php"
+            grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_activate" "$abilities"
+            grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate" "$abilities"
+          fi
+          if test -f "$root/includes/class-mad4b-scp-filesystem-mutation-service.php"; then
+            filesystem_mutations="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
+            grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write" "$abilities"
+            grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch" "$abilities"
+          fi
           audit="$root/includes/class-mad4b-scp-audit.php"
           registry="$root/includes/class-mad4b-scp-adapter-registry.php"
           provider_contracts="$root/includes/class-mad4b-scp-provider-contracts.php"
@@ -221,7 +235,7 @@ jobs:
           grep -Fq "is_sensitive_database_column" "$abilities"
           grep -Fq "START TRANSACTION" "$abilities"
           grep -Fq "FOR UPDATE" "$abilities"
-          grep -Fq "mad4b_control_plane_dependency_protected" "$abilities"
+          grep -Fq "mad4b_control_plane_dependency_protected" "$plugin_mutations"
 
           grep -Fq "realpath" "$policy"
           grep -Fq "mad4b_scp_read_capability" "$policy"
@@ -234,10 +248,10 @@ jobs:
           grep -Fq "mad4b_scp_allow_sensitive_database_read" "$policy"
           grep -Fq "mad4b_scp_allow_sensitive_database_write" "$policy"
 
-          grep -Fq "prepare_backup_root" "$abilities"
-          grep -Fq "chmod( \$backup_path, 0600" "$abilities"
-          grep -Fq "fileperms( \$path ) & 0777" "$abilities"
-          if grep -Fq ".mad4b-backup-" "$abilities"; then
+          grep -Fq "prepare_backup_root" "$filesystem_mutations"
+          grep -Fq "chmod( \$backup_path, 0600" "$filesystem_mutations"
+          grep -Fq "fileperms( \$path ) & 0777" "$filesystem_mutations"
+          if grep -Fq ".mad4b-backup-" "$abilities" "$filesystem_mutations"; then
             echo 'Adjacent webroot backup naming must not return.' >&2
             exit 1
           fi
