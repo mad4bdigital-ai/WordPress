@@ -1150,6 +1150,9 @@ final class MAD4B_SCP_Abilities {
 				}
 			}
 		} else {
+			// Permission callbacks execute before the protected target; capture only
+			// the structured denial code before request-local observation cleanup.
+			$remote_permission_denial_code = '';
 			try {
 				$execution = $with_approval_scope(
 					static function () use ( $ability_name, $execute_target ) {
@@ -1163,6 +1166,9 @@ final class MAD4B_SCP_Abilities {
 					}
 				);
 			} finally {
+				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'remote_permission_denial_code' ) ) {
+					$remote_permission_denial_code = MAD4B_SCP_Authorization::remote_permission_denial_code( $ability_name );
+				}
 				if ( class_exists( 'MAD4B_SCP_Authorization' ) && method_exists( 'MAD4B_SCP_Authorization', 'clear_execution_callback_observation' ) ) {
 					MAD4B_SCP_Authorization::clear_execution_callback_observation( $ability_name );
 				}
@@ -1172,10 +1178,20 @@ final class MAD4B_SCP_Abilities {
 					$data = $execution->get_error_data();
 					$data = is_array( $data ) ? $data : array();
 					$original_error_code = isset( $data['original_error_code'] ) ? sanitize_key( (string) $data['original_error_code'] ) : '';
+					if ( '' === $original_error_code ) $original_error_code = sanitize_key( (string) $execution->get_error_code() );
+					$permission_denial = '' !== $remote_permission_denial_code;
+					if ( $permission_denial && in_array( $original_error_code, array( 'ability_invalid_permissions', 'mad4b_write_dispatch_not_started', 'mad4b_write_dispatch_dispatch_not_started' ), true ) ) {
+						$original_error_code = $remote_permission_denial_code;
+					}
+					$client_action = $permission_denial ? 'inspect_exact_permission_denial_then_replan' : 'repair_dispatch_then_replan';
+					if ( $permission_denial && 0 === strpos( $remote_permission_denial_code, 'mad4b_google_' ) ) {
+						$client_action = 'inspect_google_connection_then_replan';
+					}
 					if ( class_exists( 'MAD4B_SCP_Audit' ) ) {
 						MAD4B_SCP_Audit::record( 'mad4b/write-dispatch-target-not-started', array(
 							'target_ability' => $ability_name,
 							'original_error_code' => $original_error_code,
+							'permission_callback_denied' => $permission_denial,
 							'mutation_state' => 'not_started',
 							'reconciliation_required' => false,
 						) );
@@ -1187,7 +1203,9 @@ final class MAD4B_SCP_Abilities {
 							'ability_name' => $ability_name,
 							'original_error_code' => $original_error_code,
 							'category' => isset( $data['category'] ) ? sanitize_key( (string) $data['category'] ) : 'unknown',
-							'client_action' => 'repair_dispatch_then_replan',
+							'client_action' => $client_action,
+							'permission_callback_denied' => $permission_denial,
+							'pre_target_failure_code' => $original_error_code,
 							'mutation_state' => 'not_started',
 							'target_execution_entered' => false,
 							'reconciliation_required' => false,
