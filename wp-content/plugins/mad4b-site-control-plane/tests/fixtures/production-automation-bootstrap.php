@@ -13,7 +13,7 @@ function is_wp_error($v){return $v instanceof WP_Error;}
 function get_option($k,$d=false){return $GLOBALS['o'][$k]??$d;}
 function add_option($k,$v,$deprecated='',$autoload=false){if(!$GLOBALS['persist']||isset($GLOBALS['o'][$k]))return false;$GLOBALS['o'][$k]=$v;return true;}
 function update_option($k,$v,$a=false){if(!$GLOBALS['persist'])return false;$GLOBALS['o'][$k]=$v;return true;}
-function delete_option($k){unset($GLOBALS['o'][$k]);}
+function delete_option($k){if(!isset($GLOBALS['o'][$k]))return false;unset($GLOBALS['o'][$k]);return true;}
 function get_userdata($id){return $id===7?(object)array('ID'=>7):false;}
 function user_can($id,$cap){return $id===7&&($GLOBALS['owner_alive']??true);}
 function wp_set_current_user($id){$GLOBALS['user']=$id;}
@@ -41,5 +41,5 @@ class MAD4B_SCP_Staging_OAuth_Autoconfig {static function production_profile_ena
 class MAD4B_SCP_Policy {static function can_breakglass(){return false;}static function can_mutate(){return true;}}
 class MAD4B_SCP_OAuth_Resource_Bridge {const AUTHORITY_STEP_UP_SCOPE='step';static function verified_bearer_active(){return $GLOBALS['bearer'];}static function verified_bearer_has_scope($v){return $GLOBALS['step'];}static function verified_bearer_client_is($v){return true;}}
 class MAD4B_SCP_Local_OAuth_Server {const CHATGPT_CIMD_CLIENT_ID='chatgpt';}
-class MAD4B_SCP_Audit {static function storage_status(){return array('ready'=>$GLOBALS['audit']);}static function record($e,$v,$s){$GLOBALS['events'][]=$v;return $GLOBALS['audit']?true:new WP_Error('audit');}}
+class MAD4B_SCP_Audit {static function storage_status(){return array('ready'=>$GLOBALS['audit']);}static function record($e,$v,$s){$GLOBALS['events'][]=$v;return $GLOBALS['audit']&&($GLOBALS['audit_fail_event']??'')!==$e?true:new WP_Error('audit');}}
 class MAD4B_SCP_Live_Acceptance_Observer {static function build_provenance_status(){return array('manifest_present'=>true,'manifest_valid'=>true,'runtime_manifest_match'=>true,'source_commit_sha'=>$GLOBALS['sha'],'build_fingerprint'=>str_repeat('c',64));}}

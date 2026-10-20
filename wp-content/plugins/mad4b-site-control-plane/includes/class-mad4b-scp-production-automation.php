@@ -150,11 +150,21 @@ final class MAD4B_SCP_Production_Automation {
   try {
    // Native owner delegation, explicitly NOT an OAuth/AI/human-ticket impersonation.
    wp_set_current_user( (int) $p['owner'] );
+   // Durable, batch-bound fence survives worker re-entry and process death.
+   // Only a verified successful job may clear it; failure needs a fresh batch.
+   $boundary_key = self::claim_key( $p['id'], 'deployment_boundary', 0 );
+   if ( false !== get_option( $boundary_key, false ) ) return;
    foreach ( $p['deployments'] as $i => $job ) {
     self::refresh_authority();
     if ( ! self::active() || self::policy()['id'] !== $p['id'] || ! current_user_can( 'update_plugins' ) || ! MAD4B_SCP_Policy::can_mutate() ) break;
     $key = self::claim_key( $p['id'], 'deployment', $i );
-    if ( ! add_option( $key, array( 'state' => 'claimed', 'at' => time() ), '', false ) ) continue;
+    $previous = get_option( $key, false );
+    if ( false !== $previous ) {
+     if ( is_array( $previous ) && 'completed' === ( $previous['state'] ?? '' ) ) continue;
+     break; // Failed, interrupted, malformed and audit-blocked jobs halt re-entry.
+    }
+    if ( ! add_option( $boundary_key, array( 'index' => $i, 'at' => time() ), '', false )
+     || ! add_option( $key, array( 'state' => 'claimed', 'at' => time() ), '', false ) ) break;
     $audit = MAD4B_SCP_Audit::record( 'mad4b/production-native-deployment-start', array( 'batch_id' => $p['id'], 'index' => $i, 'input_sha256' => self::digest( $job['input'] ), 'authority' => 'owner_preapproved_exact_batch' ), 'intent' );
     if ( is_wp_error( $audit ) ) { update_option( $key, array( 'state' => 'audit_blocked' ), false ); break; }
     self::$deployment = $job['input']; self::$deployment_batch_id = $p['id'];
@@ -166,6 +176,7 @@ final class MAD4B_SCP_Production_Automation {
     update_option( $key, $state, false );
     $logged = MAD4B_SCP_Audit::record( 'mad4b/production-native-deployment-result', array( 'batch_id' => $p['id'], 'index' => $i, 'outcome' => $state ), $ok ? 'ok' : 'error' );
     if ( get_option( $key ) !== $state || ! $ok || is_wp_error( $logged ) ) break; // Never blindly retry a write or continue after uncertainty.
+    if ( ! delete_option( $boundary_key ) || false !== get_option( $boundary_key, false ) ) break;
    }
   } finally {
    self::$deployment = null; self::$deployment_batch_id = null; wp_set_current_user( $previous_user );
@@ -187,6 +198,7 @@ final class MAD4B_SCP_Production_Automation {
   $p = self::policy();
   echo '<div class="card" style="max-width:950px"><h2>' . esc_html__( 'Production approvals and deployment batches', 'mad4b-site-control-plane' ) . '</h2><p>' . esc_html__( 'Approve up to 20 exact operations once for 1–168 hours. AI content decisions still require the exact Agent grant, OAuth identity, current candidate and governed content reviews. Native plugin deployments run once through WP-Cron with package revalidation, protected plugin-file backup and readback rollback. Control Plane and other protected plugins remain excluded. Deployment requires a trusted signed test certificate, verified again against the package at apply time.', 'mad4b-site-control-plane' ) . '</p>';
   echo '<p>' . esc_html( self::active() ? 'Batch active' : 'Batch disabled, expired or blocked' ) . '</p>';
+  if ( isset( $p['id'] ) && false !== get_option( self::claim_key( $p['id'], 'deployment_boundary', 0 ), false ) ) echo '<p>' . esc_html__( 'Deployment continuation is blocked by an unfinished execution boundary. Inspect the installed state and audit before approving a fresh batch.', 'mad4b-site-control-plane' ) . '</p>';
   foreach ( (array) ( $p['deployments'] ?? array() ) as $i => $job ) { $s = get_option( self::claim_key( $p['id'], 'deployment', $i ), array( 'state' => 'pending' ) ); echo '<p>' . esc_html( $job['input']['plugin_file'] . ': ' . ( $s['state'] ?? 'unknown' ) ) . '</p>'; }
   echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'; wp_nonce_field( self::ACTION );
   echo '<input type="hidden" name="action" value="' . esc_attr( self::ACTION ) . '"><input type="hidden" name="expected_digest" value="' . esc_attr( self::digest( $p ) ) . '">';

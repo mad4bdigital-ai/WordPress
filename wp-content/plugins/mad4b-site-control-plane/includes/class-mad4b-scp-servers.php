@@ -3,7 +3,6 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/class-mad4b-scp-server-write-catalog.php';
 require_once __DIR__ . '/class-mad4b-scp-governed-ability-census.php';
-
 require_once __DIR__ . '/class-mad4b-scp-post-identity.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-enrollment.php';
 require_once __DIR__ . '/class-mad4b-scp-site-profile-write-enablement.php';

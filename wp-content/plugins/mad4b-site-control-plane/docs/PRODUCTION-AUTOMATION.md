@@ -56,6 +56,8 @@ Example batch shape (placeholders are not valid deployment evidence):
 
 Save `enabled: false` with empty lists to revoke the batch. Removing/disabling a trusted signer revokes certificate validation immediately. Profile/origin drift, the mutation kill switch, expired evidence and missing audit storage block execution. A failed deployment stops the batch; other pending jobs are not silently continued or rescheduled. An abandoned worker lock requires inspection before manual recovery.
 
+A durable batch-bound execution fence is recorded before entering each deployment. It is cleared only after a successful result, persistence readback and result audit. A failed/interrupted job, missing result audit or uncertain result persistence therefore blocks later worker invocations too, even after the global worker lock is released. Recovery requires inspection and a fresh exact owner-approved batch; the worker never clears a failed batch's fence automatically.
+
 ## Certificate and signer format
 
 The verifier does not sign caller-reported PASS results. A trusted test runner must execute the tests and sign the resulting payload using an enrolled key. Signing is available to an appropriately configured runner through the existing `MAD4B_SCP_Crypto_Profile::sign_digest()` implementation. There is no remote endpoint to mint a test certificate or upload a private key.

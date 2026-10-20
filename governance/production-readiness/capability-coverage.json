@@ -1497,6 +1497,46 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Read-only Google Drive source diagnostic attribution: pass only sanitized, <=96-char WP_Error code from the safe-read result through the governed read-execute failure envelope; separate Google connection action never leaks raw provider messages or credential bytes. Existing classification, transient retry policy, execution fence, protected write authority and human Brand approval remain unchanged. Exact-head CI runs the new no-secret source-read/authorization contract and hermetic PHP observer regression; independent ETG/ARE live provider and OAuth readback is still required. This review is non-authorizing and is not Production certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-production-automation.php",
+      "source_blob_sha": "7cea76b3d74176e71d04da67ee3b505f0f8cb615",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "GOVERNANCE-02",
+        "TICKETS-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
+      ],
+      "review_rationale": "Add a durable exact-batch deployment boundary before target entry. Failure, interrupted claims, audit failure and result persistence uncertainty block later worker invocations; only fully verified success releases the fence. Real queue fixtures inject those failures and re-enter the same batch, then prove only a fresh owner batch resumes. No new authority, retry or live deployment is granted. Exact-blob review is CI-only and nonauthorizing; independent live acceptance remains required.",
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "a08221ddddc0620d93fdb68a38570b327547c25b",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/environment-journey-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress security / governance code reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Remove one redundant blank line to restore the existing 1050-line facade budget without changing catalog declarations, callbacks, policy or authority. Existing environment journey and domain-service contracts continue to validate routing and separation. No policy limit was raised. Exact-blob review is CI-only and nonauthorizing; independent live acceptance remains required."
     }
   ],
   "code_change_rules": {

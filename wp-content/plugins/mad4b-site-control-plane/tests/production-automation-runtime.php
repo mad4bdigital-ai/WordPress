@@ -16,6 +16,7 @@ class MAD4B_SCP_Remote_Plugin_Update {
   $p=self::plan($input);if(!$p['eligible']||!hash_equals($p['plan_sha256'],$input['expected_plan_sha256']))return new WP_Error('package_changed');
   $GLOBALS['calls'][]=$input['plugin_file'];
   if($GLOBALS['fail_install'])return new WP_Error('install_failed_rollback_fixture');
+  if(!empty($GLOBALS['fail_result_persist']))$GLOBALS['persist']=false;
   return array('backup_id'=>'fixture-protected-backup','readback_verified'=>true,'activation_state_preserved'=>true,'production_mutation'=>true);
  }
 }
@@ -63,7 +64,24 @@ check($GLOBALS['calls']===array('demo/demo.php')&&$GLOBALS['user']===0,'native q
 $a::run_deployments();check(count($GLOBALS['calls'])===1,'duplicate cron cannot repeat deployment');
 $GLOBALS['user']=7;$save($batch);$GLOBALS['changed_package']=true;$a::run_deployments();check(count($GLOBALS['calls'])===1,'package drift blocks queued installation');$GLOBALS['changed_package']=false;
 $two=$batch;$two['deployments'][]=job('second/second.php');$save($two);$GLOBALS['fail_install']=true;$a::run_deployments();check(count($GLOBALS['calls'])===2,'failed first deployment stops batch before second plugin');$GLOBALS['fail_install']=false;
-$save($batch);add_option($a::LOCK,'other-worker');$a::run_deployments();check(count($GLOBALS['calls'])===2&&get_option($a::LOCK)==='other-worker','worker never steals another deployment lock');delete_option($a::LOCK);
+$a::run_deployments();check(count($GLOBALS['calls'])===2,'worker re-entry cannot continue a failed batch');
+// Exercise durable fences after audit and result-persistence uncertainty, not
+// merely a break within one worker invocation. Every retry is the same batch.
+foreach(array('mad4b/production-native-deployment-start','mad4b/production-native-deployment-result')as$event){
+ $save($two);$GLOBALS['audit_fail_event']=$event;$before=count($GLOBALS['calls']);$a::run_deployments();
+ $after=count($GLOBALS['calls']);unset($GLOBALS['audit_fail_event']);$a::run_deployments();
+ check($after===$before+($event==='mad4b/production-native-deployment-result'?1:0)&&count($GLOBALS['calls'])===$after,'audit failure blocks later worker: '.$event);
+}
+$save($two);$GLOBALS['fail_result_persist']=true;$before=count($GLOBALS['calls']);$a::run_deployments();
+$GLOBALS['persist']=true;unset($GLOBALS['fail_result_persist']);$a::run_deployments();
+check(count($GLOBALS['calls'])===$before+1,'result persistence failure keeps durable batch fence');
+foreach(array(array('state'=>'claimed'),array('state'=>'failed'),array('state'=>'audit_blocked'),'malformed')as$prior){
+ $save($two);$p=$a::policy();add_option('mad4b_prod_claim_'.hash('sha256',$p['id'].':deployment:0'),$prior,'',false);
+ $before=count($GLOBALS['calls']);$a::run_deployments();check(count($GLOBALS['calls'])===$before,'interrupted or invalid existing claim prevents continuation');
+}
+$save($two);$before=count($GLOBALS['calls']);$a::run_deployments();$a::run_deployments();
+check(array_slice($GLOBALS['calls'],$before)===array('demo/demo.php','second/second.php'),'fresh owner batch runs both jobs once after halted batch');
+$save($batch);add_option($a::LOCK,'other-worker');$before=count($GLOBALS['calls']);$a::run_deployments();check(count($GLOBALS['calls'])===$before&&get_option($a::LOCK)==='other-worker','worker never steals another deployment lock');delete_option($a::LOCK);
 $GLOBALS['owner_alive']=false;check(!$a::active(),'removed owner capability revokes automation');$GLOBALS['owner_alive']=true;
 $p=$a::policy();$p['expires_at']=time()-1;$GLOBALS['o'][$a::OPTION]=$p;check(!$a::active(),'expired delegation blocks automation');
 $bad=$batch;$bad['approvals'][0]['ability']='mad4b/database-raw-query';check(is_wp_error($save($bad)),'SQL cannot enter approved batch');

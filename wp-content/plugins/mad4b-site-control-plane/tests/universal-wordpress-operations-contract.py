@@ -13,6 +13,7 @@ pipeline = (PLUGIN / "includes/class-mad4b-scp-operation-pipeline.php").read_tex
 isolation = (PLUGIN / "includes/class-mad4b-scp-mcp-provider-isolation.php").read_text(encoding="utf-8")
 lifecycle = (PLUGIN / "includes/class-mad4b-scp-plugin-lifecycle.php").read_text(encoding="utf-8")
 abilities = (PLUGIN / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+plugin_service = (PLUGIN / "includes/class-mad4b-scp-plugin-ability-service.php").read_text(encoding="utf-8")
 transaction = (PLUGIN / "includes/class-mad4b-scp-plugin-transaction.php").read_text(encoding="utf-8")
 resume = (PLUGIN / "includes/class-mad4b-scp-operation-resume.php").read_text(encoding="utf-8")
 activation_state = (PLUGIN / "includes/class-mad4b-scp-plugin-activation-state.php").read_text(encoding="utf-8")
@@ -234,11 +235,15 @@ assert "activation_scope" in lifecycle
 assert "get_option( 'active_plugins', array() )" in lifecycle
 assert "network_activation_controls_site_state" in lifecycle
 assert "verify_state( $plugin, $desired_active, $activation_scope = 'site' )" in lifecycle
-assert "plugin_site_active" in abilities
-assert "mad4b_plugin_network_activation_controls_site" in abilities
-assert "manage_network_plugins" in abilities
-assert "activate_plugin( $plugin, '', 'network' === $scope )" in abilities
-assert "deactivate_plugins( $plugin, false, $network )" in abilities
+for method in ("plugin_activate", "plugin_deactivate"):
+    assert f"public function {method}( $input )" in abilities
+    assert f"MAD4B_SCP_Plugin_Ability_Service::{method}( $input )" in abilities
+assert "class-mad4b-scp-plugin-ability-service.php" in abilities
+assert "plugin_site_active" in plugin_service
+assert "mad4b_plugin_network_activation_controls_site" in plugin_service
+assert "manage_network_plugins" in plugin_service
+assert "activate_plugin( $plugin, '', 'network' === $scope )" in plugin_service
+assert "deactivate_plugins( $plugin, false, $network )" in plugin_service
 assert "mad4b.plugin-activation-state.v1" in activation_state
 assert "get_option( 'active_plugins', array() )" in activation_state
 assert "expected_site_active" in activation_state
