@@ -151,8 +151,6 @@ jobs:
             config/certified-providers.json \
             includes/class-mad4b-scp-site-profile.php \
             includes/class-mad4b-scp-abilities.php \
-            includes/class-mad4b-scp-plugin-ability-service.php \
-            includes/class-mad4b-scp-filesystem-mutation-service.php \
             includes/class-mad4b-scp-policy.php \
             includes/class-mad4b-scp-servers.php \
             includes/class-mad4b-scp-transport-context.php \
@@ -225,9 +223,20 @@ jobs:
           grep -Fq "is_sensitive_database_column" "$abilities"
           grep -Fq "START TRANSACTION" "$abilities"
           grep -Fq "FOR UPDATE" "$abilities"
-          grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate" "$abilities"
-          grep -Fq "mad4b_control_plane_dependency_protected" "$lifecycle_executor"
-          grep -Fq "MAD4B_SCP_Policy::plugin_lifecycle_protected" "$lifecycle_executor"
+          # Require both extracted mutators together; partial extraction fails closed.
+          if [ -f "$lifecycle_executor" ] || [ -f "$filesystem_executor" ]; then
+            test -f "$lifecycle_executor"
+            test -f "$filesystem_executor"
+            grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate" "$abilities"
+            grep -Fq "MAD4B_SCP_Plugin_Ability_Service::plugin_activate" "$abilities"
+            grep -Fq "mad4b_control_plane_dependency_protected" "$lifecycle_executor"
+            grep -Fq "MAD4B_SCP_Policy::plugin_lifecycle_protected" "$lifecycle_executor"
+            grep -Fq "MAD4B_SCP_Plugin_Lifecycle::mutation_preflight" "$lifecycle_executor"
+            grep -Fq "MAD4B_SCP_Plugin_Lifecycle::verify_state" "$lifecycle_executor"
+          else
+            grep -Fq "mad4b_control_plane_dependency_protected" "$abilities"
+            grep -Fq "MAD4B_SCP_Policy::plugin_lifecycle_protected" "$abilities"
+          fi
 
           grep -Fq "realpath" "$policy"
           grep -Fq "mad4b_scp_read_capability" "$policy"
@@ -240,11 +249,16 @@ jobs:
           grep -Fq "mad4b_scp_allow_sensitive_database_read" "$policy"
           grep -Fq "mad4b_scp_allow_sensitive_database_write" "$policy"
 
-          grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write" "$abilities"
-          grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch" "$abilities"
-          grep -Fq "prepare_backup_root" "$filesystem_executor"
-          grep -Fq "chmod( \$backup_path, 0600" "$filesystem_executor"
-          grep -Fq "fileperms( \$path ) & 0777" "$filesystem_executor"
+          if [ -f "$filesystem_executor" ]; then
+            grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write" "$abilities"
+            grep -Fq "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch" "$abilities"
+            filesystem_owner="$filesystem_executor"
+          else
+            filesystem_owner="$abilities"
+          fi
+          grep -Fq "prepare_backup_root" "$filesystem_owner"
+          grep -Fq "chmod( \$backup_path, 0600" "$filesystem_owner"
+          grep -Fq "fileperms( \$path ) & 0777" "$filesystem_owner"
           if grep -Fq ".mad4b-backup-" "$abilities"; then
             echo 'Adjacent webroot backup naming must not return.' >&2
             exit 1
