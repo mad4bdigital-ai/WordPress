@@ -77,7 +77,14 @@ $rows = array(
 );
 $scoped = MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, $scope, 'site-a' );
 readiness_check( array_column( $scoped, 'scope_relation' ) === array( 'current_scope_match', 'original_scope_review_required', 'original_scope_review_required', 'legacy_scope_binding_incomplete' ), 'Doctor confused site diagnostics with tenant/brand detail scope' );
-readiness_check( count( $rows ) === count( $scoped ) && array_column( $rows, 'job_id' ) === array_column( $scoped, 'job_id' ), 'scope classification hid or changed original job findings' );
+readiness_check( count( $rows ) === count( $scoped ) && 'current' === ( $scoped[0]['job_id'] ?? '' ), 'site incident count or authorized row was lost during redaction' );
+foreach ( array( 1, 2, 3 ) as $index ) {
+ $redacted = $scoped[ $index ];
+ readiness_check( true === $redacted['cross_scope_details_redacted'], 'Doctor failed to redact a foreign or legacy scope' );
+ foreach ( array( 'job_id', 'work_id', 'outbox_id', 'provider_event_id', 'brand_id', 'tenant_id' ) as $secret_key ) {
+  readiness_check( ! array_key_exists( $secret_key, $redacted ), 'Doctor exposed foreign job or provider identifier: ' . $secret_key );
+ }
+}
 foreach ( $scoped as $row ) readiness_check( ! array_key_exists( 'brand_id', $row ) && ! array_key_exists( 'tenant_id', $row ) && ! $row['automatic_repair_allowed'] && ! $row['detail_read_authorized_by_doctor'], 'Doctor leaked scope identity or authorized repair' );
 foreach ( array( array(), array( 'site_uuid' => 'site-b', 'brand_ref' => 'brand-a', 'tenant_ref' => 'tenant-a' ) ) as $unknown ) {
  readiness_check( 'current_scope_unresolved' === MAD4B_SCP_Operator_Doctor::scope_job_rows( $rows, $unknown, 'site-a' )[0]['scope_relation'], 'unresolved/cross-site scope matched' );
