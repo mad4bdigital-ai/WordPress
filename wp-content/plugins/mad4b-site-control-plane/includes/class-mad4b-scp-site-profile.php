@@ -46,6 +46,7 @@ final class MAD4B_SCP_Site_Profile {
 			'category' => 'mad4b-governance',
 			'execute_callback' => array( __CLASS__, 'status' ),
 			'permission_callback' => class_exists( 'MAD4B_SCP_Policy' ) ? array( 'MAD4B_SCP_Policy', 'can_read' ) : '__return_false',
+			'input_schema' => array( 'type' => 'object', 'additionalProperties' => false ),
 			'output_schema' => array( 'type' => 'object', 'additionalProperties' => true ),
 			'meta' => array(
 				'public' => false,

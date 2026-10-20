@@ -5,7 +5,8 @@ import subprocess
 root = Path(__file__).resolve().parents[1]
 for fixture in ('runtime-update-recovery-runtime.php', 'dynamic-first-party-enrollment-runtime.php',
                 'native-update-routing-runtime.php', 'adaptive-operation-router-runtime.php',
-                'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php'):
+                'post-manual-update-guidance-runtime.php', 'plugin-operation-readiness-runtime.php',
+                'read-callback-boundary-runtime.php', 'gateway-regression-runtime.php'):
     subprocess.run(['php', '-n', str(root / 'tests' / fixture)], check=True)
 parity = (root / 'includes/class-mad4b-scp-remote-operation-parity.php').read_text()
 enrollment_mount = parity.split('public static function enrollment_abilities()', 1)[1].split('public static function register_abilities()', 1)[0]
@@ -26,3 +27,9 @@ includes = root / 'includes'
 assert "$checkpoint['repair_guidance'] = self::repair_guidance(" in (includes / 'class-mad4b-scp-staging-write-authority.php').read_text()
 assert "$result['repair_guidance'] = self::repair_guidance( $result, self::persisted_status() );" in (includes / 'class-mad4b-scp-skill-runtime-certification.php').read_text()
 assert "$public['verification_guidance'] = self::connection_verification_guidance( $status );" in (includes / 'class-mad4b-scp-google-drive-context.php').read_text()
+
+read_consistency = (includes / 'class-mad4b-scp-read-consistency.php').read_text()
+assert "'wp_register_ability_args', array( 'MAD4B_SCP_Connector_Resilience', 'wrap_read_registration' ), 180, 2" in read_consistency
+abilities = (includes / 'class-mad4b-scp-abilities.php').read_text()
+assert "'prepare_execution' => array( 'type' => 'boolean', 'default' => true )" in abilities
+assert "array_key_exists( 'prepare_execution', $input ) && false === $input['prepare_execution']" in abilities

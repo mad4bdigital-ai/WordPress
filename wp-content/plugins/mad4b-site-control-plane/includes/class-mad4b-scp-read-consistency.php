@@ -26,6 +26,7 @@ final class MAD4B_SCP_Read_Consistency {
 	const MAX_BUNDLE_BUDGET_MS = 12000;
 
 	public static function boot() {
+		add_filter( 'wp_register_ability_args', array( 'MAD4B_SCP_Connector_Resilience', 'wrap_read_registration' ), 180, 2 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register' ), 26 );
 		add_action( 'wp_abilities_api_init', array( __CLASS__, 'register_session_safe_report' ), 27 );
 	}

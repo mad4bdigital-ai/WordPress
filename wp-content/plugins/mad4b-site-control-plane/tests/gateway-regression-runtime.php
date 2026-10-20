@@ -364,6 +364,18 @@ foreach ( array( null, 'invalid', 7 ) as $invalid_input ) {
  $invalid_result = $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000', 'input' => $invalid_input ), $identity ) );
  check_gateway( is_wp_error( $invalid_result ) && 'fixture_object_input_required' === $invalid_result->get_error_code(), 'Explicit invalid target input was normalized into success' );
 }
+// Legacy tool-info signatures can prepare without a newly advertised flag.
+$before_calls = $object_read->calls;
+$legacy_preparation = $dispatcher->tool_info( array( 'ability_name' => 'fixture/00000' ) );
+check_gateway( ! is_wp_error( $legacy_preparation ) && ! empty( $legacy_preparation['prepared_dispatch']['preparation_receipt'] ), 'Legacy read client cannot obtain preparation' );
+check_gateway( $before_calls === $object_read->calls, 'Preparation executed its target' );
+$legacy_result = $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000' ), $legacy_preparation['prepared_dispatch'] ) );
+check_gateway( ! is_wp_error( $legacy_result ), 'Legacy tool-info receipt failed dispatcher admission' );
+$metadata_only = $dispatcher->tool_info( array( 'ability_name' => 'fixture/00000', 'prepare_execution' => false ) );
+check_gateway( ! is_wp_error( $metadata_only ) && ! isset( $metadata_only['prepared_dispatch'] ), 'Explicit metadata-only read issued a receipt' );
+$forged = $legacy_preparation['prepared_dispatch']; $forged['expected_classification_sha256'] = str_repeat( '0', 64 );
+check_gateway( is_wp_error( $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000' ), $forged ) ) ), 'Legacy preparation allowed forged pins' );
+check_gateway( is_wp_error( $dispatcher->tool_info( array( 'ability_name' => 'mad4b/read-execute' ) ) ), 'Default preparation admitted recursive dispatch' );
 $object_read->permission = false;
 check_gateway( is_wp_error( $dispatcher->read_execute( array_merge( array( 'ability_name' => 'fixture/00000' ), $identity ) ) ), 'Empty input normalization bypassed target permission' );
 $object_read->permission = true;

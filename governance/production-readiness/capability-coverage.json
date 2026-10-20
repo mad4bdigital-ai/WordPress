@@ -2561,6 +2561,86 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Read-only cause-specific post-manual-update advice on existing explicit status surfaces. Clean grants and sole candidate drift suggest existing exact binding reconciliation without grant recreation or authority creation. Skills live build-bound inspection separates file health from historical certification freshness. Provider certification stage/artifact evidence remains independent of grants; no provider promotion. Drive scope availability never proves refresh or continuity. Python executes hermetic PHP regressions including partial and revoked authority, unknown/historical Skills evidence, discovered shadow provider and refresh failure/revocation cases. Original mutation admission, scope isolation and lifecycle persistence remain unchanged."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "b7de2d53ad97095061ab1fa665dc69486677a2cf",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "49914b76ab3ee47b0584d77e9c07734b73959f9e",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-read-consistency.php",
+      "source_blob_sha": "c3c17549dd6d0af3e441d7fcdfd832b40a8d3423",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-site-profile.php",
+      "source_blob_sha": "cbded76c50ad616a5eeb1f2a0f8b8a4a5c1e6ec5",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Read-only transport repair: single-target tool-info issues existing signed preparation by default for legacy signatures, preserving exact read pins, target permission and no recursive/write preparation. Site Profile declares its true empty-object input. Registration wraps only declared readonly first-party/context callbacks before the existing immutable execution fence; original permission results and WP_Error denial are preserved. Exceptions fail closed with safe correlation and hashed origin, never raw exception messages, inputs or automatic retry. Hermetic executable PHP regressions prove permission and execution TypeError containment, unchanged denials/results and mutating/unrelated exclusions; real WordPress projection CI exercises signed receipt dispatch and tampered pins. Live root exception and Brand Authority acceptance remain unverified."
     }
   ],
   "code_change_rules": {

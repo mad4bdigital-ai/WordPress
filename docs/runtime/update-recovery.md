@@ -89,3 +89,38 @@ governed renewal and an independent provider read remain necessary.
 
 These generic read-only diagnostics have hermetic PHP regression coverage in the
 runtime CI matrix. They are not live acceptance evidence or Production approval.
+
+## Brand Authority diagnostic transport incident
+
+Live discovery of Brand Core abilities succeeded on both connected Staging sites,
+while several identity/status/info requests returned opaque MCP `-32603` errors.
+The connected tool-info signature omitted `prepare_execution`, although the
+installed repository implementation required opting into preparation to obtain
+all read-execute pins and its signed receipt. Tool-info now prepares a single
+eligible read by default, including legacy callers sending only ability_name.
+An explicit false retains metadata-only inspection. Preparation never executes
+the target, bypasses read permission, or grants write authority. The WordPress
+runtime projection regression verifies receipt dispatch, altered-pin refusal,
+write-target refusal and recursive-dispatch refusal.
+
+Read registration now contains exceptions in declared MAD4B/Context read permission
+and execution callbacks before they escape into the MCP protocol handler. Normal
+permissions, WP_Error denials and results remain unchanged. Unknown/mutating and
+unrelated provider registrations are untouched. Each callback fault returns a
+WP_Error with stage, bounded code and per-invocation correlation in the message,
+because the adapter drops WP_Error data when constructing tool error content.
+Server diagnostics record the same correlation and hashed origin, excluding
+inputs, messages, credentials and paths. Faults are never retried by this boundary.
+Existing final execution-admission wrappers still run outside it.
+
+Site Profile now explicitly declares a closed empty-object input schema instead
+of exposing an absent schema as an empty array in tool metadata. The inspected
+adapter already normalizes no-schema empty arguments; schema absence alone is
+therefore not proof of the observed Internal Error cause.
+
+Limits: hermetic TypeError/exception regressions establish the callback escape
+mechanism and containment. The actual live exception origin remains unproven
+without the correlated server log. Failures before registration, inside the outer
+execution fence, process/resource termination, response serialization, proxy or
+session transport remain separate. No Brand Authority scan, asset acceptance,
+registry mutation or live runtime repair is claimed from these source changes.
