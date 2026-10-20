@@ -175,6 +175,13 @@ MAD4B_SCP_Site_Profile::$uuid = '11111111-2222-4333-8444-555555555555';
 
 $visible = MAD4B_SCP_Content_Jobs::list_jobs( array( 'state' => 'CANCELLED', 'stage' => '', 'limit' => 50 ) );
 $check( is_array( $visible ) && 1 === (int) $visible['count'], 'site-bound job list did not return cancelled fixture' );
+$check( 'site_uuid_brand_id_tenant_id' === $visible['read_scope'], 'ContentJob scope indicator missing' );
+$check( false === $visible['site_wide_inventory_evaluated'], 'scoped listing claimed global site inventory' );
+$check( false === $visible['zero_rows_clear_site_wide_doctor'], 'scoped listing claimed Doctor incidents were resolved' );
+$check( false === $visible['cross_scope_repair_allowed'], 'scoped listing gave cross-tenant repair authority' );
+$empty = MAD4B_SCP_Content_Jobs::list_jobs( array( 'state' => 'RUNNING', 'limit' => 50 ) );
+$check( is_array( $empty ) && 0 === (int) $empty['count'], 'unexpected scoped running fixture' );
+$check( false === $empty['zero_rows_clear_site_wide_doctor'] && false === $empty['cross_scope_repair_allowed'], 'empty scoped list accidentally cleared site-wide Doctor or authorized repair' );
 $check( MAD4B_SCP_Audit::$commits >= 5, 'successful aggregate mutations did not commit audit transactions' );
 $check( MAD4B_SCP_Audit::$rollbacks >= 3, 'failed/stale/terminal transitions did not rollback transactions' );
 
