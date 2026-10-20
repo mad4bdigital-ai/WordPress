@@ -1131,6 +1131,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "286f074a00e154f5393b61f17075acfec9b24525",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "OAUTH-04",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/enrollment-guided-write-handoff-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress plugin security/release maintainer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
     }
   ],
   "code_change_rules": {
