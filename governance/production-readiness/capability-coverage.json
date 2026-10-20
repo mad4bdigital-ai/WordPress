@@ -612,6 +612,321 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Native update guidance references the already existing governed Write dispatcher. Existing execution, isolation and recovery controls cover this nonauthorizing route reference; no new executable Ability is registered.",
       "review_rationale": "Standalone PHP guidance fixtures verify effective Write chooses the original native operation, absent direct tools do not imply missing server authority, missing transport never chooses candidate-drift Bootstrap, original exact approval remains mandatory, and platform safety rejection offers no alternative remote execution or automatic retry."
+    },
+    {
+      "id": "ability:mad4b/brand-core-remote-recovery-prepare",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for brand-core-remote-recovery-prepare must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/brand-core-remote-recovery-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for brand-core-remote-recovery-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/browser-acceptance-run",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for browser-acceptance-run must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/chatgpt-tool-projection-recovery-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for chatgpt-tool-projection-recovery-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operation-discover",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operation-discover must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operational-acceptance-evidence",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operational-acceptance-evidence must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/operational-remediation-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for operational-remediation-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/provider-connection-discover",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for provider-connection-discover must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/provider-connection-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for provider-connection-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/reconcile-managed-skills",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for reconcile-managed-skills must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/remote-operation-parity-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for remote-operation-parity-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/remote-operation-work-queue",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for remote-operation-work-queue must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/runtime-release-set-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for runtime-release-set-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/runtime-release-set-status",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for runtime-release-set-status must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
+    },
+    {
+      "id": "ability:mad4b/write-authority-reconciliation-plan",
+      "control_ids": [
+        "RECOVERY-01",
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "UPDATES-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "This is an existing Ability name referenced as a passive route in the read-only MCP / WordPress administrator recovery matrix. No new Ability registration, grant, owner consent or mutation executor was created. Existing recovery, transport isolation and admin controls apply.",
+      "review_rationale": "Bounded route discovery for write-authority-reconciliation-plan must distinguish WordPress registration, actual MCP gateway mounting, admin route availability and independent approval. The changed executable route-matrix regression checks no implicit dispatch, no authorization and Production read-only separation; source-only CI does not certify live Staging acceptance."
     }
   ],
   "lifecycle": [],
