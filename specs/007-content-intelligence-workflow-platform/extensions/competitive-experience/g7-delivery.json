@@ -259,8 +259,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",
-      "sha256": "d076c8946de4f1a98b6371ff2f3acd9ce25f6d3b610ce0c3eea5127476d1ad5c",
-      "bytes": 52640
+      "sha256": "22134cfccd02024d040c8af251cec89e4e7447fcb49bf2ab0f39a7a0117d5b20",
+      "bytes": 52878
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/tests/g7-compensation-safety-runtime.php",
