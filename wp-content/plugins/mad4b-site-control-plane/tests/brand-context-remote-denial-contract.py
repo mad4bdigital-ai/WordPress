@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 AUTH = (ROOT / "includes/class-mad4b-scp-authorization.php").read_text(encoding="utf-8")
 ABILITIES = (ROOT / "includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
 CONTEXT = (ROOT / "includes/class-mad4b-scp-context-authority.php").read_text(encoding="utf-8")
+RESILIENCE = (ROOT / "includes/class-mad4b-scp-connector-resilience.php").read_text(encoding="utf-8")
 for marker in (
     "remote_permission_denial_code( $ability_name )",
     "self::$remote_permission_denial_codes",
@@ -26,6 +27,14 @@ for marker in (
 ):
     if marker not in ABILITIES:
         raise SystemExit(f"BRAND_CONTEXT: dispatch fail-closed invariant missing: {marker}")
+for marker in (
+    "'original_error_code' => $original_error_code",
+    "$original_error_code = substr( $original_error_code, 0, 96 );",
+    "$google_connection_failure ? 'inspect_google_connection_then_replan'",
+    "'raw_error_message_exposed' => false",
+):
+    if marker not in RESILIENCE:
+        raise SystemExit(f"BRAND_CONTEXT: bounded Google source read diagnostic missing: {marker}")
 for marker in (
     "'source_binding_diagnostics' => $source_diagnostics",
     "'google_connection_diagnostics' => $google_connection",
