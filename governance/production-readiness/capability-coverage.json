@@ -3032,6 +3032,23 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Review strictly scoped runtime release-set recovery: verified signed failed transaction, no partial component replacement, exact current pair identity, original one-time OAuth/owner gates and CAS remain mandatory. Explicit component context prevents bootstrap eligibility being inferred from missing tool visibility; actual component readback is required before marking updates complete. The changed Python harness executes hermetic runtime recovery, races, audit and fail-closed tests, not live Staging or Production acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-context-builder.php",
+      "source_blob_sha": "4dea3a7205248825b2249209a12166603666c14e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI only, not owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO."
     }
   ],
   "code_change_rules": {
