@@ -30,7 +30,9 @@ jobs:
   verdict:
     name: Repository release verdict
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Critical Dynamic Skills Staging runtime may legitimately use its 45-minute job budget.
+    # Allow its full budget plus runner startup/API polling and verdict emission.
+    timeout-minutes: 70
     outputs:
       artifact_required: ${{ steps.emit_verdict.outputs.artifact_required }}
     steps:
@@ -1008,7 +1010,9 @@ jobs:
               'required_checks': required,
           }, indent=2))
           PY
-          for attempt in $(seq 1 120); do
+          # 330 x 10s provides a bounded ~55-minute wait (plus GitHub API time).
+          # Never turn pending/failed checks into a PASS: verdict emission stays fail-closed.
+          for attempt in $(seq 1 330); do
             python3 tools/capture_exact_head_action_jobs.py \
               --repository "$GITHUB_REPOSITORY" \
               --head-sha "$SOURCE_SHA" \
@@ -1046,7 +1050,7 @@ jobs:
             if [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ]; then
               break
             fi
-            if [ "$attempt" -eq 120 ]; then
+            if [ "$attempt" -eq 330 ]; then
               echo 'Timed out waiting for exact-head critical checks; emitting a negative machine-readable verdict.' >&2
               break
             fi
