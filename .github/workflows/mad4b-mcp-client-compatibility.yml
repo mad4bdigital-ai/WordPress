@@ -48,6 +48,8 @@ jobs:
           php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/staging-write-one-step-review-runtime.php"
           php "$root/tests/enrollment-guided-write-handoff-runtime.php"
+          php "$root/tests/environment-journey-runtime.php"
+          python3 "$root/tests/environment-journey-contract.py"
           php "$root/tests/frontend-origin-diagnostic-runtime.php"
           php "$root/tests/frontend-origin-pre-pluggable-runtime.php"
           php "$root/tests/catalog-transport-runtime.php"
@@ -98,6 +100,8 @@ jobs:
           php -d memory_limit=64M "$root/tests/session-safe-memory-regression.php"
           php "$root/tests/staging-write-one-step-review-runtime.php"
           php "$root/tests/enrollment-guided-write-handoff-runtime.php"
+          php "$root/tests/environment-journey-runtime.php"
+          python3 "$root/tests/environment-journey-contract.py"
           php "$root/tests/frontend-origin-pre-pluggable-runtime.php"
 
   catalog-compatibility:
