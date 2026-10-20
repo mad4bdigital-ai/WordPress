@@ -88,6 +88,32 @@ foreach ( $degraded['findings'] as $finding ) {
 	$check( ! empty( $plan['semantic_operations'] ), 'Doctor repair plan has no semantic operation IDs' );
 }
 
+// Exact-scope Doctor output is not an alternative cross-tenant read API.
+$identity = '11111111-2222-4333-8444-555555555555';
+$scope = array( 'site_uuid' => $identity, 'brand_ref' => 'brand-one', 'tenant_ref' => 'tenant-one' );
+$sample = array(
+	array( 'job_id' => 'visible-own-job', 'brand_id' => 'brand-one', 'tenant_id' => 'tenant-one' ),
+	array( 'job_id' => 'doctor-redaction-foreign-secret', 'outbox_id' => 'foreign-outbox', 'provider_event_id' => 'foreign-event', 'brand_id' => 'brand-one', 'tenant_id' => 'tenant-two' ),
+	array( 'job_id' => 'legacy-job-secret', 'work_id' => 'legacy-lease', 'brand_id' => 'brand-one', 'tenant_id' => '' ),
+);
+$scoped = MAD4B_SCP_Operator_Doctor::scope_job_rows( $sample, $scope, $identity );
+$check( 3 === count( $scoped ), 'Doctor lost site-wide incident counts' );
+$check( 'visible-own-job' === $scoped[0]['job_id'] && false === $scoped[0]['cross_scope_details_redacted'], 'Doctor redacted authorized scope' );
+foreach ( array( 1, 2 ) as $i ) {
+	$row = $scoped[$i];
+	$check( true === $row['cross_scope_details_redacted'] && false === $row['automatic_repair_allowed'], 'Doctor exposed foreign/legacy scope' );
+	foreach ( array( 'job_id', 'work_id', 'outbox_id', 'provider_event_id', 'brand_id', 'tenant_id' ) as $key ) {
+		$check( ! array_key_exists( $key, $row ), 'Doctor exposed forbidden identifier: ' . $key );
+	}
+}
+$unresolved = MAD4B_SCP_Operator_Doctor::scope_job_rows( $sample, array(), $identity );
+foreach ( $unresolved as $row ) {
+	$check( 'current_scope_unresolved' === $row['scope_relation'] && true === $row['cross_scope_details_redacted'], 'Doctor must fail closed without a trusted scope' );
+	$check( ! isset( $row['job_id'] ) && ! isset( $row['outbox_id'] ), 'Doctor leaked details when scope was unverified' );
+}
+$wrong_site = MAD4B_SCP_Operator_Doctor::scope_job_rows( $sample, array( 'site_uuid' => '99999999-8888-4777-8666-555555555555', 'brand_ref' => 'brand-one', 'tenant_ref' => 'tenant-one' ), $identity );
+$check( true === $wrong_site[0]['cross_scope_details_redacted'] && ! isset( $wrong_site[0]['job_id'] ), 'Doctor accepted a different site scope' );
+
 $source = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-operator-doctor.php' );
 $main = file_get_contents( dirname( __DIR__ ) . '/mad4b-site-control-plane.php' );
 $servers = file_get_contents( dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php' );
