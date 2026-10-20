@@ -20,6 +20,7 @@ def main():
     policy = text("includes/class-mad4b-scp-policy.php")
     gates = text("includes/class-mad4b-scp-governed-runtime-gates.php")
     abilities = text("includes/class-mad4b-scp-abilities.php")
+    filesystem_executor = text("includes/class-mad4b-scp-filesystem-mutation-service.php")
     lifecycle_executor = text("includes/class-mad4b-scp-plugin-ability-service.php")
     provider = text("includes/class-mad4b-scp-provider-contracts.php")
     base = text("includes/adapters/class-mad4b-scp-adapter-base.php")
@@ -38,7 +39,9 @@ def main():
     require(policy, "mad4b_scp_mutable_data_extensions", "data extension allowlist")
     for token in (".htaccess", ".user.ini", "php.ini", "web.config", "phtml", "phar", "svg"):
         require(policy, token, f"filesystem deny token {token}")
-    require(abilities, "MAD4B_SCP_Policy::can_mutate_file", "filesystem mutation policy invocation")
+    require(filesystem_executor, "MAD4B_SCP_Policy::can_mutate_file", "filesystem mutation policy invocation")
+    require(abilities, "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write", "governed file-write callback delegation")
+    require(abilities, "MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch", "governed file-patch callback delegation")
 
     # Every mutation surface has an explicit master switch before provider/action-specific policy.
     require(policy, "MAD4B_MCP_MUTATION_ENABLED", "global mutation master opt-in")
