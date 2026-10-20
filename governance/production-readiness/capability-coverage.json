@@ -2273,14 +2273,17 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py",
         "wp-content/plugins/mad4b-site-control-plane/tests/brand-core-remote-recovery-contract.py"
       ],
       "owner_role": "MAD4B WordPress Cache/Rate Limiter acceptance reviewer",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Fixes TTL false positive: absent object-cache key could be evicted or explicitly deleted, so the CLI expiry substep no longer claims ttl_expiration_proven. Records only missing-key observation and requires an independently timed, multi-request/worker/nodes proof before rate-limit certification. Test deliberately deletes the key to prove no false certification. No production cache mutation or external connection credentials."
+      "review_rationale": "Fixes TTL false positive: absent object-cache key could be evicted or explicitly deleted, so the CLI expiry substep no longer claims ttl_expiration_proven. Records only missing-key observation and requires an independently timed, multi-request/worker/nodes proof before rate-limit certification. Test deliberately deletes the key to prove no false certification. No production cache mutation or external connection credentials. The changed Python lifecycle runner executes the standalone cache PHP probe and propagates failures, without treating it as a PHPUnit suite.",
+      "source_regression_references": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/object-cache-diagnostics-runtime.php"
+      ]
     }
   ],
   "code_change_rules": {
