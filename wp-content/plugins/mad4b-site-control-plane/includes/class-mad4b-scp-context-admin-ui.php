@@ -379,6 +379,16 @@ final class MAD4B_SCP_Context_Admin_UI {
 		$source = $sources[ $source_id ];
 		$scan = MAD4B_SCP_Google_Drive_Context::scan_folder( $source['external_root_id'], ! empty( $source['recursive'] ) );
 		if ( is_wp_error( $scan ) ) self::redirect_result( $scan, 'sources', '' );
+		// Admin and MCP use the same complete-source admission. A partial
+		// diagnostic inventory must never create provisional Brand assets.
+		if ( ! class_exists( 'MAD4B_SCP_Brand_Context_Builder' )
+			|| ! method_exists( 'MAD4B_SCP_Brand_Context_Builder', 'source_scan_apply_admission' ) ) {
+			self::redirect_result( new WP_Error( 'mad4b_context_source_scan_admission_unavailable',
+				'Complete Source Scan admission is unavailable.' ), 'sources', '' );
+		}
+		$admission = MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission(
+			array( 'scan_complete' => true === ( $scan['complete'] ?? null ) ), $scan );
+		if ( is_wp_error( $admission ) ) self::redirect_result( $admission, 'sources', '' );
 		$result = MAD4B_SCP_Context_Authority::replace_source_assets(
 			$source_id,
 			isset( $scan['assets'] ) && is_array( $scan['assets'] ) ? $scan['assets'] : array(),
