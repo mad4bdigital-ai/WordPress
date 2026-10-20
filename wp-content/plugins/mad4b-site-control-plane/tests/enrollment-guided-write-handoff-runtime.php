@@ -56,6 +56,20 @@ $cases = array(
     array( 'name' => 'current', 'handshake' => array_replace( $handshake,
         array( 'already_current' => true ) ), 'prior' => $prior, 'latest' => $latest,
         'state' => 'already_current' ),
+    array( 'name' => 'current with uncertain previous execution', 'handshake' => array_replace( $handshake,
+        array( 'already_current' => true ) ), 'prior' => $prior,
+        'latest' => array( 'state' => 'EXECUTION_UNCERTAIN' ),
+        'state' => 'prior_operation_requires_reconciliation' ),
+    array( 'name' => 'current with held finalization lock', 'handshake' => array_replace( $handshake,
+        array( 'already_current' => true ) ), 'prior' => $prior,
+        'latest' => array( 'state' => 'VERIFIED_LOCK_HELD' ),
+        'state' => 'prior_operation_requires_reconciliation' ),
+    array( 'name' => 'current with unreadable journal', 'handshake' => array_replace( $handshake,
+        array( 'already_current' => true ) ), 'prior' => $prior, 'latest' => null,
+        'state' => 'prior_operation_requires_reconciliation' ),
+    array( 'name' => 'current with verified previous execution', 'handshake' => array_replace( $handshake,
+        array( 'already_current' => true ) ), 'prior' => $prior,
+        'latest' => array( 'state' => 'VERIFIED' ), 'state' => 'already_current' ),
     array( 'name' => 'blocked', 'handshake' => array_replace( $handshake,
         array( 'hard_blockers' => array( 'site_profile_drift' ) ) ),
         'prior' => $prior, 'latest' => $latest, 'state' => 'prerequisites_blocked' ),
@@ -96,4 +110,27 @@ foreach ( array(
     ensure( ! isset( $out['prepared_request'] ) && $out['owner_decision_required'] === false,
         'Unreviewed route generated an executable request' );
 }
+// Exercise the actual discovery path too: current authority still inspects
+// the durable journal, without a second expensive plan calculation.
+function is_wp_error( $value ) { return false; }
+class MAD4B_SCP_Staging_Write_Authority_Convergence {
+    public static $handshake; public static $plan_calls = 0;
+    public static function handshake() { return self::$handshake; }
+    public static function plan() { ++self::$plan_calls; throw new RuntimeException( 'Unexpected duplicate plan' ); }
+}
+class MAD4B_SCP_Staging_Operation_Journal {
+    public static $site;
+    public static function latest( $site ) { self::$site = $site; return array( 'state' => 'EXECUTION_UNCERTAIN' ); }
+}
+MAD4B_SCP_Staging_Write_Authority_Convergence::$handshake = array_replace(
+    $handshake, array( 'already_current' => true, 'ready_to_apply' => false ) );
+$live_path = new ReflectionMethod( 'MAD4B_SCP_Enrollment_Dispatch', 'guided_write_handoff' );
+$live_path->setAccessible( true );
+$out = $live_path->invoke( null, $row );
+ensure( $out['state'] === 'prior_operation_requires_reconciliation'
+    && $out['authority_current'] === true && ! isset( $out['prepared_request'] ),
+    'Current authority hid an unresolved operation in the real guided path' );
+ensure( MAD4B_SCP_Staging_Operation_Journal::$site === $site_uuid
+    && MAD4B_SCP_Staging_Write_Authority_Convergence::$plan_calls === 0,
+    'Journal observation lost exact site binding or duplicated the plan' );
 echo "MAD4B_ENROLLMENT_GUIDED_WRITE_HANDOFF: PASS\n";

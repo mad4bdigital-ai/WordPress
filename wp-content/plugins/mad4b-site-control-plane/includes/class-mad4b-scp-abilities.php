@@ -67,7 +67,7 @@ final class MAD4B_SCP_Abilities {
 				'expected_classification_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'expected_authority_scope_sha256' => array( 'type' => 'string', 'pattern' => '^[a-f0-9]{64}$' ),
 				'preparation_receipt' => array( 'type' => 'string', 'minLength' => 1, 'maxLength' => 4096 ),
-				'input' => array( 'type' => 'object', 'default' => array() ),
+				'input' => array( 'type' => 'object' ),
 			), array( 'ability_name', 'expected_input_schema_sha256', 'expected_execution_lane', 'expected_classification_sha256', 'expected_authority_scope_sha256', 'preparation_receipt' )
 		), false, true, false, true );
 		$this->add( 'mad4b/write-discover', 'Discover Governed Write Abilities', 'mad4b-read', 'write_discover', 'read', $this->schema(
@@ -476,6 +476,11 @@ final class MAD4B_SCP_Abilities {
 		if ( ! class_exists( 'MAD4B_SCP_Connector_Resilience' ) ) return new WP_Error( 'mad4b_connector_resilience_unavailable', 'Shared connector resilience service is unavailable.' );
 		$params = array_key_exists( 'input', $input ) ? $input['input'] : null;
 		$target_input_schema = method_exists( $ability, 'get_input_schema' ) ? $ability->get_input_schema() : null;
+		// An omitted dispatcher envelope is the empty object for an object
+		// target, not JSON null. Leave explicit null/invalid values and required
+		// target fields to the original Ability validator; never supply them.
+		if ( ! array_key_exists( 'input', $input ) && is_array( $target_input_schema )
+			&& 'object' === ( $target_input_schema['type'] ?? '' ) ) $params = array();
 		if ( ( null === $target_input_schema || empty( $target_input_schema ) ) && is_array( $params ) && empty( $params ) ) $params = null;
 
 		$execute_target = static function () use ( $ability, $params ) {

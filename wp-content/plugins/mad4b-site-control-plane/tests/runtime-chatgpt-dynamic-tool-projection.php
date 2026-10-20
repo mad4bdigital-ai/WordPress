@@ -479,10 +479,23 @@ try {
 	$fixed_identity = mad4b_test_prepared_dispatch_identity( $fixed_name );
 	if ( is_wp_error( $fixed_identity ) ) $fail( 'Fixed-dispatch signed preparation failed.', $fixed_identity->get_error_code() );
 	$stable_dispatch = ( new MAD4B_SCP_Abilities() )->read_execute( array_merge(
-		array( 'ability_name' => $fixed_name, 'input' => array() ),
+		array( 'ability_name' => $fixed_name ),
 		$fixed_identity
 	) );
 	if ( is_wp_error( $stable_dispatch ) || empty( $stable_dispatch['result']['ok'] ) ) $fail( 'Another session hot-set replacement disrupted fixed dispatch.' );
+	$empty_hotset = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+	if ( 'not_configured' !== ( $empty_hotset['projection_state'] ?? '' )
+		|| 'use_fixed_dispatch' !== ( $empty_hotset['projection_next_action'] ?? '' )
+		|| ! empty( $empty_hotset['fixed_dispatch_health_evaluated'] ) )
+		$fail( 'Empty optional hot set was misrepresented as broken fixed dispatch.', $empty_hotset );
+	$drifted = $fixture_state;
+	$drifted['binding']['site_uuid'] = '00000000-0000-4000-8000-000000000099';
+	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $drifted, false );
+	$drift_status = MAD4B_SCP_ChatGPT_Tool_Projection::status();
+	if ( 'binding_drift' !== ( $drift_status['projection_state'] ?? '' )
+		|| 'plan_optional_projection_rebind' !== ( $drift_status['projection_next_action'] ?? '' )
+		|| ! empty( $drift_status['mutation_performed'] ) )
+		$fail( 'Stored optional hot-set drift was hidden or repaired by a read.', $drift_status );
 
 	update_option( MAD4B_SCP_ChatGPT_Tool_Projection::OPTION, $fixture_state, false );
 
