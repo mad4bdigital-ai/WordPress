@@ -30,4 +30,23 @@ limits={
 for path,limit in limits.items():
  if int(facades.get(path,10**9))>limit:
   raise SystemExit("MAINTAINABILITY_RATCHET_NOT_TIGHTENED:"+path)
+
+# Plugin activation/deactivation must remain a narrow governed facade;
+# mutation policy, optimistic state and readback live in the domain executor.
+abilities=(root/"includes/class-mad4b-scp-abilities.php").read_text(encoding="utf-8")
+plugin_service_path=root/"includes/class-mad4b-scp-plugin-ability-service.php"
+if not plugin_service_path.is_file():
+ raise SystemExit("PLUGIN_ABILITY_SERVICE_MISSING")
+plugin_service=plugin_service_path.read_text(encoding="utf-8")
+for marker in ("class-mad4b-scp-plugin-ability-service.php", "MAD4B_SCP_Plugin_Ability_Service::plugin_activate", "MAD4B_SCP_Plugin_Ability_Service::plugin_deactivate"):
+ if marker not in abilities:
+  raise SystemExit("PLUGIN_LIFECYCLE_FACADE_DELEGATION_MISSING:"+marker)
+for marker in ("MAD4B_SCP_Plugin_Lifecycle::mutation_preflight", "MAD4B_SCP_Plugin_Lifecycle::verify_state", "MAD4B_SCP_Policy::plugin_lifecycle_allowed", "MAD4B_SCP_Policy::plugin_lifecycle_protected", "MAD4B_SCP_Audit::record"):
+ if marker not in plugin_service:
+  raise SystemExit("PLUGIN_LIFECYCLE_SERVICE_GUARD_MISSING:"+marker)
+if "private function plugin_site_active" in abilities or "activate_plugin( $plugin" in abilities or "deactivate_plugins( $plugin" in abilities:
+ raise SystemExit("PLUGIN_LIFECYCLE_MUTATOR_REABSORBED")
+if int(facades.get("wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",10**9))>1650:
+ raise SystemExit("PLUGIN_LIFECYCLE_FACADE_RATCHET_NOT_TIGHTENED")
+
 print("mad4b.maintainability-domain-service-decomposition.v1: PASS")
