@@ -3382,6 +3382,48 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "review_rationale": "Existing platform, security, MCP and performance controls cover isolating optional trace/metric exceptions from the original single callback invocation. No new executor, authority, approval, audit bypass, retry or production capability. Regression executes the real PHP runtime: success object and mandatory denial retain identity, original exception survives a throwing metrics backend, failed trace setup cannot block execution, parent trace is restored, and bounded diagnostics contain no messages, labels or paths. Live MCP root cause remains unproven."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-observability.php",
+      "source_blob_sha": "b00308eb5ee2e360ec7e88f93f2565b814b5b731",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "DATABASE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review: optional DB metric writes return bounded errors without retry, failed history queries are unavailable evidence, zero/inconsistent samples cannot certify SLO latency or error budgets. Existing observability/MCP/database controls suffice; no new authority or executor. The changed Python regression driver executes actual metrics, hot-set consumer, workload consumer and SLO paths under database exceptions/null/error results, preserving mandatory callback outcomes and tenant trace isolation. Live MCP exception origin and deployment remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-metrics.php",
+      "source_blob_sha": "4419f4835835b977e173aed8bfe6135800a78bf8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "PERFORMANCE-01",
+        "DATABASE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/observability-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "review_rationale": "CI-only review: optional DB metric writes return bounded errors without retry, failed history queries are unavailable evidence, zero/inconsistent samples cannot certify SLO latency or error budgets. Existing observability/MCP/database controls suffice; no new authority or executor. The changed Python regression driver executes actual metrics, hot-set consumer, workload consumer and SLO paths under database exceptions/null/error results, preserving mandatory callback outcomes and tenant trace isolation. Live MCP exception origin and deployment remain unverified."
     }
   ],
   "code_change_rules": {

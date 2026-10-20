@@ -59,3 +59,4 @@ for marker in ["self::$current = $span","finally {","self::$current = $parent","
 # Execute the actual runtime fixture for mapped CI verification, not source markers alone.
 import subprocess
 subprocess.run(["php", "-n", str(root / "tests/observability-runtime.php")], check=True)
+subprocess.run(["php", "-n", str(root / "tests/runtime-metrics-failure-runtime.php")], check=True)

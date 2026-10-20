@@ -8,6 +8,11 @@ final class MAD4B_SCP_Runtime_Metrics {
 	const MAX_HOURS=720;
 
 	public static function record($name,$value=1){
+		try { return self::record_impl($name,$value); }
+		catch (Throwable $error) { return new WP_Error('mad4b_metric_write_exception','Optional metric storage failed; no retry was performed.'); }
+	}
+
+	private static function record_impl($name,$value){
 		global $wpdb;
 		$name=strtolower(trim((string)$name));
 		if(1!==preg_match('/^[a-z0-9_.-]{1,96}$/',$name)) return new WP_Error('mad4b_metric_name_invalid','Metric name is invalid.');
@@ -30,6 +35,11 @@ final class MAD4B_SCP_Runtime_Metrics {
 	}
 
 	public static function summary(array $names=array(),$hours=24){
+		try { return self::summary_impl($names,$hours); }
+		catch (Throwable $error) { return new WP_Error('mad4b_metric_read_exception','Metric history could not be read.'); }
+	}
+
+	private static function summary_impl(array $names,$hours){
 		global $wpdb;
 		$hours=max(1,min(self::MAX_HOURS,absint($hours)));
 		$names=array_values(array_unique(array_filter(array_map(static function($name){
@@ -47,6 +57,8 @@ final class MAD4B_SCP_Runtime_Metrics {
 			$sql=$wpdb->prepare("SELECT metric_name,SUM(count_value) count_value,SUM(sum_value) sum_value,MIN(min_value) min_value,MAX(max_value) max_value FROM {$t['metric_buckets']} WHERE bucket_start >= %s GROUP BY metric_name ORDER BY metric_name ASC LIMIT 100",$since);
 		}
 		$rows=$wpdb->get_results($sql,ARRAY_A);
+		// A failed query is unavailable evidence, never a successful empty history.
+		if(!is_array($rows) || !empty($wpdb->last_error)) return new WP_Error('mad4b_metric_read_failed','Metric history query failed.');
 		$out=array();
 		foreach(is_array($rows)?$rows:array() as $row){
 			$count=(int)$row['count_value'];$sum=(int)$row['sum_value'];

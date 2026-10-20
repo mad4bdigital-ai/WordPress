@@ -11,10 +11,12 @@ class MAD4B_SCP_Runtime_Metrics{
  const MAX_NAMES=50;
  public static function record($n,$v=1){if(!empty($GLOBALS['obs_metric_throw']))throw new RuntimeException('private-metric-backend-detail');if(!empty($GLOBALS['obs_metric_fail']))return new WP_Error('ci_metric_backend_down');$GLOBALS['obs_records'][]=array($n,$v);return true;}
  public static function summary(array $names=array(),$hours=24){
+  if(($GLOBALS['obs_summary_mode']??'')==='empty')return array('metrics'=>array());
+  if(($GLOBALS['obs_summary_mode']??'')==='unavailable')return new WP_Error('mad4b_metric_read_failed');
   $metrics=array();
   foreach($names as $n){
    $count=0;
-   if(false!==strpos($n,'.count'))$count=100;
+   if(false!==strpos($n,'.count'))$count=($GLOBALS['obs_summary_mode']??'')==='inconsistent'?1:100;
    elseif(false!==strpos($n,'.error'))$count=2;
    elseif(preg_match('/\.le([0-9]{6})$/',$n,$m)){$b=(int)$m[1];$count=$b>=100?100:($b>=50?96:50);}
    $metrics[]=array('name'=>$n,'count'=>$count,'sum'=>$count,'min'=>0,'max'=>0,'avg'=>0);
@@ -121,3 +123,16 @@ $sem=MAD4B_SCP_Observability::failure_semantics();
 $check(empty($sem['optional_telemetry_failure_blocks_safe_reads'])&&!empty($sem['mandatory_audit_or_execution_evidence_failure_blocks_governed_write']),'Observability failure semantics drifted.',$sem);
 
 echo "mad4b.observability.runtime.v1: PASS\n";
+
+foreach(array('empty','inconsistent','unavailable') as $mode){
+ $GLOBALS['obs_summary_mode']=$mode;
+ $report=MAD4B_SCP_Observability::slo_status();
+ foreach($report['stages'] as $row){
+  $check(empty($row['ready'])&&($row['burn_state']??'unknown')==='unknown','Missing/inconsistent evidence was certified healthy: '.$mode,$row);
+  $check(($row['within_p95_objective']??null)!==true,'Missing evidence passed latency objective: '.$mode,$row);
+ }
+ $budgets=MAD4B_SCP_Observability::error_budget_status();
+ foreach($budgets['stages'] as $row)$check('unknown'===$row['combined_burn_state'],'Missing evidence yielded a healthy combined error budget.',$row);
+}
+$GLOBALS['obs_summary_mode']='';
+echo "OBSERVABILITY_MISSING_EVIDENCE_PASS\n";
