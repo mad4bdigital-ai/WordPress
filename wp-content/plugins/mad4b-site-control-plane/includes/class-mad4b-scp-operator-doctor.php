@@ -300,11 +300,26 @@ final class MAD4B_SCP_Operator_Doctor {
 			$tenant = isset( $row['tenant_id'] ) && is_string( $row['tenant_id'] ) ? $row['tenant_id'] : '';
 			$relation = ! $known ? 'current_scope_unresolved' : ( '' === $brand || '' === $tenant ? 'legacy_scope_binding_incomplete'
 				: ( hash_equals( $scope['brand_ref'], $brand ) && hash_equals( $scope['tenant_ref'], $tenant ) ? 'current_scope_match' : 'original_scope_review_required' ) );
-			unset( $row['brand_id'], $row['tenant_id'] );
-			$row['scope_relation'] = $relation;
-			$row['inspection_action'] = 'current_scope_match' === $relation ? 'read_job_and_events_through_existing_scope_gate' : 'verify_original_owner_scope_before_detail_read_or_repair';
-			$row['detail_read_authorized_by_doctor'] = false;
-			$row['automatic_repair_allowed'] = false;
+			if ( 'current_scope_match' !== $relation ) {
+				// A site-wide incident is visible as an aggregate but is not
+				// authority to disclose foreign/unknown tenant job, outbox,
+				// provider, lease or event identifiers (nor their payload data).
+				// Fail closed when the trusted scope cannot be resolved.
+				$row = array(
+					'scope_relation' => $relation,
+					'inspection_action' => 'verify_original_owner_scope_before_detail_read_or_repair',
+					'detail_read_authorized_by_doctor' => false,
+					'automatic_repair_allowed' => false,
+					'cross_scope_details_redacted' => true,
+				);
+			} else {
+				unset( $row['brand_id'], $row['tenant_id'] );
+				$row['scope_relation'] = $relation;
+				$row['inspection_action'] = 'read_job_and_events_through_existing_scope_gate';
+				$row['detail_read_authorized_by_doctor'] = false;
+				$row['automatic_repair_allowed'] = false;
+				$row['cross_scope_details_redacted'] = false;
+			}
 			$out[] = $row;
 		}
 		return $out;
