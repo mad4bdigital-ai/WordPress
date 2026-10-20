@@ -49,9 +49,14 @@ jobs:
           root='wp-content/plugins/mad4b-site-control-plane'
           policy="$root/includes/class-mad4b-scp-policy.php"
           abilities="$root/includes/class-mad4b-scp-abilities.php"
+          filesystem="$root/includes/class-mad4b-scp-filesystem-mutation-service.php"
           grep -Fq "mad4b_executable_file_mutation_denied" "$policy"
           grep -Fq "mad4b_filesystem_mutation_root_denied" "$policy"
-          grep -Fq "MAD4B_SCP_Policy::can_mutate_file" "$abilities"
+          # The handler was extracted into a lazily loaded service. Check BOTH
+          # guarded mutation methods and the Ability-to-service delegation.
+          test "$(grep -Fc 'MAD4B_SCP_Policy::can_mutate_file' "$filesystem")" -eq 2
+          grep -Fq 'MAD4B_SCP_Filesystem_Mutation_Service::filesystem_write( $input )' "$abilities"
+          grep -Fq 'MAD4B_SCP_Filesystem_Mutation_Service::filesystem_patch( $input )' "$abilities"
           grep -Fq "Source-code changes must use the governed repository/deployment path" "$policy"
 
       - name: Verify provider mutation circuit breaker
