@@ -63,8 +63,8 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "sha256": "e9aaccb4cdff6422da98447f307573992e38f47794dc31876064ae6e570956ec",
-      "bytes": 70585
+      "sha256": "a1449ea1e4b0544d9e622d9775ec77f7083d5414a30a6332d6902ec9adfb7ca6",
+      "bytes": 70655
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php",

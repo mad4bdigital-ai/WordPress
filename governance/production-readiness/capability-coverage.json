@@ -2314,6 +2314,99 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Close cross-tenant information disclosure in the site-wide Operator Doctor result. Preserve aggregate findings while fail-closed redacting every foreign/legacy/unresolved-scope row, including job, outbox, lease and provider event identifiers. Disposable mixed-tenant runtime fixtures verify same-scope visibility and denial of foreign/unknown identifiers. No authorization, repair or production mutation is granted. The checked-in pure PHP behavior fixture is executed by the bounded Python regression runner; disposable WP-CLI/MariaDB tests remain separate and are not misidentified as PHPUnit."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
+      "source_blob_sha": "c6ebec722e56521b61c506652d12122baaaeafc6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-governed-ability-census.php",
+      "source_blob_sha": "a36c4ad27e332acf6fce5a628a7aa770b8a934f9",
+      "control_ids": [
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "MCP-01",
+        "PROVIDERS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-release-set.php",
+      "source_blob_sha": "235e15d48285d7870ce3be6c323f06ab62974d54",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-self-update.php",
+      "source_blob_sha": "1b02146e1652ae2ce8f67e71975392140b09d0ea",
+      "control_ids": [
+        "CROSSPLUGIN-01",
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "ROLLOUT-01",
+        "SECURITY-01",
+        "UPDATES-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "2d2ca100d1eac31533bb6cb51fb934e7ef80d210",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI-only, no site-owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
     }
   ],
   "code_change_rules": {

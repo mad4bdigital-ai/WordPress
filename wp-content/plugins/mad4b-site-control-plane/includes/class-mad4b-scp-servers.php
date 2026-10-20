@@ -551,8 +551,7 @@ final class MAD4B_SCP_Servers {
 		// Server registration runs during rest_api_init, while OAuth bearer
 		// verification happens later in rest_pre_dispatch. Materialize only the
 		// stable read/dispatch transport plus a small explicitly reviewed direct
-		// step-up set. Low-level enrollment primitives remain behind the governed
-		// enrollment dispatcher and never become direct MCP tools.
+		// step-up set. Low-level enrollment stays behind the governed dispatcher.
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
