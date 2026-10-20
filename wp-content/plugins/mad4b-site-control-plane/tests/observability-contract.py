@@ -55,3 +55,12 @@ for marker in ["run_stage( 'policy'", "resolve_impl(", "capability_sha256"]:
 for marker in ["self::$current = $span","finally {","self::$current = $parent","operator_action_authorizing","combined_burn_state"]:
     if marker not in impl:
         raise SystemExit("FAIL scoped trace/burn-rate invariant missing "+marker)
+
+# Execute the actual runtime fixture for mapped CI verification, not source markers alone.
+import subprocess
+subprocess.run(["php", str(root / "tests/observability-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests/runtime-metrics-failure-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests/native-caught-incident-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests/native-recovery-status-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests/native-incident-mu-runtime.php")], check=True)
+subprocess.run(["php", str(root / "tests/native-incident-early-runtime.php")], check=True)

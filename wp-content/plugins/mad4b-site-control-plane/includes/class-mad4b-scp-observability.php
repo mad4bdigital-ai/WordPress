@@ -127,33 +127,51 @@ final class MAD4B_SCP_Observability {
 
 	public static function run_stage( $stage, $callback, $tenant_scope = '', array $attributes = array() ) {
 		if ( ! is_callable( $callback ) ) return new WP_Error( 'mad4b_observability_callback_invalid', 'Observed stage requires a callable.' );
-		$span = self::child( $stage, $tenant_scope, $attributes );
-		// child() resolves/creates the parent request context but does not mutate
-		// it. Capture that parent and make the child current only for the callback
-		// scope so nested governed stages inherit an exact causal parent span.
 		$parent = self::$current;
-		if ( ! is_wp_error( $span ) ) self::$current = $span;
-		$started = self::start_clock();
+		$span = null;
+		$started = null;
 		try {
-			$result = call_user_func( $callback );
-			if ( ! is_wp_error( $span ) ) {
-				// Telemetry is intentionally best-effort: its result never
-				// replaces or upgrades the authoritative callback result.
-				self::finish_span( $span, $started, ! is_wp_error( $result ), array(
-					'result_class' => is_wp_error( $result ) ? 'wp_error' : 'success',
-					'error_code' => is_wp_error( $result ) ? sanitize_key( (string) $result->get_error_code() ) : '',
-				) );
-			}
-			return $result;
-		} catch ( Throwable $error ) {
-			if ( ! is_wp_error( $span ) ) self::finish_span( $span, $started, false, array(
-				'result_class' => 'exception',
-				'error_class' => get_class( $error ),
-			) );
-			throw $error;
-		} finally {
+			$span = self::child( $stage, $tenant_scope, $attributes );
+			// Preserve the lazily created request root as the restoration target.
+			$parent = self::$current;
+			if ( ! is_wp_error( $span ) ) self::$current = $span;
+			$started = self::start_clock();
+		} catch ( Throwable $telemetry_error ) {
 			self::$current = $parent;
+			$span = null;
+			self::telemetry_exception( $stage, $telemetry_error );
 		}
+		$success = false;
+		$attributes_out = array( 'result_class' => 'exception' );
+		try {
+			// Exactly one authoritative invocation. No telemetry catch may retry it.
+			$result = call_user_func( $callback );
+			$success = ! is_wp_error( $result );
+			$attributes_out = array( 'result_class' => $success ? 'success' : 'wp_error',
+				'error_code' => $success ? '' : (string) $result->get_error_code() );
+			return $result;
+		} finally {
+			try {
+				if ( is_array( $span ) ) self::finish_span( $span, $started, $success, $attributes_out );
+			} catch ( Throwable $telemetry_error ) {
+				self::telemetry_exception( $stage, $telemetry_error );
+			} finally {
+				self::$current = $parent;
+			}
+		}
+	}
+
+	/** Bounded server evidence only; never log messages, attributes or paths. */
+	private static function telemetry_exception( $stage, Throwable $error ) {
+		try {
+			if ( class_exists('MAD4B_Native_Incident_MU',false) ) MAD4B_Native_Incident_MU::record_throwable($error,'telemetry');
+			error_log( 'MAD4B_OPTIONAL_TELEMETRY_FAILURE ' . json_encode( array(
+				'code' => 'mad4b_optional_telemetry_exception',
+				'stage' => substr( sanitize_key( (string) $stage ), 0, 48 ),
+				'origin_sha256' => hash( 'sha256', get_class( $error ) . '|' . $error->getFile() . '|' . $error->getLine() ),
+				'authorizing' => false,
+			) ) );
+		} catch ( Throwable $ignored ) { /* Optional diagnostic sinks cannot affect execution. */ }
 	}
 
 	public static function finish_span( $span, $started, $success = true, array $attributes = array() ) {
@@ -166,6 +184,14 @@ final class MAD4B_SCP_Observability {
 	}
 
 	public static function record_stage( $stage, $duration_ms, $success = true, array $attributes = array() ) {
+		try { return self::record_stage_impl( $stage, $duration_ms, $success, $attributes ); }
+		catch ( Throwable $error ) {
+			self::telemetry_exception( $stage, $error );
+			return self::optional_failure( $stage, 'mad4b_optional_telemetry_exception', array() );
+		}
+	}
+
+	private static function record_stage_impl( $stage, $duration_ms, $success, array $attributes ) {
 		$stage = sanitize_key((string)$stage);
 		$profile = self::profile();
 		if ( is_wp_error($profile) || !isset($profile['stages'][$stage]) ) {
@@ -208,6 +234,7 @@ final class MAD4B_SCP_Observability {
 			foreach(isset($summary['metrics'])&&is_array($summary['metrics'])?$summary['metrics']:array() as $row)$map[(string)$row['name']]=(int)$row['count'];
 			$total=isset($map[$base.'.count'])?(int)$map[$base.'.count']:0;
 			$errors=isset($map[$base.'.error'])?(int)$map[$base.'.error']:0;
+			$evidence_ready=$total>0 && $errors>=0 && $errors<=$total;
 			$buckets=array();
 			foreach($profile['histogram_ms'] as $boundary){
 				$name=$base.'.le'.str_pad((string)(int)$boundary,6,'0',STR_PAD_LEFT);
@@ -220,18 +247,18 @@ final class MAD4B_SCP_Observability {
 			$burn=$error_ratio/$allowed;
 			$warning=max(0.0,(float)$profile['burn_rate']['warning_multiplier']);
 			$critical=max($warning,(float)$profile['burn_rate']['critical_multiplier']);
-			$burn_state=$burn >= $critical ? 'critical' : ( $burn >= $warning ? 'warning' : 'healthy' );
-			$operator_action='none';
+			$burn_state=!$evidence_ready ? 'unknown' : ( $burn >= $critical ? 'critical' : ( $burn >= $warning ? 'warning' : 'healthy' ) );
+			$operator_action=$evidence_ready?'none':'collect_valid_metric_evidence';
 			if('critical'===$burn_state)$operator_action='investigate_and_mitigate';
 			elseif('warning'===$burn_state)$operator_action='review_error_budget';
 			$stages[$stage]=array(
-				'ready'=>true,'samples'=>$total,'errors'=>$errors,'error_ratio'=>round($error_ratio,6),
-				'p50_ms'=>$q['p50_ms'],'p95_ms'=>$q['p95_ms'],'p99_ms'=>$q['p99_ms'],
+				'ready'=>$evidence_ready,'reason_code'=>$evidence_ready?'':($total<=0?'metric_samples_missing':'metric_counts_inconsistent'),'samples'=>$total,'errors'=>$errors,'error_ratio'=>$evidence_ready?round($error_ratio,6):null,
+				'p50_ms'=>$evidence_ready?$q['p50_ms']:null,'p95_ms'=>$evidence_ready?$q['p95_ms']:null,'p99_ms'=>$evidence_ready?$q['p99_ms']:null,
 				'p95_objective_ms'=>(int)$policy['p95_ms'],'availability_objective'=>$objective,
-				'burn_rate'=>round($burn,3),'burn_state'=>$burn_state,
+				'burn_rate'=>$evidence_ready?round($burn,3):null,'burn_state'=>$burn_state,
 				'burn_warning_multiplier'=>$warning,'burn_critical_multiplier'=>$critical,
 				'operator_action'=>$operator_action,'operator_action_authorizing'=>false,
-				'within_p95_objective'=>0===$total||$q['p95_ms']<=(int)$policy['p95_ms'],
+				'within_p95_objective'=>$evidence_ready?($q['p95_ms']<=(int)$policy['p95_ms']):null,
 				'authority_effect'=>'none'
 			);
 		}

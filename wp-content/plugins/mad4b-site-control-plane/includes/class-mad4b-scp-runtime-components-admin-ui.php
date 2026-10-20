@@ -312,7 +312,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		MAD4B_SCP_Admin_Experience::cards( array(
 			array( 'label' => 'Staging enrollment', 'value' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'exact' : 'not verified', 'state' => ! empty( $status['site_profile_staging_enrolled'] ) ? 'complete' : 'blocked' ),
 			array( 'label' => 'PHP incident recorder', 'value' => isset( $incidents['state'] ) ? (string) $incidents['state'] : 'unavailable', 'state' => ! empty( $incidents['recorder_loaded'] ) ? 'complete' : 'attention' ),
-			array( 'label' => 'Captured fatal events', 'value' => (string) (int) ( $incidents['count'] ?? 0 ), 'state' => ! empty( $incidents['count'] ) ? 'attention' : 'pending' ),
+			array( 'label' => 'Captured diagnostic events', 'value' => (string) (int) ( $incidents['count'] ?? 0 ), 'state' => ! empty( $incidents['count'] ) ? 'attention' : 'pending' ),
 			array( 'label' => 'Query Monitor bridge', 'value' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'available' : 'not loaded', 'state' => ! empty( $qm['existing_collector_bridge_available'] ) ? 'complete' : 'attention' ),
 		) );
 		echo '<p><a class="button button-secondary" href="' . esc_url( admin_url( 'site-health.php' ) ) . '">' . esc_html__( 'Open WordPress Site Health', 'mad4b-site-control-plane' ) . '</a> '
@@ -333,10 +333,14 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		}
 		$events = isset( $incidents['events'] ) && is_array( $incidents['events'] ) ? array_slice( $incidents['events'], -12 ) : array();
 		if ( $events ) {
-			echo '<h3>' . esc_html__( 'Recent PHP fatal metadata', 'mad4b-site-control-plane' ) . '</h3><table class="widefat striped"><thead><tr><th>UTC</th><th>Request</th><th>Component family</th><th>Suspected component</th><th>PHP error type</th><th>Fingerprint</th></tr></thead><tbody>';
+			echo '<h3>' . esc_html__( 'Recent sanitized incident metadata', 'mad4b-site-control-plane' ) . '</h3><table class="widefat striped"><thead><tr><th>UTC</th><th>Request</th><th>Component family</th><th>Suspected component</th><th>Kind / Stage</th><th>Ability</th><th>MAD4B source</th><th>Correlation</th><th>PHP error type</th><th>Fingerprint</th></tr></thead><tbody>';
 			foreach ( $events as $event ) {
 				echo '<tr><td>' . esc_html( gmdate( 'Y-m-d H:i:s', (int) ( $event['last_at'] ?? 0 ) ) ) . '</td><td>' . esc_html( (string) ( $event['request_family'] ?? '' ) )
-					. '</td><td>' . esc_html( (string) ( $event['component_family'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['suspected_component_slug'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['type'] ?? '' ) )
+					. '</td><td>' . esc_html( (string) ( $event['component_family'] ?? '' ) ) . '</td><td>' . esc_html( (string) ( $event['suspected_component_slug'] ?? '' ) ) . '</td><td>' . esc_html( (string) ($event['event_kind'] ?? 'fatal') . ' / ' . (string) ($event['stage'] ?? '') )
+                    . '</td><td>' . esc_html( (string) ($event['ability_name'] ?? '') )
+                    . '</td><td>' . esc_html( (string) ($event['first_party_file'] ?? '') . ':' . (int) ($event['first_party_line'] ?? 0) )
+                    . '</td><td><code>' . esc_html( (string) ($event['correlation_id'] ?? '') ) . '</code>'
+                    . '</td><td>' . esc_html( (string) ( $event['type'] ?? '' ) )
 					. '</td><td><code>' . esc_html( substr( (string) ( $event['incident_fingerprint'] ?? '' ), 0, 12 ) ) . '</code></td></tr>';
 			}
 			echo '</tbody></table>';
