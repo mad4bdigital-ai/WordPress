@@ -16,6 +16,7 @@ commands = [
     [sys.executable, str(ROOT / "tests/staging-public-http-contract.py")],
     [php, str(PLUGIN / "tests/elementor-site-neutral-runtime.php")],
     [php, str(PLUGIN / "tests/object-cache-diagnostics-runtime.php")],
+    [php, str(PLUGIN / "tests/admin-file-workspace-runtime.php")],
 ]
 for command in commands:
     result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=30)
