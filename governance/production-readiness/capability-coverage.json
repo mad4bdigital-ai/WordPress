@@ -449,6 +449,24 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, execution, security and release controls apply to the extracted existing code. No new registered authority or permissive operation is introduced.",
       "review_rationale": "Extract existing guarded file-write/file-patch and atomic backup implementation behind stable Abilities callbacks, retaining path policy, expected SHA checks, backup and audit invocation. Source and CI review only; live validation and final owner approval remain required."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing provider certification, exact ticket, mutation, drift, rollback and security controls; no new mutable Ability or environment authority.",
+      "review_rationale": "Isolate existing named provider settings behind installed provider identity; generic source copying does not depend on this addon. Test absent default and installed provider roundtrip. Source/fixture evidence only, not live certification."
     }
   ],
   "lifecycle": [],
@@ -1537,6 +1555,125 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Remove one redundant blank line to restore the existing 1050-line facade budget without changing catalog declarations, callbacks, policy or authority. Existing environment journey and domain-service contracts continue to validate routing and separation. No policy limit was raised. Exact-blob review is CI-only and nonauthorizing; independent live acceptance remains required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-elementor-adapter.php",
+      "source_blob_sha": "d735b2ff281e9d8a899ad081ba5add00ce957977",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace site-name matching with exact registered source-tag parsing, canonical roundtrip and site policy denial. Keep source/target SHA, provider certification, exact approval and rollback guards. Runtime-gate the optional named builder. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php",
+      "source_blob_sha": "285d4b53e541a53a1bb47bb3d290f18ebb3071c6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Isolate existing named provider settings behind installed provider identity; generic source copying does not depend on this addon. Test absent default and installed provider roundtrip. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-object-cache-diagnostics.php",
+      "source_blob_sha": "865cc0c728f2b2383bd1d0fc0cb2f5375416a4ae",
+      "control_ids": [
+        "DATABASE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Use site-neutral WAF evidence configuration. A provider-specific constant cannot affect passive core status; neither configuration is proof of atomic/shared counters or authority. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-query-performance.php",
+      "source_blob_sha": "ea04c33c483f0abd55eab953baf6cefc52271ac1",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace pilot-specific UI description and comment with WordPress terminology; preserve index execution and permission logic. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-market-content-exchange.php",
+      "source_blob_sha": "38bef70338f92a71e367642e1ebc9cffac8b94bf",
+      "control_ids": [
+        "AI-01",
+        "LOCALIZATION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot name in a comment explaining that business-specific mappings belong to site addons. No exchange policy or runtime behavior changed. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-browser-acceptance-core.php",
+      "source_blob_sha": "a1aff2b36381c2720191512e388f0faa11e860dd",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot name in no-hardcoded-contract comment; preserve runtime browser acceptance, environment and enrollment checks. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-write-grant-reconciliation.php",
+      "source_blob_sha": "dcfa6a874aebdfb0256edfc09804b4e15309464f",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "OAUTH-01",
+        "TICKETS-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/site-neutrality-contract.py"
+      ],
+      "owner_role": "Repository source reviewer / automated CI review only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Neutralize pilot names in an incident comment; preserve exact grants, provider compatibility identifiers and authority. Site-neutrality source checks and hermetic multi-business fixtures are nonauthorizing. Independent live acceptance is still required."
     }
   ],
   "code_change_rules": {

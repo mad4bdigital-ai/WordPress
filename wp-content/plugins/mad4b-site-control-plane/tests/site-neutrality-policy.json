@@ -1,0 +1,191 @@
+{
+  "contract": "mad4b.site-neutrality-policy.v1",
+  "authorizing": false,
+  "reviewed_literal_endpoints": {
+    "includes/class-mad4b-scp-live-acceptance-finalizer.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-self-update.php": {
+      "hosts": [
+        "api.github.com",
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-browser-acceptance-admin-ui.php": {
+      "hosts": [
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-selected-head-update.php": {
+      "hosts": [
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-google-drive-context.php": {
+      "hosts": [
+        "accounts.google.com",
+        "auth.mad4b.com",
+        "dev.mad4b.com",
+        "docs.googleapis.com",
+        "generativelanguage.googleapis.com",
+        "mail.google.com",
+        "oauth2.googleapis.com",
+        "www",
+        "www.googleapis.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-wp-native-build-worker.php": {
+      "hosts": [
+        "raw.githubusercontent.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-external-snapshot-finalizer.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-wp-native-build.php": {
+      "hosts": [
+        "api.github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-plugin-package.php": {
+      "hosts": [
+        "raw.githubusercontent.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-production-unchanged-attestation.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-live-acceptance-observer.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-local-oauth-browser-canary.php": {
+      "hosts": [
+        "127.0.0.1"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-staging-source-selector.php": {
+      "hosts": [
+        "api.github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-cross-plugin-deployment.php": {
+      "hosts": [
+        "api.github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-reconnect-hardening.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-chatgpt-auto-binding.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-mcp-adapter-metadata-bridge.php": {
+      "hosts": [
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-local-oauth-server.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-skill-exporter.php": {
+      "hosts": [
+        "agent-plugins.org",
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-production-promotion-attestation.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-chatgpt-connection-admin-ui.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-skill-abilities.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-site-profile-admin.php": {
+      "hosts": [
+        "dev.example.com",
+        "example.com",
+        "staging.example.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-live-acceptance-reconciler.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/class-mad4b-scp-external-handshake-evidence.php": {
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/adapters/class-mad4b-scp-litespeed-adapter.php": {
+      "hosts": [
+        "docs.litespeedtech.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "includes/search/adapters/class-mad4b-scp-search-serp-adapters.php": {
+      "hosts": [
+        "api.dataforseo.com",
+        "app.dataforseo.com",
+        "serpapi.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    },
+    "config/certified-provider-profiles.json": {
+      "hosts": [
+        "github.com"
+      ],
+      "rationale": "Reviewed provider/service/documentation endpoints or reserved examples; never a tenant origin default."
+    }
+  },
+  "optional_named_tag_integrations": [
+    "includes/integrations/class-mad4b-scp-elementor-bridge-compatibility.php"
+  ]
+}

@@ -207,7 +207,7 @@ final class MAD4B_SCP_Staging_Write_Grant_Reconciliation {
 		// eligible for new grant creation.
 		$providers = self::allowed_ability_providers();
 		$providers['elementor/update-widget-settings'] = 'elementor';
-		// PR #423: observed on both ETG and All Royal Egypt after rc.102.
+		// PR #423: observed on independent enrolled installations after rc.102.
 		// Historical recertification is NOT in the current governed Write
 		// inventory. Permit only retirement of its exact old core grant,
 		// and only in Staging, after one fresh owner-reviewed plan + step-up.

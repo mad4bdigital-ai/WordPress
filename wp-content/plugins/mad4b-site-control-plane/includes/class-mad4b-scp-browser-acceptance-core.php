@@ -489,7 +489,7 @@ final class MAD4B_SCP_Browser_Acceptance_Core {
 					'properties' => array(
 						// The Core validates a bounded envelope; the selected registered
 						// provider validates the exact versioned Evidence contract.
-						// Never hard-code ETG or a particular site's contract here.
+						// Never hard-code a particular site's contract here.
 						'contract' => array( 'type' => 'string', 'minLength' => 3, 'maxLength' => 160, 'pattern' => '^[a-z][a-z0-9._-]{2,159}$' ),
 						'plan_digest' => $hex64,
 						'plan_signature' => $hex64,
