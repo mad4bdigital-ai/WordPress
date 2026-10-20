@@ -1221,8 +1221,7 @@ final class MAD4B_SCP_Abilities {
 					);
 				}
 				if ( 'mad4b/approval-ai-decide' === $ability_name ) {
-					return new WP_Error(
-						'mad4b_approval_decision_outcome_unconfirmed',
+					return new WP_Error( 'mad4b_approval_decision_outcome_unconfirmed',
 						'Approval decision outcome is unconfirmed. Read the exact ticket through mad4b/approval-decision-handoff before any further decision or write; do not replay this request.',
 						array(
 							'original_error_code' => sanitize_key( (string) $execution->get_error_code() ),
@@ -1233,8 +1232,7 @@ final class MAD4B_SCP_Abilities {
 							'client_action' => 'read_exact_approval_ticket_before_further_decision_or_write',
 							'read_ability' => 'mad4b/approval-decision-handoff',
 							'raw_error_message_exposed' => false,
-						)
-					);
+						) );
 				}
 				return $execution;
 			}

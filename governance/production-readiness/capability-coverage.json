@@ -1904,6 +1904,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Preserve safe exact pre-target blocker/action in MCP-visible error text. An entered AI decision failure remains unknown and requires exact read-only ticket inspection before any decision or write. No replay, grant, approval transition, provider call or live acceptance is added. Runtime regressions cover dispatch permission/Google denials and unconfirmed decisions."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "4ed6f0f8ea8d69209fb1eef1c3a8fd84e92ef3d3",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Preserve safe exact pre-target blocker/action in MCP-visible error text. An entered AI decision failure remains unknown and requires exact read-only ticket inspection before any decision or write. No replay, grant, approval transition, provider call or live acceptance is added. Runtime regressions cover dispatch permission/Google denials and unconfirmed decisions."
     }
   ],
   "code_change_rules": {
