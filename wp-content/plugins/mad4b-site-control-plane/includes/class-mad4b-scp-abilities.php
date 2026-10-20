@@ -38,6 +38,12 @@ final class MAD4B_SCP_Abilities {
 
 	public function register_abilities() {
 		$this->add( 'mad4b/site-info', 'Get Site Info', 'mad4b-read', 'site_info', 'read', null, false, true, false, true );
+		$this->add( 'mad4b/environment-journey', 'Plan Safe Environment Operation', 'mad4b-read', 'environment_journey', 'read', $this->schema(
+			array( 'operation_kind' => array( 'type' => 'string', 'enum' => array(
+				'diagnostics', 'derived_state', 'operational_repair', 'write_authority',
+				'content_publish', 'plugin_update', 'deployment'
+			), 'default' => 'diagnostics' ) ), array()
+		), false, true, false, true );
 		$this->add( 'mad4b/list-post-types', 'List Post Types', 'mad4b-read', 'list_post_types', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/list-plugins', 'List Plugins', 'mad4b-read', 'list_plugins', 'read', null, false, true, false, true );
 		$this->add( 'mad4b/abilities-inventory', 'Abilities Inventory', 'mad4b-read', 'abilities_inventory', 'read', null, false, true, false, true );
@@ -313,6 +319,11 @@ final class MAD4B_SCP_Abilities {
 			),
 			array( 'plugin', 'expected_active', 'expected_state_sha256', 'expected_plan_sha256', 'reason' )
 		);
+	}
+
+	public function environment_journey( $input = array() ) {
+		require_once __DIR__ . '/class-mad4b-scp-environment-journey.php';
+		return MAD4B_SCP_Environment_Journey::read( $input );
 	}
 
 	public function site_info() {
