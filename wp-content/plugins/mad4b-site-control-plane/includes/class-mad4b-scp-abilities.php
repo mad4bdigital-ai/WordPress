@@ -1203,7 +1203,7 @@ final class MAD4B_SCP_Abilities {
 					}
 					return new WP_Error(
 						'mad4b_write_dispatch_target_not_started',
-						'Governed write dispatch stopped before the target execution boundary. Repair dispatch or runtime mounting, then create a fresh exact plan before retrying.',
+						'Governed write dispatch stopped before the target execution boundary. Blocker: ' . $original_error_code . '. Required action: ' . $client_action . '. Read the exact approval ticket and affected registry before preparing another write.',
 						array(
 							'ability_name' => $ability_name,
 							'original_error_code' => $original_error_code,
@@ -1216,6 +1216,22 @@ final class MAD4B_SCP_Abilities {
 							'reconciliation_required' => false,
 							'blind_retry_allowed' => false,
 							'fresh_plan_required' => true,
+							'raw_error_message_exposed' => false,
+						)
+					);
+				}
+				if ( 'mad4b/approval-ai-decide' === $ability_name ) {
+					return new WP_Error(
+						'mad4b_approval_decision_outcome_unconfirmed',
+						'Approval decision outcome is unconfirmed. Read the exact ticket through mad4b/approval-decision-handoff before any further decision or write; do not replay this request.',
+						array(
+							'original_error_code' => sanitize_key( (string) $execution->get_error_code() ),
+							'mutation_state' => 'unknown',
+							'target_execution_entered' => true,
+							'reconciliation_required' => true,
+							'blind_retry_allowed' => false,
+							'client_action' => 'read_exact_approval_ticket_before_further_decision_or_write',
+							'read_ability' => 'mad4b/approval-decision-handoff',
 							'raw_error_message_exposed' => false,
 						)
 					);

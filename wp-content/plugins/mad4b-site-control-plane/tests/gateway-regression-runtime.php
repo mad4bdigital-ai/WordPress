@@ -46,6 +46,7 @@ class MAD4B_SCP_Servers {
  static function chatgpt_reviewed_direct_step_up_tools() { return array(); }
 }
 class MAD4B_SCP_Authorization {
+ static function remote_permission_denial_code( $name ) { return $GLOBALS['fixture_denial_code'] ?? ''; }
  static function execution_boundary_verified( $ability ) { return $ability->boundary; }
  static function begin_execution_callback_observation( $name ) { $GLOBALS['observation_started'][$name] = false; }
  static function execution_callback_started( $name ) { return ! empty( $GLOBALS['observation_started'][$name] ); }
@@ -118,7 +119,7 @@ class GatewayFixture {
  function get_label() { return 'Metadata fixture'; }
  function get_description() { return 'Schema must remain lazy'; }
  function execute( $input = null ) {
-  if ( ! $this->permission ) return new WP_Error( 'permission_denied' );
+  if ( ! $this->permission ) return new WP_Error( 'ability_invalid_permissions' );
   if ( $this->require_object_input && ! is_array( $input ) && ! is_object( $input ) ) return new WP_Error( 'fixture_object_input_required' );
   $this->last_input = $input;
   if ( is_array( $input ) && ! empty( $input['_mad4b_approval_ticket_id'] ) && $GLOBALS['approval_scope_active'] !== $input['_mad4b_approval_ticket_id'] ) return new WP_Error( 'approval_scope_missing' );
@@ -289,6 +290,34 @@ check_gateway(
  && ! isset( $GLOBALS['observation_started']['mad4b/approval-plan'] ),
  'Approval-plan did not recover cleanly after prior failed executions'
 );
+
+// Source-scan-shaped dispatch denials must expose the safe blocker even when
+// an MCP client drops WP_Error data. Never invoke the target or claim a ticket outcome.
+$scan = new GatewayFixture( 'context/source-scan-apply', 'write', false );
+$GLOBALS['abilities'][$scan->get_name()] = $scan;
+$GLOBALS['mounted']['mad4b-write'][$scan->get_name()] = true;
+$scan->permission = false;
+$scan_input = array_merge( array( 'ability_name' => $scan->get_name(), 'input' => array() ), prepared_dispatch_identity( $scan->get_name() ) );
+foreach ( array( '' => 'repair_dispatch_then_replan', 'mad4b_context_denied' => 'inspect_exact_permission_denial_then_replan', 'mad4b_google_invalid_grant' => 'inspect_google_connection_then_replan' ) as $denial => $action ) {
+ $GLOBALS['fixture_denial_code'] = $denial;
+ $failure = $dispatcher->write_execute( $scan_input );
+ $data = $failure->get_error_data();
+ $code = $denial ?: 'ability_invalid_permissions';
+ check_gateway( 'mad4b_write_dispatch_target_not_started' === $failure->get_error_code() && 0 === $scan->calls, 'Denied Source Scan entered target' );
+ check_gateway( $code === $data['original_error_code'] && $action === $data['client_action'], 'Exact dispatch blocker/action lost' );
+ check_gateway( false === $data['target_execution_entered'] && false === $data['blind_retry_allowed'] && 'not_started' === $data['mutation_state'], 'Pre-target failure became retryable or uncertain' );
+ check_gateway( false !== strpos( $failure->get_error_message(), $code ) && false !== strpos( $failure->get_error_message(), $action ), 'MCP-visible message lost safe blocker/action' );
+}
+$GLOBALS['fixture_denial_code'] = '';
+$decision = new GatewayFixture( 'mad4b/approval-ai-decide', 'write', false );
+$GLOBALS['abilities'][$decision->get_name()] = $decision;
+$GLOBALS['mounted']['mad4b-write'][$decision->get_name()] = true;
+$decision->error_code = 'fixture_error_after_possible_decision';
+$decision_input = array_merge( array( 'ability_name' => $decision->get_name(), 'input' => array() ), prepared_dispatch_identity( $decision->get_name() ) );
+$decision_failure = $dispatcher->write_execute( $decision_input );
+$decision_data = $decision_failure->get_error_data();
+check_gateway( 'mad4b_approval_decision_outcome_unconfirmed' === $decision_failure->get_error_code() && 'unknown' === $decision_data['mutation_state'] && true === $decision_data['reconciliation_required'], 'Decision error asserted an unverified ticket outcome' );
+check_gateway( false === $decision_data['blind_retry_allowed'] && 'mad4b/approval-decision-handoff' === $decision_data['read_ability'] && '' === $GLOBALS['approval_scope_active'], 'Decision recovery replayed or leaked approval scope' );
 
 foreach ( array( 'internal', 'breakglass', 'developer-breakglass', 'unknown' ) as $lane ) {
  $row = array( 'ability_name' => 'fixture/sensitive', 'execution_lane' => $lane, 'execution_eligible' => true, 'readonly' => false );

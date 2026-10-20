@@ -301,7 +301,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
       "review_rationale": "Owner consent for trusted test signers requires same-site authenticated admin, expected policy digest, exact key identity, allowlist and audit. The bounded RSA fixture tests unknown signer, key revocation, expiry, forged/modified certificate, target/site/environment binding and non-authorizing consent. No live Production trust enrollment is asserted.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -321,7 +321,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
       "review_rationale": "Read-only verifier checks RSA signature and exact package/manifest/version/source assertion, trusted issuer, environment, test PASS and expiry. The dedicated signed-test-attestation PHP suite is executed by governed-runtime-gates-contract.py. Result grants no write or Production certification.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -342,7 +342,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
       "review_rationale": "A new bounded Production batch service requires explicit site owner consent for up to 20 exact items with short expiry, stable site/agent identity, current OAuth/NHI binding, single-use ticket or install claim, separate native deployment planning, signed tests, deterministic rollback and audit. The PHP production automation fixture runs via the changed Python contract; no scheduled Production action is authorized by this review.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -362,7 +362,7 @@
       "regression_tests": [
         "wp-content/plugins/mad4b-site-control-plane/tests/governed-runtime-gates-contract.py"
       ],
-      "owner_role": "MAD4B WordPress security/release reviewer — CI source review only",
+      "owner_role": "MAD4B WordPress security/release reviewer \u2014 CI source review only",
       "review_rationale": "Test certificate service enforces exact target site, build, signing key trust, signed package hash and required test cases, with invalidated, expired or revoked certificate refusal. The hermetic PHP signed-attestation fixture is executed by governed-runtime-gates-contract.py; Source reviewed for CI only, Production signer provisioning and deployment remain separately gated.",
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
@@ -506,6 +506,46 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governance, provider diagnostic, MCP and security controls already cover this bounded, passive reducer; no ability, source mutation, or new runtime authority is introduced.",
       "review_rationale": "Review the new pure Brand Authority Closure reducer as a non-authorizing diagnostic service, with independent hermetic runtime and static contract evidence; exact source was independently reviewed, and live Staging acceptance remains required. Execution proof is provided by the bounded Python wrapper that runs the original standalone PHP fixture; PHPUnit is not falsely assumed."
+    },
+    {
+      "id": "ability:mad4b/approval-ai-decide",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-ticket, fail-closed execution and recovery controls cover error-only routing to an already registered read; no new ability or authority.",
+      "review_rationale": "Existing ability referenced by unconfirmed decision recovery; read before retry, no decision replay or ticket reset. Simulated runtime exercises error and pre-target denials; live acceptance remains separate."
+    },
+    {
+      "id": "ability:mad4b/approval-decision-handoff",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing exact-ticket, fail-closed execution and recovery controls cover error-only routing to an already registered read; no new ability or authority.",
+      "review_rationale": "Existing ability referenced by unconfirmed decision recovery; read before retry, no decision replay or ticket reset. Simulated runtime exercises error and pre-target denials; live acceptance remains separate."
     }
   ],
   "lifecycle": [],
@@ -1267,7 +1307,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4\u20138.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-enrollment-dispatch.php",
@@ -1287,7 +1327,7 @@
       "status": "reviewed_for_ci_only",
       "production_authorized": false,
       "live_evidence_required": true,
-      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4–8.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
+      "review_rationale": "Add an exact-intent, read-only guided owner journey to the existing bounded Enrollment discover/info route, returning verified handshake inputs and immutable enrollment operation/schema/policy digests for one owner-confirmed write-only action. No extra direct MCP slot, automatic owner approval, new OAuth identity, wildcard grant, cross-site permission, Production authority, Developer, Breakglass or blind mutation replay. Current authority returns readback-only; uncertain prior journal requires reconciliation; failed schema or route evidence produces no executable request. Hermetic PHP and PHP 7.4\u20138.5 matrix verify fail-closed states. Requires separate live-site/bearer integration after deployment. Follow-up exact-blob review: PHP array union prevented the ready state from overriding the nonauthorizing default; array_replace sets owner_decision_required=true only for an exact, journal-clean eligible request, preserving default false for all blocked/current cases. The same hermetic fixture proves both."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-environment-journey.php",
@@ -1845,6 +1885,25 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Expose bounded optional-selection state and suggested action separately from fixed-dispatch health. Empty hot set is valid, stored binding drift remains visible, no provider scan or implicit projection/grant mutation is introduced."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "a0cfd14545fd8b3af07c059fc350609ec3616581",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Preserve safe exact pre-target blocker/action in MCP-visible error text. An entered AI decision failure remains unknown and requires exact read-only ticket inspection before any decision or write. No replay, grant, approval transition, provider call or live acceptance is added. Runtime regressions cover dispatch permission/Google denials and unconfirmed decisions."
     }
   ],
   "code_change_rules": {

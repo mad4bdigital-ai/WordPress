@@ -89,3 +89,39 @@ version number into standing approval for arbitrary future writes.
 Code/CI, owner merge approval, package deployment and per-site live acceptance are
 four separate completion states. The user should see the current stage, exact
 blocker, next supported action and evidence rather than one ambiguous green badge.
+
+## Approval decision and Source Scan incident recovery
+
+The user-reported ETG sequence is evidence of two different boundaries, not proof
+of a common root cause: an AI decision returned an internal error before a later
+decision succeeded; Source Scan then stopped before its protected target callback.
+Do not retry a decision merely because its response was lost. The existing ticket
+SQL transition is conditional on pending status and exact payload/expiry; this
+prevents a second transition but does not make a lost response a failed decision.
+An error after entering approval-ai-decide now reports an unconfirmed outcome and
+routes to the read-only approval-decision-handoff for the exact ticket. Inspect
+its ticket fields; its human-console action fields do not grant AI authority.
+
+| Observation | Required next action |
+|---|---|
+| Ticket read unavailable | Keep outcome unknown; stop further decisions and writes. |
+| Pending | Verify exact payload, candidate, expiry, classification, delegation and decision audit before considering another decision. Pending alone is not permission to replay. |
+| Approved | Do not approve again. Verify exact binding and audit; approval alone does not prove target execution. |
+| Executing, used or failed | Read execution/audit and affected data; never replay a claimed mutation. |
+| Revoked, expired or mismatched | Do not reuse this ticket or its previous preparation. |
+| Source Scan target not entered | Preserve the safe original denial code in the MCP-visible message. Read the exact ticket, audit and Registry revision/content digest against the pre-operation baseline before any new preparation. |
+
+The dispatcher failure proves only that this target callback was not entered; it
+does not prove ticket state or absence of changes by concurrent operations.
+Permission, schema, transport and mounting failures need their precise codes;
+the generic message cannot identify which occurred. No automatic write retry,
+ticket reset, Registry mutation, new approval lane or grant is added here.
+
+The independent ARE invalid_grant observation belongs to WordPress's Google OAuth
+connection. Healthy MAD4B Write Authority does not repair a revoked/expired Google
+grant. Reauthorize the exact provider connection through its existing owner flow,
+then verify Drive reads before creating a fresh Source Scan plan. Never expose
+OAuth credentials or promote this connection repair to a Production grant.
+
+These are source-based recovery corrections and local simulated boundary tests.
+Neither reported live incident is marked resolved without fresh site readback.
