@@ -165,8 +165,15 @@ import subprocess
 php = os.environ.get("MAD4B_TEST_PHP_BIN") or shutil.which("php")
 if not php:
     raise SystemExit("PHP is required for Production automation runtime verification")
-for fixture in ("production-runtime-admin-runtime.php", "production-automation-runtime.php", "signed-test-attestation-runtime.php", "reconciliation-batch-policy-runtime.php"):
+for fixture in ("production-runtime-admin-runtime.php", "production-automation-runtime.php", "signed-test-attestation-runtime.php", "reconciliation-batch-policy-runtime.php", "brand-context-remote-denial-runtime.php"):
     result = subprocess.run([php, str(ROOT / "tests" / fixture)], capture_output=True, text=True)
     if result.returncode or "Warning:" in result.stdout or result.stderr:
         raise SystemExit(f"{fixture} failed:\n{result.stdout}\n{result.stderr}")
     print(f"{fixture}: PASS")
+
+# The wrapper also asserts exact no-leak/no-auto-retry diagnostics and site-owned
+# Google Drive source evidence without changing brand approval gates.
+contract = subprocess.run([os.environ.get("MAD4B_TEST_PYTHON_BIN", "python3"), str(ROOT / "tests" / "brand-context-remote-denial-contract.py")], capture_output=True, text=True)
+if contract.returncode or "BRAND_CONTEXT_REMOTE_DENIAL: PASS" not in contract.stdout:
+    raise SystemExit(f"brand-context-remote-denial-contract.py failed:\n{contract.stdout}\n{contract.stderr}")
+print("brand-context-remote-denial-contract.py: PASS")
