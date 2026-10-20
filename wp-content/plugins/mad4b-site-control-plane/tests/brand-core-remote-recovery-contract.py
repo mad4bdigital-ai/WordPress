@@ -458,6 +458,11 @@ must(workflow, "adaptive-operation-router-runtime.php",
     "dynamic router native PHP regression missing")
 must(workflow, "brand-core-remote-recovery-runtime.php", "native PHP matrix missing")
 must(workflow, "brand-authority-closure-runtime.php", "site-neutral ETG/ARE operational case matrix missing")
+must(remote, "MAD4B_SCP_Provider_Transport_Eligibility::inspect_target_certification(",
+    "Exact Context Source Scan static provider gate diagnosis absent")
+must(remote, "'source_scan_transport'",
+    "Source Scan must expose a bounded nonauthorizing gate distinction")
+
 must(workflow, "class-mad4b-scp-brand-core-remote-recovery.php", "native lint missing")
 must(workflow, "brand-core-remote-recovery-contract.py", "static contract gate missing")
 must(runbook, "durable_db_recovery", "Host-runner and DB gap not documented")
