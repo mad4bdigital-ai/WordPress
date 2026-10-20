@@ -136,12 +136,14 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		$matched = array();
 		$decision = 'ALLOW';
 		$reason = 'provider_transport_eligible';
+		$blocking_gate = '';
 		foreach ( self::$precedence as $level ) {
 			$blocked = ! empty( $checks[ $level ] );
 			$matched[] = array( 'precedence'=>$level, 'blocked'=>$blocked, 'reason_code'=>$reason_codes[ $level ] );
 			if ( $blocked ) {
 				$decision = 'DENY';
 				$reason = $reason_codes[ $level ];
+				$blocking_gate = $level;
 				break;
 			}
 		}
@@ -149,6 +151,8 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 			'contract'=>self::CONTRACT,
 			'decision'=>$decision,
 			'reason_code'=>$reason,
+			'blocking_gate'=>$blocking_gate,
+			'client_action'=>'DENY' === $decision ? 'inspect_provider_transport_eligibility_then_replan' : 'none',
 			'transport_eligible'=>'ALLOW' === $decision,
 			'precedence_chain'=>self::$precedence,
 			'matched_rules'=>$matched,
@@ -222,11 +226,15 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		if ( empty( $resolution['transport_eligible'] ) ) {
 			return new WP_Error(
 				'mad4b_provider_transport_precedence_denied',
-				'Provider mutation transport is denied by the strongest current eligibility constraint.',
+				'Provider mutation transport was not started. Blocking gate: ' . $resolution['blocking_gate'] . '. Blocker: ' . $resolution['reason_code'] . '. Inspect this independent provider gate before creating a fresh plan.',
 				array_merge( $resolution, array(
 					'provider_context'=>$context,
 					'capability_status'=>$status,
 					'blind_retry_allowed'=>false,
+					'mutation_state'=>'not_started',
+					'target_execution_entered'=>false,
+					'reconciliation_required'=>false,
+					'fresh_plan_required'=>true,
 				) )
 			);
 		}
@@ -248,8 +256,8 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 		if ( empty( $resolution['transport_eligible'] ) ) {
 			return new WP_Error(
 				'mad4b_provider_transport_precedence_denied',
-				'Provider mutation transport is denied by the current circuit-breaker state.',
-				array_merge( $resolution, array( 'blind_retry_allowed'=>false ) )
+				'Provider mutation transport was not started. Blocking gate: ' . $resolution['blocking_gate'] . '. Blocker: ' . $resolution['reason_code'] . '. Inspect the circuit breaker before creating a fresh plan.',
+				array_merge( $resolution, array( 'blind_retry_allowed'=>false, 'mutation_state'=>'not_started', 'target_execution_entered'=>false, 'reconciliation_required'=>false, 'fresh_plan_required'=>true ) )
 			);
 		}
 		return $resolution;

@@ -156,3 +156,76 @@ fixing the source. They also cover nested single-shot dispatch, safe messages,
 secret omission, valid boolean certification and uncertified recovery denial.
 The CI lifecycle runner executes these fixtures and fails on PHP diagnostics.
 No site-specific defaults, new authority, live request or deployment is added.
+
+## Automatic per-operation readiness and original-scope diagnostics
+
+The live verification found that a plugin candidate risk tier can be L0 while a
+reviewed adapter has registered reads. Candidate tier remains unchanged; the
+existing plugin-capability-graph now includes an independent operation_readiness
+projection per package, also displayed in the existing Capability Graph admin tab.
+
+The projection is computed from current registered ability names and the approved
+adapter's per-capability evidence. It classifies individual reads/writes, missing
+integration, ambiguous mappings, inactive dependencies, excluded packages,
+parallel transports, missing registration and incomplete discovery. Missing read
+evidence is verification_required, not a proven permission denial. A ready
+contract still requires fresh preparation, original permission checks, identity,
+site/environment policy, exact grants, and any required approval at execution.
+It is never authorization or a claim that a live operation succeeded.
+
+For each operation the graph provides the dispatcher, blockers, next inspection
+or preparation step, independent readback requirement and declared rollback
+contract. Other registered reads are only candidate readers: the exact target
+binding is explicitly unverified. Availability of rollback is not proof that a
+Restore drill succeeded. No provider callback is invoked by this reducer.
+
+Discovery is automatic on each graph read, using the existing bounded runtime
+inventory. Its evidence digest changes with plugin version, capability contract,
+artifact fingerprint, eligibility or registration changes. There is no persisted
+readiness flag that can silently survive an upgrade. Unknown plugins generate an
+integration action, never executable code, registration, certification or grants.
+No business type or site name is required by this mechanism.
+
+Operator Doctor intentionally retains its site-wide operational visibility, while
+Content Job details retain site+brand+tenant isolation. All selected SQL job/event
+queue rows now carry a nonauthorizing scope relation, using the same trusted
+Operational Integrity checkpoint as Content Jobs. Empty legacy tenant/brand
+bindings, foreign brand/tenant and unavailable trusted scope route to original
+ownership review. They are not silently treated as current-scope jobs, erased,
+restarted or repaired. Newly selected brand/tenant values are stripped from the
+returned diagnostic rows. Aggregate site counts remain site counts.
+
+The user's follow-up acceptance report is separate evidence: local canaries and
+Skills/Write Runtime success do not satisfy external-client, browser, performance,
+Brand Authority or Restore acceptance. Doctor now explicitly states that no
+findings is not release acceptance. The reported Google token-refresh failure still needs independent resolution.
+The later user-provided follow-up reports HTTP 200 for both homepages and REST,
+eight ETG full_semantic cases passed, and Browser Acceptance queued. These are
+separate evidence stages: queued is not completed browser acceptance, and HTTP
+reachability does not prove JavaScript/AJAX behavior or authorize Production.
+
+Validation includes hermetic per-operation graph and admin-model tests, scope
+classification across current/foreign/legacy/unresolved jobs, drift/revocation,
+missing evidence and partial inventory. The existing MariaDB Doctor fixture also
+asserts scoped annotations, no scope identifier leakage and no durable mutations;
+that database-backed fixture is for CI, not a locally executed MariaDB test.
+
+## Provider transport precedence denial
+
+The later user-provided Audit observation identifies the ETG Source Scan refusal
+as mad4b_provider_transport_precedence_denied, before target execution, with the
+Registry still at revision 6. This identifies the guard, not which of its six
+independent conditions failed. An approval ticket never substitutes for those
+conditions.
+
+The guard now adds the exact blocking gate and bounded reason code to its error
+message and metadata, including not_started, no blind retry and fresh-plan-required
+recovery. The write dispatcher preserves this reason/action instead of replacing
+it with a generic mounting repair, and nested resilience retains the same safe
+reason. Gate order and every allow/deny condition remain unchanged. Runtime
+fixtures exercise real preflight/final-breaker refusals for all six gates and
+verify that only safe denial identifiers enter the visible message.
+
+No Source Scan, job repair, Browser Agent execution or Restore drill is replayed
+by this change. Previously reported site acceptance, queue and Registry values
+are user-supplied evidence, not readbacks performed by this code review.

@@ -546,6 +546,26 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing exact-ticket, fail-closed execution and recovery controls cover error-only routing to an already registered read; no new ability or authority.",
       "review_rationale": "Existing ability referenced by unconfirmed decision recovery; read before retry, no decision replay or ticket reset. Simulated runtime exercises error and pre-target denials; live acceptance remains separate."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-operation-readiness.php",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP discovery, authorization isolation, exact execution and recovery controls cover passive per-operation readiness and existing dispatcher references; no new executable Ability.",
+      "review_rationale": "Read-only operation-state reducer and existing graph/dispatcher reference. Behavioral tests cover positive and negative evidence, drift, scope isolation and no implicit execution."
     }
   ],
   "lifecycle": [],
@@ -1980,6 +2000,177 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Existing opt-in Staging Brand recovery status now exposes an exact, non-authorizing Source Scan certification snapshot. No new write ability, owner approval, OAuth refresh, circuit admission, source scan, broad grant or Production mutation. Updated contract and PHP fixture enforce that static eligibility evidence never supplies write authority. Requires independent live Staging verification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-operation-readiness.php",
+      "source_blob_sha": "c7a6a318d9e7cdd55ce3587f6fad1484aefca1db",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "New pure bounded per-operation readiness reducer; current registered names and exact capability evidence determine diagnostic state only. Missing, conflicting or partial evidence stays nonauthorizing. No callback, code generation, persistence, registration, grant, mutation, live acceptance or automatic retry is performed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-plugin-discovery.php",
+      "source_blob_sha": "7cc64590af0145e096d3c87b6837ba3233924ee8",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Attach current operation-level evidence to the existing graph, separate candidate risk tier from per-operation readiness, retain existing risk gates and unreviewed namespace isolation. Deterministic discovery recomputes fingerprints on evidence/registration/version changes."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-admin-native-mcp-view.php",
+      "source_blob_sha": "7338d4136471c65af19c629cd91320820d8b6e9f",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose operation state, blockers, next step and verification requirement in existing paginated read-only admin graph. Preserve original permission gating, no write action or provider network call introduced by the renderer."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-doctor.php",
+      "source_blob_sha": "e2e26bb1c5871ac270f01e20a7153038b4c98191",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Retain site-wide SQL findings but annotate each selected job-linked row using trusted site/brand/tenant checkpoint. Strip selected original brand/tenant identifiers before return; unknown/legacy/foreign scope never grants detail read or automatic repair. Health remains separate from release acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "source_blob_sha": "583cc9e51bc40edd661b8e36f32c69f0b33e37a9",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Expose exact strongest-deny gate/reason without changing precedence or admission conditions. Preflight errors prove only target not started, require fresh plan and prohibit replay. Behavioral fixtures exercise all six real refusal paths, including breaker finalization."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",
+      "source_blob_sha": "56ca2d87f008ad1c2952275602656f7bf19e8842",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Preserve independent provider precedence reason and inspection action at write-dispatch pre-target failure. Do not misroute a provider certification/authority/release denial to mounting repair. Existing guards and facade line budget retained."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connector-resilience.php",
+      "source_blob_sha": "d08ca4582ca6c0ecd3a9a765e3446c962ef9af34",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Retain bounded provider precedence reason/action in nested diagnostic-only recovery metadata. No new not-started proof codes, privilege, replay behavior or outcome inference is added."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-provider-transport-eligibility.php",
+      "source_blob_sha": "f81c228c14761452c638f86484583599c0e396a2",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reconcile concurrent read-only static certification inspection with exact preflight denial diagnostics. Preserve both sets of runtime tests. Inspection never calls authority admission or reserves a breaker; execution still evaluates all six guards in existing order. No new permission, transport eligibility or mutation is inferred from inspection."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-brand-core-remote-recovery.php",
+      "source_blob_sha": "f29212fbb56336f5ee8b4d8f27a0fe680261a505",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-02",
+        "SECURITY-01",
+        "EXECUTION-01",
+        "RECOVERY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/plugin-operation-cycle-contract.py"
+      ],
+      "owner_role": "Automated source reviewer; CI coverage only, not site-owner approval",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Preserve concurrent bounded static diagnosis wiring for the exact governed source-scan target on the existing recovery read. It does not evaluate write authority, reserve a breaker, run the provider, create certification or authorize dispatch. Generic site-neutral comment, unchanged operation target and authority semantics."
     }
   ],
   "code_change_rules": {

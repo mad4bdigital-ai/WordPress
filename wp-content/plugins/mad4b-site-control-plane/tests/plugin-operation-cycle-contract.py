@@ -11,6 +11,11 @@ php = os.environ.get("MAD4B_TEST_PHP_BIN") or shutil.which("php")
 if not php:
     raise SystemExit("PLUGIN_OPERATION_CYCLE: PHP unavailable")
 for name, marker in (
+    ("provider-transport-eligibility-runtime.php", "mad4b.provider-transport-eligibility.runtime.v1: PASS"),
+    ("operator-doctor-contract.php", "mad4b.operator-doctor.v1: PASS"),
+    ("plugin-operation-readiness-runtime.php", "PLUGIN_OPERATION_READINESS: PASS"),
+    ("dynamic-adapter-capability-graph-runtime.php", "DYNAMIC_ADAPTER_CAPABILITY_GRAPH: PASS"),
+    ("admin-native-mcp-view-runtime.php", "Admin Native MCP view projection: PASS"),
     ("connector-resilience-runtime.php", "mad4b.connector-resilience.runtime.v1: PASS"),
     ("gateway-regression-runtime.php", "PASS gateway regressions"),
     ("enrollment-guided-write-handoff-runtime.php", "MAD4B_ENROLLMENT_GUIDED_WRITE_HANDOFF: PASS"),

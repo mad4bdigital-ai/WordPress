@@ -713,11 +713,13 @@ final class MAD4B_SCP_Connector_Resilience {
 		$data = is_array( $data ) ? $data : array();
 		$nested = isset( $data['recovery'] ) && is_array( $data['recovery'] ) ? $data['recovery'] : array();
 		$code = $nested['root_error_code'] ?? ( $data['original_error_code'] ?? '' );
+		if ( '' === $code && 'mad4b_provider_transport_precedence_denied' === self::safe_error_code( $error ) ) $code = $data['reason_code'] ?? '';
 		if ( is_string( $code ) && 1 === preg_match( '/^[a-z0-9_-]{1,96}$/D', $code ) ) $out['root_error_code'] = $code;
 		$action = $nested['client_action'] ?? ( $data['client_action'] ?? '' );
 		if ( in_array( $action, array(
 			'inspect_google_connection_then_replan',
 			'inspect_exact_permission_denial_then_replan',
+			'inspect_provider_transport_eligibility_then_replan',
 			'read_exact_approval_ticket_before_further_decision_or_write',
 		), true ) ) $out['client_action'] = $action;
 		$out['authorizing'] = false;

@@ -63,7 +63,7 @@ class MAD4B_SCP_Identity_Context {
 }
 class MAD4B_SCP_Connector_Resilience {
  const CONTRACT = 'fixture';
- static function execute_mutation( $lane, $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
+ static function execute_mutation( $lane, $name, $callback ) { if ( isset( $GLOBALS['fixture_transport_error'] ) ) return $GLOBALS['fixture_transport_error']; $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
  static function execute_read( $name, $callback ) { $v = $callback(); return is_wp_error( $v ) ? $v : array( 'result' => $v ); }
 }
 class MAD4B_SCP_Replay_Policy {
@@ -309,6 +309,12 @@ foreach ( array( '' => 'repair_dispatch_then_replan', 'mad4b_context_denied' => 
  check_gateway( false !== strpos( $failure->get_error_message(), $code ) && false !== strpos( $failure->get_error_message(), $action ), 'MCP-visible message lost safe blocker/action' );
 }
 $GLOBALS['fixture_denial_code'] = '';
+$GLOBALS['fixture_transport_error'] = new WP_Error( 'mad4b_provider_transport_precedence_denied', 'fixture transport rejection', array( 'reason_code'=>'provider_capability_not_write_certified' ) );
+$transport_failure = $dispatcher->write_execute( $scan_input );
+$transport_data = $transport_failure->get_error_data();
+check_gateway( 'provider_capability_not_write_certified' === $transport_data['original_error_code'] && 'inspect_provider_transport_eligibility_then_replan' === $transport_data['client_action'] && 0 === $scan->calls, 'provider preflight failure mislabeled as mounting repair or entered target' );
+check_gateway( false !== strpos( $transport_failure->get_error_message(), 'provider_capability_not_write_certified' ), 'provider reason lost in dispatcher-visible error' );
+unset( $GLOBALS['fixture_transport_error'] );
 $decision = new GatewayFixture( 'mad4b/approval-ai-decide', 'write', false );
 $GLOBALS['abilities'][$decision->get_name()] = $decision;
 $GLOBALS['mounted']['mad4b-write'][$decision->get_name()] = true;

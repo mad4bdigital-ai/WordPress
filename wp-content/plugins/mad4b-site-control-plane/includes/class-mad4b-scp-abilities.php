@@ -1182,13 +1182,13 @@ final class MAD4B_SCP_Abilities {
 				if ( ! $target_entered ) {
 					$data = $execution->get_error_data();
 					$data = is_array( $data ) ? $data : array();
-					$original_error_code = isset( $data['original_error_code'] ) ? sanitize_key( (string) $data['original_error_code'] ) : '';
+					$original_error_code = isset( $data['original_error_code'] ) ? sanitize_key( (string) $data['original_error_code'] ) : ( 'mad4b_provider_transport_precedence_denied' === $execution->get_error_code() && isset( $data['reason_code'] ) ? sanitize_key( (string) $data['reason_code'] ) : '' );
 					if ( '' === $original_error_code ) $original_error_code = sanitize_key( (string) $execution->get_error_code() );
 					$permission_denial = '' !== $remote_permission_denial_code;
 					if ( $permission_denial && in_array( $original_error_code, array( 'ability_invalid_permissions', 'mad4b_write_dispatch_not_started', 'mad4b_write_dispatch_dispatch_not_started' ), true ) ) {
 						$original_error_code = $remote_permission_denial_code;
 					}
-					$client_action = $permission_denial ? 'inspect_exact_permission_denial_then_replan' : 'repair_dispatch_then_replan';
+					$client_action = $permission_denial ? 'inspect_exact_permission_denial_then_replan' : ( 'mad4b_provider_transport_precedence_denied' === $execution->get_error_code() ? 'inspect_provider_transport_eligibility_then_replan' : 'repair_dispatch_then_replan' );
 					if ( $permission_denial && 0 === strpos( $remote_permission_denial_code, 'mad4b_google_' ) ) {
 						$client_action = 'inspect_google_connection_then_replan';
 					}

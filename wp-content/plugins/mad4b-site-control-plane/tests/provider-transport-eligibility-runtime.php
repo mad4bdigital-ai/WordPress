@@ -1,9 +1,11 @@
 <?php
 define( 'ABSPATH', __DIR__ );
 class WP_Error {
-	private $code;
-	public function __construct( $code, $message = '', $data = null ) { $this->code=(string)$code; }
+	private $code; private $message; private $data;
+	public function __construct( $code, $message = '', $data = null ) { $this->code=(string)$code; $this->message=$message; $this->data=$data; }
 	public function get_error_code(){ return $this->code; }
+ public function get_error_message(){ return $this->message; }
+ public function get_error_data(){ return $this->data; }
 }
 function is_wp_error($v){ return $v instanceof WP_Error; }
 function sanitize_key($v){ return strtolower(preg_replace('/[^a-z0-9_\-]/i','',(string)$v)); }
@@ -67,11 +69,13 @@ class MAD4B_SCP_Provider_Compatibility_Certification {
     const LEVEL_REVERSIBLE_WRITE = 'REVERSIBLE_WRITE_CERTIFIED';
     const LEVEL_FULL = 'FULL_CERTIFIED';
     const LEVEL_QUARANTINED = 'QUARANTINED';
+    public static $status = null;
     public static $level = 'DISCOVERED';
     public static $stage = 'shadow';
     public static $ring = '';
     public static $bound = true;
     public static function ability_status($provider,$ability){
+        if (is_array(self::$status)) return self::$status;
         return array('certification_level'=>self::$level,'activation_stage'=>self::$stage,
             'release_ring'=>self::$ring,'structural_compatible'=>true,
             'artifact_authority_bound'=>self::$bound,
@@ -113,5 +117,31 @@ $not_applicable=$inspect();
 $check(!$not_applicable['applicable'] && !$not_applicable['evidence_available']
     && $not_applicable['transport_eligible']===null,
     'Missing provider context was treated as certified.',$not_applicable);
+
+MAD4B_SCP_Provider_Circuit_Breaker::$applicable=true;
+MAD4B_SCP_Site_Profile::$environment='staging';
+class MAD4B_SCP_Policy {
+ static $kill=false; static $allowed=true;
+ static function mutation_gate_status() { return array( 'environment'=>'staging', 'explicit_kill_switch'=>self::$kill ); }
+ static function can_mutate() { return self::$allowed; }
+}
+$good_status=array( 'certification_level'=>'REVERSIBLE_WRITE_CERTIFIED', 'activation_stage'=>'active', 'structural_compatible'=>true, 'artifact_authority_bound'=>true );
+foreach ( array( 'kill_switch','authority','quarantine','certification','release_ring','breaker' ) as $gate ) {
+ MAD4B_SCP_Policy::$kill = 'kill_switch' === $gate;
+ MAD4B_SCP_Policy::$allowed = 'authority' !== $gate;
+ $status = $good_status;
+ if ( 'quarantine' === $gate ) $status['certification_level']='QUARANTINED';
+ if ( 'certification' === $gate ) $status['artifact_authority_bound']=false;
+ if ( 'release_ring' === $gate ) $status['activation_stage']='canary';
+ MAD4B_SCP_Provider_Compatibility_Certification::$status=$status;
+ $result=MAD4B_SCP_Provider_Transport_Eligibility::preflight_mutation( 'write', 'fixture/scan' );
+ if ( 'breaker' === $gate ) $result=MAD4B_SCP_Provider_Transport_Eligibility::finalize_breaker( $result, array( 'transport_eligible'=>false ) );
+ $check( is_wp_error($result) && 'mad4b_provider_transport_precedence_denied' === $result->get_error_code(), 'gate did not remain denied: '.$gate );
+ $data=$result->get_error_data();
+ $check( $gate === $data['blocking_gate'] && 'not_started' === $data['mutation_state'] && false === $data['target_execution_entered'], 'exact gate or execution boundary lost: '.$gate );
+ $check( false === $data['blind_retry_allowed'] && true === $data['fresh_plan_required'] && false === $data['authorizing'], 'diagnostic enabled authorization/replay: '.$gate );
+ $check( false !== strpos($result->get_error_message(),$data['reason_code']) && false !== strpos($result->get_error_message(),$gate), 'MCP-visible error masked exact blocker: '.$gate );
+ $check( false === strpos($result->get_error_message(),'SECRET-MUST-NOT-LEAK'), 'provider context leaked into visible error' );
+}
 
 echo "mad4b.provider-transport-eligibility.runtime.v1: PASS\n";

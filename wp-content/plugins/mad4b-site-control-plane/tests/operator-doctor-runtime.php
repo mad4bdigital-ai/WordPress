@@ -223,6 +223,15 @@ $check( (int) $snapshot['host_runner_uncertain_count'] >= 1, 'Host Runner uncert
 $check( (int) $snapshot['host_runner_recovery_required_count'] >= 1, 'Host Runner recovery-required state was not detected' );
 $check( (int) $snapshot['host_runner_dead_lettered_count'] >= 1, 'Host Runner dead-letter state was not detected' );
 
+$check( true === $snapshot['site_diagnostic_is_not_detail_read_authority'], 'site-level Doctor accidentally granted scoped detail read' );
+$check( false === $doctor['release_acceptance_evaluated'], 'Doctor health became release acceptance' );
+foreach ( array( 'stuck_jobs', 'orphan_jobs', 'expired_active_leases', 'overdue_outbox', 'stale_inbox', 'dead_lettered_outbox' ) as $group ) {
+ foreach ( $snapshot[$group] as $item ) {
+  $check( isset( $item['scope_relation'] ) && false === $item['automatic_repair_allowed'], 'SQL snapshot omitted scope/repair guard: ' . $group );
+  $check( ! array_key_exists( 'brand_id', $item ) && ! array_key_exists( 'tenant_id', $item ), 'Doctor exposed original job scope identifiers' );
+ }
+}
+
 $finding_ids = array_column( $doctor['findings'], 'finding_id' );
 foreach ( array(
 	'expired-active-leases',

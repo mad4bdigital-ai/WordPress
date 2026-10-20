@@ -8,7 +8,9 @@ $graph = array( 'state'=>'DISCOVERY_COMPLETE', 'complete'=>true, 'graph_sha256'=
         'registered_adapter_read_abilities'=>array('safe/read'),
         'registered_adapter_write_abilities'=>array('safe/write'),
         'provider_certification_ok'=>false, 'unreviewed_namespace_candidates_count'=>3 ) ) );
+$graph['items'][0]['operation_readiness'] = array( 'complete'=>true, 'operations'=>array( array( 'ability'=>'safe/read', 'state'=>'read_contract_available', 'execution_allowed_by_discovery'=>false ) ) );
 $model = MAD4B_SCP_Admin_Native_MCP_View::graph_model( $graph );
+check_view( $model['rows'][0]['operation_readiness'] === $graph['items'][0]['operation_readiness'], 'operation readiness lost in admin projection' );
 check_view( $model['rows'][0]['registered_read_count'] === 1, 'read registry count drift' );
 check_view( $model['rows'][0]['registered_write_count'] === 1 && ! $model['rows'][0]['certified_provider'], 'registered write falsely certified' );
 check_view( $model['rows'][0]['unreviewed_count'] === 3 && ! $model['executing'] && ! $model['network_probed'], 'graph view improperly authorizing' );

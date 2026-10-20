@@ -1,6 +1,7 @@
 <?php
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-plugin-operation-readiness.php';
 
 /**
  * Read-only discovery of installed plugins and their MAD4B adapter coverage.
@@ -307,6 +308,10 @@ final class MAD4B_SCP_Plugin_Discovery {
 				} ) ),
 				'executable_from_graph' => false,
 				'write_auto_enabled' => false,
+				'operation_readiness' => MAD4B_SCP_Plugin_Operation_Readiness::project(
+					$plugin, $registered_set, $registry_available && count( $registered_names ) === $ability_count && empty( $coverage['truncated'] ),
+					(bool) count( array_filter( $dependency_rows, static function ( $d ) { return ! $d['active']; } ) )
+				),
 				'next_step' => empty( $plugin['adapter_registered'] )
 					? 'review_vendor_contract_and_register_separately'
 					: ( ! empty( $plugin['provider_certification_ok'] )
@@ -763,6 +768,8 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'autopilot_auto_register_generated_adapter' => false,
 			'autopilot_auto_write_certification' => false,
 			'unknown_plugin_write_default' => 'deny',
+			'support_level_semantics' => 'candidate_risk_policy_tier_not_per_operation_authorization',
+			'operation_readiness_source' => 'mad4b/plugin-capability-graph',
 			'levels' => array(
 				'L0_inventory' => 'inventory/status only',
 				'L1_lifecycle' => 'generic governed lifecycle planning only',
@@ -837,8 +844,10 @@ final class MAD4B_SCP_Plugin_Discovery {
 			'adapter_runtime_available' => is_object( $adapter ) ? (bool) $adapter->is_available() : false,
 			'adapter_read_ability_count' => count( $read_abilities ),
 			'adapter_read_abilities' => array_slice( $read_abilities, 0, 128 ),
+			'adapter_write_ability_count' => count( $write_abilities ),
 			'adapter_write_abilities' => array_slice( $write_abilities, 0, 128 ),
 			'adapter_reversible_contracts' => array_slice( $rollback_abilities, 0, 128, true ),
+			'operation_capabilities' => MAD4B_SCP_Plugin_Operation_Readiness::evidence( $status ),
 			'coverage_state' => $state,
 			'risk' => $risk,
 			'reversible_contracts' => $reversible,

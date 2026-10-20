@@ -596,7 +596,7 @@ final class MAD4B_SCP_Brand_Core_Remote_Recovery {
                 'context' => is_array( $context ) ? $context : array(),
                 'brand' => $facts['brand_coverage'],
             ) );
-            // Read-only static certification snapshot of the exact ETG/ARE
+            // Read-only static certification snapshot of the exact governed
             // Context source-scan Ability. No write-lane authorization,
             // Circuit Breaker reservation or provider operation is attempted.
             $report['operational_diagnostics']['source_scan_transport'] =
