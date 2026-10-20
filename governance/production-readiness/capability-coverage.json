@@ -3049,6 +3049,26 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Add an exact complete-scan gate before original governed Source Scan Apply. Partial or time-expired Drive inventories must not infer missing files or qualify for writes, and duplicate/unverified content identities fail closed before existing plan/ticket/CAS execution. Changed runtime-update-recovery-contract.py invokes post-manual-update-guidance-runtime.php, including hermetic negative cases for incomplete/truncated/budget-exhausted/duplicate/unverified provider scan records. Multi-call resumable source inventory and provider Write activation remain separately unimplemented and NO-GO."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-google-drive-context.php",
+      "source_blob_sha": "54d32312ce0e134c1b4ad55cf79c7ddde2adcbf8",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "RECOVERY-01",
+        "SECURITY-01",
+        "CROSSPLUGIN-01",
+        "UPDATES-01",
+        "ROLLOUT-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-update-recovery-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI only, no Staging or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Fail closed on Google Drive source reads with missing normalized content, along with expired child-page and content-read budgets. Unreadable files mark scan_complete=false and truncated reasons, so no missing/deleted-file assertions can arise from partial material. Exact provider timeout remains distinct from OAuth errors. The changed PHP post-manual-update-guidance-runtime fixture, invoked by the Python runtime-update-recovery-contract runner, denies incomplete/truncated/unverified content during Source Scan Apply. Bounded resumable inventory remains a separate unimplemented NO-GO."
     }
   ],
   "code_change_rules": {
