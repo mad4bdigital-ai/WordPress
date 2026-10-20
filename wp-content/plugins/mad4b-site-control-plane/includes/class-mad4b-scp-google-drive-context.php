@@ -1467,6 +1467,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 					}
 				}
 				$content_complete = ! empty( $content_record['complete'] );
+				if ( ! $content_complete ) {
+					// A fully listed folder with an unreadable document is not a
+					// complete, reviewable source inventory or absence proof.
+					$complete = false;
+					$truncation_reasons[] = 'content_normalization_incomplete';
+				}
 				$text = $content_complete && isset( $content_record['content'] ) ? (string) $content_record['content'] : '';
 				$basis = '' !== $text
 					? $text
