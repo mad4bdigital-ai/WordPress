@@ -1441,6 +1441,44 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Extract existing guarded file-write/file-patch and atomic backup implementation behind stable Abilities callbacks, retaining path policy, expected SHA checks, backup and audit invocation. This append-only source review does not provide Production authority or live-site certification."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization.php",
+      "source_blob_sha": "6c063da1be108019af84c9eb30eee2f5272b9d67",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "OAUTH-04",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Replace inline permission-result truth conversion with a dedicated decision-graph delegate, preserving WP_Error and boolean passthrough and fail-closed rejected arrays. This exact Git blob review is nonauthorizing and requires separate live acceptance."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-authorization-decision-graph.php",
+      "source_blob_sha": "3213c72a610244067f463ed2dd41025f69fcace3",
+      "control_ids": [
+        "GOVERNANCE-02",
+        "MCP-01",
+        "SECURITY-01",
+        "EXECUTION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/maintainability-domain-service-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/brand-context-remote-denial-contract.py"
+      ],
+      "owner_role": "MAD4B WordPress source security and release reviewer",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Own a pure permission result projection with exactly the original fail-closed preflight-allowed condition; no changed external callback signature or authority expansion. This exact Git blob review is nonauthorizing and requires separate live acceptance."
     }
   ],
   "code_change_rules": {
