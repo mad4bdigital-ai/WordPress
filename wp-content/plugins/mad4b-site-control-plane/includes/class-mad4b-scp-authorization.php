@@ -144,10 +144,7 @@ final class MAD4B_SCP_Authorization {
 	}
 
 	public static function permission_result_from_authorization( $result ) {
-		if ( is_wp_error( $result ) || is_bool( $result ) ) return $result;
-		if ( ! is_array( $result ) ) return false;
-		if ( ! isset( $result['allowed'], $result['reason_code'] ) ) return false;
-		return true === $result['allowed'] && 'preflight_allowed' === (string) $result['reason_code'];
+		return MAD4B_SCP_Authorization_Decision_Graph::permission_result( $result );
 	}
 
 	private static function remember_trusted_execution_boundary( $ability_name, $callback ) {
