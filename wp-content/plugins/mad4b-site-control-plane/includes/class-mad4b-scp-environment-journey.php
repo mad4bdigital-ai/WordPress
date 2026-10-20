@@ -112,6 +112,13 @@ final class MAD4B_SCP_Environment_Journey {
                     }
                 }
             }
+        } elseif ( 'production' === $environment && 'write_authority' === $kind ) {
+            // A finite content/plugin batch is NOT a grant-reconciliation or
+            // environment-identity approval, even when its policy is active.
+            $base['state'] = 'separate_production_write_authority_review_required';
+            $base['next_action'] = 'inspect_exact_production_write_authority_policy';
+            $base['next_read_ability'] = 'mad4b/deployment-binding-production-status';
+            $base['approval_policy'] = 'independent_exact_production_write_owner_approval';
         } elseif ( 'production' === $environment ) {
             $base['state'] = $production_batch_active ? 'exact_batch_scope_check_required' : 'production_owner_batch_required';
             $base['next_action'] = $production_batch_active
