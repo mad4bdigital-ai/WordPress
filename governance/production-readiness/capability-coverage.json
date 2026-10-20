@@ -566,6 +566,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP discovery, authorization isolation, exact execution and recovery controls cover passive per-operation readiness and existing dispatcher references; no new executable Ability.",
       "review_rationale": "Read-only operation-state reducer and existing graph/dispatcher reference. Behavioral tests cover positive and negative evidence, drift, scope isolation and no implicit execution."
+    },
+    {
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-staging-acceptance-gates.php",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "BROWSER-01",
+        "AUTOMATION-01",
+        "PERFORMANCE-01",
+        "EXECUTION-01",
+        "PROVIDERS-02"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/operational-acceptance-evidence-runtime.php"
+      ],
+      "owner_role": "MAD4B WordPress staging acceptance source reviewer; CI evidence only",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing platform, isolation, browser, execution and performance controls already cover this passive Staging gate reducer; it creates no new mutation authority or privileged route.",
+      "review_rationale": "New Staging acceptance service reduces independently observed runtime, browser, skills, mutation verification, undo and cache evidence, with fail-closed non-authorizing semantics. The disposable hermetic runtime fixture verifies missing/stale/cross-scope evidence cannot self-certify a target or Production. Site-level live acceptance, external browser evidence, and authorization remain separate."
     }
   ],
   "lifecycle": [],
