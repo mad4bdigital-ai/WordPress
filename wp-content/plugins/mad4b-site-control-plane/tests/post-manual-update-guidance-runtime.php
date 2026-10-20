@@ -1,7 +1,7 @@
 <?php
 /** Hermetic advice regressions: no WordPress writes or provider requests. */
 define( 'ABSPATH', __DIR__ . '/' );
-foreach ( array( 'staging-write-authority', 'skill-runtime-certification', 'google-drive-context' ) as $file ) {
+foreach ( array( 'staging-write-authority', 'skill-runtime-certification', 'google-drive-context', 'brand-context-builder' ) as $file ) {
  require dirname( __DIR__ ) . '/includes/class-mad4b-scp-' . $file . '.php';
 }
 function guidance_check( $ok, $message ) { if ( ! $ok ) throw new RuntimeException( $message ); }
@@ -53,4 +53,27 @@ $auth = new WP_Error( 'mad4b_google_drive_token_refresh_failed', 'Not a scan bud
 guidance_check( MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( $budget ), 'Provider scan budget not classified' );
 guidance_check( ! MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( $auth ), 'OAuth failure was masked as partial scan' );
 guidance_check( ! MAD4B_SCP_Google_Drive_Context::is_scan_budget_exhaustion( array( 'complete' => false ) ), 'Raw partial data was treated as an exact budget error' );
+// Enforce complete, unique, content-verified provider evidence before any
+// Source Scan Apply, even with a matching owner ticket and plan.
+$verified = array( 'complete' => true, 'truncated' => false, 'truncation_reasons' => array(),
+ 'assets' => array( array( 'file_id' => 'file-1', 'content_complete' => true,
+ 'content_hash' => str_repeat( 'a', 64 ) ) ) );
+$plan = array( 'scan_complete' => true );
+guidance_check( true === MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $verified ), 'complete provider scan was blocked' );
+$bad = $verified; $bad['complete'] = false;
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'partial scan admitted write' );
+$bad = $verified; $bad['truncated'] = true;
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'truncated scan admitted write' );
+$bad = $verified; $bad['truncation_reasons'] = array( 'scan_time_budget' );
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'budget-truncated scan admitted write' );
+$bad = $verified; $bad['partial_scan_requires_complete_rescan'] = true;
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'needs-rescan admitted write' );
+$bad = $verified; $bad['assets'][0]['content_complete'] = false;
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'unnormalized file admitted write' );
+$bad = $verified; $bad['assets'][0]['content_hash'] = 'not-a-sha';
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'unhashed file admitted write' );
+$bad = $verified; $bad['assets'][] = $bad['assets'][0];
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'duplicate file identity admitted write' );
+$bad = array( 'scan_complete' => false );
+guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $bad, $verified ) ), 'incomplete plan admitted write' );
 echo "POST_MANUAL_UPDATE_GUIDANCE: PASS (hermetic; no live acceptance)\n";
