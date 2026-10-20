@@ -24,8 +24,12 @@ foreach ( array( 'local', 'development', 'staging', 'production' ) as $environme
             'Unauthorized execution or elevation in ' . $environment . '/' . $kind );
         check( $out['owner_decision_recorded'] === false && $out['prepared_request'] === null,
             'An ordinary environment summary may not fabricate owner consent or a write request' );
-        if ( $environment === 'production' && $kind !== 'diagnostics'
-            && $kind !== 'derived_state' && $kind !== 'operational_repair' ) {
+        if ( $environment === 'production' && $kind === 'write_authority' )
+            check( $out['state'] === 'separate_production_write_authority_review_required'
+                && $out['approval_policy'] === 'independent_exact_production_write_owner_approval',
+                'A content/plugin Production batch must not grant Write Authority' );
+        if ( $environment === 'production' && in_array( $kind,
+            array( 'content_publish', 'plugin_update', 'deployment' ), true ) ) {
             check( $out['state'] === 'exact_batch_scope_check_required'
                 && $out['approval_policy'] === 'production_exact_owner_batch_and_signed_test_certificate',
                 'Production must retain exact owner batch + signed test gates' );
