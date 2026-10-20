@@ -726,6 +726,7 @@ final class MAD4B_SCP_Self_Update {
 				'manifest_error' => $manifest_error,
 				'target' => is_wp_error( $manifest ) ? array() : self::public_manifest( $manifest ),
 			),
+			'wordpress_admin_file_workspace' => self::admin_file_workspace_handoff(),
 			'optional_selected_head_update' => array(
 				'supported' => class_exists( 'MAD4B_SCP_Selected_Head_Update' ),
 				'enabled' => defined( 'MAD4B_SCP_SELECTED_HEAD_UPDATES_ENABLED' )
@@ -789,6 +790,12 @@ final class MAD4B_SCP_Self_Update {
 			'mutation_performed' => false,
 			'authorizing' => false,
 		);
+	}
+
+	/** A deep, nonauthorizing admin projection. No file-manager API calls. */
+	private static function admin_file_workspace_handoff() {
+		require_once __DIR__ . '/class-mad4b-scp-admin-file-workspace.php';
+		return MAD4B_SCP_Admin_File_Workspace::status();
 	}
 
 	public static function cached_status( $input = array() ) {
