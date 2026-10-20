@@ -1318,6 +1318,14 @@ final class MAD4B_SCP_Google_Drive_Context {
 		return $items;
 	}
 
+	/**
+	 * Transport timeout is not an OAuth failure and must never produce an
+	 * apparently complete Drive inventory. Treat it as a partial scan only.
+	 */
+	public static function is_scan_budget_exhaustion( $result ) {
+		return is_wp_error( $result ) && 'mad4b_google_drive_scan_time_budget_exhausted' === (string) $result->get_error_code();
+	}
+
 	public static function scan_folder( $folder_id, $recursive = true ) {
 		$scan_clock_started = microtime( true );
 		$deadline = $scan_clock_started + self::MAX_SCAN_WALL_SECONDS;
@@ -1370,6 +1378,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 
 			$children_result = self::list_children( $id, false, true );
 			if ( is_wp_error( $children_result ) ) {
+				if ( self::is_scan_budget_exhaustion( $children_result ) ) {
+					// Retain only observed records. An unlisted folder is NOT a missing set.
+					$complete = false;
+					$truncation_reasons[] = 'scan_time_budget';
+					break;
+				}
 				self::$scan_deadline = $previous_scan_deadline;
 				return $children_result;
 			}
@@ -1436,6 +1450,12 @@ final class MAD4B_SCP_Google_Drive_Context {
 				} else {
 					$content_record = self::fetch_text_content_record( $child );
 					++$fetched_asset_count;
+					if ( self::is_scan_budget_exhaustion( $content_record ) ) {
+						// A timed-out file must not become a complete inventory member.
+						$complete = false;
+						$truncation_reasons[] = 'scan_time_budget';
+						break;
+					}
 					if ( is_wp_error( $content_record ) ) {
 						$content_record = array(
 							'content' => '',
@@ -1497,6 +1517,9 @@ final class MAD4B_SCP_Google_Drive_Context {
 			'complete' => (bool) $complete,
 			'truncated' => ! $complete,
 			'truncation_reasons' => $truncation_reasons,
+			// This is diagnostic evidence only: a partial inventory must never
+			// authorize Source Scan Apply, absence or deleted-asset conclusions.
+			'absence_certified' => (bool) $complete,
 			'assets' => $assets,
 		);
 		self::$scan_deadline = $previous_scan_deadline;
