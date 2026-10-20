@@ -607,7 +607,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 			|| empty( $row['execution_eligible'] ) || empty( $row['remote_parity_ready'] ) )
 			return $base + array( 'state' => 'route_not_authorized',
 				'next_action' => 'refresh_enrollment_info' );
-		return $base + array(
+		return array_replace( $base, array(
 			'state' => 'ready_for_exact_owner_decision',
 			'owner_decision_required' => true,
 			'next_action' => 'present_exact_site_owner_consent_then_step_up_once',
@@ -621,7 +621,7 @@ final class MAD4B_SCP_Enrollment_Dispatch {
 				'expected_input_schema_sha256' => $row['input_schema_sha256'],
 				'input' => $apply,
 			),
-		);
+		) );
 	}
 
 	private static function guided_write_handoff( array $row ) {
