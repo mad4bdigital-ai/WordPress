@@ -27,6 +27,82 @@ final class MAD4B_SCP_Provider_Transport_Eligibility {
 
 	public static function precedence() { return self::$precedence; }
 
+	/**
+	 * Non-authorizing snapshot of an exact provider capability's static gates.
+	 * Caller authorization and circuit-breaker admission are intentionally NOT
+	 * evaluated in a read request; neither a green snapshot nor a stale record
+	 * is permission to dispatch or replay a mutation.
+	 */
+	public static function inspect_target_certification( $surface, $target ) {
+		$surface = sanitize_key( (string) $surface );
+		$target = trim( (string) $target );
+		$blocked = array(
+			'contract' => 'mad4b.provider-transport-static-inspection.v1',
+			'target' => $target, 'applicable' => false,
+			'evidence_available' => false, 'static_certification_ready' => false,
+			'release_ring_eligible' => false, 'authorization_checked' => false,
+			'breaker_checked' => false, 'transport_eligible' => null,
+			'authorizing' => false, 'mutation_performed' => false,
+			'next_action' => 'inspect_exact_provider_capability_evidence',
+		);
+		if ( '' === $target || ! in_array( $surface, array( 'write', 'content', 'admin' ), true ) )
+			return array_merge( $blocked, array( 'reason_code' => 'invalid_exact_target' ) );
+		if ( ! class_exists( 'MAD4B_SCP_Provider_Circuit_Breaker' )
+			|| ! class_exists( 'MAD4B_SCP_Provider_Compatibility_Certification' ) )
+			return array_merge( $blocked, array( 'reason_code' => 'provider_inspection_unavailable' ) );
+		$context = MAD4B_SCP_Provider_Circuit_Breaker::target_context( $surface, $target );
+		if ( is_wp_error( $context ) )
+			return array_merge( $blocked, array(
+				'reason_code' => sanitize_key( (string) $context->get_error_code() ),
+			) );
+		if ( ! is_array( $context ) || empty( $context['applicable'] ) )
+			return array_merge( $blocked, array( 'reason_code' => 'provider_gate_not_applicable' ) );
+		$provider = isset( $context['provider_id'] ) ? sanitize_key( (string) $context['provider_id'] ) : '';
+		if ( '' === $provider ) return array_merge( $blocked, array( 'reason_code' => 'provider_identity_missing' ) );
+		$status = MAD4B_SCP_Provider_Compatibility_Certification::ability_status( $provider, $target );
+		if ( ! is_array( $status ) || empty( $status ) )
+			return array_merge( $blocked, array(
+				'applicable' => true, 'provider_id' => $provider,
+				'reason_code' => 'capability_not_cataloged',
+			) );
+		$environment = class_exists( 'MAD4B_SCP_Site_Profile' )
+			? sanitize_key( (string) MAD4B_SCP_Site_Profile::current_environment() ) : 'unknown';
+		$level = isset( $status['certification_level'] ) ? (string) $status['certification_level'] : '';
+		$ring = self::release_ring_for_status( $status, $environment );
+		$quarantined = defined( 'MAD4B_SCP_Provider_Compatibility_Certification::LEVEL_QUARANTINED' )
+			&& $level === MAD4B_SCP_Provider_Compatibility_Certification::LEVEL_QUARANTINED;
+		$certified = ! $quarantined && ! empty( $status['structural_compatible'] )
+			&& ! empty( $status['artifact_authority_bound'] )
+			&& in_array( $level, array(
+				MAD4B_SCP_Provider_Compatibility_Certification::LEVEL_BOUNDED_WRITE,
+				MAD4B_SCP_Provider_Compatibility_Certification::LEVEL_REVERSIBLE_WRITE,
+				MAD4B_SCP_Provider_Compatibility_Certification::LEVEL_FULL,
+			), true );
+		$ring_allowed = self::release_ring_allows_normal_mutation( $ring, $environment );
+		$reason = $quarantined ? 'provider_capability_quarantined'
+			: ( ! $certified ? 'provider_capability_not_write_certified'
+			: ( ! $ring_allowed ? 'provider_release_ring_ineligible' : 'static_gates_satisfied_only' ) );
+		return array_merge( $blocked, array(
+			'applicable' => true, 'evidence_available' => true,
+			'provider_id' => $provider,
+			'environment' => $environment,
+			'certification_level' => sanitize_key( $level ),
+			'activation_stage' => isset( $status['activation_stage'] )
+				? sanitize_key( (string) $status['activation_stage'] ) : '',
+			'behavioral_evidence_state' => isset( $status['behavioral_evidence']['state'] )
+				? sanitize_key( (string) $status['behavioral_evidence']['state'] ) : '',
+			'artifact_authority_bound' => ! empty( $status['artifact_authority_bound'] ),
+			'structural_compatible' => ! empty( $status['structural_compatible'] ),
+			'quarantined' => $quarantined,
+			'static_certification_ready' => $certified,
+			'release_ring' => $ring, 'release_ring_eligible' => $ring_allowed,
+			'reason_code' => $reason,
+			'next_action' => ! $certified ? 'certify_exact_provider_capability'
+				: ( ! $ring_allowed ? 'review_exact_release_ring'
+					: 'verify_separate_write_authority_and_breaker' ),
+		) );
+	}
+
 	public static function resolve_facts( array $facts ) {
 		$required = array(
 			'kill_switch_active',
