@@ -2669,6 +2669,7 @@
         "GOVERNANCE-01",
         "PLATFORM-01",
         "MCP-01",
+        "RECOVERY-01",
         "SECURITY-01"
       ],
       "regression_tests": [
