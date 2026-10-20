@@ -49,4 +49,15 @@ if "private function plugin_site_active" in abilities or "activate_plugin( $plug
 if int(facades.get("wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-abilities.php",10**9))>1650:
  raise SystemExit("PLUGIN_LIFECYCLE_FACADE_RATCHET_NOT_TIGHTENED")
 
+# Filesystem write/patch callback ABI remains stable while mutating logic is isolated.
+filesystem_abilities=(root/"includes/class-mad4b-scp-filesystem-mutation-service.php").read_text(encoding="utf-8")
+for method in ("filesystem_write", "filesystem_patch"):
+ if f"MAD4B_SCP_Filesystem_Mutation_Service::{method}" not in abilities:
+  raise SystemExit("FILESYSTEM_FACADE_DELEGATION_MISSING:"+method)
+for expected in ("MAD4B_SCP_Policy::resolve_path", "MAD4B_SCP_Policy::can_mutate_file", "hash_equals(", "prepare_backup_root(", "rename( $temp, $path )", "MAD4B_SCP_Audit::record"):
+ if expected not in filesystem_abilities:
+  raise SystemExit("FILESYSTEM_MUTATION_GUARD_MISSING:"+expected)
+if "private function atomic_write" in abilities:
+ raise SystemExit("FILESYSTEM_ATOMIC_WRITE_REABSORBED")
+
 print("mad4b.maintainability-domain-service-decomposition.v1: PASS")
