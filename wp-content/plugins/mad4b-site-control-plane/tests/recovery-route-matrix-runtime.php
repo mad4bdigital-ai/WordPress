@@ -23,6 +23,15 @@ function is_wp_error( $x ) { return $x instanceof WP_Error; }
 class WP_Error { private $code; function __construct( $code, $message = '' ) { $this->code = $code; } function get_error_code(){ return $this->code; } }
 class MAD4B_SCP_Site_Profile { static function current_environment() { return $GLOBALS['profile_env']; } }
 class MAD4B_SCP_Servers { static function ability_is_mounted( $server, $ability ) { return !empty( $GLOBALS['mounted'][$ability]) && ( 'mad4b-read' === $server || 'mad4b-chatgpt' === $server ); } }
+class MAD4B_SCP_Admin_Route_Registry {
+    static function routes() {
+        return array(
+            'mad4b-runtime-components' => array( 'required_capability' => 'manage_options' ),
+            'mad4b-provider-connections' => array( 'required_capability' => 'manage_options' ),
+            'mad4b-operational-remediation' => array( 'required_capability' => 'manage_options' ),
+        );
+    }
+}
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-recovery-route-matrix.php';
 function check( $ok, $reason ) { if(!$ok){fwrite(STDERR,"FAIL ".$reason."\n");exit(1);} }
 $r=MAD4B_SCP_Recovery_Route_Matrix::inspect();
@@ -38,8 +47,28 @@ foreach($r['stages'] as $item){
     check(!$item['environment_applicable'] && 'NOT_APPLICABLE_TO_EXACT_ENVIRONMENT'===$item['state'], 'production not invoked as staging');
 }
 check(isset($seen['owner_review']) && isset($seen['write_readback']) && isset($seen['context_onboarding']), 'approval and after included');
+check(count($seen)>=30, 'expanded MCP and admin remediation domains included');
+foreach(array('failed_runtime_transaction','provider_connection','provider_write_certification',
+    'drive_inventory','brand_authority','browser_executor','browser_acceptance',
+    'rate_limit_and_cache','seo_and_wpml_acceptance','mcp_error_diagnostics') as $needed)
+    check(isset($seen[$needed]), 'missing remediation area: '.$needed);
+$failed = null;
+foreach($r['stages'] as $item) if('failed_runtime_transaction'===$item['stage'])$failed=$item;
+check(is_array($failed) && $failed['admin_route_registered'] && $failed['admin_access_verified']
+    && !$failed['native_form_proven'] && !$failed['remote_authority_granted'],
+    'registered admin route asserted a verified executor or approval');
+$provider = null;
+foreach($r['stages'] as $item) if('provider_connection'===$item['stage'])$provider=$item;
+check(is_array($provider) && !$provider['ability_registered'] && !$provider['remote_mount_verified'],
+    'source read not discovered on connected MCP runtime');
+
 $GLOBALS['env']='production';$GLOBALS['profile_env']='production';
 $prod=MAD4B_SCP_Recovery_Route_Matrix::inspect();
+$found_provider_read = false;
+foreach($prod['stages'] as $item) if('provider_connection'===$item['stage'])
+    $found_provider_read = $item['environment_applicable'];
+check($found_provider_read && !$prod['automatic_mutation_allowed'],
+    'Production must allow diagnostics but not automatic repair');
 foreach($prod['stages'] as $item){
  if('host_binding_create'===$item['stage'])check(!$item['environment_applicable'], 'production cannot use staging secret creation');
  if('production_host_identity'===$item['stage'])check($item['environment_applicable'], 'production read path works');
