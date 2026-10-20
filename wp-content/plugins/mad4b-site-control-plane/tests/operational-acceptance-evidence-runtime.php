@@ -174,6 +174,56 @@ foreach ( array(
 ) as $bad ) evidence_assert( is_wp_error(
     MAD4B_SCP_Operational_Acceptance_Evidence::collect( $bad ) ),
     'invalid scan, receipt, boolean and mutable HEAD strings are rejected' );
+// Independently accepted live Skills must not be confused with external
+// Browser, isolated mutation, Rank Math Write, or multi-worker cache evidence.
+$gates = MAD4B_SCP_Operational_Acceptance_Evidence::collect( array(
+    'include_staging_gates' => true ) );
+evidence_assert( is_array( $gates ) && isset( $gates['staging_gate_diagnostics'] )
+    && $gates['staging_gate_diagnostics']['full_operational_acceptance'] === false
+    && $gates['staging_gate_diagnostics']['read_only'] === true
+    && $gates['staging_gate_diagnostics_authorizing'] === false
+    && strlen( $gates['staging_gate_diagnostics_sha256'] ) === 64,
+    'opt-in live Staging diagnostics are bounded and not authorizing' );
+$evidence = MAD4B_SCP_Staging_Acceptance_Gates::reduce( array(
+    'skills' => array( 'ready' => true, 'state' => 'ready', 'blockers' => array(),
+        'persistence' => 'read_only_live_inspection', 'build_identity_current' => true ),
+    'browser' => array( 'provider_count' => 1, 'site_discovery' => array(
+        'discovery_complete' => true ) ),
+    'cache' => array( 'persistent_object_cache_reported' => true,
+        'object_cache_dropin_present' => true, 'implementation_hint' => 'memcached_class_hint',
+        'ajax_rate_limit_mode' => 'persistent_object_cache',
+        'cross_request_proven' => false, 'atomic_increment_proven' => false,
+        'ttl_expiration_proven' => false, 'multi_node_shared_storage_proven' => false,
+        'connection_proven' => false ),
+    'abilities' => array( 'rankmath/status' => true, 'mad4b/acceptance-target-status' => true,
+        'mad4b/acceptance-target-provision' => true,
+        'mad4b/content-update-post' => true, 'mad4b/mutation-undo' => true ),
+) );
+evidence_assert( $evidence['skills']['state'] === 'PASS_LIVE_RUNTIME'
+    && $evidence['skills']['reconcile_required'] === false,
+    'confirmed Seed 13 skills must not remain an operational blocker' );
+evidence_assert( $evidence['browser']['state'] === 'EXTERNAL_EXECUTOR_RECEIPT_MISSING'
+    && !$evidence['browser']['expired_unclaimed_task_is_javascript_failure']
+    && !$evidence['browser']['blind_resubmit_allowed'],
+    'unclaimed expired Browser task must not be certified or blindly replayed' );
+evidence_assert( !$evidence['mutation_round_trip']['undo_verified']
+    && !$evidence['mutation_round_trip']['automatic_content_write_allowed']
+    && !$evidence['acceptance_target']['owner_approval_inferred'],
+    'mounted mutation abilities cannot provision scratch content or mint an Undo receipt' );
+evidence_assert( $evidence['rate_limiting']['cache_mode_hint'] === 'persistent_object_cache'
+    && !$evidence['rate_limiting']['multi_worker_or_node_acceptance_certified']
+    && !$evidence['seo_write']['rankmath_write_certified']
+    && $evidence['seo_write']['rankmath_read_mounted'],
+    'LiteSpeed/Rank Math availability must not certify cache concurrency or SEO write' );
+$historical = MAD4B_SCP_Staging_Acceptance_Gates::reduce( array(
+    'skills' => array( 'ready' => true, 'state' => 'ready',
+        'persistence' => 'historical_evidence_only' ) ) );
+evidence_assert( $historical['skills']['state'] === 'NOT_CURRENTLY_VERIFIED'
+    && $historical['skills']['reconcile_required'] === null,
+    'stale checkpoint must not be promoted or trigger automatic Reconcile' );
+evidence_assert( is_wp_error( MAD4B_SCP_Operational_Acceptance_Evidence::collect(
+    array( 'include_staging_gates' => 'true' ) ) ),
+    'opt-in diagnostic requires strict boolean and cannot accept external receipts' );
 MAD4B_SCP_Site_Profile::$production = true;
 evidence_assert( is_wp_error( MAD4B_SCP_Operational_Acceptance_Evidence::collect() ),
     'Production must be denied' );
