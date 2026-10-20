@@ -76,4 +76,40 @@ $bad = $verified; $bad['assets'][] = $bad['assets'][0];
 guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $plan, $bad ) ), 'duplicate file identity admitted write' );
 $bad = array( 'scan_complete' => false );
 guidance_check( is_wp_error( MAD4B_SCP_Brand_Context_Builder::source_scan_apply_admission( $bad, $verified ) ), 'incomplete plan admitted write' );
+// Provider scan planning must never call a missing asset absent unless the
+// entire exact source inventory completed. The scan Apply path is separately
+// rejected before any Context Authority registry mutation.
+if ( ! function_exists( 'sanitize_text_field' ) ) { function sanitize_text_field( $text ) { return trim( (string) $text ); } }
+class MAD4B_SCP_Context_Authority {
+ public static $apply_calls = 0;
+ static function source( $id ) { return array( 'source_id' => $id, 'provider' => 'google_drive' ); }
+ static function registry_revision() { return 9; }
+ static function assets() { return array( array( 'source_id' => str_repeat( 'a', 64 ),
+   'file_id' => 'previous-file', 'content_hash' => str_repeat( 'b', 64 ) ) ); }
+ static function replace_source_assets( $source_id, $assets, $scan ) { ++self::$apply_calls; return array( 'written' => true ); }
+}
+class MAD4B_SCP_Context_Provider_Gateway {
+ public static $mock_scan;
+ static function scan_source( $id ) { return self::$mock_scan; }
+}
+$source_id = str_repeat( 'a', 64 );
+MAD4B_SCP_Context_Provider_Gateway::$mock_scan = array( 'complete' => false, 'truncated' => true,
+ 'truncation_reasons' => array( 'scan_time_budget' ),
+ 'assets' => array( array( 'file_id' => 'new-file', 'content_complete' => true,
+ 'content_hash' => str_repeat( 'c', 64 ) ) ) );
+$partial_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+guidance_check( is_array( $partial_plan ) && false === $partial_plan['scan_complete']
+ && false === $partial_plan['missing_files_certified'] && array() === $partial_plan['missing_files'],
+ 'partial folder scan falsely inferred missing prior files' );
+$denied = MAD4B_SCP_Brand_Context_Builder::source_scan_apply( array( 'source_id' => $source_id,
+ 'expected_plan_sha256' => $partial_plan['plan_sha256'],
+ 'expected_provider_inventory_digest' => $partial_plan['provider_inventory_digest'],
+ 'expected_registry_revision' => 9 ) );
+guidance_check( is_wp_error( $denied ) && 'mad4b_context_source_scan_complete_inventory_required' === $denied->get_error_code()
+ && 0 === MAD4B_SCP_Context_Authority::$apply_calls, 'partial scan bypassed registry write admission' );
+MAD4B_SCP_Context_Provider_Gateway::$mock_scan = array( 'complete' => true, 'truncated' => false,
+ 'truncation_reasons' => array(), 'assets' => array() );
+$completed_plan = MAD4B_SCP_Brand_Context_Builder::source_scan_plan( array( 'source_id' => $source_id ) );
+guidance_check( is_array( $completed_plan ) && true === $completed_plan['missing_files_certified']
+ && array( 'previous-file' ) === $completed_plan['missing_files'], 'complete inventory did not produce precise missing-file evidence' );
 echo "POST_MANUAL_UPDATE_GUIDANCE: PASS (hermetic; no live acceptance)\n";
