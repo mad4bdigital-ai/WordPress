@@ -11,6 +11,7 @@ class WP_Error {
 function is_wp_error( $v ) { return $v instanceof WP_Error; }
 function sanitize_key( $v ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( (string) $v ) ); }
 function sanitize_text_field( $v ) { return trim( (string) $v ); }
+function wp_unslash( $v ) { return $v; }
 function wp_json_encode( $v, $flags = 0 ) { return json_encode( $v, $flags ); }
 function wp_salt( $v ) { return 'test-only-hmac-key'; }
 function wp_generate_uuid4() { return '11111111-1111-4111-8111-111111111111'; }
@@ -186,4 +187,45 @@ $GLOBALS['options'][$model::TRANSACTION_OPTION] = $final_stored;
 check( ! is_wp_error( invoke( 'commit_transaction', $final_plan, 'test' ) )
     && 'committed' === get_option( $model::TRANSACTION_OPTION )['state'], 'verified exact pair failed finalization' );
 $GLOBALS['pair'] = $old_pair;
+// WordPress administrator recovery must be an explicit second action, never
+// silently interpreting the ordinary package-update button as consent.
+$admin_status = array(
+    'state' => 'failed_transaction_requires_reconciliation',
+    'transaction_integrity_ready' => true,
+    'transaction_recovery' => array( 'eligible' => true ),
+    'transaction' => array( 'state' => 'control_plane_apply_failed' ),
+    'current' => array( 'control_plane' => array( 'version' => '1.0.0',
+        'source_commit_sha' => str_repeat( 'a', 40 ) ) ),
+    'target' => array( 'control_plane' => array( 'version' => '1.1.0',
+        'source_commit_sha' => str_repeat( 'd', 40 ) ) ),
+    'release_set_sha256' => str_repeat( 'f', 64 ),
+);
+$admin_input = array(
+    'expected_operation' => 'reconcile_failed_transaction',
+    'expected_plan_sha256' => str_repeat( 'e', 64 ),
+    'expected_release_set_sha256' => str_repeat( 'f', 64 ),
+    'expected_current_source_commit_sha' => str_repeat( 'a', 40 ),
+);
+check( true === $model::admin_form_preflight( $admin_status, $admin_input, 'POST' ),
+    'verified recovery cannot be reviewed in wp-admin' );
+check( is_wp_error( $model::admin_form_preflight( $admin_status, $admin_input, 'GET' ) ),
+    'GET unexpectedly accepted a recovery mutation' );
+$unreviewed = $admin_input; unset( $unreviewed['expected_operation'] );
+check( is_wp_error( $model::admin_form_preflight( $admin_status, $unreviewed, 'POST' ) ),
+    'ordinary runtime update became silent failed-transaction reconciliation' );
+$unreviewed = $admin_input; unset( $unreviewed['expected_plan_sha256'] );
+check( is_wp_error( $model::admin_form_preflight( $admin_status, $unreviewed, 'POST' ) ),
+    'reconciliation accepted without exact plan SHA' );
+$unreviewed = $admin_input; $unreviewed['expected_current_source_commit_sha'] = str_repeat( 'b', 40 );
+check( is_wp_error( $model::admin_form_preflight( $admin_status, $unreviewed, 'POST' ) ),
+    'reconciliation accepted after installed source changed' );
+$unreviewed = $admin_input; $unreviewed['expected_operation'] = 'install_anything';
+check( is_wp_error( $model::admin_form_preflight( $admin_status, $unreviewed, 'POST' ) ),
+    'arbitrary admin operation admitted' );
+$unverified = $admin_status; $unverified['transaction_recovery']['eligible'] = false;
+check( is_wp_error( $model::admin_form_preflight( $unverified, $admin_input, 'POST' ) ),
+    'uncertain failure admitted via local administrator route' );
+$unverified = $admin_status; $unverified['transaction_integrity_ready'] = false;
+check( is_wp_error( $model::admin_form_preflight( $unverified, $admin_input, 'POST' ) ),
+    'corrupt recovery evidence admitted in wp-admin' );
 echo "RUNTIME_UPDATE_RECOVERY_PASS\n";
