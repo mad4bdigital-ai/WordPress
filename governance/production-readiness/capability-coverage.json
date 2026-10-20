@@ -2392,8 +2392,8 @@
       "review_rationale": "Review exact runtime maintenance recovery and fixed Enrollment dispatch. Verified failure proof, unchanged pair identity, signed transaction integrity, append-only audit and atomic compare-and-swap remain mandatory; unknown/partial outcomes block replay. The Python runner executes standalone PHP behavior fixtures for races, audit failure, corrupt signatures, callback spoofing, OAuth scope/client and Production denial. The original candidate-drift guard remains separate from private runtime component context. This is source regression evidence only; no deployment or owner approval is inferred."
     },
     {
-      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
-      "source_blob_sha": "2d2ca100d1eac31533bb6cb51fb934e7ef80d210",
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-remote-operation-parity.php",
+      "source_blob_sha": "8be10ec3a593de6db3efcd7b8a97b514c21e2530",
       "control_ids": [
         "GOVERNANCE-01",
         "PLATFORM-01",

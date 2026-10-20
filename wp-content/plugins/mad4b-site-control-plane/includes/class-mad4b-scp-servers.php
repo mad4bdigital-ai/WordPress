@@ -121,7 +121,6 @@ final class MAD4B_SCP_Servers {
 					: array(),
 				class_exists( 'MAD4B_SCP_Staging_Write_Authority_Convergence' ) ? MAD4B_SCP_Staging_Write_Authority_Convergence::enrollment_tools() : array(),
                 class_exists( 'MAD4B_SCP_Staging_Write_Owner_Intent' ) ? array( MAD4B_SCP_Staging_Write_Owner_Intent::ATTEST_ABILITY ) : array(),
-                class_exists( 'MAD4B_SCP_Runtime_Release_Set' ) ? MAD4B_SCP_Runtime_Release_Set::chatgpt_step_up_tools() : array(),
 				class_exists( 'MAD4B_SCP_Developer_Authority' ) ? MAD4B_SCP_Developer_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Full_Staging_Authority' ) ? MAD4B_SCP_Full_Staging_Authority::enrollment_tools() : array(),
 				class_exists( 'MAD4B_SCP_Governed_Runtime_Gates' ) ? MAD4B_SCP_Governed_Runtime_Gates::enrollment_tools() : array()
@@ -551,7 +550,8 @@ final class MAD4B_SCP_Servers {
 		// Server registration runs during rest_api_init, while OAuth bearer
 		// verification happens later in rest_pre_dispatch. Materialize only the
 		// stable read/dispatch transport plus a small explicitly reviewed direct
-		// step-up set. Low-level enrollment stays behind the governed dispatcher.
+		// step-up set. Low-level enrollment primitives remain behind the governed
+		// enrollment dispatcher and never become direct MCP tools.
 		$cacheable = self::catalog_cacheable();
 		if ( $cacheable && is_array( self::$chatgpt_tools_cache ) ) return self::$chatgpt_tools_cache;
 		$core = self::core_tools( 'mad4b-chatgpt' );
