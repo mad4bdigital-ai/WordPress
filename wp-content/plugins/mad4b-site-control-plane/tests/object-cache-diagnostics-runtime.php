@@ -32,7 +32,10 @@ check_cache($cls::cli_probe('seed') instanceof WP_Error,'non-admin denied');
 $GLOBALS['memtest_admin']=true;
 check_cache($cls::cli_probe('read','invalid') instanceof WP_Error,'invalid token denied');
 $GLOBALS['memtest_data']=array();
-check_cache($cls::cli_probe('expiry',$token)['ttl_expiration_proven'],'expired key observed');
+$expiry=$cls::cli_probe('expiry',$token);
+check_cache($expiry['expired_observed'] && !$expiry['ttl_expiration_proven']
+    && !$expiry['elapsed_ttl_proven'] && $expiry['expiry_missing_key_is_not_ttl_proof'],
+    'deleted key can only prove absence, not passage of TTL or genuine expiry');
 $GLOBALS['memtest_persistent']=false;
 check_cache('rate_limit_backend_unavailable'===$cls::status()['ajax_rate_limit_mode'],'site-specific addon constant cannot determine core WAF evidence');
 define('MAD4B_SCP_EXTERNAL_WAF_RATE_LIMIT_VERIFIED',true);
