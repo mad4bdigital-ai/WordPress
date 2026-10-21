@@ -57,7 +57,7 @@ require(ROOT / "tests/admin-pages-wordpress.php",
         "mad4b-optional-governance-options",
         "Provider Coverage tab manifest and disposable WordPress render cases must match exactly")
 require(".github/workflows/feature-007-pre-staging-hybrid-audit.yml",
-        "dynamic-mcp-hybrid-runtime.php", "PHP_VERSION !== \"8.5.11\"",
+        "dynamic-mcp-hybrid-runtime.php", "version_compare(PHP_VERSION, \"8.5.11\", \"<\")",
         "php: ['7.4', '8.3', '8.4', '8.5']")
 
 registry = json.loads((ROOT / "config/cross-plugin-sources.json").read_text(encoding="utf-8"))
