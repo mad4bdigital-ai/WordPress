@@ -48,4 +48,14 @@ for marker in (
     assert marker in ui, f"Protected admin denial evidence missing or not escaped: {marker}"
 
 assert "MCP_OAUTH_REJECTION_EVIDENCE_RUNTIME: PASS" in run("php", str(TEST))
+for name, required in (
+    ("frontend-origin-diagnostic-runtime.php", "PASS staging origin probe:"),
+    ("native-probe-transport-metadata-runtime.php", "PASS native staging probe"),
+    ("native-recovery-status-runtime.php", "PASS native WordPress Recovery:"),
+):
+    smoke = ROOT / "tests" / name
+    assert smoke.is_file(), f"Missing expected regression fixture: {name}"
+    assert "No syntax errors detected" in run("php", "-l", str(smoke))
+    assert required in run("php", str(smoke)), f"PHP fixture did not run its assertions: {name}"
+
 print("MCP_OAUTH_REJECTION_EVIDENCE_CONTRACT: PASS")
