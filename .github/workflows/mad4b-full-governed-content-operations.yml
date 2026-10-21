@@ -3,6 +3,9 @@ name: MAD4B Full Governed Content Operations
 on:
   pull_request:
     paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-ability-definitions.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-profiles.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-full-content-operations-adapter.php'
       - 'wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php'
@@ -46,6 +49,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-ability-definitions.php
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-profiles.php
+          php -l wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-adapter-base.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-full-content-operations-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-translation-bridge-adapter.php
@@ -55,6 +61,11 @@ jobs:
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-rest-lifecycle-diagnostics-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-jetengine-features-api-branch-diagnostics-adapter.php
           php -l wp-content/plugins/mad4b-site-control-plane/includes/adapters/class-mad4b-scp-mutation-semantics-adapter.php
+      - name: Verify unique Business Activity Ability identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          php wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php
       - name: Verify full governed content operations contract
         shell: bash
         run: |

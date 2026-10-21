@@ -527,7 +527,7 @@ trait MAD4B_SCP_Content_Experience_Ability_Definitions {
 					'max_snapshot_age_seconds' => array( 'type' => 'integer', 'minimum' => 60, 'maximum' => 86400 ),
 				), array( 'profile_slug', 'entity_id', 'observations', 'baseline' ) ),
 				'surface' => 'read', 'readonly' => true, 'destructive' => false, 'idempotent' => true ),
-			array( 'name' => 'mad4b/business-activity-sync-plan', 'label' => 'Plan Configured Business Activity Source Synchronization', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'sync_plan' ), 'permission' => $read,
+			array( 'name' => 'mad4b/business-activity-contract-sync-plan', 'label' => 'Plan Configured Business Activity Source Synchronization', 'callback' => array( 'MAD4B_SCP_Business_Activity_Contracts', 'sync_plan' ), 'permission' => $read,
 				'schema' => self::schema( array(
 					'profile_slug' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
 					'target_id' => array( 'type' => 'string', 'minLength' => 2, 'maxLength' => 48 ),
