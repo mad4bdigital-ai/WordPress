@@ -27,7 +27,7 @@ SHA = re.compile(r"^[a-f0-9]{40}$")
 CAP = re.compile(r"['\"](mad4b/[a-z0-9][a-z0-9._/-]{1,120})['\"]")
 PHP_DECLARATION = re.compile(
     r"wp_register_ability\s*\(|(?:self|static)::register\s*\(|"
-    r"\$this->add\s*\(|register_abilities\s*\(", re.I
+    r"\$this->add\s*\(|register_abilities\s*\(|ability_definitions\s*\(", re.I
 )
 CAP_CATALOGS = {
     "operation": CONFIG + "operation-registry.json",

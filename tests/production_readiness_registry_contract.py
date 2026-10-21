@@ -249,6 +249,22 @@ with mock.patch.object(reg, "git_text", return_value=interface_source):
     assert "ajax:wp_ajax_mad4b_export" in names
     assert "cron:mad4b_report_cron" in names
 
+
+# A generated Ability declared in a trait must be covered even when its
+# eventual WordPress registration is performed by its owning Adapter.
+trait_source = """<?php
+trait MAD4B_Example_Definitions {
+    public static function ability_definitions() {
+        return array(array('name' => 'mad4b/new-trait-backed-ability'));
+    }
+}
+"""
+with mock.patch.object(reg, "git_text", return_value=trait_source):
+    ids = reg.php_capabilities(head, reg.PLUGIN + "includes/trait-example.php")
+    assert "ability:mad4b/new-trait-backed-ability" in ids
+with mock.patch.object(reg, "git_text", return_value="<?php // 'mad4b/comment-only'"):
+    assert not reg.php_capabilities(head, reg.PLUGIN + "includes/comment-only.php")
+
 # A controlled migration allows a reviewed rule correction without mutating
 # history or weakening its P0/linked controls.
 old_rule = copy.deepcopy(policy["domain_rules"][0])

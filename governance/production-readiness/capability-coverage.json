@@ -1034,6 +1034,26 @@
       "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
       "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe.",
       "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-http-probe-timing.php"
+    },
+    {
+      "id": "ability:mad4b/business-activity-contract-sync-plan",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "A distinct read-only identifier exposes the existing configured Business Activity planner, without adding any executor or mutation gate. Existing MCP, provider, identity and platform controls cover this capability.",
+      "review_rationale": "Resolve the two definitions with identical names while preserving the legacy multi-source sync planner, its required fields and its original policy. The newly distinct configured-target planner has different required fields, preserves its original read permission, and receives an executable uniqueness/schema regression. CI-only coverage does not certify or authorize a live site."
     }
   ],
   "lifecycle": [],
@@ -4011,6 +4031,46 @@
       "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
       "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
       "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/trait-mad4b-scp-content-experience-ability-definitions.php",
+      "source_blob_sha": "cefa972317dbde6480a17b2e0b79f8fe4272be88",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "EXECUTION-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reviewed exact PHP blob splits two formerly conflicting read-only abilities without changing the original multi-source planner identifier. The new fixture executes the definitions and asserts unique names, callbacks, schemas, read permission boundaries and full inventory parity; no write or production authority changes are introduced."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-content-experience-profiles.php",
+      "source_blob_sha": "178cf3ece97d00728638277c7272733fc6f786cd",
+      "control_ids": [
+        "MCP-01",
+        "PROVIDERS-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "AI-01",
+        "LOCALIZATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "Reviewed exact PHP blob replaces a duplicated legacy discovery name with the new configured-target read-only planner. New CI tests ensure both names are present once each and preserve their original callback, input requirements and policy callbacks; release and deployment remain independent governed steps."
     }
   ],
   "code_change_rules": {
