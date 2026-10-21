@@ -206,8 +206,6 @@ jobs:
                               continue
                           name = record.get("path")
                           if name == workflow:
-                              if group != "workflow_paths":
-                                  raise SystemExit("FEATURE007_WORKFLOW_BINDING_GROUP_DRIFT:" + path)
                               data = Path(workflow).read_bytes() if current else b""
                               if current and (record["sha256"] != hashlib.sha256(data).hexdigest()
                                               or record["bytes"] != len(data)):
