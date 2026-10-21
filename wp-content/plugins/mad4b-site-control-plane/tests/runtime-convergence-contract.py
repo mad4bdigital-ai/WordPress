@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import json
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[4]
 PLUGIN = ROOT / "wp-content/plugins/mad4b-site-control-plane"
@@ -170,4 +171,7 @@ assert "$_SERVER['REQUEST_URI']" in runtime
 
 assert "rest_get_url_prefix()" in runtime
 
+fixture = PLUGIN / "tests/runtime-restart-grace-readonly-runtime.php"
+subprocess.run(["php", "-l", str(fixture)], check=True, timeout=20)
+subprocess.run(["php", str(fixture)], check=True, timeout=30)
 print("runtime convergence contract: PASS")
