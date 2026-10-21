@@ -4181,6 +4181,29 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing governed admin diagnostics are reused for a read-only, HTML-escaped projection of the already sanitized and rate-limited Staging-only OAuth/transport rejection events. No public endpoint, new WordPress permission or production access.",
       "review_rationale": "Exact PHP blob adds an admin-only fallback when MCP read transport fails. It shows only timestamp, stage, bounded status/code and correlation, validates via the native read projection, uses esc_html for every value and never displays bearer tokens or request payloads. Absence of events remains inconclusive; no external OAuth/MCP acceptance is claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
+      "source_blob_sha": "f2bf4be1b876d96c3287ce8579ed930d2f27ebfc",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Staging Write, or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
+      "review_rationale": "Capture final 400–599 REST rejections missed by pre-Adapter instrumentation through the existing exact-Staging bounded journal. Preserve precise prior OAuth evidence, response object/body/status/challenge and permissions; contain observer faults and expose only server-generated correlation. Foreign error bodies/codes never enter persistence. Actual PHP tests cover 401/403/404/429/500/502/503/504/599, inactive/Production gates, OPTIONS, malformed JSON-RPC, storage failures and callback exceptions. Source evidence only; live acceptance remains unverified.",
+      "execution_note": "Executable PHP test covers Staging gate, schema/redaction, rate bounding, JSON-RPC envelope-only handling, no Production capture and tampered stored rows; existing OAuth CI checks verify challenge/response contracts. Live ETG/ARE acceptance is separate."
     }
   ],
   "code_change_rules": {

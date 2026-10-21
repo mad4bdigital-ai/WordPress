@@ -109,19 +109,36 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 	}
 
 	public static function annotate_response( $response, $server, $request ) {
+		try { return self::annotate_response_impl( $response, $server, $request ); }
+		catch ( Throwable $ignored ) { return $response; } // Diagnostics cannot break the wire response.
+	}
+
+	private static function annotate_response_impl( $response, $server, $request ) {
 		unset( $server );
 		if ( ! ( $response instanceof WP_REST_Response ) || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
 		$server_id = self::server_id_for_route( $request->get_route() );
 		if ( '' === $server_id ) return $response;
+		if ( method_exists( $request, 'get_method' ) && 'OPTIONS' === strtoupper( (string) $request->get_method() ) ) return $response;
 		if ( 200 === (int) $response->get_status() ) {
 			// Inspect only the JSON-RPC envelope; never persist body or tool inputs.
 			$data = $response->get_data();
-			if ( is_array( $data ) && isset( $data['error'], $data['jsonrpc'] ) && '2.0' === $data['jsonrpc'] ) {
+			if ( is_array( $data ) && '2.0' === ( $data['jsonrpc'] ?? '' )
+				&& is_array( $data['error'] ?? null ) && is_int( $data['error']['code'] ?? null ) ) {
 				self::observe_rejection( 'jsonrpc', 200, 'mcp_json_rpc_error' );
+				self::annotate_correlation( $response );
 			}
 			return $response;
 		}
 		if ( (int) $response->get_status() < 400 ) return $response;
+		// Covers REST/authentication short circuits that never entered our permission callback.
+		// Never trust a foreign error code/message, even when it resembles a MAD4B identifier.
+		$status = (int) $response->get_status();
+		$codes = array(401=>'mad4b_http_unauthorized',403=>'mad4b_http_forbidden',
+			404=>'mad4b_http_route_unavailable',429=>'mad4b_http_rate_limited',
+			500=>'mad4b_http_internal_error',502=>'mad4b_http_bad_gateway',
+			503=>'mad4b_http_service_unavailable',504=>'mad4b_http_gateway_timeout');
+		self::observe_rejection( 'http', $status, $codes[$status] ?? 'mad4b_http_rejection' );
+		self::annotate_correlation( $response );
 
 		$request_key = self::request_key( $request );
 		if ( empty( self::$last_denial ) || ! hash_equals( (string) self::$last_denial['request_key'], $request_key ) ) return $response;
@@ -131,6 +148,19 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 		$response->header( 'X-MAD4B-MCP-Admission-Code', self::$last_denial['code'] );
 		$response->header( 'Cache-Control', 'no-store' );
 		return $response;
+	}
+
+	private static function annotate_correlation( $response ) {
+		if ( !function_exists('wp_get_environment_type') || 'staging' !== wp_get_environment_type()
+			|| !class_exists('MAD4B_Native_Incident_MU',false) || !MAD4B_Native_Incident_MU::active() ) return;
+		$id = MAD4B_Native_Incident_MU::correlation_id();
+		if ( is_string($id) && preg_match('/^[a-f0-9]{32}$/D',$id) )
+			$response->header('X-MAD4B-MCP-Correlation',$id);
+	}
+
+	private static function rejection_status_valid( $stage, $status ) {
+		if ( 'http' === $stage ) return $status >= 400 && $status <= 599;
+		return in_array($status,array(200,401,403,503),true) && (('jsonrpc' === $stage) === (200 === $status));
 	}
 
 	public static function status() {
@@ -158,10 +188,9 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 				|| ! class_exists( 'MAD4B_Native_Incident_MU', false )
 				|| ! MAD4B_Native_Incident_MU::active()
 				|| ! function_exists( 'get_option' ) || ! function_exists( 'update_option' ) ) return false;
-			if ( ! is_string( $stage ) || ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc' ), true ) ) return false;
+			if ( ! is_string( $stage ) || ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc', 'http' ), true ) ) return false;
 			$status = (int) $http_status;
-			if ( ! in_array( $status, array( 200, 401, 403, 503 ), true )
-				|| ( 'jsonrpc' === $stage ) !== ( 200 === $status ) ) return false;
+			if ( ! self::rejection_status_valid( $stage, $status ) ) return false;
 			// Only developer-defined opaque identifiers are stored; no raw errors.
 			$code = is_string( $code ) && preg_match( '/^(?:mad4b_[a-z0-9_]{3,80}|mcp_json_rpc_error)$/D', $code )
 				? $code : 'mad4b_rejection_unspecified';
@@ -208,9 +237,8 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 				$status = (int) ( $row['status'] ?? 0 );
 				$at = (int) ( $row['at'] ?? 0 );
 				$correlation = $row['correlation_id'] ?? '';
-				if ( ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc' ), true )
-					|| ! in_array( $status, array( 200, 401, 403, 503 ), true )
-					|| ( 'jsonrpc' === $stage ) !== ( 200 === $status )
+				if ( ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc', 'http' ), true )
+					|| ! self::rejection_status_valid( $stage, $status )
 					|| ! is_string( $code ) || ! preg_match( '/^(?:mad4b_[a-z0-9_]{3,80}|mcp_json_rpc_error)$/D', $code )
 					|| ! is_string( $correlation ) || ! preg_match( '/^[a-f0-9]{32}$/D', $correlation )
 					|| $at > $now || $at < $now - 7 * 86400 ) continue;
