@@ -875,21 +875,7 @@ final class MAD4B_SCP_Servers {
 
 	private static function transport_permission( $server_id, $request, $policy_callback ) {
 		if ( ! class_exists( 'MAD4B_SCP_Transport_Context' ) ) return new WP_Error( 'mad4b_transport_context_unavailable', 'MAD4B transport context is unavailable.' );
-		$bound = MAD4B_SCP_Transport_Context::bind( $server_id, $request ); if ( is_wp_error( $bound ) ) return $bound;
-		if ( class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) && method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'runtime_transaction_gate' ) ) {
-			$transaction_gate = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::runtime_transaction_gate();
-			if ( empty( $transaction_gate['ready'] ) ) return new WP_Error(
-				isset( $transaction_gate['blocker'] ) ? (string) $transaction_gate['blocker'] : 'mu_bootstrap_transaction_pending',
-				'MCP runtime is quarantined until the managed MU filesystem transaction is reconciled.',
-				array( 'status' => 503, 'stage' => 'runtime_transaction', 'transaction_state' => isset( $transaction_gate['state'] ) ? $transaction_gate['state'] : 'unknown' )
-			);
-		}
-		if ( ! is_callable( $policy_callback ) ) return new WP_Error( 'mad4b_transport_policy_unavailable', 'MAD4B transport permission policy is unavailable.' );
-		$allowed = call_user_func( $policy_callback );
-		if ( false === $allowed && in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true ) ) {
-			return new WP_Error( 'mad4b_transport_read_permission_denied', 'The WordPress subject does not satisfy the configured read capability.', array( 'status' => 403, 'stage' => 'read_permission', 'blocker' => 'read_capability_not_satisfied' ) );
-		}
-		return $allowed;
+		return MAD4B_SCP_Transport_Context::permission( $server_id, $request, $policy_callback );
 	}
 
 	/**

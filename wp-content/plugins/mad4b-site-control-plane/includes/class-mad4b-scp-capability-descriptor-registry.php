@@ -9,25 +9,36 @@ final class MAD4B_SCP_Capability_Descriptor_Registry {
 	const CONSUMER_BINDING_CONTRACT = 'mad4b.capability-descriptor-consumer-binding.v1';
 
 	public static function binding( $name, $consumer ) {
-		$consumer = sanitize_key( (string) $consumer );
-		if ( '' === $consumer ) return new WP_Error( 'mad4b_capability_descriptor_consumer_invalid', 'Capability Descriptor consumer identity is required.' );
-		$row = self::describe( $name );
-		if ( is_wp_error( $row ) ) return $row;
-		return array(
-			'contract' => self::CONSUMER_BINDING_CONTRACT,
-			'consumer' => $consumer,
-			'descriptor_contract' => (string) $row['descriptor_contract'],
-			'generation_contract' => (string) $row['generation_contract'],
-			'ability_name' => (string) $row['ability_name'],
-			'input_schema_sha256' => (string) $row['input_schema_sha256'],
-			'classification_sha256' => (string) $row['classification_sha256'],
-			'execution_lane' => (string) $row['execution_lane'],
-			'descriptor_sha256' => (string) $row['descriptor_sha256'],
-			'generation_roots' => $row['generation_roots'],
-			'authority_snapshot_is_grant' => false,
-			'authority_revalidation_required' => true,
-			'authorizing' => false,
-		);
+		try {
+			$consumer = sanitize_key( (string) $consumer );
+			if ( '' === $consumer ) return new WP_Error( 'mad4b_capability_descriptor_consumer_invalid', 'Capability Descriptor consumer identity is required.' );
+			$row = self::describe( $name );
+			if ( is_wp_error( $row ) ) return $row;
+			return array(
+				'contract' => self::CONSUMER_BINDING_CONTRACT,
+				'consumer' => $consumer,
+				'descriptor_contract' => (string) $row['descriptor_contract'],
+				'generation_contract' => (string) $row['generation_contract'],
+				'ability_name' => (string) $row['ability_name'],
+				'input_schema_sha256' => (string) $row['input_schema_sha256'],
+				'classification_sha256' => (string) $row['classification_sha256'],
+				'execution_lane' => (string) $row['execution_lane'],
+				'descriptor_sha256' => (string) $row['descriptor_sha256'],
+				'generation_roots' => $row['generation_roots'],
+				'authority_snapshot_is_grant' => false,
+				'authority_revalidation_required' => true,
+				'authorizing' => false,
+			);
+		} catch ( Throwable $error ) {
+			return self::binding_failure( $error, $name );
+		}
+	}
+
+	private static function binding_failure( Throwable $error, $name ) {
+		$correlation = class_exists( 'MAD4B_SCP_Ability_Contract_Inspector', false )
+			&& method_exists( 'MAD4B_SCP_Ability_Contract_Inspector', 'record_failure' )
+			? MAD4B_SCP_Ability_Contract_Inspector::record_failure( $error, 'descriptor_binding', $name ) : '';
+		return new WP_Error( 'mad4b_capability_descriptor_binding_failed', 'Capability Descriptor binding failed; this capability is unavailable.', array( 'correlation_id' => $correlation ) );
 	}
 
 	public static function assert_binding( $name, array $expected, $consumer ) {
@@ -44,6 +55,11 @@ final class MAD4B_SCP_Capability_Descriptor_Registry {
 	}
 
 	public static function describe( $name ) {
+		try { return self::describe_impl( $name ); }
+		catch ( Throwable $error ) { return self::binding_failure( $error, $name ); }
+	}
+
+	private static function describe_impl( $name ) {
 		$canonical_name = MAD4B_SCP_Canonicalization::ability_name( $name );
 		if ( is_wp_error( $canonical_name ) ) return $canonical_name;
 		$name = $canonical_name;

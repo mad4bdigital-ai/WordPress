@@ -1013,6 +1013,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing diagnostic and security controls cover a passive Adapter error sink. No new ability, operation or authority.",
       "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
+      "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
+      "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe.",
+      "id": "service:wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-http-probe-timing.php"
     }
   ],
   "lifecycle": [],
@@ -3778,6 +3799,218 @@
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
       "review_rationale": "CI-only passive Enrollment catalog repair: bind the original read-only Live Acceptance definitions at existing priority 38 without booting observers or executing tools. Preserve Policy can_read and the fail-closed descriptor gate. Regression reproduces failure on old source, executes the real provenance definition and checks original callback/permission, read-only metadata, no telemetry hooks and idempotent hook registration. Existing MCP/admin/security controls reused; live acceptance still required.",
       "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "b7d0481315ad56c944833d0427760dca77136a49",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
+      "source_blob_sha": "1355d7c004fdcdc9897d8917a5367be6cac0541e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "4fd50dfb1efafa22e9dde97e08a221ed0d3e671a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "source_blob_sha": "011cc811e3211365d7c4a97ee27db9b07735e619",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ef5886b5a9e7aa1edb05fde7f4e5b75a706521c6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+      "source_blob_sha": "2dd3d0aebe8338cd79b1e3ea5491fd96e4ebc968",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-http-probe-timing.php",
+      "source_blob_sha": "685884552407595c48ca9cfa649d36b7334a11f1",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
+      "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
+      "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "a9be67aa05e441fb862720fc6e8278cd9a1d706f",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
+      "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
+      "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "50995fb1c64e17b85e5866b709c10d5657f7efac",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
+      "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
+      "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "0a89a4f4640e5dc370b80921748e3b83c27471d0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "MCP-01",
+        "SECURITY-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
+      "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
+      "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
     }
   ],
   "code_change_rules": {

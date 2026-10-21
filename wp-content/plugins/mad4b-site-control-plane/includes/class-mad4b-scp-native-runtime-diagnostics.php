@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-http-probe-timing.php';
 
 /** WordPress-native, read-first diagnostics over existing Site Health and Query Monitor. */
 final class MAD4B_SCP_Native_Runtime_Diagnostics {
@@ -120,6 +121,7 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
                 'transport_error' => '' !== $class,
                 'transport_error_class' => $class,
                 'elapsed_ms' => $elapsed,
+                'network_timing' => MAD4B_SCP_HTTP_Probe_Timing::project( $row['network_timing'] ?? array() ),
             );
         }
         return $output;

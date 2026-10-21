@@ -14,14 +14,30 @@ final class MAD4B_SCP_Ability_Contract_Inspector {
 	const MAX_CANONICAL_DEPTH = 64;
 
 	public static function inspect( $ability_name ) {
-		if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) {
-			return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
-		}
 		try {
+			if ( class_exists( 'MAD4B_SCP_Unified_Capability_Gateway' ) && ! MAD4B_SCP_Unified_Capability_Gateway::runtime_blog_matches() ) {
+				return new WP_Error( 'mad4b_projection_blog_switch_denied', 'Use a fresh request to the target site.' );
+			}
 			return self::inspect_ability( $ability_name );
 		} catch ( Throwable $error ) {
-			return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this capability is unavailable.' );
+			$correlation = self::record_failure( $error, 'ability_inspection', $ability_name );
+			return new WP_Error( 'mad4b_chatgpt_projection_ability_inspection_failed', 'Ability inspection failed; this capability is unavailable.', array( 'correlation_id' => $correlation ) );
 		}
+	}
+
+
+	/** Best-effort bounded incident evidence; never affect the original denial. */
+	public static function record_failure( Throwable $error, $stage, $ability_name ) {
+		$correlation = '';
+		try {
+			if ( class_exists( 'MAD4B_Native_Incident_MU', false )
+				&& method_exists( 'MAD4B_Native_Incident_MU', 'correlation_id' )
+				&& method_exists( 'MAD4B_Native_Incident_MU', 'record_throwable' ) ) {
+				$correlation = MAD4B_Native_Incident_MU::correlation_id();
+				MAD4B_Native_Incident_MU::record_throwable( $error, $stage, $ability_name, $correlation );
+			}
+		} catch ( Throwable $ignored ) { /* A recorder failure cannot escape. */ }
+		return is_string( $correlation ) && preg_match( '/^[a-f0-9]{32}$/D', $correlation ) ? $correlation : '';
 	}
 
 	public static function site_binding() {

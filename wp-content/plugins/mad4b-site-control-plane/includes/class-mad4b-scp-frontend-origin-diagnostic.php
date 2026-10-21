@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-mad4b-scp-http-probe-timing.php';
 
 /**
  * Bounded, same-origin Staging HTTP probe available through governed MCP Read.
@@ -71,7 +72,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         if ( ! is_wp_error( $error ) || ! method_exists( $error, 'get_error_message' ) )
             return 'unknown_transport_failure';
         $message = strtolower( (string) $error->get_error_message() );
-        if ( preg_match( '/curl error 6(?![0-9])|could not resolve|name or service not known|dns lookup/i', $message ) )
+        if ( preg_match( '/curl error 6(?![0-9])|could not resolve|name or service not known|dns lookup|resolving timed out/i', $message ) )
             return 'dns_resolution_failure';
         if ( preg_match( '/curl error 60(?![0-9])|ssl certificate|tls certificate|certificate verify/i', $message ) )
             return 'tls_verification_failure';
@@ -170,7 +171,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         );
         $url .= '?mad4b_synthetic_probe=' . $marker;
         $start = microtime( true );
-        $response = wp_safe_remote_get( $url, array(
+        $measured = MAD4B_SCP_HTTP_Probe_Timing::request( $url, array(
             'method' => 'GET', 'timeout' => self::TIMEOUT_SECONDS,
             'redirection' => 0, 'sslverify' => true, 'reject_unsafe_urls' => true,
             'blocking' => true, 'limit_response_size' => 4096, 'cookies' => array(),
@@ -179,10 +180,12 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
                 'X-MAD4B-Synthetic-Probe' => $marker,
             ),
         ) );
+        $response = $measured['response'];
+        $network_timing = $measured['network_timing'];
         $elapsed_ms = round( ( microtime( true ) - $start ) * 1000, 2 );
         if ( is_wp_error( $response ) ) return array(
             'state' => 'HTTP_PROBE_FAILED', 'network_request_performed' => true,
-            'elapsed_ms' => $elapsed_ms,
+            'elapsed_ms' => $elapsed_ms, 'network_timing' => $network_timing,
             'error_code' => (string) $response->get_error_code(),
             'transport_error_class' => self::transport_error_class( $response ),
             'next_action' => 'Inspect host DNS, TLS, firewall and WordPress loopback connectivity without weakening TLS validation.',
@@ -190,7 +193,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         $code = function_exists( 'wp_remote_retrieve_response_code' ) ? (int) wp_remote_retrieve_response_code( $response ) : 0;
         return array(
             'state' => $code >= 200 && $code < 300 ? 'HTTP_REACHABLE_NOT_BROWSER_VERIFIED' : 'HTTP_RESPONSE_NOT_ACCEPTED',
-            'network_request_performed' => true, 'elapsed_ms' => $elapsed_ms, 'http_status' => $code,
+            'network_request_performed' => true, 'elapsed_ms' => $elapsed_ms, 'network_timing' => $network_timing, 'http_status' => $code,
             'http_success' => $code >= 200 && $code < 300,
             'http_server_error' => $code >= 500 && $code <= 599,
             'root_cause_proven' => false,
