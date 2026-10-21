@@ -32,7 +32,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-operator-control-center.php",
-      "sha256": "6d93dddde86bbe04f0aba102c4eff9ec778b2648c8882719b0266a91acd82588"
+      "sha256": "1ecbe6d633e11fef73ac541a8a3b47d44a4369dc33c2a62610a915c25f820d8b"
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/search/class-mad4b-scp-search-profile-admin.php",
