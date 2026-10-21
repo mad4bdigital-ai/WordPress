@@ -88,19 +88,39 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
         );
     }
 
-    /** Pure, bounded projection: never persist or render HTTP bodies or errors. */
+    /**
+     * Metadata-only, allowlisted projection of a same-origin paired probe.
+     * Preserve the actionable transport class across the per-user transient;
+     * never store WP_Error text, response bodies, URLs, headers or secrets.
+     * Also accepts an already projected record so a refresh is idempotent.
+     */
     public static function project_probe( $result ) {
         if ( ! is_array( $result ) ) return array( 'state' => 'PROBE_UNAVAILABLE', 'root_cause_proven' => false );
         $allowed = array( 'PAIRED_HTTP_INCONCLUSIVE', 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE',
             'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED', 'BOTH_LOOPBACK_PATHS_5XX' );
         $state = isset( $result['state'] ) && in_array( (string) $result['state'], $allowed, true ) ? $result['state'] : 'PROBE_UNAVAILABLE';
-        $results = isset( $result['results'] ) && is_array( $result['results'] ) ? $result['results'] : array();
+        $results = isset( $result['results'] ) && is_array( $result['results'] ) ? $result['results'] : $result;
+        $classes = array( 'dns_resolution_failure', 'tls_verification_failure', 'network_timeout',
+            'tcp_connection_failure', 'local_http_policy_block', 'unknown_transport_failure' );
         $output = array( 'state' => $state, 'root_cause_proven' => false, 'browser_acceptance_certified' => false );
         foreach ( array( 'homepage', 'rest_root' ) as $name ) {
             $row = isset( $results[ $name ] ) && is_array( $results[ $name ] ) ? $results[ $name ] : array();
-            $code = isset( $row['http_status'] ) ? (int) $row['http_status'] : 0;
-            $output[ $name ] = array( 'http_status' => $code >= 100 && $code <= 599 ? $code : 0,
-                'transport_error' => ! empty( $row['transport_error_class'] ) );
+            $code = isset( $row['http_status'] ) && is_numeric( $row['http_status'] ) ? (int) $row['http_status'] : 0;
+            $code = $code >= 100 && $code <= 599 ? $code : 0;
+            $class = isset( $row['transport_error_class'] ) && is_string( $row['transport_error_class'] )
+                && in_array( $row['transport_error_class'], $classes, true ) ? $row['transport_error_class'] : '';
+            // Previously persisted records store only a boolean. Never invent
+            // a specific cause when reading one from an older release.
+            if ( '' === $class && ! empty( $row['transport_error'] ) ) $class = 'unknown_transport_failure';
+            $elapsed = isset( $row['elapsed_ms'] ) && is_numeric( $row['elapsed_ms'] )
+                ? (float) $row['elapsed_ms'] : 0.0;
+            $elapsed = is_finite( $elapsed ) && $elapsed >= 0 ? min( 60000, round( $elapsed, 2 ) ) : 0.0;
+            $output[ $name ] = array(
+                'http_status' => $code,
+                'transport_error' => '' !== $class,
+                'transport_error_class' => $class,
+                'elapsed_ms' => $elapsed,
+            );
         }
         return $output;
     }
