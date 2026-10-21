@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS = (
+    "enrollment-passive-catalog-runtime.php",
     "connection-catalog-readiness-runtime.php",
     "endpoint-descriptor-binding-evidence-runtime.php",
     "native-probe-transport-metadata-runtime.php",

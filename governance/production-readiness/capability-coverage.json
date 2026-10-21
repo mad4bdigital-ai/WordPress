@@ -3756,6 +3756,28 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "CI-only review: convergence reuses existing unapproved/unready Registry assets via the original review/repair path rather than recommending duplicate creation. Only categories with no observed candidate require generation evidence collection; existing conflicts and approved strategy keep their existing precedence. An absent Registry category explicitly does not prove absence in external storage. No content registration, approval, Drive mutation, new operation, provider certification bypass or Production authority. Regression executes actual convergence planning without generation services and asserts original generation identity denial when assets are absent."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-registration-bridge.php",
+      "source_blob_sha": "6ea932110495a995ecfa6cd0002e07545e4659bc",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only passive Enrollment catalog repair: bind the original read-only Live Acceptance definitions at existing priority 38 without booting observers or executing tools. Preserve Policy can_read and the fail-closed descriptor gate. Regression reproduces failure on old source, executes the real provenance definition and checks original callback/permission, read-only metadata, no telemetry hooks and idempotent hook registration. Existing MCP/admin/security controls reused; live acceptance still required.",
+      "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
     }
   ],
   "code_change_rules": {
