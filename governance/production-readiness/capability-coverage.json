@@ -3664,6 +3664,69 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "review_rationale": "CI-only review of native incident evidence: reuse existing exact-Staging MU loader, 12-event/7-day HMAC metadata journal, native administrator UI and governed diagnostic read. Capture original caught exceptions and Adapter error-handler interface evidence, three attempts/request, recursion guard, dedupe, strict stored metadata projection, first-party public source hints only. No raw messages/bodies/paths/credentials, new executor, bootstrap mutation, authority or Production expansion. Policy WP_Error is explicitly denied. Runtime regression executes real MU recorder, interface sink, correlated callback and adversarial stored-data/DB failure paths plus existing early-fatal/native permission fixtures. Existing security/MCP/recovery controls suffice; live deployment and root cause remain unverified."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-connection-status.php",
+      "source_blob_sha": "8668cd9ab6ac1abeb8a4d7bbef85cb0b69b139d7",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/connection-catalog-readiness-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-descriptor-binding-evidence-runtime.php"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only correction of exact Staging Enrollment registration evidence: endpoint diagnostic now reads the same capability_descriptor_evidence field written by server creation. Display retains bounded Ability/error codes and fail-closed registration; no route recovery or grants are inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "3f4137123c09e95644eab20e53d3eadf28a4e7a0",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only review of signed same-origin loopback failure diagnostics: allowlisted transport_error_class and bounded elapsed_ms survive short-lived admin transient and re-projection. No HTTP body, raw error, cookies, headers, URLs or visitor browser acceptance exposed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "ff35cd711d3fe3d84a86f8828e27e1941bc8fd16",
+      "control_ids": [
+        "ADMIN-01",
+        "BROWSER-01",
+        "SECURITY-02",
+        "PLATFORM-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
+      "review_rationale": "CI-only review of nonce-protected native diagnostic page presenting only safe HTTP code, allowlisted transport class and bounded time, preserving no-write/no-authority policy and meaningful HTTP=0 distinction."
     }
   ],
   "code_change_rules": {
