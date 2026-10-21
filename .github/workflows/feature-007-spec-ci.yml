@@ -143,7 +143,7 @@ jobs:
               if git merge-base --is-ancestor "$META_BASE" "$BASE" && python3 - "$BASE" <<'PY'
           import hashlib
           import json
-          from pathlib import Path
+          from pathlib import Path, PurePosixPath
           import subprocess
           import sys
 
@@ -151,12 +151,38 @@ jobs:
           scope = "specs/007-content-intelligence-workflow-platform/"
           prefix = scope + "extensions/competitive-experience/"
           workflow = ".github/workflows/feature-007-spec-ci.yml"
-          raw = Path(workflow).read_bytes()
-          digest = hashlib.sha256(raw).hexdigest()
-          changed = subprocess.check_output(
-              ["git", "diff", "--name-only", f"{base}...HEAD", "--", scope],
+          allowed_workflow = ".github/workflows/feature-007-pre-staging-hybrid-audit.yml"
+          root = "wp-content/plugins/mad4b-site-control-plane/"
+          changed_all = set(subprocess.check_output(
+              ["git", "diff", "--name-only", f"{base}...HEAD", "--"],
               text=True,
-          ).splitlines()
+          ).splitlines())
+          changed = sorted(x for x in changed_all if x.startswith(scope))
+          groups = ("code_paths", "test_paths", "spec_paths",
+                    "workflow_paths", "evidence_integrity")
+
+          def safe_source(name, group):
+              # No arbitrary paths, unchanged sources, spec prose or release
+              # gates may be rebound under inherited baseline metadata.
+              posix = PurePosixPath(name)
+              if (posix.is_absolute() or ".." in posix.parts
+                      or posix.as_posix() != name or name not in changed_all):
+                  return False
+              return (
+                  (group in ("code_paths", "test_paths")
+                   and (name.startswith(root + "includes/") or
+                        name.startswith(root + "tests/")))
+                  or (group == "workflow_paths" and name == allowed_workflow)
+              )
+
+          def source_bytes(name, current):
+              if current:
+                  source = Path(name)
+                  if not source.is_file() or source.is_symlink():
+                      raise SystemExit("FEATURE007_REBIND_SOURCE_NOT_FILE:" + name)
+                  return source.read_bytes()
+              return subprocess.check_output(["git", "show", f"{base}:{name}"])
+
           for path in changed:
               if not path.startswith(prefix) or not path.endswith("-delivery.json"):
                   raise SystemExit("FEATURE007_BASELINE_REVIEW_REQUIRED:" + path)
@@ -165,22 +191,43 @@ jobs:
               ))
               new = json.loads(Path(path).read_text(encoding="utf-8"))
               for doc, current in ((old, False), (new, True)):
-                  records = [
-                      record
-                      for group in ("code_paths", "test_paths", "spec_paths",
-                                    "workflow_paths", "evidence_integrity")
+                  workflow_records = [
+                      record for group in groups
                       for record in doc.get(group, [])
                       if isinstance(record, dict) and record.get("path") == workflow
                   ]
-                  if len(records) != 1 or not all(
-                      key in records[0] for key in ("sha256", "bytes")
+                  if len(workflow_records) != 1 or not all(
+                      key in workflow_records[0] for key in ("sha256", "bytes")
                   ):
                       raise SystemExit("FEATURE007_WORKFLOW_BINDING_INVALID:" + path)
-                  record = records[0]
-                  if current and (record["sha256"] != digest or record["bytes"] != len(raw)):
-                      raise SystemExit("FEATURE007_WORKFLOW_BINDING_STALE:" + path)
-                  record["sha256"] = "<verified-workflow-hash>"
-                  record["bytes"] = 0
+                  for group in groups:
+                      for record in doc.get(group, []):
+                          if not isinstance(record, dict):
+                              continue
+                          name = record.get("path")
+                          if name == workflow:
+                              if group != "workflow_paths":
+                                  raise SystemExit("FEATURE007_WORKFLOW_BINDING_GROUP_DRIFT:" + path)
+                              data = Path(workflow).read_bytes() if current else b""
+                              if current and (record["sha256"] != hashlib.sha256(data).hexdigest()
+                                              or record["bytes"] != len(data)):
+                                  raise SystemExit("FEATURE007_WORKFLOW_BINDING_STALE:" + path)
+                              record["sha256"] = "<verified-workflow-hash>"
+                              record["bytes"] = 0
+                          elif (isinstance(name, str) and
+                                name in changed_all and name != path):
+                              if not safe_source(name, group):
+                                  raise SystemExit("FEATURE007_UNREVIEWED_REBIND_SCOPE:" + name)
+                              if not isinstance(record.get("sha256"), str):
+                                  raise SystemExit("FEATURE007_REBIND_HASH_MISSING:" + name)
+                              raw = source_bytes(name, current)
+                              if record["sha256"] != hashlib.sha256(raw).hexdigest():
+                                  raise SystemExit("FEATURE007_REBIND_HASH_MISMATCH:" + name)
+                              if "bytes" in record and record["bytes"] != len(raw):
+                                  raise SystemExit("FEATURE007_REBIND_BYTES_MISMATCH:" + name)
+                              record["sha256"] = "<verified-source-hash>"
+                              if "bytes" in record:
+                                  record["bytes"] = 0
               if old != new:
                   raise SystemExit("FEATURE007_UNRELATED_DELIVERY_CHANGE:" + path)
           print("FEATURE007_INHERITED_DRIFT_SCOPE_OK checked_delivery_files=" + str(len(changed)))
