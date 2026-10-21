@@ -599,7 +599,7 @@ final class MAD4B_SCP_Content_Experience_Profiles {
             'mad4b/business-activity-status', 'mad4b/business-activity-link-plan',
             'mad4b/business-activity-sync-plan', 'mad4b/business-activity-reconcile-plan',
             'mad4b/business-activity-context-impact-plan',
-            'mad4b/business-activity-sync-status', 'mad4b/business-activity-sync-plan',
+            'mad4b/business-activity-sync-status', 'mad4b/business-activity-contract-sync-plan',
             'mad4b/business-activity-import-capabilities',
             'mad4b/business-activity-import-experience-plan',
             'mad4b/business-activity-import-batch-verify',
