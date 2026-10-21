@@ -455,7 +455,7 @@ final class MAD4B_SCP_Connection_Status {
 		$server['catalog_tool_count'] = isset( $row['tool_count'] ) ? max( 0, (int) $row['tool_count'] ) : null;
 		$server['catalog_count_match'] = null === $server['tool_count'] || null === $server['catalog_tool_count'] ? null : $server['tool_count'] === $server['catalog_tool_count'];
 		$server['requested_tool_count'] = isset( $row['requested_tool_count'] ) ? max( 0, (int) $row['requested_tool_count'] ) : null;
-		$descriptor = isset( $row['descriptor_evidence'] ) && is_array( $row['descriptor_evidence'] ) ? $row['descriptor_evidence'] : array();
+		$descriptor = isset( $row['capability_descriptor_evidence'] ) && is_array( $row['capability_descriptor_evidence'] ) ? $row['capability_descriptor_evidence'] : array();
 		$descriptor_blockers = isset( $descriptor['blockers'] ) && is_array( $descriptor['blockers'] ) ? $descriptor['blockers'] : array();
 		$server['capability_descriptor_ready'] = $descriptor ? ! empty( $descriptor['ready'] ) : null;
 		$server['capability_descriptor_failure_count'] = count( $descriptor_blockers );
