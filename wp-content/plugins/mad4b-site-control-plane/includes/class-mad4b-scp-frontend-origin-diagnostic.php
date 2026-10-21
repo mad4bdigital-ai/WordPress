@@ -71,7 +71,7 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
         if ( ! is_wp_error( $error ) || ! method_exists( $error, 'get_error_message' ) )
             return 'unknown_transport_failure';
         $message = strtolower( (string) $error->get_error_message() );
-        if ( preg_match( '/curl error 6(?![0-9])|could not resolve|name or service not known|dns lookup/i', $message ) )
+        if ( preg_match( '/curl error 6(?![0-9])|could not resolve|name or service not known|dns lookup|resolving timed out/i', $message ) )
             return 'dns_resolution_failure';
         if ( preg_match( '/curl error 60(?![0-9])|ssl certificate|tls certificate|certificate verify/i', $message ) )
             return 'tls_verification_failure';

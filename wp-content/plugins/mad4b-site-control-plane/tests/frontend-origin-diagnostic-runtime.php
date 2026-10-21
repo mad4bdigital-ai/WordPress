@@ -163,6 +163,7 @@ $cases = array(
     'cURL error 6: Could not resolve host' => 'dns_resolution_failure',
     'cURL error 60: SSL certificate problem' => 'tls_verification_failure',
     'cURL error 28: Operation timed out' => 'network_timeout',
+    'cURL error 28: Resolving timed out after 6000 milliseconds' => 'dns_resolution_failure',
     'cURL error 7: Could not connect to server' => 'tcp_connection_failure',
     'Blocked external request by policy' => 'local_http_policy_block',
     'Undocumented socket failure' => 'unknown_transport_failure',

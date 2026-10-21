@@ -3778,6 +3778,70 @@
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
       "review_rationale": "CI-only passive Enrollment catalog repair: bind the original read-only Live Acceptance definitions at existing priority 38 without booting observers or executing tools. Preserve Policy can_read and the fail-closed descriptor gate. Regression reproduces failure on old source, executes the real provenance definition and checks original callback/permission, read-only metadata, no telemetry hooks and idempotent hook registration. Existing MCP/admin/security controls reused; live acceptance still required.",
       "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-ability-contract-inspector.php",
+      "source_blob_sha": "b7d0481315ad56c944833d0427760dca77136a49",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-capability-descriptor-registry.php",
+      "source_blob_sha": "1355d7c004fdcdc9897d8917a5367be6cac0541e",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01",
+        "MCP-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "4fd50dfb1efafa22e9dde97e08a221ed0d3e671a",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "PLATFORM-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "review_rationale": "CI-only fault containment: inspector and descriptor failures remain WP_Error denials; original exceptions are captured best-effort with request correlation through existing MU stage allowlist. Recorder failure cannot escape; healthy subsequent registration remains possible. DNS resolving timeout is distinguished without exporting raw messages or changing HTTP timeout/TLS/targets. Tests inject inspection, blog guard, extension and recorder failures and validate the actual native journal stages and redaction.",
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
+      "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
     }
   ],
   "code_change_rules": {

@@ -84,6 +84,8 @@ jobs:
             wp-import-export-readonly-bootstrap-runtime \
             provider-health-view-runtime \
             connection-catalog-readiness-runtime \
+            descriptor-fault-containment-runtime \
+            native-descriptor-incident-runtime \
             endpoint-descriptor-binding-evidence-runtime \
             native-probe-transport-metadata-runtime \
             context-oauth-lifecycle-runtime \

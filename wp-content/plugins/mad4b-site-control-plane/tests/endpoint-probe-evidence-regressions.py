@@ -13,6 +13,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS = (
+    "native-descriptor-incident-runtime.php",
+    "descriptor-fault-containment-runtime.php",
+    "frontend-origin-diagnostic-runtime.php",
     "enrollment-passive-catalog-runtime.php",
     "connection-catalog-readiness-runtime.php",
     "endpoint-descriptor-binding-evidence-runtime.php",
