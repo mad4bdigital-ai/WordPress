@@ -139,7 +139,11 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
             $homepage_code = (int) ( $homepage['http_status'] ?? 0 );
             $rest_code = (int) ( $rest['http_status'] ?? 0 );
             $paired_state = 'PAIRED_HTTP_INCONCLUSIVE';
-            if ( $homepage_code >= 500 && $homepage_code <= 599 && $rest_code >= 200 && $rest_code < 300 )
+            if ( 0 === $homepage_code
+                && 'network_timeout' === (string) ( $homepage['transport_error_class'] ?? '' )
+                && ! empty( $rest['http_success'] ) )
+                $paired_state = 'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE';
+            elseif ( $homepage_code >= 500 && $homepage_code <= 599 && $rest_code >= 200 && $rest_code < 300 )
                 $paired_state = 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE';
             elseif ( ! empty( $homepage['http_success'] ) && ! empty( $rest['http_success'] ) )
                 $paired_state = 'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED';
@@ -151,7 +155,9 @@ final class MAD4B_SCP_Frontend_Origin_Diagnostic {
                     + (int) ! empty( $rest['network_request_performed'] ),
                 'results' => array( 'homepage' => $homepage, 'rest_root' => $rest ),
                 'root_cause_proven' => false, 'public_network_verified' => false,
-                'next_action' => 'Correlate sanitized PHP/webserver error logs and theme/plugin frontend hooks for the same window; independently test a public browser. Loopback 500 is not proof of visitor-facing 500.',
+                'next_action' => 'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE' === $paired_state
+                    ? 'The same-host homepage request timed out while public REST responded. Inspect frontend hook timings, PHP-FPM worker waits and webserver access/error logs for the exact request interval; keep HTTP transport vs external browser acceptance separate.'
+                    : 'Correlate sanitized PHP/webserver error logs and theme/plugin frontend hooks for the same window; independently test a public browser. Loopback 500 is not proof of visitor-facing 500.',
             );
         }
         return $base + self::probe_one( $url, $target );

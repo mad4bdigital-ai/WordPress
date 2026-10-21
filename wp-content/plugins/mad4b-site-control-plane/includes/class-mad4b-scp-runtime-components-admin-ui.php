@@ -305,6 +305,7 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			return;
 		}
 		$incidents = isset( $status['incidents'] ) && is_array( $status['incidents'] ) ? $status['incidents'] : array();
+		$rejections = isset( $status['mcp_rejections'] ) && is_array( $status['mcp_rejections'] ) ? $status['mcp_rejections'] : array();
 		$qm = isset( $status['query_monitor'] ) && is_array( $status['query_monitor'] ) ? $status['query_monitor'] : array();
 		$health = isset( $status['wordpress_site_health'] ) && is_array( $status['wordpress_site_health'] ) ? $status['wordpress_site_health'] : array();
 		echo '<div class="mad4b-scp-panel"><h2>' . esc_html__( 'Native diagnostics', 'mad4b-site-control-plane' ) . '</h2>';
@@ -361,6 +362,27 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 			}
 			echo '</tbody></table>';
 		} else echo '<p>' . esc_html__( 'No incident captured in the bounded journal. This does not prove that PHP or the host has never failed.', 'mad4b-site-control-plane' ) . '</p>';
+		// Incident exceptions and ordinary OAuth/transport denials are different
+		// journals; absence of either never proves a foreign MCP call did not arrive.
+		echo '<h3>' . esc_html__( 'MCP OAuth and transport rejection evidence (Staging only)', 'mad4b-site-control-plane' ) . '</h3>';
+		$denials = isset( $rejections['events'] ) && is_array( $rejections['events'] )
+			? array_slice( $rejections['events'], -12 ) : array();
+		if ( ! empty( $rejections['available'] ) && $denials ) {
+			echo '<table class="widefat striped"><thead><tr><th>UTC</th><th>Stage</th><th>HTTP</th><th>Bounded code</th><th>Correlation</th></tr></thead><tbody>';
+			foreach ( $denials as $denial ) {
+				if ( ! is_array( $denial ) ) continue;
+				echo '<tr><td>' . esc_html( gmdate( 'Y-m-d H:i:s', (int) ( $denial['at'] ?? 0 ) ) )
+					. '</td><td>' . esc_html( (string) ( $denial['stage'] ?? '' ) )
+					. '</td><td>' . esc_html( (string) (int) ( $denial['http_status'] ?? 0 ) )
+					. '</td><td><code>' . esc_html( (string) ( $denial['code'] ?? '' ) )
+					. '</code></td><td><code>' . esc_html( (string) ( $denial['correlation_id'] ?? '' ) )
+					. '</code></td></tr>';
+			}
+			echo '</tbody></table>';
+		} else {
+			echo '<p class="description">' . esc_html__( 'No bounded OAuth/MCP rejection evidence available. This does not prove that the ChatGPT request did not reach WordPress; pre-WordPress proxy/hosting denials, recorder-unavailable requests and rate-limited events are not captured.', 'mad4b-site-control-plane' ) . '</p>';
+		}
+		echo '<p class="description">' . esc_html__( 'A locally registered MCP route is not proof of external OAuth acceptance or JSON-RPC initialize, tools/list, or tools/call success. Correlate these sanitized entries with reverse-proxy and server access logs; do not use this view to change grants.', 'mad4b-site-control-plane' ) . '</p>';
 		echo '<p><a href="' . esc_url( admin_url( 'tools.php?page=mad4b-staging-write-owner-review' ) ) . '">' . esc_html__( 'Review exact Write Authority plan (separate owner approval)', 'mad4b-site-control-plane' ) . '</a></p>';
 		echo '<p class="description">' . esc_html__( 'Opening this page, reading Query Monitor, or running an HTTP check never approves grants, installs plugins, disables Recovery Mode, or certifies Production.', 'mad4b-site-control-plane' ) . '</p></div>';
 	}

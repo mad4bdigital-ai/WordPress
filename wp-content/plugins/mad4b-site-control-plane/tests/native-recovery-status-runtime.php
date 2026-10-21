@@ -40,6 +40,12 @@ $status = MAD4B_SCP_Native_Runtime_Diagnostics::status();
 $check( ! is_wp_error( $status ) && $status['site_profile_staging_enrolled'] && $status['read_only'] && ! $status['authority_granted'], 'status not restricted to verified read evidence' );
 $check( 'QUERY_MONITOR_NOT_LOADED_IN_THIS_REQUEST' === $status['query_monitor']['status'] && ! $status['query_monitor']['collector_snapshot_taken_in_this_read'], 'Query Monitor unknown runtime mislabeled absent' );
 $check( 'RECORDER_NOT_ACTIVE' === $status['incidents']['state'], 'fallback fatal recorder state incorrect' );
+$check( 'NOT_TESTED_BY_SITE_LOCAL_DIAGNOSTICS' === $status['external_mcp_acceptance']['state']
+    && false === $status['external_mcp_acceptance']['initialize_verified']
+    && false === $status['external_mcp_acceptance']['tools_list_verified']
+    && false === $status['external_mcp_acceptance']['tools_call_verified']
+    && true === $status['external_mcp_acceptance']['absence_of_logged_denial_does_not_prove_absence_of_request'],
+    'Local REST/MCP readiness falsely implied successful external ChatGPT transport' );
 $probe = MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( array( 'state' => 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE', 'results' => array( 'homepage' => array( 'http_status' => 500, 'body' => 'SECRET_UNSAFE' ), 'rest_root' => array( 'http_status' => 200 ) ) ) );
 $check( 500 === $probe['homepage']['http_status'] && 200 === $probe['rest_root']['http_status'] && false === $probe['root_cause_proven'], '500/200 drift label false acceptance' );
 $check( strpos( json_encode( $probe ), 'SECRET_UNSAFE' ) === false, 'HTTP body entered persisted projection' );

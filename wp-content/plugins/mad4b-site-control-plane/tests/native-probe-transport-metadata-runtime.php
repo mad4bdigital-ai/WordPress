@@ -15,6 +15,15 @@ $raw = array( 'state' => 'PAIRED_HTTP_INCONCLUSIVE', 'results' => array(
   'rest_root' => array( 'http_status' => 200, 'elapsed_ms' => 120.23, 'body' => 'SECRET_HTTP_BODY' ),
 ) );
 $saved = MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( $raw );
+$classified = MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( array(
+    'state' => 'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE',
+    'results' => $raw['results'],
+) );
+$check( 'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE' === $classified['state']
+    && false === $classified['root_cause_proven']
+    && false === $classified['browser_acceptance_certified']
+    && $classified === MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( $classified ),
+    'Timeout+REST state lost, non-idempotent or misrepresented as certified' );
 $check( $saved['homepage']['http_status'] === 0 && $saved['homepage']['transport_error_class'] === 'network_timeout'
     && $saved['rest_root']['http_status'] === 200 && $saved['homepage']['elapsed_ms'] === 6001.57,
     'ETG failure class or timing was lost during projection' );

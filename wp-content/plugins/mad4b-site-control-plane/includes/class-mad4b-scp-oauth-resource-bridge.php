@@ -580,7 +580,33 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 		) ) ) );
 	}
 
+	/** Contain unexpected OAuth faults for MCP resources without changing policy. */
 	public static function authenticate_rest_request( $result, $server, $request ) {
+		try {
+			return self::authenticate_rest_request_impl( $result, $server, $request );
+		} catch ( Throwable $error ) {
+			// Never alter unrelated WP REST routes or expose exception text.
+			$route = '';
+			try {
+				if ( is_object( $request ) && method_exists( $request, 'get_route' ) ) {
+					$route = '/' . ltrim( (string) $request->get_route(), '/' );
+				}
+			} catch ( Throwable $ignored ) {}
+			if ( 0 !== strpos( $route, '/mcp/mad4b-' ) ) throw $error; // Preserve unrelated REST behavior.
+			try { self::reset_verified_bearer_context( true ); } catch ( Throwable $ignored ) {}
+			if ( class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false ) ) {
+				MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );
+			}
+			$response = new WP_REST_Response(
+				array( 'error' => 'mad4b_oauth_evaluation_exception',
+					'message' => 'Protected OAuth evaluation failed.' ), 503
+			);
+			$response->header( 'Cache-Control', 'no-store' );
+			return $response;
+		}
+	}
+
+	private static function authenticate_rest_request_impl( $result, $server, $request ) {
 		if ( null !== $result ) return $result;
 		if ( ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $result;
 		$route = '/' . ltrim( rtrim( (string) $request->get_route(), '/' ), '/' );
@@ -670,6 +696,9 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 	}
 
 	private static function unauthorized_response( $code, $message, $status = 401, $resource = '' ) {
+		if ( class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false ) ) {
+			MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth', (int) $status, (string) $code );
+		}
 		$response = new WP_REST_Response( array( 'error' => sanitize_key( (string) $code ), 'message' => sanitize_text_field( (string) $message ) ), (int) $status );
 		$response->header( 'WWW-Authenticate', self::challenge_header( $resource ) );
 		$response->header( 'Cache-Control', 'no-store' );

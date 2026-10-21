@@ -4071,6 +4071,116 @@
       "production_authorized": false,
       "live_evidence_required": true,
       "review_rationale": "Reviewed exact PHP blob replaces a duplicated legacy discovery name with the new configured-target read-only planner. New CI tests ensure both names are present once each and preserve their original callback, input requirements and policy callbacks; release and deployment remain independent governed steps."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-mcp-transport-admission.php",
+      "source_blob_sha": "b9e060e579363499ec8cfde267b8ed13a1579bc0",
+      "control_ids": [
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Staging Write, or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
+      "review_rationale": "Exact change records bounded Staging-only MCP transport rejections and sanitized JSON-RPC error envelopes, retaining the original permission callback and HTTP result. Rate bounds and output allowlist are exercised by a real PHP fixture.",
+      "execution_note": "Executable PHP test covers Staging gate, schema/redaction, rate bounding, JSON-RPC envelope-only handling, no Production capture and tampered stored rows; existing OAuth CI checks verify challenge/response contracts. Live ETG/ARE acceptance is separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
+      "source_blob_sha": "c9d51879f2f29a276c867d5c03d971eb732fcba7",
+      "control_ids": [
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Staging Write, or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
+      "review_rationale": "Exact change observes ordinary OAuth 401/403/503 outcomes without token material and contains unexpected protected-MCP OAuth exceptions as 503 rather than leaking errors. Existing issuer, audience, token, subject, and capability checks remain intact. The wrapper rethrows exceptions from unrelated WordPress REST routes, preserving their original error behavior.",
+      "execution_note": "Executable PHP test covers Staging gate, schema/redaction, rate bounding, JSON-RPC envelope-only handling, no Production capture and tampered stored rows; existing OAuth CI checks verify challenge/response contracts. Live ETG/ARE acceptance is separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
+      "source_blob_sha": "658a3f368a6943a7e3d478bdc772a440fb5af13e",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "OAUTH-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner, Staging Write, or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
+      "review_rationale": "Exact change exposes only bounded, revalidated rejection evidence behind the existing governed Diagnostics read policy. No public endpoint, credential storage, new operation or Production authorization is added. The same exact-source change now explicitly separates local diagnostics from untested external OAuth/initialize/list/call acceptance and preserves mixed timeout/REST state across bounded admin projection.",
+      "execution_note": "Trusted Python readiness runner executes all four real PHP smoke regressions and fails on any failure: OAuth denial, frontend timeout+REST pairing, sanitized projection, and native recovery status. No external transport acceptance claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "022070809bcbdcb332024d61eaee6035b4a56e02",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no production or staging-write authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing diagnostics and HTTP transport controls govern read-only classification of an already executed bounded same-origin probe. No new route, URL parameter, external call, or grant.",
+      "review_rationale": "The exact PHP blob differentiates homepage network_timeout/HTTP 0 with a successful public REST read from general inconclusive results, without inferring the server root cause or external MCP/browser health. Hermetic tests prove safe fixed-origin paired GET, no secrets, no Production probe, and false acceptance guards.",
+      "execution_note": "Trusted Python readiness runner executes all four real PHP smoke regressions and fails on any failure: OAuth denial, frontend timeout+REST pairing, sanitized projection, and native recovery status. No external transport acceptance claimed."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "fe6aa55e62bc4e2a72bb435b910f31f7897563d1",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governed admin diagnostics are reused for a read-only, HTML-escaped projection of the already sanitized and rate-limited Staging-only OAuth/transport rejection events. No public endpoint, new WordPress permission or production access.",
+      "review_rationale": "Exact PHP blob adds an admin-only fallback when MCP read transport fails. It shows only timestamp, stage, bounded status/code and correlation, validates via the native read projection, uses esc_html for every value and never displays bearer tokens or request payloads. Absence of events remains inconclusive; no external OAuth/MCP acceptance is claimed."
     }
   ],
   "code_change_rules": {
