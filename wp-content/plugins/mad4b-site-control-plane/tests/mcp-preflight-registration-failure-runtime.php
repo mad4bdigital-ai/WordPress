@@ -33,7 +33,7 @@ class MAD4B_SCP_Capability_Descriptor_Registry {
 		);
 	}
 }
-class MAD4B_SCP_Transport_Context { public static $result = true; public static $calls = 0; static function bind( $server, $request ) { self::$calls++; return self::$result; } }
+require dirname( __DIR__ ) . '/includes/class-mad4b-scp-transport-context.php';
 class MAD4B_SCP_Policy { public static $read = false; static function can_read() { return self::$read; } }
 require dirname( __DIR__ ) . '/includes/class-mad4b-scp-servers.php';
 function check( $ok, $why ) { if ( ! $ok ) throw new RuntimeException( $why ); }
@@ -101,14 +101,15 @@ $localized = MAD4B_SCP_MCP_Catalog_Diagnostics::preflight( array( 'mad4b/broken'
 check( 'input_schema_properties_not_object' === $localized['failures'][0]['validator_reason'], 'validator reason must derive from DTO structure, not translated text' );
 check( false === strpos( json_encode( $localized ), 'رسالة تحقق مترجمة' ), 'translated validator text escaped diagnostics' );
 
-$denied = MAD4B_SCP_Servers::can_read_transport();
+$read_request = new class { function get_route() { return '/mcp/mad4b-read'; } };
+$chatgpt_request = new class { function get_route() { return '/mcp/mad4b-chatgpt'; } };
+$denied = MAD4B_SCP_Servers::can_read_transport( $read_request );
 check( is_wp_error( $denied ) && 'mad4b_transport_read_permission_denied' === $denied->get_error_code() && 403 === $denied->get_error_data()['status'], 'read capability denial is classified without granting access' );
 MAD4B_SCP_Policy::$read = true;
-check( true === MAD4B_SCP_Servers::can_read_transport(), 'authorized read transport remains allowed' );
-$not_ready = MAD4B_SCP_Servers::can_chatgpt_transport();
+check( true === MAD4B_SCP_Servers::can_read_transport( $read_request ), 'authorized read transport remains allowed' );
+$not_ready = MAD4B_SCP_Servers::can_chatgpt_transport( $chatgpt_request );
 check( is_wp_error( $not_ready ) && 'mad4b_mcp_catalog_not_ready' === $not_ready->get_error_code() && 503 === $not_ready->get_error_data()['status'], 'route-only ChatGPT transport denies catalog discovery' );
-$bound_error = new WP_Error( 'exact_binding_denied' ); MAD4B_SCP_Transport_Context::$result = $bound_error;
-check( $bound_error === MAD4B_SCP_Servers::can_read_transport(), 'binding denial remains authoritative' );
-MAD4B_SCP_Transport_Context::$result = true; MAD4B_SCP_Policy::$read = $bound_error;
-check( $bound_error === MAD4B_SCP_Servers::can_read_transport(), 'policy WP_Error is preserved verbatim' );
+check( 'mad4b_transport_route_mismatch' === MAD4B_SCP_Servers::can_read_transport( $chatgpt_request )->get_error_code(), 'binding denial remains authoritative' );
+$bound_error = new WP_Error( 'exact_policy_denied' ); MAD4B_SCP_Policy::$read = $bound_error;
+check( $bound_error === MAD4B_SCP_Servers::can_read_transport( $read_request ), 'policy WP_Error is preserved verbatim' );
 echo "MCP preflight registration failure runtime: PASS\n";

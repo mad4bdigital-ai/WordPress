@@ -17,18 +17,31 @@ final class MAD4B_SCP_ChatGPT_Auto_Binding {
     const REFRESH_AFTER = 86400; // No database write on every MCP request.
 
     public static function observe_local_token_issued( $client_id, $wp_user_id, $resource, $scopes ) {
-        return self::observe_exact( $client_id, $wp_user_id, $resource, $scopes );
+        try { return self::observe_exact( $client_id, $wp_user_id, $resource, $scopes ); }
+        catch ( Throwable $error ) { return self::observation_failed( $error ); }
     }
 
     /** Called only after the OAuth resource bridge verifies token, issuer, audience, scope and site claim. */
     public static function observe_verified_mcp_request( $resource, $wp_user_id ) {
-        if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
-            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
-            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ||
-            ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
-            return false;
-        return self::observe_exact( self::CHATGPT_CLIENT_ID, $wp_user_id, $resource,
-            array( 'mad4b:read' ) );
+        try {
+            if ( ! class_exists( 'MAD4B_SCP_OAuth_Resource_Bridge' ) ||
+                ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_active() ||
+                ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_client_is( self::CHATGPT_CLIENT_ID ) ||
+                ! MAD4B_SCP_OAuth_Resource_Bridge::verified_bearer_has_scope( 'mad4b:read' ) )
+                return false;
+            return self::observe_exact( self::CHATGPT_CLIENT_ID, $wp_user_id, $resource,
+                array( 'mad4b:read' ) );
+        } catch ( Throwable $error ) { return self::observation_failed( $error ); }
+    }
+
+    /** Observation is non-authorizing; storage/diagnostic faults cannot break OAuth. */
+    private static function observation_failed( Throwable $error ) {
+        try {
+            if ( class_exists( 'MAD4B_Native_Incident_MU', false ) ) {
+                MAD4B_Native_Incident_MU::record_throwable( $error, 'connection_observation', '', MAD4B_Native_Incident_MU::correlation_id() );
+            }
+        } catch ( Throwable $ignored ) { /* Optional recorder cannot break authentication. */ }
+        return false;
     }
 
     /**

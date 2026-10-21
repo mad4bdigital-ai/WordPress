@@ -20,9 +20,11 @@ function assert_bind( $ok, $msg ) {
 function absint( $v ) { return abs( (int) $v ); }
 function untrailingslashit( $s ) { return rtrim( (string) $s, '/\\' ); }
 function get_option( $name, $default = false ) {
+    if (($GLOBALS['bind_fault'] ?? '') === 'read') throw new RuntimeException('PRIVATE read');
     return array_key_exists( $name, $GLOBALS['bind_opt'] ) ? $GLOBALS['bind_opt'][ $name ] : $default;
 }
 function update_option( $name, $value, $autoload = null ) {
+    if (($GLOBALS['bind_fault'] ?? '') === 'write') throw new RuntimeException('PRIVATE write');
     $GLOBALS['bind_writes']++;
     $GLOBALS['bind_opt'][ $name ] = $value;
     return true;
@@ -127,3 +129,32 @@ $GLOBALS['bind_portable'] = false;
 assert_bind( !$c::status()['client_observed'],
     'Disabling portable readiness invalidates its transient binding.' );
 echo "PASS: ChatGPT OAuth automatic site-bound identity, portable read-only, stale/foreign rejection, no manual App ID or grants\n";
+
+// Passive observation cannot abort a verified request or token response.
+class MAD4B_Native_Incident_MU {
+    static $fail = false;
+    static $stages = array();
+    static function correlation_id() { return str_repeat('a',32); }
+    static function record_throwable($error,$stage,$ability,$correlation) {
+        self::$stages[]=$stage;
+        if(self::$fail) throw new RuntimeException('PRIVATE recorder');
+    }
+}
+$GLOBALS['bind_profile']=true;
+$GLOBALS['bind_opt']=array();
+foreach (array('read','write') as $fault) {
+    $GLOBALS['bind_fault']=$fault;
+    foreach (array(false,true) as $recorder_failure) {
+        MAD4B_Native_Incident_MU::$fail=$recorder_failure;
+        assert_bind(false === $c::observe_verified_mcp_request($resource,7), 'Verified observation fault must be contained');
+        assert_bind(false === $c::observe_local_token_issued($client,7,$resource,array('mad4b:read')), 'Token observation fault must be contained');
+    }
+}
+assert_bind(array_unique(MAD4B_Native_Incident_MU::$stages) === array('connection_observation'), 'Failure stage preserved');
+$GLOBALS['bind_fault']='';
+MAD4B_Native_Incident_MU::$fail=false;
+assert_bind($c::observe_verified_mcp_request($resource,7), 'Healthy observation recovers on a later request');
+$writes=$GLOBALS['bind_writes'];
+assert_bind(!$c::observe_local_token_issued('https://foreign.test/client',7,$resource,array('mad4b:read')) &&
+    $writes===$GLOBALS['bind_writes'], 'Fault boundary cannot authorize a foreign client');
+echo "PASS: observation read/write and recorder faults contained; later recovery; foreign client denied\n";

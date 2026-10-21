@@ -13,6 +13,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS = (
+    "chatgpt-auto-binding-runtime.php",
+    "transport-permission-containment-runtime.php",
+    "native-connection-incident-runtime.php",
     "native-descriptor-incident-runtime.php",
     "descriptor-fault-containment-runtime.php",
     "frontend-origin-diagnostic-runtime.php",

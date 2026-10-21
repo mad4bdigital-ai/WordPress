@@ -3842,6 +3842,69 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Reuse exact read permissions, canonical descriptor contracts, fail-closed registration, existing Staging-only bounded MU incident recorder and redacted native diagnostic UI. No new executor or authorization.",
       "execution_note": "Python regression driver executes seven standalone PHP harnesses including real native MU stage safety checks; existing observability regression driver also passed separately. No live-site or Production certification inferred."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-chatgpt-auto-binding.php",
+      "source_blob_sha": "011cc811e3211365d7c4a97ee27db9b07735e619",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php",
+      "source_blob_sha": "ef5886b5a9e7aa1edb05fde7f4e5b75a706521c6",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-transport-context.php",
+      "source_blob_sha": "2dd3d0aebe8338cd79b1e3ea5491fd96e4ebc968",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "OAUTH-01",
+        "MCP-01",
+        "SECURITY-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse verified OAuth identity, passive non-authorizing observation, exact transport route binding, existing policy callbacks and bounded Staging incident journal. No new grants, scopes, execution lane or authorization.",
+      "review_rationale": "Passive connection observation contains storage and recorder exceptions for both verified MCP requests and token issuance; failures return false without changing token validation. Transport boundary preserves bind/transaction/policy decisions and contains exceptions as a nonretryable 503 denial with correlation; failed bindings are cleared. Runtime regressions inject option read/write, policy, binding, transaction and recorder failures, preserve original denials and verify later recovery.",
+      "execution_note": "Changed Python driver executes ten standalone PHP fixtures. Both new fault regressions fail against pre-fix source and pass with fixes. Native incident tests retain redaction, inactive gate and request bounds. Mocked runtime evidence only; live OAuth and site acceptance still required."
     }
   ],
   "code_change_rules": {

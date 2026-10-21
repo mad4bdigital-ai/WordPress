@@ -16,6 +16,44 @@ final class MAD4B_SCP_Transport_Context {
 	private static $developer_dispatch_target = '';
 	private static $developer_dispatch_schema_sha256 = '';
 
+	/** Fail closed before Ability callbacks, including policy and binding exceptions. */
+	public static function permission( $server_id, $request, $policy_callback ) {
+		try { return self::permission_impl( $server_id, $request, $policy_callback ); }
+		catch ( Throwable $error ) {
+			self::clear();
+			$correlation = substr( hash( 'sha256', uniqid( '', true ) ), 0, 32 );
+			try {
+				if ( class_exists( 'MAD4B_Native_Incident_MU', false ) ) {
+					$observed = MAD4B_Native_Incident_MU::correlation_id();
+					if ( is_string( $observed ) && preg_match( '/^[a-f0-9]{32}$/D', $observed ) ) $correlation = $observed;
+					MAD4B_Native_Incident_MU::record_throwable( $error, 'transport_permission', '', $correlation );
+				}
+			} catch ( Throwable $ignored ) { /* Diagnostic failure never grants access. */ }
+			return new WP_Error( 'mad4b_transport_permission_exception', 'Transport permission evaluation failed.', array(
+				'status' => 503, 'stage' => 'transport_permission', 'correlation_id' => $correlation,
+				'retryable' => false, 'blind_retry_allowed' => false, 'permission_granted_by_boundary' => false,
+			) );
+		}
+	}
+
+	private static function permission_impl( $server_id, $request, $policy_callback ) {
+		$bound = self::bind( $server_id, $request ); if ( is_wp_error( $bound ) ) return $bound;
+		if ( class_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh' ) && method_exists( 'MAD4B_SCP_MCP_MU_Bootstrap_Refresh', 'runtime_transaction_gate' ) ) {
+			$transaction_gate = MAD4B_SCP_MCP_MU_Bootstrap_Refresh::runtime_transaction_gate();
+			if ( empty( $transaction_gate['ready'] ) ) return new WP_Error(
+				isset( $transaction_gate['blocker'] ) ? (string) $transaction_gate['blocker'] : 'mu_bootstrap_transaction_pending',
+				'MCP runtime is quarantined until the managed MU filesystem transaction is reconciled.',
+				array( 'status' => 503, 'stage' => 'runtime_transaction', 'transaction_state' => isset( $transaction_gate['state'] ) ? $transaction_gate['state'] : 'unknown' )
+			);
+		}
+		if ( ! is_callable( $policy_callback ) ) return new WP_Error( 'mad4b_transport_policy_unavailable', 'MAD4B transport permission policy is unavailable.' );
+		$allowed = call_user_func( $policy_callback );
+		if ( false === $allowed && in_array( $server_id, array( 'mad4b-read', 'mad4b-chatgpt' ), true ) ) {
+			return new WP_Error( 'mad4b_transport_read_permission_denied', 'The WordPress subject does not satisfy the configured read capability.', array( 'status' => 403, 'stage' => 'read_permission', 'blocker' => 'read_capability_not_satisfied' ) );
+		}
+		return $allowed;
+	}
+
 	public static function bind( $server_id, $request ) {
 		self::clear();
 		$server_id = sanitize_key( (string) $server_id );

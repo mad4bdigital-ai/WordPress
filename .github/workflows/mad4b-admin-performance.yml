@@ -84,6 +84,9 @@ jobs:
             wp-import-export-readonly-bootstrap-runtime \
             provider-health-view-runtime \
             connection-catalog-readiness-runtime \
+            chatgpt-auto-binding-runtime \
+            transport-permission-containment-runtime \
+            native-connection-incident-runtime \
             descriptor-fault-containment-runtime \
             native-descriptor-incident-runtime \
             endpoint-descriptor-binding-evidence-runtime \

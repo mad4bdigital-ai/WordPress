@@ -143,7 +143,7 @@ final class MAD4B_Native_Incident_MU {
             $event = self::classify( $error );
             if ( ! $event ) return false;
             $event['event_kind'] = in_array($context['event_kind'] ?? '', array('caught_exception','adapter_error'), true) ? $context['event_kind'] : 'fatal';
-            $event['stage'] = in_array($context['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter','ability_inspection','descriptor_binding'), true) ? $context['stage'] : '';
+            $event['stage'] = in_array($context['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter','ability_inspection','descriptor_binding','connection_observation','transport_permission'), true) ? $context['stage'] : '';
             $ability = $context['ability_name'] ?? '';
             $event['ability_name'] = is_string($ability) && preg_match('~^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,179}$~D',$ability) ? $ability : '';
             $correlation = $context['correlation_id'] ?? '';
@@ -188,7 +188,7 @@ final class MAD4B_Native_Incident_MU {
             if ( ! is_array( $row ) ) continue;
             $safe[] = array(
                 'event_kind' => in_array($row['event_kind'] ?? '', array('caught_exception','adapter_error'), true) ? $row['event_kind'] : 'fatal',
-                'stage' => in_array($row['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter','ability_inspection','descriptor_binding'), true) ? $row['stage'] : '',
+                'stage' => in_array($row['stage'] ?? '', array('permission','execution','telemetry','metric_write','metric_read','adapter','ability_inspection','descriptor_binding','connection_observation','transport_permission'), true) ? $row['stage'] : '',
                 'ability_name' => is_string($row['ability_name'] ?? null) && preg_match('~^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,179}$~D',$row['ability_name']) ? $row['ability_name'] : '',
                 'correlation_id' => is_string($row['correlation_id'] ?? null) && preg_match('/^[a-f0-9]{32}$/D',$row['correlation_id']) ? $row['correlation_id'] : '',
                 'type' => (int) ( $row['type'] ?? 0 ),
