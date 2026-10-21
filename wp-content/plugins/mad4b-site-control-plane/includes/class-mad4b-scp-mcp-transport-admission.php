@@ -22,6 +22,10 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 
 	private static $booted = false;
 	private static $last_denial = array();
+	private static $observed_rejection = false;
+	const REJECTION_OPTION = 'mad4b_scp_mcp_rejections_v1';
+	const REJECTION_CONTRACT = 'mad4b.mcp-rejections.v1';
+	const REJECTION_MAX_EVENTS = 12;
 
 	public static function boot() {
 		if ( self::$booted ) return;
@@ -108,7 +112,16 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 		unset( $server );
 		if ( ! ( $response instanceof WP_REST_Response ) || ! is_object( $request ) || ! method_exists( $request, 'get_route' ) ) return $response;
 		$server_id = self::server_id_for_route( $request->get_route() );
-		if ( '' === $server_id || (int) $response->get_status() < 400 ) return $response;
+		if ( '' === $server_id ) return $response;
+		if ( 200 === (int) $response->get_status() ) {
+			// Inspect only the JSON-RPC envelope; never persist body or tool inputs.
+			$data = $response->get_data();
+			if ( is_array( $data ) && isset( $data['error'], $data['jsonrpc'] ) && '2.0' === $data['jsonrpc'] ) {
+				self::observe_rejection( 'jsonrpc', 200, 'mcp_json_rpc_error' );
+			}
+			return $response;
+		}
+		if ( (int) $response->get_status() < 400 ) return $response;
 
 		$request_key = self::request_key( $request );
 		if ( empty( self::$last_denial ) || ! hash_equals( (string) self::$last_denial['request_key'], $request_key ) ) return $response;
@@ -134,6 +147,82 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 			'persists_request_data' => false,
 			'request_local_diagnostic_state' => true,
 		);
+	}
+
+
+	/** Capture bounded, non-authorizing denial metadata on exact Staging only. */
+	public static function observe_rejection( $stage, $http_status, $code ) {
+		try {
+			if ( self::$observed_rejection
+				|| ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type()
+				|| ! class_exists( 'MAD4B_Native_Incident_MU', false )
+				|| ! MAD4B_Native_Incident_MU::active()
+				|| ! function_exists( 'get_option' ) || ! function_exists( 'update_option' ) ) return false;
+			if ( ! is_string( $stage ) || ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc' ), true ) ) return false;
+			$status = (int) $http_status;
+			if ( ! in_array( $status, array( 200, 401, 403, 503 ), true )
+				|| ( 'jsonrpc' === $stage ) !== ( 200 === $status ) ) return false;
+			// Only developer-defined opaque identifiers are stored; no raw errors.
+			$code = is_string( $code ) && preg_match( '/^(?:mad4b_[a-z0-9_]{3,80}|mcp_json_rpc_error)$/D', $code )
+				? $code : 'mad4b_rejection_unspecified';
+			$now = time();
+			$stored = get_option( self::REJECTION_OPTION, array() );
+			$last = is_array( $stored ) ? (int) ( $stored['last_write_at'] ?? 0 ) : 0;
+			// Global 15-second limit stops alternating bad tokens from write-spamming DB.
+			if ( $last > 0 && $now >= $last && $now - $last < 15 ) return false;
+			$rows = is_array( $stored ) && is_array( $stored['events'] ?? null ) ? $stored['events'] : array();
+			$rows = array_values( array_filter( $rows, static function ( $row ) use ( $now ) {
+				return is_array( $row ) && isset( $row['at'] ) && (int) $row['at'] <= $now
+					&& (int) $row['at'] >= $now - 7 * 86400;
+			} ) );
+			$correlation = MAD4B_Native_Incident_MU::correlation_id();
+			if ( ! is_string( $correlation ) || ! preg_match( '/^[a-f0-9]{32}$/D', $correlation ) ) return false;
+			$rows[] = array( 'stage' => $stage, 'status' => $status, 'code' => $code,
+				'correlation_id' => $correlation, 'at' => $now );
+			$next = array( 'contract' => self::REJECTION_CONTRACT, 'last_write_at' => $now,
+				'events' => array_slice( $rows, -self::REJECTION_MAX_EVENTS ) );
+			self::$observed_rejection = true;
+			return (bool) update_option( self::REJECTION_OPTION, $next, false );
+		} catch ( Throwable $ignored ) {
+			return false; // Instrumentation must never alter OAuth or permissions.
+		}
+	}
+
+	/** Sanitized, read-only projection; caller must enforce governed read. */
+	public static function rejection_evidence_status() {
+		$empty = array( 'contract' => self::REJECTION_CONTRACT, 'available' => false,
+			'events' => array(), 'count' => 0 );
+		try {
+			if ( ! function_exists( 'wp_get_environment_type' ) || 'staging' !== wp_get_environment_type()
+				|| ! class_exists( 'MAD4B_Native_Incident_MU', false )
+				|| ! MAD4B_Native_Incident_MU::active()
+				|| ! function_exists( 'get_option' ) ) return $empty;
+			$stored = get_option( self::REJECTION_OPTION, array() );
+			$rows = is_array( $stored ) && is_array( $stored['events'] ?? null ) ? $stored['events'] : array();
+			$safe = array();
+			$now = time();
+			foreach ( array_slice( $rows, -self::REJECTION_MAX_EVENTS ) as $row ) {
+				if ( ! is_array( $row ) ) continue;
+				$stage = $row['stage'] ?? '';
+				$code = $row['code'] ?? '';
+				$status = (int) ( $row['status'] ?? 0 );
+				$at = (int) ( $row['at'] ?? 0 );
+				$correlation = $row['correlation_id'] ?? '';
+				if ( ! in_array( $stage, array( 'oauth', 'oauth_exception', 'transport', 'jsonrpc' ), true )
+					|| ! in_array( $status, array( 200, 401, 403, 503 ), true )
+					|| ( 'jsonrpc' === $stage ) !== ( 200 === $status )
+					|| ! is_string( $code ) || ! preg_match( '/^(?:mad4b_[a-z0-9_]{3,80}|mcp_json_rpc_error)$/D', $code )
+					|| ! is_string( $correlation ) || ! preg_match( '/^[a-f0-9]{32}$/D', $correlation )
+					|| $at > $now || $at < $now - 7 * 86400 ) continue;
+				$safe[] = array( 'stage' => $stage, 'http_status' => $status, 'code' => $code,
+					'correlation_id' => $correlation, 'at' => $at );
+			}
+			return array( 'contract' => self::REJECTION_CONTRACT, 'available' => true,
+				'state' => $safe ? 'REJECTIONS_OBSERVED' : 'NO_REJECTIONS_CAPTURED',
+				'events' => $safe, 'count' => count( $safe ), 'read_only' => true );
+		} catch ( Throwable $ignored ) {
+			return $empty;
+		}
 	}
 
 	private static function denial( $error, $server_id, $request ) {
@@ -170,6 +259,7 @@ final class MAD4B_SCP_MCP_Transport_Admission {
 			'server_id' => sanitize_key( (string) $server_id ),
 			'status' => $status,
 		);
+		self::observe_rejection( 'transport', $status, $code );
 		return new WP_Error( $code, $message, $bounded );
 	}
 

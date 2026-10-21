@@ -77,6 +77,9 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
                 'status' => ! $qm_bridge ? 'BRIDGE_NOT_LOADED' : ( defined( 'QM_VERSION' ) ? 'NATIVE_QM_AVAILABLE' : 'QUERY_MONITOR_NOT_LOADED_IN_THIS_REQUEST' ),
             ),
             'incidents' => $incidents,
+            'mcp_rejections' => class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false )
+                ? MAD4B_SCP_MCP_Transport_Admission::rejection_evidence_status()
+                : array( 'available' => false, 'events' => array(), 'count' => 0 ),
             'paired_probe' => array(
                 'available' => $staging && class_exists( 'MAD4B_SCP_Frontend_Origin_Diagnostic', false ),
                 'mode' => 'explicit_admin_post_or_governed_mcp_read',
