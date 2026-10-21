@@ -6,10 +6,44 @@ This document is the normative closure program for the remaining Feature 007 wor
 
 It does not redefine the existing contracts. It orders them into one executable program, separates first-vertical-slice blockers from maturity work, and prevents the implementation from expanding governance infrastructure indefinitely while the Content Intelligence vertical slice remains unproven.
 
+## MCP runtime comparison — 21 October 2026
+
+Repository review only; no live OAuth session, deployed SHA, Write or Production acceptance is inferred.
+The update-channel asset creation order identifies the last four packages as:
+
+| Package source | Published asset UTC | Relevant incoming change |
+| --- | --- | --- |
+| `268d9b310390afbf88e73bcd676a3031cc112d81` | 20 October, 21:20:14 | PR454 recovery and resumable source scan |
+| `2e5c95b33217633d31e493f343ddd3deed574efb` | 20 October, 22:49:03 | PR455 read-callback containment and native incident sink |
+| `9ae507f60143492ea23c0193808cae780e53b1af` | 21 October, 02:43:35 | PR458 existing Brand asset recovery and diagnostic projection |
+| `926995305eeb97a3d30600c0e479f261bcf479ad` | 21 October, 03:58:32 | PR459 passive Enrollment provenance Ability definition |
+
+Exact Git blob comparison found identical OAuth resource bridge, local OAuth server,
+subject gate, request-context guard, passive auto-binding, transport context,
+MCP request scope, managed Adapter MU loader, main entrypoint and Abilities registrar
+across these four sources. Historical isolated PHP runs passed healthy read,
+read-capability denial, wrong-route denial and normal passive binding on all four.
+This does not exercise deployed Adapter bytes, external OAuth refresh or HTTP transport.
+The two exception gaps repaired by PR460 predate these four packages. They are
+reproducible defects, not proof of the live outage cause. Incoming dependency changes,
+actual installed files and external request handling still require incident evidence.
+
+The changed server behavior in PR455 selects a bounded native Adapter error sink;
+PR459 adds only the missing provenance definition to passive Enrollment registration.
+PR458 corrects the descriptor evidence field and exposes HTTP transport classes.
+No reverted permission gate or privilege expansion is needed for these fixes.
+
+User-supplied diagnostics show nine locally registered endpoints on each Staging site,
+while authenticated ChatGPT reads still fail internally. Latest screenshots show
+homepage `network_timeout` at approximately six seconds on both sites and REST HTTP 200
+at approximately 1.1 seconds. Displayed fatal events are historical, not correlated with
+the current external request. Local registration and same-origin HTTP evidence cannot
+certify a working external MCP session. Write remains unverified/unready.
+
 ## Baseline
 
 - target branch: `master`
-- reviewed repository parent: `268d9b310390afbf88e73bcd676a3031cc112d81`
+- reviewed repository parent: `926995305eeb97a3d30600c0e479f261bcf479ad`
 - Control Plane line: `0.4.0-rc.59`
 - MCP Adapter line: `0.6.1`
 - Production authorization: false
