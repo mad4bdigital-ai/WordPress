@@ -592,7 +592,7 @@ final class MAD4B_SCP_OAuth_Resource_Bridge {
 					$route = '/' . ltrim( (string) $request->get_route(), '/' );
 				}
 			} catch ( Throwable $ignored ) {}
-			if ( 0 !== strpos( $route, '/mcp/mad4b-' ) ) return $result;
+			if ( 0 !== strpos( $route, '/mcp/mad4b-' ) ) throw $error; // Preserve unrelated REST behavior.
 			try { self::reset_verified_bearer_context( true ); } catch ( Throwable $ignored ) {}
 			if ( class_exists( 'MAD4B_SCP_MCP_Transport_Admission', false ) ) {
 				MAD4B_SCP_MCP_Transport_Admission::observe_rejection( 'oauth_exception', 503, 'mad4b_oauth_evaluation_exception' );

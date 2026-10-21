@@ -4097,7 +4097,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-oauth-resource-bridge.php",
-      "source_blob_sha": "3145b196ef6b3ba2a16f12dde295172c76c1d7bd",
+      "source_blob_sha": "c9d51879f2f29a276c867d5c03d971eb732fcba7",
       "control_ids": [
         "OAUTH-01",
         "MCP-01",
@@ -4114,7 +4114,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
-      "review_rationale": "Exact change observes ordinary OAuth 401/403/503 outcomes without token material and contains unexpected protected-MCP OAuth exceptions as 503 rather than leaking errors. Existing issuer, audience, token, subject, and capability checks remain intact.",
+      "review_rationale": "Exact change observes ordinary OAuth 401/403/503 outcomes without token material and contains unexpected protected-MCP OAuth exceptions as 503 rather than leaking errors. Existing issuer, audience, token, subject, and capability checks remain intact. The wrapper rethrows exceptions from unrelated WordPress REST routes, preserving their original error behavior.",
       "execution_note": "Executable PHP test covers Staging gate, schema/redaction, rate bounding, JSON-RPC envelope-only handling, no Production capture and tampered stored rows; existing OAuth CI checks verify challenge/response contracts. Live ETG/ARE acceptance is separate."
     },
     {
