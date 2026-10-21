@@ -89,6 +89,14 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
             'read_only' => true, 'mutation_performed' => false,
             'authority_granted' => false, 'production_mutation_allowed' => false,
             'browser_acceptance_certified' => false, 'root_cause_proven' => false,
+            'external_mcp_acceptance' => array(
+                'state' => 'NOT_TESTED_BY_SITE_LOCAL_DIAGNOSTICS',
+                'oauth_http_status_verified' => false,
+                'initialize_verified' => false, 'tools_list_verified' => false,
+                'tools_call_verified' => false,
+                'registered_route_is_not_external_transport_proof' => true,
+                'absence_of_logged_denial_does_not_prove_absence_of_request' => true,
+            ),
         );
     }
 
@@ -101,7 +109,8 @@ final class MAD4B_SCP_Native_Runtime_Diagnostics {
     public static function project_probe( $result ) {
         if ( ! is_array( $result ) ) return array( 'state' => 'PROBE_UNAVAILABLE', 'root_cause_proven' => false );
         $allowed = array( 'PAIRED_HTTP_INCONCLUSIVE', 'FRONTEND_LOOPBACK_5XX_REST_REACHABLE',
-            'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED', 'BOTH_LOOPBACK_PATHS_5XX' );
+            'PAIRED_HTTP_REACHABLE_NOT_BROWSER_VERIFIED', 'BOTH_LOOPBACK_PATHS_5XX',
+            'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE' );
         $state = isset( $result['state'] ) && in_array( (string) $result['state'], $allowed, true ) ? $result['state'] : 'PROBE_UNAVAILABLE';
         $results = isset( $result['results'] ) && is_array( $result['results'] ) ? $result['results'] : $result;
         $classes = array( 'dns_resolution_failure', 'tls_verification_failure', 'network_timeout',

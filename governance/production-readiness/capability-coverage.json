@@ -4119,7 +4119,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
-      "source_blob_sha": "d52a5cd22b55b176b5928aa2fdd4d6e162e9bbca",
+      "source_blob_sha": "658a3f368a6943a7e3d478bdc772a440fb5af13e",
       "control_ids": [
         "ADMIN-01",
         "MCP-01",
@@ -4128,7 +4128,9 @@
         "OAUTH-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-recovery-status-runtime.php"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Site Owner, Staging Write, or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4136,8 +4138,30 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing OAuth, MCP, Admin, Security and bounded-runtime observability controls cover a passive evidence-only change; no credential, authority or execution grant is created.",
-      "review_rationale": "Exact change exposes only bounded, revalidated rejection evidence behind the existing governed Diagnostics read policy. No public endpoint, credential storage, new operation or Production authorization is added.",
+      "review_rationale": "Exact change exposes only bounded, revalidated rejection evidence behind the existing governed Diagnostics read policy. No public endpoint, credential storage, new operation or Production authorization is added. The same exact-source change now explicitly separates local diagnostics from untested external OAuth/initialize/list/call acceptance and preserves mixed timeout/REST state across bounded admin projection.",
       "execution_note": "Executable PHP test covers Staging gate, schema/redaction, rate bounding, JSON-RPC envelope-only handling, no Production capture and tampered stored rows; existing OAuth CI checks verify challenge/response contracts. Live ETG/ARE acceptance is separate."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-frontend-origin-diagnostic.php",
+      "source_blob_sha": "022070809bcbdcb332024d61eaee6035b4a56e02",
+      "control_ids": [
+        "MCP-01",
+        "SECURITY-01",
+        "GOVERNANCE-01",
+        "PERFORMANCE-01",
+        "ADMIN-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/frontend-origin-diagnostic-runtime.php",
+        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no production or staging-write authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing diagnostics and HTTP transport controls govern read-only classification of an already executed bounded same-origin probe. No new route, URL parameter, external call, or grant.",
+      "review_rationale": "The exact PHP blob differentiates homepage network_timeout/HTTP 0 with a successful public REST read from general inconclusive results, without inferring the server root cause or external MCP/browser health. Hermetic tests prove safe fixed-origin paired GET, no secrets, no Production probe, and false acceptance guards."
     }
   ],
   "code_change_rules": {

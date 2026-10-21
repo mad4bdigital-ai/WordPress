@@ -35,7 +35,7 @@ function wp_safe_remote_get( $url, $args ) {
         throw new RuntimeException( 'Origin probe allowed an unsafe target or HTTP request' );
     if ( ! is_string( $args['headers']['X-MAD4B-Synthetic-Probe'] ) )
         throw new RuntimeException( 'Synthetic marker missing' );
-    return $GLOBALS['http_error'] ? new WP_Error( 'http_request_failed', isset( $GLOBALS['http_error_message'] ) ? (string) $GLOBALS['http_error_message'] : 'cURL error 6: Could not resolve host' )
+    return ( $GLOBALS['http_error_by_path'][ $GLOBALS['last_probe_path'] ] ?? $GLOBALS['http_error'] ) ? new WP_Error( 'http_request_failed', isset( $GLOBALS['http_error_message'] ) ? (string) $GLOBALS['http_error_message'] : 'cURL error 6: Could not resolve host' )
         : array( 'response' => array( 'code' => $GLOBALS['http_code_by_path'][ $GLOBALS['last_probe_path'] ] ?? $GLOBALS['http_code'] ) );
 }
 class MAD4B_SCP_Policy {
@@ -190,6 +190,19 @@ $assert( 'PAIRED_HTTP_INCONCLUSIVE' === $pair_failed['state']
     && false === $pair_failed['root_cause_proven']
     && false === $pair_failed['public_network_verified'],
     'Paired transport failure falsely certified the homepage or REST endpoint' );
+// ETG/ARE evidence: home cURL timeout 0, REST 200 is a bounded transport
+// differential, not a visitor-facing outage nor an MCP authorization proof.
+$GLOBALS['http_error_by_path'] = array( '/' => true, '/wp-json/' => false );
+$GLOBALS['http_code'] = 200;
+$mixed = MAD4B_SCP_Frontend_Origin_Diagnostic::inspect( array( 'target' => 'paired', 'mode' => 'probe' ) );
+$assert( 'HOMEPAGE_LOOPBACK_TIMEOUT_REST_REACHABLE' === $mixed['state']
+    && 'network_timeout' === $mixed['results']['homepage']['transport_error_class']
+    && 200 === $mixed['results']['rest_root']['http_status']
+    && false === $mixed['root_cause_proven']
+    && false === $mixed['public_network_verified']
+    && false === $mixed['external_browser_attestation'],
+    'Homepage 0/timeout and REST 200 misclassified as an external acceptance result' );
+unset( $GLOBALS['http_error_by_path'] );
 unset( $GLOBALS['http_error_message'] );
 $GLOBALS['http_error'] = false;
 echo "PASS staging origin probe: six transport failures, mixed 500/200, zero-network default, bounded GET, HTTPS-only, no redirects, no credentials, no public browser certification or Production mutation\n";
