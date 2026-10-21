@@ -174,6 +174,13 @@ final class MAD4B_SCP_ChatGPT_Connection_Admin_UI {
 	}
 
 	public static function render_page() {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Administrator capability required.' );
+		require_once __DIR__ . '/class-mad4b-scp-deferred-admin-reports.php';
+		MAD4B_SCP_Deferred_Admin_Reports::render( 'chatgpt' );
+	}
+
+	/** Explicit authenticated report; never run during initial page rendering. */
+	public static function render_checked_page() {
 		if ( ! current_user_can( 'manage_options' ) ) wp_die( esc_html__( 'Administrator capability is required to inspect ChatGPT connection settings.', 'mad4b-site-control-plane' ) );
 		$status = self::status();
 		$site_name = wp_strip_all_tags( get_bloginfo( 'name' ) );
