@@ -4383,6 +4383,52 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing administrator access, browser, bounded performance and runtime controls cover explicit read-only reports without new grants.",
       "review_rationale": "Defer expensive Operator and ChatGPT admin reports until an administrator requests a nonce-protected, closed-selector POST. Preserve source contracts and permissions; test initial GET, dispatch guards, query/time metrics, output redaction, timeout and HTTP 504. No live acceptance claim."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-reconnect-hardening.php",
+      "source_blob_sha": "2f3d9c2f23cff8c64484f4c16b73d93c1a242d76",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
+      "review_rationale": "Expose exact resume Cron schedule only from governed read diagnostics, excluding passive admin hotpath and pre-auth REST guard. Fail-closed restart admission, retry limits and OAuth policy remain unchanged.",
+      "execution_note": "CI-only; exact source Git blob matched by readiness registry; external ETG/ARE handshakes, host observations, and acceptance remain pending."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
+      "source_blob_sha": "320e78b3cb7ae3253abf284573677e1d42c9fffb",
+      "control_ids": [
+        "MCP-01",
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "PERFORMANCE-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
+      "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
+      "execution_note": "CI-only; exact source Git blob matched by readiness registry; external ETG/ARE handshakes, host observations, and acceptance remain pending."
     }
   ],
   "code_change_rules": {
