@@ -4162,6 +4162,27 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing diagnostics and HTTP transport controls govern read-only classification of an already executed bounded same-origin probe. No new route, URL parameter, external call, or grant.",
       "review_rationale": "The exact PHP blob differentiates homepage network_timeout/HTTP 0 with a successful public REST read from general inconclusive results, without inferring the server root cause or external MCP/browser health. Hermetic tests prove safe fixed-origin paired GET, no secrets, no Production probe, and false acceptance guards."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
+      "source_blob_sha": "fe6aa55e62bc4e2a72bb435b910f31f7897563d1",
+      "control_ids": [
+        "ADMIN-01",
+        "MCP-01",
+        "OAUTH-01",
+        "SECURITY-01",
+        "GOVERNANCE-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/mcp-oauth-rejection-evidence-contract.py"
+      ],
+      "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authority",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Existing governed admin diagnostics are reused for a read-only, HTML-escaped projection of the already sanitized and rate-limited Staging-only OAuth/transport rejection events. No public endpoint, new WordPress permission or production access.",
+      "review_rationale": "Exact PHP blob adds an admin-only fallback when MCP read transport fails. It shows only timestamp, stage, bounded status/code and correlation, validates via the native read projection, uses esc_html for every value and never displays bearer tokens or request payloads. Absence of events remains inconclusive; no external OAuth/MCP acceptance is claimed."
     }
   ],
   "code_change_rules": {
