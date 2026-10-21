@@ -134,10 +134,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 		$input = is_array( $input ) ? $input : array();
 		if ( ! class_exists( 'MAD4B_SCP_Context_Authority' ) ) return new WP_Error( 'mad4b_brand_convergence_context_unavailable', 'Context Authority is unavailable.' );
 		$coverage = MAD4B_SCP_Context_Authority::brand_core_coverage();
-		$gap = self::gap_plan( array(
+		$needs_generation = false;
+		foreach ( self::generatable_categories() as $category ) {
+			$row = $coverage['coverage'][$category] ?? array();
+			if ( empty($row['ready']) && empty($row['conflict']) && empty($row['observed_assets']) ) $needs_generation = true;
+		}
+		$gap = $needs_generation ? self::gap_plan( array(
 			'include_authoritative_content' => ! array_key_exists( 'include_authoritative_content', $input ) || ! empty( $input['include_authoritative_content'] ),
 			'include_rendered_frontend' => ! empty( $input['include_rendered_frontend'] ),
-		) );
+		) ) : array( 'drafts'=>array() );
 		if ( is_wp_error( $gap ) ) return $gap;
 
 		$writable_sources = array();
@@ -181,6 +186,15 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				);
 				continue;
 			}
+			// Registered does not mean approved. Reuse the original review/repair path;
+			// never create a replacement solely because eligible coverage is empty.
+			if ( ! empty($row['observed_assets']) ) {
+				$actions[] = array( 'category'=>$category, 'label'=>$label,
+					'state'=>'blocked', 'action'=>'review_or_repair_existing_assets',
+					'human_decision_required'=>true, 'blockers'=>array('existing_brand_assets_require_review_or_repair'),
+					'next_read_ability'=>'context/review-queue', 'replacement_creation_authorized'=>false );
+				continue;
+			}
 			if ( ! in_array( $category, self::generatable_categories(), true ) ) {
 				$actions[] = array(
 					'category' => $category,
@@ -201,6 +215,9 @@ final class MAD4B_SCP_Brand_Context_Builder {
 				'label' => $label,
 				'state' => $ready_to_generate ? 'ready_to_create' : 'blocked',
 				'action' => 'create_new',
+				'existing_document_check_required' => true,
+				'external_document_absence_proven' => false,
+				'next_read_ability' => 'context/source-scan-plan',
 				'generation_evidence_digest' => isset( $draft['generation_evidence_digest'] ) ? (string) $draft['generation_evidence_digest'] : '',
 				'suggested_name' => isset( $draft['suggested_name'] ) ? (string) $draft['suggested_name'] : self::suggested_name( $category ),
 				'writable_source_count' => count( $writable_sources ),

@@ -327,9 +327,19 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 		}
 		$last = MAD4B_SCP_Native_Runtime_Diagnostics::last_local_probe();
 		if ( $last ) {
+			$summary = array();
+			foreach ( array( 'homepage' => 'Homepage', 'rest_root' => 'REST' ) as $route => $label ) {
+				$row = isset( $last[ $route ] ) && is_array( $last[ $route ] ) ? $last[ $route ] : array();
+				$code = (int) ( $row['http_status'] ?? 0 );
+				$class = (string) ( $row['transport_error_class'] ?? '' );
+				$display = $label . ' HTTP ' . $code;
+				if ( 0 === $code ) $display .= '' !== $class ? ' (' . $class . ')' : ' (no HTTP response)';
+				if ( ! empty( $row['elapsed_ms'] ) ) $display .= ' [' . (float) $row['elapsed_ms'] . ' ms]';
+				$summary[] = $display;
+			}
 			echo '<h3>' . esc_html__( 'Latest local HTTP probe', 'mad4b-site-control-plane' ) . '</h3><p><code>' . esc_html( (string) ( $last['state'] ?? '' ) ) . '</code> '
-				. esc_html( 'Homepage HTTP ' . (int) ( $last['homepage']['http_status'] ?? 0 ) . ' / REST HTTP ' . (int) ( $last['rest_root']['http_status'] ?? 0 ) ) . '</p>';
-			echo '<p class="description">' . esc_html__( 'Same-origin server reachability only. A loopback HTTP 500 is not proof of a visitor-facing 500 or a confirmed PHP root cause.', 'mad4b-site-control-plane' ) . '</p>';
+				. esc_html( implode( ' / ', $summary ) ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'HTTP 0 means no HTTP response; its allowlisted transport class is diagnostic evidence, not a confirmed server root cause. Same-origin server reachability never proves browser acceptance.', 'mad4b-site-control-plane' ) . '</p>';
 		}
 		$events = isset( $incidents['events'] ) && is_array( $incidents['events'] ) ? array_slice( $incidents['events'], -12 ) : array();
 		if ( $events ) {
