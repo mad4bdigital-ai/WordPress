@@ -3676,8 +3676,7 @@
         "ADMIN-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/connection-catalog-readiness-runtime.php",
-        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-descriptor-binding-evidence-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
       ],
       "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
       "status": "reviewed_for_ci_only",
@@ -3685,7 +3684,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
-      "review_rationale": "CI-only correction of exact Staging Enrollment registration evidence: endpoint diagnostic now reads the same capability_descriptor_evidence field written by server creation. Display retains bounded Ability/error codes and fail-closed registration; no route recovery or grants are inferred."
+      "review_rationale": "CI-only correction of exact Staging Enrollment registration evidence: endpoint diagnostic now reads the same capability_descriptor_evidence field written by server creation. Display retains bounded Ability/error codes and fail-closed registration; no route recovery or grants are inferred.",
+      "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-runtime-diagnostics.php",
@@ -3698,7 +3698,7 @@
         "ADMIN-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
       ],
       "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
       "status": "reviewed_for_ci_only",
@@ -3706,7 +3706,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
-      "review_rationale": "CI-only review of signed same-origin loopback failure diagnostics: allowlisted transport_error_class and bounded elapsed_ms survive short-lived admin transient and re-projection. No HTTP body, raw error, cookies, headers, URLs or visitor browser acceptance exposed."
+      "review_rationale": "CI-only review of signed same-origin loopback failure diagnostics: allowlisted transport_error_class and bounded elapsed_ms survive short-lived admin transient and re-projection. No HTTP body, raw error, cookies, headers, URLs or visitor browser acceptance exposed.",
+      "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-components-admin-ui.php",
@@ -3718,7 +3719,7 @@
         "PLATFORM-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/native-probe-transport-metadata-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
       ],
       "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
       "status": "reviewed_for_ci_only",
@@ -3726,7 +3727,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing MCP transport, redacted diagnostics, admin nonce, security, and review controls cover the current nonauthorizing source correction. Independent live acceptance remains required.",
-      "review_rationale": "CI-only review of nonce-protected native diagnostic page presenting only safe HTTP code, allowlisted transport class and bounded time, preserving no-write/no-authority policy and meaningful HTTP=0 distinction."
+      "review_rationale": "CI-only review of nonce-protected native diagnostic page presenting only safe HTTP code, allowlisted transport class and bounded time, preserving no-write/no-authority policy and meaningful HTTP=0 distinction.",
+      "execution_note": "Readiness Python runner invokes three fixed standalone PHP harnesses with strict nonzero exit/timeout failure; no PHPUnit runner, skip, lint-only proof, authorization or remote site requests."
     }
   ],
   "code_change_rules": {
