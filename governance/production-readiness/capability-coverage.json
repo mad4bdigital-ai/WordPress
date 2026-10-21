@@ -4395,8 +4395,7 @@
         "AUTOMATION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4405,7 +4404,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose exact resume Cron schedule only from governed read diagnostics, excluding passive admin hotpath and pre-auth REST guard. Fail-closed restart admission, retry limits and OAuth policy remain unchanged.",
-      "execution_note": "CI-only; exact source Git blob matched by readiness registry; external ETG/ARE handshakes, host observations, and acceptance remain pending."
+      "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-runtime-convergence.php",
@@ -4418,8 +4417,7 @@
         "AUTOMATION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py",
-        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-restart-grace-readonly-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/runtime-convergence-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no WordPress Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4428,7 +4426,7 @@
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing fail-closed MCP and Runtime Convergence controls cover exact read-only checkpoint and Cron diagnostics; no authority, session, restart or mutation gate is changed.",
       "review_rationale": "Expose bounded persisted checkpoint age/state, operator blockers and retries without clearing gate or mutating options; executable PHP regression covers quiet period, manual, blocked and terminal phases.",
-      "execution_note": "CI-only; exact source Git blob matched by readiness registry; external ETG/ARE handshakes, host observations, and acceptance remain pending."
+      "execution_note": "Trusted Spec 008 CI executes the changed runtime-convergence-contract.py, which runs php -l and the hermetic restart-grace PHP fixture. No direct PHP artifact is misrepresented as an independent trusted PHPUnit runner. External MCP/host acceptance remains separate."
     }
   ],
   "code_change_rules": {
