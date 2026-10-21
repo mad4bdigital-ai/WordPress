@@ -10,6 +10,7 @@ $check = static function ( $ok, $message ) { if ( ! $ok ) throw new RuntimeExcep
 $raw = array( 'state' => 'PAIRED_HTTP_INCONCLUSIVE', 'results' => array(
   'homepage' => array( 'state' => 'HTTP_PROBE_FAILED', 'http_status' => 0,
     'transport_error_class' => 'network_timeout', 'elapsed_ms' => 6001.57,
+    'network_timing' => array('dns_complete_ms'=>10.5,'tcp_complete_ms'=>20.5,'tls_complete_ms'=>30.5,'first_byte_ms'=>null,'total_ms'=>6001.57,'url'=>'SECRET_URL'),
     'message' => 'SECRET_PRIVATE_URL_OR_TOKEN' ),
   'rest_root' => array( 'http_status' => 200, 'elapsed_ms' => 120.23, 'body' => 'SECRET_HTTP_BODY' ),
 ) );
@@ -17,6 +18,7 @@ $saved = MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( $raw );
 $check( $saved['homepage']['http_status'] === 0 && $saved['homepage']['transport_error_class'] === 'network_timeout'
     && $saved['rest_root']['http_status'] === 200 && $saved['homepage']['elapsed_ms'] === 6001.57,
     'ETG failure class or timing was lost during projection' );
+$check($saved['homepage']['network_timing']['tls_complete_ms']===30.5 && $saved['homepage']['network_timing']['first_byte_ms']===null, 'Phase timing lost');
 $check( $saved === MAD4B_SCP_Native_Runtime_Diagnostics::project_probe( $saved ), 'Projection is not idempotent' );
 $GLOBALS['saved_probe'] = $saved;
 $refresh = MAD4B_SCP_Native_Runtime_Diagnostics::last_local_probe();

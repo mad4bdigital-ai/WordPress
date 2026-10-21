@@ -335,11 +335,17 @@ final class MAD4B_SCP_Runtime_Components_Admin_UI {
 				$display = $label . ' HTTP ' . $code;
 				if ( 0 === $code ) $display .= '' !== $class ? ' (' . $class . ')' : ' (no HTTP response)';
 				if ( ! empty( $row['elapsed_ms'] ) ) $display .= ' [' . (float) $row['elapsed_ms'] . ' ms]';
+				$timing = MAD4B_SCP_HTTP_Probe_Timing::project( $row['network_timing'] ?? array() );
+				$parts = array();
+				foreach ( array( 'dns_complete_ms' => 'DNS', 'tcp_complete_ms' => 'TCP', 'tls_complete_ms' => 'TLS', 'first_byte_ms' => 'TTFB', 'total_ms' => 'Total' ) as $key => $name ) {
+					if ( null !== $timing[ $key ] ) $parts[] = $name . ' ' . $timing[ $key ] . ' ms';
+				}
+				$display .= $parts ? ' {' . implode( ', ', $parts ) . '}' : ' {network timing unavailable}';
 				$summary[] = $display;
 			}
 			echo '<h3>' . esc_html__( 'Latest local HTTP probe', 'mad4b-site-control-plane' ) . '</h3><p><code>' . esc_html( (string) ( $last['state'] ?? '' ) ) . '</code> '
 				. esc_html( implode( ' / ', $summary ) ) . '</p>';
-			echo '<p class="description">' . esc_html__( 'HTTP 0 means no HTTP response; its allowlisted transport class is diagnostic evidence, not a confirmed server root cause. Same-origin server reachability never proves browser acceptance.', 'mad4b-site-control-plane' ) . '</p>';
+			echo '<p class="description">' . esc_html__( 'HTTP 0 means no HTTP response; its allowlisted transport class is diagnostic evidence, not a confirmed server root cause. Timings are cumulative offsets from the first cURL attempt; missing phases are unmeasured. Transport-internal retries are not separately measured. Same-origin server reachability never proves browser acceptance.', 'mad4b-site-control-plane' ) . '</p>';
 		}
 		$events = isset( $incidents['events'] ) && is_array( $incidents['events'] ) ? array_slice( $incidents['events'], -12 ) : array();
 		if ( $events ) {

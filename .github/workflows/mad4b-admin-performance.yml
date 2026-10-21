@@ -84,6 +84,7 @@ jobs:
             wp-import-export-readonly-bootstrap-runtime \
             provider-health-view-runtime \
             connection-catalog-readiness-runtime \
+            http-probe-phase-timing-runtime \
             chatgpt-auto-binding-runtime \
             transport-permission-containment-runtime \
             native-connection-incident-runtime \

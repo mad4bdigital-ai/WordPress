@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 TESTS = (
+    "http-probe-phase-timing-runtime.php",
     "chatgpt-auto-binding-runtime.php",
     "transport-permission-containment-runtime.php",
     "native-connection-incident-runtime.php",
@@ -38,7 +39,7 @@ def main() -> int:
             return 2
         try:
             result = subprocess.run(
-                [php, str(path)], cwd=ROOT, capture_output=True, text=True,
+                [php, *(["-n"] if filename == "http-probe-phase-timing-runtime.php" else []), str(path)], cwd=ROOT, capture_output=True, text=True,
                 timeout=60, check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
