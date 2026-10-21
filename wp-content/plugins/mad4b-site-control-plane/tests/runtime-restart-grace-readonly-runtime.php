@@ -9,6 +9,7 @@ function get_option( $key, $fallback = false ) {
     return 'mad4b_scp_runtime_convergence_v1' === $key ? $GLOBALS['checkpoint'] : $fallback;
 }
 function update_option() { $GLOBALS['option_writes']++; throw new RuntimeException( 'Diagnostics must not mutate' ); }
+function add_action( $hook, $callback, $priority = 10 ) { return true; }
 function sanitize_key( $value ) { return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $value ) ); }
 function absint( $value ) { return abs( (int) $value ); }
 require_once dirname( __DIR__ ) . '/includes/class-mad4b-scp-runtime-convergence.php';
