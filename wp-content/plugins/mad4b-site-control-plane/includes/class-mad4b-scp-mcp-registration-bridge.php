@@ -74,6 +74,7 @@ final class MAD4B_SCP_MCP_Registration_Bridge {
 			array( 'MAD4B_SCP_Staging_Write_Grant_Reconciliation_Plan', 'register_ability', 10 ),
 			array( 'MAD4B_SCP_Staging_Write_Candidate_Binding', 'register_audit_ability', 13 ),
 			array( 'MAD4B_SCP_Multi_Authority_Registry', 'register_ability', 34 ),
+			array( 'MAD4B_SCP_Live_Acceptance_Observer', 'register_abilities', 38 ),
 		) as $definition ) {
 			if ( class_exists( $definition[0], false ) ) add_action( 'wp_abilities_api_init', array( $definition[0], $definition[1] ), $definition[2] );
 		}
