@@ -4011,6 +4011,28 @@
       "coverage_reuse_rationale": "Reuse the explicit exact-origin Staging probe, existing numeric-only diagnostic projection, administrator transient and governed read policy. No new HTTP target, transport options, authorization or requests.",
       "review_rationale": "Read five numeric cURL timing counters via request-scoped WordPress hooks. Match the exact probe URL in a nested-request stack, contain measurement errors and remove hooks in finally. Report cumulative first-attempt offsets, never infer missing phases as zero or claim a root cause. Preserve counters through allowlisted persistence and escaped admin output; do not store IPs, URLs, headers or raw errors.",
       "execution_note": "The changed Python driver executes eleven PHP runtime fixtures, including a minimal PHP environment for deterministic cURL timing fault injection. Tests cover timeout counters, nested requests, original response/options, cleanup on exceptions, redaction, malformed values and persistence. Actual Staging transport metrics require deployment and explicit probe."
+    },
+    {
+      "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-native-cron-acceptance.php",
+      "source_blob_sha": "a87a7d5718a49f02531d3f93b6cca5697fbc2791",
+      "control_ids": [
+        "GOVERNANCE-01",
+        "SECURITY-01",
+        "ADMIN-01",
+        "MCP-01",
+        "AUTOMATION-01"
+      ],
+      "regression_tests": [
+        "wp-content/plugins/mad4b-site-control-plane/tests/endpoint-probe-evidence-regressions.py"
+      ],
+      "owner_role": "Repository CI source reviewer — no Owner/Production authorization",
+      "status": "reviewed_for_ci_only",
+      "production_authorized": false,
+      "live_evidence_required": true,
+      "needs_new_control": false,
+      "coverage_reuse_rationale": "Reuse existing saved owner revision and exact native mode guards; UI visibility never creates consent or schedules work.",
+      "review_rationale": "Share the existing saved-consent predicate between enqueue and render. Default, invalid and revisionless observations hide the queue form and show escaped save guidance. Direct enqueue retains its original error and all subsequent identity, lock and scheduling guards. Runtime tests exercise real rendering and enqueue with saved/default/invalid consent, both native modes, external mode, Production and non-admin denials.",
+      "execution_note": "Changed Python entrypoint runs the new PHP regression in CI. Rendering cannot schedule; current saved consent admits the same existing next checks. No live site modification or Production authorization."
     }
   ],
   "code_change_rules": {
