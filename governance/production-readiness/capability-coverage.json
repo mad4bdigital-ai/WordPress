@@ -1045,7 +1045,7 @@
         "SECURITY-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4044,7 +4044,7 @@
         "AI-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4064,7 +4064,7 @@
         "LOCALIZATION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/business-activity-ability-identity-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI-only; no Owner or Production authorization",
       "status": "reviewed_for_ci_only",
