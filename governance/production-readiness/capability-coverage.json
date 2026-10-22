@@ -4439,7 +4439,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI evidence only; no Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4447,7 +4447,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing optional-warning, admin, MCP, authorization, audit, environment and fail-closed execution controls cover a bulk preference transaction without new capabilities, elevated permissions or operational write bypass.",
-      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable."
+      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable.",
+      "execution_note": "Trusted Python runner executes PHP syntax checks and the hermetic PHP behavioral regression, verifying its pass marker. No direct PHP fixture is misrepresented as an independent PHPUnit runner."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php",
@@ -4460,7 +4461,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI evidence only; no Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4468,7 +4469,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing optional-warning, admin, MCP, authorization, audit, environment and fail-closed execution controls cover a bulk preference transaction without new capabilities, elevated permissions or operational write bypass.",
-      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable."
+      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable.",
+      "execution_note": "Trusted Python runner executes PHP syntax checks and the hermetic PHP behavioral regression, verifying its pass marker. No direct PHP fixture is misrepresented as an independent PHPUnit runner."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
@@ -4481,7 +4483,7 @@
         "EXECUTION-01"
       ],
       "regression_tests": [
-        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-runtime.php"
+        "wp-content/plugins/mad4b-site-control-plane/tests/optional-governance-contract.py"
       ],
       "owner_role": "Repository source reviewer — CI evidence only; no Site Owner or Production authorization",
       "status": "reviewed_for_ci_only",
@@ -4489,7 +4491,8 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing optional-warning, admin, MCP, authorization, audit, environment and fail-closed execution controls cover a bulk preference transaction without new capabilities, elevated permissions or operational write bypass.",
-      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable."
+      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable.",
+      "execution_note": "Trusted Python runner executes PHP syntax checks and the hermetic PHP behavioral regression, verifying its pass marker. No direct PHP fixture is misrepresented as an independent PHPUnit runner."
     }
   ],
   "code_change_rules": {
