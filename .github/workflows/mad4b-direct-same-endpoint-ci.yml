@@ -1,0 +1,54 @@
+name: MAD4B Direct Same-Endpoint CI
+
+on:
+  pull_request:
+    paths:
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-servers.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/mad4b-site-control-plane.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-*.php'
+      - 'wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-*.py'
+      - '.github/workflows/mad4b-direct-same-endpoint-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: direct-original-endpoint-${{ github.event.pull_request.number || github.ref }}-${{ matrix.php }}
+  cancel-in-progress: true
+
+jobs:
+  same_endpoint_runtime:
+    name: Direct + Governed original endpoint (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: none
+      - name: Run hermetic PHP behavior and registration contract
+        run: |
+          python3 wp-content/plugins/mad4b-site-control-plane/tests/direct-mcp-same-endpoint-contract.py
+      - name: No tenth server or global permission bypass
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-direct-profile.php
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('wp-content/plugins/mad4b-site-control-plane')
+          servers=(p/'includes/class-mad4b-scp-servers.php').read_text()
+          direct=(p/'includes/class-mad4b-scp-direct-profile.php').read_text()
+          assert "'mad4b-direct'" not in servers
+          assert "const SERVER = 'mad4b-chatgpt'" in direct
+          assert "MAD4B_SCP_Authorization::claim_mutation" not in direct
+          assert "mad4b_execution_boundary" not in direct
+          print('DIRECT_ORIGINAL_ENDPOINT_ISOLATION: PASS')
+          PY
