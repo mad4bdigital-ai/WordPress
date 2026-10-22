@@ -4452,7 +4452,7 @@
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance.php",
-      "source_blob_sha": "c5dd3cfdbc14331ae4d4f418c9d40dd35de021b0",
+      "source_blob_sha": "a6f1a0de72c019fb51a1b2b22ff15c0ccd22b293",
       "control_ids": [
         "GOVERNANCE-01",
         "SECURITY-01",
@@ -4469,12 +4469,12 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing optional-warning, admin, MCP, authorization, audit, environment and fail-closed execution controls cover a bulk preference transaction without new capabilities, elevated permissions or operational write bypass.",
-      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable.",
+      "review_rationale": "Optional operator warning choices: off fresh default, legacy preserved, per-policy/all/selected batch control, canonical selection, exact source-bound plan, confirmed readback, strict invalid/nonce/OAuth/actor/environment/CI failure handling. No bypass of mandatory authorization or Production controls.",
       "execution_note": "Trusted Python runner executes PHP syntax checks and the hermetic PHP behavioral regression, verifying its pass marker. No direct PHP fixture is misrepresented as an independent PHPUnit runner."
     },
     {
       "path": "wp-content/plugins/mad4b-site-control-plane/includes/class-mad4b-scp-optional-governance-remote.php",
-      "source_blob_sha": "b59b1f5f6edd7a3ae6b067f8663fc550613ce779",
+      "source_blob_sha": "f0ae8666dd9070d247bee3219b7bfb27a1078474",
       "control_ids": [
         "GOVERNANCE-01",
         "SECURITY-01",
@@ -4491,7 +4491,7 @@
       "live_evidence_required": true,
       "needs_new_control": false,
       "coverage_reuse_rationale": "Existing optional-warning, admin, MCP, authorization, audit, environment and fail-closed execution controls cover a bulk preference transaction without new capabilities, elevated permissions or operational write bypass.",
-      "review_rationale": "New-install optional advisory default Off, administrator bulk warning profile, and native MCP bulk Plan/Apply/Verify reuse typed catalog, exact plan SHA, Staging-only OAuth step-up, centrally approved Write ticket, CAS lease, audit, rollback and persisted readback. Mandatory authorization, release, provider certification and Production restrictions remain immutable.",
+      "review_rationale": "Optional operator warning choices: off fresh default, legacy preserved, per-policy/all/selected batch control, canonical selection, exact source-bound plan, confirmed readback, strict invalid/nonce/OAuth/actor/environment/CI failure handling. No bypass of mandatory authorization or Production controls.",
       "execution_note": "Trusted Python runner executes PHP syntax checks and the hermetic PHP behavioral regression, verifying its pass marker. No direct PHP fixture is misrepresented as an independent PHPUnit runner."
     }
   ],
