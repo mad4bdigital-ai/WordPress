@@ -580,7 +580,7 @@ for dispatcher in ("'mad4b/write-execute'", "'mad4b/enrollment-execute'"):
 core_chatgpt = servers.split("'mad4b-chatgpt' => array_merge( array(", 1)[1].split("), $governed_status", 1)[0]
 if "'mad4b/enrollment-discover', 'mad4b/enrollment-info', 'mad4b/enrollment-execute'" not in core_chatgpt:
     raise SystemExit('bounded Enrollment discover/info/execute projection is missing from the canonical compact ChatGPT core catalog')
-if "$candidates = array_merge( $core, $bootstrap )" not in chatgpt_base:
+if "$candidates = array_merge( $core, $bootstrap, $profile_tools )" not in chatgpt_base:
     raise SystemExit('required ChatGPT base catalog no longer starts from the canonical compact core catalog')
 runtime_direct_surface = chatgpt_base + "\n" + chatgpt_transport
 for bootstrap_ability in (
